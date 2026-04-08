@@ -18,29 +18,17 @@ async function request(path: string, opts?: RequestInit) {
 }
 
 export const api = {
-  // Auth
   sendOtp: (phone: string) => request("/api/auth/send-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   verifyOtp: (phone: string, otp: string) => request("/api/auth/verify-otp", { method: "POST", body: JSON.stringify({ phone, otp }) }),
-
-  // Hotels
   getHotels: (params?: Record<string, string>) => {
     const q = params ? "?" + new URLSearchParams(params).toString() : "";
     return request(`/api/hotels${q}`);
   },
   getHotel: (id: string) => request(`/api/hotels/${id}`),
-
-  // Bids
   createBidRequest: (data: any) => request("/api/bids/request", { method: "POST", body: JSON.stringify(data) }),
-  placeBid: (data: any) => request("/api/bids", { method: "POST", body: JSON.stringify(data) }),
+  placeBid: (data: any) => request("/api/bids/place", { method: "POST", body: JSON.stringify(data) }),
   getMyBids: () => request("/api/bids/my"),
-
-  // Flash Deals
-  getFlashDeals: (city?: string) => request(`/api/flash-deals${city ? `?city=${city}` : ""}`),
-
-  // Bookings
-  createBooking: (data: any) => request("/api/bookings", { method: "POST", body: JSON.stringify(data) }),
+  getFlashDeals: (city?: string) => request(`/api/flash/near${city ? `?city=${city}` : ""}`),
   getMyBookings: () => request("/api/bookings/my"),
-
-  // Wallet
   getWallet: () => request("/api/wallet"),
 };

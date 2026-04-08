@@ -28,7 +28,7 @@ export default function AuthPage() {
     setLoading(true); setError("");
     try {
       const data = await api.verifyOtp(phone.startsWith("+91") ? phone : `+91${phone}`, otp);
-      login(data.token, data.user);
+      login(data.accessToken, data.user);
       router.push("/");
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
