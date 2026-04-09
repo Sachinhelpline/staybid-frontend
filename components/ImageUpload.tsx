@@ -1,4 +1,4 @@
-use client";
+"use client";
 import { useState } from "react";
 import { uploadImage } from "@/lib/supabase";
 
@@ -12,7 +12,7 @@ export function ImageUpload({ onUpload, folder = "hotels" }: { onUpload: (url: s
     try {
       const url = await uploadImage(file, folder);
       onUpload(url);
-    } catch (err) {
+    } catch {
       alert("Upload failed, try again");
     } finally {
       setUploading(false);
