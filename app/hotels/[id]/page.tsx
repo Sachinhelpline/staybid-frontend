@@ -4,6 +4,9 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { io } from "socket.io-client";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
 export default function HotelDetail() {
   const { id } = useParams();
@@ -14,8 +17,12 @@ export default function HotelDetail() {
   const [bidRoom, setBidRoom] = useState<any>(null);
   const [bidAmount, setBidAmount] = useState("");
   const [bidMsg, setBidMsg] = useState("");
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
   const [bidLoading, setBidLoading] = useState(false);
   const [bidSuccess, setBidSuccess] = useState(false);
+  const [myBids, setMyBids] = useState<any[]>([]);
+  const [actionLoading, setActionLoading] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -26,11 +33,53 @@ export default function HotelDetail() {
     }
   }, [id]);
 
+  // Fetch my bids
+  const fetchMyBids = () => {
+    if (!user) return;
+    api.getMyBids?.()
+      .then((d) => {
+        const hotelBids = (d.bids || []).filter((b: any) => b.hotelId === id);
+        setMyBids(hotelBids);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchMyBids();
+  }, [user, id]);
+
+  // Socket.io — listen for counter offers
+  useEffect(() => {
+    if (!user) return;
+    const socket = io(API);
+    socket.emit("join:customer", user.id);
+
+    socket.on("bid:counter", (bid: any) => {
+      if (bid.hotelId === id) {
+        setMyBids((prev) =>
+          prev.map((b) => (b.id === bid.id ? { ...b, ...bid } : b))
+        );
+      }
+    });
+
+    return () => { socket.disconnect(); };
+  }, [user, id]);
+
   const handleBid = async () => {
     if (!user) return router.push("/auth");
-    if (!bidAmount || !bidRoom) return;
+    if (!bidAmount || !bidRoom || !checkIn || !checkOut) return alert("Please fill all fields");
     setBidLoading(true);
     try {
+      // First create bid request
+      await api.createBidRequest?.({
+        hotelId: hotel.id,
+        roomId: bidRoom.id,
+        checkIn,
+        checkOut,
+        guests: bidRoom.capacity || 2,
+      });
+
+      // Then place bid
       await api.placeBid({
         hotelId: hotel.id,
         roomId: bidRoom.id,
@@ -39,10 +88,58 @@ export default function HotelDetail() {
       });
       setBidSuccess(true);
       setBidRoom(null);
+      fetchMyBids();
     } catch (e: any) {
       alert(e.message);
     } finally {
       setBidLoading(false);
+    }
+  };
+
+  const handleCounterAccept = async (bidId: string) => {
+    setActionLoading(bidId);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API}/api/bids/${bidId}/counter-accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Booking confirmed! 🎉");
+      fetchMyBids();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const handleCounterReject = async (bidId: string) => {
+    setActionLoading(bidId);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API}/api/bids/${bidId}/counter-reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      fetchMyBids();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case "PENDING": return "bg-yellow-100 text-yellow-700";
+      case "COUNTER": return "bg-orange-100 text-orange-700";
+      case "ACCEPTED": return "bg-green-100 text-green-700";
+      case "REJECTED": return "bg-red-100 text-red-700";
+      default: return "bg-gray-100 text-gray-600";
     }
   };
 
@@ -63,6 +160,7 @@ export default function HotelDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Hero Image */}
       <div className="h-64 md:h-80 rounded-3xl overflow-hidden bg-gradient-to-br from-brand-100 to-brand-50 mb-6 relative">
         {hotel.images?.[0] ? (
           <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
@@ -74,6 +172,7 @@ export default function HotelDetail() {
         )}
       </div>
 
+      {/* Hotel Info */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display text-3xl md:text-4xl mb-1">{hotel.name}</h1>
@@ -98,6 +197,62 @@ export default function HotelDetail() {
         </div>
       )}
 
+      {/* ── MY BIDS SECTION ── */}
+      {myBids.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-bold text-lg mb-4">Your Bids</h2>
+          <div className="space-y-3">
+            {myBids.map((b: any) => (
+              <div key={b.id} className="p-4 bg-white border border-gray-100 rounded-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-bold">{b.room?.type || "Room"}</p>
+                    <p className="text-sm text-gray-500">Your bid: ₹{b.amount}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColor(b.status)}`}>
+                    {b.status}
+                  </span>
+                </div>
+
+                {/* Counter Offer */}
+                {b.status === "COUNTER" && (
+                  <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
+                    <p className="text-sm font-medium text-orange-800 mb-2">
+                      Hotel countered with <span className="text-lg font-bold">₹{b.counterAmount}</span>
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleCounterAccept(b.id)}
+                        disabled={actionLoading === b.id}
+                        className="flex-1 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition disabled:opacity-40"
+                      >
+                        {actionLoading === b.id ? "..." : "Accept ₹" + b.counterAmount}
+                      </button>
+                      <button
+                        onClick={() => handleCounterReject(b.id)}
+                        disabled={actionLoading === b.id}
+                        className="flex-1 py-2 bg-red-100 text-red-600 text-sm font-bold rounded-xl hover:bg-red-200 transition disabled:opacity-40"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {b.status === "ACCEPTED" && (
+                  <p className="mt-2 text-sm text-green-600 font-medium">✅ Booking confirmed at ₹{b.counterAmount || b.amount}</p>
+                )}
+
+                {b.status === "REJECTED" && (
+                  <p className="mt-2 text-sm text-red-500 font-medium">Bid was rejected</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── ROOMS ── */}
       <h2 className="font-bold text-lg mb-4">Available Rooms</h2>
       {hotel.rooms?.length === 0 && <p className="text-gray-400 py-4">No rooms available right now.</p>}
       <div className="space-y-4 mb-8">
@@ -121,7 +276,7 @@ export default function HotelDetail() {
                   <p className="text-sm text-gray-400 line-through">MRP ₹{r.mrp}</p>
                   <p className="text-2xl font-bold text-brand-700">₹{r.floorPrice}</p>
                   <p className="text-xs text-gray-400">floor price / night</p>
-                  <button onClick={() => { setBidRoom(r); setBidAmount(""); setBidSuccess(false); }} className="mt-2 px-5 py-2 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition">
+                  <button onClick={() => { setBidRoom(r); setBidAmount(""); setBidMsg(""); setCheckIn(""); setCheckOut(""); setBidSuccess(false); }} className="mt-2 px-5 py-2 bg-brand-600 text-white text-sm font-bold rounded-xl hover:bg-brand-700 transition">
                     Place Bid
                   </button>
                 </div>
@@ -131,11 +286,24 @@ export default function HotelDetail() {
         ))}
       </div>
 
+      {/* ── BID MODAL ── */}
       {bidRoom && !bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setBidRoom(null)}>
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-2xl mb-1">Place Your Bid</h3>
             <p className="text-sm text-gray-500 mb-5">{bidRoom.name || bidRoom.type} at {hotel.name}</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-1">Check-in</label>
+                <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} min={new Date().toISOString().split("T")[0]} className="w-full px-3 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-1">Check-out</label>
+                <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} min={checkIn || new Date().toISOString().split("T")[0]} className="w-full px-3 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" />
+              </div>
+            </div>
+
             <div className="mb-4">
               <label className="text-sm font-medium text-gray-600 block mb-1">Your Bid Amount (₹)</label>
               <input type="number" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} placeholder={`Floor: ₹${bidRoom.floorPrice} | MRP: ₹${bidRoom.mrp}`} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-lg font-bold" />
@@ -143,13 +311,15 @@ export default function HotelDetail() {
                 <p className="text-xs text-red-500 mt-1">Bid must be at least ₹{bidRoom.floorPrice} (floor price)</p>
               )}
             </div>
+
             <div className="mb-5">
               <label className="text-sm font-medium text-gray-600 block mb-1">Message (optional)</label>
               <textarea value={bidMsg} onChange={(e) => setBidMsg(e.target.value)} placeholder="e.g. Planning anniversary trip, need best deal..." className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm" rows={2} />
             </div>
+
             <div className="flex gap-3">
               <button onClick={() => setBidRoom(null)} className="flex-1 py-3 rounded-xl border border-gray-200 font-medium text-gray-600 hover:bg-gray-50 transition">Cancel</button>
-              <button onClick={handleBid} disabled={bidLoading || !bidAmount || parseFloat(bidAmount) < bidRoom.floorPrice} className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 transition disabled:opacity-40">
+              <button onClick={handleBid} disabled={bidLoading || !bidAmount || !checkIn || !checkOut || parseFloat(bidAmount) < bidRoom.floorPrice} className="flex-1 py-3 rounded-xl bg-brand-600 text-white font-bold hover:bg-brand-700 transition disabled:opacity-40">
                 {bidLoading ? "Submitting..." : "Submit Bid"}
               </button>
             </div>
@@ -157,6 +327,7 @@ export default function HotelDetail() {
         </div>
       )}
 
+      {/* ── BID SUCCESS ── */}
       {bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setBidSuccess(false)}>
           <div className="bg-white max-w-sm rounded-3xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
@@ -168,6 +339,7 @@ export default function HotelDetail() {
         </div>
       )}
 
+      {/* ── REVIEWS ── */}
       {hotel.reviews?.length > 0 && (
         <div>
           <h2 className="font-bold text-lg mb-4">Reviews</h2>
@@ -183,4 +355,3 @@ export default function HotelDetail() {
       )}
     </div>
   );
-}
