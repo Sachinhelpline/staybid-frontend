@@ -33,7 +33,6 @@ export default function HotelDetail() {
     }
   }, [id]);
 
-  // Fetch my bids
   const fetchMyBids = () => {
     if (!user) return;
     api.getMyBids?.()
@@ -48,7 +47,6 @@ export default function HotelDetail() {
     fetchMyBids();
   }, [user, id]);
 
-  // Socket.io — listen for counter offers
   useEffect(() => {
     if (!user) return;
     const socket = io(API);
@@ -70,21 +68,21 @@ export default function HotelDetail() {
     if (!bidAmount || !bidRoom || !checkIn || !checkOut) return alert("Please fill all fields");
     setBidLoading(true);
     try {
-      // First create bid request
-      await api.createBidRequest?.({
+      const reqRes = await api.createBidRequest?.({
         hotelId: hotel.id,
         roomId: bidRoom.id,
+        amount: parseFloat(bidAmount),
         checkIn,
         checkOut,
         guests: bidRoom.capacity || 2,
       });
 
-      // Then place bid
       await api.placeBid({
         hotelId: hotel.id,
         roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
         message: bidMsg || undefined,
+        requestId: reqRes?.request?.id || undefined,
       });
       setBidSuccess(true);
       setBidRoom(null);
@@ -99,7 +97,7 @@ export default function HotelDetail() {
   const handleCounterAccept = async (bidId: string) => {
     setActionLoading(bidId);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("sb_token");
       const res = await fetch(`${API}/api/bids/${bidId}/counter-accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -118,7 +116,7 @@ export default function HotelDetail() {
   const handleCounterReject = async (bidId: string) => {
     setActionLoading(bidId);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("sb_token");
       const res = await fetch(`${API}/api/bids/${bidId}/counter-reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -160,7 +158,6 @@ export default function HotelDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Hero Image */}
       <div className="h-64 md:h-80 rounded-3xl overflow-hidden bg-gradient-to-br from-brand-100 to-brand-50 mb-6 relative">
         {hotel.images?.[0] ? (
           <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
@@ -172,7 +169,6 @@ export default function HotelDetail() {
         )}
       </div>
 
-      {/* Hotel Info */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display text-3xl md:text-4xl mb-1">{hotel.name}</h1>
@@ -197,7 +193,6 @@ export default function HotelDetail() {
         </div>
       )}
 
-      {/* ── MY BIDS SECTION ── */}
       {myBids.length > 0 && (
         <div className="mb-8">
           <h2 className="font-bold text-lg mb-4">Your Bids</h2>
@@ -214,7 +209,6 @@ export default function HotelDetail() {
                   </span>
                 </div>
 
-                {/* Counter Offer */}
                 {b.status === "COUNTER" && (
                   <div className="mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
                     <p className="text-sm font-medium text-orange-800 mb-2">
@@ -252,7 +246,6 @@ export default function HotelDetail() {
         </div>
       )}
 
-      {/* ── ROOMS ── */}
       <h2 className="font-bold text-lg mb-4">Available Rooms</h2>
       {hotel.rooms?.length === 0 && <p className="text-gray-400 py-4">No rooms available right now.</p>}
       <div className="space-y-4 mb-8">
@@ -286,7 +279,6 @@ export default function HotelDetail() {
         ))}
       </div>
 
-      {/* ── BID MODAL ── */}
       {bidRoom && !bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setBidRoom(null)}>
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6" onClick={(e) => e.stopPropagation()}>
@@ -325,9 +317,6 @@ export default function HotelDetail() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── BID SUCCESS ── */}
       {bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setBidSuccess(false)}>
           <div className="bg-white max-w-sm rounded-3xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
@@ -339,7 +328,6 @@ export default function HotelDetail() {
         </div>
       )}
 
-      {/* ── REVIEWS ── */}
       {hotel.reviews?.length > 0 && (
         <div>
           <h2 className="font-bold text-lg mb-4">Reviews</h2>
