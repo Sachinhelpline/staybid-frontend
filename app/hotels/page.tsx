@@ -1,9 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Suspense } from "react";
 
 function HotelList() {
   const searchParams = useSearchParams();
@@ -23,7 +22,7 @@ function HotelList() {
 
   useEffect(() => {
     const p: Record<string, string> = {};
-    if (city) p.city = city;
+    if (city)   p.city = city;
     if (search) p.q = search;
     fetchHotels(p);
   }, [city, search]);
@@ -31,102 +30,150 @@ function HotelList() {
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl mb-2">Find Hotels</h1>
-      <p className="text-gray-500 mb-6">{total} hotels found{city ? ` in ${city}` : ""}</p>
+    <div className="max-w-7xl mx-auto px-5 py-12">
 
-      {/* Search */}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by hotel name..."
-        className="w-full max-w-md px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 mb-4"
-      />
-
-      {/* City chips */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        {cities.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCity(c === "All" ? "" : c)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-              (c === "All" && !city) || c === city
-                ? "bg-brand-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+      {/* ── Page header ── */}
+      <div className="mb-10">
+        <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-3">Explore</p>
+        <h1 className="font-display font-light text-luxury-900 mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
+          Find Your Perfect Stay
+        </h1>
+        <p className="text-luxury-400 text-sm">
+          {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
+        </p>
       </div>
 
-      {/* Loading skeleton */}
+      {/* ── Search ── */}
+      <div className="relative max-w-md mb-6">
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-luxury-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by hotel name…"
+          className="w-full pl-11 pr-4 py-3 rounded-2xl border border-luxury-200 bg-white text-luxury-900 placeholder:text-luxury-300 focus:outline-none focus:ring-1 focus:ring-gold-400/50 focus:border-gold-300 transition text-sm"
+        />
+      </div>
+
+      {/* ── City filter chips ── */}
+      <div className="flex flex-wrap gap-2 mb-10">
+        {cities.map((c) => {
+          const active = (c === "All" && !city) || c === city;
+          return (
+            <button
+              key={c}
+              onClick={() => setCity(c === "All" ? "" : c)}
+              className={`px-4 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-200 ${
+                active
+                  ? "btn-luxury shadow-gold"
+                  : "bg-white border border-luxury-200 text-luxury-500 hover:border-gold-300 hover:text-luxury-900"
+              }`}
+            >
+              {c}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Loading skeleton ── */}
       {loading && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl bg-white border border-gray-100 overflow-hidden">
-              <div className="h-48 shimmer" />
-              <div className="p-4 space-y-3">
-                <div className="h-5 w-3/4 shimmer rounded" />
-                <div className="h-4 w-1/2 shimmer rounded" />
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-3xl bg-white border border-luxury-100 overflow-hidden">
+              <div className="h-52 shimmer" />
+              <div className="p-5 space-y-3">
+                <div className="h-5 w-3/4 shimmer rounded-full" />
+                <div className="h-4 w-1/2 shimmer rounded-full" />
+                <div className="h-4 w-1/3 shimmer rounded-full" />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Hotel Grid */}
-      {!loading && (
+      {/* ── Hotel grid ── */}
+      {!loading && hotels.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {hotels.map((h: any) => {
-            const minPrice = h.rooms?.length ? Math.min(...h.rooms.map((r: any) => r.floorPrice)) : null;
+            const minPrice = h.rooms?.length
+              ? Math.min(...h.rooms.map((r: any) => r.floorPrice))
+              : null;
+
             return (
-              <Link key={h.id} href={`/hotels/${h.id}`} className="group rounded-2xl bg-white border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+              <Link
+                key={h.id}
+                href={`/hotels/${h.id}`}
+                className="group card-luxury overflow-hidden flex flex-col"
+              >
                 {/* Image */}
-                <div className="h-48 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center relative overflow-hidden">
+                <div className="h-52 bg-luxury-100 relative overflow-hidden flex-shrink-0">
                   {h.images?.[0] ? (
-                    <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img
+                      src={h.images[0]}
+                      alt={h.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   ) : (
-                    <span className="text-5xl opacity-30">🏨</span>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-5xl opacity-20">🏨</span>
+                    </div>
                   )}
+
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
                   {h.trustBadge && (
-                    <span className="absolute top-3 left-3 px-2 py-1 bg-brand-600 text-white text-xs font-bold rounded-lg flex items-center gap-1">
+                    <span className="absolute top-3 left-3 badge-gold flex items-center gap-1">
                       ✓ Verified
+                    </span>
+                  )}
+
+                  {h.starRating && (
+                    <span className="absolute top-3 right-3 px-2 py-1 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold rounded-lg">
+                      {"★".repeat(h.starRating)}
                     </span>
                   )}
                 </div>
 
                 {/* Info */}
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-1">
-                    <h3 className="font-bold text-lg group-hover:text-brand-700 transition">{h.name}</h3>
+                <div className="p-5 flex flex-col flex-1">
+                  <div className="flex items-start justify-between mb-1 gap-2">
+                    <h3 className="font-semibold text-luxury-900 text-[1rem] leading-snug group-hover:text-gold-600 transition-colors">
+                      {h.name}
+                    </h3>
                     {h.avgRating > 0 && (
-                      <span className="text-sm font-semibold text-accent-500 flex items-center gap-0.5">★ {h.avgRating.toFixed(1)}</span>
+                      <span className="text-sm font-semibold text-gold-500 flex items-center gap-0.5 shrink-0">
+                        ★ {h.avgRating.toFixed(1)}
+                      </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mb-3">{h.city}, {h.state}</p>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1">
-                      {h.starRating && Array.from({ length: h.starRating }).map((_, i) => (
-                        <span key={i} className="text-accent-400 text-xs">★</span>
-                      ))}
-                    </div>
-                    {minPrice && (
-                      <div className="text-right">
-                        <span className="text-xs text-gray-400">from</span>
-                        <span className="text-lg font-bold text-brand-700 ml-1">₹{minPrice}</span>
-                        <span className="text-xs text-gray-400">/night</span>
-                      </div>
-                    )}
-                  </div>
+                  <p className="text-sm text-luxury-400 mb-4 tracking-wide">
+                    {h.city}, {h.state}
+                  </p>
 
                   {h.amenities?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
                       {h.amenities.slice(0, 3).map((a: string) => (
-                        <span key={a} className="text-xs px-2 py-0.5 bg-gray-100 rounded-full text-gray-500">{a}</span>
+                        <span key={a} className="text-xs px-2.5 py-0.5 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500">
+                          {a}
+                        </span>
                       ))}
-                      {h.amenities.length > 3 && <span className="text-xs text-gray-400">+{h.amenities.length - 3}</span>}
+                      {h.amenities.length > 3 && (
+                        <span className="text-xs text-luxury-400">+{h.amenities.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Price — pushed to bottom */}
+                  {minPrice && (
+                    <div className="mt-auto pt-4 border-t border-luxury-100 flex items-center justify-between">
+                      <span className="text-xs text-luxury-400 tracking-wide">Starting from</span>
+                      <div>
+                        <span className="text-xl font-bold text-luxury-900">₹{minPrice}</span>
+                        <span className="text-xs text-luxury-400 ml-1">/night</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -136,11 +183,14 @@ function HotelList() {
         </div>
       )}
 
+      {/* ── Empty state ── */}
       {!loading && hotels.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
-          <span className="text-5xl mb-4 block">🏔️</span>
-          <p className="text-lg font-medium">No hotels found</p>
-          <p className="text-sm">Try a different city or search term</p>
+        <div className="text-center py-28">
+          <div className="w-20 h-20 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-5">
+            <span className="text-3xl">🏔️</span>
+          </div>
+          <p className="text-lg font-semibold text-luxury-800 mb-1">No hotels found</p>
+          <p className="text-sm text-luxury-400">Try a different city or search term</p>
         </div>
       )}
     </div>
@@ -149,7 +199,18 @@ function HotelList() {
 
 export default function HotelsPage() {
   return (
-    <Suspense fallback={<div className="max-w-6xl mx-auto px-4 py-8"><div className="h-8 w-48 shimmer rounded mb-4" /></div>}>
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-5 py-12">
+          <div className="h-8 w-64 shimmer rounded-full mb-4" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-64 shimmer rounded-3xl" />
+            ))}
+          </div>
+        </div>
+      }
+    >
       <HotelList />
     </Suspense>
   );

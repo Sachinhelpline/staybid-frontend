@@ -14,76 +14,126 @@ export default function AuthPage() {
   const [error, setError] = useState("");
 
   const sendOtp = async () => {
-    if (phone.length < 10) return setError("Enter valid 10-digit phone");
-    setLoading(true); setError("");
+    if (phone.length < 10) return setError("Enter a valid 10-digit phone number");
+    setLoading(true);
+    setError("");
     try {
       await api.sendOtp(phone.startsWith("+91") ? phone : `+91${phone}`);
       setStep("otp");
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const verify = async () => {
-    if (otp.length < 4) return setError("Enter valid OTP");
-    setLoading(true); setError("");
+    if (otp.length < 4) return setError("Enter the OTP you received");
+    setLoading(true);
+    setError("");
     try {
-      const data = await api.verifyOtp(phone.startsWith("+91") ? phone : `+91${phone}`, otp);
+      const data = await api.verifyOtp(
+        phone.startsWith("+91") ? phone : `+91${phone}`,
+        otp
+      );
       login(data.accessToken, data.user);
       router.push("/");
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
+    <div
+      className="min-h-[88vh] flex items-center justify-center px-4"
+      style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f4f2ec 100%)" }}
+    >
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="w-16 h-16 rounded-2xl bg-brand-600 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">S</span>
-          <h1 className="font-display text-3xl mb-1">Welcome to StayBid</h1>
-          <p className="text-gray-500 text-sm">Login with your phone number</p>
+
+        {/* ── Brand mark ── */}
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 rounded-2xl btn-luxury flex items-center justify-center text-white text-2xl font-bold mx-auto mb-5 shadow-gold-lg">
+            S
+          </div>
+          <h1 className="font-display font-light text-luxury-900 text-3xl mb-1.5">Welcome to StayBid</h1>
+          <p className="text-luxury-400 text-sm tracking-wide">
+            {step === "phone" ? "Sign in with your phone number" : `OTP sent to +91 ${phone}`}
+          </p>
         </div>
 
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+        {/* ── Card ── */}
+        <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-7">
+
           {step === "phone" ? (
             <>
-              <label className="text-sm font-medium text-gray-600 block mb-2">Phone Number</label>
-              <div className="flex gap-2 mb-4">
-                <span className="px-3 py-3 bg-gray-100 rounded-xl text-sm font-medium text-gray-600">+91</span>
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
+                Phone Number
+              </label>
+              <div className="flex gap-2 mb-5">
+                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">
+                  +91
+                </span>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="Enter phone number"
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="Enter 10-digit number"
+                  className="input-luxury text-sm"
                   maxLength={10}
+                  inputMode="numeric"
                 />
               </div>
-              <button onClick={sendOtp} disabled={loading} className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition disabled:opacity-40">
-                {loading ? "Sending..." : "Send OTP"}
+              <button
+                onClick={sendOtp}
+                disabled={loading || phone.length < 10}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40"
+              >
+                {loading ? "Sending…" : "Send OTP"}
               </button>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 mb-4">OTP sent to +91{phone}</p>
-              <label className="text-sm font-medium text-gray-600 block mb-2">Enter OTP</label>
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
+                Enter OTP
+              </label>
               <input
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="Enter OTP"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-center text-xl tracking-widest font-bold mb-4"
+                placeholder="• • • • • •"
+                className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-5"
                 maxLength={6}
+                inputMode="numeric"
+                autoFocus
               />
-              <button onClick={verify} disabled={loading} className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition disabled:opacity-40">
-                {loading ? "Verifying..." : "Verify & Login"}
+              <button
+                onClick={verify}
+                disabled={loading || otp.length < 4}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40 mb-3"
+              >
+                {loading ? "Verifying…" : "Verify & Sign In"}
               </button>
-              <button onClick={() => { setStep("phone"); setOtp(""); }} className="w-full py-2 mt-2 text-sm text-gray-500 hover:text-gray-700">
+              <button
+                onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
+                className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors tracking-wide"
+              >
                 Change number
               </button>
             </>
           )}
-          {error && <p className="text-sm text-red-500 mt-3 text-center">{error}</p>}
+
+          {error && (
+            <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            </div>
+          )}
         </div>
+
+        <p className="text-center text-xs text-luxury-300 mt-6 tracking-wide">
+          By signing in, you agree to StayBid&apos;s terms of service.
+        </p>
       </div>
     </div>
   );

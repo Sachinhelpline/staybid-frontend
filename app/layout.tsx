@@ -5,7 +5,13 @@ import { Navbar } from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "StayBid — Bid Your Stay, Save Big",
-  description: "India's first reverse-auction hotel booking platform. Name your price, hotels compete for your booking.",
+  description: "India's first reverse-auction hotel booking platform. Name your price, hotels compete for your booking. Discover premium mountain stays at prices you choose.",
+  keywords: "hotel bidding, reverse auction, budget hotels, mountain stays, Mussoorie, Rishikesh, Shimla, Manali",
+  openGraph: {
+    title: "StayBid — Name Your Price. Hotels Compete.",
+    description: "India's first reverse-auction hotel platform. Bid on premium stays and save up to 40%.",
+    siteName: "StayBid",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
