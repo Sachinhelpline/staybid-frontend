@@ -125,8 +125,15 @@ export default function AuthPage() {
           )}
 
           {error && (
-            <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-              <p className="text-sm text-red-600 text-center">{error}</p>
+            <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+              <span className="text-red-400 mt-0.5 shrink-0">⚠</span>
+              <div>
+                <p className="text-sm text-red-700 font-medium">Login nahi ho pa raha</p>
+                <p className="text-xs text-red-500 mt-0.5 leading-relaxed">{error}</p>
+                {(error.toLowerCase().includes("server") || error.toLowerCase().includes("network") || error.toLowerCase().includes("wrong")) && (
+                  <p className="text-xs text-red-400 mt-1">Server temporarily down ho sakta hai. Kuch minutes baad try karein.</p>
+                )}
+              </div>
             </div>
           )}
         </div>

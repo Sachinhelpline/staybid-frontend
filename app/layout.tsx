@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/auth";
 import { Navbar } from "@/components/Navbar";
+import { ServerStatus } from "@/components/ServerStatus";
 
 export const metadata: Metadata = {
   title: "StayBid — Bid Your Stay, Save Big",
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
+          <ServerStatus />
           <Navbar />
           <main className="min-h-screen">{children}</main>
         </AuthProvider>
