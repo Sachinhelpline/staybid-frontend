@@ -2,19 +2,177 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* ─── Design tokens ────────────────────────────────────────────── */
 :root {
-  --brand: #16a34a;
-  --accent: #f59e0b;
+  --gold:          #c9911a;
+  --gold-light:    #f0b429;
+  --gold-muted:    rgba(201, 145, 26, 0.12);
+  --gold-border:   rgba(201, 145, 26, 0.25);
+  --navy:          #0f0c1a;
+  --cream:         #faf9f6;
+  --card-bg:       #ffffff;
+  --text-primary:  #1a1510;
+  --text-secondary:#6b6458;
+  --border:        rgba(232, 228, 217, 0.8);
 }
 
+/* ─── Base ──────────────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
-body { font-family: 'DM Sans', sans-serif; background: #fafaf8; color: #1a1a1a; }
 
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(201, 145, 26, 0.18);
+  color: var(--text-primary);
+}
+
+/* ─── Utilities ─────────────────────────────────────────────────── */
 @layer utilities {
+
+  /* Typography */
   .text-balance { text-wrap: balance; }
-  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.3); }
-  .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Navbar glass — warm white on scroll */
+  .glass {
+    background: rgba(250, 249, 246, 0.92);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border-bottom: 1px solid rgba(232, 228, 217, 0.55);
+  }
+
+  /* Light glass panel */
+  .glass-light {
+    background: rgba(250, 249, 246, 0.88);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--border);
+  }
+
+  /* Dark glass — for overlays on hero */
+  .glass-dark {
+    background: rgba(10, 8, 18, 0.72);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(201, 145, 26, 0.18);
+  }
+
+  /* Skeleton loader */
+  .shimmer {
+    background: linear-gradient(90deg, #eeeae0 25%, #e4e0d4 50%, #eeeae0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ── Luxury card ───────────────────────────────────────────────── */
+  .card-luxury {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 24px rgba(10, 8, 6, 0.055), 0 1px 4px rgba(10, 8, 6, 0.03);
+    transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                transform     0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color  0.35s ease;
+  }
+  .card-luxury:hover {
+    box-shadow: 0 18px 60px rgba(10, 8, 6, 0.10), 0 4px 16px rgba(10, 8, 6, 0.055);
+    transform: translateY(-3px);
+    border-color: var(--gold-border);
+  }
+
+  /* ── Gold gradient button ──────────────────────────────────────── */
+  .btn-luxury {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #c9911a 0%, #e8a820 50%, #c9911a 100%);
+    background-size: 200% 100%;
+    background-position: left center;
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: background-position 0.4s ease,
+                box-shadow         0.3s ease,
+                transform          0.2s ease;
+    box-shadow: 0 4px 18px rgba(201, 145, 26, 0.32);
+  }
+  .btn-luxury:hover {
+    background-position: right center;
+    box-shadow: 0 6px 28px rgba(201, 145, 26, 0.48);
+    transform: translateY(-1px);
+  }
+  .btn-luxury:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 12px rgba(201, 145, 26, 0.28);
+  }
+
+  /* ── Gold badge ────────────────────────────────────────────────── */
+  .badge-gold {
+    background: linear-gradient(135deg, #c9911a, #f0b429);
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 9999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.7rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 2px 10px rgba(201, 145, 26, 0.38);
+  }
+
+  /* ── Decorative gold line ──────────────────────────────────────── */
+  .gold-line {
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    border: none;
+  }
+
+  /* ── Gold text gradient ────────────────────────────────────────── */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #c9911a 0%, #f0b429 50%, #d4a020 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ── Section divider ───────────────────────────────────────────── */
+  .divider-gold {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201, 145, 26, 0.35), transparent);
+  }
+
+  /* ── Input focus ring override ─────────────────────────────────── */
+  .input-luxury {
+    background: #ffffff;
+    border: 1px solid rgba(232, 228, 217, 0.9);
+    border-radius: 0.875rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+  }
+  .input-luxury:focus {
+    border-color: rgba(201, 145, 26, 0.55);
+    box-shadow: 0 0 0 3px rgba(201, 145, 26, 0.1);
+  }
+  .input-luxury::placeholder {
+    color: #b5ab97;
+  }
+
+}
+
+/* ─── Hero decorative pattern ───────────────────────────────────── */
+.hero-mesh {
+  background-image:
+    radial-gradient(circle at 15% 55%, rgba(201, 145, 26, 0.1) 0%, transparent 55%),
+    radial-gradient(circle at 85% 25%, rgba(201, 145, 26, 0.07) 0%, transparent 45%),
+    url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9911a' fill-opacity='0.035'%3E%3Cpath d='M24 0L48 24L24 48L0 24Z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
