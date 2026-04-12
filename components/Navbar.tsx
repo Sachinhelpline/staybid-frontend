@@ -57,11 +57,13 @@ export function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-4">
-              <Link
-                href="/bookings"
-                className="text-sm font-medium text-luxury-500 hover:text-luxury-900 transition-colors tracking-wide"
-              >
-                My Bookings
+              <Link href="/my-bids"  className="text-sm font-medium text-luxury-500 hover:text-luxury-900 transition-colors tracking-wide">My Bids</Link>
+              <Link href="/bookings" className="text-sm font-medium text-luxury-500 hover:text-luxury-900 transition-colors tracking-wide">Bookings</Link>
+              <Link href="/wallet"   className="text-sm font-medium text-luxury-500 hover:text-luxury-900 transition-colors tracking-wide flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 0 0-2.25-2.25H15a3 3 0 1 1-6 0H5.25A2.25 2.25 0 0 0 3 12m18 0v6a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 9m18 0V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v3" />
+                </svg>
+                Wallet
               </Link>
               <button
                 onClick={logout}
@@ -115,13 +117,20 @@ export function Navbar() {
 
           {user ? (
             <>
-              <Link
-                href="/bookings"
-                onClick={() => setOpen(false)}
-                className="flex py-3 text-sm font-medium text-luxury-700 hover:text-luxury-900 border-b border-luxury-100 tracking-wide transition-colors"
-              >
-                My Bookings
-              </Link>
+              {[
+                { href: "/my-bids",  label: "My Bids"     },
+                { href: "/bookings", label: "My Bookings"  },
+                { href: "/wallet",   label: "Wallet"       },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex py-3 text-sm font-medium text-luxury-700 hover:text-luxury-900 border-b border-luxury-100 tracking-wide transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
               <button
                 onClick={() => { logout(); setOpen(false); }}
                 className="flex py-3 text-sm font-medium text-red-500 tracking-wide"

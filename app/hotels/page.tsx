@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -11,21 +11,28 @@ function HotelList() {
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState(searchParams.get("city") || "");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const fetchHotels = (params: Record<string, string>) => {
+  // Debounce search — wait 350ms after user stops typing before firing API
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchHotels = useCallback((params: Record<string, string>) => {
     setLoading(true);
     api.getHotels(params)
       .then((d) => { setHotels(d.hotels || []); setTotal(d.total || 0); })
       .catch(() => setHotels([]))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     const p: Record<string, string> = {};
-    if (city)   p.city = city;
-    if (search) p.q = search;
+    if (city)           p.city = city;
+    if (debouncedSearch) p.q = debouncedSearch;
     fetchHotels(p);
-  }, [city, search]);
+  }, [city, debouncedSearch, fetchHotels]);
 
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
