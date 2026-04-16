@@ -113,6 +113,7 @@ export default function HotelDetail() {
         amount: parseFloat(dealPrice!),
         message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults | ${flashChildren} children | Total ₹${flashGrandTotal}`,
         requestId: reqRes?.request?.id,
+        dealId: dealId,
       });
       const token = localStorage.getItem("sb_token");
       await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, {
