@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -11,21 +11,33 @@ function HotelList() {
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState(searchParams.get("city") || "");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [apiError, setApiError] = useState("");
 
-  const fetchHotels = (params: Record<string, string>) => {
+  // Debounce search — wait 350ms after user stops typing before firing API
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchHotels = useCallback((params: Record<string, string>) => {
     setLoading(true);
+    setApiError("");
     api.getHotels(params)
       .then((d) => { setHotels(d.hotels || []); setTotal(d.total || 0); })
-      .catch(() => setHotels([]))
+      .catch((e) => {
+        setHotels([]);
+        setApiError(e.message || "Server se data nahi aa raha. Thodi der baad try karein.");
+      })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     const p: Record<string, string> = {};
-    if (city)   p.city = city;
-    if (search) p.q = search;
+    if (city)           p.city = city;
+    if (debouncedSearch) p.q = debouncedSearch;
     fetchHotels(p);
-  }, [city, search]);
+  }, [city, debouncedSearch, fetchHotels]);
 
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -183,8 +195,25 @@ function HotelList() {
         </div>
       )}
 
-      {/* ── Empty state ── */}
-      {!loading && hotels.length === 0 && (
+      {/* ── API / Server error banner ── */}
+      {!loading && apiError && (
+        <div className="mb-6 p-5 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-4">
+          <span className="text-2xl shrink-0">⚠️</span>
+          <div>
+            <p className="font-semibold text-red-700 text-sm mb-1">Server se connect nahi ho pa raha</p>
+            <p className="text-red-500 text-xs leading-relaxed">{apiError}</p>
+            <button
+              onClick={() => fetchHotels(city ? { city } : {})}
+              className="mt-3 px-4 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition"
+            >
+              Dobara try karein
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Empty state (only shown when no error) ── */}
+      {!loading && hotels.length === 0 && !apiError && (
         <div className="text-center py-28">
           <div className="w-20 h-20 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-5">
             <span className="text-3xl">🏔️</span>

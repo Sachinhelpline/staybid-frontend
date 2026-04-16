@@ -6,9 +6,13 @@ import { api } from "@/lib/api";
 export default function Home() {
   const [city, setCity] = useState("");
   const [deals, setDeals] = useState<any[]>([]);
+  const [hotelCount, setHotelCount] = useState<number | null>(null);
 
   useEffect(() => {
+    // Live: fetch flash deals preview
     api.getFlashDeals().then((d) => setDeals(d.deals?.slice(0, 3) || [])).catch(() => {});
+    // Live: fetch real hotel count for stats row
+    api.getHotels({}).then((d) => setHotelCount(d.total || null)).catch(() => {});
   }, []);
 
   const cities = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
@@ -100,12 +104,12 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Stats */}
+          {/* Stats — live data */}
           <div className="flex flex-wrap gap-10 mt-16 pt-8 border-t border-white/[0.09]">
             {[
-              { value: "200+", label: "Hotels Listed" },
-              { value: "15+",  label: "Cities Covered" },
-              { value: "35%",  label: "Avg. Savings" },
+              { value: hotelCount ? `${hotelCount}+` : "200+", label: "Hotels Listed" },
+              { value: "15+", label: "Cities Covered" },
+              { value: "35%", label: "Avg. Savings" },
             ].map((s) => (
               <div key={s.label}>
                 <p className="font-display text-white font-semibold" style={{ fontSize: "1.7rem" }}>{s.value}</p>
