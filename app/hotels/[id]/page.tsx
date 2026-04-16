@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -11,6 +11,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.
 export default function HotelDetail() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [hotel, setHotel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -24,10 +25,24 @@ export default function HotelDetail() {
   const [myBids, setMyBids] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState("");
 
+  const dealId    = searchParams.get("dealId");
+  const dealPrice = searchParams.get("dealPrice");
+  const dealRoomId = searchParams.get("roomId");
+  const dealDiscount = searchParams.get("discount");
+
   useEffect(() => {
     if (id) {
       api.getHotel(id as string)
-        .then((d) => setHotel(d.hotel))
+        .then((d) => {
+          setHotel(d.hotel);
+          if (dealRoomId && d.hotel?.rooms) {
+            const room = d.hotel.rooms.find((r: any) => r.id === dealRoomId);
+            if (room) {
+              setBidRoom(room);
+              if (dealPrice) setBidAmount(dealPrice);
+            }
+          }
+        })
         .catch(() => {})
         .finally(() => setLoading(false));
     }
@@ -188,6 +203,25 @@ export default function HotelDetail() {
           </div>
         </div>
 
+        {/* ── Flash Deal Banner ── */}
+        {dealId && dealPrice && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-gold-900/10 to-gold-500/10 border border-gold-300 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest">Flash Deal Active</p>
+                <p className="text-sm text-luxury-700 mt-0.5">
+                  Special price <span className="font-bold text-luxury-900 text-lg">₹{dealPrice}</span>/night
+                  {dealDiscount && <span className="ml-2 badge-gold">{dealDiscount}% OFF</span>}
+                </p>
+              </div>
+            </div>
+            <Link href="/flash-deals" className="text-xs text-gold-500 hover:text-gold-600 transition-colors whitespace-nowrap">
+              All Deals →
+            </Link>
+          </div>
+        )}
+
         {/* ── Hotel meta ── */}
         <div className="flex flex-wrap items-center gap-4 mb-8">
           {hotel.starRating && (
@@ -319,13 +353,24 @@ export default function HotelDetail() {
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm text-luxury-300 line-through">MRP ₹{r.mrp}</p>
-                    <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice}</p>
-                    <p className="text-xs text-luxury-400 mb-3">floor price / night</p>
+                    {dealRoomId === r.id && dealPrice ? (
+                      <>
+                        <p className="text-xs font-bold text-gold-500 uppercase tracking-widest">Flash Deal</p>
+                        <p className="text-sm text-luxury-300 line-through">₹{r.floorPrice}</p>
+                        <p className="text-2xl font-bold text-gold-600">₹{dealPrice}</p>
+                        <p className="text-xs text-luxury-400 mb-3">/night · {dealDiscount}% off</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-luxury-300 line-through">MRP ₹{r.mrp}</p>
+                        <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice}</p>
+                        <p className="text-xs text-luxury-400 mb-3">floor price / night</p>
+                      </>
+                    )}
                     <button
                       onClick={() => {
                         setBidRoom(r);
-                        setBidAmount("");
+                        setBidAmount(dealRoomId === r.id && dealPrice ? dealPrice : "");
                         setBidMsg("");
                         setCheckIn("");
                         setCheckOut("");
@@ -333,7 +378,7 @@ export default function HotelDetail() {
                       }}
                       className="btn-luxury px-5 py-2.5 rounded-xl text-sm"
                     >
-                      Place Bid
+                      {dealRoomId === r.id && dealPrice ? "Book Flash Deal" : "Place Bid"}
                     </button>
                   </div>
                 </div>
@@ -414,7 +459,7 @@ export default function HotelDetail() {
                 type="number"
                 value={bidAmount}
                 onChange={(e) => setBidAmount(e.target.value)}
-                placeholder={`Floor ₹${bidRoom.floorPrice} — MRP ₹${bidRoom.mrp}`}
+                placeholder={dealRoomId === bidRoom?.id && dealPrice ? `Flash Deal ₹${dealPrice}` : `Floor ₹${bidRoom.floorPrice} — MRP ₹${bidRoom.mrp}`}
                 className="input-luxury text-lg font-bold"
               />
               {bidAmount && parseFloat(bidAmount) < bidRoom.floorPrice && (

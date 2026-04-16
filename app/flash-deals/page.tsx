@@ -137,7 +137,7 @@ export default function FlashDealsPage() {
                         <p className="text-xs text-luxury-400">/night</p>
                       </div>
                       <Link
-                        href={`/hotels/${d.hotelId}`}
+                        href={`/hotels/${d.hotelId}?dealId=${d.id}&dealPrice=${d.aiPrice}&roomId=${d.roomId}&discount=${d.discount}`}
                         className="btn-luxury px-5 py-2.5 rounded-xl text-sm"
                       >
                         Book Now
