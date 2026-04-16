@@ -39,9 +39,12 @@ function BookingCard({ b }: { b: any }) {
 
   const bookingId = b.id?.slice(0, 8).toUpperCase() || "STAYBID1";
 
-  // Try all possible date paths from backend
-  const checkInRaw  = b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn  || b.Request?.checkIn;
-  const checkOutRaw = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut || b.Request?.checkOut;
+  // Try all possible date paths from backend, then localStorage fallback
+  const stored = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem(`bid_dates_${b.id}`) || "null")
+    : null;
+  const checkInRaw  = b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn  || b.Request?.checkIn  || stored?.checkIn;
+  const checkOutRaw = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut || b.Request?.checkOut || stored?.checkOut;
 
   const checkIn  = checkInRaw  ? new Date(checkInRaw)  : null;
   const checkOut = checkOutRaw ? new Date(checkOutRaw) : null;

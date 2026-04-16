@@ -120,6 +120,10 @@ export default function HotelDetail() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
+      // Save dates locally so bookings page can show them even if backend doesn't return them
+      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({
+        checkIn: today, checkOut: flashCheckOut,
+      }));
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {
