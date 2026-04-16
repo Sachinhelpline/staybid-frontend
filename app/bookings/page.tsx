@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending"     },
   CONFIRMED:  { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Confirmed"   },
+  ACCEPTED:   { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Confirmed"   },
   CHECKED_IN: { bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200",    label: "Checked In"  },
   CHECKED_OUT:{ bg: "bg-luxury-50",  text: "text-luxury-600",  border: "border-luxury-200",  label: "Checked Out" },
   CANCELLED:  { bg: "bg-red-50",     text: "text-red-600",     border: "border-red-200",     label: "Cancelled"   },
@@ -21,10 +22,39 @@ export default function BookingsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
-    api.getMyBookings()
-      .then((d) => setBookings(d.bookings || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+
+    Promise.all([
+      api.getMyBookings().catch(() => ({ bookings: [] })),
+      api.getMyBids().catch(() => ({ bids: [] })),
+    ]).then(([bookData, bidData]) => {
+      const fromBookings = (bookData.bookings || []).map((b: any) => ({ ...b, _source: "booking" }));
+      // Accepted/confirmed bids act as bookings
+      const fromBids = (bidData.bids || [])
+        .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        .map((b: any) => ({
+          id: b.id,
+          status: b.status,
+          checkIn: b.request?.checkIn || b.checkIn,
+          checkOut: b.request?.checkOut || b.checkOut,
+          guests: b.request?.guests || b.guests || 2,
+          totalAmount: b.amount,
+          hotel: b.hotel,
+          room: b.room,
+          createdAt: b.createdAt,
+          paymentMode: "FLASH DEAL",
+          _source: "bid",
+        }));
+
+      // Merge, deduplicate by id
+      const seen = new Set();
+      const merged = [...fromBookings, ...fromBids].filter((b) => {
+        if (seen.has(b.id)) return false;
+        seen.add(b.id);
+        return true;
+      });
+      merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setBookings(merged);
+    }).finally(() => setLoading(false));
   }, [user, authLoading, router]);
 
   if (authLoading || loading) return (
@@ -78,13 +108,13 @@ export default function BookingsPage() {
                   <div>
                     <p className="text-[0.65rem] text-luxury-300 uppercase tracking-wider mb-1">Check-in</p>
                     <p className="text-sm font-medium text-luxury-700">
-                      {new Date(b.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {b.checkIn ? new Date(b.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
                     </p>
                   </div>
                   <div>
                     <p className="text-[0.65rem] text-luxury-300 uppercase tracking-wider mb-1">Check-out</p>
                     <p className="text-sm font-medium text-luxury-700">
-                      {new Date(b.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      {b.checkOut ? new Date(b.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}
                     </p>
                   </div>
                   <div>
@@ -97,7 +127,7 @@ export default function BookingsPage() {
                 <div className="divider-gold mb-3" />
                 <div className="flex items-center justify-between text-xs text-luxury-300 tracking-wide">
                   <span>Booked {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                  <span className="uppercase">{b.paymentMode}</span>
+                  <span className="uppercase">{b.paymentMode || "BID"}</span>
                 </div>
               </div>
             );
