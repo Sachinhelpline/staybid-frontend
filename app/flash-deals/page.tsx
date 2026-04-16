@@ -1,9 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 export default function FlashDealsPage() {
+  const router = useRouter();
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState("");
@@ -94,8 +96,12 @@ export default function FlashDealsPage() {
               const leftMins  = Math.max(0, Math.floor(((expires.getTime() - Date.now()) % 3600000) / 60000));
               const isUrgent  = leftHours < 3;
 
+              const dealUrl = `/hotels/${d.hotelId}?dealId=${d.id}&dealPrice=${d.aiPrice}&roomId=${d.roomId}&discount=${d.discount}`;
               return (
-                <div key={d.id} className="group card-luxury overflow-hidden flex flex-col">
+                <div key={d.id}
+                  className="group card-luxury overflow-hidden flex flex-col cursor-pointer"
+                  onClick={() => router.push(dealUrl)}
+                >
                   {/* Gold-to-red gradient top stripe */}
                   <div className="h-[3px] bg-gradient-to-r from-gold-500 via-red-400 to-gold-500" />
 
@@ -136,12 +142,14 @@ export default function FlashDealsPage() {
                         <p className="text-2xl font-bold text-luxury-900">₹{d.aiPrice}</p>
                         <p className="text-xs text-luxury-400">/night</p>
                       </div>
-                      <Link
-                        href={`/hotels/${d.hotelId}`}
-                        className="btn-luxury px-5 py-2.5 rounded-xl text-sm"
-                      >
-                        Book Now
-                      </Link>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Link
+                          href={`${dealUrl}&directBook=true`}
+                          className="btn-luxury px-5 py-2.5 rounded-xl text-sm shadow-gold"
+                        >
+                          Book Now
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
