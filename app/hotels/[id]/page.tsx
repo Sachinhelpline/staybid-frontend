@@ -338,7 +338,7 @@ export default function HotelDetail() {
         </div>
 
         {/* ── Hotel meta ── */}
-        <div className="flex flex-wrap items-center gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           {hotel.starRating && (
             <span className="text-gold-400 text-lg tracking-widest">{"★".repeat(hotel.starRating)}</span>
           )}
@@ -347,6 +347,12 @@ export default function HotelDetail() {
               ★ {hotel.avgRating.toFixed(1)} · {hotel.totalReviews} reviews
             </span>
           )}
+          <button
+            onClick={() => setTab("reviews")}
+            className="px-3 py-1 text-sm font-semibold text-gold-600 underline underline-offset-2 hover:text-gold-700 transition-colors"
+          >
+            Read Reviews →
+          </button>
         </div>
 
         {hotel.description && (
@@ -366,28 +372,57 @@ export default function HotelDetail() {
         )}
 
         {/* ── Tabs ── */}
-        <div className="flex gap-1 border-b border-luxury-200 mb-8">
-          {["rooms","reviews","about"].map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all ${tab===t ? "text-gold-600 border-b-2 border-gold-500 -mb-px" : "text-luxury-400 hover:text-luxury-700"}`}>
-              {t === "rooms" ? "🛏 Rooms" : t === "reviews" ? "★ Reviews" : "ℹ About"}
+        <div className="flex border-b border-luxury-200 mb-8">
+          {(["rooms","reviews","about"] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`px-5 py-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
+                tab === t
+                  ? "text-gold-600 border-gold-500"
+                  : "text-luxury-400 border-transparent hover:text-luxury-700"
+              }`}
+            >
+              {t === "rooms" ? "Rooms" : t === "reviews" ? "Reviews" : "About"}
             </button>
           ))}
         </div>
 
         {/* ── REVIEWS TAB ── */}
         {tab === "reviews" && (
-          <div className="space-y-4 mb-10">
-            {(hotel.reviews?.length > 0 ? hotel.reviews : sampleReviews).map((r: any) => (
-              <div key={r.id} className="card-luxury p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-luxury-900">{r.guestName || ("Guest " + (r.id||"").slice(0,4).toUpperCase())}</p>
-                  <span className="text-gold-400 text-sm">{"★".repeat(r.rating||5)}</span>
-                </div>
-                <p className="text-luxury-600 text-sm italic leading-relaxed">"{r.comment}"</p>
-                <p className="text-xs text-luxury-300 mt-3">{new Date(r.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</p>
-              </div>
-            ))}
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-semibold text-luxury-900 text-base tracking-tight">Guest Reviews</h2>
+              {hotel.avgRating > 0 && (
+                <span className="px-3 py-1 bg-gold-100 text-gold-600 text-sm font-semibold rounded-full border border-gold-200">
+                  {hotel.avgRating.toFixed(1)} / 5
+                </span>
+              )}
+            </div>
+            <div className="space-y-4">
+              {(hotel.reviews?.length > 0 ? hotel.reviews : sampleReviews).map((r: any) => {
+                const stars = Math.min(5, Math.max(1, r.rating || 5));
+                return (
+                  <div key={r.id} className="card-luxury p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-luxury-900">{r.guestName || ("Guest " + String(r.id || "").slice(0,4).toUpperCase())}</p>
+                        <p className="text-xs text-luxury-400 mt-0.5">
+                          {new Date(r.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" })}
+                        </p>
+                      </div>
+                      <div className="flex gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i} className={`text-base ${i < stars ? "text-gold-400" : "text-luxury-200"}`}>★</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-luxury-600 text-sm leading-relaxed">"{r.comment}"</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
