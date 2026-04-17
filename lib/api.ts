@@ -6,7 +6,10 @@ const API =
     ? RAILWAY
     : "/api/proxy";
 
-async function request(path: string, opts?: RequestInit) {
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// Retry on 500/503 (connection pool exhausted) with exponential backoff
+async function request(path: string, opts?: RequestInit, retries = 3): Promise<any> {
   const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
   const res = await fetch(`${API}${path}`, {
     ...opts,
@@ -16,6 +19,18 @@ async function request(path: string, opts?: RequestInit) {
       ...opts?.headers,
     },
   });
+
+  // Connection pool timeout → retry with backoff
+  if ((res.status === 500 || res.status === 503) && retries > 0) {
+    const body = await res.text();
+    if (body.toLowerCase().includes("connection pool") || body.toLowerCase().includes("timeout")) {
+      await sleep((4 - retries) * 1500); // 1.5s, 3s, 4.5s
+      return request(path, opts, retries - 1);
+    }
+    const err = (() => { try { return JSON.parse(body); } catch { return { error: res.statusText }; } })();
+    throw new Error(err.error || "Something went wrong");
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Something went wrong");

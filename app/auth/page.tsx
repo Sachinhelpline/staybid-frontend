@@ -130,6 +130,9 @@ export default function AuthPage() {
               <div>
                 <p className="text-sm text-red-700 font-medium">Login nahi ho pa raha</p>
                 <p className="text-xs text-red-500 mt-0.5 leading-relaxed">{error}</p>
+                {(error.toLowerCase().includes("pool") || error.toLowerCase().includes("timeout") || error.toLowerCase().includes("connection")) && (
+                  <p className="text-xs text-amber-600 mt-1 font-medium">⏳ Server busy hai — 10 seconds baad dobara try karein.</p>
+                )}
                 {(error.toLowerCase().includes("server") || error.toLowerCase().includes("network") || error.toLowerCase().includes("wrong")) && (
                   <p className="text-xs text-red-400 mt-1">Server temporarily down ho sakta hai. Kuch minutes baad try karein.</p>
                 )}
