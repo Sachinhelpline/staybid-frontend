@@ -42,7 +42,8 @@ export const api = {
   sendOtp: (phone: string) => request("/api/auth/send-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   verifyOtp: (phone: string, otp: string) => request("/api/auth/verify-otp", { method: "POST", body: JSON.stringify({ phone, otp }) }),
   getHotels: (params?: Record<string, string>) => {
-    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const merged = { limit: "50", ...params };
+    const q = "?" + new URLSearchParams(merged).toString();
     return request(`/api/hotels${q}`);
   },
   getHotel: (id: string) => request(`/api/hotels/${id}`),
