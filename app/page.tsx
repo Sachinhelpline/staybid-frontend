@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { getHotelArea } from "@/lib/areas";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -241,7 +242,7 @@ export default function Home() {
                       {/* Same Day + city badge */}
                       <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-red-500/40 px-1.5 py-0.5 rounded-full">
                         <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
-                        <span className="text-[0.55rem] font-bold text-red-400 uppercase">Today · {d.city}</span>
+                        <span className="text-[0.55rem] font-bold text-red-400 uppercase">Today · {(() => { const a = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng); return a ? `${a}, ${d.city}` : d.city; })()}</span>
                       </div>
 
                       {/* Discount */}
@@ -331,7 +332,7 @@ export default function Home() {
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-luxury-900 text-sm leading-snug mb-0.5 group-hover:text-gold-600 transition-colors line-clamp-1">{h.name}</h3>
-                    <p className="text-luxury-400 text-xs mb-2">📍 {h.city}</p>
+                    <p className="text-luxury-400 text-xs mb-2">📍 {(() => { const a = getHotelArea(h.city, h.lat, h.lng); return a ? `${a}, ${h.city}` : h.city; })()}</p>
                     {h.avgRating > 0 && (
                       <div className="flex items-center gap-1 mb-2">
                         <span className="text-gold-400 text-xs">★</span>

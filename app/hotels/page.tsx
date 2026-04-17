@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { getHotelArea } from "@/lib/areas";
 
 function HotelList() {
   const searchParams = useSearchParams();
@@ -161,9 +162,15 @@ function HotelList() {
                     )}
                   </div>
 
-                  <p className="text-sm text-luxury-400 mb-4 tracking-wide">
-                    {h.city}, {h.state}
-                  </p>
+                  {(() => {
+                    const area = getHotelArea(h.city, h.lat, h.lng);
+                    return (
+                      <p className="text-sm text-luxury-400 mb-4 tracking-wide flex items-center gap-1">
+                        <span>📍</span>
+                        <span>{area ? `${area}, ` : ""}{h.city}</span>
+                      </p>
+                    );
+                  })()}
 
                   {h.amenities?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
