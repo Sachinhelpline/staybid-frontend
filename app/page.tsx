@@ -56,6 +56,15 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  // Live slot refresh every 30s
+  useEffect(() => {
+    const t = setInterval(() => {
+      api.getFlashDeals(selectedCity || undefined)
+        .then((d) => setDeals(d.deals?.slice(0, 4) || [])).catch(() => {});
+    }, 30000);
+    return () => clearInterval(t);
+  }, [selectedCity]);
+
   // Auto-detect location
   const detectLocation = () => {
     if (!navigator.geolocation) return;
@@ -200,12 +209,15 @@ export default function Home() {
           ) : (
             <div className="marquee-track flex gap-4 w-max px-5">
               {[...deals, ...deals, ...deals, ...deals].map((d: any, idx: number) => {
-                const expires = new Date(d.validUntil);
-                const diffMs  = Math.max(0, expires.getTime() - now);
+                const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
+                const diffMs  = Math.max(0, midnight.getTime() - now);
                 const hrs  = Math.floor(diffMs / 3600000);
                 const mins = Math.floor((diffMs % 3600000) / 60000);
                 const secs = Math.floor((diffMs % 60000) / 1000);
                 const isUrgent = hrs < 2;
+                const totalSlots  = d.maxBookings  || 10;
+                const bookedSlots = d.bookingCount || 0;
+                const leftSlots   = Math.max(0, totalSlots - bookedSlots);
                 const dealUrl  = `/hotels/${d.hotelId}?dealId=${d.id}&dealPrice=${d.aiPrice}&roomId=${d.roomId}&discount=${d.discount}&directBook=true`;
                 const img = d.hotel?.images?.[0] || d.room?.images?.[0];
 
@@ -249,10 +261,17 @@ export default function Home() {
                       <h3 className="font-semibold text-white text-xs leading-snug mb-0.5 group-hover:text-gold-300 transition-colors line-clamp-1">{d.hotel?.name||"Hotel"}</h3>
                       <p className="text-white/40 text-[0.6rem] mb-2">{d.room?.type||"Room"}</p>
 
-                      {/* Progress bar */}
-                      <div className="h-0.5 bg-white/10 rounded-full overflow-hidden mb-2">
-                        <div className="h-full bg-gradient-to-r from-gold-500 to-gold-300 rounded-full"
-                          style={{ width:`${Math.min(100,(d.bookingCount/d.maxBookings)*100)}%` }} />
+                      {/* Slots info + progress */}
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[0.55rem] font-semibold ${leftSlots <= 2 ? "text-red-400" : leftSlots <= 5 ? "text-amber-400" : "text-white/50"}`}>
+                            {bookedSlots}/{totalSlots} booked · <span className={leftSlots <= 2 ? "text-red-400 font-bold" : "text-gold-400 font-bold"}>{leftSlots} left</span>
+                          </span>
+                        </div>
+                        <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-700 ${leftSlots <= 2 ? "bg-red-500" : "bg-gradient-to-r from-gold-500 to-gold-300"}`}
+                            style={{ width:`${Math.min(100,(bookedSlots/totalSlots)*100)}%` }} />
+                        </div>
                       </div>
 
                       <div className="flex items-end justify-between">
