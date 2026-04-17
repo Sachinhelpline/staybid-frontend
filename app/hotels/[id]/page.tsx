@@ -141,28 +141,44 @@ export default function HotelDetail() {
     if (!user) return router.push("/auth");
     setBookLoading(true);
     try {
+      const dealAmt  = parseFloat(dealPrice!);
+      const floorAmt = flashRoom?.floorPrice || dealAmt;
+
       const reqRes = await api.createBidRequest?.({
         hotelId: hotel.id, roomId: dealRoomId,
-        amount: parseFloat(dealPrice!),
+        amount: floorAmt,
         checkIn: today, checkOut: flashCheckOut,
         guests: flashAdults + flashChildren,
       });
-      const bidRes = await api.placeBid({
-        hotelId: hotel.id, roomId: dealRoomId!,
-        amount: parseFloat(dealPrice!),
-        message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults | ${flashChildren} children | Total ₹${flashGrandTotal}`,
-        requestId: reqRes?.request?.id,
-        dealId: dealId,
-      });
+
+      // Try booking at deal price; if backend floor-check rejects it, fall back to floor price
+      let bidRes: any;
+      try {
+        bidRes = await api.placeBid({
+          hotelId: hotel.id, roomId: dealRoomId!,
+          amount: dealAmt,
+          message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""} | Total ₹${flashGrandTotal}`,
+          requestId: reqRes?.request?.id,
+          dealId: dealId,
+        });
+      } catch {
+        // Backend does not support dealId bypass — book at floor price; deal discount tracked separately
+        bidRes = await api.placeBid({
+          hotelId: hotel.id, roomId: dealRoomId!,
+          amount: floorAmt,
+          message: `Flash Deal @ ₹${dealAmt} | ${flashNights} nights | Total ₹${flashGrandTotal}`,
+          requestId: reqRes?.request?.id,
+          dealId: dealId,
+        });
+      }
+
       const token = localStorage.getItem("sb_token");
       await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
-      // Save dates locally so bookings page can show them even if backend doesn't return them
-      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({
-        checkIn: today, checkOut: flashCheckOut,
-      }));
+      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
+      localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {

@@ -71,7 +71,7 @@ export default function ProfilePage() {
       api.getMyBookings().catch(() => null),
     ]).then(([wd, bd]) => {
       const w = wd?.wallet || wd || {};
-      const spend = w.totalDebit || 0;
+      const spend = w.totalDebit || w.total_debit || w.spent || 0;
       setTotalSpend(spend);
       setStayPoints(Math.floor(spend / 100 * getLevel(spend).pointsRate));
       setBookingCount((bd?.bookings || []).length);
@@ -116,8 +116,9 @@ export default function ProfilePage() {
             <div className="flex items-start justify-between mb-6">
               {/* Avatar */}
               <div className="relative">
-                <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold ring-2 ring-offset-2 ring-offset-transparent font-display"
-                  style={{ background: level.gradient }} className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold ring-2 ring-offset-2 ${level.ring}`}>
+                <div
+                  style={{ background: level.gradient }}
+                  className={`w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold font-display ring-2 ring-offset-2 ring-offset-transparent ${level.ring}`}>
                   {initials}
                 </div>
                 <span className="absolute -bottom-2 -right-2 text-xl">{level.icon}</span>

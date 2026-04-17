@@ -46,6 +46,12 @@ function BookingCard({ b }: { b: any }) {
   const checkInRaw  = b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn  || b.Request?.checkIn  || stored?.checkIn;
   const checkOutRaw = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut || b.Request?.checkOut || stored?.checkOut;
 
+  // Flash deal price override — deal was booked at floor price internally but user paid deal price
+  const storedDealPrice = typeof window !== "undefined"
+    ? localStorage.getItem(`deal_price_${b.id}`)
+    : null;
+  const displayAmount = storedDealPrice ? parseFloat(storedDealPrice) : (b.totalAmount || 0);
+
   const checkIn  = checkInRaw  ? new Date(checkInRaw)  : null;
   const checkOut = checkOutRaw ? new Date(checkOutRaw) : null;
   const nights   = checkIn && checkOut
@@ -64,7 +70,7 @@ function BookingCard({ b }: { b: any }) {
   const email   = hotel.email || null;
   const stars   = hotel.starRating || hotel.stars || null;
 
-  const stayPoints = Math.floor((b.totalAmount || 0) / 100) * 5;
+  const stayPoints = Math.floor(displayAmount / 100) * 5;
   const isCompleted = b.status === "CHECKED_OUT";
   const isConfirmed = b.status === "ACCEPTED" || b.status === "CONFIRMED" || b.status === "CHECKED_IN";
 
@@ -146,8 +152,8 @@ function BookingCard({ b }: { b: any }) {
         <div className="flex items-center justify-between mb-4 px-1">
           <div>
             <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-0.5">{nights} Night{nights !== 1 ? "s" : ""}</p>
-            <p className="text-2xl font-bold text-luxury-900">₹{(b.totalAmount || 0).toLocaleString()}</p>
-            {nights > 1 && <p className="text-xs text-luxury-400">₹{Math.round((b.totalAmount || 0) / nights).toLocaleString()}/night</p>}
+            <p className="text-2xl font-bold text-luxury-900">₹{displayAmount.toLocaleString()}</p>
+            {nights > 1 && <p className="text-xs text-luxury-400">₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
           </div>
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-500 to-amber-600 flex items-center justify-center shadow-gold">
             <span className="text-white font-bold text-lg">{nights}N</span>

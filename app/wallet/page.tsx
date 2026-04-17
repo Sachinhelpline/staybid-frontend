@@ -75,7 +75,7 @@ export default function WalletPage() {
     </div>
   );
 
-  const totalSpend  = wallet?.totalDebit  || 0;
+  const totalSpend  = wallet?.totalDebit || wallet?.total_debit || wallet?.spent || 0;
   const totalPoints = Math.floor(totalSpend / 100 * getLevel(totalSpend).pointsRate);
   const level       = getLevel(totalSpend);
   const nextLevel   = LEVELS[LEVELS.indexOf(level) + 1];
