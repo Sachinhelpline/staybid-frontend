@@ -14,7 +14,6 @@ const USER_LINKS = [
   { href: "/my-bids",  label: "My Bids",    icon: "📋" },
   { href: "/bookings", label: "Bookings",   icon: "🎫" },
   { href: "/wallet",   label: "Wallet",     icon: "💰" },
-  { href: "/profile",  label: "Profile",    icon: "👤" },
 ];
 
 export function Navbar() {
@@ -94,6 +93,23 @@ export function Navbar() {
                     </Link>
                   );
                 })}
+
+                {/* Profile avatar chip */}
+                <Link href="/profile"
+                  className={`group relative flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-all duration-200 ml-1
+                    ${isActive("/profile")
+                      ? "border-gold-400/50 bg-gold-500/10 nav-btn-active"
+                      : "border-luxury-200 hover:border-gold-300 hover:bg-gold-50"
+                    }`}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    style={{ background: "linear-gradient(135deg,#c9911a,#f0b429,#c9911a)" }}>
+                    {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-semibold text-luxury-600 group-hover:text-luxury-900 transition-colors leading-none">
+                    {user.name ? user.name.split(" ")[0] : "Profile"}
+                  </span>
+                </Link>
+
                 <button onClick={logout}
                   className="ml-1 text-xs px-3.5 py-2 rounded-xl border border-luxury-200 text-luxury-400 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-200 tracking-wide">
                   Sign Out
@@ -152,6 +168,22 @@ export function Navbar() {
 
             {user ? (
               <>
+                {/* Mobile profile card */}
+                <Link href="/profile" onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 mb-3 p-3 rounded-2xl border border-gold-200 bg-gradient-to-r from-gold-50 to-amber-50 hover:border-gold-300 transition-all">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    style={{ background: "linear-gradient(135deg,#c9911a,#f0b429,#c9911a)" }}>
+                    {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-luxury-900 leading-none mb-0.5 truncate">
+                      {user.name || "StayBid Member"}
+                    </p>
+                    <p className="text-xs text-luxury-400 truncate">{user.phone}</p>
+                  </div>
+                  <span className="text-xs font-bold text-gold-600 shrink-0">Profile →</span>
+                </Link>
+
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {USER_LINKS.map((item) => {
                     const active = isActive(item.href);
