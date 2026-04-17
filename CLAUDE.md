@@ -258,36 +258,19 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 ---
 
 ## Database State (as of Apr 2026)
-- **Hotels:** 3 (hotel-1 Grand Hyatt Mumbai, hotel-2 The Leela Palace Delhi, hotel-3 Taj Lake Palace Udaipur)
-- **Rooms:** 6 (2 per hotel)
-- **Flash Deals:** 3 (one per hotel)
-- **Missing:** hotel-4 "Dhanaulti Village Resort by Woodora" — INSERT kept returning 0 rows (Railway query UI bug suspected)
-  - To add hotel-4, run this SQL in Railway → Data → Query:
-  ```sql
-  INSERT INTO hotels (id, name, city, "starRating", description, images, amenities, "checkInTime", "checkOutTime", "createdAt", "updatedAt")
-  VALUES (
-    'hotel-4',
-    'Dhanaulti Village Resort by Woodora',
-    'Dhanaulti',
-    4,
-    'A serene mountain retreat nestled in the Garhwal Himalayas at 2,200m altitude, offering breathtaking views of snow-capped Himalayan peaks.',
-    ARRAY['https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800','https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'],
-    ARRAY['Mountain View','Bonfire','Trekking','Organic Meals','Free WiFi','Yoga Deck','Stargazing','Helipad'],
-    '12:00', '11:00', NOW(), NOW()
-  ) ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO rooms (id, "hotelId", type, price, "floorPrice", description, capacity, amenities, images, "createdAt", "updatedAt")
-  VALUES
-    ('room-7','hotel-4','Himalayan Cottage',4500,3800,'Cozy wooden cottage with panoramic mountain views and private sit-out',2,ARRAY['Mountain View','Fireplace','Hot Water','Room Heater'],ARRAY['https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800'],NOW(),NOW()),
-    ('room-8','hotel-4','Forest Suite',7200,6000,'Luxurious suite surrounded by oak and rhododendron forests with jacuzzi',3,ARRAY['Forest View','Jacuzzi','Fireplace','Mini Bar','Balcony'],ARRAY['https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800'],NOW(),NOW())
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO flash_deals (id, "hotelId", "roomId", price, discount, title, description, "validUntil", "maxBookings", "currentBookings", "isActive", "createdAt", "updatedAt")
-  VALUES (
-    'deal-4','hotel-4','room-7',2999,33,'Himalayan Escape','Wake up to snow-capped Himalayan peaks — limited rooms at this price!',
-    TO_CHAR(NOW() + INTERVAL '12 hours','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),10,0,true,NOW(),NOW()
-  ) ON CONFLICT (id) DO NOTHING;
-  ```
+- **Hotels:** 4 (all in Uttarakhand/Himalayas region)
+- **Actual hotel IDs and names (verified in Supabase):**
+  | id | name | city | starRating |
+  |----|------|------|-----------|
+  | `202601` | Dhanaulti Village Resort By Woodora | Dhanaulti | 4 |
+  | `hotel-1` | The Mountain Grand | Mussoorie | 5 |
+  | `hotel-2` | Forest Retreat Dhanaulti | Dhanaulti | 4 |
+  | `hotel-3` | Ganga View Rishikesh | Rishikesh | 4 |
+- **Extra columns in hotels table:** `lat`, `lng`, `ownerId`, `state` (not in original schema docs)
+- **ownerId:** hotel-1 owner = `cmnr4b8ol0001whjy8jc1xxxh`; hotels 2,3,202601 owner = `9d92d00f-4147-4411-ab19-ca65fd5f1d21`
+- **Rooms:** ~8 (2 per hotel)
+- **Flash Deals:** active deals exist
+- **NOTE:** Previous CLAUDE.md had wrong hotel names (Grand Hyatt Mumbai etc.) — those were placeholder names, actual DB has Uttarakhand properties
 
 ---
 
@@ -302,7 +285,6 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 ---
 
 ## Pending / Known Issues
-- **Hotel-4 Woodora** not in DB — use SQL above in Railway Query tab
 - **Wallet balance** only shows when user has actually spent (no fake seed data)
 - **Socket.io real-time** bid updates work when backend is awake (Railway cold starts ~30s)
 
