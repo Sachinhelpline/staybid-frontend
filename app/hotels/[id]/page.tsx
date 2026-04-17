@@ -428,24 +428,146 @@ export default function HotelDetail() {
 
         {/* ── ABOUT TAB ── */}
         {tab === "about" && (
-          <div className="mb-10 space-y-6">
-            {hotel.description && <p className="text-luxury-600 leading-relaxed">{hotel.description}</p>}
+          <div className="mb-10 space-y-5">
+
+            {/* Description */}
+            {hotel.description && (
+              <div className="card-luxury p-5">
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-3">About This Property</p>
+                <p className="text-luxury-600 leading-relaxed text-sm">{hotel.description}</p>
+              </div>
+            )}
+
+            {/* Location — preferred area, exact after booking */}
+            <div className="card-luxury p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest">📍 Location</p>
+                <span className="text-[0.6rem] font-semibold px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-full">Exact address after booking</span>
+              </div>
+              <p className="text-luxury-800 font-semibold text-base">{hotel.city}{hotel.state ? `, ${hotel.state}` : ""}</p>
+              <p className="text-xs text-luxury-400 mt-1 mb-4">Located in the heart of {hotel.city} — popular area with easy access to local attractions</p>
+              <div className="rounded-2xl overflow-hidden bg-luxury-100 h-36 relative mb-3 flex items-center justify-center border border-luxury-200">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 opacity-60" />
+                <div className="relative text-center">
+                  <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
+                    <span className="text-white text-lg">📍</span>
+                  </div>
+                  <p className="text-xs font-semibold text-luxury-700">{hotel.city} Area</p>
+                  <p className="text-[0.6rem] text-luxury-400">Exact pin shared post-booking</p>
+                </div>
+              </div>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(hotel.city + (hotel.state ? ", " + hotel.state : ""))}`}
+                target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl transition-colors"
+              >
+                🗺 View Area on Maps
+              </a>
+            </div>
+
+            {/* Check-in / Check-out Policy */}
+            <div className="card-luxury p-5">
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🕐 Check-in & Check-out</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-emerald-50 rounded-2xl p-4 text-center border border-emerald-100">
+                  <p className="text-2xl font-bold text-emerald-700">12:00</p>
+                  <p className="text-xs font-semibold text-emerald-600 mt-1">PM Check-in</p>
+                  <p className="text-[0.6rem] text-emerald-500 mt-0.5">Early check-in on request</p>
+                </div>
+                <div className="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
+                  <p className="text-2xl font-bold text-blue-700">11:00</p>
+                  <p className="text-xs font-semibold text-blue-600 mt-1">AM Check-out</p>
+                  <p className="text-[0.6rem] text-blue-500 mt-0.5">Late check-out on request</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Amenities */}
             {hotel.amenities?.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-3">Amenities</p>
-                <div className="flex flex-wrap gap-2">
-                  {hotel.amenities.map((a:string) => <span key={a} className="px-3 py-1.5 bg-white border border-luxury-200 rounded-full text-sm text-luxury-600">{a}</span>)}
+              <div className="card-luxury p-5">
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">✨ Amenities & Facilities</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {hotel.amenities.map((a: string) => (
+                    <div key={a} className="flex items-center gap-2 text-sm text-luxury-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gold-400 shrink-0" />
+                      {a}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-            <div className="card-luxury p-4">
-              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-3">Location</p>
-              <p className="text-luxury-800 font-medium mb-3">{hotel.city}, {hotel.state}</p>
-              <a href={`https://maps.google.com/?q=${encodeURIComponent((hotel.name||"")+" "+hotel.city)}`} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-500 px-4 py-2 rounded-lg">
-                🗺 Get Directions
-              </a>
+
+            {/* Hotel Policies */}
+            <div className="card-luxury p-5">
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">📋 Hotel Policies</p>
+              <div className="space-y-3">
+                {[
+                  { icon: "🚭", label: "Smoking", value: "Non-smoking property" },
+                  { icon: "🐾", label: "Pets",    value: "Pets not allowed" },
+                  { icon: "👫", label: "Couples", value: "Couples welcome" },
+                  { icon: "💳", label: "Payment", value: "UPI, Cards, Cash accepted" },
+                  { icon: "🪪", label: "ID Proof", value: "Govt. ID mandatory at check-in" },
+                ].map(p => (
+                  <div key={p.label} className="flex items-center gap-3">
+                    <span className="text-lg w-7 shrink-0">{p.icon}</span>
+                    <div>
+                      <span className="text-xs text-luxury-400 font-semibold">{p.label}: </span>
+                      <span className="text-sm text-luxury-700">{p.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Cancellation Policy */}
+            <div className="card-luxury p-5">
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🔄 Cancellation Policy</p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <span className="text-emerald-500 font-bold text-sm mt-0.5">✓</span>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">Free cancellation</p>
+                    <p className="text-xs text-emerald-600">Cancel up to 24 hours before check-in for a full refund</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                  <span className="text-amber-500 font-bold text-sm mt-0.5">!</span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">Late cancellation</p>
+                    <p className="text-xs text-amber-600">Cancellations within 24 hours charged 1 night's stay</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* StayBid vs OTA comparison strip */}
+            <div className="card-luxury p-5">
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-4">🏆 Why Book on StayBid?</p>
+              <div className="space-y-3">
+                {[
+                  { platform: "MakeMyTrip",  pct: "up to 13% higher",  icon: "🔴" },
+                  { platform: "Booking.com", pct: "up to 16% higher",  icon: "🔵" },
+                  { platform: "Goibibo",     pct: "up to 10% higher",  icon: "🟢" },
+                  { platform: "Agoda",       pct: "up to 14% higher",  icon: "🟠" },
+                ].map(o => (
+                  <div key={o.platform} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span>{o.icon}</span>
+                      <span className="text-sm text-luxury-600">{o.platform}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">{o.pct}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between pt-2 border-t border-luxury-100 mt-2">
+                  <div className="flex items-center gap-2">
+                    <span>🏆</span>
+                    <span className="text-sm font-bold text-gold-600">StayBid</span>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Best Price Guaranteed</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
