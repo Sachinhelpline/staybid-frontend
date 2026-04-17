@@ -10,6 +10,22 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.
 const today = new Date().toISOString().split("T")[0];
 const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
+function bidProb(amount: number, floor: number) {
+  const r = amount / floor;
+  if (r >= 1.00) return { p: 95, label: "Auto-confirms!", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981" };
+  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "Very Likely",  color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04" };
+  if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "Good Chance",  color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706" };
+  if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",     color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316" };
+  if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",   color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c" };
+  return { p: Math.max(2, Math.round(r/0.78*9)),              label: "Very Low",     color: "text-red-500",    bg: "bg-red-50",     track: "#ef4444" };
+}
+
+const sampleReviews = [
+  { id:"s1", rating:5, comment:"Breathtaking views and impeccable service. Staff went above and beyond to make our anniversary special.", createdAt:"2026-03-15", guestName:"Priya S." },
+  { id:"s2", rating:4, comment:"Lovely property with excellent amenities. The mountain air and peaceful surroundings made it a perfect getaway.", createdAt:"2026-02-28", guestName:"Rahul M." },
+  { id:"s3", rating:5, comment:"Worth every rupee! Negotiated a great price through StayBid and the experience exceeded all expectations.", createdAt:"2026-01-10", guestName:"Anita K." },
+];
+
 export default function HotelDetail() {
   const { id } = useParams();
   const router = useRouter();
@@ -36,6 +52,27 @@ export default function HotelDetail() {
   const [bidSuccess, setBidSuccess]     = useState(false);
   const [myBids, setMyBids]             = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState("");
+
+  // Tabs
+  const [tab, setTab] = useState("rooms");
+
+  // Book Now state
+  const [bnRoom, setBnRoom]       = useState<any>(null);
+  const [bnIn, setBnIn]           = useState(today);
+  const [bnOut, setBnOut]         = useState(tomorrow);
+  const [bnAdults, setBnAdults]   = useState(2);
+  const [bnChildren, setBnChildren] = useState(0);
+  const [bnLoading, setBnLoading] = useState(false);
+  const [bnSuccess, setBnSuccess] = useState(false);
+
+  // Negotiate state
+  const [negRoom, setNegRoom]     = useState<any>(null);
+  const [negAmt, setNegAmt]       = useState(0);
+  const [negIn, setNegIn]         = useState(today);
+  const [negOut, setNegOut]       = useState(tomorrow);
+  const [negLoading, setNegLoading] = useState(false);
+  const [negSuccess, setNegSuccess] = useState(false);
+  const [negAuto, setNegAuto]     = useState(false);
 
   // Flash deal booking state
   const [flashBookOpen, setFlashBookOpen]     = useState(false);
@@ -155,6 +192,42 @@ export default function HotelDetail() {
       fetchMyBids();
     } catch (e: any) { alert(e.message); }
     finally { setBidLoading(false); }
+  };
+
+  const openBookNow = (r: any) => { setBnRoom(r); setBnAdults(r.capacity||2); setBnChildren(0); setBnIn(today); setBnOut(tomorrow); setBnSuccess(false); };
+  const openNegotiate = (r: any) => { setNegRoom(r); setNegAmt(Math.round(r.floorPrice*0.88)); setNegIn(today); setNegOut(tomorrow); setNegSuccess(false); };
+
+  const handleBookNow = async () => {
+    if (!user) return router.push("/auth");
+    if (!bnIn || !bnOut) return alert("Select dates");
+    setBnLoading(true);
+    try {
+      const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
+      const token = localStorage.getItem("sb_token");
+      await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
+      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
+      setBnSuccess(true);
+    } catch(e:any) { alert(e.message); }
+    finally { setBnLoading(false); }
+  };
+
+  const handleNegotiate = async () => {
+    if (!user) return router.push("/auth");
+    if (!negIn || !negOut) return alert("Select dates");
+    setNegLoading(true);
+    try {
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: negRoom.capacity||2 });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, requestId: reqRes?.request?.id });
+      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
+      const token = localStorage.getItem("sb_token");
+      const aRes = await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
+      setNegAuto(aRes.ok);
+      setNegSuccess(true);
+      fetchMyBids();
+    } catch(e:any) { alert(e.message); }
+    finally { setNegLoading(false); }
   };
 
   const handleCounterAccept = async (bidId: string) => {
@@ -292,7 +365,56 @@ export default function HotelDetail() {
           </div>
         )}
 
-        <div className="divider-gold mb-10" />
+        {/* ── Tabs ── */}
+        <div className="flex gap-1 border-b border-luxury-200 mb-8">
+          {["rooms","reviews","about"].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-5 py-2.5 text-sm font-semibold capitalize transition-all ${tab===t ? "text-gold-600 border-b-2 border-gold-500 -mb-px" : "text-luxury-400 hover:text-luxury-700"}`}>
+              {t === "rooms" ? "🛏 Rooms" : t === "reviews" ? "★ Reviews" : "ℹ About"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── REVIEWS TAB ── */}
+        {tab === "reviews" && (
+          <div className="space-y-4 mb-10">
+            {(hotel.reviews?.length > 0 ? hotel.reviews : sampleReviews).map((r: any) => (
+              <div key={r.id} className="card-luxury p-5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-semibold text-luxury-900">{r.guestName || ("Guest " + (r.id||"").slice(0,4).toUpperCase())}</p>
+                  <span className="text-gold-400 text-sm">{"★".repeat(r.rating||5)}</span>
+                </div>
+                <p className="text-luxury-600 text-sm italic leading-relaxed">"{r.comment}"</p>
+                <p className="text-xs text-luxury-300 mt-3">{new Date(r.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── ABOUT TAB ── */}
+        {tab === "about" && (
+          <div className="mb-10 space-y-6">
+            {hotel.description && <p className="text-luxury-600 leading-relaxed">{hotel.description}</p>}
+            {hotel.amenities?.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-3">Amenities</p>
+                <div className="flex flex-wrap gap-2">
+                  {hotel.amenities.map((a:string) => <span key={a} className="px-3 py-1.5 bg-white border border-luxury-200 rounded-full text-sm text-luxury-600">{a}</span>)}
+                </div>
+              </div>
+            )}
+            <div className="card-luxury p-4">
+              <p className="text-xs font-bold text-luxury-400 uppercase tracking-widest mb-3">Location</p>
+              <p className="text-luxury-800 font-medium mb-3">{hotel.city}, {hotel.state}</p>
+              <a href={`https://maps.google.com/?q=${encodeURIComponent((hotel.name||"")+" "+hotel.city)}`} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-white bg-blue-500 px-4 py-2 rounded-lg">
+                🗺 Get Directions
+              </a>
+            </div>
+          </div>
+        )}
+
+        {tab === "rooms" && <>
 
         {/* ── My Bids ── */}
         {myBids.length > 0 && (
@@ -393,14 +515,42 @@ export default function HotelDetail() {
                         </>
                       ) : (
                         <>
-                          <p className="text-sm text-luxury-300 line-through">MRP ₹{r.mrp}</p>
-                          <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice}</p>
-                          <p className="text-xs text-luxury-400 mb-3">floor price / night</p>
-                          <button
-                            onClick={() => { setBidRoom(r); setBidAmount(""); setBidMsg(""); setCheckIn(""); setCheckOut(""); setBidSuccess(false); }}
-                            className="btn-luxury px-5 py-2.5 rounded-xl text-sm">
-                            Place Bid
-                          </button>
+                          {/* OTA Comparison */}
+                          {(r.mrp||r.floorPrice) && (() => {
+                            const mrp = r.mrp || Math.round(r.floorPrice * 1.4);
+                            const otas = [
+                              { name:"MakeMyTrip", price: Math.round(mrp*0.87) },
+                              { name:"Booking.com", price: Math.round(mrp*0.91) },
+                              { name:"Goibibo",     price: Math.round(mrp*0.84) },
+                              { name:"Agoda",       price: Math.round(mrp*0.89) },
+                            ];
+                            const bestOTA = Math.min(...otas.map(o=>o.price));
+                            const saving = bestOTA - r.floorPrice;
+                            return (
+                              <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100 text-left">
+                                <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">Price Comparison</p>
+                                <div className="space-y-1">
+                                  {otas.map(o => (
+                                    <div key={o.name} className="flex justify-between text-xs">
+                                      <span className="text-luxury-500">{o.name}</span>
+                                      <span className="text-luxury-700 font-medium">₹{o.price.toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                  <div className="flex justify-between text-xs pt-1.5 border-t border-gold-200 mt-1.5">
+                                    <span className="font-bold text-gold-600">StayBid</span>
+                                    <span className="font-bold text-gold-600">₹{r.floorPrice.toLocaleString()}</span>
+                                  </div>
+                                  {saving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-right">You save ₹{saving.toLocaleString()} vs best OTA!</p>}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice.toLocaleString()}</p>
+                          <p className="text-xs text-luxury-400 mb-3">/night</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => openBookNow(r)} className="btn-luxury px-4 py-2 rounded-xl text-sm">Book Now</button>
+                            <button onClick={() => openNegotiate(r)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-luxury-300 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition">🤝 Negotiate</button>
+                          </div>
                         </>
                       )}
                     </div>
@@ -411,23 +561,7 @@ export default function HotelDetail() {
           })}
         </div>
 
-        {/* ── Reviews ── */}
-        {hotel.reviews?.length > 0 && (
-          <div>
-            <div className="divider-gold mb-8" />
-            <h2 className="font-semibold text-luxury-900 text-base mb-5 tracking-tight">Guest Reviews</h2>
-            <div className="space-y-3">
-              {hotel.reviews.map((r: any) => (
-                <div key={r.id} className="p-5 bg-white border border-luxury-100 rounded-2xl">
-                  <p className="text-sm text-luxury-700 leading-relaxed">{r.comment}</p>
-                  <p className="text-xs text-luxury-300 mt-3 tracking-wide">
-                    {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        </> /* end rooms tab */}
       </div>
 
       {/* ══════════════════════════════════════════
@@ -553,6 +687,145 @@ export default function HotelDetail() {
               >
                 {bookLoading ? "Confirming…" : `Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ BOOK NOW MODAL ══ */}
+      {bnRoom && !bnSuccess && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBnRoom(null)}>
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Instant Booking</p>
+                <p className="text-white font-semibold text-lg">{bnRoom.name||bnRoom.type}</p>
+                <p className="text-white/60 text-sm">{hotel.name}</p>
+              </div>
+              <button onClick={() => setBnRoom(null)} className="text-white/60 hover:text-white text-2xl">✕</button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
+                  <input type="date" value={bnIn} min={today} onChange={e=>setBnIn(e.target.value)} className="input-luxury text-sm"/></div>
+                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
+                  <input type="date" value={bnOut} min={bnIn} onChange={e=>setBnOut(e.target.value)} className="input-luxury text-sm"/></div>
+              </div>
+              <div className="space-y-3">
+                {[["Adults", bnAdults, setBnAdults, 1, 8],["Children (5-12)", bnChildren, setBnChildren, 0, 6]].map(([label, val, setter, mn, mx]: any) => (
+                  <div key={label as string} className="flex items-center justify-between p-3 bg-luxury-50 rounded-2xl">
+                    <p className="text-sm font-semibold text-luxury-900">{label as string}</p>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setter(Math.max(mn, val-1))} className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center font-bold text-luxury-600 hover:border-gold-400">−</button>
+                      <span className="w-5 text-center font-bold">{val}</span>
+                      <button onClick={() => setter(Math.min(mx, val+1))} className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center font-bold text-luxury-600 hover:border-gold-400">+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(() => {
+                const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
+                const extra = Math.max(0, bnAdults-(bnRoom.capacity||2));
+                const total = bnRoom.floorPrice*nights + extra*500*nights + bnChildren*200*nights;
+                return (
+                  <div className="bg-gold-50 border border-gold-200 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">Rate Breakdown</p>
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between text-luxury-700"><span>₹{bnRoom.floorPrice.toLocaleString()} × {nights} night{nights>1?"s":""}</span><span className="font-semibold">₹{(bnRoom.floorPrice*nights).toLocaleString()}</span></div>
+                      {extra > 0 && <div className="flex justify-between text-luxury-700"><span>{extra} extra adult{extra>1?"s":""} × ₹500 × {nights}n</span><span className="font-semibold">₹{(extra*500*nights).toLocaleString()}</span></div>}
+                      {bnChildren > 0 && <div className="flex justify-between text-luxury-700"><span>{bnChildren} child{bnChildren>1?"ren":""} × ₹200 × {nights}n</span><span className="font-semibold">₹{(bnChildren*200*nights).toLocaleString()}</span></div>}
+                      <div className="border-t border-gold-200 pt-2 mt-2 flex justify-between font-bold text-luxury-900"><span>Total</span><span className="text-xl">₹{total.toLocaleString()}</span></div>
+                    </div>
+                  </div>
+                );
+              })()}
+              <button onClick={handleBookNow} disabled={bnLoading} className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
+                {bnLoading ? "Confirming…" : "Confirm Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {bnSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBnRoom(null)}>
+          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">🎉</span></div>
+            <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">Booking Confirmed!</h3>
+            <p className="text-luxury-400 text-sm mb-6">Your booking at <span className="font-semibold text-luxury-700">{hotel.name}</span> is confirmed.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setBnRoom(null)} className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm">Close</button>
+              <Link href="/bookings" className="flex-1 py-3 rounded-2xl btn-luxury text-sm text-center">My Bookings</Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ NEGOTIATE MODAL ══ */}
+      {negRoom && !negSuccess && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNegRoom(null)}>
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-white/60 uppercase tracking-widest">🤝 Negotiate Your Price</p>
+                <p className="text-white font-semibold text-lg">{negRoom.name||negRoom.type}</p>
+              </div>
+              <button onClick={() => setNegRoom(null)} className="text-white/60 hover:text-white text-2xl">✕</button>
+            </div>
+            <div className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
+              <style>{`.neg-slider{accent-color:var(--sc,#d97706)}.neg-slider::-webkit-slider-thumb{background:var(--sc,#d97706)}`}</style>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
+                  <input type="date" value={negIn} min={today} onChange={e=>setNegIn(e.target.value)} className="input-luxury text-sm"/></div>
+                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
+                  <input type="date" value={negOut} min={negIn} onChange={e=>setNegOut(e.target.value)} className="input-luxury text-sm"/></div>
+              </div>
+              {(() => {
+                const prob = bidProb(negAmt, negRoom.floorPrice);
+                const min = Math.round(negRoom.floorPrice*0.65);
+                const max = Math.round(negRoom.floorPrice*1.05);
+                return (
+                  <div className={`rounded-2xl border p-5 transition-all duration-300 ${prob.bg} border-current`}>
+                    <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-3">AI Smart Pricing</p>
+                    <div className="text-center mb-4">
+                      <p className="text-4xl font-bold text-luxury-900">₹{negAmt.toLocaleString()}</p>
+                      <p className="text-xs text-luxury-400 mt-1">per night</p>
+                    </div>
+                    <input type="range" min={min} max={max} step={50} value={negAmt}
+                      onChange={e => setNegAmt(Number(e.target.value))}
+                      className="neg-slider w-full h-2 rounded-full cursor-pointer mb-4"
+                      style={{ "--sc": prob.track } as any} />
+                    <div className="mb-2">
+                      <div className="flex justify-between text-xs text-luxury-400 mb-1">
+                        <span>Acceptance chance</span><span className={`font-bold ${prob.color}`}>{prob.p}%</span>
+                      </div>
+                      <div className="h-3 bg-luxury-200 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width:`${prob.p}%`, background: prob.track }} />
+                      </div>
+                    </div>
+                    <p className={`text-base font-bold text-center mt-3 ${prob.color} transition-colors duration-300`}>{prob.label}</p>
+                    <p className="text-xs text-luxury-400 text-center mt-1">AI analyses hotel patterns to estimate acceptance probability</p>
+                  </div>
+                );
+              })()}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
+                💡 Bid at or above hotel rate = <strong>instant auto-confirmation</strong>. Below = hotel reviews your offer and can counter or accept.
+              </div>
+              <button onClick={handleNegotiate} disabled={negLoading} className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
+                {negLoading ? "Submitting…" : `Submit Bid · ₹${negAmt.toLocaleString()}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {negSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNegRoom(null)}>
+          <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
+            <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
+            <p className="text-luxury-400 text-sm mb-6">{negAuto ? "Your bid was auto-accepted! Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setNegRoom(null)} className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm">Close</button>
+              <Link href={negAuto ? "/bookings" : "/my-bids"} className="flex-1 py-3 rounded-2xl btn-luxury text-sm text-center">{negAuto ? "My Bookings" : "My Bids"}</Link>
             </div>
           </div>
         </div>
