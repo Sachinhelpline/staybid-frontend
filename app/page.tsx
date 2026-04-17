@@ -113,12 +113,6 @@ export default function Home() {
               ))}
             </div>
           </div>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Eyebrow */}
           <div className="flex items-center gap-3 mb-5">
