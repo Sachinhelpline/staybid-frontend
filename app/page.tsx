@@ -94,44 +94,25 @@ export default function Home() {
 
         <div className="relative max-w-7xl mx-auto px-5 pt-16 pb-20 w-full">
 
-          {/* ── BookMyShow-style Location bar ── */}
-          <div className="flex items-center gap-3 mb-10">
-            <button
-              onClick={() => setShowCityPicker(!showCityPicker)}
-              className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 hover:border-gold-400/50 px-4 py-2 rounded-xl text-sm text-white/90 transition-all"
-            >
-              <span className="text-base">📍</span>
-              <span className="font-medium">{selectedCity || "Select Location"}</span>
-              <svg className={`w-3.5 h-3.5 text-white/50 transition-transform ${showCityPicker ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19 9-7 7-7-7" />
-              </svg>
+          {/* ── Location bar ── */}
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            <button onClick={detectLocation} disabled={locLoading}
+              className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/15 hover:border-gold-400/50 px-3 py-1.5 rounded-lg text-xs text-white/80 transition-all disabled:opacity-50">
+              {locLoading
+                ? <span className="w-2.5 h-2.5 border border-gold-400 border-t-transparent rounded-full animate-spin" />
+                : <span>🎯</span>}
+              {locLoading ? "Detecting…" : selectedCity ? `📍 ${selectedCity}` : "Detect Location"}
             </button>
-            <button
-              onClick={detectLocation}
-              disabled={locLoading}
-              className="flex items-center gap-1.5 text-xs text-gold-400 hover:text-gold-300 transition-colors disabled:opacity-50"
-            >
-              {locLoading ? (
-                <span className="w-3 h-3 border border-gold-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <span>🎯</span>
-              )}
-              {locLoading ? "Detecting…" : "Detect My Location"}
-            </button>
-          </div>
-
-          {/* City picker dropdown */}
-          {showCityPicker && (
-            <div className="mb-6 p-4 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl max-w-lg">
-              <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">Popular Destinations</p>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => { setSelectedCity(""); setShowCityPicker(false); }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${!selectedCity ? "bg-gold-500 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"}`}>
-                  All Cities
+            <div className="flex items-center gap-1 flex-wrap">
+              {["All",...CITIES].map(c => (
+                <button key={c}
+                  onClick={() => setSelectedCity(c === "All" ? "" : c)}
+                  className={`px-2.5 py-1 rounded-md text-[0.7rem] font-medium transition-all ${(c==="All"&&!selectedCity)||c===selectedCity ? "bg-gold-500 text-white" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}>
+                  {c}
                 </button>
-                {CITIES.map(c => (
-                  <button key={c} onClick={() => { setSelectedCity(c); setShowCityPicker(false); }}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${selectedCity === c ? "bg-gold-500 text-white" : "bg-white/10 text-white/70 hover:bg-white/20"}`}>
+              ))}
+            </div>
+          </div>
                     {c}
                   </button>
                 ))}
@@ -175,15 +156,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* City chips */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            {CITIES.map(c => (
-              <button key={c} onClick={() => setSelectedCity(c === selectedCity ? "" : c)}
-                className={`px-3 py-1 rounded-full text-xs tracking-wide transition-all duration-200 ${selectedCity===c ? "bg-gold-500 text-white border border-gold-400" : "text-white/55 border border-white/10 hover:border-gold-500/40 hover:text-white/80"}`}>
-                {c}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Bottom fade */}
@@ -191,44 +163,51 @@ export default function Home() {
           style={{ background: "linear-gradient(to bottom, transparent, #0a0812)" }} />
       </section>
 
-      {/* ═══ FLASH DEALS ═══ */}
-      <section style={{ background: "linear-gradient(180deg, #0a0812 0%, #0f0d1e 60%, #13101f 100%)" }} className="pb-16 pt-2">
-        <div className="max-w-7xl mx-auto px-5">
-          <div className="flex items-end justify-between mb-7">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-red-400 text-[0.65rem] font-bold tracking-[0.22em] uppercase">Live Now</span>
-                {selectedCity && <span className="text-gold-400 text-[0.65rem] font-bold tracking-widest uppercase">· {selectedCity}</span>}
-              </div>
-              <h2 className="font-display font-light text-white" style={{ fontSize:"clamp(1.6rem,3vw,2.2rem)" }}>
-                ⚡ Same Day Flash Deals
-              </h2>
-              <p className="text-white/35 text-xs mt-0.5">Book today · Check in today · AI-curated prices</p>
-            </div>
-            <Link href={`/flash-deals${selectedCity ? `?city=${selectedCity}` : ""}`}
-              className="text-xs font-semibold text-gold-400 hover:text-gold-300 flex items-center gap-1 border border-gold-500/30 px-3 py-1.5 rounded-lg hover:border-gold-400/60 transition-all">
-              View All →
-            </Link>
-          </div>
+      {/* ═══ FLASH DEALS — Infinite Marquee ═══ */}
+      <section style={{ background:"linear-gradient(180deg,#0a0812 0%,#0f0d1e 70%,#13101f 100%)" }} className="pb-16 pt-3">
+        <style>{`
+          @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+          .marquee-track { animation: marquee 28s linear infinite; }
+          .marquee-track:hover { animation-play-state: paused; }
+        `}</style>
 
+        {/* Header */}
+        <div className="max-w-7xl mx-auto px-5 flex items-center justify-between mb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-red-400 text-[0.62rem] font-bold tracking-[0.22em] uppercase">Live Now</span>
+              {selectedCity && <span className="text-gold-400 text-[0.62rem] font-bold tracking-widest">· {selectedCity}</span>}
+            </div>
+            <h2 className="font-display font-light text-white" style={{ fontSize:"clamp(1.5rem,2.8vw,2rem)" }}>
+              ⚡ Same Day Flash Deals
+            </h2>
+          </div>
+          <Link href={`/flash-deals${selectedCity?`?city=${selectedCity}`:""}`}
+            className="text-xs font-semibold text-gold-400 hover:text-gold-300 border border-gold-500/30 px-3 py-1.5 rounded-lg hover:border-gold-400/60 transition-all shrink-0">
+            View All →
+          </Link>
+        </div>
+
+        {/* Marquee carousel */}
+        <div className="overflow-hidden w-full">
           {deals.length === 0 ? (
-            <div className="grid md:grid-cols-4 gap-4">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="rounded-3xl overflow-hidden bg-white/5 border border-white/10">
-                  <div className="h-40 bg-white/10 animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-3 bg-white/10 animate-pulse rounded-full w-1/3" />
-                    <div className="h-4 bg-white/10 animate-pulse rounded-full w-2/3" />
+            <div className="flex gap-4 px-5">
+              {[1,2,3,4,5].map(i => (
+                <div key={i} className="rounded-2xl overflow-hidden bg-white/5 border border-white/10 shrink-0 w-56">
+                  <div className="h-36 bg-white/10 animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-2.5 bg-white/10 animate-pulse rounded-full w-2/3" />
+                    <div className="h-4 bg-white/10 animate-pulse rounded-full w-1/2" />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {deals.map((d: any) => {
-                const expires  = new Date(d.validUntil);
-                const diffMs   = Math.max(0, expires.getTime() - now);
+            <div className="marquee-track flex gap-4 w-max px-5">
+              {[...deals, ...deals, ...deals, ...deals].map((d: any, idx: number) => {
+                const expires = new Date(d.validUntil);
+                const diffMs  = Math.max(0, expires.getTime() - now);
                 const hrs  = Math.floor(diffMs / 3600000);
                 const mins = Math.floor((diffMs % 3600000) / 60000);
                 const secs = Math.floor((diffMs % 60000) / 1000);
@@ -237,45 +216,58 @@ export default function Home() {
                 const img = d.hotel?.images?.[0] || d.room?.images?.[0];
 
                 return (
-                  <div key={d.id}
-                    className="group relative rounded-3xl overflow-hidden border border-white/10 hover:border-gold-400/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:shadow-2xl"
-                    style={{ background:"rgba(255,255,255,0.04)" }}
+                  <div key={`${d.id}-${idx}`}
+                    className="group relative rounded-2xl overflow-hidden border border-white/10 hover:border-gold-400/60 transition-all duration-300 cursor-pointer shrink-0 w-56"
+                    style={{ background:"rgba(255,255,255,0.05)" }}
                     onClick={() => router.push(dealUrl)}>
 
-                    <div className="relative h-44 overflow-hidden">
+                    {/* Image */}
+                    <div className="relative h-36 overflow-hidden">
                       {img ? (
-                        <img src={img} alt={d.hotel?.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={img} alt={d.hotel?.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ background:"linear-gradient(135deg,#1a1530,#0d1a2e)" }}>
-                          <span className="text-5xl opacity-20">🏨</span>
+                          <span className="text-4xl opacity-20">🏨</span>
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm border border-red-500/40 px-2 py-0.5 rounded-full">
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                        <span className="text-[0.58rem] font-bold text-red-400 uppercase tracking-wider">Same Day · {d.city}</span>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                      {/* Same Day + city badge */}
+                      <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-red-500/40 px-1.5 py-0.5 rounded-full">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                        <span className="text-[0.55rem] font-bold text-red-400 uppercase">Today · {d.city}</span>
                       </div>
-                      <div className="absolute top-3 right-3 bg-gold-500 text-white text-[0.65rem] font-bold px-2 py-0.5 rounded-full">{d.discount}% OFF</div>
+
+                      {/* Discount */}
+                      <span className="absolute top-2 right-2 bg-gold-500 text-white text-[0.58rem] font-bold px-1.5 py-0.5 rounded-full">{d.discount}% OFF</span>
+
+                      {/* Countdown over image bottom */}
+                      <div className={`absolute bottom-2 left-2 flex items-center gap-1 ${isUrgent?"text-red-400":"text-white/70"}`}>
+                        {isUrgent && <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />}
+                        <span className="text-[0.6rem] font-mono font-semibold bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded">
+                          {String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="p-4">
-                      <h3 className="font-semibold text-white text-sm leading-snug mb-0.5 group-hover:text-gold-300 transition-colors line-clamp-1">{d.hotel?.name || "Hotel"}</h3>
-                      <p className="text-white/40 text-xs mb-2">{d.room?.type || "Room"}</p>
-                      <div className={`flex items-center gap-1.5 mb-2 ${isUrgent ? "text-red-400" : "text-white/40"}`}>
-                        {isUrgent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-                        <span className="text-xs font-mono">{String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}</span>
-                      </div>
-                      <div className="h-1 bg-white/10 rounded-full overflow-hidden mb-3">
+                    {/* Body */}
+                    <div className="p-3">
+                      <h3 className="font-semibold text-white text-xs leading-snug mb-0.5 group-hover:text-gold-300 transition-colors line-clamp-1">{d.hotel?.name||"Hotel"}</h3>
+                      <p className="text-white/40 text-[0.6rem] mb-2">{d.room?.type||"Room"}</p>
+
+                      {/* Progress bar */}
+                      <div className="h-0.5 bg-white/10 rounded-full overflow-hidden mb-2">
                         <div className="h-full bg-gradient-to-r from-gold-500 to-gold-300 rounded-full"
                           style={{ width:`${Math.min(100,(d.bookingCount/d.maxBookings)*100)}%` }} />
                       </div>
-                      <div className="flex items-end justify-between border-t border-white/10 pt-2">
+
+                      <div className="flex items-end justify-between">
                         <div>
-                          <p className="text-white/30 text-xs line-through">₹{d.floorPrice}</p>
-                          <p className="text-white font-bold text-lg">₹{d.aiPrice}<span className="text-white/30 text-xs font-normal">/night</span></p>
+                          <p className="text-white/25 text-[0.55rem] line-through">₹{d.floorPrice}</p>
+                          <p className="text-white font-bold text-base">₹{d.aiPrice}<span className="text-white/30 text-[0.55rem] font-normal">/night</span></p>
                         </div>
                         <div onClick={e => e.stopPropagation()}>
-                          <Link href={dealUrl} className="btn-luxury px-3 py-1.5 rounded-lg text-xs font-bold">Book Now</Link>
+                          <Link href={dealUrl} className="btn-luxury px-2.5 py-1 rounded-lg text-[0.65rem] font-bold">Book</Link>
                         </div>
                       </div>
                     </div>
