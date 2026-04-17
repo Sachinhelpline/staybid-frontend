@@ -1,14 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
-
 export function ServerStatus() {
   const [down, setDown] = useState(false);
 
   useEffect(() => {
-    // Quick health ping — if /api/hotels returns error, show warning
-    fetch(`${API}/api/hotels?limit=1`)
+    fetch(`/api/proxy/api/hotels?limit=1`)
       .then((r) => { if (!r.ok) setDown(true); })
       .catch(() => setDown(true));
   }, []);

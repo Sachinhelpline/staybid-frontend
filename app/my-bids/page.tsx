@@ -20,7 +20,7 @@ export default function MyBidsPage() {
   const [actionLoading, setActionLoading] = useState("");
   const [filter, setFilter] = useState("ALL");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
+  const API_URL = "/api/proxy";
 
   const fetchBids = () => {
     api.getMyBids()

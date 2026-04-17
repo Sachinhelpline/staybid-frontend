@@ -1,4 +1,10 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
+const RAILWAY = "https://staybid-live-production.up.railway.app";
+// In the browser, route through the Vercel proxy so ISPs that block Railway
+// (e.g. Jio) still work. On the server we call Railway directly.
+const API =
+  typeof window === "undefined"
+    ? RAILWAY
+    : "/api/proxy";
 
 async function request(path: string, opts?: RequestInit) {
   const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;

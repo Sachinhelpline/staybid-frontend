@@ -6,7 +6,9 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { io } from "socket.io-client";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
+const RAILWAY = "https://staybid-live-production.up.railway.app";
+// Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
+const API = typeof window === "undefined" ? RAILWAY : "/api/proxy";
 const today = new Date().toISOString().split("T")[0];
 const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
@@ -111,7 +113,7 @@ export default function HotelDetail() {
 
   useEffect(() => {
     if (!user) return;
-    const socket = io(API);
+    const socket = io(RAILWAY);
     socket.emit("join:customer", user.id);
     socket.on("bid:counter", (bid: any) => {
       if (bid.hotelId === id)
