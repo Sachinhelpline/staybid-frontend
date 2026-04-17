@@ -290,6 +290,14 @@ export default function BookingsPage() {
       const fromBookings = (bookData.bookings || []).map((b: any) => ({ ...b, _source: "booking" }));
       const fromBids = (bidData.bids || [])
         .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        .filter((b: any) => {
+          // Skip bid if a real booking already exists for same hotel+room (prevents duplicate display)
+          return !fromBookings.some(
+            (bk: any) =>
+              bk.hotelId === (b.hotelId || b.hotel?.id) &&
+              bk.roomId  === (b.roomId  || b.room?.id)
+          );
+        })
         .map((b: any) => ({
           id: b.id,
           status: b.status,
