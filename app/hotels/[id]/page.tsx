@@ -12,12 +12,12 @@ const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 function bidProb(amount: number, floor: number) {
   const r = amount / floor;
-  if (r >= 1.00) return { p: 95, label: "Auto-confirms!", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981" };
-  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "Very Likely",  color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04" };
-  if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "Good Chance",  color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706" };
-  if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",     color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316" };
-  if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",   color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c" };
-  return { p: Math.max(2, Math.round(r/0.78*9)),              label: "Very Low",     color: "text-red-500",    bg: "bg-red-50",     track: "#ef4444" };
+  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981" };
+  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04" };
+  if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706" };
+  if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316" };
+  if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",         badge: "",                      color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c" };
+  return {         p: Math.max(2, Math.round(r/0.78*9)),       label: "Very Low",           badge: "",                      color: "text-red-500",    bg: "bg-red-50",     track: "#ef4444" };
 }
 
 const sampleReviews = [
@@ -529,18 +529,18 @@ export default function HotelDetail() {
                             return (
                               <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100 text-left">
                                 <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">Price Comparison</p>
-                                <div className="space-y-1">
+                                <div className="space-y-1.5">
                                   {otas.map(o => (
-                                    <div key={o.name} className="flex justify-between text-xs">
-                                      <span className="text-luxury-500">{o.name}</span>
-                                      <span className="text-luxury-700 font-medium">₹{o.price.toLocaleString()}</span>
+                                    <div key={o.name} className="flex justify-between items-center text-xs">
+                                      <span className="text-luxury-400">{o.name}</span>
+                                      <span className="text-luxury-400 line-through">₹{o.price.toLocaleString()}</span>
                                     </div>
                                   ))}
-                                  <div className="flex justify-between text-xs pt-1.5 border-t border-gold-200 mt-1.5">
-                                    <span className="font-bold text-gold-600">StayBid</span>
-                                    <span className="font-bold text-gold-600">₹{r.floorPrice.toLocaleString()}</span>
+                                  <div className="flex justify-between items-center px-3 py-2 bg-gold-500 rounded-xl mt-2">
+                                    <span className="font-bold text-white text-xs">🏆 StayBid</span>
+                                    <span className="font-bold text-white text-sm">₹{r.floorPrice.toLocaleString()}</span>
                                   </div>
-                                  {saving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-right">You save ₹{saving.toLocaleString()} vs best OTA!</p>}
+                                  {saving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-center">✓ Save ₹{saving.toLocaleString()} vs best OTA</p>}
                                 </div>
                               </div>
                             );
@@ -773,44 +773,74 @@ export default function HotelDetail() {
             </div>
             <div className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
               <style>{`.neg-slider{accent-color:var(--sc,#d97706)}.neg-slider::-webkit-slider-thumb{background:var(--sc,#d97706)}`}</style>
+
+              {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
                   <input type="date" value={negIn} min={today} onChange={e=>setNegIn(e.target.value)} className="input-luxury text-sm"/></div>
                 <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
                   <input type="date" value={negOut} min={negIn} onChange={e=>setNegOut(e.target.value)} className="input-luxury text-sm"/></div>
               </div>
-              {(() => {
+
+              {/* AI Pricing — only after dates selected */}
+              {negIn && negOut && negIn < negOut ? (() => {
                 const prob = bidProb(negAmt, negRoom.floorPrice);
-                const min = Math.round(negRoom.floorPrice*0.65);
-                const max = Math.round(negRoom.floorPrice*1.05);
+                const min = Math.round(negRoom.floorPrice * 0.65);
+                const max = Math.round(negRoom.floorPrice * 1.05);
+                const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
+                const totalBid = negAmt * nights;
                 return (
-                  <div className={`rounded-2xl border p-5 transition-all duration-300 ${prob.bg} border-current`}>
-                    <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-3">AI Smart Pricing</p>
-                    <div className="text-center mb-4">
+                  <div className={`rounded-2xl border-2 p-5 transition-all duration-300 ${prob.bg}`} style={{ borderColor: prob.track }}>
+                    <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-4">AI Smart Pricing</p>
+
+                    {/* Per-night + total */}
+                    <div className="text-center mb-1">
                       <p className="text-4xl font-bold text-luxury-900">₹{negAmt.toLocaleString()}</p>
-                      <p className="text-xs text-luxury-400 mt-1">per night</p>
+                      <p className="text-xs text-luxury-400 mt-0.5">per night</p>
                     </div>
+                    <div className="flex items-center justify-center gap-2 mb-4 text-sm text-luxury-600">
+                      <span>₹{negAmt.toLocaleString()} × {nights} night{nights>1?"s":""}</span>
+                      <span>=</span>
+                      <span className="font-bold text-luxury-900 text-base">₹{totalBid.toLocaleString()}</span>
+                    </div>
+
+                    {/* Slider */}
                     <input type="range" min={min} max={max} step={50} value={negAmt}
                       onChange={e => setNegAmt(Number(e.target.value))}
-                      className="neg-slider w-full h-2 rounded-full cursor-pointer mb-4"
+                      className="neg-slider w-full h-2 rounded-full cursor-pointer mb-5"
                       style={{ "--sc": prob.track } as any} />
-                    <div className="mb-2">
-                      <div className="flex justify-between text-xs text-luxury-400 mb-1">
-                        <span>Acceptance chance</span><span className={`font-bold ${prob.color}`}>{prob.p}%</span>
+
+                    {/* Probability bar */}
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs text-luxury-400 mb-1.5">
+                        <span>Acceptance probability</span>
+                        <span className={`font-bold text-sm ${prob.color}`}>{prob.p}%</span>
                       </div>
-                      <div className="h-3 bg-luxury-200 rounded-full overflow-hidden">
+                      <div className="h-3 bg-white/60 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-500" style={{ width:`${prob.p}%`, background: prob.track }} />
                       </div>
                     </div>
-                    <p className={`text-base font-bold text-center mt-3 ${prob.color} transition-colors duration-300`}>{prob.label}</p>
-                    <p className="text-xs text-luxury-400 text-center mt-1">AI analyses hotel patterns to estimate acceptance probability</p>
+
+                    {/* Label + cashback badge */}
+                    <div className="flex items-center justify-between mt-3">
+                      <p className={`text-base font-bold ${prob.color} transition-colors duration-300`}>{prob.label}</p>
+                      {prob.badge && (
+                        <span className="text-[0.65rem] font-bold px-2 py-1 rounded-full bg-white/70 border" style={{ borderColor: prob.track, color: prob.track }}>
+                          {prob.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[0.65rem] text-luxury-400 text-center mt-1.5">AI analyses hotel patterns to predict acceptance</p>
                   </div>
                 );
-              })()}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
-                💡 Bid at or above hotel rate = <strong>instant auto-confirmation</strong>. Below = hotel reviews your offer and can counter or accept.
-              </div>
-              <button onClick={handleNegotiate} disabled={negLoading} className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
+              })() : (
+                <div className="rounded-2xl border border-dashed border-luxury-200 p-6 text-center text-luxury-400 text-sm">
+                  Select check-in & check-out dates to see AI pricing
+                </div>
+              )}
+
+              <button onClick={handleNegotiate} disabled={negLoading || !negIn || !negOut || negIn >= negOut}
+                className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
                 {negLoading ? "Submitting…" : `Submit Bid · ₹${negAmt.toLocaleString()}`}
               </button>
             </div>
