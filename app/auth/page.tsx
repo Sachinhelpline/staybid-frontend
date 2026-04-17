@@ -36,7 +36,7 @@ export default function AuthPage() {
         phone.startsWith("+91") ? phone : `+91${phone}`,
         otp
       );
-      login(data.accessToken, data.user);
+      login(data.token || data.accessToken, data.user);
       router.push("/");
     } catch (e: any) {
       setError(e.message);

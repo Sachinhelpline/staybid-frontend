@@ -14,6 +14,7 @@ const USER_LINKS = [
   { href: "/my-bids",  label: "My Bids",    icon: "📋" },
   { href: "/bookings", label: "Bookings",   icon: "🎫" },
   { href: "/wallet",   label: "Wallet",     icon: "💰" },
+  { href: "/profile",  label: "Profile",    icon: "👤" },
 ];
 
 export function Navbar() {

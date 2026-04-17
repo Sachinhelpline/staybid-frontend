@@ -37,4 +37,5 @@ export const api = {
   getFlashDeals: (city?: string) => request(`/api/flash/near${city ? `?city=${city}` : ""}`),
   getMyBookings: () => request("/api/bookings/my"),
   getWallet: () => request("/api/wallet"),
+  updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
 };
