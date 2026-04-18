@@ -54,8 +54,22 @@ export const api = {
   getMyBookings: () => request("/api/bookings/my"),
   getWallet: () => request("/api/wallet"),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
-  // Hotel owner endpoints
-  getOwnerHotel: () => request("/api/owner/hotel"),
-  updateRoomPricing: (roomId: string, data: { floorPrice?: number; flashFloorPrice?: number }) =>
-    request(`/api/rooms/${roomId}/pricing`, { method: "PUT", body: JSON.stringify(data) }),
+  // Hotel owner — Next.js routes (Supabase direct, no Railway proxy)
+  getOwnerHotel: () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+    return fetch("/api/owner/hotel", {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    }).then((r) => r.json());
+  },
+  updateRoomPricing: (roomId: string, data: { floorPrice?: number; flashFloorPrice?: number }) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+    return fetch(`/api/rooms/${roomId}/pricing`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    }).then((r) => r.json());
+  },
 };
