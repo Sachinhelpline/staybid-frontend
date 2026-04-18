@@ -60,7 +60,8 @@ export default function AuthPage() {
   const syncAndLogin = async (firebaseUser: any, provider: string) => {
     const idToken = await firebaseUser.getIdToken();
     try {
-      const res = await fetch(`${API}/api/auth/social-login`, {
+      // Always use Vercel proxy — avoids ISP/Jio blocks on direct Railway URL
+      const res = await fetch("/api/proxy/api/auth/social-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,7 +76,7 @@ export default function AuthPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.token) {
-          login(data.token, data.user);
+          login(data.token, data.user, "backend");
           router.push("/");
           return;
         }

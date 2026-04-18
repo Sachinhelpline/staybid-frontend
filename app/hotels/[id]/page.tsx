@@ -146,16 +146,32 @@ export default function HotelDetail() {
   const flashGrandTotal    = flashBaseTotal + flashExtraTotal + flashChildTotal;
 
   // ── Flash deal booking ─────────────────────────────
+  // ── Detect Firebase RS256 token by reading the JWT header ──────────────────
+  const isFirebaseToken = () => {
+    try {
+      const tok = localStorage.getItem("sb_token") || "";
+      const b64 = tok.split(".")[0].replace(/-/g, "+").replace(/_/g, "/");
+      const header = JSON.parse(atob(b64));
+      return header.alg === "RS256";
+    } catch { return false; }
+  };
+
+  // ── Open inline phone verify and queue an action to run after verify ───────
+  const openVerifyAndRetry = (action: () => void) => {
+    pendingAction.current = action;
+    setVerifyOpen(true);
+    setVerifyStep("phone");
+    setVerifyPhone("");
+    setVerifyOtpVal("");
+    setVerifyError("");
+  };
+
   // ── Inline phone verify helpers ────────────────────────────────────────────
   const withBackendAuth = (action: () => void) => {
     if (!user) return router.push("/auth");
-    if (tokenType === "firebase") {
-      pendingAction.current = action;
-      setVerifyOpen(true);
-      setVerifyStep("phone");
-      setVerifyPhone("");
-      setVerifyOtpVal("");
-      setVerifyError("");
+    // Detect Firebase token by algorithm — works for old sessions too
+    if (tokenType === "firebase" || isFirebaseToken()) {
+      openVerifyAndRetry(action);
       return;
     }
     action();
@@ -251,11 +267,11 @@ export default function HotelDetail() {
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {
-      if (jwtRedirect(e.message)) {
-        alert("Session expire ho gayi. Dobara login karein.");
-        router.push("/auth");
+      if (jwtRedirect(e.message) || isFirebaseToken()) {
+        setFlashBookOpen(false);
+        openVerifyAndRetry(() => handleFlashBook());
       } else {
-        alert(e.message || "Booking fail ho gayi. Dobara try karein.");
+        alert(e.message || "Booking failed. Please try again.");
       }
     } finally {
       setBookLoading(false);
@@ -302,10 +318,10 @@ export default function HotelDetail() {
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
       setBnSuccess(true);
     } catch(e:any) {
-      if (jwtRedirect(e.message)) {
-        alert("Session expire ho gayi. Dobara login karein.");
-        router.push("/auth");
-      } else { alert(e.message || "Booking fail ho gayi."); }
+      if (jwtRedirect(e.message) || isFirebaseToken()) {
+        setBnRoom(null);
+        openVerifyAndRetry(() => openBookNow(bnRoom));
+      } else { alert(e.message || "Booking failed. Please try again."); }
     }
     finally { setBnLoading(false); }
   };
@@ -334,10 +350,10 @@ export default function HotelDetail() {
       setNegSuccess(true);
       fetchMyBids();
     } catch(e:any) {
-      if (jwtRedirect(e.message)) {
-        alert("Session expire ho gayi. Dobara login karein.");
-        router.push("/auth");
-      } else { alert(e.message || "Bid submit fail ho gayi. Dobara try karein."); }
+      if (jwtRedirect(e.message) || isFirebaseToken()) {
+        setNegRoom(null);
+        openVerifyAndRetry(() => openNegotiate(negRoom));
+      } else { alert(e.message || "Bid failed. Please try again."); }
     }
     finally { setNegLoading(false); }
   };
