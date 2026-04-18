@@ -82,14 +82,14 @@ export default function AuthPage() {
       }
     } catch {}
 
-    // Fallback: use Firebase profile (booking actions will prompt re-login if backend rejects)
+    // Fallback: store Firebase token — tagged "firebase" so booking actions show inline phone verify
     login(idToken, {
       id: firebaseUser.uid,
       name: firebaseUser.displayName || firebaseUser.phoneNumber || "Guest",
       email: firebaseUser.email || "",
       phone: firebaseUser.phoneNumber || "",
       role: "customer",
-    });
+    }, "firebase");
     router.push("/");
   };
 

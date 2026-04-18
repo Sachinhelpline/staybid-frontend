@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -32,7 +32,7 @@ export default function HotelDetail() {
   const { id } = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, tokenType, login: authLogin } = useAuth();
 
   const [hotel, setHotel]     = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +75,15 @@ export default function HotelDetail() {
   const [negLoading, setNegLoading] = useState(false);
   const [negSuccess, setNegSuccess] = useState(false);
   const [negAuto, setNegAuto]     = useState(false);
+
+  // Inline phone verify (for Google/social login users who have Firebase token)
+  const [verifyOpen, setVerifyOpen]         = useState(false);
+  const [verifyPhone, setVerifyPhone]       = useState("");
+  const [verifyOtpVal, setVerifyOtpVal]     = useState("");
+  const [verifyStep, setVerifyStep]         = useState<"phone" | "otp">("phone");
+  const [verifyLoading, setVerifyLoading]   = useState(false);
+  const [verifyError, setVerifyError]       = useState("");
+  const pendingAction = useRef<(() => void) | null>(null);
 
   // Flash deal booking state
   const [flashBookOpen, setFlashBookOpen]     = useState(false);
@@ -137,6 +146,61 @@ export default function HotelDetail() {
   const flashGrandTotal    = flashBaseTotal + flashExtraTotal + flashChildTotal;
 
   // ── Flash deal booking ─────────────────────────────
+  // ── Inline phone verify helpers ────────────────────────────────────────────
+  const withBackendAuth = (action: () => void) => {
+    if (!user) return router.push("/auth");
+    if (tokenType === "firebase") {
+      pendingAction.current = action;
+      setVerifyOpen(true);
+      setVerifyStep("phone");
+      setVerifyPhone("");
+      setVerifyOtpVal("");
+      setVerifyError("");
+      return;
+    }
+    action();
+  };
+
+  const sendVerifyOtp = async () => {
+    if (verifyPhone.length < 10) return setVerifyError("Please enter a 10-digit number.");
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      await api.sendOtp(`+91${verifyPhone}`);
+      setVerifyStep("otp");
+    } catch (e: any) {
+      setVerifyError(e.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const confirmVerifyOtp = async () => {
+    if (verifyOtpVal.length < 4) return setVerifyError("Please enter your OTP.");
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      const data = await api.verifyOtp(`+91${verifyPhone}`, verifyOtpVal);
+      authLogin(data.token || data.accessToken, {
+        ...data.user,
+        name: user?.name || data.user?.name,
+        email: user?.email || data.user?.email,
+      }, "backend");
+      setVerifyOpen(false);
+      // Run the original action after a tick so new token is stored
+      setTimeout(() => {
+        if (pendingAction.current) {
+          pendingAction.current();
+          pendingAction.current = null;
+        }
+      }, 100);
+    } catch (e: any) {
+      setVerifyError(e.message || "Incorrect OTP. Please try again.");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
   const jwtRedirect = (msg: string) => {
     const m = (msg || "").toLowerCase();
     return m.includes("algorithm") || m.includes("jwt") || m.includes("invalid token") || m.includes("unauthorized") || m.includes("401") || m.includes("forbidden") || m.includes("session");
@@ -358,7 +422,7 @@ export default function HotelDetail() {
               </div>
             </div>
             <button
-              onClick={() => { if (!user) router.push("/auth"); else setFlashBookOpen(true); }}
+              onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
               className="btn-luxury px-6 py-2.5 rounded-xl text-sm whitespace-nowrap shadow-gold"
             >
               Book This Flash Deal
@@ -713,7 +777,7 @@ export default function HotelDetail() {
                           <p className="text-sm text-luxury-300 line-through">₹{r.floorPrice}</p>
                           <p className="text-2xl font-bold text-gold-600">₹{dealPrice}</p>
                           <p className="text-xs text-luxury-400 mb-3">/night · {dealDiscount}% off</p>
-                          <button onClick={() => { if (!user) router.push("/auth"); else setFlashBookOpen(true); }}
+                          <button onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
                             className="btn-luxury px-5 py-2.5 rounded-xl text-sm shadow-gold">
                             ⚡ Book Flash Deal
                           </button>
@@ -753,8 +817,8 @@ export default function HotelDetail() {
                           <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice.toLocaleString()}</p>
                           <p className="text-xs text-luxury-400 mb-3">/night</p>
                           <div className="flex gap-2">
-                            <button onClick={() => openBookNow(r)} className="btn-luxury px-4 py-2 rounded-xl text-sm">Book Now</button>
-                            <button onClick={() => openNegotiate(r)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-luxury-300 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition">🤝 Negotiate</button>
+                            <button onClick={() => withBackendAuth(() => openBookNow(r))} className="btn-luxury px-4 py-2 rounded-xl text-sm">Book Now</button>
+                            <button onClick={() => withBackendAuth(() => openNegotiate(r))} className="px-4 py-2 rounded-xl text-sm font-semibold border border-luxury-300 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition">🤝 Negotiate</button>
                           </div>
                         </>
                       )}
@@ -768,6 +832,81 @@ export default function HotelDetail() {
 
         </> /* end rooms tab */}
       </div>
+
+      {/* ══════════════════════════════════════════
+          INLINE PHONE VERIFY (Google/Social users)
+      ══════════════════════════════════════════ */}
+      {verifyOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setVerifyOpen(false)}>
+          <div className="bg-white w-full max-w-sm mx-4 rounded-3xl shadow-luxury-lg p-7"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-full bg-gold-50 border-2 border-gold-200 flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📱</span>
+              </div>
+              <h3 className="font-display font-light text-luxury-900 text-2xl mb-1">One Quick Step</h3>
+              <p className="text-sm text-luxury-500 leading-relaxed">
+                Verify your phone number to place bids and bookings.<br />
+                <span className="text-luxury-400 text-xs">One-time only — takes 30 seconds.</span>
+              </p>
+            </div>
+
+            {verifyStep === "phone" ? (
+              <>
+                <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-2">Your Mobile Number</label>
+                <div className="flex gap-2 mb-4">
+                  <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
+                  <input
+                    type="tel"
+                    value={verifyPhone}
+                    onChange={(e) => setVerifyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder="10-digit number"
+                    className="input-luxury text-sm flex-1"
+                    maxLength={10}
+                    inputMode="numeric"
+                    autoFocus
+                  />
+                </div>
+                <button onClick={sendVerifyOtp} disabled={verifyLoading || verifyPhone.length < 10}
+                  className="btn-luxury w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40">
+                  {verifyLoading ? "Sending OTP…" : "Send OTP"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-luxury-400 text-center mb-4">OTP sent to +91 {verifyPhone}</p>
+                <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-2">Enter OTP</label>
+                <input
+                  type="text"
+                  value={verifyOtpVal}
+                  onChange={(e) => setVerifyOtpVal(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="• • • • • •"
+                  className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-4"
+                  maxLength={6}
+                  inputMode="numeric"
+                  autoFocus
+                />
+                <button onClick={confirmVerifyOtp} disabled={verifyLoading || verifyOtpVal.length < 4}
+                  className="btn-luxury w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40 mb-2">
+                  {verifyLoading ? "Verifying…" : "Verify & Continue"}
+                </button>
+                <button onClick={() => { setVerifyStep("phone"); setVerifyOtpVal(""); setVerifyError(""); }}
+                  className="w-full py-2 text-xs text-luxury-400 hover:text-luxury-700 transition-colors">
+                  Change number
+                </button>
+              </>
+            )}
+
+            {verifyError && (
+              <div className="mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+                <span className="text-red-400 mt-0.5 shrink-0">⚠</span>
+                <p className="text-sm text-red-600">{verifyError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════
           FLASH DEAL BOOKING MODAL
