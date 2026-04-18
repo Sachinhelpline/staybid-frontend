@@ -11,7 +11,9 @@ type Screen =
   | "phone"
   | "phone-otp"
   | "whatsapp"
-  | "whatsapp-otp";
+  | "whatsapp-otp"
+  | "social-verify"
+  | "social-verify-otp";
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -51,6 +53,8 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const recaptchaRef = useRef<any>(null);
+  const [pendingName, setPendingName] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   // Clean up reCAPTCHA on unmount
   useEffect(() => {
@@ -88,15 +92,13 @@ export default function AuthPage() {
       }
     } catch {}
 
-    // Fallback: use Firebase ID token + Firebase user profile
-    login(idToken, {
-      id: firebaseUser.uid,
-      name: firebaseUser.displayName || firebaseUser.phoneNumber || "Guest",
-      email: firebaseUser.email || "",
-      phone: firebaseUser.phoneNumber || "",
-      role: "customer",
-    });
-    router.push("/");
+    // Backend social-login not available — ask user to verify phone to get a proper backend JWT
+    setPendingName(firebaseUser.displayName || "Guest");
+    setPendingEmail(firebaseUser.email || "");
+    setPhone("");
+    setOtp("");
+    setError("");
+    setScreen("social-verify");
   };
 
   // ── Google Sign-In ─────────────────────────────────────────────────────────
@@ -213,11 +215,52 @@ export default function AuthPage() {
     }
   };
 
+  // ── Social verify: send OTP after Google/Facebook login ───────────────────
+  const sendSocialVerifyOtp = async () => {
+    if (phone.length < 10) return setError("10 digit number enter karein");
+    setLoading(true);
+    setError("");
+    try {
+      await api.sendOtp(phone.startsWith("+91") ? phone : `+91${phone}`);
+      setScreen("social-verify-otp");
+    } catch (e: any) {
+      setError(e.message || "OTP bhejne mein problem aayi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Social verify: confirm OTP and get backend JWT ────────────────────────
+  const verifySocialOtp = async () => {
+    if (otp.length < 4) return setError("OTP enter karein");
+    setLoading(true);
+    setError("");
+    try {
+      const data = await api.verifyOtp(
+        phone.startsWith("+91") ? phone : `+91${phone}`,
+        otp
+      );
+      const enrichedUser = {
+        ...data.user,
+        ...(pendingName && { name: pendingName }),
+        ...(pendingEmail && { email: pendingEmail }),
+      };
+      login(data.token || data.accessToken, enrichedUser);
+      router.push("/");
+    } catch (e: any) {
+      setError(e.message || "OTP galat hai");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const goBack = () => {
     setError("");
     setOtp("");
     if (screen === "phone-otp") { setScreen("phone"); setConfirmationResult(null); }
     else if (screen === "whatsapp-otp") setScreen("whatsapp");
+    else if (screen === "social-verify-otp") setScreen("social-verify");
+    else if (screen === "social-verify") { setScreen("options"); setPhone(""); setPendingName(""); setPendingEmail(""); }
     else { setScreen("options"); setPhone(""); }
   };
 
@@ -487,6 +530,88 @@ export default function AuthPage() {
                 onClick={goBack}
                 className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors"
               >
+                OTP nahi aaya? Dobara bhejo
+              </button>
+              <ErrorBox />
+            </div>
+          </>
+        )}
+
+        {/* ── SOCIAL VERIFY SCREEN (phone entry after Google/Facebook) ─── */}
+        {screen === "social-verify" && (
+          <>
+            <Brand subtitle="Last step — phone verify karein" />
+            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+              <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
+                <span>←</span> Wapas jao
+              </button>
+
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl">✅</span>
+                </div>
+                {pendingName && <p className="font-semibold text-luxury-900 text-base">{pendingName}</p>}
+                {pendingEmail && <p className="text-xs text-luxury-400 mt-0.5">{pendingEmail}</p>}
+                <p className="text-sm text-luxury-600 mt-3 leading-relaxed">
+                  Google login successful! <br />
+                  Ab apna phone verify karein — secure booking ke liye zaruri hai.
+                </p>
+              </div>
+
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Mobile Number</label>
+              <div className="flex gap-2 mb-5">
+                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  placeholder="10 digit number"
+                  className="input-luxury text-sm"
+                  maxLength={10}
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </div>
+              <button
+                onClick={sendSocialVerifyOtp}
+                disabled={loading || phone.length < 10}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40"
+              >
+                {loading ? "OTP bhej rahe hain…" : "OTP Bhejo"}
+              </button>
+              <ErrorBox />
+            </div>
+          </>
+        )}
+
+        {/* ── SOCIAL VERIFY OTP SCREEN ────────────────────────────────── */}
+        {screen === "social-verify-otp" && (
+          <>
+            <Brand subtitle={`OTP bheja gaya +91 ${phone} par`} />
+            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+              <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
+                <span>←</span> Number badlo
+              </button>
+
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">6-Digit OTP Enter Karein</label>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="• • • • • •"
+                className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-5"
+                maxLength={6}
+                inputMode="numeric"
+                autoFocus
+              />
+              <button
+                onClick={verifySocialOtp}
+                disabled={loading || otp.length < 4}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40 mb-3"
+              >
+                {loading ? "Verify ho raha hai…" : "Verify aur Login Karein"}
+              </button>
+              <button onClick={goBack} className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors">
                 OTP nahi aaya? Dobara bhejo
               </button>
               <ErrorBox />

@@ -14,12 +14,12 @@ const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 function bidProb(amount: number, floor: number) {
   const r = amount / floor;
-  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981" };
-  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04" };
-  if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706" };
-  if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316" };
-  if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",         badge: "",                      color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c" };
-  return {         p: Math.max(2, Math.round(r/0.78*9)),       label: "Very Low",           badge: "",                      color: "text-red-500",    bg: "bg-red-50",     track: "#ef4444" };
+  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981", tip: "Highest priority — auto-confirms instantly!", responseTime: "Auto-confirms!" };
+  if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04", tip: "Very strong offer — hotel will likely respond within the hour.", responseTime: "~1 hr" };
+  if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706", tip: "Good offer — hotel typically responds in 2–3 hours.", responseTime: "2–3 hrs" };
+  if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316", tip: "Hotel may counter with a higher price. Try raising slightly.", responseTime: "3–6 hrs" };
+  if (r >= 0.78) return { p: Math.round(10+(r-0.78)/0.07*14), label: "Low Chance",         badge: "",                      color: "text-orange-600", bg: "bg-orange-100", track: "#ea580c", tip: "Risky bid — hotel likely to reject or counter high.", responseTime: "May reject" };
+  return {         p: Math.max(2, Math.round(r/0.78*9)),       label: "Very Low",           badge: "",                      color: "text-red-500",    bg: "bg-red-50",     track: "#ef4444", tip: "Too low — hotel will almost certainly decline this bid.", responseTime: "Will reject" };
 }
 
 const sampleReviews = [
@@ -137,6 +137,11 @@ export default function HotelDetail() {
   const flashGrandTotal    = flashBaseTotal + flashExtraTotal + flashChildTotal;
 
   // ── Flash deal booking ─────────────────────────────
+  const jwtRedirect = (msg: string) => {
+    const m = (msg || "").toLowerCase();
+    return m.includes("algorithm") || m.includes("jwt") || m.includes("invalid token") || m.includes("unauthorized") || m.includes("401") || m.includes("forbidden") || m.includes("session");
+  };
+
   const handleFlashBook = async () => {
     if (!user) return router.push("/auth");
     setBookLoading(true);
@@ -182,7 +187,12 @@ export default function HotelDetail() {
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {
-      alert(e.message);
+      if (jwtRedirect(e.message)) {
+        alert("Session expire ho gayi. Dobara login karein.");
+        router.push("/auth");
+      } else {
+        alert(e.message || "Booking fail ho gayi. Dobara try karein.");
+      }
     } finally {
       setBookLoading(false);
     }
@@ -227,7 +237,12 @@ export default function HotelDetail() {
       await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
       setBnSuccess(true);
-    } catch(e:any) { alert(e.message); }
+    } catch(e:any) {
+      if (jwtRedirect(e.message)) {
+        alert("Session expire ho gayi. Dobara login karein.");
+        router.push("/auth");
+      } else { alert(e.message || "Booking fail ho gayi."); }
+    }
     finally { setBnLoading(false); }
   };
 
@@ -236,15 +251,30 @@ export default function HotelDetail() {
     if (!negIn || !negOut) return alert("Select dates");
     setNegLoading(true);
     try {
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: negRoom.capacity||2 });
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, requestId: reqRes?.request?.id });
+      const isAboveFloor = negAmt >= negRoom.floorPrice;
+      // Backend rejects bids below floorPrice — submit at floor with guest's target in message
+      const submitAmt = isAboveFloor ? negAmt : negRoom.floorPrice;
+      const message = !isAboveFloor
+        ? `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`
+        : undefined;
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: negRoom.capacity||2 });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
-      const token = localStorage.getItem("sb_token");
-      const aRes = await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
-      setNegAuto(aRes.ok);
+      if (isAboveFloor) {
+        const token = localStorage.getItem("sb_token");
+        const aRes = await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
+        setNegAuto(aRes.ok);
+      } else {
+        setNegAuto(false);
+      }
       setNegSuccess(true);
       fetchMyBids();
-    } catch(e:any) { alert(e.message); }
+    } catch(e:any) {
+      if (jwtRedirect(e.message)) {
+        alert("Session expire ho gayi. Dobara login karein.");
+        router.push("/auth");
+      } else { alert(e.message || "Bid submit fail ho gayi. Dobara try karein."); }
+    }
     finally { setNegLoading(false); }
   };
 
@@ -957,6 +987,31 @@ export default function HotelDetail() {
                   <input type="date" value={negOut} min={negIn} onChange={e=>setNegOut(e.target.value)} className="input-luxury text-sm"/></div>
               </div>
 
+              {/* Smart Bid Suggestions */}
+              {negRoom && (
+                <div>
+                  <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-2.5">⚡ Quick Select</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "💰 Max Saving", pct: 0.82, sub: "Hotel reviews" },
+                      { label: "⭐ Smart Bid", pct: 0.90, sub: "Recommended" },
+                      { label: "⚡ Instant Book", pct: 1.00, sub: "Auto-confirms" },
+                    ].map(s => {
+                      const amt = Math.round(negRoom.floorPrice * s.pct / 50) * 50;
+                      const active = negAmt === amt;
+                      return (
+                        <button key={s.label} onClick={() => setNegAmt(amt)}
+                          className={`p-2.5 rounded-2xl border text-center transition-all ${active ? "border-gold-400 bg-gold-50 shadow-gold" : "border-luxury-200 bg-white hover:border-gold-300"}`}>
+                          <p className="text-[0.65rem] font-bold text-luxury-700 leading-tight">{s.label}</p>
+                          <p className={`text-sm font-bold mt-0.5 ${active ? "text-gold-600" : "text-luxury-900"}`}>₹{amt.toLocaleString()}</p>
+                          <p className="text-[0.55rem] text-luxury-400">{s.sub}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* AI Pricing — only after dates selected */}
               {negIn && negOut && negIn < negOut ? (() => {
                 const prob = bidProb(negAmt, negRoom.floorPrice);
@@ -964,9 +1019,15 @@ export default function HotelDetail() {
                 const max = Math.round(negRoom.floorPrice * 1.05);
                 const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
                 const totalBid = negAmt * nights;
+                const isBelow = negAmt < negRoom.floorPrice;
                 return (
                   <div className={`rounded-2xl border-2 p-5 transition-all duration-300 ${prob.bg}`} style={{ borderColor: prob.track }}>
-                    <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-4">AI Smart Pricing</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold text-luxury-500 uppercase tracking-widest">AI Smart Pricing</p>
+                      <span className="text-[0.6rem] font-semibold px-2 py-0.5 rounded-full bg-white/70 border" style={{ borderColor: prob.track, color: prob.track }}>
+                        {prob.responseTime}
+                      </span>
+                    </div>
 
                     {/* Per-night + total */}
                     <div className="text-center mb-1">
@@ -1005,7 +1066,12 @@ export default function HotelDetail() {
                         </span>
                       )}
                     </div>
-                    <p className="text-[0.65rem] text-luxury-400 text-center mt-1.5">AI analyses hotel patterns to predict acceptance</p>
+                    <p className="text-[0.7rem] text-luxury-500 mt-2 leading-relaxed">{prob.tip}</p>
+                    {isBelow && (
+                      <div className="mt-3 p-2.5 bg-white/70 rounded-xl border border-amber-200 text-[0.65rem] text-amber-700 font-medium">
+                        💡 Bid sent at hotel's min price — your preferred ₹{negAmt.toLocaleString()} is noted for the hotel to review.
+                      </div>
+                    )}
                   </div>
                 );
               })() : (
