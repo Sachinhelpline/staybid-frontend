@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
+import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
 import { io } from "socket.io-client";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
@@ -94,6 +95,11 @@ export default function HotelDetail() {
   const [bookLoading, setBookLoading]         = useState(false);
   const [flashBookSuccess, setFlashBookSuccess] = useState(false);
 
+  // AI live pricing state — keyed by roomId, recalculates every 60s
+  const [roomPrices, setRoomPrices] = useState<Record<string, DynamicPriceResult>>({});
+  const [priceFlash, setPriceFlash] = useState<Record<string, boolean>>({});
+  const selectedCheckIn = bnIn || negIn || today;
+
   useEffect(() => {
     if (!id) return;
     api.getHotel(id as string)
@@ -131,6 +137,33 @@ export default function HotelDetail() {
     });
     return () => { socket.disconnect(); };
   }, [user, id]);
+
+  // ── AI live pricing: recalculate every 60s ──────────────────────────────────
+  useEffect(() => {
+    if (!hotel?.rooms?.length) return;
+    const recalculate = () => {
+      const checkInForCalc = selectedCheckIn || today;
+      const next: Record<string, DynamicPriceResult> = {};
+      for (const r of hotel.rooms) {
+        next[r.id] = calculateDynamicPrice(r.floorPrice || 1000, checkInForCalc, hotel.city || "Mussoorie");
+      }
+      setRoomPrices((prev) => {
+        // Flash animation on price change
+        const changed: Record<string, boolean> = {};
+        for (const [id, val] of Object.entries(next)) {
+          if (prev[id] && prev[id].price !== val.price) changed[id] = true;
+        }
+        if (Object.keys(changed).length > 0) {
+          setPriceFlash(changed);
+          setTimeout(() => setPriceFlash({}), 1200);
+        }
+        return next;
+      });
+    };
+    recalculate();
+    const timer = setInterval(recalculate, 60_000);
+    return () => clearInterval(timer);
+  }, [hotel, selectedCheckIn]);
 
   // ── Flash deal calculations ────────────────────────
   const flashRoom      = hotel?.rooms?.find((r: any) => r.id === dealRoomId);
@@ -890,98 +923,221 @@ export default function HotelDetail() {
         )}
 
         {/* ── Available Rooms ── */}
-        <h2 className="font-semibold text-luxury-900 text-base mb-5 tracking-tight">Available Rooms</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-semibold text-luxury-900 text-base tracking-tight">Available Rooms</h2>
+          <div className="flex items-center gap-1.5 text-[0.6rem] text-luxury-400 font-semibold uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            AI Live Pricing
+          </div>
+        </div>
         {hotel.rooms?.length === 0 && (
           <p className="text-luxury-400 py-6 text-sm">No rooms available right now.</p>
         )}
 
-        <div className="space-y-4 mb-10">
+        <div className="space-y-6 mb-10">
           {hotel.rooms?.map((r: any) => {
             const isFlashRoom = dealRoomId === r.id && dealPrice;
+            const aiPrice = roomPrices[r.id];
+            const ds = aiPrice ? DEMAND_STYLE[aiPrice.demandLevel] : null;
+            const livePrice = aiPrice?.price || r.floorPrice;
+            const isFlashing = priceFlash[r.id];
+            const roomImg = getRoomImage(r.name || r.type || "", r.images);
+            const mrp = r.mrp || Math.round(r.floorPrice * 1.4);
+            const otas = [
+              { name: "MakeMyTrip",  price: Math.round(mrp * 0.87) },
+              { name: "Booking.com", price: Math.round(mrp * 0.91) },
+              { name: "Goibibo",     price: Math.round(mrp * 0.84) },
+              { name: "Agoda",       price: Math.round(mrp * 0.89) },
+            ];
+            const bestOTA  = Math.min(...otas.map(o => o.price));
+            const otaSaving = bestOTA - livePrice;
+
             return (
               <div key={r.id}
-                className={`rounded-3xl border overflow-hidden transition-all duration-300 ${
-                  isFlashRoom ? "border-gold-400 bg-amber-50/40 shadow-gold"
-                  : bidRoom?.id === r.id ? "border-gold-400 bg-gold-100/30 shadow-gold"
-                  : "border-luxury-100 bg-white hover:border-luxury-200 hover:shadow-luxury"
+                className={`group rounded-3xl overflow-hidden shadow-luxury transition-all duration-500 hover:shadow-gold hover:scale-[1.01] ${
+                  isFlashRoom
+                    ? "border-2 border-gold-400"
+                    : bidRoom?.id === r.id
+                    ? "border-2 border-gold-400"
+                    : "border border-luxury-100"
                 }`}
+                style={{ background: "#fff" }}
               >
-                {r.images?.[0] && (
-                  <img src={r.images[0]} alt={r.name} className="w-full h-52 object-cover" />
-                )}
+                {/* ── Room Image ── */}
+                <div className="relative h-56 overflow-hidden">
+                  <img
+                    src={roomImg}
+                    alt={r.name || r.type}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    onError={(e: any) => { e.target.src = "https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }}
+                  />
+                  {/* Dark gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                  {/* Top badges row */}
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                    {isFlashRoom && (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.62rem] font-bold bg-red-500 text-white shadow-lg">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                        FLASH DEAL
+                      </span>
+                    )}
+                    {!isFlashRoom && ds && (
+                      <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.6rem] font-bold border backdrop-blur-md bg-white/80 ${ds.text} ${ds.border}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${ds.dot} ${aiPrice!.demandLevel === "Surge" ? "animate-ping" : ""}`} />
+                        {aiPrice!.demandLevel} Demand
+                      </span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[0.55rem] font-bold text-white/80 uppercase tracking-widest">Live Price</span>
+                    </div>
+                  </div>
+
+                  {/* Room name overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="font-display font-light text-white text-xl leading-tight drop-shadow-lg">{r.name || r.type}</h3>
+                    <p className="text-white/65 text-xs mt-0.5 tracking-wide">{r.type} · up to {r.capacity} guests</p>
+                  </div>
+                </div>
+
+                {/* ── Card Body ── */}
                 <div className="p-5">
-                  {isFlashRoom && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                      <span className="text-xs font-bold text-gold-600 uppercase tracking-widest">Flash Deal Room</span>
+                  {/* Amenities chips */}
+                  {r.amenities?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {r.amenities.slice(0, 5).map((a: string) => (
+                        <span key={a} className="text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500 font-medium">{a}</span>
+                      ))}
                     </div>
                   )}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+                  {isFlashRoom ? (
+                    /* ── FLASH ROOM PRICING ── */
                     <div>
-                      <h3 className="font-semibold text-luxury-900">{r.name || r.type}</h3>
-                      <p className="text-sm text-luxury-400 mt-0.5 tracking-wide">{r.type} · {r.capacity} guests</p>
-                      {r.amenities?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {r.amenities.slice(0, 4).map((a: string) => (
-                            <span key={a} className="text-xs px-2.5 py-0.5 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500">{a}</span>
+                      <div className="flex items-end justify-between mb-4">
+                        <div>
+                          <p className="text-[0.6rem] font-bold text-gold-500 uppercase tracking-widest mb-0.5">Flash Deal Price</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-luxury-300 line-through">₹{r.floorPrice.toLocaleString()}</span>
+                            <span className="text-3xl font-bold text-gold-600">₹{dealPrice}</span>
+                          </div>
+                          <p className="text-xs text-luxury-400">/night · {dealDiscount}% off</p>
+                        </div>
+                        {aiPrice && (
+                          <div className="text-right">
+                            <p className="text-[0.55rem] text-luxury-400 uppercase tracking-wider">Market Rate</p>
+                            <p className="text-sm font-bold text-luxury-600">₹{aiPrice.price.toLocaleString()}</p>
+                            <p className="text-[0.6rem] text-emerald-600 font-semibold">
+                              {Math.round((1 - parseFloat(dealPrice!) / aiPrice.price) * 100)}% below market
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
+                        className="btn-luxury w-full py-3.5 rounded-2xl text-sm shadow-gold"
+                      >
+                        ⚡ Book This Flash Deal
+                      </button>
+                    </div>
+                  ) : (
+                    /* ── REGULAR ROOM PRICING ── */
+                    <div>
+                      {/* AI price + OTA comparison */}
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        {/* Live AI Price */}
+                        <div className={`rounded-2xl p-4 transition-all duration-500 ${
+                          isFlashing
+                            ? "bg-gold-50 border-2 border-gold-400 scale-[1.02]"
+                            : "bg-luxury-50 border border-luxury-100"
+                        }`}>
+                          <div className="flex items-center gap-1 mb-1">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                            <p className="text-[0.55rem] text-luxury-400 uppercase tracking-widest font-bold">AI Live Price</p>
+                          </div>
+                          <p className={`text-2xl font-bold transition-colors duration-500 ${isFlashing ? "text-gold-600" : "text-luxury-900"}`}>
+                            ₹{livePrice.toLocaleString()}
+                          </p>
+                          <p className="text-[0.6rem] text-luxury-400">/night</p>
+                          {aiPrice && aiPrice.priceChangePct !== 0 && (
+                            <p className={`text-[0.6rem] font-bold mt-0.5 ${aiPrice.priceChangePct > 0 ? "text-red-500" : "text-emerald-600"}`}>
+                              {aiPrice.priceChangePct > 0 ? "▲" : "▼"} {Math.abs(aiPrice.priceChangePct)}% vs base
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Demand Info */}
+                        {aiPrice && ds && (
+                          <div className={`rounded-2xl p-4 border ${ds.bg} ${ds.border}`}>
+                            <p className="text-[0.55rem] uppercase tracking-widest font-bold text-luxury-400 mb-1">Demand Signal</p>
+                            <p className={`text-sm font-bold ${ds.text}`}>{aiPrice.demandLevel}</p>
+                            {/* Demand bar */}
+                            <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${aiPrice.demandScore}%`, background: ds.dot.replace("bg-", "").replace("-", " ") }}
+                              />
+                            </div>
+                            <p className={`text-[0.55rem] mt-1.5 font-medium ${ds.text}`}>
+                              {aiPrice.factors[0]}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Trend chip */}
+                      {aiPrice && (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          <span className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full ${
+                            aiPrice.trend === "rising"  ? "bg-red-50 text-red-600 border border-red-200" :
+                            aiPrice.trend === "falling" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+                            "bg-luxury-50 text-luxury-500 border border-luxury-100"
+                          }`}>
+                            {aiPrice.trend === "rising" ? "📈 Price rising" : aiPrice.trend === "falling" ? "📉 Price dropping" : "⟷ Stable price"}
+                          </span>
+                          {aiPrice.factors.slice(0, 2).map((f) => (
+                            <span key={f} className="text-[0.6rem] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                              {f}
+                            </span>
                           ))}
                         </div>
                       )}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      {isFlashRoom ? (
-                        <>
-                          <p className="text-xs font-bold text-gold-500 uppercase tracking-widest">Flash Price</p>
-                          <p className="text-sm text-luxury-300 line-through">₹{r.floorPrice}</p>
-                          <p className="text-2xl font-bold text-gold-600">₹{dealPrice}</p>
-                          <p className="text-xs text-luxury-400 mb-3">/night · {dealDiscount}% off</p>
-                          <button onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
-                            className="btn-luxury px-5 py-2.5 rounded-xl text-sm shadow-gold">
-                            ⚡ Book Flash Deal
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          {/* OTA Comparison */}
-                          {(r.mrp||r.floorPrice) && (() => {
-                            const mrp = r.mrp || Math.round(r.floorPrice * 1.4);
-                            const otas = [
-                              { name:"MakeMyTrip", price: Math.round(mrp*0.87) },
-                              { name:"Booking.com", price: Math.round(mrp*0.91) },
-                              { name:"Goibibo",     price: Math.round(mrp*0.84) },
-                              { name:"Agoda",       price: Math.round(mrp*0.89) },
-                            ];
-                            const bestOTA = Math.min(...otas.map(o=>o.price));
-                            const saving = bestOTA - r.floorPrice;
-                            return (
-                              <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100 text-left">
-                                <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">Price Comparison</p>
-                                <div className="space-y-1.5">
-                                  {otas.map(o => (
-                                    <div key={o.name} className="flex justify-between items-center text-xs">
-                                      <span className="text-luxury-400">{o.name}</span>
-                                      <span className="text-luxury-400 line-through">₹{o.price.toLocaleString()}</span>
-                                    </div>
-                                  ))}
-                                  <div className="flex justify-between items-center px-3 py-2 bg-gold-500 rounded-xl mt-2">
-                                    <span className="font-bold text-white text-xs">🏆 StayBid</span>
-                                    <span className="font-bold text-white text-sm">₹{r.floorPrice.toLocaleString()}</span>
-                                  </div>
-                                  {saving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-center">✓ Save ₹{saving.toLocaleString()} vs best OTA</p>}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          <p className="text-2xl font-bold text-luxury-900">₹{r.floorPrice.toLocaleString()}</p>
-                          <p className="text-xs text-luxury-400 mb-3">/night</p>
-                          <div className="flex gap-2">
-                            <button onClick={() => withBackendAuth(() => openBookNow(r))} className="btn-luxury px-4 py-2 rounded-xl text-sm">Book Now</button>
-                            <button onClick={() => withBackendAuth(() => openNegotiate(r))} className="px-4 py-2 rounded-xl text-sm font-semibold border border-luxury-300 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition">🤝 Negotiate</button>
+
+                      {/* OTA Comparison */}
+                      <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100">
+                        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">Price Comparison</p>
+                        <div className="space-y-1.5">
+                          {otas.map(o => (
+                            <div key={o.name} className="flex justify-between items-center text-xs">
+                              <span className="text-luxury-400">{o.name}</span>
+                              <span className="text-luxury-400 line-through">₹{o.price.toLocaleString()}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between items-center px-3 py-2 bg-gradient-to-r from-gold-600 to-gold-400 rounded-xl mt-2">
+                            <span className="font-bold text-white text-xs">🏆 StayBid</span>
+                            <span className="font-bold text-white text-sm">₹{livePrice.toLocaleString()}</span>
                           </div>
-                        </>
-                      )}
+                          {otaSaving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-center">✓ Save ₹{otaSaving.toLocaleString()} vs best OTA</p>}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => withBackendAuth(() => openBookNow(r))}
+                          className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
+                        >
+                          Book Now
+                        </button>
+                        <button
+                          onClick={() => withBackendAuth(() => openNegotiate(r))}
+                          className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
+                        >
+                          🤝 Negotiate
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             );

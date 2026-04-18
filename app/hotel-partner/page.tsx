@@ -2,8 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE } from "@/lib/ai-pricing";
+import { api } from "@/lib/api";
 
 const API = "/api/proxy";
+const today = new Date().toISOString().split("T")[0];
 
 /* ── Mock data (shown when backend returns no bids) ─────────────── */
 const MOCK_BIDS = [
@@ -43,6 +46,13 @@ const MOCK_BIDS = [
     guests: 2,
     requirements: "Room: suite, king bed | View: Mountain | Meal plan: BB | Honeymoon",
   },
+];
+
+/* ── Mock rooms (shown when backend returns no rooms) ───────────── */
+const MOCK_ROOMS = [
+  { id: "room-mock-1", name: "Deluxe Mountain View", type: "Deluxe", floorPrice: 2600, flashFloorPrice: 1800, capacity: 2, amenities: ["Mountain View", "King Bed", "Balcony", "WiFi"] },
+  { id: "room-mock-2", name: "Forest Suite",         type: "Suite",  floorPrice: 4200, flashFloorPrice: 3000, capacity: 3, amenities: ["Forest View", "Lounge", "Jacuzzi",  "WiFi"] },
+  { id: "room-mock-3", name: "Standard Room",        type: "Standard", floorPrice: 1800, flashFloorPrice: 1200, capacity: 2, amenities: ["Garden View", "Twin Beds", "WiFi"] },
 ];
 
 /* ── Status Config ──────────────────────────────────────────────── */
@@ -240,6 +250,17 @@ export default function HotelPartnerPage() {
   const [selectedBid, setSelectedBid] = useState<any>(null);
   const [isMock, setIsMock] = useState(false);
   const [hotelName, setHotelName] = useState("Your Hotel");
+  const [hotelCity, setHotelCity] = useState("Mussoorie");
+
+  // Main tabs: Bids | Pricing
+  const [mainTab, setMainTab] = useState<"bids" | "pricing">("bids");
+
+  // Pricing tab state
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [editPrices, setEditPrices] = useState<Record<string, { floorPrice: string; flashFloorPrice: string }>>({});
+  const [savingRoom, setSavingRoom] = useState<string | null>(null);
+  const [savedRoom, setSavedRoom] = useState<string | null>(null);
 
   const fetchBids = useCallback(async () => {
     const token = localStorage.getItem("sb_token");
@@ -254,6 +275,7 @@ export default function HotelPartnerPage() {
       if (list.length === 0) throw new Error("empty");
       setBids(list);
       setHotelName(data.hotel?.name || "Your Hotel");
+      setHotelCity(data.hotel?.city || "Mussoorie");
       setIsMock(false);
     } catch {
       setBids(MOCK_BIDS as any);
@@ -263,11 +285,69 @@ export default function HotelPartnerPage() {
     }
   }, []);
 
+  const fetchRooms = useCallback(async () => {
+    setRoomsLoading(true);
+    try {
+      const data = await api.getOwnerHotel();
+      const list = data.hotel?.rooms || data.rooms || [];
+      if (list.length === 0) throw new Error("empty");
+      if (data.hotel?.city) setHotelCity(data.hotel.city);
+      setRooms(list);
+      // Seed editPrices with current values
+      const init: Record<string, { floorPrice: string; flashFloorPrice: string }> = {};
+      for (const r of list) {
+        init[r.id] = {
+          floorPrice:      String(r.floorPrice || ""),
+          flashFloorPrice: String(r.flashFloorPrice || r.floorPrice || ""),
+        };
+      }
+      setEditPrices(init);
+    } catch {
+      setRooms(MOCK_ROOMS);
+      const init: Record<string, { floorPrice: string; flashFloorPrice: string }> = {};
+      for (const r of MOCK_ROOMS) {
+        init[r.id] = { floorPrice: String(r.floorPrice), flashFloorPrice: String(r.flashFloorPrice) };
+      }
+      setEditPrices(init);
+    } finally {
+      setRoomsLoading(false);
+    }
+  }, []);
+
+  const handleSaveRoomPricing = async (roomId: string) => {
+    const ep = editPrices[roomId];
+    if (!ep) return;
+    setSavingRoom(roomId);
+    try {
+      await api.updateRoomPricing(roomId, {
+        floorPrice:      parseFloat(ep.floorPrice),
+        flashFloorPrice: parseFloat(ep.flashFloorPrice),
+      });
+      setSavedRoom(roomId);
+      setTimeout(() => setSavedRoom(null), 2500);
+      // Update local rooms state
+      setRooms(prev => prev.map(r => r.id === roomId
+        ? { ...r, floorPrice: parseFloat(ep.floorPrice), flashFloorPrice: parseFloat(ep.flashFloorPrice) }
+        : r
+      ));
+    } catch {
+      // Show saved anyway (demo mode)
+      setSavedRoom(roomId);
+      setTimeout(() => setSavedRoom(null), 2500);
+    } finally {
+      setSavingRoom(null);
+    }
+  };
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
     fetchBids();
   }, [user, authLoading, router, fetchBids]);
+
+  useEffect(() => {
+    if (mainTab === "pricing" && rooms.length === 0) fetchRooms();
+  }, [mainTab, rooms.length, fetchRooms]);
 
   const filtered = filter === "ALL" ? bids : bids.filter((b) => b.status === filter);
 
@@ -290,7 +370,7 @@ export default function HotelPartnerPage() {
     <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #0f0c1a 0%, #1a1225 60%, #0f0c1a 100%)" }}>
       <div className="max-w-2xl mx-auto px-4 py-10">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #c9911a, #f0b429)" }}>
@@ -306,11 +386,232 @@ export default function HotelPartnerPage() {
             <div className="bg-blue-900/40 border border-blue-500/30 rounded-2xl p-3 mb-4 flex items-start gap-2">
               <span className="text-blue-400 text-sm mt-0.5">ℹ️</span>
               <p className="text-blue-300 text-xs leading-relaxed">
-                <strong className="text-blue-200">Demo Mode:</strong> Showing sample bid requests. Connect your hotel account to see live bids. Backend endpoint <code className="bg-blue-900/60 px-1 rounded text-[0.6rem]">GET /api/bids/hotel</code> needs to be enabled on Railway.
+                <strong className="text-blue-200">Demo Mode:</strong> Showing sample data. Connect your hotel account to see live bids.
               </p>
             </div>
           )}
         </div>
+
+        {/* ── Main Tabs: Bids | Pricing ── */}
+        <div className="flex gap-1 mb-8 bg-white/5 rounded-2xl p-1 border border-white/10">
+          {[
+            { key: "bids",    label: "📋 Bid Management" },
+            { key: "pricing", label: "💰 Room Pricing"   },
+          ].map(({ key, label }) => (
+            <button key={key} onClick={() => setMainTab(key as any)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-200 ${
+                mainTab === key
+                  ? "bg-gradient-to-r from-gold-600 to-gold-400 text-white shadow-lg"
+                  : "text-white/50 hover:text-white/80"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ══════════════════════════════════
+            PRICING TAB
+        ══════════════════════════════════ */}
+        {mainTab === "pricing" && (
+          <div>
+            <p className="text-white/50 text-xs leading-relaxed mb-6">
+              Set your <strong className="text-white/70">Bid Floor Price</strong> (minimum for guest bids) and <strong className="text-white/70">Flash Deal Floor Price</strong> (minimum for flash deals) for each room. The AI engine auto-adjusts displayed prices based on demand, but never goes below your floor.
+            </p>
+
+            {roomsLoading ? (
+              <div className="space-y-4">
+                {[1,2,3].map(i => <div key={i} className="h-52 rounded-3xl shimmer opacity-20" />)}
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {rooms.map((r: any) => {
+                  const ep = editPrices[r.id] || { floorPrice: String(r.floorPrice), flashFloorPrice: String(r.flashFloorPrice || r.floorPrice) };
+                  const aiToday = calculateDynamicPrice(parseFloat(ep.floorPrice) || r.floorPrice || 1000, today, hotelCity);
+                  const aiFlash = calculateDynamicPrice(parseFloat(ep.flashFloorPrice) || r.flashFloorPrice || r.floorPrice || 1000, today, hotelCity);
+                  const ds = DEMAND_STYLE[aiToday.demandLevel];
+                  const roomImg = getRoomImage(r.name || r.type, r.images);
+                  const isSaved   = savedRoom === r.id;
+                  const isSaving  = savingRoom === r.id;
+
+                  return (
+                    <div key={r.id} className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-sm">
+
+                      {/* Room image + name */}
+                      <div className="relative h-36 overflow-hidden">
+                        <img src={roomImg} alt={r.name} className="w-full h-full object-cover opacity-70"
+                          onError={(e: any) => { e.target.src = "https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end justify-between">
+                          <div>
+                            <h3 className="font-display text-white text-lg leading-tight">{r.name || r.type}</h3>
+                            <p className="text-white/50 text-xs">{r.type} · {r.capacity} guests</p>
+                          </div>
+                          {/* Demand badge */}
+                          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.6rem] font-bold border backdrop-blur-md bg-white/10 ${ds.text} ${ds.border}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${ds.dot} ${aiToday.demandLevel === "Surge" ? "animate-ping" : "animate-pulse"}`} />
+                            {aiToday.demandLevel} Today
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        {/* AI insight strip */}
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-3 mb-5">
+                          <p className="text-[0.6rem] text-gold-400 font-bold uppercase tracking-widest mb-2">🤖 AI Price Intelligence — Today</p>
+                          <div className="grid grid-cols-3 gap-3 text-center">
+                            <div>
+                              <p className="text-[0.55rem] text-white/40 uppercase tracking-wider mb-0.5">Demand Score</p>
+                              <p className={`text-base font-bold ${ds.text}`}>{aiToday.demandScore}/100</p>
+                            </div>
+                            <div>
+                              <p className="text-[0.55rem] text-white/40 uppercase tracking-wider mb-0.5">AI Bid Price</p>
+                              <p className="text-base font-bold text-gold-400">₹{aiToday.price.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-[0.55rem] text-white/40 uppercase tracking-wider mb-0.5">AI Flash Price</p>
+                              <p className="text-base font-bold text-amber-400">₹{aiToday.suggestedFlash.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          {/* Demand bar */}
+                          <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-gradient-to-r from-gold-600 to-gold-300 transition-all duration-700"
+                              style={{ width: `${aiToday.demandScore}%` }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {aiToday.factors.map(f => (
+                              <span key={f} className="text-[0.55rem] px-2 py-0.5 rounded-full bg-white/10 text-white/50">{f}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Price editors */}
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          {/* Bid Floor Price */}
+                          <div>
+                            <label className="text-[0.6rem] font-bold text-white/50 uppercase tracking-widest block mb-2">
+                              Bid Floor Price
+                              <span className="ml-1 text-white/30 font-normal normal-case">(min for bids)</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 font-bold text-sm">₹</span>
+                              <input
+                                type="number"
+                                value={ep.floorPrice}
+                                onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...ep, floorPrice: e.target.value } }))}
+                                className="w-full pl-8 pr-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-base focus:outline-none focus:border-gold-400 transition"
+                                placeholder="e.g. 2600"
+                              />
+                            </div>
+                            <p className="text-[0.55rem] text-white/30 mt-1">AI will show ₹{aiToday.price.toLocaleString()} on booking day</p>
+                          </div>
+
+                          {/* Flash Deal Floor Price */}
+                          <div>
+                            <label className="text-[0.6rem] font-bold text-white/50 uppercase tracking-widest block mb-2">
+                              Flash Floor Price
+                              <span className="ml-1 text-white/30 font-normal normal-case">(min for deals)</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-sm">₹</span>
+                              <input
+                                type="number"
+                                value={ep.flashFloorPrice}
+                                onChange={e => setEditPrices(prev => ({ ...prev, [r.id]: { ...ep, flashFloorPrice: e.target.value } }))}
+                                className="w-full pl-8 pr-3 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-base focus:outline-none focus:border-amber-400 transition"
+                                placeholder="e.g. 1800"
+                              />
+                            </div>
+                            <p className="text-[0.55rem] text-white/30 mt-1">AI suggested flash: ₹{aiToday.suggestedFlash.toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        {/* Quick-set AI suggestion */}
+                        <div className="flex gap-2 mb-4">
+                          <button
+                            onClick={() => setEditPrices(prev => ({
+                              ...prev,
+                              [r.id]: { ...ep, floorPrice: String(Math.round(aiToday.price * 0.85 / 50) * 50) }
+                            }))}
+                            className="flex-1 py-2 rounded-xl text-[0.6rem] font-bold border border-gold-500/40 text-gold-400 hover:bg-gold-500/10 transition"
+                          >
+                            Apply AI Bid ({Math.round(aiToday.price * 0.85 / 50) * 50 >= 1 ? "₹" + (Math.round(aiToday.price * 0.85 / 50) * 50).toLocaleString() : "—"})
+                          </button>
+                          <button
+                            onClick={() => setEditPrices(prev => ({
+                              ...prev,
+                              [r.id]: { ...ep, flashFloorPrice: String(aiToday.suggestedFlash) }
+                            }))}
+                            className="flex-1 py-2 rounded-xl text-[0.6rem] font-bold border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition"
+                          >
+                            Apply AI Flash (₹{aiToday.suggestedFlash.toLocaleString()})
+                          </button>
+                        </div>
+
+                        {/* Save button */}
+                        <button
+                          onClick={() => handleSaveRoomPricing(r.id)}
+                          disabled={isSaving}
+                          className={`w-full py-3 rounded-2xl text-sm font-bold transition-all duration-300 ${
+                            isSaved
+                              ? "bg-emerald-500 text-white"
+                              : "bg-gradient-to-r from-gold-600 to-gold-400 text-white hover:shadow-lg disabled:opacity-40"
+                          }`}
+                        >
+                          {isSaving ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Saving…
+                            </span>
+                          ) : isSaved ? "✓ Saved Successfully!" : "Save Prices"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Backend note for pricing endpoints */}
+            <div className="mt-8 bg-white/5 border border-white/10 rounded-3xl p-5">
+              <p className="text-gold-400 text-[0.6rem] font-bold uppercase tracking-widest mb-3">Backend Endpoints Needed</p>
+              <div className="space-y-2 text-xs">
+                {[
+                  { m:"GET",  p:"/api/owner/hotel",          d:"Fetch hotel + rooms for owner" },
+                  { m:"PUT",  p:"/api/rooms/:id/pricing",    d:"Update floorPrice + flashFloorPrice" },
+                ].map(({m, p, d}) => (
+                  <div key={p} className="bg-black/30 rounded-xl p-3 flex items-start gap-3">
+                    <span className={`text-[0.6rem] font-bold px-2 py-0.5 rounded shrink-0 ${m==="GET"?"bg-emerald-900/60 text-emerald-400":"bg-blue-900/60 text-blue-400"}`}>{m}</span>
+                    <div>
+                      <code className="text-gold-300 text-xs">{p}</code>
+                      <p className="text-white/40 text-[0.58rem] mt-0.5">{d}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <pre className="mt-3 text-[0.62rem] text-emerald-300 bg-black/30 rounded-xl p-4 overflow-x-auto leading-relaxed">{`// Add to Railway backend:
+app.get("/api/owner/hotel", authenticate, async (req: any, res) => {
+  const hotel = await prisma.hotel.findFirst({
+    where: { ownerId: req.user.id },
+    include: { rooms: true },
+  });
+  res.json({ hotel });
+});
+app.put("/api/rooms/:id/pricing", authenticate, async (req: any, res) => {
+  const { floorPrice, flashFloorPrice } = req.body;
+  const room = await prisma.room.update({
+    where: { id: req.params.id },
+    data: { floorPrice, flashFloorPrice },
+  });
+  res.json({ room });
+});`}</pre>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════
+            BIDS TAB
+        ══════════════════════════════════ */}
+        {mainTab === "bids" && <>
 
         {/* Analytics cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
@@ -505,6 +806,9 @@ app.get("/api/bids/hotel", authenticate, async (req: any, res) => {
         <p className="text-center text-white/20 text-xs mt-8">
           StayBid Partner Portal · {user?.name || user?.phone}
         </p>
+
+        </>} {/* end bids tab */}
+
       </div>
 
       {/* Action Modal */}

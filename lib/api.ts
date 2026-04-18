@@ -54,4 +54,8 @@ export const api = {
   getMyBookings: () => request("/api/bookings/my"),
   getWallet: () => request("/api/wallet"),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
+  // Hotel owner endpoints
+  getOwnerHotel: () => request("/api/owner/hotel"),
+  updateRoomPricing: (roomId: string, data: { floorPrice?: number; flashFloorPrice?: number }) =>
+    request(`/api/rooms/${roomId}/pricing`, { method: "PUT", body: JSON.stringify(data) }),
 };
