@@ -55,10 +55,61 @@ export default function WalletPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
-    api.getWallet()
-      .then((d) => setWallet(d.wallet || d))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+
+    // Fetch wallet + bids + bookings in parallel
+    Promise.all([
+      api.getWallet().catch(() => null),
+      api.getMyBids().catch(() => null),
+      api.getMyBookings().catch(() => null),
+    ]).then(([walletData, bidsData, bookingsData]) => {
+      const w = walletData?.wallet || walletData;
+
+      // Compute totalSpent from accepted bids
+      const bids: any[]     = bidsData?.bids || [];
+      const bookings: any[] = bookingsData?.bookings || [];
+
+      const acceptedBidAmount = bids
+        .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        .reduce((sum: number, b: any) => sum + (b.amount || 0), 0);
+
+      const bookingAmount = bookings
+        .reduce((sum: number, bk: any) => sum + (bk.totalAmount || bk.amount || 0), 0);
+
+      const computedSpend = acceptedBidAmount + bookingAmount;
+
+      // Build synthetic transactions from bids if backend wallet is empty
+      const syntheticTxns: any[] = bids
+        .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        .map((b: any) => ({
+          id: `bid_${b.id}`,
+          type: "DEBIT",
+          amount: b.amount || 0,
+          description: `Booking — ${b.hotel?.name || "Hotel"}`,
+          createdAt: b.updatedAt || b.createdAt,
+        }));
+
+      if (w && (w.balance !== undefined || w.totalCredit !== undefined || w.totalDebit !== undefined)) {
+        // Real wallet exists — merge computed spend if backend spent is 0
+        const backendSpend = w.totalDebit || w.total_debit || w.spent || 0;
+        setWallet({
+          ...w,
+          _computedSpend: backendSpend > 0 ? backendSpend : computedSpend,
+          transactions: (w.transactions && w.transactions.length > 0)
+            ? w.transactions
+            : syntheticTxns,
+        });
+      } else {
+        // No real wallet — build one from bids/bookings
+        setWallet({
+          balance: 0,
+          totalCredit: 0,
+          totalDebit: computedSpend,
+          _computedSpend: computedSpend,
+          transactions: syntheticTxns,
+          _synthetic: true,
+        });
+      }
+    }).finally(() => setLoading(false));
   }, [user, authLoading, router]);
 
   const txTypeStyle = (type: string) => {
@@ -75,7 +126,7 @@ export default function WalletPage() {
     </div>
   );
 
-  const totalSpend  = wallet?.totalDebit || wallet?.total_debit || wallet?.spent || 0;
+  const totalSpend  = wallet?._computedSpend || wallet?.totalDebit || wallet?.total_debit || wallet?.spent || 0;
   const totalPoints = Math.floor(totalSpend / 100 * getLevel(totalSpend).pointsRate);
   const level       = getLevel(totalSpend);
   const nextLevel   = LEVELS[LEVELS.indexOf(level) + 1];
@@ -127,7 +178,7 @@ export default function WalletPage() {
               <p className="font-display font-light text-white mb-1" style={{ fontSize:"clamp(2.4rem,6vw,3.5rem)" }}>
                 ₹{(wallet.balance ?? 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-white/40 text-xs tracking-wide">{user?.phone}</p>
+              <p className="text-white/40 text-xs tracking-wide">{user?.phone || user?.email}</p>
 
               <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/10">
                 <div>
@@ -162,6 +213,7 @@ export default function WalletPage() {
                   <div className="text-center py-14">
                     <div className="w-14 h-14 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-3"><span className="text-2xl">💳</span></div>
                     <p className="text-luxury-600 font-medium">No transactions yet</p>
+                    <p className="text-luxury-400 text-xs mt-1">Complete a booking to see your spending history</p>
                   </div>
                 ) : (
                   wallet.transactions.map((tx: any, i: number) => {
@@ -300,9 +352,24 @@ export default function WalletPage() {
         )}
 
         {!wallet && !error && !loading && (
-          <div className="text-center py-16">
-            <div className="w-14 h-14 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-3"><span className="text-2xl">💳</span></div>
-            <p className="text-luxury-600 font-medium">Wallet not set up yet</p>
+          <div className="fu rounded-3xl p-7 mb-5 text-white relative overflow-hidden"
+            style={{ background:"linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}>
+            <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none opacity-[0.08]"
+              style={{ background:"radial-gradient(circle,#f0b429 0%,transparent 70%)",transform:"translate(30%,-30%)" }} />
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white/40 text-[0.6rem] tracking-[0.2em] uppercase font-semibold">Available Balance</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white badge-anim"
+                style={{ background: LEVELS[0].gradient }}>
+                {LEVELS[0].icon} {LEVELS[0].name}
+              </div>
+            </div>
+            <p className="font-display font-light text-white mb-1" style={{ fontSize:"clamp(2.4rem,6vw,3.5rem)" }}>₹0</p>
+            <p className="text-white/40 text-xs tracking-wide">{user?.phone || user?.email}</p>
+            <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/10">
+              <div><p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Credited</p><p className="text-emerald-400 font-semibold text-sm">₹0</p></div>
+              <div className="border-x border-white/10 text-center"><p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Total Spent</p><p className="text-red-400 font-semibold text-sm">₹0</p></div>
+              <div className="text-right"><p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">StayPoints</p><p className="text-gold-400 font-semibold text-sm">0</p></div>
+            </div>
           </div>
         )}
       </div>
