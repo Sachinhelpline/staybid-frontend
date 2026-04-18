@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-type User = { id: string; phone: string; name?: string; role: string } | null;
+type User = { id: string; phone: string; name?: string; email?: string; role: string } | null;
 type AuthCtx = { user: User; token: string | null; login: (token: string, user: any) => void; logout: () => void; loading: boolean };
 
 const AuthContext = createContext<AuthCtx>({ user: null, token: null, login: () => {}, logout: () => {}, loading: true });
