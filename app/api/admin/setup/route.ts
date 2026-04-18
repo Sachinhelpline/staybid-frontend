@@ -19,7 +19,7 @@ export async function POST() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      query: `ALTER TABLE "Room" ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
+      query: `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
     }),
   });
 
@@ -32,7 +32,7 @@ export async function POST() {
   return NextResponse.json({
     done: false,
     message: "Could not run migration automatically. Run this SQL in Supabase SQL Editor:",
-    sql: `ALTER TABLE "Room" ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
+    sql: `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
     supabaseError: err,
   });
 }
@@ -40,7 +40,7 @@ export async function POST() {
 export async function GET() {
   return NextResponse.json({
     message: "Send POST to this endpoint to add flashFloorPrice column to Room table.",
-    sql: `ALTER TABLE "Room" ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
+    sql: `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS "flashFloorPrice" DOUBLE PRECISION;`,
     supabaseUrl: "https://supabase.com/dashboard/project/uxxhbdqedazpmvbvaosh/sql/new",
   });
 }

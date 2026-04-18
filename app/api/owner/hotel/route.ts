@@ -31,14 +31,14 @@ export async function GET(req: NextRequest) {
   const userId = payload.id;
 
   // Fetch hotel owned by this user
-  const hotels = await sbGet(`Hotel?ownerId=eq.${userId}&select=*`);
+  const hotels = await sbGet(`hotels?ownerId=eq.${userId}&select=*`);
   if (!Array.isArray(hotels) || hotels.length === 0)
     return NextResponse.json({ error: "No hotel found for this account" }, { status: 404 });
 
   const hotel = hotels[0];
 
   // Fetch rooms for this hotel
-  const rooms = await sbGet(`Room?hotelId=eq.${hotel.id}&select=*`);
+  const rooms = await sbGet(`rooms?hotelId=eq.${hotel.id}&select=*`);
 
   return NextResponse.json({ hotel: { ...hotel, rooms: Array.isArray(rooms) ? rooms : [] } });
 }

@@ -42,11 +42,11 @@ export async function PUT(
   const { floorPrice, flashFloorPrice } = await req.json();
 
   // Verify room belongs to the logged-in owner's hotel
-  const hotels = await sbGet(`Hotel?ownerId=eq.${payload.id}&select=id`);
+  const hotels = await sbGet(`hotels?ownerId=eq.${payload.id}&select=id`);
   if (!Array.isArray(hotels) || hotels.length === 0)
     return NextResponse.json({ error: "No hotel for this account" }, { status: 403 });
 
-  const rooms = await sbGet(`Room?id=eq.${params.id}&select=hotelId`);
+  const rooms = await sbGet(`rooms?id=eq.${params.id}&select=hotelId`);
   if (!Array.isArray(rooms) || rooms.length === 0 || rooms[0].hotelId !== hotels[0].id)
     return NextResponse.json({ error: "Room not found or unauthorized" }, { status: 403 });
 
@@ -55,11 +55,11 @@ export async function PUT(
   if (floorPrice != null)      updateData.floorPrice      = parseFloat(String(floorPrice));
   if (flashFloorPrice != null) updateData.flashFloorPrice = parseFloat(String(flashFloorPrice));
 
-  let res = await sbPatch(`Room?id=eq.${params.id}`, updateData);
+  let res = await sbPatch(`rooms?id=eq.${params.id}`, updateData);
 
   // If flashFloorPrice column doesn't exist yet, retry with only floorPrice
   if (!res.ok && flashFloorPrice != null && floorPrice != null) {
-    res = await sbPatch(`Room?id=eq.${params.id}`, { floorPrice: parseFloat(String(floorPrice)) });
+    res = await sbPatch(`rooms?id=eq.${params.id}`, { floorPrice: parseFloat(String(floorPrice)) });
   }
 
   if (!res.ok) {
