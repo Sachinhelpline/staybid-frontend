@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { openRazorpayCheckout } from "@/lib/razorpay";
 import { io } from "socket.io-client";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
@@ -222,10 +223,37 @@ export default function HotelDetail() {
     return m.includes("algorithm") || m.includes("jwt") || m.includes("invalid token") || m.includes("unauthorized") || m.includes("401") || m.includes("forbidden") || m.includes("session");
   };
 
+  const sendBookingEmail = async (details: {
+    bookingId: string; hotelName: string; roomType: string;
+    checkIn: string; checkOut: string; guests: number; nights: number;
+    amount: number; paymentId?: string; city?: string;
+  }) => {
+    const email = user?.email;
+    if (!email) return;
+    try {
+      await fetch("/api/email/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: email, bookingDetails: details }),
+      });
+    } catch { /* email failure should not block booking flow */ }
+  };
+
   const handleFlashBook = async () => {
     if (!user) return router.push("/auth");
     setBookLoading(true);
     try {
+      // Step 1: Razorpay payment
+      const payResult = await openRazorpayCheckout({
+        amount: flashGrandTotal,
+        hotelName: hotel.name,
+        description: `Flash Deal — ${flashRoom?.name || "Room"} — ${flashNights} night${flashNights > 1 ? "s" : ""}`,
+        userName: user.name || user.phone || "",
+        userPhone: user.phone,
+        userEmail: user.email,
+      });
+
+      // Step 2: Confirm booking in backend
       const dealAmt  = parseFloat(dealPrice!);
       const floorAmt = flashRoom?.floorPrice || dealAmt;
 
@@ -236,22 +264,20 @@ export default function HotelDetail() {
         guests: flashAdults + flashChildren,
       });
 
-      // Try booking at deal price; if backend floor-check rejects it, fall back to floor price
       let bidRes: any;
       try {
         bidRes = await api.placeBid({
           hotelId: hotel.id, roomId: dealRoomId!,
           amount: dealAmt,
-          message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""} | Total ₹${flashGrandTotal}`,
+          message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""} | Total ₹${flashGrandTotal} | Razorpay: ${payResult.razorpay_payment_id}`,
           requestId: reqRes?.request?.id,
           dealId: dealId,
         });
       } catch {
-        // Backend does not support dealId bypass — book at floor price; deal discount tracked separately
         bidRes = await api.placeBid({
           hotelId: hotel.id, roomId: dealRoomId!,
           amount: floorAmt,
-          message: `Flash Deal @ ₹${dealAmt} | ${flashNights} nights | Total ₹${flashGrandTotal}`,
+          message: `Flash Deal @ ₹${dealAmt} | ${flashNights} nights | Total ₹${flashGrandTotal} | Razorpay: ${payResult.razorpay_payment_id}`,
           requestId: reqRes?.request?.id,
           dealId: dealId,
         });
@@ -264,9 +290,25 @@ export default function HotelDetail() {
       });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
+
+      // Step 3: Send confirmation email
+      await sendBookingEmail({
+        bookingId: bidRes.bid.id,
+        hotelName: hotel.name,
+        roomType: flashRoom?.name || flashRoom?.type || "Room",
+        checkIn: today,
+        checkOut: flashCheckOut,
+        guests: flashAdults + flashChildren,
+        nights: flashNights,
+        amount: flashGrandTotal,
+        paymentId: payResult.razorpay_payment_id,
+        city: hotel.city,
+      });
+
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {
+      if (e.message === "__CANCELLED__") { /* user dismissed Razorpay */ return; }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
         setFlashBookOpen(false);
         openVerifyAndRetry(() => handleFlashBook());
@@ -311,13 +353,43 @@ export default function HotelDetail() {
     setBnLoading(true);
     try {
       const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
+      const extra = Math.max(0, bnAdults-(bnRoom.capacity||2));
+      const total = bnRoom.floorPrice*nights + extra*500*nights + bnChildren*200*nights;
+
+      // Step 1: Razorpay payment
+      const payResult = await openRazorpayCheckout({
+        amount: total,
+        hotelName: hotel.name,
+        description: `Book Now — ${bnRoom.name || bnRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`,
+        userName: user.name || user.phone || "",
+        userPhone: user.phone,
+        userEmail: user.email,
+      });
+
+      // Step 2: Confirm booking in backend
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
       const token = localStorage.getItem("sb_token");
       await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
+
+      // Step 3: Send confirmation email
+      await sendBookingEmail({
+        bookingId: bidRes.bid.id,
+        hotelName: hotel.name,
+        roomType: bnRoom.name || bnRoom.type,
+        checkIn: bnIn,
+        checkOut: bnOut,
+        guests: bnAdults + bnChildren,
+        nights,
+        amount: total,
+        paymentId: payResult.razorpay_payment_id,
+        city: hotel.city,
+      });
+
       setBnSuccess(true);
     } catch(e:any) {
+      if (e.message === "__CANCELLED__") { return; }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
         setBnRoom(null);
         openVerifyAndRetry(() => openBookNow(bnRoom));
@@ -332,24 +404,59 @@ export default function HotelDetail() {
     setNegLoading(true);
     try {
       const isAboveFloor = negAmt >= negRoom.floorPrice;
-      // Backend rejects bids below floorPrice — submit at floor with guest's target in message
       const submitAmt = isAboveFloor ? negAmt : negRoom.floorPrice;
+      const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
+
+      let paymentId: string | undefined;
+
+      // Razorpay only for instant-confirm bids (above floor)
+      if (isAboveFloor) {
+        const payResult = await openRazorpayCheckout({
+          amount: negAmt * nights,
+          hotelName: hotel.name,
+          description: `Bid — ${negRoom.name || negRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`,
+          userName: user.name || user.phone || "",
+          userPhone: user.phone,
+          userEmail: user.email,
+        });
+        paymentId = payResult.razorpay_payment_id;
+      }
+
       const message = !isAboveFloor
         ? `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`
-        : undefined;
+        : paymentId ? `Paid via Razorpay: ${paymentId}` : undefined;
+
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: negRoom.capacity||2 });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
+
       if (isAboveFloor) {
         const token = localStorage.getItem("sb_token");
         const aRes = await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
         setNegAuto(aRes.ok);
+
+        // Send confirmation email for instant-confirm bookings
+        if (aRes.ok) {
+          await sendBookingEmail({
+            bookingId: bidRes.bid.id,
+            hotelName: hotel.name,
+            roomType: negRoom.name || negRoom.type,
+            checkIn: negIn,
+            checkOut: negOut,
+            guests: negRoom.capacity || 2,
+            nights,
+            amount: negAmt * nights,
+            paymentId,
+            city: hotel.city,
+          });
+        }
       } else {
         setNegAuto(false);
       }
       setNegSuccess(true);
       fetchMyBids();
     } catch(e:any) {
+      if (e.message === "__CANCELLED__") { return; }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
         setNegRoom(null);
         openVerifyAndRetry(() => openNegotiate(negRoom));
@@ -358,9 +465,26 @@ export default function HotelDetail() {
     finally { setNegLoading(false); }
   };
 
-  const handleCounterAccept = async (bidId: string) => {
+  const handleCounterAccept = async (bid: any) => {
+    const bidId = bid.id;
+    const counterAmt = bid.counterAmount || bid.amount;
     setActionLoading(bidId);
     try {
+      // Razorpay payment before accepting counter offer
+      const stored = JSON.parse(localStorage.getItem(`bid_dates_${bidId}`) || "null");
+      const nights = stored?.checkIn && stored?.checkOut
+        ? Math.max(1, Math.ceil((new Date(stored.checkOut).getTime()-new Date(stored.checkIn).getTime())/86400000))
+        : 1;
+
+      const payResult = await openRazorpayCheckout({
+        amount: counterAmt * nights,
+        hotelName: hotel.name,
+        description: `Counter Offer Accept — ${bid.room?.type || "Room"} — ${nights} night${nights > 1 ? "s" : ""}`,
+        userName: user?.name || user?.phone || "",
+        userPhone: user?.phone,
+        userEmail: user?.email,
+      });
+
       const token = localStorage.getItem("sb_token");
       const res = await fetch(`${API}/api/bids/${bidId}/counter-accept`, {
         method: "POST",
@@ -368,9 +492,27 @@ export default function HotelDetail() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+
+      // Send confirmation email
+      await sendBookingEmail({
+        bookingId: bidId,
+        hotelName: hotel.name,
+        roomType: bid.room?.type || "Room",
+        checkIn: stored?.checkIn || "",
+        checkOut: stored?.checkOut || "",
+        guests: bid.request?.guests || 2,
+        nights,
+        amount: counterAmt * nights,
+        paymentId: payResult.razorpay_payment_id,
+        city: hotel.city,
+      });
+
       alert("Booking confirmed! 🎉");
       fetchMyBids();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) {
+      if (e.message === "__CANCELLED__") { return; }
+      alert(e.message);
+    }
     finally { setActionLoading(""); }
   };
 
@@ -723,7 +865,7 @@ export default function HotelDetail() {
                           Hotel countered at <span className="text-xl font-bold text-orange-700">₹{b.counterAmount}</span>
                         </p>
                         <div className="flex gap-2">
-                          <button onClick={() => handleCounterAccept(b.id)} disabled={actionLoading === b.id}
+                          <button onClick={() => handleCounterAccept(b)} disabled={actionLoading === b.id}
                             className="flex-1 py-2.5 btn-luxury rounded-xl text-sm disabled:opacity-40">
                             {actionLoading === b.id ? "…" : `Accept ₹${b.counterAmount}`}
                           </button>
