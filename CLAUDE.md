@@ -255,6 +255,38 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 - Fix: Remove `--accept-data-loss` from Pre-deploy Command in Railway Deploy settings
 - Pre-deploy Command should be empty OR just `npx prisma generate`
 
+### ✅ Multi-Provider Login (`app/auth/page.tsx`) — Apr 2026
+- Added 4 login options with Hindi UI replacing old single phone OTP screen
+- **Google** — Firebase `signInWithPopup` + `GoogleAuthProvider`
+- **Facebook** — Firebase `signInWithPopup` + `FacebookAuthProvider`
+- **Mobile OTP** — Firebase `signInWithPhoneNumber` (real SMS, invisible reCAPTCHA)
+- **WhatsApp OTP** — existing backend `/api/auth/send-otp` with WhatsApp green UI
+- After Firebase auth: tries `POST /api/auth/social-login` for backend JWT; fallback stores Firebase ID token as `sb_token`
+- Created `lib/firebase.ts` — Firebase app init using `NEXT_PUBLIC_FIREBASE_*` env vars
+- Updated `User` type in `lib/auth.tsx` to include optional `email` field
+- Firebase package installed: `firebase` (in `package.json`)
+
+#### Firebase Project Details
+- **Project ID:** `staybid-6feb7`
+- **Console:** https://console.firebase.google.com/project/staybid-6feb7
+- **Enabled providers:** Google ✅, Phone ✅, Facebook (pending FB app setup)
+- **Authorized domains:** `staybids.in` must be in Firebase Console → Authentication → Settings → Authorized domains
+
+#### Firebase Env Vars (in Vercel `staybid-customer-frontend` project)
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abT0x0XyxAF5QcOhjsjXQ
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=staybid-6feb7.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=staybid-6feb7
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=staybid-6feb7.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=208404139595
+NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
+```
+
+#### Important: Correct Vercel Project
+- Live site `staybids.in` is served from **`staybid-customer-frontend`** (prj_xp1BlcRqfrAL1RSGD8eV81FYOMJD)
+- NOT from `staybid-frontend` — always add env vars to `staybid-customer-frontend`
+- After adding env vars, must **Redeploy** from Vercel Deployments tab for changes to take effect
+
 ---
 
 ## Database State (as of Apr 2026)
