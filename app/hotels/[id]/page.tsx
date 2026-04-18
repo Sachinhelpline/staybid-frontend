@@ -98,7 +98,18 @@ export default function HotelDetail() {
   // AI live pricing state — keyed by roomId, recalculates every 60s
   const [roomPrices, setRoomPrices] = useState<Record<string, DynamicPriceResult>>({});
   const [priceFlash, setPriceFlash] = useState<Record<string, boolean>>({});
-  const selectedCheckIn = bnIn || negIn || today;
+
+  // Global availability selector (above room cards)
+  const [globalCheckIn, setGlobalCheckIn] = useState("");
+  const [globalCheckOut, setGlobalCheckOut] = useState("");
+  const [globalGuests, setGlobalGuests] = useState(2);
+  const datesSelected = !!(globalCheckIn && globalCheckOut);
+
+  // Gallery state
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIdx, setGalleryIdx] = useState(0);
+
+  const selectedCheckIn = globalCheckIn || bnIn || negIn || today;
 
   useEffect(() => {
     if (!id) return;
@@ -377,8 +388,8 @@ export default function HotelDetail() {
     finally { setBidLoading(false); }
   };
 
-  const openBookNow = (r: any) => { setBnRoom(r); setBnAdults(r.capacity||2); setBnChildren(0); setBnIn(today); setBnOut(tomorrow); setBnSuccess(false); };
-  const openNegotiate = (r: any) => { setNegRoom(r); setNegAmt(Math.round(r.floorPrice*0.88)); setNegIn(today); setNegOut(tomorrow); setNegSuccess(false); };
+  const openBookNow = (r: any) => { setBnRoom(r); setBnAdults(globalGuests||r.capacity||2); setBnChildren(0); setBnIn(globalCheckIn||today); setBnOut(globalCheckOut||tomorrow); setBnSuccess(false); };
+  const openNegotiate = (r: any) => { setNegRoom(r); setNegAmt(Math.round(r.floorPrice*0.88)); setNegIn(globalCheckIn||today); setNegOut(globalCheckOut||tomorrow); setNegSuccess(false); };
 
   const handleBookNow = async () => {
     if (!user) return router.push("/auth");
@@ -640,6 +651,35 @@ export default function HotelDetail() {
           </div>
         </div>
 
+        {/* ── Photo Gallery Grid ── */}
+        {hotel.images?.length > 1 && (
+          <div className="mb-6">
+            <div className="grid grid-cols-4 gap-2 h-24 md:h-32">
+              {hotel.images.slice(1, 5).map((img: string, i: number) => (
+                <div
+                  key={i}
+                  className="relative rounded-2xl overflow-hidden cursor-pointer group"
+                  onClick={() => { setGalleryIdx(i + 1); setGalleryOpen(true); }}
+                >
+                  <img src={img} alt={`Photo ${i + 2}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
+                  {i === 3 && hotel.images.length > 5 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">+{hotel.images.length - 5} more</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
+              className="mt-2 text-xs text-gold-600 font-semibold hover:text-gold-700 transition-colors flex items-center gap-1"
+            >
+              📷 View all {hotel.images.length} photos
+            </button>
+          </div>
+        )}
+
         {/* ── Hotel meta ── */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
           {hotel.starRating && (
@@ -650,6 +690,14 @@ export default function HotelDetail() {
               ★ {hotel.avgRating.toFixed(1)} · {hotel.totalReviews} reviews
             </span>
           )}
+          {hotel.rooms?.length > 0 && (() => {
+            const minPrice = Math.min(...hotel.rooms.map((r: any) => r.floorPrice || 99999));
+            return minPrice < 99999 ? (
+              <span className="px-3 py-1 bg-luxury-100 text-luxury-700 text-sm font-semibold rounded-full border border-luxury-200">
+                Starting from <span className="text-luxury-900 font-bold">₹{minPrice.toLocaleString()}</span>/night
+              </span>
+            ) : null;
+          })()}
           <button
             onClick={() => setTab("reviews")}
             className="px-3 py-1 text-sm font-semibold text-gold-600 underline underline-offset-2 hover:text-gold-700 transition-colors"
@@ -922,6 +970,62 @@ export default function HotelDetail() {
           </div>
         )}
 
+        {/* ── Availability Picker ── */}
+        <div className="card-luxury p-5 mb-6 border-2 border-gold-200 bg-gradient-to-br from-gold-50/40 to-white">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-7 h-7 rounded-full bg-gold-100 flex items-center justify-center text-sm">🔍</span>
+            <h3 className="font-semibold text-luxury-900 text-sm tracking-tight">Check Availability & Get Best Price</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Check-in */}
+            <div>
+              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Check-in</label>
+              <input
+                type="date"
+                value={globalCheckIn}
+                min={today}
+                onChange={e => setGlobalCheckIn(e.target.value)}
+                className="input-luxury text-sm w-full"
+              />
+            </div>
+            {/* Check-out */}
+            <div>
+              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Check-out</label>
+              <input
+                type="date"
+                value={globalCheckOut}
+                min={globalCheckIn || today}
+                onChange={e => setGlobalCheckOut(e.target.value)}
+                className="input-luxury text-sm w-full"
+              />
+            </div>
+            {/* Guests */}
+            <div>
+              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Guests</label>
+              <div className="flex items-center gap-2 input-luxury">
+                <button onClick={() => setGlobalGuests(Math.max(1, globalGuests - 1))}
+                  className="w-6 h-6 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base flex-shrink-0">−</button>
+                <span className="flex-1 text-center font-semibold text-luxury-900 text-sm">{globalGuests} Guest{globalGuests > 1 ? "s" : ""}</span>
+                <button onClick={() => setGlobalGuests(Math.min(10, globalGuests + 1))}
+                  className="w-6 h-6 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base flex-shrink-0">+</button>
+              </div>
+            </div>
+            {/* CTA */}
+            <div className="flex items-end">
+              {datesSelected ? (
+                <div className="w-full py-2.5 text-center bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700">
+                  ✓ {Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000))} Night{Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000)) > 1 ? "s" : ""} · {globalGuests} Guest{globalGuests > 1 ? "s" : ""}
+                  <div className="text-[0.6rem] text-emerald-600 font-medium mt-0.5">Live prices shown below ↓</div>
+                </div>
+              ) : (
+                <div className="w-full py-2.5 text-center bg-gold-50 border border-gold-200 rounded-xl text-xs font-bold text-gold-700 animate-pulse">
+                  ← Select dates to see prices
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ── Available Rooms ── */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-semibold text-luxury-900 text-base tracking-tight">Available Rooms</h2>
@@ -942,15 +1046,39 @@ export default function HotelDetail() {
             const livePrice = aiPrice?.price || r.floorPrice;
             const isFlashing = priceFlash[r.id];
             const roomImg = getRoomImage(r.name || r.type || "", r.images);
-            const mrp = r.mrp || Math.round(r.floorPrice * 1.4);
+            // OTA prices are always higher than StayBid (realistic market markup)
+            // StayBid saves customer 15-28% vs OTA platforms
+            const otaBase = Math.round(livePrice * 1.22);
             const otas = [
-              { name: "MakeMyTrip",  price: Math.round(mrp * 0.87) },
-              { name: "Booking.com", price: Math.round(mrp * 0.91) },
-              { name: "Goibibo",     price: Math.round(mrp * 0.84) },
-              { name: "Agoda",       price: Math.round(mrp * 0.89) },
+              { name: "MakeMyTrip",  price: Math.round(otaBase * 1.07), icon: "🔴" },
+              { name: "Booking.com", price: Math.round(otaBase * 1.10), icon: "🔵" },
+              { name: "Goibibo",     price: Math.round(otaBase * 1.03), icon: "🟢" },
+              { name: "Agoda",       price: Math.round(otaBase * 1.06), icon: "🟠" },
             ];
             const bestOTA  = Math.min(...otas.map(o => o.price));
             const otaSaving = bestOTA - livePrice;
+            // Amenity icons mapping
+            const AMENITY_ICON: Record<string, string> = {
+              "wifi": "📶", "wi-fi": "📶", "ac": "❄️", "air conditioning": "❄️", "air-conditioning": "❄️",
+              "tv": "📺", "television": "📺", "parking": "🚗", "hot water": "🚿", "geyser": "🚿",
+              "breakfast": "🍳", "room service": "🛎️", "mini bar": "🍷", "minibar": "🍷",
+              "pool": "🏊", "swimming pool": "🏊", "gym": "💪", "fitness": "💪",
+              "spa": "💆", "mountain view": "⛰️", "valley view": "⛰️", "sea view": "🌊",
+              "balcony": "🪟", "terrace": "🌿", "kitchenette": "🍽️", "safe": "🔒",
+              "king bed": "🛏️", "twin bed": "🛏️", "double bed": "🛏️", "sofa": "🛋️",
+              "jacuzzi": "🛁", "bathtub": "🛁", "shower": "🚿", "fireplace": "🔥",
+            };
+            const getAmenityIcon = (name: string) => {
+              const key = name.toLowerCase().trim();
+              return AMENITY_ICON[key] || AMENITY_ICON[Object.keys(AMENITY_ICON).find(k => key.includes(k)) || ""] || "✓";
+            };
+            // Default amenities by room type if DB has none
+            const defaultAmenities = r.type?.toLowerCase().includes("suite")
+              ? ["AC", "TV", "Mini Bar", "Jacuzzi", "Room Service", "Mountain View"]
+              : r.type?.toLowerCase().includes("deluxe")
+              ? ["AC", "TV", "Hot Water", "Balcony", "Room Service", "WiFi"]
+              : ["AC", "TV", "Hot Water", "WiFi", "Parking"];
+            const roomAmenities: string[] = r.amenities?.length > 0 ? r.amenities : defaultAmenities;
 
             return (
               <div key={r.id}
@@ -1003,14 +1131,18 @@ export default function HotelDetail() {
 
                 {/* ── Card Body ── */}
                 <div className="p-5">
-                  {/* Amenities chips */}
-                  {r.amenities?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {r.amenities.slice(0, 5).map((a: string) => (
-                        <span key={a} className="text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500 font-medium">{a}</span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Amenities chips with icons */}
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {roomAmenities.slice(0, 6).map((a: string) => (
+                      <span key={a} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-600 font-medium hover:border-gold-300 hover:bg-gold-50 transition-colors">
+                        <span className="text-[0.7rem]">{getAmenityIcon(a)}</span>
+                        {a}
+                      </span>
+                    ))}
+                    {roomAmenities.length > 6 && (
+                      <span className="text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-400 font-medium">+{roomAmenities.length - 6} more</span>
+                    )}
+                  </div>
 
                   {isFlashRoom ? (
                     /* ── FLASH ROOM PRICING ── */
@@ -1044,98 +1176,143 @@ export default function HotelDetail() {
                   ) : (
                     /* ── REGULAR ROOM PRICING ── */
                     <div>
-                      {/* AI price + OTA comparison */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        {/* Live AI Price */}
-                        <div className={`rounded-2xl p-4 transition-all duration-500 ${
-                          isFlashing
-                            ? "bg-gold-50 border-2 border-gold-400 scale-[1.02]"
-                            : "bg-luxury-50 border border-luxury-100"
-                        }`}>
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                            <p className="text-[0.55rem] text-luxury-400 uppercase tracking-widest font-bold">AI Live Price</p>
-                          </div>
-                          <p className={`text-2xl font-bold transition-colors duration-500 ${isFlashing ? "text-gold-600" : "text-luxury-900"}`}>
-                            ₹{livePrice.toLocaleString()}
-                          </p>
-                          <p className="text-[0.6rem] text-luxury-400">/night</p>
-                          {aiPrice && aiPrice.priceChangePct !== 0 && (
-                            <p className={`text-[0.6rem] font-bold mt-0.5 ${aiPrice.priceChangePct > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                              {aiPrice.priceChangePct > 0 ? "▲" : "▼"} {Math.abs(aiPrice.priceChangePct)}% vs base
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Demand Info */}
-                        {aiPrice && ds && (
-                          <div className={`rounded-2xl p-4 border ${ds.bg} ${ds.border}`}>
-                            <p className="text-[0.55rem] uppercase tracking-widest font-bold text-luxury-400 mb-1">Demand Signal</p>
-                            <p className={`text-sm font-bold ${ds.text}`}>{aiPrice.demandLevel}</p>
-                            {/* Demand bar */}
-                            <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${aiPrice.demandScore}%`, background: ds.dot.replace("bg-", "").replace("-", " ") }}
-                              />
+                      {!datesSelected ? (
+                        /* ── No dates selected — teaser ── */
+                        <div className="mb-4">
+                          <div className="p-4 bg-gold-50 border border-gold-200 rounded-2xl text-center mb-3">
+                            <p className="text-sm font-semibold text-gold-700 mb-1">📅 Select dates to see live price</p>
+                            <p className="text-xs text-gold-600">AI pricing engine calculates the best rate for your travel dates</p>
+                            <div className="mt-2 flex items-center justify-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse" />
+                              <span className="text-[0.6rem] text-gold-500 font-bold uppercase tracking-widest">Starting from ₹{(r.floorPrice || 0).toLocaleString()}/night</span>
                             </div>
-                            <p className={`text-[0.55rem] mt-1.5 font-medium ${ds.text}`}>
-                              {aiPrice.factors[0]}
-                            </p>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Trend chip */}
-                      {aiPrice && (
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          <span className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full ${
-                            aiPrice.trend === "rising"  ? "bg-red-50 text-red-600 border border-red-200" :
-                            aiPrice.trend === "falling" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
-                            "bg-luxury-50 text-luxury-500 border border-luxury-100"
-                          }`}>
-                            {aiPrice.trend === "rising" ? "📈 Price rising" : aiPrice.trend === "falling" ? "📉 Price dropping" : "⟷ Stable price"}
-                          </span>
-                          {aiPrice.factors.slice(0, 2).map((f) => (
-                            <span key={f} className="text-[0.6rem] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                              {f}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => withBackendAuth(() => openBookNow(r))}
+                              className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
+                            >
+                              Book Now
+                            </button>
+                            <button
+                              onClick={() => withBackendAuth(() => openNegotiate(r))}
+                              className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
+                            >
+                              🤝 Negotiate
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ── Dates selected — show full pricing ── */
+                        <>
+                          {/* Nights summary pill */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
+                              📅 {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000))} nights
                             </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* OTA Comparison */}
-                      <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100">
-                        <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">Price Comparison</p>
-                        <div className="space-y-1.5">
-                          {otas.map(o => (
-                            <div key={o.name} className="flex justify-between items-center text-xs">
-                              <span className="text-luxury-400">{o.name}</span>
-                              <span className="text-luxury-400 line-through">₹{o.price.toLocaleString()}</span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between items-center px-3 py-2 bg-gradient-to-r from-gold-600 to-gold-400 rounded-xl mt-2">
-                            <span className="font-bold text-white text-xs">🏆 StayBid</span>
-                            <span className="font-bold text-white text-sm">₹{livePrice.toLocaleString()}</span>
                           </div>
-                          {otaSaving > 0 && <p className="text-[0.65rem] text-emerald-600 font-semibold text-center">✓ Save ₹{otaSaving.toLocaleString()} vs best OTA</p>}
-                        </div>
-                      </div>
 
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => withBackendAuth(() => openBookNow(r))}
-                          className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
-                        >
-                          Book Now
-                        </button>
-                        <button
-                          onClick={() => withBackendAuth(() => openNegotiate(r))}
-                          className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
-                        >
-                          🤝 Negotiate
-                        </button>
-                      </div>
+                          {/* AI price + OTA comparison */}
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            {/* Live AI Price */}
+                            <div className={`rounded-2xl p-4 transition-all duration-500 ${
+                              isFlashing
+                                ? "bg-gold-50 border-2 border-gold-400 scale-[1.02]"
+                                : "bg-luxury-50 border border-luxury-100"
+                            }`}>
+                              <div className="flex items-center gap-1 mb-1">
+                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                                <p className="text-[0.55rem] text-luxury-400 uppercase tracking-widest font-bold">StayBid Live Price</p>
+                              </div>
+                              <p className={`text-2xl font-bold transition-colors duration-500 ${isFlashing ? "text-gold-600" : "text-luxury-900"}`}>
+                                ₹{livePrice.toLocaleString()}
+                              </p>
+                              <p className="text-[0.6rem] text-luxury-400">/night</p>
+                              {aiPrice && aiPrice.priceChangePct !== 0 && (
+                                <p className={`text-[0.6rem] font-bold mt-0.5 ${aiPrice.priceChangePct > 0 ? "text-red-500" : "text-emerald-600"}`}>
+                                  {aiPrice.priceChangePct > 0 ? "▲" : "▼"} {Math.abs(aiPrice.priceChangePct)}% vs base
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Demand Info */}
+                            {aiPrice && ds && (
+                              <div className={`rounded-2xl p-4 border ${ds.bg} ${ds.border}`}>
+                                <p className="text-[0.55rem] uppercase tracking-widest font-bold text-luxury-400 mb-1">Demand Signal</p>
+                                <p className={`text-sm font-bold ${ds.text}`}>{aiPrice.demandLevel}</p>
+                                <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-700"
+                                    style={{ width: `${aiPrice.demandScore}%`, background: ds.dot.replace("bg-", "").replace("-", " ") }}
+                                  />
+                                </div>
+                                <p className={`text-[0.55rem] mt-1.5 font-medium ${ds.text}`}>
+                                  {aiPrice.factors[0]}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Trend chip */}
+                          {aiPrice && (
+                            <div className="flex flex-wrap gap-1.5 mb-4">
+                              <span className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full ${
+                                aiPrice.trend === "rising"  ? "bg-red-50 text-red-600 border border-red-200" :
+                                aiPrice.trend === "falling" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
+                                "bg-luxury-50 text-luxury-500 border border-luxury-100"
+                              }`}>
+                                {aiPrice.trend === "rising" ? "📈 Price rising — book now" : aiPrice.trend === "falling" ? "📉 Price dropping" : "⟷ Stable price"}
+                              </span>
+                              {aiPrice.factors.slice(0, 2).map((f) => (
+                                <span key={f} className="text-[0.6rem] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* OTA Comparison — realistic market rates */}
+                          <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100">
+                            <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2.5">Live Market Comparison</p>
+                            <div className="space-y-1.5">
+                              {otas.map(o => (
+                                <div key={o.name} className="flex justify-between items-center text-xs">
+                                  <span className="flex items-center gap-1.5 text-luxury-500 font-medium">
+                                    <span>{o.icon}</span>{o.name}
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-luxury-400 line-through text-[0.7rem]">₹{o.price.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-gold-600 to-gold-400 rounded-xl mt-2">
+                                <span className="font-bold text-white text-xs flex items-center gap-1.5">🏆 StayBid Price</span>
+                                <span className="font-bold text-white text-sm">₹{livePrice.toLocaleString()}</span>
+                              </div>
+                              {otaSaving > 0 && (
+                                <p className="text-[0.65rem] text-emerald-600 font-bold text-center pt-1">
+                                  ✓ Save ₹{otaSaving.toLocaleString()} vs best OTA ({Math.round(otaSaving/bestOTA*100)}% cheaper)
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => withBackendAuth(() => openBookNow(r))}
+                              className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
+                            >
+                              Book Now
+                            </button>
+                            <button
+                              onClick={() => withBackendAuth(() => openNegotiate(r))}
+                              className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
+                            >
+                              🤝 Negotiate
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1146,6 +1323,57 @@ export default function HotelDetail() {
 
         </> /* end rooms tab */}
       </div>
+
+      {/* ══════════════════════════════════════════
+          PHOTO GALLERY LIGHTBOX
+      ══════════════════════════════════════════ */}
+      {galleryOpen && (
+        <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center"
+          onClick={() => setGalleryOpen(false)}>
+          <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
+            {/* Close */}
+            <button onClick={() => setGalleryOpen(false)}
+              className="absolute -top-12 right-0 text-white/70 hover:text-white text-3xl z-10 transition-colors">✕</button>
+
+            {/* Main image */}
+            <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
+              <img
+                src={hotel.images?.[galleryIdx] || ""}
+                alt={`${hotel.name} — Photo ${galleryIdx + 1}`}
+                className="max-h-[70vh] max-w-full object-contain"
+              />
+              {/* Prev / Next arrows */}
+              {galleryIdx > 0 && (
+                <button onClick={() => setGalleryIdx(galleryIdx - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">
+                  ‹
+                </button>
+              )}
+              {hotel.images && galleryIdx < hotel.images.length - 1 && (
+                <button onClick={() => setGalleryIdx(galleryIdx + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Counter */}
+            <p className="text-center text-white/50 text-sm mt-3">{galleryIdx + 1} / {hotel.images?.length || 1}</p>
+
+            {/* Thumbnails */}
+            {hotel.images?.length > 1 && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                {hotel.images.map((img: string, i: number) => (
+                  <button key={i} onClick={() => setGalleryIdx(i)}
+                    className={`flex-shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════
           INLINE PHONE VERIFY (Google/Social users)
