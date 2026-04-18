@@ -256,12 +256,12 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 - Pre-deploy Command should be empty OR just `npx prisma generate`
 
 ### ✅ Multi-Provider Login (`app/auth/page.tsx`) — Apr 2026
-- Added 4 login options with Hindi UI replacing old single phone OTP screen
+- 4 login options, all UI in English
 - **Google** — Firebase `signInWithPopup` + `GoogleAuthProvider`
 - **Facebook** — Firebase `signInWithPopup` + `FacebookAuthProvider`
 - **Mobile OTP** — Firebase `signInWithPhoneNumber` (real SMS, invisible reCAPTCHA)
 - **WhatsApp OTP** — existing backend `/api/auth/send-otp` with WhatsApp green UI
-- After Firebase auth: tries `POST /api/auth/social-login` for backend JWT; fallback stores Firebase ID token as `sb_token`
+- After Firebase auth: tries `POST /api/auth/social-login` for backend JWT; if fails, stores Firebase token tagged as `"firebase"` type
 - Created `lib/firebase.ts` — Firebase app init using `NEXT_PUBLIC_FIREBASE_*` env vars
 - Updated `User` type in `lib/auth.tsx` to include optional `email` field
 - Firebase package installed: `firebase` (in `package.json`)
@@ -287,6 +287,44 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 - NOT from `staybid-frontend` — always add env vars to `staybid-customer-frontend`
 - After adding env vars, must **Redeploy** from Vercel Deployments tab for changes to take effect
 
+### ✅ "Invalid Algorithm" Error — Permanent Fix (Apr 2026)
+**Root cause:** Firebase issues RS256 tokens; backend uses HS256 `jwt.verify()` — always incompatible.
+
+**Fix: `tokenType` system across 3 files**
+
+#### `lib/auth.tsx`
+- Added `tokenType: "backend" | "firebase"` to AuthContext state
+- `login(token, user, tokenType?)` — optional 3rd argument, defaults to `"backend"`
+- Persisted in localStorage as `sb_token_type`
+- `useAuth()` now returns `{ user, token, tokenType, login, logout, loading }`
+
+#### `app/auth/page.tsx`
+- Firebase fallback now calls `login(idToken, user, "firebase")` — tags the token type
+- Google/Facebook login goes straight to home with no double verification
+
+#### `app/hotels/[id]/page.tsx`
+- `withBackendAuth(action)` wrapper — checks `tokenType` before any booking action:
+  - `"backend"` → runs action directly
+  - `"firebase"` → opens inline "One Quick Step" phone verify modal, stores `action` in `pendingAction` ref
+- Inline verify modal: phone → WhatsApp OTP → `api.verifyOtp()` → upgrades token to backend JWT → auto-runs pending action
+- All 4 action buttons use `withBackendAuth()`: Book Now, Negotiate, Flash Deal banner, Flash Deal room card
+- `jwtRedirect()` helper catches any remaining JWT errors → redirects to `/auth`
+
+#### `localStorage` keys added
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `sb_token_type` | `"backend"` \| `"firebase"` | Tracks whether stored token is backend HS256 or Firebase RS256 |
+
+### ✅ Negotiate Modal — Below-Floor Fix + Smarter UI (Apr 2026)
+- **Below-floor bids:** Backend rejects `amount < floorPrice`. Fix: submit at `floorPrice` with message `"Guest's preferred price: ₹{negAmt}/night. Please counter if possible."` — hotel reviews and may counter
+- **Quick-pick buttons:** 💰 Max Saving (82%), ⭐ Smart Bid (90%), ⚡ Instant Book (100%) of floor price
+- **`bidProb()` enhanced:** Added `tip` (explanation text) and `responseTime` ("Auto-confirms!", "~1 hr", "2–3 hrs", etc.) shown in UI
+- **Below-floor notice:** Amber info box shown in modal when bid is below floor
+
+### ✅ Flash Deal + Book Now — JWT Error Handling (Apr 2026)
+- All three handlers (`handleFlashBook`, `handleBookNow`, `handleNegotiate`) catch JWT/session errors
+- On JWT error: show friendly message + redirect to `/auth` instead of raw error alert
+
 ---
 
 ## Database State (as of Apr 2026)
@@ -311,6 +349,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 |-----|-------|---------|
 | `sb_token` | JWT string | Auth token |
 | `sb_user` | JSON string | User object |
+| `sb_token_type` | `"backend"` \| `"firebase"` | Token algorithm type — backend=HS256, firebase=RS256 |
 | `bid_dates_{bidId}` | `{"checkIn":"...","checkOut":"..."}` | Booking dates fallback |
 | `deal_price_{bidId}` | Price string e.g. "2999" | Actual flash deal price for display |
 
@@ -319,6 +358,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 ## Pending / Known Issues
 - **Wallet balance** only shows when user has actually spent (no fake seed data)
 - **Socket.io real-time** bid updates work when backend is awake (Railway cold starts ~30s)
+- **`/api/auth/social-login` backend endpoint does not exist** — Google/Facebook users go through inline phone verify on first booking action. If this endpoint is ever added to Railway backend, the tokenType system will use it automatically (it tries backend sync first in `syncAndLogin`). Required backend code:
+  ```typescript
+  app.post("/api/auth/social-login", async (req, res) => {
+    const { idToken, provider, email, name, uid } = req.body;
+    // Verify Firebase token via: POST https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={FIREBASE_API_KEY}
+    // Find or create user: phone = email || `firebase_${uid}`
+    // Issue HS256 JWT: jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "30d" })
+    // res.json({ token, user })
+  });
+  ```
+  Add `FIREBASE_API_KEY` env var on Railway (same value as `NEXT_PUBLIC_FIREBASE_API_KEY`).
 
 ---
 
