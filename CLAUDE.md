@@ -274,7 +274,7 @@ localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, che
 
 #### Firebase Env Vars (in Vercel `staybid-customer-frontend` project)
 ```
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abT0x0XyxAF5QcOhjsjXQ
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abTOxOXyxAF5QcOhjsjXQ
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=staybid-6feb7.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=staybid-6feb7
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=staybid-6feb7.firebasestorage.app
