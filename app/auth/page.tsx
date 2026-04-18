@@ -6,14 +6,7 @@ import { api } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
-type Screen =
-  | "options"
-  | "phone"
-  | "phone-otp"
-  | "whatsapp"
-  | "whatsapp-otp"
-  | "social-verify"
-  | "social-verify-otp";
+type Screen = "options" | "phone" | "phone-otp" | "whatsapp" | "whatsapp-otp";
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
 const GoogleIcon = () => (
@@ -53,10 +46,7 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const recaptchaRef = useRef<any>(null);
-  const [pendingName, setPendingName] = useState("");
-  const [pendingEmail, setPendingEmail] = useState("");
 
-  // Clean up reCAPTCHA on unmount
   useEffect(() => {
     return () => {
       if (recaptchaRef.current) {
@@ -66,7 +56,7 @@ export default function AuthPage() {
     };
   }, []);
 
-  // ── After Firebase auth: try backend sync, fallback to Firebase user ──────
+  // ── After Firebase auth: try backend sync, then fall back to Firebase user ─
   const syncAndLogin = async (firebaseUser: any, provider: string) => {
     const idToken = await firebaseUser.getIdToken();
     try {
@@ -92,13 +82,15 @@ export default function AuthPage() {
       }
     } catch {}
 
-    // Backend social-login not available — ask user to verify phone to get a proper backend JWT
-    setPendingName(firebaseUser.displayName || "Guest");
-    setPendingEmail(firebaseUser.email || "");
-    setPhone("");
-    setOtp("");
-    setError("");
-    setScreen("social-verify");
+    // Fallback: use Firebase profile (booking actions will prompt re-login if backend rejects)
+    login(idToken, {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || firebaseUser.phoneNumber || "Guest",
+      email: firebaseUser.email || "",
+      phone: firebaseUser.phoneNumber || "",
+      role: "customer",
+    });
+    router.push("/");
   };
 
   // ── Google Sign-In ─────────────────────────────────────────────────────────
@@ -113,7 +105,7 @@ export default function AuthPage() {
       await syncAndLogin(result.user, "google");
     } catch (e: any) {
       if (e.code !== "auth/popup-closed-by-user") {
-        setError(e.message || "Google login fail ho gaya. Dobara try karein.");
+        setError(e.message || "Google login failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -132,7 +124,7 @@ export default function AuthPage() {
       await syncAndLogin(result.user, "facebook");
     } catch (e: any) {
       if (e.code !== "auth/popup-closed-by-user") {
-        setError(e.message || "Facebook login fail ho gaya. Dobara try karein.");
+        setError(e.message || "Facebook login failed. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -141,24 +133,20 @@ export default function AuthPage() {
 
   // ── Send OTP via Firebase (Mobile) ─────────────────────────────────────────
   const sendFirebaseOtp = async () => {
-    if (phone.length < 10) return setError("10 digit number enter karein");
+    if (phone.length < 10) return setError("Please enter a 10-digit number.");
     setLoading(true);
     setError("");
     try {
       const { firebaseAuth } = await import("@/lib/firebase");
       const { signInWithPhoneNumber, RecaptchaVerifier } = await import("firebase/auth");
-
       if (!recaptchaRef.current) {
-        recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", {
-          size: "invisible",
-        });
+        recaptchaRef.current = new RecaptchaVerifier(firebaseAuth, "recaptcha-container", { size: "invisible" });
       }
-
       const result = await signInWithPhoneNumber(firebaseAuth, `+91${phone}`, recaptchaRef.current);
       setConfirmationResult(result);
       setScreen("phone-otp");
     } catch (e: any) {
-      setError(e.message || "OTP bhejne mein problem aayi. Dobara try karein.");
+      setError(e.message || "Failed to send OTP. Please try again.");
       recaptchaRef.current = null;
     } finally {
       setLoading(false);
@@ -167,30 +155,30 @@ export default function AuthPage() {
 
   // ── Verify Firebase OTP ────────────────────────────────────────────────────
   const verifyFirebaseOtp = async () => {
-    if (otp.length < 6) return setError("6 digit OTP enter karein");
-    if (!confirmationResult) return setError("OTP session expire — dobara bhejein");
+    if (otp.length < 6) return setError("Please enter the 6-digit OTP.");
+    if (!confirmationResult) return setError("OTP session expired — please resend.");
     setLoading(true);
     setError("");
     try {
       const result = await confirmationResult.confirm(otp);
       await syncAndLogin(result.user, "phone");
     } catch {
-      setError("OTP galat hai ya expire ho gaya. Dobara try karein.");
+      setError("Incorrect or expired OTP. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Send OTP via Backend (WhatsApp-themed) ─────────────────────────────────
+  // ── Send OTP via Backend (WhatsApp) ────────────────────────────────────────
   const sendWhatsAppOtp = async () => {
-    if (phone.length < 10) return setError("10 digit number enter karein");
+    if (phone.length < 10) return setError("Please enter a 10-digit number.");
     setLoading(true);
     setError("");
     try {
       await api.sendOtp(phone.startsWith("+91") ? phone : `+91${phone}`);
       setScreen("whatsapp-otp");
     } catch (e: any) {
-      setError(e.message || "OTP bhejne mein problem aayi");
+      setError(e.message || "Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -198,57 +186,15 @@ export default function AuthPage() {
 
   // ── Verify Backend OTP (WhatsApp) ──────────────────────────────────────────
   const verifyWhatsAppOtp = async () => {
-    if (otp.length < 4) return setError("OTP enter karein");
+    if (otp.length < 4) return setError("Please enter your OTP.");
     setLoading(true);
     setError("");
     try {
-      const data = await api.verifyOtp(
-        phone.startsWith("+91") ? phone : `+91${phone}`,
-        otp
-      );
+      const data = await api.verifyOtp(phone.startsWith("+91") ? phone : `+91${phone}`, otp);
       login(data.token || data.accessToken, data.user);
       router.push("/");
     } catch (e: any) {
-      setError(e.message || "OTP galat hai");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Social verify: send OTP after Google/Facebook login ───────────────────
-  const sendSocialVerifyOtp = async () => {
-    if (phone.length < 10) return setError("10 digit number enter karein");
-    setLoading(true);
-    setError("");
-    try {
-      await api.sendOtp(phone.startsWith("+91") ? phone : `+91${phone}`);
-      setScreen("social-verify-otp");
-    } catch (e: any) {
-      setError(e.message || "OTP bhejne mein problem aayi");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ── Social verify: confirm OTP and get backend JWT ────────────────────────
-  const verifySocialOtp = async () => {
-    if (otp.length < 4) return setError("OTP enter karein");
-    setLoading(true);
-    setError("");
-    try {
-      const data = await api.verifyOtp(
-        phone.startsWith("+91") ? phone : `+91${phone}`,
-        otp
-      );
-      const enrichedUser = {
-        ...data.user,
-        ...(pendingName && { name: pendingName }),
-        ...(pendingEmail && { email: pendingEmail }),
-      };
-      login(data.token || data.accessToken, enrichedUser);
-      router.push("/");
-    } catch (e: any) {
-      setError(e.message || "OTP galat hai");
+      setError(e.message || "Incorrect OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -259,12 +205,9 @@ export default function AuthPage() {
     setOtp("");
     if (screen === "phone-otp") { setScreen("phone"); setConfirmationResult(null); }
     else if (screen === "whatsapp-otp") setScreen("whatsapp");
-    else if (screen === "social-verify-otp") setScreen("social-verify");
-    else if (screen === "social-verify") { setScreen("options"); setPhone(""); setPendingName(""); setPendingEmail(""); }
     else { setScreen("options"); setPhone(""); }
   };
 
-  // ── Shared Error Box ───────────────────────────────────────────────────────
   const ErrorBox = () => error ? (
     <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
       <span className="text-red-400 mt-0.5 shrink-0 text-base">⚠</span>
@@ -272,347 +215,179 @@ export default function AuthPage() {
     </div>
   ) : null;
 
-  // ── Brand Header ───────────────────────────────────────────────────────────
   const Brand = ({ subtitle }: { subtitle: string }) => (
     <div className="text-center mb-8">
-      <div className="w-16 h-16 rounded-2xl btn-luxury flex items-center justify-center text-white text-2xl font-bold mx-auto mb-5 shadow-gold-lg">
-        S
-      </div>
+      <div className="w-16 h-16 rounded-2xl btn-luxury flex items-center justify-center text-white text-2xl font-bold mx-auto mb-5 shadow-gold-lg">S</div>
       <h1 className="font-display font-light text-luxury-900 text-3xl mb-1.5">StayBid</h1>
       <p className="text-luxury-400 text-sm tracking-wide">{subtitle}</p>
     </div>
   );
 
   return (
-    <div
-      className="min-h-[88vh] flex items-center justify-center px-4 py-10"
-      style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f4f2ec 100%)" }}
-    >
-      {/* Invisible reCAPTCHA anchor for Firebase Phone Auth */}
+    <div className="min-h-[88vh] flex items-center justify-center px-4 py-10"
+      style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f4f2ec 100%)" }}>
       <div id="recaptcha-container" />
-
       <div className="w-full max-w-sm">
 
-        {/* ── OPTIONS SCREEN ──────────────────────────────────────────────── */}
+        {/* ── OPTIONS SCREEN ── */}
         {screen === "options" && (
           <>
-            <Brand subtitle="Apna account choose karein" />
+            <Brand subtitle="Sign in to your account" />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-3">
 
-              {/* Google */}
-              <button
-                onClick={signInWithGoogle}
-                disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-luxury-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50"
-              >
+              <button onClick={signInWithGoogle} disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-luxury-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50">
                 <GoogleIcon />
-                <span className="flex-1 text-left">Google se login karein</span>
+                <span className="flex-1 text-left">Continue with Google</span>
               </button>
 
-              {/* Facebook */}
-              <button
-                onClick={signInWithFacebook}
-                disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-blue-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50"
-              >
+              <button onClick={signInWithFacebook} disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-blue-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50">
                 <FacebookIcon />
-                <span className="flex-1 text-left">Facebook se login karein</span>
+                <span className="flex-1 text-left">Continue with Facebook</span>
               </button>
 
-              {/* Divider */}
               <div className="flex items-center gap-3 py-1">
                 <div className="flex-1 h-px bg-luxury-100" />
-                <span className="text-xs text-luxury-300 tracking-wider">YA PHIR</span>
+                <span className="text-xs text-luxury-300 tracking-wider">OR</span>
                 <div className="flex-1 h-px bg-luxury-100" />
               </div>
 
-              {/* WhatsApp OTP */}
-              <button
-                onClick={() => { setError(""); setPhone(""); setScreen("whatsapp"); }}
-                disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 border border-green-200 bg-green-50 rounded-2xl hover:bg-green-100 transition-all duration-200 text-sm font-medium text-green-800 disabled:opacity-50"
-              >
+              <button onClick={() => { setError(""); setPhone(""); setScreen("whatsapp"); }} disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border border-green-200 bg-green-50 rounded-2xl hover:bg-green-100 transition-all duration-200 text-sm font-medium text-green-800 disabled:opacity-50">
                 <WhatsAppIcon />
-                <span className="flex-1 text-left">WhatsApp OTP se login karein</span>
+                <span className="flex-1 text-left">Login with WhatsApp OTP</span>
               </button>
 
-              {/* Mobile OTP */}
-              <button
-                onClick={() => { setError(""); setPhone(""); setScreen("phone"); }}
-                disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 btn-luxury rounded-2xl text-sm font-medium text-white disabled:opacity-50"
-              >
+              <button onClick={() => { setError(""); setPhone(""); setScreen("phone"); }} disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 btn-luxury rounded-2xl text-sm font-medium text-white disabled:opacity-50">
                 <PhoneIcon />
-                <span className="flex-1 text-left">Mobile OTP se login karein</span>
+                <span className="flex-1 text-left">Login with Mobile OTP</span>
               </button>
 
-              {loading && (
-                <p className="text-center text-xs text-luxury-400 pt-1">Ek second…</p>
-              )}
+              {loading && <p className="text-center text-xs text-luxury-400 pt-1">Please wait…</p>}
               <ErrorBox />
             </div>
-
             <p className="text-center text-xs text-luxury-300 mt-6 tracking-wide">
-              Login karke aap StayBid ki terms of service maante hain.
+              By continuing, you agree to StayBid's Terms of Service.
             </p>
           </>
         )}
 
-        {/* ── PHONE OTP SCREEN (Firebase) ─────────────────────────────────── */}
+        {/* ── MOBILE OTP — ENTER PHONE ── */}
         {screen === "phone" && (
           <>
-            <Brand subtitle="Mobile number se real OTP aayega" />
+            <Brand subtitle="Enter your mobile number" />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Wapas jao
+                <span>←</span> Back
               </button>
-
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gold-50 border border-gold-200 mb-5 mx-auto">
                 <PhoneIcon />
               </div>
               <h2 className="text-center font-display text-xl text-luxury-800 mb-1">Mobile OTP</h2>
-              <p className="text-center text-xs text-luxury-400 mb-5">SMS OTP aapke number pe aayega</p>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
-                Mobile Number
-              </label>
+              <p className="text-center text-xs text-luxury-400 mb-5">We'll send a one-time code via SMS</p>
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Mobile Number</label>
               <div className="flex gap-2 mb-5">
-                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  value={phone}
+                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
+                <input type="tel" value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10 digit number"
-                  className="input-luxury text-sm"
-                  maxLength={10}
-                  inputMode="numeric"
-                />
+                  placeholder="10-digit number" className="input-luxury text-sm"
+                  maxLength={10} inputMode="numeric" autoFocus />
               </div>
-              <button
-                onClick={sendFirebaseOtp}
-                disabled={loading || phone.length < 10}
-                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40"
-              >
-                {loading ? "OTP bhej rahe hain…" : "OTP Bhejo"}
+              <button onClick={sendFirebaseOtp} disabled={loading || phone.length < 10}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40">
+                {loading ? "Sending OTP…" : "Send OTP"}
               </button>
               <ErrorBox />
             </div>
           </>
         )}
 
-        {/* ── PHONE OTP VERIFY SCREEN (Firebase) ─────────────────────────── */}
+        {/* ── MOBILE OTP — VERIFY ── */}
         {screen === "phone-otp" && (
           <>
-            <Brand subtitle={`OTP bheja gaya +91 ${phone} par`} />
+            <Brand subtitle={`OTP sent to +91 ${phone}`} />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Number badlo
+                <span>←</span> Change number
               </button>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
-                6-Digit OTP Enter Karein
-              </label>
-              <input
-                type="text"
-                value={otp}
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Enter 6-Digit OTP</label>
+              <input type="text" value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="• • • • • •"
                 className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-5"
-                maxLength={6}
-                inputMode="numeric"
-                autoFocus
-              />
-              <button
-                onClick={verifyFirebaseOtp}
-                disabled={loading || otp.length < 6}
-                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40 mb-3"
-              >
-                {loading ? "Verify ho raha hai…" : "Verify karein"}
+                maxLength={6} inputMode="numeric" autoFocus />
+              <button onClick={verifyFirebaseOtp} disabled={loading || otp.length < 6}
+                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40 mb-3">
+                {loading ? "Verifying…" : "Verify & Login"}
               </button>
-              <button
-                onClick={goBack}
-                className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors"
-              >
-                OTP nahi aaya? Dobara bhejo
+              <button onClick={goBack} className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors">
+                Didn't receive OTP? Resend
               </button>
               <ErrorBox />
             </div>
           </>
         )}
 
-        {/* ── WHATSAPP PHONE SCREEN (Backend OTP) ─────────────────────────── */}
+        {/* ── WHATSAPP OTP — ENTER PHONE ── */}
         {screen === "whatsapp" && (
           <>
-            <Brand subtitle="WhatsApp number se login karein" />
+            <Brand subtitle="Enter your WhatsApp number" />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Wapas jao
+                <span>←</span> Back
               </button>
-
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-green-50 border border-green-200 mb-5 mx-auto">
                 <WhatsAppIcon />
               </div>
               <h2 className="text-center font-display text-xl text-green-700 mb-1">WhatsApp OTP</h2>
-              <p className="text-center text-xs text-luxury-400 mb-5">Aapke WhatsApp number pe OTP aayega</p>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
-                WhatsApp Number
-              </label>
+              <p className="text-center text-xs text-luxury-400 mb-5">We'll send a one-time code to your WhatsApp</p>
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">WhatsApp Number</label>
               <div className="flex gap-2 mb-5">
                 <span className="px-3 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-medium text-green-700 flex-shrink-0 flex items-center gap-1">
                   <WhatsAppIcon /> +91
                 </span>
-                <input
-                  type="tel"
-                  value={phone}
+                <input type="tel" value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10 digit number"
-                  className="input-luxury text-sm"
-                  maxLength={10}
-                  inputMode="numeric"
-                />
+                  placeholder="10-digit number" className="input-luxury text-sm"
+                  maxLength={10} inputMode="numeric" autoFocus />
               </div>
-              <button
-                onClick={sendWhatsAppOtp}
-                disabled={loading || phone.length < 10}
+              <button onClick={sendWhatsAppOtp} disabled={loading || phone.length < 10}
                 className="w-full py-3.5 rounded-2xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
-              >
-                {loading ? "OTP bhej rahe hain…" : "WhatsApp OTP Bhejo"}
+                style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}>
+                {loading ? "Sending OTP…" : "Send WhatsApp OTP"}
               </button>
               <ErrorBox />
             </div>
           </>
         )}
 
-        {/* ── WHATSAPP OTP VERIFY SCREEN ──────────────────────────────────── */}
+        {/* ── WHATSAPP OTP — VERIFY ── */}
         {screen === "whatsapp-otp" && (
           <>
-            <Brand subtitle={`OTP bheja gaya +91 ${phone} par`} />
+            <Brand subtitle={`OTP sent to +91 ${phone}`} />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-
               <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Number badlo
+                <span>←</span> Change number
               </button>
-
               <div className="flex items-center justify-center gap-2 mb-5">
                 <WhatsAppIcon />
-                <span className="text-sm text-green-700 font-medium">WhatsApp OTP aaya hoga</span>
+                <span className="text-sm text-green-700 font-medium">Check your WhatsApp for the OTP</span>
               </div>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">
-                OTP Enter Karein
-              </label>
-              <input
-                type="text"
-                value={otp}
+              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Enter OTP</label>
+              <input type="text" value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="• • • • • •"
                 className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-5"
-                maxLength={6}
-                inputMode="numeric"
-                autoFocus
-              />
-              <button
-                onClick={verifyWhatsAppOtp}
-                disabled={loading || otp.length < 4}
+                maxLength={6} inputMode="numeric" autoFocus />
+              <button onClick={verifyWhatsAppOtp} disabled={loading || otp.length < 4}
                 className="w-full py-3.5 rounded-2xl text-sm font-semibold text-white mb-3 transition-all duration-200 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
-              >
-                {loading ? "Verify ho raha hai…" : "Verify aur Login Karein"}
-              </button>
-              <button
-                onClick={goBack}
-                className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors"
-              >
-                OTP nahi aaya? Dobara bhejo
-              </button>
-              <ErrorBox />
-            </div>
-          </>
-        )}
-
-        {/* ── SOCIAL VERIFY SCREEN (phone entry after Google/Facebook) ─── */}
-        {screen === "social-verify" && (
-          <>
-            <Brand subtitle="Last step — phone verify karein" />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-              <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Wapas jao
-              </button>
-
-              <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">✅</span>
-                </div>
-                {pendingName && <p className="font-semibold text-luxury-900 text-base">{pendingName}</p>}
-                {pendingEmail && <p className="text-xs text-luxury-400 mt-0.5">{pendingEmail}</p>}
-                <p className="text-sm text-luxury-600 mt-3 leading-relaxed">
-                  Google login successful! <br />
-                  Ab apna phone verify karein — secure booking ke liye zaruri hai.
-                </p>
-              </div>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Mobile Number</label>
-              <div className="flex gap-2 mb-5">
-                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10 digit number"
-                  className="input-luxury text-sm"
-                  maxLength={10}
-                  inputMode="numeric"
-                  autoFocus
-                />
-              </div>
-              <button
-                onClick={sendSocialVerifyOtp}
-                disabled={loading || phone.length < 10}
-                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40"
-              >
-                {loading ? "OTP bhej rahe hain…" : "OTP Bhejo"}
-              </button>
-              <ErrorBox />
-            </div>
-          </>
-        )}
-
-        {/* ── SOCIAL VERIFY OTP SCREEN ────────────────────────────────── */}
-        {screen === "social-verify-otp" && (
-          <>
-            <Brand subtitle={`OTP bheja gaya +91 ${phone} par`} />
-            <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-              <button onClick={goBack} className="flex items-center gap-1.5 text-xs text-luxury-400 hover:text-luxury-700 mb-5 transition-colors">
-                <span>←</span> Number badlo
-              </button>
-
-              <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">6-Digit OTP Enter Karein</label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="• • • • • •"
-                className="input-luxury text-center text-2xl tracking-[0.5em] font-bold mb-5"
-                maxLength={6}
-                inputMode="numeric"
-                autoFocus
-              />
-              <button
-                onClick={verifySocialOtp}
-                disabled={loading || otp.length < 4}
-                className="btn-luxury w-full py-3.5 rounded-2xl text-sm disabled:opacity-40 mb-3"
-              >
-                {loading ? "Verify ho raha hai…" : "Verify aur Login Karein"}
+                style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}>
+                {loading ? "Verifying…" : "Verify & Login"}
               </button>
               <button onClick={goBack} className="w-full py-2 text-sm text-luxury-400 hover:text-luxury-700 transition-colors">
-                OTP nahi aaya? Dobara bhejo
+                Didn't receive OTP? Resend
               </button>
               <ErrorBox />
             </div>
