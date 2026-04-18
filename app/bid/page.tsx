@@ -181,22 +181,68 @@ export default function BidPage() {
         form.specialRequests,
       ].filter(Boolean).join(". ");
 
-      const reqBody = {
-        city:      form.city,
-        checkIn:   new Date(form.checkIn).toISOString(),
-        checkOut:  new Date(form.checkOut).toISOString(),
-        guests:    form.adults + form.children,
-        maxBudget: budget,
-        requirements: [
-          `Room: ${form.roomType}, ${form.bedType} bed`,
-          `View: ${form.view}`,
-          `Meal plan: ${form.mealPlan.toUpperCase()}`,
-          extras,
-        ].filter(Boolean).join(" | ") || undefined,
-      };
+      const requirements = [
+        `Room: ${form.roomType}, ${form.bedType} bed`,
+        `View: ${form.view}`,
+        `Meal plan: ${form.mealPlan.toUpperCase()}`,
+        extras,
+      ].filter(Boolean).join(" | ") || undefined;
 
-      await api.createBidRequest(reqBody);
-      setSuccess({ city: form.city, checkIn: form.checkIn, checkOut: form.checkOut, nights, budget, rooms: form.rooms, totalEst });
+      // 1. Find hotels matching the selected city (case-insensitive, partial match)
+      const hotelsResp = await api.getHotels({ city: form.city });
+      const allHotels = hotelsResp.hotels || [];
+      const cityLower = form.city.toLowerCase();
+      let matching = allHotels.filter((h: any) => {
+        const hc = (h.city || "").toLowerCase();
+        return hc === cityLower || hc.includes(cityLower) || cityLower.includes(hc);
+      });
+      // Fallback: if server-side filter returned nothing useful, use whatever the server gave us
+      if (matching.length === 0 && allHotels.length > 0) matching = allHotels.slice(0, 3);
+
+      if (matching.length === 0) {
+        throw new Error(`No hotels available in ${form.city} right now. Try Mussoorie, Dhanaulti, or Rishikesh.`);
+      }
+
+      const checkInISO  = new Date(form.checkIn).toISOString();
+      const checkOutISO = new Date(form.checkOut).toISOString();
+      const guests      = form.adults + form.children;
+
+      // 2. For each matching hotel, create a bid request with its first room
+      const results = await Promise.allSettled(
+        matching.map(async (hotel: any) => {
+          const detail = await api.getHotel(hotel.id);
+          const rooms  = detail.rooms || detail.hotel?.rooms || [];
+          const room   = rooms[0];
+          if (!room) throw new Error(`${hotel.name}: no rooms`);
+
+          return api.createBidRequest({
+            hotelId:  hotel.id,
+            roomId:   room.id,
+            amount:   budget,
+            checkIn:  checkInISO,
+            checkOut: checkOutISO,
+            guests,
+            requirements,
+          });
+        })
+      );
+
+      const successCount = results.filter(r => r.status === "fulfilled").length;
+      if (successCount === 0) {
+        const firstErr: any = results.find(r => r.status === "rejected");
+        throw new Error(firstErr?.reason?.message || "Could not submit your bid. Please try again.");
+      }
+
+      setSuccess({
+        city: form.city,
+        checkIn: form.checkIn,
+        checkOut: form.checkOut,
+        nights,
+        budget,
+        rooms: form.rooms,
+        totalEst,
+        hotelsNotified: successCount,
+      });
     } catch (e: any) {
       alert(e.message || "Something went wrong. Please try again.");
     } finally {
@@ -215,7 +261,7 @@ export default function BidPage() {
           <p className="text-gold-500 text-[0.65rem] font-semibold tracking-[0.2em] uppercase mb-2">Bid Request Launched</p>
           <h1 className="font-display font-light text-luxury-900 text-3xl mb-3">Hotels Are Competing!</h1>
           <p className="text-luxury-400 text-sm leading-relaxed mb-6">
-            Your bid for <strong className="text-luxury-700">{success.nights} nights in {success.city}</strong> has been sent to all matching hotels. You'll be notified the moment they respond.
+            Your bid for <strong className="text-luxury-700">{success.nights} nights in {success.city}</strong> has been sent to <strong className="text-gold-600">{success.hotelsNotified || "all matching"} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>. You'll be notified the moment they respond.
           </p>
 
           {/* Mini summary */}
