@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "sb_publishable_N2tMgg386VuuZcuy-Tpi8A_FLRK_-eE";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
 const SB_H   = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" };
 
 function decodeJwt(t: string) {
   try { return JSON.parse(Buffer.from(t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"), "base64").toString()); }
   catch { return null; }
+}
+
+/** Resolve all user IDs sharing the same phone (handles +91 duplicate records) */
+async function resolveOwnerIds(primaryId: string): Promise<string[]> {
+  const ids: string[] = [primaryId];
+  try {
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
+    const users = await uRes.json();
+    if (!Array.isArray(users) || !users[0]?.phone) return ids;
+    const rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    const allRes = await fetch(
+      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
+      { headers: SB_H }
+    );
+    const all = await allRes.json();
+    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
+  } catch { /* ignore */ }
+  return ids;
 }
 
 export async function GET(req: NextRequest) {
@@ -15,8 +33,11 @@ export async function GET(req: NextRequest) {
   const payload = decodeJwt(token);
   if (!payload?.id) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-  // Get hotel for this owner
-  const hRes = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=eq.${payload.id}&select=id`, { headers: SB_H });
+  const ownerIds = await resolveOwnerIds(payload.id);
+  const hRes = await fetch(
+    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
+    { headers: SB_H }
+  );
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ deals: [] });
 
@@ -37,8 +58,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { hotelId, roomId, dealPrice, discount, durationHours, maxRooms } = body;
 
-  // Verify ownership
-  const hRes = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=eq.${payload.id}&id=eq.${hotelId}&select=id`, { headers: SB_H });
+  // Verify ownership using all owner IDs
+  const ownerIds = await resolveOwnerIds(payload.id);
+  const hRes = await fetch(
+    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&id=eq.${hotelId}&select=id`,
+    { headers: SB_H }
+  );
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 

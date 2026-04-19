@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "sb_publishable_N2tMgg386VuuZcuy-Tpi8A_FLRK_-eE";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
 const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 
@@ -10,6 +10,24 @@ function decodeJwt(token: string): any {
     const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     return JSON.parse(Buffer.from(b64, "base64").toString("utf8"));
   } catch { return null; }
+}
+
+/** Resolve all user IDs sharing the same phone (handles +91 duplicate records) */
+async function resolveOwnerIds(primaryId: string): Promise<string[]> {
+  const ids: string[] = [primaryId];
+  try {
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_HEADERS });
+    const users = await uRes.json();
+    if (!Array.isArray(users) || !users[0]?.phone) return ids;
+    const rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    const allRes = await fetch(
+      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
+      { headers: SB_HEADERS }
+    );
+    const all = await allRes.json();
+    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
+  } catch { /* ignore */ }
+  return ids;
 }
 
 export async function GET(req: NextRequest) {
@@ -31,8 +49,12 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* fall through to Supabase */ }
 
-  // Fallback: Supabase direct
-  const hotelRes = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=eq.${payload.id}&select=id`, { headers: SB_HEADERS });
+  // Fallback: Supabase direct — resolve all owner IDs to handle +91 duplicate accounts
+  const ownerIds = await resolveOwnerIds(payload.id);
+  const hotelRes = await fetch(
+    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
+    { headers: SB_HEADERS }
+  );
   const hotels = await hotelRes.json();
   if (!Array.isArray(hotels) || hotels.length === 0) return NextResponse.json({ bids: [] });
 
