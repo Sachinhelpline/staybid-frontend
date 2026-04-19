@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE } from "@/lib/ai-pricing";
+import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 
 const today     = new Date().toISOString().split("T")[0];
 const tomorrow  = new Date(Date.now() + 86400000).toISOString().split("T")[0];
@@ -502,7 +502,8 @@ export default function PartnerDashboard() {
               <div className="grid md:grid-cols-2 gap-5">
                 {rooms.map(r => {
                   const ai   = aiPrices[r.id];
-                  const ds   = ai ? DEMAND_STYLE[ai.demandLevel as DemandLevel] : null;
+                  const demandKey = (ai?.demandLevel ?? "") as DemandLevel;
+                  const ds   = ai && demandKey in DEMAND_STYLE ? DEMAND_STYLE[demandKey] : null;
                   const img  = getRoomImage(r.name || r.type || "", r.images);
                   const ep   = editPrices[r.id] || {};
                   return (
