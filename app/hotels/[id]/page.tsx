@@ -99,10 +99,16 @@ export default function HotelDetail() {
   const [roomPrices, setRoomPrices] = useState<Record<string, DynamicPriceResult>>({});
   const [priceFlash, setPriceFlash] = useState<Record<string, boolean>>({});
 
-  // Global availability selector (above room cards)
-  const [globalCheckIn, setGlobalCheckIn] = useState("");
-  const [globalCheckOut, setGlobalCheckOut] = useState("");
-  const [globalGuests, setGlobalGuests] = useState(2);
+  // Global availability selector (above room cards — single source of truth)
+  const [globalCheckIn, setGlobalCheckIn]       = useState("");
+  const [globalCheckOut, setGlobalCheckOut]     = useState("");
+  const [globalAdults, setGlobalAdults]         = useState(2);
+  const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
+  const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
+  const globalTotalGuests = globalAdults + globalChildren + globalKids;
+  const globalNights = (globalCheckIn && globalCheckOut)
+    ? Math.max(1, Math.ceil((new Date(globalCheckOut).getTime() - new Date(globalCheckIn).getTime()) / 86400000))
+    : 0;
   const datesSelected = !!(globalCheckIn && globalCheckOut);
 
   // Gallery state
@@ -388,8 +394,29 @@ export default function HotelDetail() {
     finally { setBidLoading(false); }
   };
 
-  const openBookNow = (r: any) => { setBnRoom(r); setBnAdults(globalGuests||r.capacity||2); setBnChildren(0); setBnIn(globalCheckIn||today); setBnOut(globalCheckOut||tomorrow); setBnSuccess(false); };
-  const openNegotiate = (r: any) => { setNegRoom(r); setNegAmt(Math.round(r.floorPrice*0.88)); setNegIn(globalCheckIn||today); setNegOut(globalCheckOut||tomorrow); setNegSuccess(false); };
+  const openBookNow = (r: any) => {
+    if (!globalCheckIn || !globalCheckOut) {
+      document.getElementById("availability-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setBnRoom(r);
+    setBnAdults(globalAdults);
+    setBnChildren(globalChildren);
+    setBnIn(globalCheckIn);
+    setBnOut(globalCheckOut);
+    setBnSuccess(false);
+  };
+  const openNegotiate = (r: any) => {
+    if (!globalCheckIn || !globalCheckOut) {
+      document.getElementById("availability-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setNegRoom(r);
+    setNegAmt(Math.round(r.floorPrice * 0.88));
+    setNegIn(globalCheckIn);
+    setNegOut(globalCheckOut);
+    setNegSuccess(false);
+  };
 
   const handleBookNow = async () => {
     if (!user) return router.push("/auth");
@@ -470,7 +497,7 @@ export default function HotelDetail() {
         ? `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`
         : paymentId ? `Paid via Razorpay: ${paymentId}` : undefined;
 
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: negRoom.capacity||2 });
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
@@ -487,7 +514,7 @@ export default function HotelDetail() {
             roomType: negRoom.name || negRoom.type,
             checkIn: negIn,
             checkOut: negOut,
-            guests: negRoom.capacity || 2,
+            guests: globalTotalGuests || negRoom.capacity || 2,
             nights,
             amount: negAmt * nights,
             paymentId,
@@ -652,33 +679,45 @@ export default function HotelDetail() {
         </div>
 
         {/* ── Photo Gallery Grid ── */}
-        {hotel.images?.length > 1 && (
-          <div className="mb-6">
-            <div className="grid grid-cols-4 gap-2 h-24 md:h-32">
-              {hotel.images.slice(1, 5).map((img: string, i: number) => (
-                <div
-                  key={i}
-                  className="relative rounded-2xl overflow-hidden cursor-pointer group"
-                  onClick={() => { setGalleryIdx(i + 1); setGalleryOpen(true); }}
-                >
-                  <img src={img} alt={`Photo ${i + 2}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300" />
-                  {i === 3 && hotel.images.length > 5 && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">+{hotel.images.length - 5} more</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+        {(() => {
+          // Pad with Unsplash placeholders if hotel has fewer than 5 photos
+          const PLACEHOLDERS = [
+            "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
+            "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+            "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
+            "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+            "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
+            "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
+          ];
+          const base = Array.isArray(hotel.images) ? hotel.images : [];
+          const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
+          const thumbs = allImgs.slice(1, 5);
+          return (
+            <div className="mb-6">
+              <div className="grid grid-cols-4 gap-2 h-24 md:h-32">
+                {thumbs.map((img: string, i: number) => (
+                  <div key={i}
+                    className="relative rounded-2xl overflow-hidden cursor-pointer group"
+                    onClick={() => { setGalleryIdx(i + 1); setGalleryOpen(true); }}>
+                    <img src={img} alt={`Photo ${i + 2}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all duration-300" />
+                    {i === 3 && allImgs.length > 5 && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">+{allImgs.length - 5} more</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
+                className="mt-2 text-xs text-gold-600 font-semibold hover:text-gold-700 transition-colors flex items-center gap-1">
+                📷 View all photos
+              </button>
             </div>
-            <button
-              onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
-              className="mt-2 text-xs text-gold-600 font-semibold hover:text-gold-700 transition-colors flex items-center gap-1"
-            >
-              📷 View all {hotel.images.length} photos
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Hotel meta ── */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -971,59 +1010,94 @@ export default function HotelDetail() {
         )}
 
         {/* ── Availability Picker ── */}
-        <div className="card-luxury p-5 mb-6 border-2 border-gold-200 bg-gradient-to-br from-gold-50/40 to-white">
+        <div id="availability-picker" className="card-luxury p-5 mb-6 border-2 border-gold-200 bg-gradient-to-br from-gold-50/40 to-white">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-7 h-7 rounded-full bg-gold-100 flex items-center justify-center text-sm">🔍</span>
             <h3 className="font-semibold text-luxury-900 text-sm tracking-tight">Check Availability & Get Best Price</h3>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Check-in */}
+
+          {/* Dates row */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div>
-              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Check-in</label>
-              <input
-                type="date"
-                value={globalCheckIn}
-                min={today}
-                onChange={e => setGlobalCheckIn(e.target.value)}
-                className="input-luxury text-sm w-full"
-              />
+              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">📅 Check-in</label>
+              <input type="date" value={globalCheckIn} min={today}
+                onChange={e => setGlobalCheckIn(e.target.value)} className="input-luxury text-sm w-full" />
             </div>
-            {/* Check-out */}
             <div>
-              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Check-out</label>
-              <input
-                type="date"
-                value={globalCheckOut}
-                min={globalCheckIn || today}
-                onChange={e => setGlobalCheckOut(e.target.value)}
-                className="input-luxury text-sm w-full"
-              />
-            </div>
-            {/* Guests */}
-            <div>
-              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Guests</label>
-              <div className="flex items-center gap-2 input-luxury">
-                <button onClick={() => setGlobalGuests(Math.max(1, globalGuests - 1))}
-                  className="w-6 h-6 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base flex-shrink-0">−</button>
-                <span className="flex-1 text-center font-semibold text-luxury-900 text-sm">{globalGuests} Guest{globalGuests > 1 ? "s" : ""}</span>
-                <button onClick={() => setGlobalGuests(Math.min(10, globalGuests + 1))}
-                  className="w-6 h-6 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base flex-shrink-0">+</button>
-              </div>
-            </div>
-            {/* CTA */}
-            <div className="flex items-end">
-              {datesSelected ? (
-                <div className="w-full py-2.5 text-center bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700">
-                  ✓ {Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000))} Night{Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000)) > 1 ? "s" : ""} · {globalGuests} Guest{globalGuests > 1 ? "s" : ""}
-                  <div className="text-[0.6rem] text-emerald-600 font-medium mt-0.5">Live prices shown below ↓</div>
-                </div>
-              ) : (
-                <div className="w-full py-2.5 text-center bg-gold-50 border border-gold-200 rounded-xl text-xs font-bold text-gold-700 animate-pulse">
-                  ← Select dates to see prices
-                </div>
-              )}
+              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">📅 Check-out</label>
+              <input type="date" value={globalCheckOut} min={globalCheckIn || today}
+                onChange={e => setGlobalCheckOut(e.target.value)} className="input-luxury text-sm w-full" />
             </div>
           </div>
+
+          {/* Guests row */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {/* Adults */}
+            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
+              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">👤 Adults</p>
+              <div className="flex items-center justify-between">
+                <button onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
+                <span className="font-bold text-luxury-900 text-base">{globalAdults}</span>
+                <button onClick={() => setGlobalAdults(Math.min(8, globalAdults + 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+              </div>
+              <p className="text-[0.55rem] text-luxury-400 text-center mt-1">12+ yrs</p>
+            </div>
+            {/* Children */}
+            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
+              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">👦 Children</p>
+              <div className="flex items-center justify-between">
+                <button onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
+                <span className="font-bold text-luxury-900 text-base">{globalChildren}</span>
+                <button onClick={() => setGlobalChildren(Math.min(6, globalChildren + 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+              </div>
+              <p className="text-[0.55rem] text-amber-600 text-center mt-1 font-semibold">5–12 · +₹200/night</p>
+            </div>
+            {/* Kids */}
+            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
+              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🧒 Kids</p>
+              <div className="flex items-center justify-between">
+                <button onClick={() => setGlobalKids(Math.max(0, globalKids - 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
+                <span className="font-bold text-luxury-900 text-base">{globalKids}</span>
+                <button onClick={() => setGlobalKids(Math.min(6, globalKids + 1))}
+                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+              </div>
+              <p className="text-[0.55rem] text-emerald-600 text-center mt-1 font-semibold">&lt;5 yrs · FREE</p>
+            </div>
+          </div>
+
+          {/* Summary strip */}
+          {datesSelected ? (
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <span className="text-emerald-600 text-sm font-bold">✓</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} →{" "}
+                {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
+                {" · "}{globalNights} night{globalNights > 1 ? "s" : ""}
+              </span>
+              <span className="text-xs text-emerald-700">·</span>
+              <span className="text-xs font-semibold text-emerald-800">
+                {globalAdults} adult{globalAdults > 1 ? "s" : ""}
+                {globalChildren > 0 ? ` · ${globalChildren} child${globalChildren > 1 ? "ren" : ""}` : ""}
+                {globalKids > 0 ? ` · ${globalKids} kid${globalKids > 1 ? "s" : ""} (free)` : ""}
+              </span>
+              {globalChildren > 0 && (
+                <span className="ml-auto text-[0.65rem] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  +₹{globalChildren * 200}/night for children
+                </span>
+              )}
+              <span className="w-full text-[0.6rem] text-emerald-600 font-medium mt-0.5">↓ Live prices updated below</span>
+            </div>
+          ) : (
+            <div className="p-3 bg-gold-50 border border-gold-200 rounded-2xl text-center">
+              <p className="text-xs font-bold text-gold-700">← Select check-in & check-out dates to see live prices</p>
+              <p className="text-[0.6rem] text-gold-500 mt-0.5">AI engine calculates the best rate for your exact travel dates</p>
+            </div>
+          )}
         </div>
 
         {/* ── Available Rooms ── */}
@@ -1205,12 +1279,30 @@ export default function HotelDetail() {
                       ) : (
                         /* ── Dates selected — show full pricing ── */
                         <>
-                          {/* Nights summary pill */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
-                              📅 {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {Math.max(1, Math.ceil((new Date(globalCheckOut).getTime()-new Date(globalCheckIn).getTime())/86400000))} nights
-                            </span>
-                          </div>
+                          {/* Nights + guest summary + total cost */}
+                          {(() => {
+                            const extraA = Math.max(0, globalAdults - (r.capacity || 2));
+                            const extraCharge = extraA * 500 * globalNights + globalChildren * 200 * globalNights;
+                            const nightTotal = livePrice * globalNights + extraCharge;
+                            return (
+                              <div className="mb-3 space-y-1.5">
+                                <div className="flex flex-wrap gap-1.5">
+                                  <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
+                                    📅 {new Date(globalCheckIn).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} → {new Date(globalCheckOut).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {globalNights} night{globalNights > 1 ? "s" : ""}
+                                  </span>
+                                  <span className="text-[0.65rem] font-bold px-3 py-1 bg-luxury-100 text-luxury-600 rounded-full border border-luxury-200">
+                                    👥 {globalAdults} adults{globalChildren > 0 ? ` · ${globalChildren} children` : ""}{globalKids > 0 ? ` · ${globalKids} kids` : ""}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between px-3 py-2 bg-luxury-50 rounded-xl border border-luxury-100">
+                                  <span className="text-xs text-luxury-500">
+                                    ₹{livePrice.toLocaleString()} × {globalNights}n{extraA > 0 ? ` + ₹${extraA * 500}×${globalNights}n extra` : ""}{globalChildren > 0 ? ` + ₹${globalChildren * 200}×${globalNights}n child` : ""}
+                                  </span>
+                                  <span className="text-sm font-bold text-luxury-900">₹{nightTotal.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* AI price + OTA comparison */}
                           <div className="grid grid-cols-2 gap-3 mb-4">
@@ -1327,53 +1419,56 @@ export default function HotelDetail() {
       {/* ══════════════════════════════════════════
           PHOTO GALLERY LIGHTBOX
       ══════════════════════════════════════════ */}
-      {galleryOpen && (
-        <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center"
-          onClick={() => setGalleryOpen(false)}>
-          <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
-            {/* Close */}
-            <button onClick={() => setGalleryOpen(false)}
-              className="absolute -top-12 right-0 text-white/70 hover:text-white text-3xl z-10 transition-colors">✕</button>
+      {galleryOpen && (() => {
+        const PLACEHOLDERS = [
+          "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
+          "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+          "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
+          "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+          "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
+          "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
+        ];
+        const base = Array.isArray(hotel.images) ? hotel.images : [];
+        const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
+        return (
+          <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center"
+            onClick={() => setGalleryOpen(false)}>
+            <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setGalleryOpen(false)}
+                className="absolute -top-12 right-0 text-white/70 hover:text-white text-3xl z-10 transition-colors">✕</button>
 
-            {/* Main image */}
-            <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
-              <img
-                src={hotel.images?.[galleryIdx] || ""}
-                alt={`${hotel.name} — Photo ${galleryIdx + 1}`}
-                className="max-h-[70vh] max-w-full object-contain"
-              />
-              {/* Prev / Next arrows */}
-              {galleryIdx > 0 && (
-                <button onClick={() => setGalleryIdx(galleryIdx - 1)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">
-                  ‹
-                </button>
-              )}
-              {hotel.images && galleryIdx < hotel.images.length - 1 && (
-                <button onClick={() => setGalleryIdx(galleryIdx + 1)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">
-                  ›
-                </button>
-              )}
-            </div>
+              <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
+                <img
+                  src={allImgs[galleryIdx] || PLACEHOLDERS[0]}
+                  alt={`${hotel.name} — Photo ${galleryIdx + 1}`}
+                  className="max-h-[70vh] max-w-full object-contain"
+                  onError={(e: any) => { e.target.src = PLACEHOLDERS[galleryIdx % PLACEHOLDERS.length]; }}
+                />
+                {galleryIdx > 0 && (
+                  <button onClick={() => setGalleryIdx(galleryIdx - 1)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">‹</button>
+                )}
+                {galleryIdx < allImgs.length - 1 && (
+                  <button onClick={() => setGalleryIdx(galleryIdx + 1)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center text-xl hover:bg-black/80 transition-all">›</button>
+                )}
+              </div>
 
-            {/* Counter */}
-            <p className="text-center text-white/50 text-sm mt-3">{galleryIdx + 1} / {hotel.images?.length || 1}</p>
+              <p className="text-center text-white/50 text-sm mt-3">{galleryIdx + 1} / {allImgs.length}</p>
 
-            {/* Thumbnails */}
-            {hotel.images?.length > 1 && (
               <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
-                {hotel.images.map((img: string, i: number) => (
+                {allImgs.map((img: string, i: number) => (
                   <button key={i} onClick={() => setGalleryIdx(i)}
                     className={`flex-shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                    <img src={img} alt="" className="w-full h-full object-cover" />
+                    <img src={img} alt="" className="w-full h-full object-cover"
+                      onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
                   </button>
                 ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ══════════════════════════════════════════
           INLINE PHONE VERIFY (Google/Social users)
@@ -1591,24 +1686,32 @@ export default function HotelDetail() {
               <button onClick={() => setBnRoom(null)} className="text-white/60 hover:text-white text-2xl">✕</button>
             </div>
             <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+
+              {/* Booking summary — read-only from global picker */}
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
-                  <input type="date" value={bnIn} min={today} onChange={e=>setBnIn(e.target.value)} className="input-luxury text-sm"/></div>
-                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
-                  <input type="date" value={bnOut} min={bnIn} onChange={e=>setBnOut(e.target.value)} className="input-luxury text-sm"/></div>
+                <div className="bg-luxury-50 rounded-2xl p-4 border border-luxury-100">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1.5">Check-in</p>
+                  <p className="font-semibold text-luxury-900 text-sm">{new Date(bnIn).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</p>
+                </div>
+                <div className="bg-luxury-50 rounded-2xl p-4 border border-luxury-100">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1.5">Check-out</p>
+                  <p className="font-semibold text-luxury-900 text-sm">{new Date(bnOut).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}</p>
+                </div>
               </div>
-              <div className="space-y-3">
-                {[["Adults", bnAdults, setBnAdults, 1, 8],["Children (5-12)", bnChildren, setBnChildren, 0, 6]].map(([label, val, setter, mn, mx]: any) => (
-                  <div key={label as string} className="flex items-center justify-between p-3 bg-luxury-50 rounded-2xl">
-                    <p className="text-sm font-semibold text-luxury-900">{label as string}</p>
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => setter(Math.max(mn, val-1))} className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center font-bold text-luxury-600 hover:border-gold-400">−</button>
-                      <span className="w-5 text-center font-bold">{val}</span>
-                      <button onClick={() => setter(Math.min(mx, val+1))} className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center font-bold text-luxury-600 hover:border-gold-400">+</button>
-                    </div>
-                  </div>
-                ))}
+
+              {/* Guest summary */}
+              <div className="bg-luxury-50 rounded-2xl p-4 border border-luxury-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Guests</p>
+                  <p className="text-sm font-semibold text-luxury-900">
+                    {globalAdults} adult{globalAdults>1?"s":""}
+                    {globalChildren>0?` · ${globalChildren} child${globalChildren>1?"ren":""}`:""}{globalKids>0?` · ${globalKids} kid${globalKids>1?"s":""} (free)`:""}
+                  </p>
+                </div>
+                <span className="text-[0.6rem] text-luxury-400 bg-white border border-luxury-200 px-2.5 py-1 rounded-full">from Availability</span>
               </div>
+
+              {/* Rate breakdown */}
               {(() => {
                 const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
                 const extra = Math.max(0, bnAdults-(bnRoom.capacity||2));
@@ -1620,6 +1723,7 @@ export default function HotelDetail() {
                       <div className="flex justify-between text-luxury-700"><span>₹{bnRoom.floorPrice.toLocaleString()} × {nights} night{nights>1?"s":""}</span><span className="font-semibold">₹{(bnRoom.floorPrice*nights).toLocaleString()}</span></div>
                       {extra > 0 && <div className="flex justify-between text-luxury-700"><span>{extra} extra adult{extra>1?"s":""} × ₹500 × {nights}n</span><span className="font-semibold">₹{(extra*500*nights).toLocaleString()}</span></div>}
                       {bnChildren > 0 && <div className="flex justify-between text-luxury-700"><span>{bnChildren} child{bnChildren>1?"ren":""} × ₹200 × {nights}n</span><span className="font-semibold">₹{(bnChildren*200*nights).toLocaleString()}</span></div>}
+                      {globalKids > 0 && <div className="flex justify-between text-luxury-700"><span>{globalKids} kid{globalKids>1?"s":""} (under 5)</span><span className="font-semibold text-emerald-600">FREE</span></div>}
                       <div className="border-t border-gold-200 pt-2 mt-2 flex justify-between font-bold text-luxury-900"><span>Total</span><span className="text-xl">₹{total.toLocaleString()}</span></div>
                     </div>
                   </div>
@@ -1660,12 +1764,27 @@ export default function HotelDetail() {
             <div className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
               <style>{`.neg-slider{accent-color:var(--sc,#d97706)}.neg-slider::-webkit-slider-thumb{background:var(--sc,#d97706)}`}</style>
 
-              {/* Dates */}
+              {/* Dates + Guests — read-only from global picker */}
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
-                  <input type="date" value={negIn} min={today} onChange={e=>setNegIn(e.target.value)} className="input-luxury text-sm"/></div>
-                <div><label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
-                  <input type="date" value={negOut} min={negIn} onChange={e=>setNegOut(e.target.value)} className="input-luxury text-sm"/></div>
+                <div className="bg-luxury-50 rounded-2xl p-4 border border-luxury-100">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1.5">Check-in</p>
+                  <p className="font-semibold text-luxury-900 text-sm">{new Date(negIn).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</p>
+                </div>
+                <div className="bg-luxury-50 rounded-2xl p-4 border border-luxury-100">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1.5">Check-out</p>
+                  <p className="font-semibold text-luxury-900 text-sm">{new Date(negOut).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short"})}</p>
+                </div>
+              </div>
+              <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Guests</p>
+                  <p className="text-sm font-semibold text-luxury-900">
+                    {globalAdults} adult{globalAdults>1?"s":""}
+                    {globalChildren>0?` · ${globalChildren} children`:""}
+                    {globalKids>0?` · ${globalKids} kids (free)`:""}
+                  </p>
+                </div>
+                <span className="text-[0.6rem] text-luxury-400 bg-white border border-luxury-200 px-2.5 py-1 rounded-full">from Availability</span>
               </div>
 
               {/* Smart Bid Suggestions */}
@@ -1755,11 +1874,7 @@ export default function HotelDetail() {
                     )}
                   </div>
                 );
-              })() : (
-                <div className="rounded-2xl border border-dashed border-luxury-200 p-6 text-center text-luxury-400 text-sm">
-                  Select check-in & check-out dates to see AI pricing
-                </div>
-              )}
+              })() : null}
 
               <button onClick={handleNegotiate} disabled={negLoading || !negIn || !negOut || negIn >= negOut}
                 className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
