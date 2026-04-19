@@ -11,12 +11,12 @@ function decodeJwt(t: string) {
 
 /** Find all user IDs sharing the same phone (handles +91 prefix variants) */
 async function resolveOwnerIds(primaryId: string): Promise<string[]> {
-  const ids = new Set<string>([primaryId]);
+  const ids: string[] = [primaryId];
   try {
     // Get phone for this user
     const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
     const users = await uRes.json();
-    if (!Array.isArray(users) || !users[0]?.phone) return [...ids];
+    if (!Array.isArray(users) || !users[0]?.phone) return ids;
 
     const rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
     // Find all records with this phone (with or without +91)
@@ -25,9 +25,13 @@ async function resolveOwnerIds(primaryId: string): Promise<string[]> {
       { headers: SB_H }
     );
     const all = await allRes.json();
-    if (Array.isArray(all)) all.forEach((u: any) => u.id && ids.add(u.id));
+    if (Array.isArray(all)) {
+      all.forEach((u: any) => {
+        if (u.id && !ids.includes(u.id)) ids.push(u.id);
+      });
+    }
   } catch { /* ignore */ }
-  return [...ids];
+  return ids;
 }
 
 export async function GET(req: NextRequest) {
