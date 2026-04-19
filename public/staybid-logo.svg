@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Dark navy background circle -->
+  <rect width="120" height="120" rx="22" fill="#0d1b2e"/>
+  <!-- House roof shape (gold) -->
+  <path d="M60 18 L88 42 L84 42 L84 72 L36 72 L36 42 L32 42 Z" fill="#c9911a" opacity="0.15"/>
+  <path d="M60 22 L86 44 L82 44 L82 70 L38 70 L38 44 L34 44 Z" fill="none" stroke="#c9911a" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Door -->
+  <rect x="51" y="55" width="18" height="15" rx="3" fill="#c9911a" opacity="0.7"/>
+  <!-- S letter (gold) -->
+  <text x="30" y="108" font-family="Inter,Arial,sans-serif" font-weight="900" font-size="52" fill="url(#goldGrad)" letter-spacing="-2">s</text>
+  <!-- B letter (silver/white) -->
+  <text x="68" y="108" font-family="Inter,Arial,sans-serif" font-weight="900" font-size="52" fill="url(#silverGrad)" letter-spacing="-2">b</text>
+  <defs>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0b429"/>
+      <stop offset="100%" stop-color="#c9911a"/>
+    </linearGradient>
+    <linearGradient id="silverGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#cbd5e0"/>
+    </linearGradient>
+  </defs>
+</svg>
