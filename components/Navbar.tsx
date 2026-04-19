@@ -23,6 +23,9 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
 
+  // Partner panel has its own layout — hide customer Navbar there
+  if (pathname?.startsWith("/partner")) return null;
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll, { passive: true });
