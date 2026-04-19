@@ -43,7 +43,7 @@ export async function openRazorpayCheckout(opts: OpenCheckoutOptions): Promise<R
 
   return new Promise((resolve, reject) => {
     const rzp = new (window as any).Razorpay({
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd",
       order_id: order.id,
       amount: order.amount,
       currency: "INR",
