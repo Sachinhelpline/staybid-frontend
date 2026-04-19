@@ -502,7 +502,7 @@ export default function PartnerDashboard() {
               <div className="grid md:grid-cols-2 gap-5">
                 {rooms.map(r => {
                   const ai   = aiPrices[r.id];
-                  const ds   = ai ? DEMAND_STYLE[ai.demandLevel] : null;
+                  const ds   = ai ? DEMAND_STYLE[ai.demandLevel as DemandLevel] : null;
                   const img  = getRoomImage(r.name || r.type || "", r.images);
                   const ep   = editPrices[r.id] || {};
                   return (
