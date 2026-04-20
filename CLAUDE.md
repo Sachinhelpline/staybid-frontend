@@ -5,7 +5,7 @@ StayBid is a luxury hotel reverse-auction platform. Customers browse hotels, pla
 
 **Backend:** Railway (Node/Express/Prisma/PostgreSQL) at `https://staybid-live-production.up.railway.app`  
 **Frontend:** Vercel auto-deploys from `main` branch of `Sachinhelpline/staybid-frontend`  
-**Dev branch:** `claude/upgrade-staybids-luxury-theme-axZqo` → merge to `main` to deploy
+**Dev branch:** work directly on `main` — each commit auto-deploys to Vercel
 
 ---
 
@@ -15,22 +15,33 @@ app/
   page.tsx              # Hero landing page
   layout.tsx            # Root layout (AuthProvider + Navbar)
   globals.css           # Design tokens + utility classes
-  auth/page.tsx         # OTP login (phone → OTP)
+  auth/page.tsx         # Multi-provider login (Google/Facebook/Mobile OTP/WhatsApp OTP)
   hotels/page.tsx       # Hotel listing + search filters
-  hotels/[id]/page.tsx  # Hotel detail — bids, flash deals, reviews [MOST COMPLEX]
+  hotels/[id]/page.tsx  # Hotel detail — gallery, availability picker, bids, flash deals [MOST COMPLEX]
   bid/page.tsx          # Reverse auction bid request form
   flash-deals/page.tsx  # Time-limited AI deals with countdown
   my-bids/page.tsx      # User bid history + counter-offer responses
-  bookings/page.tsx     # Confirmed bookings with barcode + StayPoints
+  bookings/page.tsx     # Confirmed bookings with barcode + StayPoints + payment info
   wallet/page.tsx       # Wallet balance + transactions
+  partner/page.tsx      # Partner login (phone OTP + hotel ownership check)
+  partner/dashboard/page.tsx  # Full partner dashboard (6 tabs — see below)
+  api/razorpay/order/route.ts   # Create Razorpay order (live keys)
+  api/razorpay/verify/route.ts  # Verify Razorpay HMAC signature (new)
+  api/partner/hotel/route.ts    # GET hotel+rooms+bookings / PATCH hotel profile
+  api/partner/bids/route.ts     # GET bids for hotel (Railway → Supabase fallback)
+  api/partner/bids/[id]/route.ts # POST accept/counter/reject bid
+  api/partner/flash-deals/route.ts # GET/POST/DELETE flash deals
 components/
-  Navbar.tsx            # Sticky glass-morphism nav + mobile drawer
+  Navbar.tsx            # Sticky glass-morphism nav — hidden on /partner/** routes
   ServerStatus.tsx      # Backend health check banner
   ImageUpload.tsx       # Supabase storage image uploader
 lib/
   api.ts                # All API calls (Bearer token auth)
-  auth.tsx              # AuthContext + useAuth() hook
+  auth.tsx              # AuthContext + useAuth() — tokenType system
   supabase.ts           # Supabase storage client
+  razorpay.ts           # openRazorpayCheckout() — loads script, creates order, verifies
+  firebase.ts           # Firebase app init (Google/Phone auth)
+  ai-pricing.ts         # calculateDynamicPrice(), getRoomImage(), DEMAND_STYLE
 ```
 
 ---
@@ -38,8 +49,19 @@ lib/
 ## Environment Variables
 ```
 NEXT_PUBLIC_API_URL=https://staybid-live-production.up.railway.app
+RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
+RAZORPAY_KEY_SECRET=dv3xFGG44R2FSqlshkDVY2Gn
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_SfFAsbYjbHfztd
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyCREXxZEUTJk1abTOxOXyxAF5QcOhjsjXQ
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=staybid-6feb7.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=staybid-6feb7
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=staybid-6feb7.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=208404139595
+NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 ```
-No `.env` file needed locally — fallback hardcoded in `lib/api.ts`.
+- `.env.local` exists locally (gitignored) with all above keys
+- Razorpay keys also hardcoded as fallbacks in API routes (so payment works even without Vercel env vars)
+- To add to Vercel: run `node setup-razorpay-vercel.js YOUR_VERCEL_TOKEN` (token from https://vercel.com/account/tokens)
 
 ---
 
@@ -99,14 +121,32 @@ glass             — frosted glass backdrop-blur effect
 ---
 
 ## Hotel Detail Page (`app/hotels/[id]/page.tsx`)
-Most complex page. Key features:
-- **Flash deal flow:** URL params `dealId`, `dealPrice`, `roomId`, `discount`, `directBook=true` trigger flash booking modal with today's locked check-in
-- **Book Now:** Instant booking at room price, auto-accepts bid
-- **Negotiate Price:** AI smart slider showing bid acceptance probability (hides floor price from user)
-- **OTA comparison:** Simulated prices for MakeMyTrip, Booking.com, Goibibo, Agoda vs StayBid
+Most complex page (~900+ lines). Key features:
+- **Photo gallery:** Full-screen lightbox with prev/next, thumbnail strip, Unsplash placeholders pad to 5+ images
+- **"Starting from ₹X/night"** badge using `Math.min(...rooms.map(r => r.floorPrice))`
+- **Global availability picker** (`id="availability-picker"`): single section for check-in/out + Adults/Children/Kids
+  - `globalAdults`, `globalChildren` (₹200/night), `globalKids` (<5 FREE)
+  - Book Now / Negotiate scroll here first if dates not selected
+- **Flash deal flow:** URL params `dealId`, `dealPrice`, `roomId`, `discount`, `directBook=true` → flash booking modal (unchanged)
+- **Book Now:** Razorpay payment → bid request → auto-accept
+- **Negotiate Price:** Razorpay payment (only for above-floor bids) → bid with message
+- **OTA comparison:** `otaBase = livePrice * 1.22`, each OTA × multiplier — StayBid always 15–28% cheaper
+- **Room amenity badges** with emoji icons (`AMENITY_ICON` map)
 - **Real-time bids:** Socket.io listens to `bid:counter` events
 - **Reviews tab / Rooms tab / About tab**
 - **IMPORTANT:** Never show the word "floor price" in UI — only show the price number
+
+### Razorpay Payment Flow (all booking types)
+```typescript
+// 1. Create order server-side
+POST /api/razorpay/order → { id, amount, currency }
+// 2. Open Razorpay checkout (client)
+openRazorpayCheckout({ amount, hotelName, ... }) → razorpay_payment_id
+// 3. Verify signature server-side
+POST /api/razorpay/verify → { verified: true }
+// 4. Confirm booking in Railway backend
+POST /api/bids/:id/accept
+```
 
 ### Flash Deal URL Format
 ```
@@ -158,10 +198,9 @@ app.get("/api/bids/my", authenticate, async (req: any, res) => {
 ---
 
 ## Git Workflow
-- Feature branch: `claude/upgrade-staybids-luxury-theme-axZqo`
-- Production: `main` → auto-deploys to Vercel
-- Always push to feature branch, then merge to `main` to deploy
-- Push command: `git push -u origin main`
+- Work directly on `main` — every push auto-deploys to Vercel (`staybid-customer-frontend`)
+- Push command: `git push origin main`
+- Vercel project: `staybid-customer-frontend` (prj_xp1BlcRqfrAL1RSGD8eV81FYOMJD), team: `team_ulUk1IYy4DFl2C1rJ5WU3kUm`
 
 ---
 
@@ -208,6 +247,70 @@ await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, {
 });
 localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn, checkOut }));
 ```
+
+---
+
+## Partner Panel (`/partner` and `/partner/dashboard`)
+
+### Login (`app/partner/page.tsx`)
+- Separate from customer login — uses Railway WhatsApp OTP (`/api/proxy/api/auth/send-otp`)
+- After OTP verify: calls `/api/partner/hotel` to confirm hotel ownership
+- Stores session as `sb_partner_token` + `sb_partner_user` (separate from `sb_token`)
+- Customer Navbar hidden on all `/partner/**` routes (early return in `components/Navbar.tsx`)
+
+### Dashboard (`app/partner/dashboard/page.tsx`)
+6 tabs: **Overview | Bid Inbox | Rooms & Pricing | Flash Deals | Bookings | Profile**
+- Data fetched from `/api/partner/hotel`, `/api/partner/bids`, `/api/partner/flash-deals`
+- AI prices recalculate every 60s using `calculateDynamicPrice()` from `lib/ai-pricing.ts`
+- Bid actions (accept/counter/reject) via modal → `POST /api/partner/bids/:id`
+- Flash deal create/deactivate via `/api/partner/flash-deals`
+- Hotel profile edit via `PATCH /api/partner/hotel`
+
+### Partner API Routes (all in `app/api/partner/`)
+| Route | Method | Description |
+|-------|--------|-------------|
+| `hotel/route.ts` | GET | hotel + rooms + accepted bids (bookings) |
+| `hotel/route.ts` | PATCH | update hotel fields (name, city, state, starRating, etc.) |
+| `bids/route.ts` | GET | all bids for hotel (Railway → Supabase fallback) |
+| `bids/[id]/route.ts` | POST | accept / counter / reject bid |
+| `flash-deals/route.ts` | GET/POST/DELETE | manage flash deals |
+
+### Partner Auth — Dual User ID Fix
+- **Problem:** Railway may store phone as `8881555188` OR `+918881555188` → creates 2 user records, only one owns hotels
+- **Fix:** `resolveOwnerIds()` in `hotel/route.ts` looks up all user IDs with same phone (with/without +91), queries hotels with `ownerId=in.(id1,id2)`
+- Supabase anon JWT key used: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60`
+
+### Partner localStorage Keys
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `sb_partner_token` | JWT string | Partner auth token (separate from customer) |
+| `sb_partner_user` | JSON string | Partner user object + hotel info |
+
+---
+
+## Razorpay Integration
+
+### Files
+- `lib/razorpay.ts` — `openRazorpayCheckout()`: loads script, creates order, opens modal, verifies
+- `app/api/razorpay/order/route.ts` — server-side order creation (live keys hardcoded as fallback)
+- `app/api/razorpay/verify/route.ts` — HMAC-SHA256 signature verification
+- `setup-razorpay-vercel.js` — one-time script to add env vars to Vercel (run with Vercel token)
+
+### Live Keys
+- Key ID: `rzp_live_SfFAsbYjbHfztd` (public — safe in client code)
+- Key Secret: `dv3xFGG44R2FSqlshkDVY2Gn` (server-side only in API routes)
+
+### How Payment Works
+1. `openRazorpayCheckout({ amount, hotelName, userName, userPhone, userEmail })` called from hotel page
+2. Calls `POST /api/razorpay/order` → Razorpay order created
+3. Razorpay checkout modal opens (gold theme, pre-filled user details)
+4. On success: `POST /api/razorpay/verify` → HMAC check → `{ verified: true }`
+5. Booking confirmed in Railway backend, `razorpay_payment_id` stored in bid message
+
+### Booking Handlers That Use Razorpay
+- `handleBookNow` — always charges before confirming
+- `handleFlashBook` — always charges (flash deal total)
+- `handleNegotiate` — charges only for above-floor (instant-confirm) bids; below-floor bids sent to hotel without payment
 
 ---
 
@@ -328,28 +431,31 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 ---
 
 ## Database State (as of Apr 2026)
+- **Supabase project:** `uxxhbdqedazpmvbvaosh` (URL: `https://uxxhbdqedazpmvbvaosh.supabase.co`)
 - **Hotels:** 4 (all in Uttarakhand/Himalayas region)
-- **Actual hotel IDs and names (verified in Supabase):**
-  | id | name | city | starRating |
-  |----|------|------|-----------|
-  | `202601` | Dhanaulti Village Resort By Woodora | Dhanaulti | 4 |
-  | `hotel-1` | The Mountain Grand | Mussoorie | 5 |
-  | `hotel-2` | Forest Retreat Dhanaulti | Dhanaulti | 4 |
-  | `hotel-3` | Ganga View Rishikesh | Rishikesh | 4 |
-- **Extra columns in hotels table:** `lat`, `lng`, `ownerId`, `state` (not in original schema docs)
-- **ownerId:** hotel-1 owner = `cmnr4b8ol0001whjy8jc1xxxh`; hotels 2,3,202601 owner = `9d92d00f-4147-4411-ab19-ca65fd5f1d21`
-- **Rooms:** ~8 (2 per hotel)
-- **Flash Deals:** active deals exist
-- **NOTE:** Previous CLAUDE.md had wrong hotel names (Grand Hyatt Mumbai etc.) — those were placeholder names, actual DB has Uttarakhand properties
+  | id | name | city | starRating | ownerId |
+  |----|------|------|-----------|---------|
+  | `202601` | Dhanaulti Village Resort By Woodora | Dhanaulti | 4 | `cmnr4b8ol0001whjy8jc1xxxh` |
+  | `hotel-1` | The Mountain Grand | Mussoorie | 5 | `cmnr4b8ol0001whjy8jc1xxxh` |
+  | `hotel-2` | Forest Retreat Dhanaulti | Dhanaulti | 4 | `cmnr4b8ol0001whjy8jc1xxxh` |
+  | `hotel-3` | Ganga View Rishikesh | Rishikesh | 4 | `cmnr4b8ol0001whjy8jc1xxxh` |
+- **All 4 hotels owned by Sachin Tomer** (`+918881555188` → id `cmnr4b8ol0001whjy8jc1xxxh`)
+- **Duplicate user record:** `cmnuolhpx0000u6ov2o2s8hxy` (phone `8881555188` without +91) — owns no hotels, handled by `resolveOwnerIds()`
+- **Extra columns in hotels table:** `lat`, `lng`, `ownerId`, `state`
+- **Rooms:** ~8 (2 per hotel), RLS disabled on hotels/rooms/bids
+- **Flash Deals:** active deals exist in `flash_deals` table
+- **users table:** RLS enabled on one variant — use JWT anon key (not publishable key) for queries
 
 ---
 
 ## localStorage Keys Used
 | Key | Value | Purpose |
 |-----|-------|---------|
-| `sb_token` | JWT string | Auth token |
-| `sb_user` | JSON string | User object |
-| `sb_token_type` | `"backend"` \| `"firebase"` | Token algorithm type — backend=HS256, firebase=RS256 |
+| `sb_token` | JWT string | Customer auth token |
+| `sb_user` | JSON string | Customer user object |
+| `sb_token_type` | `"backend"` \| `"firebase"` | Token algorithm — backend=HS256, firebase=RS256 |
+| `sb_partner_token` | JWT string | Partner auth token (separate from customer) |
+| `sb_partner_user` | JSON string | Partner user + hotel object |
 | `bid_dates_{bidId}` | `{"checkIn":"...","checkOut":"..."}` | Booking dates fallback |
 | `deal_price_{bidId}` | Price string e.g. "2999" | Actual flash deal price for display |
 
@@ -358,7 +464,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 ## Pending / Known Issues
 - **Wallet balance** only shows when user has actually spent (no fake seed data)
 - **Socket.io real-time** bid updates work when backend is awake (Railway cold starts ~30s)
-- **`/api/auth/social-login` backend endpoint does not exist** — Google/Facebook users go through inline phone verify on first booking action. If this endpoint is ever added to Railway backend, the tokenType system will use it automatically (it tries backend sync first in `syncAndLogin`). Required backend code:
+- **Razorpay env vars** not yet added to Vercel dashboard (keys hardcoded as fallback in routes for now). To add properly: run `node setup-razorpay-vercel.js YOUR_TOKEN` or add manually in Vercel → staybid-customer-frontend → Settings → Environment Variables
+- **`/api/auth/social-login` backend endpoint does not exist** — Google/Facebook users go through inline phone verify on first booking action. If this endpoint is ever added to Railway backend, the tokenType system will use it automatically. Required backend code:
   ```typescript
   app.post("/api/auth/social-login", async (req, res) => {
     const { idToken, provider, email, name, uid } = req.body;
@@ -369,6 +476,44 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
   });
   ```
   Add `FIREBASE_API_KEY` env var on Railway (same value as `NEXT_PUBLIC_FIREBASE_API_KEY`).
+
+---
+
+### ✅ Hotel Page — Photo Gallery + Availability Picker + OTA Comparison (Apr 2026)
+- **Photo gallery:** Lightbox with prev/next arrows, thumbnail strip, counter. Unsplash placeholders pad to min 5 images. Shown even when hotel has 0–1 images in DB.
+- **Global availability picker** (`id="availability-picker"`): single source of truth for check-in/out + 3 separate guest counters (Adults / Children 5-12 / Kids <5). Book Now and Negotiate buttons scroll here if dates not set.
+- **Book Now modal:** Read-only summary tiles from global picker + rate breakdown (no duplicate date inputs)
+- **Negotiate modal:** Read-only summary tiles from global picker + bid slider (no duplicate date inputs)
+- **Flash Deal modal:** Unchanged — has its own date picker as before
+- **Room cards:** Price shown only when dates selected. Extra guest charges: Adults beyond capacity ₹500/night, Children ₹200/night, Kids free.
+- **OTA comparison:** `otaBase = livePrice × 1.22`; MakeMyTrip ×1.07, Booking.com ×1.10, Goibibo ×1.03, Agoda ×1.06 — StayBid always cheapest
+- **Room amenity badges:** `AMENITY_ICON` map with emoji + name, defaults by room type
+
+### ✅ Partner Panel — Full Hotel Partner Portal (Apr 2026)
+- Completely separate from customer panel
+- Login: `/partner` — phone OTP via Railway backend + hotel ownership check
+- Dashboard: `/partner/dashboard` — 6 tabs (Overview, Bid Inbox, Rooms & Pricing, Flash Deals, Bookings, Profile)
+- Partner-specific API routes under `app/api/partner/`
+- Customer Navbar hidden on `/partner/**` via `pathname?.startsWith("/partner")` early return
+- Bid actions (accept/counter/reject) → try Railway first, Supabase direct fallback
+- AI pricing recalculates every 60s on Rooms tab
+
+### ✅ Razorpay Live Payment Gateway (Apr 2026)
+- `lib/razorpay.ts` — `openRazorpayCheckout()` complete with script loading + order creation + HMAC verify
+- `app/api/razorpay/order/route.ts` — live keys hardcoded as fallback (env vars preferred)
+- `app/api/razorpay/verify/route.ts` — new route, HMAC-SHA256 signature verification
+- Payment required for: Book Now (always), Flash Deal (always), Negotiate (above-floor only)
+- Payment ID stored in bid message field: `Razorpay: pay_XXXXX`
+
+### ✅ TypeScript Build Fixes (Apr 2026)
+- `DEMAND_STYLE[ai.demandLevel as DemandLevel]` — cast needed for Record index
+- `Set<string>` spread → replaced with plain `string[]` array + manual dedup to avoid `--downlevelIteration` error
+- Razorpay top-level import → dynamic `(await import("razorpay")).default` inside handler
+
+### ✅ Partner Login "Not a Partner" Fix (Apr 2026)
+- **Root cause:** Railway returns JWT for duplicate user record `cmnuolhpx...` (phone without +91) which owns no hotels; actual hotels owned by `cmnr4b8...` (phone with +91)
+- **Fix:** `resolveOwnerIds()` in `app/api/partner/hotel/route.ts` — fetches all user IDs sharing the same phone number (both `8881555188` and `+918881555188`), queries hotels with `ownerId=in.(id1,id2)`
+- **Supabase key:** Must use JWT anon key (not publishable key) to query `users` table which has RLS enabled
 
 ---
 
