@@ -174,7 +174,7 @@ function HotelList() {
 
                   {h.amenities?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
-                      {h.amenities.slice(0, 3).map((a: string) => (
+                      {h.amenities.slice(0, 10).map((a: string) => (
                         <span key={a} className="text-xs px-2.5 py-0.5 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500">
                           {a}
                         </span>
