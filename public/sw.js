@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'staybid-v1';
+const CACHE_NAME = 'staybid-v1';
 const urlsToCache = [
   '/',
   '/manifest.json',
