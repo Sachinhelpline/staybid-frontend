@@ -17,12 +17,15 @@ export async function GET(
   const [hotelRes, roomsRes, reviewsRes] = await Promise.all([
     fetch(`${SB_URL}/rest/v1/hotels?id=eq.${id}&select=*`, { headers: SB_H }),
     fetch(`${SB_URL}/rest/v1/rooms?hotelId=eq.${id}&select=*`, { headers: SB_H }),
-    fetch(`${SB_URL}/rest/v1/reviews?hotelId=eq.${id}&select=*&order=createdAt.desc&limit=20`, { headers: SB_H }),
+    fetch(`${SB_URL}/rest/v1/reviews?hotelId=eq.${id}&select=*&limit=20`, { headers: SB_H }),
   ]);
 
-  const hotels:  any[] = hotelRes.ok   ? await hotelRes.json()   : [];
-  const rooms:   any[] = roomsRes.ok   ? await roomsRes.json()   : [];
-  const reviews: any[] = reviewsRes.ok ? await reviewsRes.json() : [];
+  let hotels:  any[] = [];
+  let rooms:   any[] = [];
+  let reviews: any[] = [];
+  try { hotels  = JSON.parse(await hotelRes.text());   if (!Array.isArray(hotels))  hotels  = []; } catch { hotels  = []; }
+  try { rooms   = JSON.parse(await roomsRes.text());   if (!Array.isArray(rooms))   rooms   = []; } catch { rooms   = []; }
+  try { reviews = JSON.parse(await reviewsRes.text()); if (!Array.isArray(reviews)) reviews = []; } catch { reviews = []; }
 
   if (!hotels[0]) {
     return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
