@@ -41,12 +41,12 @@ async function request(path: string, opts?: RequestInit, retries = 3): Promise<a
 export const api = {
   sendOtp: (phone: string) => request("/api/auth/send-otp", { method: "POST", body: JSON.stringify({ phone }) }),
   verifyOtp: (phone: string, otp: string) => request("/api/auth/verify-otp", { method: "POST", body: JSON.stringify({ phone, otp }) }),
+  // Hotels are served directly from Supabase via Next.js API routes — never through Railway
   getHotels: (params?: Record<string, string>) => {
-    const merged = { limit: "50", ...params };
-    const q = "?" + new URLSearchParams(merged).toString();
-    return request(`/api/hotels${q}`);
+    const q = params && Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
+    return fetch(`/api/hotels${q}`).then((r) => r.json());
   },
-  getHotel: (id: string) => request(`/api/hotels/${id}`),
+  getHotel: (id: string) => fetch(`/api/hotels/${id}`).then((r) => r.json()),
   createBidRequest: (data: any) => request("/api/bids/request", { method: "POST", body: JSON.stringify(data) }),
   placeBid: (data: any) => request("/api/bids/place", { method: "POST", body: JSON.stringify(data) }),
   getMyBids: () => request("/api/bids/my"),
