@@ -25,6 +25,33 @@ export function authUserId(req: Request): string | null {
   return payload?.id || payload?.user_id || payload?.sub || null;
 }
 
+export function authPayload(req: Request): any {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  return decodeJwt(token);
+}
+
+// Ensure a row exists in public.users for the given id. Uses PostgREST upsert
+// (Prefer: resolution=merge-duplicates) so duplicate calls are safe.
+// Without this, FK constraints (bids_customerId_fkey) fail when the Railway
+// JWT subject has never been mirrored into Supabase.
+export async function ensureUser(id: string, phone?: string, name?: string): Promise<void> {
+  if (!id) return;
+  const row = {
+    id,
+    phone: phone || `unknown_${id}`,
+    name: name || null,
+    role: "CUSTOMER",
+    isBlocked: false,
+    updatedAt: new Date().toISOString(),
+  };
+  await fetch(`${SB_URL}/rest/v1/users?on_conflict=id`, {
+    method: "POST",
+    headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(row),
+  }).catch(() => {});
+}
+
 export async function sbSelect(path: string): Promise<any[]> {
   try {
     const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_H });

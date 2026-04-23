@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authUserId, sbSelect, sbInsert, genId } from "@/lib/sb-server";
+import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 
 export async function POST(req: NextRequest) {
   const customerId = authUserId(req);
   if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const p = authPayload(req);
+  await ensureUser(customerId, p?.phone, p?.name);
 
   const body = await req.json().catch(() => ({}));
   const { hotelId, roomId, amount, requestId, dealId, message } = body || {};

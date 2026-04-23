@@ -33,7 +33,15 @@
       "mcp__1c4ea02e-a8f5-465c-b18b-5a020dce110f__get_deployment_build_logs",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -sf -o /tmp/f.json \"https://www.staybids.in/api/flash/near\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(open\\('/tmp/f.json'\\)\\); sys.exit\\(0 if 'deals' in d else 1\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/f.json'\\)\\); deals=d['deals']; print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} valid={dl.get\\('validUntil'\\)}\\\\\"\\) for dl in deals]\")",
+      "Bash(curl -sL -o /tmp/f.json -w \"HTTP:%{http_code}\\\\n\" \"https://www.staybids.in/api/flash/near\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/f.json'\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)}\\\\\"\\) for dl in deals]\")",
+      "Bash(curl -sL \"https://www.staybids.in/api/flash/near\" -o /c/tmp/f.json)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('/c/tmp/f.json'\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")",
+      "Bash(python -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")"
     ]
   }
 }
