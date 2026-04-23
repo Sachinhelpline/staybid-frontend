@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   const bookings = await sbSelect(`bookings?customerId=eq.${customerId}&select=*`);
   if (!bookings.length) return NextResponse.json({ bookings: [] });
 
-  const hotelIds = [...new Set(bookings.map((b: any) => b.hotelId).filter(Boolean))];
-  const roomIds  = [...new Set(bookings.map((b: any) => b.roomId).filter(Boolean))];
+  const hotelIds = Array.from(new Set(bookings.map((b: any) => b.hotelId).filter(Boolean)));
+  const roomIds  = Array.from(new Set(bookings.map((b: any) => b.roomId).filter(Boolean)));
 
   const [hotels, rooms] = await Promise.all([
     hotelIds.length ? sbSelect(`hotels?id=in.(${hotelIds.join(",")})&select=*`) : Promise.resolve([]),

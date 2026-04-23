@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP: %{http_code}\\\\n\" \"https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/hotels?select=*&limit=10\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60\")",
+      "Bash(curl -s \"https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/hotels?select=*&limit=10\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60\")",
+      "Bash(curl -s \"https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/hotels?ownerId=eq.cmnr4b8ol0001whjy8jc1xxxh&select=*\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60\")",
+      "Bash(curl -s \"https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/hotels?select=*&limit=10\" -H \"apikey: sb_publishable_N2tMgg386VuuZcuy-Tpi8A_FLRK_-eE\" -H \"Authorization: Bearer sb_publishable_N2tMgg386VuuZcuy-Tpi8A_FLRK_-eE\")",
+      "Bash(curl -s \"https://staybid-live-production.up.railway.app/api/hotels?limit=100\")",
+      "Bash(python -c \"import sys, json; d = json.load\\(sys.stdin\\); print\\('total:', d.get\\('total'\\), 'count:', len\\(d.get\\('hotels', []\\)\\)\\); [print\\(h['id'], h['name']\\) for h in d.get\\('hotels', []\\)]\")",
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__list_projects",
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__execute_sql",
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__apply_migration",
+      "Bash(curl -s \"https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/rooms?select=id,hotelId,floorPrice&limit=20\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60\")",
+      "Bash(curl -s \"https://staybids.in/api/hotels\")",
+      "Bash(python -c \"import sys, json; d = json.load\\(sys.stdin\\); print\\('total:', d.get\\('total'\\), 'count:', len\\(d.get\\('hotels', []\\)\\)\\); [print\\(' -', h['id'], h['name'], '| rooms:', len\\(h.get\\('rooms', []\\)\\)\\) for h in d.get\\('hotels', []\\)]\")",
+      "Bash(curl -sI \"https://staybids.in/api/hotels\")",
+      "Bash(curl -sL \"https://www.staybids.in/api/hotels\")",
+      "Bash(python -c \"import sys, json; d = json.load\\(sys.stdin\\); print\\('total:', d.get\\('total'\\)\\); [print\\(' -', h['id'], h['name'], '| rooms:', len\\(h.get\\('rooms', []\\)\\), '| min ₹:', min\\([r['floorPrice'] for r in h['rooms']]\\) if h.get\\('rooms'\\) else 'N/A'\\) for h in d.get\\('hotels', []\\)]\")",
+      "Bash(python -c \"import sys, json; d = json.load\\(sys.stdin\\); [print\\(' -', h['id'], '|', h['name'], '| rooms:', len\\(h.get\\('rooms', []\\)\\), '| from:', min\\([r['floorPrice'] for r in h['rooms']]\\) if h.get\\('rooms'\\) else 'N/A'\\) for h in d.get\\('hotels', []\\)]\")",
+      "Bash(grep -n \"fetch\\(\\\\`\\\\${API}/api/bids\" \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\\\\.claude\\\\worktrees\\\\serene-lehmann-d1c84b\\\\app\\\\hotels\\\\[id]\\\\page.tsx\")",
+      "Bash(curl -sL \"https://www.staybids.in/api/flash/near\")",
+      "Bash(curl -sI \"https://www.staybids.in/api/hotels\")",
+      "Bash(curl -sL -o /tmp/flash.json -w \"HTTP:%{http_code}\\\\nCT:%{content_type}\\\\n\" \"https://www.staybids.in/api/flash/near\")",
+      "Read(//tmp/**)",
+      "Bash(curl -sL -o /tmp/h.json -w \"HTTP:%{http_code}\\\\n\" \"https://www.staybids.in/api/hotels\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/h.json'\\)\\); print\\('hotels:', len\\(d.get\\('hotels', []\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\('hotels:', len\\(d.get\\('hotels', []\\)\\)\\)\")",
+      "Bash(curl -sL -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://www.staybids.in/api/bookings/my\")",
+      "Bash(curl -sL -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://www.staybids.in/api/bids/my\")",
+      "mcp__1c4ea02e-a8f5-465c-b18b-5a020dce110f__list_deployments",
+      "mcp__1c4ea02e-a8f5-465c-b18b-5a020dce110f__get_deployment_build_logs",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}

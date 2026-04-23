@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
   if (!bids.length) return NextResponse.json({ bids: [] });
 
   // Collect unique IDs
-  const hotelIds   = [...new Set(bids.map((b: any) => b.hotelId).filter(Boolean))];
-  const roomIds    = [...new Set(bids.map((b: any) => b.roomId).filter(Boolean))];
-  const requestIds = [...new Set(bids.map((b: any) => b.requestId).filter(Boolean))];
+  const hotelIds   = Array.from(new Set(bids.map((b: any) => b.hotelId).filter(Boolean)));
+  const roomIds    = Array.from(new Set(bids.map((b: any) => b.roomId).filter(Boolean)));
+  const requestIds = Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)));
 
   const [hotels, rooms, requests] = await Promise.all([
     hotelIds.length   ? sbSelect(`hotels?id=in.(${hotelIds.join(",")})&select=*`)     : Promise.resolve([]),
