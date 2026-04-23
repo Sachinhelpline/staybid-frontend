@@ -333,11 +333,7 @@ export default function HotelDetail() {
         });
       }
 
-      const token = localStorage.getItem("sb_token");
-      await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      });
+      try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
 
@@ -440,8 +436,7 @@ export default function HotelDetail() {
       // Step 2: Confirm booking in backend
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
-      const token = localStorage.getItem("sb_token");
-      await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
+      try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
 
       // Step 3: Send confirmation email
@@ -502,9 +497,10 @@ export default function HotelDetail() {
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
       if (isAboveFloor) {
-        const token = localStorage.getItem("sb_token");
-        const aRes = await fetch(`${API}/api/bids/${bidRes.bid.id}/accept`, { method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` } });
-        setNegAuto(aRes.ok);
+        let accepted = false;
+        try { await api.acceptBid(bidRes.bid.id); accepted = true; } catch {}
+        const aRes = { ok: accepted };
+        setNegAuto(accepted);
 
         // Send confirmation email for instant-confirm bookings
         if (aRes.ok) {

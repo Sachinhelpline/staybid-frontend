@@ -38,23 +38,46 @@ async function request(path: string, opts?: RequestInit, retries = 3): Promise<a
   return res.json();
 }
 
+// Direct call to Next.js API route (Supabase-backed, bypasses Railway)
+async function direct(path: string, opts?: RequestInit): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
+  });
+  const text = await res.text();
+  const data = (() => { try { return JSON.parse(text); } catch { return { error: text }; } })();
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data;
+}
+
 export const api = {
-  sendOtp: (phone: string) => request("/api/auth/send-otp", { method: "POST", body: JSON.stringify({ phone }) }),
+  // Auth — still via Railway (OTP provider lives there)
+  sendOtp:   (phone: string) => request("/api/auth/send-otp",   { method: "POST", body: JSON.stringify({ phone }) }),
   verifyOtp: (phone: string, otp: string) => request("/api/auth/verify-otp", { method: "POST", body: JSON.stringify({ phone, otp }) }),
-  // Hotels are served directly from Supabase via Next.js API routes — never through Railway
+
+  // Hotels, bids, flash deals, bookings — Supabase direct via Next.js routes
   getHotels: (params?: Record<string, string>) => {
     const q = params && Object.keys(params).length ? "?" + new URLSearchParams(params).toString() : "";
-    return fetch(`/api/hotels${q}`).then((r) => r.json());
+    return direct(`/api/hotels${q}`);
   },
-  getHotel: (id: string) => fetch(`/api/hotels/${id}`).then((r) => r.json()),
-  createBidRequest: (data: any) => request("/api/bids/request", { method: "POST", body: JSON.stringify(data) }),
-  placeBid: (data: any) => request("/api/bids/place", { method: "POST", body: JSON.stringify(data) }),
-  getMyBids: () => request("/api/bids/my"),
-  getFlashDeals: (city?: string) => request(`/api/flash/near${city ? `?city=${city}` : ""}`),
-  getMyBookings: () => request("/api/bookings/my"),
-  getWallet: () => request("/api/wallet"),
+  getHotel:          (id: string)  => direct(`/api/hotels/${id}`),
+  createBidRequest:  (data: any)   => direct("/api/bids/request", { method: "POST", body: JSON.stringify(data) }),
+  placeBid:          (data: any)   => direct("/api/bids/place",   { method: "POST", body: JSON.stringify(data) }),
+  acceptBid:         (id: string)  => direct(`/api/bids/${id}/accept`, { method: "POST" }),
+  getMyBids:         ()            => direct("/api/bids/my"),
+  getFlashDeals:     (city?: string) => direct(`/api/flash/near${city ? `?city=${encodeURIComponent(city)}` : ""}`),
+  getMyBookings:     ()            => direct("/api/bookings/my"),
+
+  // Wallet & profile — still on Railway until migrated
+  getWallet:     () => request("/api/wallet"),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
-  // Hotel owner — Next.js routes (Supabase direct, no Railway proxy)
+
+  // Hotel owner — existing Next.js routes
   getOwnerHotel: () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
     return fetch("/api/owner/hotel", {
