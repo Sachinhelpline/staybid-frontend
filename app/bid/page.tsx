@@ -207,7 +207,10 @@ export default function BidPage() {
       const checkOutISO = new Date(form.checkOut).toISOString();
       const guests      = form.adults + form.children;
 
-      // 2. For each matching hotel, create a bid request with its first room
+      // 2. For each matching hotel, create a bid request AND a bid row so it
+      //    shows up in /my-bids. If the user's budget is below the room's floor
+      //    price, place the bid at floor price and record the user's desired
+      //    amount in the message so the hotel can counter.
       const results = await Promise.allSettled(
         matching.map(async (hotel: any) => {
           const detail = await api.getHotel(hotel.id);
@@ -215,7 +218,7 @@ export default function BidPage() {
           const room   = rooms[0];
           if (!room) throw new Error(`${hotel.name}: no rooms`);
 
-          return api.createBidRequest({
+          const reqRes = await api.createBidRequest({
             hotelId:  hotel.id,
             roomId:   room.id,
             amount:   budget,
@@ -224,6 +227,47 @@ export default function BidPage() {
             guests,
             requirements,
           });
+
+          const requestId = reqRes?.request?.id;
+          const baseMessage = `Guest's budget: ₹${budget}/night for ${nights} night${nights > 1 ? "s" : ""}${requirements ? ". " + requirements : ""}`;
+
+          try {
+            const bidRes = await api.placeBid({
+              hotelId:  hotel.id,
+              roomId:   room.id,
+              amount:   budget,
+              requestId,
+              message:  baseMessage,
+            });
+            if (bidRes?.bid?.id) {
+              localStorage.setItem(
+                `bid_dates_${bidRes.bid.id}`,
+                JSON.stringify({ checkIn: form.checkIn, checkOut: form.checkOut })
+              );
+            }
+          } catch (err: any) {
+            const msg = (err?.message || "").toLowerCase();
+            const floor = Number(room.floorPrice) || 0;
+            if (msg.includes("too low") && floor > 0) {
+              const bidRes = await api.placeBid({
+                hotelId:  hotel.id,
+                roomId:   room.id,
+                amount:   floor,
+                requestId,
+                message:  `Guest's preferred price: ₹${budget}/night. ${baseMessage}. Please counter if possible.`,
+              });
+              if (bidRes?.bid?.id) {
+                localStorage.setItem(
+                  `bid_dates_${bidRes.bid.id}`,
+                  JSON.stringify({ checkIn: form.checkIn, checkOut: form.checkOut })
+                );
+              }
+            } else {
+              throw err;
+            }
+          }
+
+          return reqRes;
         })
       );
 
