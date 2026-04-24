@@ -41,7 +41,9 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('/tmp/f.json'\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)}\\\\\"\\) for dl in deals]\")",
       "Bash(curl -sL \"https://www.staybids.in/api/flash/near\" -o /c/tmp/f.json)",
       "Bash(python -c \"import json; d=json.load\\(open\\('/c/tmp/f.json'\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")",
-      "Bash(python -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")"
+      "Bash(python -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

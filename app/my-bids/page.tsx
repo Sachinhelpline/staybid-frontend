@@ -36,7 +36,35 @@ export default function MyBidsPage() {
   const [celebrateId, setCelebrateId] = useState<string>("");
   const [confettiBurst, setConfettiBurst] = useState(0);
 
-  const API_URL = "/api/proxy";
+  // Celebration sound — synthesized with WebAudio so it ships without any asset file.
+  const playCelebrateSound = () => {
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const notes = [ [523.25, 0],   [659.25, 0.12], [783.99, 0.24], [1046.5, 0.36] ]; // C5 E5 G5 C6
+      notes.forEach(([freq, t]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + t);
+        gain.gain.setValueAtTime(0, ctx.currentTime + t);
+        gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.45);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.5);
+      });
+      setTimeout(() => ctx.close().catch(() => {}), 1500);
+    } catch { /* ignore */ }
+  };
+
+  const triggerCelebration = (bidId: string) => {
+    setCelebrateId(bidId);
+    setConfettiBurst((n) => n + 1);
+    playCelebrateSound();
+    setTimeout(() => setCelebrateId(""), 5000);
+  };
 
   const fetchBids = (silent = false) => {
     if (!silent) setLoading(true);
@@ -48,9 +76,7 @@ export default function MyBidsPage() {
           const prevMap = new Map(prev.map((b: any) => [b.id, b.status]));
           for (const b of list) {
             if (b.status === "ACCEPTED" && !isPaid(b) && prevMap.get(b.id) && prevMap.get(b.id) !== "ACCEPTED") {
-              setCelebrateId(b.id);
-              setConfettiBurst((n) => n + 1);
-              setTimeout(() => setCelebrateId(""), 5000);
+              triggerCelebration(b.id);
               break;
             }
           }
@@ -73,13 +99,14 @@ export default function MyBidsPage() {
     setActionLoading(bidId);
     try {
       const token = localStorage.getItem("sb_token");
-      const res = await fetch(`${API_URL}/api/bids/${bidId}/counter-accept`, {
+      const res = await fetch(`/api/bids/${bidId}/counter-accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      fetchBids();
+      if (!res.ok) throw new Error(data.error || "Could not accept counter offer");
+      triggerCelebration(bidId);
+      fetchBids(true);
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -91,13 +118,13 @@ export default function MyBidsPage() {
     setActionLoading(bidId);
     try {
       const token = localStorage.getItem("sb_token");
-      const res = await fetch(`${API_URL}/api/bids/${bidId}/counter-reject`, {
+      const res = await fetch(`/api/bids/${bidId}/counter-reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      fetchBids();
+      if (!res.ok) throw new Error(data.error || "Could not decline");
+      fetchBids(true);
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -130,9 +157,7 @@ export default function MyBidsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not confirm payment");
 
-      setConfettiBurst((n) => n + 1);
-      setCelebrateId(b.id);
-      setTimeout(() => setCelebrateId(""), 4000);
+      triggerCelebration(b.id);
       setTimeout(() => router.push("/bookings"), 1800);
     } catch (e: any) {
       if (e?.message === "__CANCELLED__") { /* user closed modal */ }

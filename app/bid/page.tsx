@@ -76,16 +76,16 @@ function StepBar({ step }: { step: number }) {
         return (
           <div key={label} className="flex-1 flex flex-col items-center relative">
             {i < STEPS.length - 1 && (
-              <div className={`absolute top-3.5 left-1/2 w-full h-0.5 transition-all duration-500 ${done ? "bg-gold-400" : "bg-luxury-100"}`} />
+              <div className={`absolute top-3.5 left-1/2 w-full h-0.5 transition-all duration-500 ${done ? "bg-gold-400" : "bg-white/10"}`} />
             )}
             <div className={`w-7 h-7 rounded-full flex items-center justify-center z-10 text-xs font-bold transition-all duration-300 ${
               done   ? "bg-gold-500 text-white" :
               active ? "bg-luxury-900 text-white ring-2 ring-offset-2 ring-luxury-900" :
-                       "bg-luxury-100 text-luxury-400"
+                       "bg-white/10 text-white/50"
             }`}>
               {done ? "✓" : idx}
             </div>
-            <p className={`text-[0.6rem] font-semibold tracking-wide mt-1.5 hidden sm:block ${active ? "text-luxury-900" : done ? "text-gold-500" : "text-luxury-300"}`}>
+            <p className={`text-[0.6rem] font-semibold tracking-wide mt-1.5 hidden sm:block ${active ? "text-white" : done ? "text-gold-500" : "text-white/40"}`}>
               {label}
             </p>
           </div>
@@ -100,10 +100,10 @@ function Counter({ value, onChange, min = 0, max = 10 }: { value: number; onChan
   return (
     <div className="flex items-center gap-3">
       <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
-        className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition text-lg font-light">−</button>
-      <span className="w-6 text-center font-bold text-luxury-900 text-lg">{value}</span>
+        className="w-8 h-8 rounded-full border border-white/15 flex items-center justify-center text-white/70 hover:border-gold-400 hover:text-gold-600 disabled:opacity-30 disabled:cursor-not-allowed transition text-lg font-light">−</button>
+      <span className="w-6 text-center font-bold text-white text-lg">{value}</span>
       <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
-        className="w-8 h-8 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 disabled:opacity-30 transition text-lg font-light">+</button>
+        className="w-8 h-8 rounded-full border border-white/15 flex items-center justify-center text-white/70 hover:border-gold-400 hover:text-gold-600 disabled:opacity-30 transition text-lg font-light">+</button>
     </div>
   );
 }
@@ -298,53 +298,53 @@ export default function BidPage() {
   if (success) return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f0ebe0 100%)" }}>
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-3xl border border-luxury-100 shadow-2xl p-8 text-center">
+        <div className="bg-white rounded-3xl border border-white/10 shadow-2xl p-8 text-center">
           <div className="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ background: "linear-gradient(135deg, #c9911a, #f0b429)" }}>
             <span className="text-3xl">🎯</span>
           </div>
           <p className="text-gold-500 text-[0.65rem] font-semibold tracking-[0.2em] uppercase mb-2">Bid Request Launched</p>
-          <h1 className="font-display font-light text-luxury-900 text-3xl mb-3">Hotels Are Competing!</h1>
-          <p className="text-luxury-400 text-sm leading-relaxed mb-6">
-            Your bid for <strong className="text-luxury-700">{success.nights} nights in {success.city}</strong> has been sent to <strong className="text-gold-600">{success.hotelsNotified || "all matching"} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>. You'll be notified the moment they respond.
+          <h1 className="font-display font-light text-white text-3xl mb-3">Hotels Are Competing!</h1>
+          <p className="text-white/50 text-sm leading-relaxed mb-6">
+            Your bid for <strong className="text-white/80">{success.nights} nights in {success.city}</strong> has been sent to <strong className="text-gold-600">{success.hotelsNotified || "all matching"} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>. You'll be notified the moment they respond.
           </p>
 
           {/* Mini summary */}
-          <div className="bg-luxury-50 rounded-2xl p-4 mb-6 grid grid-cols-3 gap-3 text-left">
+          <div className="bg-white/5 rounded-2xl p-4 mb-6 grid grid-cols-3 gap-3 text-left">
             <div>
-              <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-0.5">Check-in</p>
-              <p className="text-xs font-bold text-luxury-800">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Check-in</p>
+              <p className="text-xs font-bold text-white/90">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
             </div>
             <div>
-              <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-0.5">Nights</p>
-              <p className="text-xs font-bold text-luxury-800">{success.nights}</p>
+              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Nights</p>
+              <p className="text-xs font-bold text-white/90">{success.nights}</p>
             </div>
             <div>
-              <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-0.5">Budget/night</p>
-              <p className="text-xs font-bold text-luxury-800">₹{success.budget}</p>
+              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Budget/night</p>
+              <p className="text-xs font-bold text-white/90">₹{success.budget}</p>
             </div>
           </div>
 
           {/* Est. total */}
           {success.totalEst > 0 && (
             <div className="bg-gold-50 border border-gold-200 rounded-2xl p-3 mb-6">
-              <p className="text-xs text-luxury-500 mb-0.5">Estimated total (incl. rooms)</p>
+              <p className="text-xs text-white/60 mb-0.5">Estimated total (incl. rooms)</p>
               <p className="text-xl font-bold text-gold-700">₹{success.totalEst.toLocaleString("en-IN")}</p>
-              <p className="text-[0.6rem] text-luxury-400">+ taxes · final price confirmed by hotel</p>
+              <p className="text-[0.6rem] text-white/50">+ taxes · final price confirmed by hotel</p>
             </div>
           )}
 
           <div className="space-y-2">
-            <button onClick={() => router.push("/my-bids")} className="btn-luxury w-full py-3.5 rounded-2xl text-sm">
+            <button onClick={() => router.push("/my-bids")} className="lux-btn w-full py-3.5 rounded-2xl text-sm">
               Track My Bids
             </button>
-            <button onClick={() => router.push("/hotels")} className="w-full py-3 text-sm text-luxury-500 hover:text-luxury-800 transition">
+            <button onClick={() => router.push("/hotels")} className="w-full py-3 text-sm text-white/60 hover:text-white/90 transition">
               Browse Hotels
             </button>
           </div>
         </div>
 
-        <p className="text-center text-xs text-luxury-300 mt-5 tracking-wide">
-          Average hotel response time: <span className="text-luxury-500 font-medium">2–4 hours</span>
+        <p className="text-center text-xs text-white/40 mt-5 tracking-wide">
+          Average hotel response time: <span className="text-white/60 font-medium">2–4 hours</span>
         </p>
       </div>
     </div>
@@ -352,16 +352,16 @@ export default function BidPage() {
 
   /* ── Main Form ── */
   return (
-    <div className="min-h-screen pb-16" style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f0ebe0 100%)" }}>
+    <div className="min-h-screen pb-16 lux-bg">
       <div className="max-w-xl mx-auto px-4 pt-10">
 
         {/* Header */}
         <div className="mb-8">
           <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-2">AI Smart Booking</p>
-          <h1 className="font-display font-light text-luxury-900 mb-2" style={{ fontSize: "clamp(1.8rem, 4vw, 2.4rem)" }}>
+          <h1 className="font-display font-light text-white mb-2" style={{ fontSize: "clamp(1.8rem, 4vw, 2.4rem)" }}>
             Name Your Price
           </h1>
-          <p className="text-luxury-400 text-sm leading-relaxed">
+          <p className="text-white/50 text-sm leading-relaxed">
             Tell us what you want. Our AI finds the best hotel match and launches a reverse auction — hotels compete for your booking.
           </p>
         </div>
@@ -374,8 +374,8 @@ export default function BidPage() {
           {step === 1 && (
             <div className="space-y-6">
               {/* Destination */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
                   Destination <span className="text-gold-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -384,7 +384,7 @@ export default function BidPage() {
                       className={`relative p-3.5 rounded-2xl border text-left transition-all duration-200 ${
                         form.city === name
                           ? "border-gold-400 bg-gold-50 shadow-gold"
-                          : "border-luxury-100 bg-luxury-50/50 hover:border-gold-200 hover:bg-gold-50/30"
+                          : "border-white/10 bg-white/5 hover:border-gold-200 hover:bg-gold-50/30"
                       }`}>
                       <div className="flex items-start justify-between mb-1.5">
                         <span className="text-xl">{info.emoji}</span>
@@ -392,11 +392,11 @@ export default function BidPage() {
                           {info.demand}
                         </span>
                       </div>
-                      <p className="font-semibold text-sm text-luxury-900">{name}</p>
-                      <p className="text-[0.6rem] text-luxury-400 mt-0.5">{info.state}</p>
+                      <p className="font-semibold text-sm text-white">{name}</p>
+                      <p className="text-[0.6rem] text-white/50 mt-0.5">{info.state}</p>
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {info.tags.slice(0, 2).map(t => (
-                          <span key={t} className="text-[0.5rem] bg-luxury-100 text-luxury-500 px-1.5 py-0.5 rounded-full">{t}</span>
+                          <span key={t} className="text-[0.5rem] bg-white/10 text-white/60 px-1.5 py-0.5 rounded-full">{t}</span>
                         ))}
                       </div>
                     </button>
@@ -417,19 +417,19 @@ export default function BidPage() {
               </div>
 
               {/* Dates */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
                   Dates <span className="text-gold-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-luxury-500 font-medium mb-1.5">Check-in</p>
+                    <p className="text-xs text-white/60 font-medium mb-1.5">Check-in</p>
                     <input type="date" value={form.checkIn} min={today}
                       onChange={(e) => { upd("checkIn", e.target.value); if (form.checkOut && e.target.value >= form.checkOut) upd("checkOut", ""); }}
                       className="input-luxury text-sm w-full" />
                   </div>
                   <div>
-                    <p className="text-xs text-luxury-500 font-medium mb-1.5">Check-out</p>
+                    <p className="text-xs text-white/60 font-medium mb-1.5">Check-out</p>
                     <input type="date" value={form.checkOut} min={form.checkIn || today}
                       onChange={(e) => upd("checkOut", e.target.value)}
                       className="input-luxury text-sm w-full" />
@@ -437,18 +437,18 @@ export default function BidPage() {
                 </div>
                 {nights > 0 && (
                   <div className="mt-3 flex items-center gap-2">
-                    <div className="h-px flex-1 bg-luxury-100" />
+                    <div className="h-px flex-1 bg-white/10" />
                     <span className="text-xs font-bold text-gold-600 bg-gold-50 border border-gold-200 px-3 py-1 rounded-full">
                       {nights} {nights === 1 ? "night" : "nights"}
                     </span>
-                    <div className="h-px flex-1 bg-luxury-100" />
+                    <div className="h-px flex-1 bg-white/10" />
                   </div>
                 )}
               </div>
 
               {/* Guests */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Guests & Rooms</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Guests & Rooms</label>
                 <div className="space-y-4">
                   {[
                     { label: "Adults",     key: "adults",   sub: "Ages 18+",  min: 1, max: 10 },
@@ -457,17 +457,17 @@ export default function BidPage() {
                   ].map(({ label, key, sub, min, max }) => (
                     <div key={key} className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-luxury-800">{label}</p>
-                        <p className="text-xs text-luxury-400">{sub}</p>
+                        <p className="text-sm font-semibold text-white/90">{label}</p>
+                        <p className="text-xs text-white/50">{sub}</p>
                       </div>
                       <Counter value={(form as any)[key]} onChange={(v) => upd(key, v)} min={min} max={max} />
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 pt-3 border-t border-luxury-100">
-                  <p className="text-xs text-luxury-400 text-center">
-                    Total guests: <span className="font-bold text-luxury-700">{form.adults + form.children}</span>
-                    {form.rooms > 1 && <> · <span className="font-bold text-luxury-700">{form.rooms} rooms</span></>}
+                <div className="mt-4 pt-3 border-t border-white/10">
+                  <p className="text-xs text-white/50 text-center">
+                    Total guests: <span className="font-bold text-white/80">{form.adults + form.children}</span>
+                    {form.rooms > 1 && <> · <span className="font-bold text-white/80">{form.rooms} rooms</span></>}
                   </p>
                 </div>
               </div>
@@ -478,34 +478,34 @@ export default function BidPage() {
           {step === 2 && (
             <div className="space-y-6">
               {/* Room type */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Room Type</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Room Type</label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {ROOM_TYPES.map((rt) => (
                     <button key={rt.id} onClick={() => upd("roomType", rt.id)}
                       className={`p-4 rounded-2xl border text-left transition-all duration-200 ${
                         form.roomType === rt.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
-                          : "border-luxury-100 hover:border-gold-200 hover:bg-gold-50/30"
+                          : "border-white/10 hover:border-gold-200 hover:bg-gold-50/30"
                       }`}>
                       <span className="text-2xl block mb-2">{rt.icon}</span>
-                      <p className="font-bold text-sm text-luxury-900">{rt.label}</p>
-                      <p className="text-[0.6rem] text-luxury-400 mt-0.5">{rt.desc}</p>
+                      <p className="font-bold text-sm text-white">{rt.label}</p>
+                      <p className="text-[0.6rem] text-white/50 mt-0.5">{rt.desc}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Bed type */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Bed Preference</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Bed Preference</label>
                 <div className="flex flex-wrap gap-2">
                   {BED_TYPES.map((bt) => (
                     <button key={bt.id} onClick={() => upd("bedType", bt.id)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                         form.bedType === bt.id
-                          ? "btn-luxury shadow-gold"
-                          : "bg-luxury-50 border border-luxury-200 text-luxury-600 hover:border-gold-300"
+                          ? "lux-btn shadow-gold"
+                          : "bg-white/5 border border-white/15 text-white/70 hover:border-gold-300"
                       }`}>
                       {bt.label}
                     </button>
@@ -514,15 +514,15 @@ export default function BidPage() {
               </div>
 
               {/* View preference */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">View Preference</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">View Preference</label>
                 <div className="flex flex-wrap gap-2">
                   {VIEW_PREFS.map((v) => (
                     <button key={v} onClick={() => upd("view", v)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                         form.view === v
-                          ? "btn-luxury shadow-gold"
-                          : "bg-luxury-50 border border-luxury-200 text-luxury-600 hover:border-gold-300"
+                          ? "lux-btn shadow-gold"
+                          : "bg-white/5 border border-white/15 text-white/70 hover:border-gold-300"
                       }`}>
                       {v}
                     </button>
@@ -531,45 +531,45 @@ export default function BidPage() {
               </div>
 
               {/* Meal plan */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Meal Plan</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Meal Plan</label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {MEAL_PLANS.map((mp) => (
                     <button key={mp.id} onClick={() => upd("mealPlan", mp.id)}
                       className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
                         form.mealPlan === mp.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
-                          : "border-luxury-100 hover:border-gold-200 hover:bg-gold-50/30"
+                          : "border-white/10 hover:border-gold-200 hover:bg-gold-50/30"
                       }`}>
                       <span className="text-xl block mb-1.5">{mp.icon}</span>
-                      <p className="font-bold text-xs text-luxury-900">{mp.label}</p>
-                      <p className="text-[0.57rem] text-luxury-400 mt-0.5">{mp.desc}</p>
+                      <p className="font-bold text-xs text-white">{mp.label}</p>
+                      <p className="text-[0.57rem] text-white/50 mt-0.5">{mp.desc}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Special occasion */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Trip Purpose / Occasion</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Trip Purpose / Occasion</label>
                 <div className="grid grid-cols-3 gap-2">
                   {OCCASIONS.map((oc) => (
                     <button key={oc.id} onClick={() => upd("occasion", oc.id)}
                       className={`p-3 rounded-2xl border text-center transition-all duration-200 ${
                         form.occasion === oc.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
-                          : "border-luxury-100 hover:border-gold-200 hover:bg-gold-50/30"
+                          : "border-white/10 hover:border-gold-200 hover:bg-gold-50/30"
                       }`}>
                       <span className="text-xl block mb-1">{oc.icon}</span>
-                      <p className="text-[0.58rem] font-bold text-luxury-700 leading-tight">{oc.label}</p>
+                      <p className="text-[0.58rem] font-bold text-white/80 leading-tight">{oc.label}</p>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Add-ons */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">Add-ons & Preferences</label>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Add-ons & Preferences</label>
                 <div className="space-y-2.5">
                   {[
                     { key: "earlyCheckIn",    icon: "🌅", label: "Early Check-in",          sub: "Before 12 PM if available" },
@@ -579,12 +579,12 @@ export default function BidPage() {
                     { key: "smokingRoom",     icon: "🚬", label: "Smoking Room",             sub: "If available"              },
                   ].map(({ key, icon, label, sub }) => (
                     <label key={key} className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                      (form as any)[key] ? "border-gold-300 bg-gold-50" : "border-luxury-100 hover:border-gold-200"
+                      (form as any)[key] ? "border-gold-300 bg-gold-50" : "border-white/10 hover:border-gold-200"
                     }`}>
                       <span className="text-lg">{icon}</span>
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-luxury-800">{label}</p>
-                        <p className="text-[0.6rem] text-luxury-400">{sub}</p>
+                        <p className="text-sm font-semibold text-white/90">{label}</p>
+                        <p className="text-[0.6rem] text-white/50">{sub}</p>
                       </div>
                       <input type="checkbox" checked={(form as any)[key]} onChange={(e) => upd(key, e.target.checked)}
                         className="w-4 h-4 accent-amber-500 rounded" />
@@ -594,7 +594,7 @@ export default function BidPage() {
 
                 {/* Special requests */}
                 <div className="mt-4">
-                  <p className="text-xs font-semibold text-luxury-500 mb-2">Additional Requests</p>
+                  <p className="text-xs font-semibold text-white/60 mb-2">Additional Requests</p>
                   <textarea value={form.specialRequests} onChange={(e) => upd("specialRequests", e.target.value)}
                     placeholder="Mountain view, quiet floor, extra pillows, wheelchair access…"
                     className="input-luxury text-sm resize-none w-full" rows={3} />
@@ -608,12 +608,12 @@ export default function BidPage() {
             <div className="space-y-6">
               {/* AI Smart Presets */}
               {city && (
-                <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+                <div className="lux-glass lux-border rounded-3xl p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-lg">🤖</span>
                     <div>
-                      <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em]">AI Smart Presets</p>
-                      <p className="text-xs text-luxury-500">Based on {form.city} avg. ₹{city.avg.toLocaleString("en-IN")}/night</p>
+                      <p className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em]">AI Smart Presets</p>
+                      <p className="text-xs text-white/60">Based on {form.city} avg. ₹{city.avg.toLocaleString("en-IN")}/night</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2.5">
@@ -622,7 +622,7 @@ export default function BidPage() {
                         className={`relative p-3.5 rounded-2xl border text-center transition-all duration-200 ${
                           parseInt(form.maxBudget) === p.amount
                             ? "border-gold-400 bg-gold-50 shadow-gold"
-                            : "border-luxury-100 hover:border-gold-200 hover:bg-gold-50/30"
+                            : "border-white/10 hover:border-gold-200 hover:bg-gold-50/30"
                         }`}>
                         {p.recommended && (
                           <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[0.5rem] font-bold bg-gold-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
@@ -630,9 +630,9 @@ export default function BidPage() {
                           </span>
                         )}
                         <span className="text-xl block mb-1.5">{p.icon}</span>
-                        <p className="font-bold text-xs text-luxury-900">{p.label}</p>
+                        <p className="font-bold text-xs text-white">{p.label}</p>
                         <p className="text-gold-600 font-bold text-sm mt-0.5">₹{p.amount.toLocaleString("en-IN")}</p>
-                        <p className="text-[0.55rem] text-luxury-400 mt-0.5">{p.desc}</p>
+                        <p className="text-[0.55rem] text-white/50 mt-0.5">{p.desc}</p>
                       </button>
                     ))}
                   </div>
@@ -640,18 +640,18 @@ export default function BidPage() {
               )}
 
               {/* Budget input */}
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] block mb-4">
-                  Your Max Budget <span className="text-gold-500">*</span> <span className="text-luxury-300 font-normal normal-case tracking-normal text-[0.65rem]">per room / night</span>
+              <div className="lux-glass lux-border rounded-3xl p-6">
+                <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
+                  Your Max Budget <span className="text-gold-500">*</span> <span className="text-white/40 font-normal normal-case tracking-normal text-[0.65rem]">per room / night</span>
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-luxury-400">₹</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-white/50">₹</span>
                   <input type="number" value={form.maxBudget} onChange={(e) => upd("maxBudget", e.target.value)}
                     placeholder="0" min="500"
                     className="input-luxury text-2xl font-bold pl-10 w-full" />
                 </div>
                 {city && budget > 0 && (
-                  <p className="text-xs text-luxury-400 mt-2 text-center">
+                  <p className="text-xs text-white/50 mt-2 text-center">
                     {budget < city.avg
                       ? `₹${(city.avg - budget).toLocaleString("en-IN")} below city average`
                       : `₹${(budget - city.avg).toLocaleString("en-IN")} above city average`}
@@ -661,25 +661,25 @@ export default function BidPage() {
 
               {/* AI Strength Meter */}
               {bidStr && (
-                <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
+                <div className="lux-glass lux-border rounded-3xl p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em]">AI Bid Strength</p>
+                      <p className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em]">AI Bid Strength</p>
                       <p className="text-xl font-bold mt-0.5" style={{ color: bidStr.color }}>{bidStr.label}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-3xl font-bold" style={{ color: bidStr.color }}>{bidStr.pct}%</p>
-                      <p className="text-[0.6rem] text-luxury-400">acceptance chance</p>
+                      <p className="text-[0.6rem] text-white/50">acceptance chance</p>
                     </div>
                   </div>
 
                   {/* Bar */}
-                  <div className="h-3 bg-luxury-100 rounded-full overflow-hidden mb-3">
+                  <div className="h-3 bg-white/10 rounded-full overflow-hidden mb-3">
                     <div className={`h-full ${bidStr.bar} rounded-full transition-all duration-700`} style={{ width: `${bidStr.pct}%` }} />
                   </div>
 
-                  <p className="text-xs text-luxury-600 bg-luxury-50 rounded-xl p-3 mb-3">{bidStr.tip}</p>
-                  <div className="flex items-center gap-1.5 text-xs text-luxury-400">
+                  <p className="text-xs text-white/70 bg-white/5 rounded-xl p-3 mb-3">{bidStr.tip}</p>
+                  <div className="flex items-center gap-1.5 text-xs text-white/50">
                     <span>⏱</span>
                     <span>{bidStr.responseTime}</span>
                   </div>
@@ -688,29 +688,29 @@ export default function BidPage() {
 
               {/* Cost Breakdown */}
               {budget > 0 && nights > 0 && (
-                <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6">
-                  <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em] mb-4">Estimated Cost Breakdown</p>
+                <div className="lux-glass lux-border rounded-3xl p-6">
+                  <p className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] mb-4">Estimated Cost Breakdown</p>
                   <div className="space-y-2.5">
                     {[
                       { label: `₹${budget.toLocaleString("en-IN")} × ${nights} nights`, value: (budget * nights).toLocaleString("en-IN") },
                       ...(form.rooms > 1 ? [{ label: `× ${form.rooms} rooms`, value: (budget * nights * form.rooms).toLocaleString("en-IN") }] : []),
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between text-sm">
-                        <span className="text-luxury-500">{label}</span>
-                        <span className="font-semibold text-luxury-800">₹{value}</span>
+                        <span className="text-white/60">{label}</span>
+                        <span className="font-semibold text-white/90">₹{value}</span>
                       </div>
                     ))}
-                    <div className="h-px bg-luxury-100" />
+                    <div className="h-px bg-white/10" />
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-luxury-400">Taxes ~12%</span>
-                      <span className="text-xs text-luxury-500">₹{Math.round(totalEst * 0.12).toLocaleString("en-IN")} est.</span>
+                      <span className="text-xs text-white/50">Taxes ~12%</span>
+                      <span className="text-xs text-white/60">₹{Math.round(totalEst * 0.12).toLocaleString("en-IN")} est.</span>
                     </div>
                     <div className="flex items-center justify-between bg-gold-50 border border-gold-200 rounded-xl p-3">
-                      <span className="text-sm font-bold text-luxury-800">Total Estimate</span>
+                      <span className="text-sm font-bold text-white/90">Total Estimate</span>
                       <span className="text-lg font-bold text-gold-700">₹{Math.round(totalEst * 1.12).toLocaleString("en-IN")}</span>
                     </div>
                   </div>
-                  <p className="text-[0.6rem] text-luxury-300 mt-2 text-center">Final price confirmed by hotel at acceptance</p>
+                  <p className="text-[0.6rem] text-white/40 mt-2 text-center">Final price confirmed by hotel at acceptance</p>
                 </div>
               )}
             </div>
@@ -733,8 +733,8 @@ export default function BidPage() {
                 </div>
               )}
 
-              <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-4">
-                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-[0.18em]">Booking Summary</p>
+              <div className="lux-glass lux-border rounded-3xl p-6 space-y-4">
+                <p className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em]">Booking Summary</p>
                 <div className="divider-gold" />
 
                 {/* Trip */}
@@ -748,8 +748,8 @@ export default function BidPage() {
                     { label: "Rooms",        value: `${form.rooms} room${form.rooms > 1 ? "s" : ""}` },
                   ].map(({ label, value }) => (
                     <div key={label}>
-                      <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-0.5">{label}</p>
-                      <p className="text-sm font-semibold text-luxury-800">{value}</p>
+                      <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">{label}</p>
+                      <p className="text-sm font-semibold text-white/90">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -766,8 +766,8 @@ export default function BidPage() {
                     ...(form.occasion !== "none" ? [{ label: "Occasion", value: OCCASIONS.find(o => o.id === form.occasion)?.label || form.occasion }] : []),
                   ].map(({ label, value }) => (
                     <div key={label}>
-                      <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-0.5">{label}</p>
-                      <p className="text-sm font-semibold text-luxury-800">{value}</p>
+                      <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">{label}</p>
+                      <p className="text-sm font-semibold text-white/90">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -777,7 +777,7 @@ export default function BidPage() {
                   <>
                     <div className="divider-gold" />
                     <div>
-                      <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-2">Add-ons Requested</p>
+                      <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-2">Add-ons Requested</p>
                       <div className="flex flex-wrap gap-1.5">
                         {form.earlyCheckIn    && <span className="text-xs bg-gold-50 border border-gold-200 text-gold-700 px-2 py-0.5 rounded-full">🌅 Early check-in</span>}
                         {form.lateCheckOut    && <span className="text-xs bg-gold-50 border border-gold-200 text-gold-700 px-2 py-0.5 rounded-full">🌇 Late check-out</span>}
@@ -793,8 +793,8 @@ export default function BidPage() {
                   <>
                     <div className="divider-gold" />
                     <div>
-                      <p className="text-[0.58rem] text-luxury-300 uppercase tracking-wider mb-1">Special Requests</p>
-                      <p className="text-xs text-luxury-600">{form.specialRequests}</p>
+                      <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-1">Special Requests</p>
+                      <p className="text-xs text-white/70">{form.specialRequests}</p>
                     </div>
                   </>
                 )}
@@ -802,17 +802,17 @@ export default function BidPage() {
                 <div className="divider-gold" />
 
                 {/* Budget */}
-                <div className="flex items-center justify-between bg-luxury-50 rounded-2xl p-4">
+                <div className="flex items-center justify-between bg-white/5 rounded-2xl p-4">
                   <div>
-                    <p className="text-[0.6rem] text-luxury-400 uppercase tracking-wider mb-0.5">Your Max Budget</p>
-                    <p className="text-2xl font-bold text-luxury-900">₹{parseInt(form.maxBudget).toLocaleString("en-IN")}</p>
-                    <p className="text-[0.6rem] text-luxury-400">per room / night</p>
+                    <p className="text-[0.6rem] text-white/50 uppercase tracking-wider mb-0.5">Your Max Budget</p>
+                    <p className="text-2xl font-bold text-white">₹{parseInt(form.maxBudget).toLocaleString("en-IN")}</p>
+                    <p className="text-[0.6rem] text-white/50">per room / night</p>
                   </div>
                   {totalEst > 0 && (
                     <div className="text-right">
-                      <p className="text-[0.6rem] text-luxury-400 uppercase tracking-wider mb-0.5">Est. Total</p>
+                      <p className="text-[0.6rem] text-white/50 uppercase tracking-wider mb-0.5">Est. Total</p>
                       <p className="text-xl font-bold text-gold-600">₹{Math.round(totalEst * 1.12).toLocaleString("en-IN")}</p>
-                      <p className="text-[0.6rem] text-luxury-400">incl. taxes</p>
+                      <p className="text-[0.6rem] text-white/50">incl. taxes</p>
                     </div>
                   )}
                 </div>
@@ -820,7 +820,7 @@ export default function BidPage() {
 
               {/* Submit */}
               <button onClick={submit} disabled={loading}
-                className="btn-luxury w-full py-4 rounded-2xl text-[15px] disabled:opacity-40 relative overflow-hidden">
+                className="lux-btn w-full py-4 rounded-2xl text-[15px] disabled:opacity-40 relative overflow-hidden">
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -831,7 +831,7 @@ export default function BidPage() {
                 )}
               </button>
 
-              <p className="text-center text-xs text-luxury-300 tracking-wide">
+              <p className="text-center text-xs text-white/40 tracking-wide">
                 Hotels respond within 2–4 hours · No payment required now
               </p>
             </div>
@@ -842,19 +842,19 @@ export default function BidPage() {
         <div className="flex items-center gap-3 mt-8">
           {step > 1 && (
             <button onClick={() => goStep(step - 1)}
-              className="flex-1 py-3.5 rounded-2xl border border-luxury-200 text-sm font-semibold text-luxury-600 hover:border-luxury-300 transition">
+              className="flex-1 py-3.5 rounded-2xl border border-white/15 text-sm font-semibold text-white/70 hover:border-luxury-300 transition">
               ← Back
             </button>
           )}
           {step < 4 && (
             <button onClick={() => canNext() && goStep(step + 1)} disabled={!canNext()}
-              className="flex-1 py-3.5 btn-luxury rounded-2xl text-sm disabled:opacity-40 transition-all">
+              className="flex-1 py-3.5 lux-btn rounded-2xl text-sm disabled:opacity-40 transition-all">
               Continue →
             </button>
           )}
         </div>
 
-        <p className="text-center text-xs text-luxury-300 mt-4 tracking-wide">
+        <p className="text-center text-xs text-white/40 mt-4 tracking-wide">
           Step {step} of {STEPS.length} · {STEPS[step - 1]}
         </p>
       </div>

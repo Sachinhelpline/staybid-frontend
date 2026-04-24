@@ -169,6 +169,62 @@ body {
 
 }
 
+/* ─── Ultra-luxury shared primitives ─────────────────────────────── */
+@keyframes lux-shine     { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes lux-floaty    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes lux-fadeUp    { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lux-pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,41,0.55); } 50% { box-shadow: 0 0 0 14px rgba(240,180,41,0); } }
+@keyframes lux-goldSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
+
+.lux-bg {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(201,145,26,0.18), transparent 60%),
+    radial-gradient(900px 500px at 100% 10%, rgba(240,180,41,0.10), transparent 60%),
+    linear-gradient(180deg,#05060a 0%, #0b0a10 50%, #05060a 100%);
+  color: #fff;
+}
+.lux-glass {
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+  border: 1px solid rgba(240,180,41,0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.lux-border {
+  position: relative;
+}
+.lux-border::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+  background: linear-gradient(120deg, rgba(240,180,41,0.7), rgba(255,255,255,0.05) 30%, rgba(240,180,41,0.7) 60%, rgba(255,255,255,0.05) 85%);
+  background-size: 200% 200%;
+  animation: lux-shine 7s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+.lux-gold-text {
+  background: linear-gradient(90deg,#f4d06f,#f0b429,#c9911a,#f0b429,#f4d06f);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: lux-shine 6s linear infinite;
+}
+.lux-btn {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%);
+  color: #1a1205; font-weight: 800; letter-spacing: .04em;
+  border: none;
+}
+.lux-btn::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: lux-goldSweep 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.lux-pulse { animation: lux-pulseGlow 2s infinite; }
+.lux-float { animation: lux-floaty 3s ease-in-out infinite; }
+.lux-fade-up { animation: lux-fadeUp 0.55s ease both; }
+
 /* ─── Hero decorative pattern ───────────────────────────────────── */
 .hero-mesh {
   background-image:

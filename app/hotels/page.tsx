@@ -43,29 +43,30 @@ function HotelList() {
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
   return (
+    <div className="min-h-screen lux-bg">
     <div className="max-w-7xl mx-auto px-5 py-12">
 
       {/* ── Page header ── */}
       <div className="mb-10">
         <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-3">Explore</p>
-        <h1 className="font-display font-light text-luxury-900 mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
+        <h1 className="font-display font-light text-white mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
           Find Your Perfect Stay
         </h1>
-        <p className="text-luxury-400 text-sm">
+        <p className="text-white/50 text-sm">
           {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
         </p>
       </div>
 
       {/* ── Search ── */}
       <div className="relative max-w-md mb-6">
-        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-luxury-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by hotel name…"
-          className="w-full pl-11 pr-4 py-3 rounded-2xl border border-luxury-200 bg-white text-luxury-900 placeholder:text-luxury-300 focus:outline-none focus:ring-1 focus:ring-gold-400/50 focus:border-gold-300 transition text-sm"
+          className="w-full pl-11 pr-4 py-3 rounded-2xl border border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-gold-400/50 focus:border-gold-300 transition text-sm"
         />
       </div>
 
@@ -79,8 +80,8 @@ function HotelList() {
               onClick={() => setCity(c === "All" ? "" : c)}
               className={`px-4 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-200 ${
                 active
-                  ? "btn-luxury shadow-gold"
-                  : "bg-white border border-luxury-200 text-luxury-500 hover:border-gold-300 hover:text-luxury-900"
+                  ? "lux-btn shadow-gold"
+                  : "bg-white/5 border border-white/15 text-white/60 hover:border-gold-300 hover:text-white"
               }`}
             >
               {c}
@@ -93,7 +94,7 @@ function HotelList() {
       {loading && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="rounded-3xl bg-white border border-luxury-100 overflow-hidden">
+            <div key={i} className="rounded-3xl bg-white border border-white/10 overflow-hidden">
               <div className="h-52 shimmer" />
               <div className="p-5 space-y-3">
                 <div className="h-5 w-3/4 shimmer rounded-full" />
@@ -117,10 +118,10 @@ function HotelList() {
               <Link
                 key={h.id}
                 href={`/hotels/${h.id}`}
-                className="group card-luxury overflow-hidden flex flex-col"
+                className="group lux-glass lux-border rounded-3xl overflow-hidden flex flex-col"
               >
                 {/* Image */}
-                <div className="h-52 bg-luxury-100 relative overflow-hidden flex-shrink-0">
+                <div className="h-52 bg-white/10 relative overflow-hidden flex-shrink-0">
                   {h.images?.[0] ? (
                     <img
                       src={h.images[0]}
@@ -152,7 +153,7 @@ function HotelList() {
                 {/* Info */}
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-start justify-between mb-1 gap-2">
-                    <h3 className="font-semibold text-luxury-900 text-[1rem] leading-snug group-hover:text-gold-600 transition-colors">
+                    <h3 className="font-semibold text-white text-[1rem] leading-snug group-hover:text-gold-600 transition-colors">
                       {h.name}
                     </h3>
                     {h.avgRating > 0 && (
@@ -165,7 +166,7 @@ function HotelList() {
                   {(() => {
                     const area = getHotelArea(h.city, h.lat, h.lng);
                     return (
-                      <p className="text-sm text-luxury-400 mb-4 tracking-wide flex items-center gap-1">
+                      <p className="text-sm text-white/50 mb-4 tracking-wide flex items-center gap-1">
                         <span>📍</span>
                         <span>{area ? `${area}, ` : ""}{h.city}</span>
                       </p>
@@ -175,23 +176,23 @@ function HotelList() {
                   {h.amenities?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {h.amenities.slice(0, 3).map((a: string) => (
-                        <span key={a} className="text-xs px-2.5 py-0.5 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-500">
+                        <span key={a} className="text-xs px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-white/60">
                           {a}
                         </span>
                       ))}
                       {h.amenities.length > 3 && (
-                        <span className="text-xs text-luxury-400">+{h.amenities.length - 3}</span>
+                        <span className="text-xs text-white/50">+{h.amenities.length - 3}</span>
                       )}
                     </div>
                   )}
 
                   {/* Price — pushed to bottom */}
                   {minPrice && (
-                    <div className="mt-auto pt-4 border-t border-luxury-100 flex items-center justify-between">
-                      <span className="text-xs text-luxury-400 tracking-wide">Starting from</span>
+                    <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-xs text-white/50 tracking-wide">Starting from</span>
                       <div>
-                        <span className="text-xl font-bold text-luxury-900">₹{minPrice}</span>
-                        <span className="text-xs text-luxury-400 ml-1">/night</span>
+                        <span className="text-xl font-bold text-white">₹{minPrice}</span>
+                        <span className="text-xs text-white/50 ml-1">/night</span>
                       </div>
                     </div>
                   )}
@@ -222,13 +223,14 @@ function HotelList() {
       {/* ── Empty state (only shown when no error) ── */}
       {!loading && hotels.length === 0 && !apiError && (
         <div className="text-center py-28">
-          <div className="w-20 h-20 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-5">
+          <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
             <span className="text-3xl">🏔️</span>
           </div>
-          <p className="text-lg font-semibold text-luxury-800 mb-1">No hotels found</p>
-          <p className="text-sm text-luxury-400">Try a different city or search term</p>
+          <p className="text-lg font-semibold text-white/90 mb-1">No hotels found</p>
+          <p className="text-sm text-white/50">Try a different city or search term</p>
         </div>
       )}
+    </div>
     </div>
   );
 }
