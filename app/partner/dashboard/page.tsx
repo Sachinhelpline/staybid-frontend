@@ -1319,7 +1319,7 @@ export default function PartnerDashboard() {
                                       } else if (!occ) {
                                         const next = new Date(d); next.setDate(next.getDate()+1);
                                         setWalkInOpen({ roomId: r.id, date: d });
-                                        setWalkIn({ fromDate: d, toDate: next.toISOString().slice(0,10), guestName:"", guestPhone:"", amount:"", note:"" });
+                                        setWalkIn({ fromDate: d, toDate: next.toISOString().slice(0,10), guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
                                       }
                                     }}
                                     className="w-full h-6 rounded hover:ring-2 hover:ring-gold-400 transition-all cursor-pointer"
