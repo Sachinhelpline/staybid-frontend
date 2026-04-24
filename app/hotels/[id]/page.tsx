@@ -169,6 +169,28 @@ export default function HotelDetail() {
       .catch(() => {});
   }, [id]);
 
+  // ── Per-UNIT availability (room-number level) for the selected window ────
+  // Powers the "Room #101 ✓ vacant · Room #102 ✗ occupied" grid shown in each
+  // room card and exposes a live unitsFree count so UI never oversells.
+  const [unitAvail, setUnitAvail] = useState<Record<string, any>>({});
+  useEffect(() => {
+    if (!id || !globalCheckIn || !globalCheckOut) return;
+    let cancelled = false;
+    const q = new URLSearchParams({ hotelId: id as string, from: globalCheckIn, to: globalCheckOut });
+    fetch(`/api/availability/units?${q.toString()}`)
+      .then(r => r.json())
+      .then(j => { if (!cancelled) setUnitAvail(j.rooms || {}); })
+      .catch(() => {});
+    // Refresh every 30s so the grid stays live as other customers book
+    const t = setInterval(() => {
+      fetch(`/api/availability/units?${q.toString()}`)
+        .then(r => r.json())
+        .then(j => { if (!cancelled) setUnitAvail(j.rooms || {}); })
+        .catch(() => {});
+    }, 30000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [id, globalCheckIn, globalCheckOut]);
+
   // Check if selected date range overlaps blocks for any room
   function dateRangeBlocked(checkIn: string, checkOut: string, roomId?: string): boolean {
     if (!checkIn || !checkOut) return false;
@@ -1405,6 +1427,51 @@ export default function HotelDetail() {
                                   </span>
                                   <span className="text-sm font-bold text-luxury-900">₹{nightTotal.toLocaleString()}</span>
                                 </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* ── Per-unit availability grid (room numbers) ── */}
+                          {(() => {
+                            const ua = unitAvail[r.id];
+                            if (!ua || !ua.units || ua.units.length === 0) return null;
+                            return (
+                              <div className="mb-4 rounded-2xl border border-luxury-100 bg-gradient-to-br from-white to-luxury-50 p-3.5">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest">
+                                      Live · {ua.unitsFree} of {ua.unitsTotal} rooms vacant
+                                    </p>
+                                  </div>
+                                  <span className={`text-[0.55rem] font-bold px-2 py-0.5 rounded-full ${
+                                    ua.unitsFree === 0 ? "bg-red-50 text-red-600 border border-red-200" :
+                                    ua.unitsFree <= 2 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                    "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}>
+                                    {ua.unitsFree === 0 ? "SOLD OUT" : ua.unitsFree <= 2 ? "Filling fast" : "Available"}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {ua.units.map((u: any) => (
+                                    <span key={u.unitId}
+                                      title={u.status === "occupied"
+                                        ? `Occupied ${u.occupiedBy?.fromDate} → ${u.occupiedBy?.toDate}`
+                                        : "Vacant for your dates"}
+                                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[0.65rem] font-bold border transition-all ${
+                                        u.status === "vacant"
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : "bg-red-50 text-red-600 border-red-200 line-through opacity-80"
+                                      }`}>
+                                      {u.status === "vacant" ? "✓" : "✗"} #{u.unitNumber}
+                                    </span>
+                                  ))}
+                                </div>
+                                {ua.unitsUnassigned > 0 && (
+                                  <p className="text-[0.55rem] text-luxury-400 mt-2">
+                                    +{ua.unitsUnassigned} reserved (awaiting room assignment)
+                                  </p>
+                                )}
                               </div>
                             );
                           })()}

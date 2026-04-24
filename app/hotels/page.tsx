@@ -47,14 +47,22 @@ function HotelList() {
     <div className="max-w-7xl mx-auto px-5 py-12">
 
       {/* ── Page header ── */}
-      <div className="mb-10">
-        <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-3">Explore</p>
-        <h1 className="font-display font-light text-white mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
-          Find Your Perfect Stay
-        </h1>
-        <p className="text-white/50 text-sm">
-          {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
-        </p>
+      <div className="mb-10 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-3">Explore</p>
+          <h1 className="font-display font-light text-white mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
+            Find Your Perfect Stay
+          </h1>
+          <p className="text-white/50 text-sm">
+            {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
+          </p>
+        </div>
+
+        {/* Mode toggle — list (current) ↔ reels Discovery. Purely additive: existing UI untouched. */}
+        <div className="inline-flex items-center gap-1 p-1 rounded-2xl border border-white/15 bg-white/5 backdrop-blur-sm shrink-0 self-start">
+          <span className="btn-3d btn-3d-gold btn-3d-sm !py-1.5 !text-[0.68rem] cursor-default">☰ Compare</span>
+          <Link href="/discover" className="btn-3d btn-3d-dark btn-3d-sm !py-1.5 !text-[0.68rem]">✨ Explore</Link>
+        </div>
       </div>
 
       {/* ── Search ── */}
