@@ -10,13 +10,19 @@ function decodeJwt(t: string) {
 }
 
 /** Resolve all user IDs sharing the same phone (handles +91 duplicate records) */
-async function resolveOwnerIds(primaryId: string): Promise<string[]> {
+async function resolveOwnerIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
   const ids: string[] = [primaryId];
+  let rawPhone = "";
   try {
     const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
     const users = await uRes.json();
-    if (!Array.isArray(users) || !users[0]?.phone) return ids;
-    const rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    if (Array.isArray(users) && users[0]?.phone) {
+      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    }
+  } catch { /* ignore */ }
+  if (!rawPhone && jwtPhone) rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
+  if (!rawPhone) return ids;
+  try {
     const allRes = await fetch(
       `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
       { headers: SB_H }
@@ -33,7 +39,7 @@ export async function GET(req: NextRequest) {
   const payload = decodeJwt(token);
   if (!payload?.id) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-  const ownerIds = await resolveOwnerIds(payload.id);
+  const ownerIds = await resolveOwnerIds(payload.id, payload.phone);
   const hRes = await fetch(
     `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
     { headers: SB_H }
@@ -59,7 +65,7 @@ export async function POST(req: NextRequest) {
   const { hotelId, roomId, dealPrice, discount, durationHours, maxRooms } = body;
 
   // Verify ownership using all owner IDs
-  const ownerIds = await resolveOwnerIds(payload.id);
+  const ownerIds = await resolveOwnerIds(payload.id, payload.phone);
   const hRes = await fetch(
     `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&id=eq.${hotelId}&select=id`,
     { headers: SB_H }

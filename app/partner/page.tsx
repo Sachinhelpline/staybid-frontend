@@ -51,7 +51,7 @@ export default function PartnerLogin() {
 
       // Check partner status — must have a hotel in Supabase
       const hotelRes = await fetch("/api/partner/hotel", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "x-phone": `+91${phone}` },
       });
       const hotelData = await hotelRes.json();
 

@@ -12,13 +12,19 @@ function decodeJwt(token: string): any {
   } catch { return null; }
 }
 
-async function resolveOwnerIds(primaryId: string): Promise<string[]> {
+async function resolveOwnerIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
   const ids: string[] = [primaryId];
+  let rawPhone = "";
   try {
     const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_HEADERS });
     const users = await uRes.json();
-    if (!Array.isArray(users) || !users[0]?.phone) return ids;
-    const rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    if (Array.isArray(users) && users[0]?.phone) {
+      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    }
+  } catch { /* ignore */ }
+  if (!rawPhone && jwtPhone) rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
+  if (!rawPhone) return ids;
+  try {
     const allRes = await fetch(
       `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
       { headers: SB_HEADERS }
@@ -90,7 +96,7 @@ export async function GET(req: NextRequest) {
   } catch { /* fall through */ }
 
   if (!bids.length) {
-    const ownerIds = await resolveOwnerIds(payload.id);
+    const ownerIds = await resolveOwnerIds(payload.id, payload.phone);
     const hotelRes = await fetch(
       `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
       { headers: SB_HEADERS }
