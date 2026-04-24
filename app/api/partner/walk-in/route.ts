@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   let body: any = {};
   try { body = await req.json(); } catch {}
 
-  const { hotelId, roomId, fromDate, toDate, guestName, guestPhone, guestEmail, amount, note } = body;
+  const { hotelId, roomId, fromDate, toDate, guestName, guestPhone, guestEmail, amount, note, assignedUnitId, assignedUnitNumber } = body;
   if (!hotelId || !roomId || !fromDate || !toDate) {
     return NextResponse.json({ error: "hotelId, roomId, fromDate, toDate required" }, { status: 400 });
   }
@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
       amount: amount != null ? Number(amount) : null,
       note: note || null,
       createdBy: userId,
+      assignedUnitId: assignedUnitId || null,
+      assignedUnitNumber: assignedUnitNumber || null,
     });
     return NextResponse.json({ ok: true, block: row });
   } catch (e: any) {

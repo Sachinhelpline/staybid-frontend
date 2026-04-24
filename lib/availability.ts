@@ -37,6 +37,8 @@ type Occupation = {
   note?:    string;
   provider?: string;
   refId?:   string;      // bid id or block id
+  assignedUnitId?: string;
+  assignedUnitNumber?: string;
 };
 
 /** Parse a bid's checkIn/checkOut from related bid_request or fallback msg. */
@@ -89,6 +91,20 @@ export async function getOccupations(params: {
         if (Array.isArray(reqs)) reqs.forEach((x: any) => { reqMap[x.id] = x; });
       }
 
+      // Fetch unit assignments for these bids
+      const bidIds = bids.map((b: any) => b.id).filter(Boolean);
+      let unitMap: Record<string, { unitId: string; unitNumber: string }> = {};
+      if (bidIds.length) {
+        try {
+          const ur = await fetch(
+            `${SB_URL}/rest/v1/bid_unit_assignments?bidId=in.(${bidIds.join(",")})&select=bidId,unitId,unitNumber`,
+            { headers: SB_H }
+          );
+          const us = await ur.json();
+          if (Array.isArray(us)) us.forEach((x: any) => { unitMap[x.bidId] = { unitId: x.unitId, unitNumber: x.unitNumber }; });
+        } catch {}
+      }
+
       for (const b of bids) {
         const req = reqMap[b.requestId] || {};
         const ci = req.checkIn ? toISODate(req.checkIn) : undefined;
@@ -97,12 +113,15 @@ export async function getOccupations(params: {
         if (!rangesOverlap(ci, co, from, to)) continue;
         // Only ACCEPTED is a HARD block. COUNTER/PENDING are "soft" — still show for partner, but treat as soft
         if (b.status === "ACCEPTED" || b.status === "COUNTER") {
+          const u = unitMap[b.id];
           out.push({
             fromDate: ci, toDate: co,
             source: "bid", roomId: b.roomId, hotelId: b.hotelId,
             amount: Number(b.amount) || 0,
             note: b.status === "COUNTER" ? "Counter pending" : "Bid booked",
             refId: b.id,
+            assignedUnitId: u?.unitId,
+            assignedUnitNumber: u?.unitNumber,
           });
         }
       }
@@ -129,6 +148,8 @@ export async function getOccupations(params: {
           note:     b.note,
           provider: b.provider,
           refId:    b.id,
+          assignedUnitId: b.assignedUnitId,
+          assignedUnitNumber: b.assignedUnitNumber,
         });
       }
     }

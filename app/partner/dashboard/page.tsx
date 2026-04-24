@@ -50,13 +50,20 @@ export default function PartnerDashboard() {
   // ── Booking detail modal ─────────────────────────────────────────────────
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
+  // ── Room units (numbered rooms inventory) ────────────────────────────────
+  const [roomUnits, setRoomUnits]       = useState<any[]>([]);
+  const [unitDraft, setUnitDraft]       = useState<Record<string, string>>({}); // roomId -> "101,102,103"
+  const [unitSaving, setUnitSaving]     = useState<string>("");
+  // Quick Walk-in widget (on overview)
+  const [quickWalkInOpen, setQuickWalkInOpen] = useState(false);
+
   // ── Availability / PMS state ─────────────────────────────────────────────
   const [calendar, setCalendar]       = useState<Record<string, Record<string, any>>>({});
   const [calLoading, setCalLoading]   = useState(false);
   const [calMonth, setCalMonth]       = useState<Date>(new Date());
   const [otaFeeds, setOtaFeeds]       = useState<any[]>([]);
   const [walkInOpen, setWalkInOpen]   = useState<{ roomId: string; date: string } | null>(null);
-  const [walkIn, setWalkIn]           = useState({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"" });
+  const [walkIn, setWalkIn]           = useState({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
   const [walkInSaving, setWalkInSaving] = useState(false);
   const [newFeed, setNewFeed]         = useState({ roomId:"", provider:"booking", icalUrl:"", label:"" });
   const [feedSaving, setFeedSaving]   = useState(false);
@@ -253,6 +260,96 @@ export default function PartnerDashboard() {
     finally { setProfileSaving(false); }
   }
 
+  // ── Room units (numbered rooms) handlers ─────────────────────────────────
+  async function loadRoomUnits() {
+    if (!hotel?.id) return;
+    const token = getToken();
+    try {
+      const r = await fetch(`/api/partner/room-units?hotelId=${hotel.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await r.json();
+      setRoomUnits(d.units || []);
+    } catch {}
+  }
+
+  async function saveRoomUnitsBulk(roomId: string) {
+    const raw = (unitDraft[roomId] || "").trim();
+    if (!raw) return;
+    // Accept "101, 102, 103" or "101 102 103" or ranges "101-105"
+    const tokens = raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    const numbers: string[] = [];
+    for (const t of tokens) {
+      const m = t.match(/^(\d+)-(\d+)$/);
+      if (m) {
+        const a = parseInt(m[1]), b = parseInt(m[2]);
+        if (b - a >= 0 && b - a <= 50) for (let i = a; i <= b; i++) numbers.push(String(i));
+      } else numbers.push(t);
+    }
+    if (!numbers.length) return;
+    setUnitSaving(roomId);
+    const token = getToken();
+    try {
+      const r = await fetch("/api/partner/room-units", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotelId: hotel.id, roomId,
+          bulk: numbers.map(n => ({ roomNumber: n })),
+        }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Failed");
+      setUnitDraft(p => ({ ...p, [roomId]: "" }));
+      loadRoomUnits();
+    } catch(e: any) { alert("❌ " + e.message); }
+    finally { setUnitSaving(""); }
+  }
+
+  async function deleteRoomUnit(id: string) {
+    const token = getToken();
+    try {
+      await fetch(`/api/partner/room-units?id=${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      loadRoomUnits();
+    } catch {}
+  }
+
+  async function toggleUnitStatus(unit: any) {
+    const next = unit.status === "active" ? "maintenance" : "active";
+    const token = getToken();
+    try {
+      await fetch("/api/partner/room-units", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: unit.id, status: next }),
+      });
+      loadRoomUnits();
+    } catch {}
+  }
+
+  // Helper: which units are free for a given room+date range?
+  function freeUnitsForRoom(roomId: string, fromDate: string, toDate: string): any[] {
+    const allUnits = roomUnits.filter(u => u.roomId === roomId && u.status === "active");
+    if (!fromDate || !toDate) return allUnits;
+    // A unit is free if no calendar entry maps to it in the range
+    const occupiedUnitIds = new Set<string>();
+    const cal = calendar[roomId] || {};
+    for (let d = new Date(fromDate); d < new Date(toDate); d.setDate(d.getDate()+1)) {
+      const key = d.toISOString().slice(0,10);
+      const cell = cal[key];
+      if (cell?.assignedUnitId) occupiedUnitIds.add(cell.assignedUnitId);
+    }
+    return allUnits.filter(u => !occupiedUnitIds.has(u.id));
+  }
+
+  useEffect(() => {
+    if (hotel?.id) loadRoomUnits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotel?.id]);
+
   // ── Availability / PMS handlers ──────────────────────────────────────────
   async function loadCalendar() {
     if (!hotel?.id) return;
@@ -308,12 +405,14 @@ export default function PartnerDashboard() {
           guestPhone: walkIn.guestPhone,
           amount: walkIn.amount ? Number(walkIn.amount) : null,
           note: walkIn.note,
+          assignedUnitId: walkIn.assignedUnitId || null,
+          assignedUnitNumber: walkIn.assignedUnitNumber || null,
         }),
       });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error || "Failed");
       setWalkInOpen(null);
-      setWalkIn({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"" });
+      setWalkIn({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
       loadCalendar();
     } catch(e: any) { alert("❌ " + e.message); }
     finally { setWalkInSaving(false); }
@@ -490,6 +589,28 @@ export default function PartnerDashboard() {
           <div className="fade-up space-y-6">
             <h2 className="font-display text-2xl font-light text-luxury-900">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
 
+            {/* ── Quick Walk-in / PMS Control ── */}
+            <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-xl border border-white/20 relative">
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 0%, transparent 50%), radial-gradient(circle at 80% 80%, white 0%, transparent 50%)" }} />
+              <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-[0.65rem] font-bold text-white/80 uppercase tracking-[0.25em]">🏨 Front Desk</p>
+                  <h3 className="font-display text-2xl text-white font-light mt-1">Walk-in Guest Arrived?</h3>
+                  <p className="text-white/80 text-sm mt-1">Check room availability & check them in — auto-blocks the room across StayBid, Booking.com, Airbnb everywhere.</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => setQuickWalkInOpen(true)}
+                    className="bg-white text-indigo-700 font-bold px-5 py-3 rounded-xl hover:scale-105 transition-all shadow-lg text-sm">
+                    ➕ New Walk-in
+                  </button>
+                  <button onClick={() => setTab("availability")}
+                    className="bg-white/20 text-white border border-white/30 font-bold px-5 py-3 rounded-xl hover:bg-white/30 transition-all text-sm backdrop-blur">
+                    🗓️ Availability
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* ── Today's Bookings — Airbnb-style hero panel ── */}
             <div className="rounded-3xl overflow-hidden shadow-lg border border-luxury-200 bg-white">
               <div className="bg-gradient-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
@@ -527,7 +648,15 @@ export default function PartnerDashboard() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"}</p>
-                              <p className="text-[0.65rem] text-luxury-500 truncate">{b.room?.type || b.roomId} · {b.guests || 2} guests</p>
+                              <p className="text-[0.65rem] text-luxury-500 truncate">
+                                {b.room?.type || b.roomId}
+                                {(() => {
+                                  const u = Object.values(calendar[b.roomId] || {}).find((c: any) => c?.refId === b.id) as any;
+                                  const num = b.assignedUnitNumber || u?.assignedUnitNumber;
+                                  return num ? <span className="font-bold text-gold-600"> · #{num}</span> : null;
+                                })()}
+                                {" · "}{b.guests || 2} guests
+                              </p>
                             </div>
                             <span className="text-emerald-600 font-bold group-hover:translate-x-0.5 transition-transform">›</span>
                           </div>
@@ -552,7 +681,15 @@ export default function PartnerDashboard() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"}</p>
-                              <p className="text-[0.65rem] text-luxury-500 truncate">{b.room?.type || b.roomId} · {b.guests || 2} guests</p>
+                              <p className="text-[0.65rem] text-luxury-500 truncate">
+                                {b.room?.type || b.roomId}
+                                {(() => {
+                                  const u = Object.values(calendar[b.roomId] || {}).find((c: any) => c?.refId === b.id) as any;
+                                  const num = b.assignedUnitNumber || u?.assignedUnitNumber;
+                                  return num ? <span className="font-bold text-gold-600"> · #{num}</span> : null;
+                                })()}
+                                {" · "}{b.guests || 2} guests
+                              </p>
                             </div>
                             <span className="text-amber-600 font-bold group-hover:translate-x-0.5 transition-transform">›</span>
                           </div>
@@ -880,6 +1017,59 @@ export default function PartnerDashboard() {
                           className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "!bg-emerald-500" : ""}`}>
                           {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? "✓ Saved!" : "Save Pricing"}
                         </button>
+
+                        {/* ── Room Numbers Inventory ── */}
+                        {(() => {
+                          const units = roomUnits.filter(u => u.roomId === r.id);
+                          return (
+                            <div className="mt-4 pt-4 border-t border-luxury-100">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">🔢 Physical Rooms ({units.length})</p>
+                                <span className="text-[0.6rem] text-luxury-400">Individual room numbers</span>
+                              </div>
+
+                              {units.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  {units.map(u => (
+                                    <span key={u.id}
+                                      className={`group inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border ${
+                                        u.status === "active"
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : "bg-orange-50 text-orange-600 border-orange-200 line-through"
+                                      }`}>
+                                      #{u.roomNumber}
+                                      <button onClick={() => toggleUnitStatus(u)}
+                                        title={u.status === "active" ? "Mark as under maintenance" : "Reactivate"}
+                                        className="opacity-40 hover:opacity-100">
+                                        {u.status === "active" ? "🔧" : "↻"}
+                                      </button>
+                                      <button onClick={() => deleteRoomUnit(u.id)}
+                                        className="opacity-40 hover:opacity-100 text-red-500">✕</button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 101, 102, 201-205"
+                                  value={unitDraft[r.id] || ""}
+                                  onChange={e => setUnitDraft(p => ({ ...p, [r.id]: e.target.value }))}
+                                  onKeyDown={e => { if (e.key === "Enter") saveRoomUnitsBulk(r.id); }}
+                                  className="inp-p flex-1 text-xs"
+                                />
+                                <button
+                                  onClick={() => saveRoomUnitsBulk(r.id)}
+                                  disabled={unitSaving === r.id || !unitDraft[r.id]?.trim()}
+                                  className="text-xs px-3 py-2 rounded-lg bg-luxury-900 text-white font-semibold hover:bg-luxury-800 disabled:opacity-40">
+                                  {unitSaving === r.id ? "…" : "+ Add"}
+                                </button>
+                              </div>
+                              <p className="text-[0.55rem] text-luxury-400 mt-1">Comma separate or use ranges (e.g. 201-205)</p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -1249,6 +1439,38 @@ export default function PartnerDashboard() {
                   <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
                   <input className="inp-p" value={walkIn.guestName} onChange={e=>setWalkIn(p=>({...p, guestName:e.target.value}))} placeholder="Walk-in guest"/>
                 </div>
+                {/* Room number picker */}
+                {(() => {
+                  const free = freeUnitsForRoom(walkInOpen.roomId, walkIn.fromDate, walkIn.toDate);
+                  const allForRoom = roomUnits.filter(u => u.roomId === walkInOpen.roomId);
+                  return (
+                    <div>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                      {allForRoom.length === 0 ? (
+                        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                          No room numbers set for this category. Add them in <b>Rooms</b> tab.
+                        </p>
+                      ) : free.length === 0 ? (
+                        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
+                          All rooms of this category are occupied on selected dates.
+                        </p>
+                      ) : (
+                        <select
+                          className="inp-p"
+                          value={walkIn.assignedUnitId}
+                          onChange={e => {
+                            const u = free.find((x: any) => x.id === e.target.value);
+                            setWalkIn(p => ({ ...p, assignedUnitId: u?.id || "", assignedUnitNumber: u?.roomNumber || "" }));
+                          }}>
+                          <option value="">Auto-assign later</option>
+                          {free.map((u: any) => (
+                            <option key={u.id} value={u.id}>Room #{u.roomNumber}{u.floor ? ` · Floor ${u.floor}` : ""}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
@@ -1270,6 +1492,152 @@ export default function PartnerDashboard() {
             </div>
           </div>
         )}
+
+        {/* ══════════════ QUICK WALK-IN MODAL (from Overview) ══════════════ */}
+        {quickWalkInOpen && (() => {
+          const qToday = new Date().toISOString().slice(0,10);
+          const qTomorrow = new Date(Date.now() + 86400000).toISOString().slice(0,10);
+          // Initialize dates to today → tomorrow if blank
+          if (!walkIn.fromDate) { setWalkIn(p => ({ ...p, fromDate: qToday, toDate: qTomorrow })); }
+          const pickedRoom = rooms.find(r => r.id === (walkInOpen?.roomId || ""));
+          return (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto"
+              onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}>
+              <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden my-0 sm:my-8"
+                onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">🏨 Front Desk</p>
+                    <p className="text-white font-display text-xl font-light">Walk-in Booking</p>
+                  </div>
+                  <button onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}
+                    className="text-white/70 hover:text-white w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">✕</button>
+                </div>
+
+                <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
+                      <input type="date" className="inp-p" value={walkIn.fromDate} min={qToday}
+                        onChange={e=>setWalkIn(p=>({...p, fromDate:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
+                      <input type="date" className="inp-p" value={walkIn.toDate} min={walkIn.fromDate || qToday}
+                        onChange={e=>setWalkIn(p=>({...p, toDate:e.target.value}))} />
+                    </div>
+                  </div>
+
+                  {/* Room category selector — with live availability count */}
+                  <div>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🏨 Room Category</label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {rooms.map(r => {
+                        const free = freeUnitsForRoom(r.id, walkIn.fromDate, walkIn.toDate);
+                        const total = roomUnits.filter(u => u.roomId === r.id && u.status === "active").length;
+                        const selected = walkInOpen?.roomId === r.id;
+                        return (
+                          <button key={r.id}
+                            onClick={() => {
+                              setWalkInOpen({ roomId: r.id, date: walkIn.fromDate });
+                              setWalkIn(p => ({ ...p, assignedUnitId:"", assignedUnitNumber:"", amount: String(r.floorPrice || p.amount) }));
+                            }}
+                            className={`text-left p-3 rounded-xl border-2 transition-all ${
+                              selected ? "border-indigo-500 bg-indigo-50" : "border-luxury-200 hover:border-luxury-300"
+                            } ${total === 0 || free.length === 0 ? "opacity-60" : ""}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-luxury-900 text-sm">{r.type || r.name}</p>
+                                <p className="text-[0.6rem] text-luxury-500">₹{r.floorPrice || 0}/night · up to {r.capacity || 2} guests</p>
+                              </div>
+                              <div className="text-right">
+                                {total === 0 ? (
+                                  <span className="text-[0.55rem] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">No room #s set</span>
+                                ) : (
+                                  <>
+                                    <p className={`text-lg font-bold ${free.length === 0 ? "text-red-600" : "text-emerald-600"}`}>{free.length}/{total}</p>
+                                    <p className="text-[0.55rem] text-luxury-400">free</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Unit picker (visible once category chosen) */}
+                  {walkInOpen?.roomId && (() => {
+                    const free = freeUnitsForRoom(walkInOpen.roomId, walkIn.fromDate, walkIn.toDate);
+                    const total = roomUnits.filter(u => u.roomId === walkInOpen.roomId).length;
+                    if (total === 0) {
+                      return (
+                        <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          ⚠️ No physical room numbers set for this category. Go to <b>Rooms</b> tab and add room numbers (e.g. 101, 102) for this category first.
+                        </div>
+                      );
+                    }
+                    if (free.length === 0) {
+                      return (
+                        <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
+                          🛑 All rooms of this category are occupied on these dates.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div>
+                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">🔢 Allocate Room Number</label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {free.map((u: any) => (
+                            <button key={u.id}
+                              onClick={() => setWalkIn(p => ({ ...p, assignedUnitId: u.id, assignedUnitNumber: u.roomNumber }))}
+                              className={`p-2 rounded-lg text-sm font-bold border-2 transition-all ${
+                                walkIn.assignedUnitId === u.id
+                                  ? "bg-indigo-500 text-white border-indigo-500 shadow-md"
+                                  : "bg-white text-luxury-700 border-luxury-200 hover:border-indigo-400"
+                              }`}>
+                              #{u.roomNumber}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Guest details */}
+                  <div className="pt-3 border-t border-luxury-100 space-y-2">
+                    <div>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
+                      <input className="inp-p" value={walkIn.guestName} onChange={e=>setWalkIn(p=>({...p, guestName:e.target.value}))} placeholder="Walk-in guest"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
+                        <input className="inp-p" value={walkIn.guestPhone} onChange={e=>setWalkIn(p=>({...p, guestPhone:e.target.value}))} placeholder="Optional"/>
+                      </div>
+                      <div>
+                        <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Rate/night ₹</label>
+                        <input type="number" className="inp-p" value={walkIn.amount} onChange={e=>setWalkIn(p=>({...p, amount:e.target.value}))}/>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
+                      <input className="inp-p" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
+                    </div>
+                  </div>
+
+                  <button onClick={async () => { await submitWalkIn(); setQuickWalkInOpen(false); }}
+                    disabled={walkInSaving || !walkInOpen?.roomId || !walkIn.fromDate || !walkIn.toDate}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
+                    {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? `✓ Check-in · Room #${walkIn.assignedUnitNumber}` : "✓ Confirm Walk-in (auto-assign)"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ══════════════ PROFILE ══════════════ */}
         {tab === "profile" && (
@@ -1467,13 +1835,57 @@ export default function PartnerDashboard() {
                   <span className="h-px flex-1 bg-luxury-200" />
                 </div>
 
-                {/* Room */}
-                <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
-                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🏨 Room</p>
-                  <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
-                  {b.room?.capacity && <p className="text-xs text-luxury-500 mt-0.5">Capacity: {b.room.capacity} guests</p>}
-                  <p className="text-xs text-luxury-500">{b.guests || 2} guest{(b.guests||2)>1?"s":""} booked</p>
-                </div>
+                {/* Room + assigned unit */}
+                {(() => {
+                  // Find assigned unit number for this booking (bid or block)
+                  const fromBid = Object.values(calendar[b.roomId] || {}).find((c: any) => c?.refId === b.id) as any;
+                  const assignedNumber = b.assignedUnitNumber || fromBid?.assignedUnitNumber || "";
+                  const freeForAssign = freeUnitsForRoom(b.roomId, b.checkIn || "", b.checkOut || "");
+                  return (
+                    <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
+                      <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🏨 Room</p>
+                      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
+                          {b.room?.capacity && <p className="text-xs text-luxury-500">Capacity: {b.room.capacity} guests</p>}
+                          <p className="text-xs text-luxury-500">{b.guests || 2} guest{(b.guests||2)>1?"s":""} booked</p>
+                        </div>
+                        {assignedNumber ? (
+                          <div className="text-right">
+                            <p className="text-[0.55rem] font-bold text-gold-600 uppercase tracking-widest">Allocated Room</p>
+                            <p className="text-2xl font-bold text-gold-700">#{assignedNumber}</p>
+                          </div>
+                        ) : (
+                          <div className="w-full mt-2">
+                            <p className="text-[0.6rem] font-bold text-amber-600 uppercase mb-1">⚠️ No room # assigned</p>
+                            {freeForAssign.length === 0 ? (
+                              <p className="text-xs text-luxury-400">No free rooms in this category.</p>
+                            ) : (
+                              <select
+                                className="inp-p text-xs"
+                                onChange={async e => {
+                                  const unitId = e.target.value; if (!unitId) return;
+                                  const token = getToken();
+                                  await fetch("/api/partner/room-units/assign", {
+                                    method: "POST",
+                                    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                                    body: JSON.stringify({ bidId: b.id, unitId }),
+                                  });
+                                  loadCalendar();
+                                  alert("✓ Room assigned");
+                                }}>
+                                <option value="">Assign a room number…</option>
+                                {freeForAssign.map((u: any) => (
+                                  <option key={u.id} value={u.id}>#{u.roomNumber}{u.floor ? ` · Floor ${u.floor}` : ""}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Guest contact */}
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">

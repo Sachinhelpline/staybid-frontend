@@ -43,6 +43,8 @@ export async function GET(req: NextRequest) {
             provider: o.provider,
             note: o.note,
             refId: o.refId,
+            assignedUnitId: o.assignedUnitId,
+            assignedUnitNumber: o.assignedUnitNumber,
           };
         }
       }
