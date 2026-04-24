@@ -111,6 +111,10 @@ export default function HotelDetail() {
     : 0;
   const datesSelected = !!(globalCheckIn && globalCheckOut);
 
+  // Floating picker modal — opens when user taps Book Now/Negotiate without dates selected.
+  // Stores { intent: 'book'|'negotiate', room: any } to auto-resume once dates are picked.
+  const [pickerModal, setPickerModal] = useState<{ intent: "book" | "negotiate"; room: any } | null>(null);
+
   // Gallery state
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
@@ -424,7 +428,7 @@ export default function HotelDetail() {
 
   const openBookNow = (r: any) => {
     if (!globalCheckIn || !globalCheckOut) {
-      document.getElementById("availability-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPickerModal({ intent: "book", room: r });
       return;
     }
     setBnRoom(r);
@@ -436,7 +440,7 @@ export default function HotelDetail() {
   };
   const openNegotiate = (r: any) => {
     if (!globalCheckIn || !globalCheckOut) {
-      document.getElementById("availability-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPickerModal({ intent: "negotiate", room: r });
       return;
     }
     setNegRoom(r);
@@ -445,6 +449,21 @@ export default function HotelDetail() {
     setNegOut(globalCheckOut);
     setNegSuccess(false);
   };
+
+  // When the floating picker modal is open and dates become valid, auto-resume the user's
+  // intent (open Book Now / Negotiate modal) and close the picker.
+  useEffect(() => {
+    if (!pickerModal) return;
+    if (!globalCheckIn || !globalCheckOut) return;
+    const { intent, room } = pickerModal;
+    setPickerModal(null);
+    // tiny delay so the picker close animation doesn't clash with the next modal
+    setTimeout(() => {
+      if (intent === "book") openBookNow(room);
+      else openNegotiate(room);
+    }, 120);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalCheckIn, globalCheckOut, pickerModal]);
 
   const handleBookNow = async () => {
     if (!user) return router.push("/auth");
@@ -1037,62 +1056,61 @@ export default function HotelDetail() {
           </div>
         )}
 
-        {/* ── Availability Picker ── */}
-        <div id="availability-picker" className="card-luxury p-5 mb-6 border-2 border-gold-200 bg-gradient-to-br from-gold-50/40 to-white">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-7 h-7 rounded-full bg-gold-100 flex items-center justify-center text-sm">🔍</span>
-            <h3 className="font-semibold text-luxury-900 text-sm tracking-tight">Check Availability & Get Best Price</h3>
+        {/* ── Availability Picker — Hi-tech ── */}
+        <div id="availability-picker" className="picker-hitech p-5 mb-6">
+          <div className="flex items-center gap-2.5 mb-4 relative z-[2]">
+            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
+                  style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
+            <div>
+              <h3 className="font-bold text-luxury-900 text-sm tracking-tight leading-tight">Check Availability & Get Best Price</h3>
+              <p className="text-[0.6rem] text-luxury-500 tracking-widest uppercase font-semibold flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> AI Live Engine · Real-time rates
+              </p>
+            </div>
           </div>
 
           {/* Dates row */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">📅 Check-in</label>
+          <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
+            <label className="picker-tile block cursor-pointer">
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
               <input type="date" value={globalCheckIn} min={today}
-                onChange={e => setGlobalCheckIn(e.target.value)} className="input-luxury text-sm w-full" />
-            </div>
-            <div>
-              <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">📅 Check-out</label>
+                onChange={e => setGlobalCheckIn(e.target.value)}
+                className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
+            </label>
+            <label className="picker-tile block cursor-pointer">
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
               <input type="date" value={globalCheckOut} min={globalCheckIn || today}
-                onChange={e => setGlobalCheckOut(e.target.value)} className="input-luxury text-sm w-full" />
-            </div>
+                onChange={e => setGlobalCheckOut(e.target.value)}
+                className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
+            </label>
           </div>
 
           {/* Guests row */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {/* Adults */}
-            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
-              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">👤 Adults</p>
+          <div className="grid grid-cols-3 gap-3 mb-4 relative z-[2]">
+            <div className="picker-tile">
+              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
               <div className="flex items-center justify-between">
-                <button onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
-                <span className="font-bold text-luxury-900 text-base">{globalAdults}</span>
-                <button onClick={() => setGlobalAdults(Math.min(8, globalAdults + 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+                <button type="button" onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))} className="picker-step">−</button>
+                <span className="font-black text-luxury-900 text-lg">{globalAdults}</span>
+                <button type="button" onClick={() => setGlobalAdults(Math.min(8, globalAdults + 1))} className="picker-step">+</button>
               </div>
               <p className="text-[0.55rem] text-luxury-400 text-center mt-1">12+ yrs</p>
             </div>
-            {/* Children */}
-            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
-              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">👦 Children</p>
+            <div className="picker-tile">
+              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👦 Children</p>
               <div className="flex items-center justify-between">
-                <button onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
-                <span className="font-bold text-luxury-900 text-base">{globalChildren}</span>
-                <button onClick={() => setGlobalChildren(Math.min(6, globalChildren + 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+                <button type="button" onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))} className="picker-step">−</button>
+                <span className="font-black text-luxury-900 text-lg">{globalChildren}</span>
+                <button type="button" onClick={() => setGlobalChildren(Math.min(6, globalChildren + 1))} className="picker-step">+</button>
               </div>
-              <p className="text-[0.55rem] text-amber-600 text-center mt-1 font-semibold">5–12 · +₹200/night</p>
+              <p className="text-[0.55rem] text-amber-600 text-center mt-1 font-semibold">5–12 · +₹200</p>
             </div>
-            {/* Kids */}
-            <div className="bg-luxury-50 rounded-2xl p-3 border border-luxury-100">
-              <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🧒 Kids</p>
+            <div className="picker-tile">
+              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">🧒 Kids</p>
               <div className="flex items-center justify-between">
-                <button onClick={() => setGlobalKids(Math.max(0, globalKids - 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">−</button>
-                <span className="font-bold text-luxury-900 text-base">{globalKids}</span>
-                <button onClick={() => setGlobalKids(Math.min(6, globalKids + 1))}
-                  className="w-7 h-7 rounded-full border border-luxury-200 flex items-center justify-center text-luxury-600 hover:border-gold-400 hover:text-gold-600 transition font-bold text-base">+</button>
+                <button type="button" onClick={() => setGlobalKids(Math.max(0, globalKids - 1))} className="picker-step">−</button>
+                <span className="font-black text-luxury-900 text-lg">{globalKids}</span>
+                <button type="button" onClick={() => setGlobalKids(Math.min(6, globalKids + 1))} className="picker-step">+</button>
               </div>
               <p className="text-[0.55rem] text-emerald-600 text-center mt-1 font-semibold">&lt;5 yrs · FREE</p>
             </div>
@@ -1303,13 +1321,13 @@ export default function HotelDetail() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
+                              className="btn-3d btn-3d-gold flex-1 text-sm"
                             >
-                              Book Now
+                              Book Now →
                             </button>
                             <button
                               onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
+                              className="btn-3d btn-3d-white flex-1 text-sm"
                             >
                               🤝 Negotiate
                             </button>
@@ -1431,13 +1449,13 @@ export default function HotelDetail() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="flex-1 btn-luxury py-3 rounded-2xl text-sm shadow-gold"
+                              className="btn-3d btn-3d-gold flex-1 text-sm"
                             >
-                              Book Now
+                              Book Now →
                             </button>
                             <button
                               onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="flex-1 py-3 rounded-2xl text-sm font-semibold border border-luxury-200 text-luxury-700 hover:border-gold-400 hover:text-gold-600 transition-all duration-200"
+                              className="btn-3d btn-3d-white flex-1 text-sm"
                             >
                               🤝 Negotiate
                             </button>
@@ -1703,9 +1721,9 @@ export default function HotelDetail() {
               <button
                 onClick={handleFlashBook}
                 disabled={bookLoading}
-                className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40"
+                className="btn-3d btn-3d-gold btn-3d-lg w-full"
               >
-                {bookLoading ? "Confirming…" : `Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
+                {bookLoading ? "Confirming…" : `⚡ Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
               </button>
             </div>
           </div>
@@ -1768,8 +1786,8 @@ export default function HotelDetail() {
                   </div>
                 );
               })()}
-              <button onClick={handleBookNow} disabled={bnLoading} className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
-                {bnLoading ? "Confirming…" : "Confirm Booking"}
+              <button onClick={handleBookNow} disabled={bnLoading} className="btn-3d btn-3d-gold btn-3d-lg w-full">
+                {bnLoading ? "Confirming…" : "✨ Confirm Booking"}
               </button>
             </div>
           </div>
@@ -1916,8 +1934,8 @@ export default function HotelDetail() {
               })() : null}
 
               <button onClick={handleNegotiate} disabled={negLoading || !negIn || !negOut || negIn >= negOut}
-                className="btn-luxury w-full py-4 rounded-2xl text-base font-semibold shadow-gold disabled:opacity-40">
-                {negLoading ? "Submitting…" : `Submit Bid · ₹${negAmt.toLocaleString()}`}
+                className="btn-3d btn-3d-gold btn-3d-lg w-full">
+                {negLoading ? "Submitting…" : `🤝 Submit Bid · ₹${negAmt.toLocaleString()}`}
               </button>
             </div>
           </div>
@@ -2016,6 +2034,97 @@ export default function HotelDetail() {
                 className="flex-1 py-3 rounded-2xl btn-luxury disabled:opacity-40 text-sm">
                 {bidLoading ? "Submitting…" : "Submit Bid"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Floating picker modal — opens when user taps Book Now/Negotiate without dates ── */}
+      {pickerModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm modal-backdrop p-0 sm:p-4"
+          onClick={() => setPickerModal(null)}
+        >
+          <div
+            className="picker-hitech picker-popin w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3 mb-4 relative z-[2]">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
+                        style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
+                  <div>
+                    <h3 className="font-bold text-luxury-900 text-[1rem] tracking-tight leading-tight">
+                      {pickerModal.intent === "book" ? "Pick dates to Book Now" : "Pick dates to Negotiate"}
+                    </h3>
+                    <p className="text-[0.62rem] text-luxury-500 tracking-widest uppercase font-semibold flex items-center gap-1 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {pickerModal.room?.name || pickerModal.room?.type || "Room"}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setPickerModal(null)}
+                  className="w-9 h-9 rounded-full bg-white/80 border border-luxury-200 flex items-center justify-center text-luxury-500 hover:text-luxury-800 transition text-lg">✕</button>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
+                <label className="picker-tile block cursor-pointer">
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
+                  <input type="date" value={globalCheckIn} min={today}
+                    onChange={e => setGlobalCheckIn(e.target.value)}
+                    className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
+                </label>
+                <label className="picker-tile block cursor-pointer">
+                  <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
+                  <input type="date" value={globalCheckOut} min={globalCheckIn || today}
+                    onChange={e => setGlobalCheckOut(e.target.value)}
+                    className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
+                </label>
+              </div>
+
+              {/* Guests */}
+              <div className="grid grid-cols-3 gap-3 mb-4 relative z-[2]">
+                <div className="picker-tile">
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))} className="picker-step">−</button>
+                    <span className="font-black text-luxury-900 text-lg">{globalAdults}</span>
+                    <button type="button" onClick={() => setGlobalAdults(Math.min(8, globalAdults + 1))} className="picker-step">+</button>
+                  </div>
+                </div>
+                <div className="picker-tile">
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👦 Children</p>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))} className="picker-step">−</button>
+                    <span className="font-black text-luxury-900 text-lg">{globalChildren}</span>
+                    <button type="button" onClick={() => setGlobalChildren(Math.min(6, globalChildren + 1))} className="picker-step">+</button>
+                  </div>
+                </div>
+                <div className="picker-tile">
+                  <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">🧒 Kids</p>
+                  <div className="flex items-center justify-between">
+                    <button type="button" onClick={() => setGlobalKids(Math.max(0, globalKids - 1))} className="picker-step">−</button>
+                    <span className="font-black text-luxury-900 text-lg">{globalKids}</span>
+                    <button type="button" onClick={() => setGlobalKids(Math.min(6, globalKids + 1))} className="picker-step">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-[2]">
+                <button
+                  disabled={!globalCheckIn || !globalCheckOut}
+                  onClick={() => { /* useEffect auto-resumes intent when both dates are set */ }}
+                  className="btn-3d btn-3d-gold w-full"
+                >
+                  {(!globalCheckIn || !globalCheckOut)
+                    ? "Pick dates above ↑"
+                    : pickerModal.intent === "book" ? "Continue to Book Now →" : "Continue to Negotiate →"}
+                </button>
+                <p className="text-center text-[0.6rem] text-luxury-500 mt-2 tracking-wide">
+                  AI engine finds the best rate for your exact dates
+                </p>
+              </div>
             </div>
           </div>
         </div>

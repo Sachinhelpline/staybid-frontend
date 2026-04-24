@@ -70,11 +70,7 @@ function FlashDealsContent() {
             const active = (c === "All" && !city) || c === city;
             return (
               <button key={c} onClick={() => setCity(c === "All" ? "" : c)}
-                className={`px-4 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-200 border
-                  ${active
-                    ? "bg-gold-500 text-white border-gold-500 shadow-gold"
-                    : "bg-white/5 border-white/10 text-white/60 hover:border-gold-400/40 hover:text-white/90"
-                  }`}>
+                className={active ? "btn-3d btn-3d-gold btn-3d-sm" : "btn-3d btn-3d-dark btn-3d-sm"}>
                 {c}
               </button>
             );
@@ -199,8 +195,8 @@ function FlashDealsContent() {
                           <span className="px-4 py-2 rounded-xl bg-white/10 text-white/30 text-xs font-semibold cursor-not-allowed">Sold Out</span>
                         ) : (
                           <button onClick={() => router.push(dealUrl)}
-                            className="btn-luxury px-4 py-2 rounded-xl text-xs font-bold shadow-gold hover:scale-105 transition-transform">
-                            Book Now
+                            className="btn-3d btn-3d-gold btn-3d-sm">
+                            ⚡ Book Now
                           </button>
                         )}
                       </div>

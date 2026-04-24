@@ -820,7 +820,7 @@ export default function BidPage() {
 
               {/* Submit */}
               <button onClick={submit} disabled={loading}
-                className="lux-btn w-full py-4 rounded-2xl text-[15px] disabled:opacity-40 relative overflow-hidden">
+                className="btn-3d btn-3d-gold btn-3d-lg w-full">
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -842,13 +842,13 @@ export default function BidPage() {
         <div className="flex items-center gap-3 mt-8">
           {step > 1 && (
             <button onClick={() => goStep(step - 1)}
-              className="flex-1 py-3.5 rounded-2xl border border-white/15 text-sm font-semibold text-white/70 hover:border-luxury-300 transition">
+              className="btn-3d btn-3d-dark flex-1 text-sm">
               ← Back
             </button>
           )}
           {step < 4 && (
             <button onClick={() => canNext() && goStep(step + 1)} disabled={!canNext()}
-              className="flex-1 py-3.5 lux-btn rounded-2xl text-sm disabled:opacity-40 transition-all">
+              className="btn-3d btn-3d-gold flex-1 text-sm">
               Continue →
             </button>
           )}

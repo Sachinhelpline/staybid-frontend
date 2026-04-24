@@ -225,6 +225,265 @@ body {
 .lux-float { animation: lux-floaty 3s ease-in-out infinite; }
 .lux-fade-up { animation: lux-fadeUp 0.55s ease both; }
 
+/* ═══════════════════════════════════════════════════════════════════
+   3D Button system — physical "punching" feel, works everywhere.
+   Usage: `btn-3d` (base), then a color variant (`btn-3d-gold`,
+   `btn-3d-dark`, `btn-3d-emerald`, `btn-3d-white`). Optional `btn-3d-sm`
+   for compact sizing. Automatically adds ripple + press animation.
+   ═══════════════════════════════════════════════════════════════════ */
+.btn-3d {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateZ(0);
+  transition: transform 120ms cubic-bezier(0.2, 0.9, 0.3, 1.4),
+              box-shadow 180ms ease,
+              filter     180ms ease;
+  will-change: transform, box-shadow;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-3d::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 45%, rgba(0,0,0,0.12) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.btn-3d > * { position: relative; z-index: 2; }
+.btn-3d:hover { filter: brightness(1.06); }
+.btn-3d:active {
+  transform: translateY(3px) scale(0.985);
+  filter: brightness(0.95);
+  transition-duration: 60ms;
+}
+.btn-3d:disabled {
+  opacity: 0.5; cursor: not-allowed; filter: grayscale(0.3);
+  transform: none !important; box-shadow: none !important;
+}
+
+/* Ripple on click (pure CSS, toggles on :active) */
+.btn-3d::after {
+  content: ""; position: absolute; inset: 50% 50%;
+  width: 0; height: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.45);
+  pointer-events: none; z-index: 1;
+  transition: inset 500ms ease-out, width 500ms ease-out, height 500ms ease-out, opacity 600ms ease-out;
+  opacity: 0;
+}
+.btn-3d:active::after {
+  inset: -100%; width: 300%; height: 300%; opacity: 1;
+  transition: inset 0ms, width 0ms, height 0ms, opacity 0ms;
+}
+
+.btn-3d-sm { padding: 0.55rem 1rem; border-radius: 0.75rem; font-size: 0.8rem; }
+.btn-3d-lg { padding: 1.05rem 1.8rem; border-radius: 1.15rem; font-size: 1rem; }
+
+/* Gold variant — primary CTA (Book Now, Negotiate, Confirm) */
+.btn-3d-gold {
+  color: #1a1205;
+  background:
+    linear-gradient(180deg, #fde68a 0%, #f0b429 30%, #c9911a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -2px 0 rgba(120,70,5,0.35),
+    0 4px 0 #7a5512,
+    0 8px 22px rgba(201,145,26,0.4);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+}
+.btn-3d-gold:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -1px 0 rgba(120,70,5,0.35),
+    0 1px 0 #7a5512,
+    0 3px 10px rgba(201,145,26,0.35);
+}
+
+/* Dark variant — secondary CTA */
+.btn-3d-dark {
+  color: #fef9c3;
+  background: linear-gradient(180deg, #3f3428 0%, #211a12 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(250,200,80,0.25),
+    inset 0 -2px 0 rgba(0,0,0,0.6),
+    0 4px 0 #0a0705,
+    0 8px 22px rgba(0,0,0,0.45);
+}
+.btn-3d-dark:active {
+  box-shadow:
+    inset 0 1px 0 rgba(250,200,80,0.18),
+    inset 0 -1px 0 rgba(0,0,0,0.6),
+    0 1px 0 #0a0705,
+    0 3px 10px rgba(0,0,0,0.4);
+}
+
+/* Emerald variant — confirmation / success actions */
+.btn-3d-emerald {
+  color: #ffffff;
+  background: linear-gradient(180deg, #6ee7b7 0%, #10b981 35%, #059669 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -2px 0 rgba(3,80,50,0.45),
+    0 4px 0 #035d42,
+    0 8px 22px rgba(16,185,129,0.45);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.18);
+}
+.btn-3d-emerald:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    inset 0 -1px 0 rgba(3,80,50,0.45),
+    0 1px 0 #035d42,
+    0 3px 10px rgba(16,185,129,0.35);
+}
+
+/* White/neutral variant — for on-dark backgrounds */
+.btn-3d-white {
+  color: #1a1510;
+  background: linear-gradient(180deg, #ffffff 0%, #efe9dc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -2px 0 rgba(120,100,70,0.25),
+    0 4px 0 #8a7c60,
+    0 8px 22px rgba(30,20,10,0.3);
+}
+.btn-3d-white:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(120,100,70,0.25),
+    0 1px 0 #8a7c60,
+    0 3px 10px rgba(30,20,10,0.25);
+}
+
+/* Red variant — destructive actions */
+.btn-3d-red {
+  color: #fff;
+  background: linear-gradient(180deg, #fca5a5 0%, #ef4444 35%, #b91c1c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -2px 0 rgba(90,10,10,0.45),
+    0 4px 0 #7f1d1d,
+    0 8px 22px rgba(239,68,68,0.42);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+}
+.btn-3d-red:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    inset 0 -1px 0 rgba(90,10,10,0.45),
+    0 1px 0 #7f1d1d,
+    0 3px 10px rgba(239,68,68,0.35);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Hi-tech "Check Availability" picker — premium glossy look.
+   Apply `.picker-hitech` to the container. Works on light bg.
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes picker-scan  { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
+@keyframes picker-pulse { 0%,100% { opacity: 0.25; } 50% { opacity: 0.65; } }
+@keyframes picker-popin { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+.picker-hitech {
+  position: relative;
+  background:
+    radial-gradient(600px 220px at 50% -20%, rgba(240,180,41,0.22), transparent 60%),
+    linear-gradient(145deg, #fffbec 0%, #ffffff 55%, #fff4d9 100%);
+  border: 1.5px solid transparent;
+  border-radius: 1.5rem;
+  background-clip: padding-box;
+  box-shadow:
+    0 20px 50px -20px rgba(201,145,26,0.25),
+    0 6px 18px rgba(30,20,10,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+  overflow: hidden;
+  isolation: isolate;
+}
+.picker-hitech::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px;
+  background: linear-gradient(135deg, #f0b429 0%, #fbd26a 25%, rgba(201,145,26,0.3) 50%, #f0b429 75%, #fbd26a 100%);
+  background-size: 200% 200%;
+  animation: lux-shine 8s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+}
+.picker-hitech::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, #f0b429, transparent);
+  animation: picker-scan 3.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.picker-popin { animation: picker-popin 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+
+/* Tile — for date/guest inputs inside picker */
+.picker-tile {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,248,225,0.75) 100%);
+  border: 1px solid rgba(201,145,26,0.22);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 1px 3px rgba(201,145,26,0.08);
+}
+.picker-tile:hover {
+  border-color: rgba(201,145,26,0.5);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 6px 16px rgba(201,145,26,0.18);
+}
+.picker-tile:focus-within {
+  border-color: #f0b429;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 0 0 3px rgba(240,180,41,0.18),
+    0 8px 20px rgba(201,145,26,0.22);
+}
+
+/* Small circular stepper buttons inside guest tiles */
+.picker-step {
+  width: 2rem; height: 2rem; border-radius: 9999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 1rem;
+  color: #6b5018;
+  background: linear-gradient(180deg, #ffffff 0%, #ffeac3 100%);
+  border: 1px solid rgba(201,145,26,0.35);
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    0 2px 0 rgba(201,145,26,0.45),
+    0 4px 10px rgba(201,145,26,0.2);
+  transition: transform 80ms ease, box-shadow 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.picker-step:hover { color: #2b1d05; }
+.picker-step:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    0 0px 0 rgba(201,145,26,0.45),
+    0 1px 4px rgba(201,145,26,0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Modal overlay shared styles (picker modal, etc.)
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes modal-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.modal-backdrop { animation: modal-backdrop-in 0.25s ease both; }
+
 /* ─── Hero decorative pattern ───────────────────────────────────── */
 .hero-mesh {
   background-image:

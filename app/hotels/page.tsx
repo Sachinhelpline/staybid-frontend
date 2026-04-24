@@ -78,11 +78,7 @@ function HotelList() {
             <button
               key={c}
               onClick={() => setCity(c === "All" ? "" : c)}
-              className={`px-4 py-2 rounded-full text-sm font-medium tracking-wide transition-all duration-200 ${
-                active
-                  ? "lux-btn shadow-gold"
-                  : "bg-white/5 border border-white/15 text-white/60 hover:border-gold-300 hover:text-white"
-              }`}
+              className={active ? "btn-3d btn-3d-gold btn-3d-sm" : "btn-3d btn-3d-dark btn-3d-sm"}
             >
               {c}
             </button>
@@ -109,7 +105,7 @@ function HotelList() {
       {/* ── Hotel grid ── */}
       {!loading && hotels.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {hotels.map((h: any) => {
+          {hotels.map((h: any, idx: number) => {
             const minPrice = h.rooms?.length
               ? Math.min(...h.rooms.map((r: any) => r.floorPrice))
               : null;
@@ -118,7 +114,8 @@ function HotelList() {
               <Link
                 key={h.id}
                 href={`/hotels/${h.id}`}
-                className="group lux-glass lux-border rounded-3xl overflow-hidden flex flex-col"
+                className="group lux-glass lux-border rounded-3xl overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_-10px_rgba(240,180,41,0.35)] active:scale-[0.985]"
+                style={{ animation: `lux-fadeUp 0.5s ease ${idx * 0.06}s both` }}
               >
                 {/* Image */}
                 <div className="h-52 bg-white/10 relative overflow-hidden flex-shrink-0">
