@@ -70,11 +70,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ServerStatus />
           <Navbar />
           <main className="min-h-screen">{children}</main>
+          <div style={{position:"fixed",bottom:"6px",right:"8px",zIndex:9999,fontSize:"9px",padding:"2px 6px",borderRadius:"999px",background:"rgba(240,180,41,0.15)",color:"#f0b429",border:"1px solid rgba(240,180,41,0.35)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v4·disco</div>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
+// Build version — bump to force client cache purge + reload
+var SB_BUILD="v4-disco-2026-04-25";
+try{
+  var prev=localStorage.getItem("sb_build");
+  if(prev!==SB_BUILD){
+    localStorage.setItem("sb_build",SB_BUILD);
+    if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}
+    if("serviceWorker" in navigator && prev){
+      navigator.serviceWorker.getRegistrations().then(function(rs){
+        rs.forEach(function(r){r.unregister();});
+        setTimeout(function(){window.location.reload();},200);
+      });
+    }
+  }
+}catch(e){}
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("/sw.js").then(function(reg){
+    navigator.serviceWorker.register("/sw.js?v="+SB_BUILD).then(function(reg){
       // Force check for new SW on every load
       reg.update();
       // When a new SW takes control, reload the page so the user sees the latest build
