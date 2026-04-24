@@ -70,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ServerStatus />
           <Navbar />
           <main className="min-h-screen">{children}</main>
+          <a href="/discover" style={{position:"fixed",bottom:"80px",right:"16px",zIndex:9999,display:"inline-flex",alignItems:"center",gap:"6px",padding:"12px 18px",borderRadius:"999px",background:"linear-gradient(135deg,#f0b429,#c9911a)",color:"#0a0f23",fontWeight:700,fontSize:"13px",boxShadow:"0 10px 30px -5px rgba(240,180,41,0.6), 0 0 0 2px rgba(255,255,255,0.1) inset",textDecoration:"none",letterSpacing:"0.02em"}}>✨ Try Discovery</a>
           <div style={{position:"fixed",bottom:"6px",right:"8px",zIndex:9999,fontSize:"9px",padding:"2px 6px",borderRadius:"999px",background:"rgba(240,180,41,0.15)",color:"#f0b429",border:"1px solid rgba(240,180,41,0.35)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v4·disco</div>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
