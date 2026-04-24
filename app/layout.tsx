@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth";
 import { Navbar } from "@/components/Navbar";
 import { ServerStatus } from "@/components/ServerStatus";
+import { FabDiscover } from "@/components/FabDiscover";
 export const viewport: Viewport = {
   themeColor: '#0a0f23',
   width: 'device-width',
@@ -70,12 +71,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ServerStatus />
           <Navbar />
           <main className="min-h-screen">{children}</main>
-          <a href="/discover" style={{position:"fixed",bottom:"80px",right:"16px",zIndex:9999,display:"inline-flex",alignItems:"center",gap:"6px",padding:"12px 18px",borderRadius:"999px",background:"linear-gradient(135deg,#f0b429,#c9911a)",color:"#0a0f23",fontWeight:700,fontSize:"13px",boxShadow:"0 10px 30px -5px rgba(240,180,41,0.6), 0 0 0 2px rgba(255,255,255,0.1) inset",textDecoration:"none",letterSpacing:"0.02em"}}>✨ Try Discovery</a>
-          <div style={{position:"fixed",bottom:"6px",right:"8px",zIndex:9999,fontSize:"9px",padding:"2px 6px",borderRadius:"999px",background:"rgba(240,180,41,0.15)",color:"#f0b429",border:"1px solid rgba(240,180,41,0.35)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v4·disco</div>
+          <FabDiscover />
+          <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v5</div>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
 // Build version — bump to force client cache purge + reload
-var SB_BUILD="v4-disco-2026-04-25";
+var SB_BUILD="v5-reels-2026-04-25";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev!==SB_BUILD){
