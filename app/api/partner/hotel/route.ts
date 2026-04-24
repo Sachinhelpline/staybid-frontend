@@ -54,14 +54,52 @@ export async function GET(req: NextRequest) {
 
   // Bookings (accepted bids)
   const bRes  = await fetch(
-    `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=50`,
+    `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
     { headers: SB_H }
   );
-  const bookings = await bRes.json();
+  const bookingsRaw = await bRes.json();
+  const bookingsArr: any[] = Array.isArray(bookingsRaw) ? bookingsRaw : [];
+
+  // Enrich with user + request + room data
+  const customerIds = Array.from(new Set(bookingsArr.map((b: any) => b.customerId).filter(Boolean)));
+  const requestIds  = Array.from(new Set(bookingsArr.map((b: any) => b.requestId).filter(Boolean)));
+  const roomIdsB    = Array.from(new Set(bookingsArr.map((b: any) => b.roomId).filter(Boolean)));
+
+  const [users, requests, bRooms] = await Promise.all([
+    customerIds.length
+      ? fetch(`${SB_URL}/rest/v1/users?id=in.(${customerIds.join(",")})&select=id,name,phone`, { headers: SB_H }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+    requestIds.length
+      ? fetch(`${SB_URL}/rest/v1/bid_requests?id=in.(${requestIds.join(",")})&select=*`, { headers: SB_H }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+    roomIdsB.length
+      ? fetch(`${SB_URL}/rest/v1/rooms?id=in.(${roomIdsB.join(",")})&select=*`, { headers: SB_H }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const uArr  = Array.isArray(users)    ? users    : [];
+  const rqArr = Array.isArray(requests) ? requests : [];
+  const rmArr = Array.isArray(bRooms)   ? bRooms   : [];
+
+  const bookings = bookingsArr.map((b: any) => {
+    const u  = uArr.find((x: any) => x.id === b.customerId);
+    const rq = rqArr.find((x: any) => x.id === b.requestId);
+    const rm = rmArr.find((x: any) => x.id === b.roomId);
+    return {
+      ...b,
+      guestName: u?.name || null,
+      guestPhone: u?.phone || null,
+      customer: u || null,
+      request: rq || null,
+      checkIn: rq?.checkIn || b.checkIn || null,
+      checkOut: rq?.checkOut || b.checkOut || null,
+      guests: rq?.guests || b.guests || null,
+      room: rm || null,
+    };
+  });
 
   return NextResponse.json({
     hotel: { ...hotel, rooms: Array.isArray(rooms) ? rooms : [] },
-    bookings: Array.isArray(bookings) ? bookings : [],
+    bookings,
   });
 }
 

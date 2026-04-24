@@ -12,7 +12,6 @@ function decodeJwt(token: string): any {
   } catch { return null; }
 }
 
-/** Resolve all user IDs sharing the same phone (handles +91 duplicate records) */
 async function resolveOwnerIds(primaryId: string): Promise<string[]> {
   const ids: string[] = [primaryId];
   try {
@@ -30,6 +29,47 @@ async function resolveOwnerIds(primaryId: string): Promise<string[]> {
   return ids;
 }
 
+async function enrichBids(bids: any[]): Promise<any[]> {
+  if (!bids.length) return [];
+  const customerIds = Array.from(new Set(bids.map((b: any) => b.customerId).filter(Boolean)));
+  const requestIds  = Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)));
+  const roomIds     = Array.from(new Set(bids.map((b: any) => b.roomId).filter(Boolean)));
+
+  const [users, requests, rooms] = await Promise.all([
+    customerIds.length
+      ? fetch(`${SB_URL}/rest/v1/users?id=in.(${customerIds.join(",")})&select=id,name,phone`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+    requestIds.length
+      ? fetch(`${SB_URL}/rest/v1/bid_requests?id=in.(${requestIds.join(",")})&select=*`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+    roomIds.length
+      ? fetch(`${SB_URL}/rest/v1/rooms?id=in.(${roomIds.join(",")})&select=*`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
+  ]);
+
+  const uArr = Array.isArray(users) ? users : [];
+  const rqArr = Array.isArray(requests) ? requests : [];
+  const rmArr = Array.isArray(rooms) ? rooms : [];
+
+  return bids.map((b: any) => {
+    const u = uArr.find((x: any) => x.id === b.customerId);
+    const rq = rqArr.find((x: any) => x.id === b.requestId);
+    const rm = rmArr.find((x: any) => x.id === b.roomId);
+    return {
+      ...b,
+      guestName: u?.name || b.guestName || null,
+      guestPhone: u?.phone || null,
+      customer: u || null,
+      request: rq || null,
+      checkIn: rq?.checkIn || b.checkIn || null,
+      checkOut: rq?.checkOut || b.checkOut || null,
+      guests: rq?.guests || b.guests || null,
+      room: rm || null,
+      roomType: rm?.type || rm?.name || null,
+    };
+  });
+}
+
 export async function GET(req: NextRequest) {
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,32 +77,35 @@ export async function GET(req: NextRequest) {
   const payload = decodeJwt(token);
   if (!payload?.id) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
+  let bids: any[] = [];
   try {
-    // Try Railway backend first
     const res = await fetch(`${RAILWAY}/api/bids/hotel`, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(6000),
     });
     if (res.ok) {
       const data = await res.json();
-      return NextResponse.json(data);
+      bids = Array.isArray(data?.bids) ? data.bids : (Array.isArray(data) ? data : []);
     }
-  } catch { /* fall through to Supabase */ }
+  } catch { /* fall through */ }
 
-  // Fallback: Supabase direct — resolve all owner IDs to handle +91 duplicate accounts
-  const ownerIds = await resolveOwnerIds(payload.id);
-  const hotelRes = await fetch(
-    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
-    { headers: SB_HEADERS }
-  );
-  const hotels = await hotelRes.json();
-  if (!Array.isArray(hotels) || hotels.length === 0) return NextResponse.json({ bids: [] });
+  if (!bids.length) {
+    const ownerIds = await resolveOwnerIds(payload.id);
+    const hotelRes = await fetch(
+      `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
+      { headers: SB_HEADERS }
+    );
+    const hotels = await hotelRes.json();
+    if (!Array.isArray(hotels) || hotels.length === 0) return NextResponse.json({ bids: [] });
+    const hotelIds = hotels.map((h: any) => h.id);
+    const bidsRes = await fetch(
+      `${SB_URL}/rest/v1/bids?hotelId=in.(${hotelIds.join(",")})&select=*&order=createdAt.desc&limit=200`,
+      { headers: SB_HEADERS }
+    );
+    const raw = await bidsRes.json();
+    bids = Array.isArray(raw) ? raw : [];
+  }
 
-  const hotelId = hotels[0].id;
-  const bidsRes = await fetch(
-    `${SB_URL}/rest/v1/bids?hotelId=eq.${hotelId}&select=*&order=createdAt.desc&limit=100`,
-    { headers: SB_HEADERS }
-  );
-  const bids = await bidsRes.json();
-  return NextResponse.json({ bids: Array.isArray(bids) ? bids : [] });
+  const enriched = await enrichBids(bids);
+  return NextResponse.json({ bids: enriched });
 }

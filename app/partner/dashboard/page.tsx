@@ -81,6 +81,14 @@ export default function PartnerDashboard() {
     loadAll(token, user);
   }, []);
 
+  // ── Live auto-refresh every 20s (silent, no spinner) ───────────────────
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const t = setInterval(() => { refreshLive(token); }, 20_000);
+    return () => clearInterval(t);
+  }, []);
+
   // ── AI prices recalculate every 60s ────────────────────────────────────
   useEffect(() => {
     if (!rooms.length || !hotel) return;
@@ -111,6 +119,21 @@ export default function PartnerDashboard() {
       if (flashData.deals)  setFlashDeals(flashData.deals);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
+  }
+
+  async function refreshLive(token: string) {
+    try {
+      const [hotelRes, bidsRes, flashRes] = await Promise.all([
+        fetch("/api/partner/hotel",       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch("/api/partner/bids",        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch("/api/partner/flash-deals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+      ]);
+      const [hotelData, bidsData, flashData] = await Promise.all([hotelRes.json(), bidsRes.json(), flashRes.json()]);
+      if (hotelData?.hotel)   { setHotel(hotelData.hotel); setRooms(hotelData.hotel.rooms || []); }
+      if (hotelData?.bookings) setBookings(hotelData.bookings);
+      if (bidsData?.bids)      setBids(bidsData.bids);
+      if (flashData?.deals)    setFlashDeals(flashData.deals);
+    } catch { /* silent */ }
   }
 
   function logout() {
