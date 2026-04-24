@@ -47,6 +47,9 @@ export default function PartnerDashboard() {
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"profile">("overview");
 
+  // ── Booking detail modal ─────────────────────────────────────────────────
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+
   // ── Availability / PMS state ─────────────────────────────────────────────
   const [calendar, setCalendar]       = useState<Record<string, Record<string, any>>>({});
   const [calLoading, setCalLoading]   = useState(false);
@@ -472,9 +475,124 @@ export default function PartnerDashboard() {
       <div className="max-w-7xl mx-auto px-5 py-6">
 
         {/* ══════════════ OVERVIEW ══════════════ */}
-        {tab === "overview" && (
+        {tab === "overview" && (() => {
+          const todayISO = new Date().toISOString().slice(0,10);
+          const isSameDay = (d: any) => d && new Date(d).toISOString().slice(0,10) === todayISO;
+          const checkInsToday  = bookings.filter(b => isSameDay(b.checkIn));
+          const checkOutsToday = bookings.filter(b => isSameDay(b.checkOut));
+          const inHouseToday   = bookings.filter(b => {
+            if (!b.checkIn || !b.checkOut) return false;
+            const ci = new Date(b.checkIn).toISOString().slice(0,10);
+            const co = new Date(b.checkOut).toISOString().slice(0,10);
+            return ci <= todayISO && todayISO < co;
+          });
+          return (
           <div className="fade-up space-y-6">
             <h2 className="font-display text-2xl font-light text-luxury-900">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
+
+            {/* ── Today's Bookings — Airbnb-style hero panel ── */}
+            <div className="rounded-3xl overflow-hidden shadow-lg border border-luxury-200 bg-white">
+              <div className="bg-gradient-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]">🌅 Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
+                  <p className="text-white font-display text-xl font-light mt-0.5">Your day at a glance</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
+                    🛬 {checkInsToday.length} Check-in{checkInsToday.length!==1?"s":""}
+                  </span>
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
+                    🛫 {checkOutsToday.length} Check-out{checkOutsToday.length!==1?"s":""}
+                  </span>
+                  <span className="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-xs font-bold px-3 py-1.5 rounded-full">
+                    🏨 {inHouseToday.length} In-house
+                  </span>
+                </div>
+              </div>
+
+              {/* 3 columns inside */}
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-luxury-100">
+                {/* Check-ins */}
+                <div className="p-4">
+                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span>🛬</span> Arriving Today
+                  </p>
+                  {checkInsToday.length === 0 ? (
+                    <p className="text-sm text-luxury-400 italic">No arrivals today</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {checkInsToday.map(b => (
+                        <button key={b.id} onClick={() => setSelectedBooking(b)}
+                          className="w-full text-left p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all group">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"}</p>
+                              <p className="text-[0.65rem] text-luxury-500 truncate">{b.room?.type || b.roomId} · {b.guests || 2} guests</p>
+                            </div>
+                            <span className="text-emerald-600 font-bold group-hover:translate-x-0.5 transition-transform">›</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Check-outs */}
+                <div className="p-4">
+                  <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span>🛫</span> Departing Today
+                  </p>
+                  {checkOutsToday.length === 0 ? (
+                    <p className="text-sm text-luxury-400 italic">No departures today</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {checkOutsToday.map(b => (
+                        <button key={b.id} onClick={() => setSelectedBooking(b)}
+                          className="w-full text-left p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all group">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"}</p>
+                              <p className="text-[0.65rem] text-luxury-500 truncate">{b.room?.type || b.roomId} · {b.guests || 2} guests</p>
+                            </div>
+                            <span className="text-amber-600 font-bold group-hover:translate-x-0.5 transition-transform">›</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* In-house */}
+                <div className="p-4">
+                  <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <span>🏨</span> Staying Now
+                  </p>
+                  {inHouseToday.length === 0 ? (
+                    <p className="text-sm text-luxury-400 italic">No in-house guests</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {inHouseToday.slice(0,5).map(b => (
+                        <button key={b.id} onClick={() => setSelectedBooking(b)}
+                          className="w-full text-left p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-all group">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"}</p>
+                              <p className="text-[0.65rem] text-luxury-500 truncate">until {fmtDate(b.checkOut)}</p>
+                            </div>
+                            <span className="text-blue-600 font-bold group-hover:translate-x-0.5 transition-transform">›</span>
+                          </div>
+                        </button>
+                      ))}
+                      {inHouseToday.length > 5 && (
+                        <button onClick={() => setTab("bookings")} className="w-full text-center text-xs font-bold text-blue-600 hover:text-blue-700 py-1">
+                          +{inHouseToday.length - 5} more →
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Stats grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -546,7 +664,8 @@ export default function PartnerDashboard() {
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ══════════════ BID INBOX ══════════════ */}
         {tab === "bids" && (
@@ -890,11 +1009,12 @@ export default function PartnerDashboard() {
                     : 1;
                   const total = (b.counterAmount || b.amount || 0) * nights;
                   return (
-                    <div key={b.id} className="card-p flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
+                    <button key={b.id} onClick={() => setSelectedBooking(b)}
+                      className="card-p flex items-start justify-between gap-4 w-full text-left hover:shadow-lg hover:border-gold-300 transition-all cursor-pointer">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-base flex-shrink-0">🎫</div>
-                        <div>
-                          <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "Room"}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"} · {b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-500">
                             {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} · {nights} night{nights>1?"s":""}
                           </p>
@@ -904,9 +1024,9 @@ export default function PartnerDashboard() {
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-luxury-900 text-base">{fmtCur(total)}</p>
                         <p className="text-xs text-luxury-400">{fmtCur(b.counterAmount || b.amount)}/night</p>
-                        <span className="inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Confirmed</span>
+                        <span className="inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Confirmed ›</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1283,6 +1403,152 @@ export default function PartnerDashboard() {
           </div>
         </div>
       )}
+
+      {/* ══════════════ BOOKING DETAIL MODAL ══════════════ */}
+      {selectedBooking && (() => {
+        const b = selectedBooking;
+        const nights = b.checkIn && b.checkOut
+          ? Math.max(1, Math.ceil((new Date(b.checkOut).getTime()-new Date(b.checkIn).getTime())/86400000))
+          : 1;
+        const pricePerNight = b.counterAmount || b.amount || 0;
+        const total = pricePerNight * nights;
+        const guestInitials = (b.guestName || b.user?.name || "G").slice(0,2).toUpperCase();
+        const todayISO = new Date().toISOString().slice(0,10);
+        const ciISO = b.checkIn ? new Date(b.checkIn).toISOString().slice(0,10) : "";
+        const coISO = b.checkOut ? new Date(b.checkOut).toISOString().slice(0,10) : "";
+        let statusLabel = "Confirmed";
+        let statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/30";
+        if (ciISO === todayISO) { statusLabel = "Arriving Today"; statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"; }
+        else if (coISO === todayISO) { statusLabel = "Departing Today"; statusBadge = "bg-amber-500/20 text-amber-300 border-amber-400/30"; }
+        else if (ciISO && coISO && ciISO <= todayISO && todayISO < coISO) { statusLabel = "In-house"; statusBadge = "bg-blue-500/20 text-blue-300 border-blue-400/30"; }
+        else if (ciISO && ciISO > todayISO) { statusLabel = "Upcoming"; statusBadge = "bg-indigo-500/20 text-indigo-300 border-indigo-400/30"; }
+        else if (coISO && coISO < todayISO) { statusLabel = "Checked Out"; statusBadge = "bg-white/10 text-white/60 border-white/20"; }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto"
+            onClick={() => setSelectedBooking(null)}>
+            <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden my-0 sm:my-8"
+              onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="relative bg-gradient-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
+                <button onClick={() => setSelectedBooking(null)}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg">✕</button>
+                <p className="text-[0.6rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
+                  <div>
+                    <p className="text-white font-semibold text-lg">{b.guestName || b.user?.name || "Guest"}</p>
+                    <p className="text-white/60 text-xs">ID: {String(b.id).slice(0,12).toUpperCase()}</p>
+                  </div>
+                </div>
+                <span className={`inline-block mt-3 text-[0.65rem] font-bold px-3 py-1 rounded-full border uppercase tracking-widest ${statusBadge}`}>
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Dates */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <p className="text-[0.6rem] font-bold text-emerald-600 uppercase tracking-widest">🛬 Check-in</p>
+                    <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkIn)}</p>
+                    <p className="text-[0.65rem] text-luxury-500">{b.checkIn && new Date(b.checkIn).toLocaleDateString("en-IN",{weekday:"long"})}</p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-[0.6rem] font-bold text-amber-600 uppercase tracking-widest">🛫 Check-out</p>
+                    <p className="text-sm font-bold text-luxury-900 mt-1">{fmtDate(b.checkOut)}</p>
+                    <p className="text-[0.65rem] text-luxury-500">{b.checkOut && new Date(b.checkOut).toLocaleDateString("en-IN",{weekday:"long"})}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-luxury-500 font-semibold">
+                  <span className="h-px flex-1 bg-luxury-200" />
+                  <span>🌙 {nights} night{nights>1?"s":""}</span>
+                  <span className="h-px flex-1 bg-luxury-200" />
+                </div>
+
+                {/* Room */}
+                <div className="p-4 rounded-2xl bg-luxury-50 border border-luxury-200">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2">🏨 Room</p>
+                  <p className="font-semibold text-luxury-900">{b.room?.type || b.roomId || "—"}</p>
+                  {b.room?.capacity && <p className="text-xs text-luxury-500 mt-0.5">Capacity: {b.room.capacity} guests</p>}
+                  <p className="text-xs text-luxury-500">{b.guests || 2} guest{(b.guests||2)>1?"s":""} booked</p>
+                </div>
+
+                {/* Guest contact */}
+                <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
+                  <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">👤 Guest Contact</p>
+                  {(b.guestPhone || b.user?.phone) && (
+                    <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded">
+                      <span className="text-luxury-600">📱 Phone</span>
+                      <span className="font-bold text-luxury-900">{b.guestPhone || b.user?.phone}</span>
+                    </a>
+                  )}
+                  {(b.guestEmail || b.user?.email) && (
+                    <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded">
+                      <span className="text-luxury-600">✉️ Email</span>
+                      <span className="font-semibold text-luxury-900 truncate">{b.guestEmail || b.user?.email}</span>
+                    </a>
+                  )}
+                  {!(b.guestPhone || b.user?.phone) && !(b.guestEmail || b.user?.email) && (
+                    <p className="text-xs text-luxury-400 italic">No contact info on file</p>
+                  )}
+                </div>
+
+                {/* Payment */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-gold-50 to-amber-50 border border-gold-200">
+                  <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2">💰 Payment</p>
+                  <div className="flex justify-between text-sm py-1">
+                    <span className="text-luxury-600">Rate per night</span>
+                    <span className="font-semibold text-luxury-900">{fmtCur(pricePerNight)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm py-1">
+                    <span className="text-luxury-600">× {nights} night{nights>1?"s":""}</span>
+                    <span className="font-semibold text-luxury-900">{fmtCur(total)}</span>
+                  </div>
+                  <div className="h-px bg-gold-300 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-luxury-900">Total Revenue</span>
+                    <span className="text-xl font-bold text-gold-700">{fmtCur(total)}</span>
+                  </div>
+                  {b.message && /razorpay|pay_/i.test(b.message) && (
+                    <p className="text-[0.65rem] text-emerald-700 font-semibold mt-2">✓ Paid online via Razorpay</p>
+                  )}
+                </div>
+
+                {/* Notes / source */}
+                {b.message && (
+                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
+                    <p className="text-[0.6rem] font-bold text-blue-600 uppercase tracking-widest mb-1">📝 Guest Message</p>
+                    <p className="text-xs text-luxury-700">{b.message}</p>
+                  </div>
+                )}
+
+                <div className="text-[0.65rem] text-luxury-400 text-center">
+                  Booking created on {fmtDate(b.createdAt)}
+                  {b.status && <> · Status: <b className="text-luxury-600">{b.status}</b></>}
+                </div>
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  {(b.guestPhone || b.user?.phone) && (
+                    <a href={`tel:${b.guestPhone || b.user?.phone}`}
+                      className="py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold text-center transition-all">
+                      📞 Call Guest
+                    </a>
+                  )}
+                  {(b.guestPhone || b.user?.phone) && (
+                    <a href={`https://wa.me/${String(b.guestPhone || b.user?.phone).replace(/[^0-9]/g,"")}`} target="_blank" rel="noopener"
+                      className="py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold text-center transition-all">
+                      💬 WhatsApp
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
