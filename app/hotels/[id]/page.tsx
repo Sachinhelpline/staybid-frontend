@@ -94,6 +94,10 @@ export default function HotelDetail() {
   const [flashChildren, setFlashChildren]     = useState(0);
   const [bookLoading, setBookLoading]         = useState(false);
   const [flashBookSuccess, setFlashBookSuccess] = useState(false);
+  // Multi-room / multi-night extension for flash deals. Default 1 room × 1 night (deal's original scope).
+  const [flashRoomQty, setFlashRoomQty]       = useState(1);
+  // Live availability check state: { unitsFree, unitsTotal, feasible, loading, error }
+  const [flashAvail, setFlashAvail]           = useState<{ unitsFree: number; unitsTotal: number; feasible: boolean; loading: boolean; error?: string } | null>(null);
 
   // AI live pricing state — keyed by roomId, recalculates every 60s
   const [roomPrices, setRoomPrices] = useState<Record<string, DynamicPriceResult>>({});
@@ -227,10 +231,13 @@ export default function HotelDetail() {
   const extraAdults        = Math.max(0, flashAdults - baseCapacity);
   const extraAdultRate     = 500;
   const childRate          = 200;
-  const flashBaseTotal     = parseFloat(dealPrice || "0") * flashNights;
+  const flashBaseTotal     = parseFloat(dealPrice || "0") * flashNights * flashRoomQty;
   const flashExtraTotal    = extraAdults * extraAdultRate * flashNights;
   const flashChildTotal    = flashChildren * childRate * flashNights;
   const flashGrandTotal    = flashBaseTotal + flashExtraTotal + flashChildTotal;
+  // Flash deals originally cover 1 room × 1 night (today→tomorrow). Any additional
+  // rooms or extra nights constitute an "upgrade" that needs availability approval.
+  const flashIsUpgrade     = flashRoomQty > 1 || flashNights > 1;
 
   // ── Flash deal booking ─────────────────────────────
   // ── Detect Firebase RS256 token by reading the JWT header ──────────────────
@@ -373,6 +380,35 @@ export default function HotelDetail() {
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
 
+      // Step 2.5: If customer extended qty (>1 room) or nights (>1), post upgrade request.
+      // The endpoint auto-approves when units are free, else creates a pending block that
+      // shows up in the hotel owner's dashboard for approval.
+      if (flashIsUpgrade) {
+        try {
+          const token = localStorage.getItem("sb_token");
+          // qty - 1 because the primary booking (above) already reserves 1 room
+          const extraQty = Math.max(0, flashRoomQty - 1);
+          if (extraQty > 0 || flashNights > 1) {
+            await fetch("/api/flash-deals/upgrade", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({
+                hotelId: hotel.id,
+                roomId: dealRoomId,
+                fromDate: today,
+                toDate: flashCheckOut,
+                qty: extraQty > 0 ? extraQty : 1,
+                pricePerNight: dealAmt,
+                guestName: user.name || user.phone,
+                guestPhone: user.phone,
+                note: `Flash deal booking #${bidRes.bid.id.slice(0, 8)} · ${flashRoomQty} room(s) × ${flashNights} night(s)`,
+                razorpayPaymentId: payResult.razorpay_payment_id,
+              }),
+            });
+          }
+        } catch { /* upgrade record is best-effort; primary booking already succeeded */ }
+      }
+
       // Step 3: Send confirmation email
       await sendBookingEmail({
         bookingId: bidRes.bid.id,
@@ -450,20 +486,32 @@ export default function HotelDetail() {
     setNegSuccess(false);
   };
 
-  // When the floating picker modal is open and dates become valid, auto-resume the user's
-  // intent (open Book Now / Negotiate modal) and close the picker.
+  // Continue button in the floating picker modal explicitly resumes the user's intent.
+  // (We intentionally do NOT auto-fire on date change — the customer needs a moment to
+  // adjust adults/children/kids after picking dates before the booking modal takes over.)
+  // Live availability check for flash deal extensions (runs whenever qty/nights change)
   useEffect(() => {
+    if (!flashBookOpen || !dealRoomId || !hotel?.id || !flashIsUpgrade) { setFlashAvail(null); return; }
+    let cancelled = false;
+    setFlashAvail((prev) => ({ unitsFree: 0, unitsTotal: 0, feasible: false, loading: true, ...(prev || {}) }));
+    const q = new URLSearchParams({ hotelId: hotel.id, roomId: dealRoomId, fromDate: today, toDate: flashCheckOut, qty: String(flashRoomQty) });
+    fetch(`/api/flash-deals/upgrade?${q.toString()}`)
+      .then((r) => r.json())
+      .then((j) => { if (!cancelled) setFlashAvail({ unitsFree: j.unitsFree || 0, unitsTotal: j.unitsTotal || 0, feasible: !!j.feasible, loading: false }); })
+      .catch((e) => { if (!cancelled) setFlashAvail({ unitsFree: 0, unitsTotal: 0, feasible: false, loading: false, error: e?.message }); });
+    return () => { cancelled = true; };
+  }, [flashBookOpen, dealRoomId, hotel?.id, flashRoomQty, flashCheckOut, today, flashIsUpgrade]);
+
+  const resumePickerIntent = () => {
     if (!pickerModal) return;
     if (!globalCheckIn || !globalCheckOut) return;
     const { intent, room } = pickerModal;
     setPickerModal(null);
-    // tiny delay so the picker close animation doesn't clash with the next modal
     setTimeout(() => {
       if (intent === "book") openBookNow(room);
       else openNegotiate(room);
-    }, 120);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalCheckIn, globalCheckOut, pickerModal]);
+    }, 140);
+  };
 
   const handleBookNow = async () => {
     if (!user) return router.push("/auth");
@@ -1688,12 +1736,50 @@ export default function HotelDetail() {
                 </div>
               </div>
 
+              {/* Number of rooms — extension */}
+              <div className="mb-5">
+                <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-2">Rooms needed</label>
+                <div className="flex items-center justify-between p-3 picker-tile">
+                  <div>
+                    <p className="text-sm font-semibold text-luxury-900">Room quantity</p>
+                    <p className="text-[0.65rem] text-luxury-400">Deal covers 1 · extras checked live against availability</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setFlashRoomQty(Math.max(1, flashRoomQty - 1))} className="picker-step">−</button>
+                    <span className="w-6 text-center font-black text-luxury-900 text-lg">{flashRoomQty}</span>
+                    <button type="button" onClick={() => setFlashRoomQty(Math.min(10, flashRoomQty + 1))} className="picker-step">+</button>
+                  </div>
+                </div>
+
+                {/* Live availability banner — only when extending (qty>1 or nights>1) */}
+                {flashIsUpgrade && (
+                  <div className="mt-2">
+                    {flashAvail?.loading ? (
+                      <div className="p-2.5 bg-luxury-50 border border-luxury-200 rounded-xl text-xs text-luxury-500 flex items-center gap-2">
+                        <span className="w-3 h-3 border-2 border-luxury-300 border-t-luxury-500 rounded-full animate-spin" />
+                        AI checking room availability for these dates…
+                      </div>
+                    ) : flashAvail?.feasible ? (
+                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+                        <span>✅</span>
+                        <span><b>{flashAvail.unitsFree}</b> of {flashAvail.unitsTotal} rooms free · Auto-approved at flash price</span>
+                      </div>
+                    ) : flashAvail ? (
+                      <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-800">
+                        <p className="font-semibold">⚠️ Only {flashAvail.unitsFree} of {flashAvail.unitsTotal} rooms free on these dates</p>
+                        <p className="text-amber-700 mt-0.5">You can still book — hotel gets notified &amp; reviews your request. Dates auto-block on their side if approved.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
               {/* Rate Breakdown */}
               <div className="bg-gold-50 border border-gold-200 rounded-2xl p-4 mb-5">
                 <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">Rate Breakdown</p>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-luxury-700">
-                    <span>₹{dealPrice} × {flashNights} night{flashNights > 1 ? "s" : ""}</span>
+                    <span>₹{dealPrice} × {flashNights} night{flashNights > 1 ? "s" : ""}{flashRoomQty > 1 ? ` × ${flashRoomQty} rooms` : ""}</span>
                     <span className="font-semibold">₹{flashBaseTotal.toLocaleString()}</span>
                   </div>
                   {extraAdults > 0 && (
@@ -1718,13 +1804,30 @@ export default function HotelDetail() {
                 </div>
               </div>
 
-              <button
-                onClick={handleFlashBook}
-                disabled={bookLoading}
-                className="btn-3d btn-3d-gold btn-3d-lg w-full"
-              >
-                {bookLoading ? "Confirming…" : `⚡ Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
-              </button>
+              <div className="space-y-2.5">
+                <button
+                  onClick={handleFlashBook}
+                  disabled={bookLoading}
+                  className="btn-3d btn-3d-gold btn-3d-lg w-full"
+                >
+                  {bookLoading ? "Confirming…" : `⚡ Confirm Booking · ₹${flashGrandTotal.toLocaleString()}`}
+                </button>
+                <button
+                  onClick={() => {
+                    // Close the flash modal and stay on hotel page — strip deal params so
+                    // the modal doesn't auto-reopen if the user interacts with rooms.
+                    setFlashBookOpen(false);
+                    router.replace(`/hotels/${hotel.id}`);
+                  }}
+                  disabled={bookLoading}
+                  className="btn-3d btn-3d-white w-full"
+                >
+                  🏨 View Hotel Details First
+                </button>
+                <p className="text-center text-[0.65rem] text-luxury-400 tracking-wide">
+                  Explore photos, amenities &amp; reviews before booking
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -2114,7 +2217,7 @@ export default function HotelDetail() {
               <div className="relative z-[2]">
                 <button
                   disabled={!globalCheckIn || !globalCheckOut}
-                  onClick={() => { /* useEffect auto-resumes intent when both dates are set */ }}
+                  onClick={resumePickerIntent}
                   className="btn-3d btn-3d-gold w-full"
                 >
                   {(!globalCheckIn || !globalCheckOut)
