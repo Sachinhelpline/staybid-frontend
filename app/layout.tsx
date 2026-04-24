@@ -71,7 +71,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <main className="min-h-screen">{children}</main>
         </AuthProvider>
-              <script dangerouslySetInnerHTML={{__html: `if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js")})}`}} />
+              <script dangerouslySetInnerHTML={{__html: `
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("/sw.js").then(function(reg){
+      // Force check for new SW on every load
+      reg.update();
+      // When a new SW takes control, reload the page so the user sees the latest build
+      var refreshing=false;
+      navigator.serviceWorker.addEventListener("controllerchange",function(){
+        if(refreshing)return; refreshing=true; window.location.reload();
+      });
+      // If there's a waiting SW, tell it to activate immediately
+      if(reg.waiting)reg.waiting.postMessage("SKIP_WAITING");
+      reg.addEventListener("updatefound",function(){
+        var nw=reg.installing; if(!nw)return;
+        nw.addEventListener("statechange",function(){
+          if(nw.state==="installed" && navigator.serviceWorker.controller){
+            nw.postMessage("SKIP_WAITING");
+          }
+        });
+      });
+    }).catch(function(){});
+  });
+}`}} />
       </body>
     </html>
   );
