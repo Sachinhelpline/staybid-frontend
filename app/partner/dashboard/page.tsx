@@ -45,7 +45,19 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"profile">("overview");
+
+  // ── Availability / PMS state ─────────────────────────────────────────────
+  const [calendar, setCalendar]       = useState<Record<string, Record<string, any>>>({});
+  const [calLoading, setCalLoading]   = useState(false);
+  const [calMonth, setCalMonth]       = useState<Date>(new Date());
+  const [otaFeeds, setOtaFeeds]       = useState<any[]>([]);
+  const [walkInOpen, setWalkInOpen]   = useState<{ roomId: string; date: string } | null>(null);
+  const [walkIn, setWalkIn]           = useState({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"" });
+  const [walkInSaving, setWalkInSaving] = useState(false);
+  const [newFeed, setNewFeed]         = useState({ roomId:"", provider:"booking", icalUrl:"", label:"" });
+  const [feedSaving, setFeedSaving]   = useState(false);
+  const [syncing, setSyncing]         = useState<string>("");
 
   // Bid action
   const [selectedBid, setSelectedBid]   = useState<any>(null);
@@ -238,6 +250,133 @@ export default function PartnerDashboard() {
     finally { setProfileSaving(false); }
   }
 
+  // ── Availability / PMS handlers ──────────────────────────────────────────
+  async function loadCalendar() {
+    if (!hotel?.id) return;
+    setCalLoading(true);
+    const token = getToken();
+    try {
+      const from = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1).toISOString().slice(0,10);
+      const to   = new Date(calMonth.getFullYear(), calMonth.getMonth()+3, 0).toISOString().slice(0,10);
+      const r = await fetch(`/api/partner/calendar?hotelId=${hotel.id}&from=${from}&to=${to}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await r.json();
+      setCalendar(d.calendar || {});
+    } catch {}
+    finally { setCalLoading(false); }
+  }
+
+  async function loadOtaFeeds() {
+    if (!hotel?.id) return;
+    const token = getToken();
+    try {
+      const r = await fetch(`/api/partner/ota-feeds?hotelId=${hotel.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await r.json();
+      setOtaFeeds(d.feeds || []);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (tab === "availability" && hotel?.id) {
+      loadCalendar();
+      loadOtaFeeds();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, hotel?.id, calMonth]);
+
+  async function submitWalkIn() {
+    if (!walkInOpen || !hotel?.id) return;
+    if (!walkIn.fromDate || !walkIn.toDate) { alert("Dates required"); return; }
+    setWalkInSaving(true);
+    const token = getToken();
+    try {
+      const r = await fetch("/api/partner/walk-in", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotelId: hotel.id,
+          roomId:  walkInOpen.roomId,
+          fromDate: walkIn.fromDate,
+          toDate:   walkIn.toDate,
+          guestName: walkIn.guestName,
+          guestPhone: walkIn.guestPhone,
+          amount: walkIn.amount ? Number(walkIn.amount) : null,
+          note: walkIn.note,
+        }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Failed");
+      setWalkInOpen(null);
+      setWalkIn({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"" });
+      loadCalendar();
+    } catch(e: any) { alert("❌ " + e.message); }
+    finally { setWalkInSaving(false); }
+  }
+
+  async function deleteBlock(refId: string) {
+    if (!confirm("Remove this booking/block?")) return;
+    const token = getToken();
+    try {
+      await fetch(`/api/partner/walk-in?id=${refId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      loadCalendar();
+    } catch {}
+  }
+
+  async function addFeed() {
+    if (!hotel?.id || !newFeed.roomId || !newFeed.icalUrl) { alert("Room & iCal URL required"); return; }
+    setFeedSaving(true);
+    const token = getToken();
+    try {
+      const r = await fetch("/api/partner/ota-feeds", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ hotelId: hotel.id, ...newFeed }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Failed");
+      setNewFeed({ roomId:"", provider:"booking", icalUrl:"", label:"" });
+      loadOtaFeeds();
+    } catch(e: any) { alert("❌ " + e.message); }
+    finally { setFeedSaving(false); }
+  }
+
+  async function syncFeed(feedId: string) {
+    setSyncing(feedId);
+    const token = getToken();
+    try {
+      const r = await fetch("/api/partner/ota-feeds/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ feedId }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || "Sync failed");
+      alert(`✓ Synced: ${d.imported} new, ${d.skipped} already imported (of ${d.totalEvents})`);
+      loadOtaFeeds();
+      loadCalendar();
+    } catch(e: any) { alert("❌ " + e.message); }
+    finally { setSyncing(""); }
+  }
+
+  async function deleteFeed(feedId: string) {
+    if (!confirm("Delete this feed and all its imported blocks?")) return;
+    const token = getToken();
+    try {
+      await fetch(`/api/partner/ota-feeds?id=${feedId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      loadOtaFeeds();
+      loadCalendar();
+    } catch {}
+  }
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-luxury-50 flex items-center justify-center">
@@ -262,6 +401,7 @@ export default function PartnerDashboard() {
     { id:"rooms",     icon:"🏨", label:"Rooms"      },
     { id:"flash",     icon:"⚡", label:"Flash Deals"},
     { id:"bookings",  icon:"📅", label:"Bookings"   },
+    { id:"availability", icon:"🗓️", label:"Availability" },
     { id:"profile",   icon:"⚙️", label:"Profile"    },
   ] as const;
 
@@ -771,6 +911,243 @@ export default function PartnerDashboard() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ══════════════ AVAILABILITY / PMS ══════════════ */}
+        {tab === "availability" && (
+          <div className="fade-up space-y-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="font-display text-2xl font-light text-luxury-900">Availability Calendar</h2>
+                <p className="text-sm text-luxury-500">Real-time occupancy across all bookings, walk-ins & OTA channels</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1))}
+                  className="px-3 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-100 text-sm">← Prev</button>
+                <span className="text-sm font-bold text-luxury-800 px-3">
+                  {calMonth.toLocaleDateString("en-IN", { month:"long", year:"numeric" })}
+                </span>
+                <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1))}
+                  className="px-3 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-100 text-sm">Next →</button>
+                <button onClick={loadCalendar}
+                  className="px-3 py-2 rounded-lg bg-luxury-900 text-white text-sm hover:bg-luxury-800">
+                  {calLoading ? "⟳" : "↻ Refresh"}
+                </button>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 text-xs">
+              {[
+                { c:"#dcfce7", b:"#16a34a", l:"Free" },
+                { c:"#fef3c7", b:"#d97706", l:"Bid booked" },
+                { c:"#dbeafe", b:"#2563eb", l:"OTA (Booking/Airbnb)" },
+                { c:"#f3e8ff", b:"#9333ea", l:"Walk-in" },
+                { c:"#fee2e2", b:"#dc2626", l:"Blocked" },
+              ].map(x => (
+                <div key={x.l} className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded" style={{ background:x.c, border:`1.5px solid ${x.b}` }} />
+                  <span className="text-luxury-600 font-medium">{x.l}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar grid — one row per room */}
+            {rooms.length === 0 ? (
+              <div className="card-p text-center py-10 text-luxury-400">
+                No rooms configured yet. Add rooms in the <b>Rooms</b> tab first.
+              </div>
+            ) : (
+              <div className="card-p overflow-x-auto">
+                {(() => {
+                  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0).getDate();
+                  const days = Array.from({ length: daysInMonth }, (_, i) => {
+                    const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), i+1);
+                    return d.toISOString().slice(0,10);
+                  });
+                  return (
+                    <table className="w-full text-xs border-collapse" style={{ minWidth: 820 }}>
+                      <thead>
+                        <tr>
+                          <th className="sticky left-0 bg-white text-left font-bold text-luxury-700 pr-3 pb-2" style={{ minWidth: 140 }}>Room</th>
+                          {days.map(d => {
+                            const day = new Date(d).getDate();
+                            const dow = new Date(d).getDay();
+                            const isWE = dow === 0 || dow === 6;
+                            return (
+                              <th key={d} className={`font-semibold pb-2 text-[0.65rem] ${isWE ? "text-red-500" : "text-luxury-500"}`} style={{ minWidth: 22 }}>{day}</th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rooms.map(r => (
+                          <tr key={r.id} className="border-t border-luxury-100">
+                            <td className="sticky left-0 bg-white pr-3 py-1.5 font-semibold text-luxury-800 truncate" style={{ maxWidth: 140 }}>
+                              {r.type || "Room"}
+                            </td>
+                            {days.map(d => {
+                              const occ = calendar[r.id]?.[d];
+                              let bg = "#dcfce7", border = "#bbf7d0";
+                              if (occ) {
+                                if (occ.source === "bid")      { bg="#fef3c7"; border="#fcd34d"; }
+                                else if (occ.source === "ota_ical") { bg="#dbeafe"; border="#93c5fd"; }
+                                else if (occ.source === "walk_in")  { bg="#f3e8ff"; border="#c4b5fd"; }
+                                else                                 { bg="#fee2e2"; border="#fca5a5"; }
+                              }
+                              const tooltip = occ
+                                ? `${occ.source}${occ.guestName ? " — " + occ.guestName : ""}${occ.amount ? " (₹" + occ.amount + ")" : ""}`
+                                : "Tap to add walk-in";
+                              return (
+                                <td key={d} className="p-0.5">
+                                  <button
+                                    title={tooltip}
+                                    onClick={() => {
+                                      if (occ?.refId && (occ.source === "walk_in" || occ.source === "manual")) {
+                                        deleteBlock(occ.refId);
+                                      } else if (!occ) {
+                                        const next = new Date(d); next.setDate(next.getDate()+1);
+                                        setWalkInOpen({ roomId: r.id, date: d });
+                                        setWalkIn({ fromDate: d, toDate: next.toISOString().slice(0,10), guestName:"", guestPhone:"", amount:"", note:"" });
+                                      }
+                                    }}
+                                    className="w-full h-6 rounded hover:ring-2 hover:ring-gold-400 transition-all cursor-pointer"
+                                    style={{ background: bg, border: `1px solid ${border}` }}
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* OTA Feeds manager */}
+            <div className="card-p">
+              <h3 className="font-display text-xl text-luxury-900 mb-1">🌐 OTA Channel Sync</h3>
+              <p className="text-sm text-luxury-500 mb-4">
+                Paste iCal URLs from Booking.com, Airbnb, MakeMyTrip, Goibibo or Agoda. Their bookings will automatically block your availability.
+              </p>
+
+              {/* Existing feeds */}
+              <div className="space-y-2 mb-4">
+                {otaFeeds.length === 0 ? (
+                  <div className="text-sm text-luxury-400 italic py-2">No feeds added yet.</div>
+                ) : otaFeeds.map(f => {
+                  const room = rooms.find(r => r.id === f.roomId);
+                  return (
+                    <div key={f.id} className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-xl bg-luxury-50 border border-luxury-200">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">{f.provider}</span>
+                          <span className="font-semibold text-luxury-800 text-sm">{f.label || f.provider}</span>
+                          <span className="text-xs text-luxury-400">· {room?.type || f.roomId}</span>
+                        </div>
+                        <div className="text-xs text-luxury-500 truncate mt-1" style={{ maxWidth: 420 }}>{f.icalUrl}</div>
+                        <div className="text-[0.65rem] text-luxury-400 mt-0.5">
+                          {f.lastSyncAt
+                            ? `Last sync: ${new Date(f.lastSyncAt).toLocaleString("en-IN")} · ${f.lastSyncStatus || ""} · ${f.lastEventCount || 0} events`
+                            : "Never synced"}
+                          {f.lastSyncError && <span className="text-red-500 ml-2">({f.lastSyncError})</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => syncFeed(f.id)} disabled={syncing === f.id}
+                          className="btn-gold text-xs px-3 py-1.5">
+                          {syncing === f.id ? "Syncing…" : "↻ Sync Now"}
+                        </button>
+                        <button onClick={() => deleteFeed(f.id)}
+                          className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded text-sm">🗑</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add new feed */}
+              <div className="pt-4 border-t border-luxury-100 grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+                <div>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Room</label>
+                  <select className="inp-p" value={newFeed.roomId} onChange={e=>setNewFeed(p=>({...p, roomId:e.target.value}))}>
+                    <option value="">Select room…</option>
+                    {rooms.map(r => <option key={r.id} value={r.id}>{r.type}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Provider</label>
+                  <select className="inp-p" value={newFeed.provider} onChange={e=>setNewFeed(p=>({...p, provider:e.target.value}))}>
+                    <option value="booking">Booking.com</option>
+                    <option value="airbnb">Airbnb</option>
+                    <option value="mmt">MakeMyTrip</option>
+                    <option value="goibibo">Goibibo</option>
+                    <option value="agoda">Agoda</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">iCal URL</label>
+                  <input className="inp-p" placeholder="https://..." value={newFeed.icalUrl}
+                    onChange={e=>setNewFeed(p=>({...p, icalUrl:e.target.value}))} />
+                </div>
+                <button onClick={addFeed} disabled={feedSaving} className="btn-gold text-xs py-2.5">
+                  {feedSaving ? "Adding…" : "+ Add Feed"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════ WALK-IN MODAL ══════════════ */}
+        {walkInOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setWalkInOpen(null)}>
+            <div className="bg-white rounded-3xl max-w-md w-full mx-4 overflow-hidden" onClick={e=>e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">Walk-in Booking</p>
+                  <p className="text-white font-semibold text-lg">{rooms.find(r=>r.id===walkInOpen.roomId)?.type || "Room"}</p>
+                </div>
+                <button onClick={()=>setWalkInOpen(null)} className="text-white/70 hover:text-white text-2xl">✕</button>
+              </div>
+              <div className="p-6 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-in</label>
+                    <input type="date" className="inp-p" value={walkIn.fromDate} onChange={e=>setWalkIn(p=>({...p, fromDate:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Check-out</label>
+                    <input type="date" className="inp-p" value={walkIn.toDate} onChange={e=>setWalkIn(p=>({...p, toDate:e.target.value}))} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Guest Name</label>
+                  <input className="inp-p" value={walkIn.guestName} onChange={e=>setWalkIn(p=>({...p, guestName:e.target.value}))} placeholder="Walk-in guest"/>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Phone</label>
+                    <input className="inp-p" value={walkIn.guestPhone} onChange={e=>setWalkIn(p=>({...p, guestPhone:e.target.value}))} placeholder="Optional"/>
+                  </div>
+                  <div>
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Amount (₹)</label>
+                    <input type="number" className="inp-p" value={walkIn.amount} onChange={e=>setWalkIn(p=>({...p, amount:e.target.value}))} placeholder="Per night"/>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Note</label>
+                  <textarea rows={2} className="inp-p resize-none" value={walkIn.note} onChange={e=>setWalkIn(p=>({...p, note:e.target.value}))} placeholder="ID proof, notes, etc."/>
+                </div>
+                <button onClick={submitWalkIn} disabled={walkInSaving} className="btn-gold w-full py-3 text-sm">
+                  {walkInSaving ? "Saving…" : "✓ Confirm Walk-in"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

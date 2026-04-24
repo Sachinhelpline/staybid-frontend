@@ -144,6 +144,38 @@ export default function HotelDetail() {
 
   useEffect(() => { fetchMyBids(); }, [user, id]);
 
+  // ── Real-time availability (blocked dates across all sources) ─────────────
+  const [blockedByRoom, setBlockedByRoom] = useState<Record<string, Set<string>>>({});
+  useEffect(() => {
+    if (!id) return;
+    const to = new Date(Date.now() + 180 * 86400000).toISOString().slice(0,10);
+    fetch(`/api/availability?hotelId=${id}&from=${today}&to=${to}`)
+      .then(r => r.json())
+      .then(d => {
+        const map: Record<string, Set<string>> = {};
+        Object.entries(d.rooms || {}).forEach(([rid, dates]: any) => {
+          map[rid] = new Set(dates as string[]);
+        });
+        setBlockedByRoom(map);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  // Check if selected date range overlaps blocks for any room
+  function dateRangeBlocked(checkIn: string, checkOut: string, roomId?: string): boolean {
+    if (!checkIn || !checkOut) return false;
+    const check = (rid: string) => {
+      const set = blockedByRoom[rid]; if (!set) return false;
+      for (let d = new Date(checkIn); d < new Date(checkOut); d.setDate(d.getDate()+1)) {
+        if (set.has(d.toISOString().slice(0,10))) return true;
+      }
+      return false;
+    };
+    if (roomId) return check(roomId);
+    // Any room blocked = not a hard fail, just info
+    return Object.keys(blockedByRoom).some(check);
+  }
+
   useEffect(() => {
     if (!user) return;
     const socket = io(RAILWAY);
@@ -1065,6 +1097,17 @@ export default function HotelDetail() {
               <p className="text-[0.55rem] text-emerald-600 text-center mt-1 font-semibold">&lt;5 yrs · FREE</p>
             </div>
           </div>
+
+          {/* Availability warning when dates overlap blocks */}
+          {datesSelected && dateRangeBlocked(globalCheckIn, globalCheckOut) && (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
+              <span className="text-amber-600 text-base">⚠️</span>
+              <div className="text-xs text-amber-800">
+                <p className="font-bold">Limited availability on these dates</p>
+                <p className="text-amber-700 mt-0.5">Some rooms may be booked. Other rooms shown below are still available — scroll down to pick.</p>
+              </div>
+            </div>
+          )}
 
           {/* Summary strip */}
           {datesSelected ? (
