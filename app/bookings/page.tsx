@@ -33,7 +33,7 @@ function Barcode({ id }: { id: string }) {
   );
 }
 
-function BookingCard({ b }: { b: any }) {
+function BookingCard({ b, unitNumber }: { b: any; unitNumber?: string }) {
   const [expanded, setExpanded] = useState(false);
   const st = statusStyle[b.status] || { bg: "bg-luxury-50", text: "text-luxury-600", border: "border-luxury-100", label: b.status, dot: "bg-luxury-400" };
 
@@ -96,6 +96,17 @@ function BookingCard({ b }: { b: any }) {
         <p className="text-sm text-luxury-400 mb-4">
           {room.type || "Room"}{city ? ` · ${city}` : ""}{b.guests ? ` · ${b.guests} guest${b.guests !== 1 ? "s" : ""}` : ""}
         </p>
+
+        {/* Allocated room number */}
+        {unitNumber ? (
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-300 text-gold-700 font-bold text-xs tracking-wide shadow-sm">
+            🔑 Room #{unitNumber} Allocated
+          </div>
+        ) : isConfirmed && (
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-luxury-50 border border-luxury-200 text-luxury-600 text-[0.7rem]">
+            🔑 Room number will be allocated at check-in
+          </div>
+        )}
 
         {/* Barcode + Booking ID */}
         <div className="bg-luxury-50 border border-luxury-100 rounded-2xl px-4 pt-3 pb-3 mb-4">
@@ -277,6 +288,7 @@ export default function BookingsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
+  const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
@@ -286,7 +298,7 @@ export default function BookingsPage() {
     Promise.all([
       api.getMyBookings().catch(() => ({ bookings: [] })),
       api.getMyBids().catch(() => ({ bids: [] })),
-    ]).then(([bookData, bidData]) => {
+    ]).then(async ([bookData, bidData]) => {
       const fromBookings = (bookData.bookings || []).map((b: any) => ({ ...b, _source: "booking" }));
       const fromBids = (bidData.bids || [])
         .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
@@ -325,6 +337,21 @@ export default function BookingsPage() {
       });
       merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBookings(merged);
+
+      // Fetch allocated room # for each booking/bid
+      try {
+        const token = localStorage.getItem("sb_token");
+        const ids = merged.map((x: any) => x.id).filter(Boolean);
+        if (ids.length) {
+          const r = await fetch("/api/my/unit-assignments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ bidIds: ids }),
+          });
+          const j = await r.json();
+          if (j?.assignments) setUnits(j.assignments);
+        }
+      } catch {}
     }).finally(() => setLoading(false));
   }, [user, authLoading, router]);
 
@@ -370,7 +397,7 @@ export default function BookingsPage() {
         )}
 
         <div className="space-y-5">
-          {bookings.map((b) => <BookingCard key={b.id} b={b} />)}
+          {bookings.map((b) => <BookingCard key={b.id} b={b} unitNumber={units[b.id]?.unitNumber} />)}
         </div>
       </div>
     </div>

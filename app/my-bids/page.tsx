@@ -30,6 +30,7 @@ export default function MyBidsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [bids, setBids] = useState<any[]>([]);
+  const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [filter, setFilter] = useState<"ALL"|"PENDING"|"COUNTER"|"ACCEPTED"|"REJECTED">("ALL");
@@ -69,8 +70,22 @@ export default function MyBidsPage() {
   const fetchBids = (silent = false) => {
     if (!silent) setLoading(true);
     api.getMyBids()
-      .then((d) => {
+      .then(async (d) => {
         const list = d.bids || [];
+        // Fetch unit assignments for these bid IDs (shows allocated room #)
+        try {
+          const token = localStorage.getItem("sb_token");
+          const ids = list.map((b: any) => b.id).filter(Boolean);
+          if (ids.length) {
+            const r = await fetch("/api/my/unit-assignments", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ bidIds: ids }),
+            });
+            const j = await r.json();
+            if (j?.assignments) setUnits(j.assignments);
+          }
+        } catch {}
         setBids((prev) => {
           // Detect new ACCEPTED + unpaid → trigger celebration once
           const prevMap = new Map(prev.map((b: any) => [b.id, b.status]));
@@ -334,6 +349,11 @@ export default function MyBidsPage() {
                     <p className="text-xs text-white/50 mt-0.5">
                       {b.hotel?.city ? `${b.hotel.city}${b.hotel.state ? ", " + b.hotel.state : ""}` : (b.room?.type || "Room")}
                     </p>
+                    {units[b.id]?.unitNumber && (
+                      <p className="text-[0.7rem] mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-gold-400/40 bg-gold-500/10 text-gold-300 font-semibold tracking-wide">
+                        🔑 Room #{units[b.id].unitNumber}
+                      </p>
+                    )}
                   </div>
                   <span className={`text-[0.65rem] font-bold px-3 py-1 rounded-full border shrink-0 inline-flex items-center gap-1.5 ${meta.chip}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} style={{ animation: "pulseGlow 1.8s infinite" }}/>
