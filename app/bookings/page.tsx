@@ -290,6 +290,9 @@ export default function BookingsPage() {
       const fromBookings = (bookData.bookings || []).map((b: any) => ({ ...b, _source: "booking" }));
       const fromBids = (bidData.bids || [])
         .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        // Only paid bids show up as bookings. Unpaid accepted bids stay in My Bids
+        // with a Pay Now gate until the customer completes payment.
+        .filter((b: any) => typeof b.message === "string" && b.message.includes("Razorpay:"))
         .filter((b: any) => {
           // Skip bid if a real booking already exists for same hotel+room (prevents duplicate display)
           return !fromBookings.some(
