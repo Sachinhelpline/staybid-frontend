@@ -277,33 +277,23 @@ export default function Home() {
             Bid on premium mountain stays at prices you choose. Off-season deals you won&apos;t find anywhere else.
           </p>
 
-          {/* ── Search Destination (below hero) ── */}
-          <div className="lux-glass lux-border rounded-2xl p-4 max-w-2xl">
-            <p className="text-[0.65rem] font-bold text-gold-400 tracking-widest uppercase mb-2">Search Destination</p>
-            <div className="flex gap-2">
+          {/* ── Search Destination (compact, half width) ── */}
+          <div className="lux-glass lux-border rounded-xl p-2.5 max-w-md">
+            <div className="flex gap-1.5">
               <div className="flex-1 relative">
-                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none opacity-50 text-white"
+                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none opacity-50 text-white"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
                 <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && router.push(`/hotels${searchInput ? `?city=${encodeURIComponent(searchInput)}` : selectedCity ? `?city=${encodeURIComponent(selectedCity)}` : ""}`)}
                   placeholder={selectedCity ? `Search in ${selectedCity}…` : "Search destination…"}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl text-white bg-white/10 placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-gold-400/50 border border-white/10 text-sm backdrop-blur-sm transition-all" />
+                  className="w-full pl-8 pr-2 py-2 rounded-lg text-white bg-white/10 placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-gold-400/50 border border-white/10 text-xs backdrop-blur-sm transition-all" />
               </div>
               <Link href={`/hotels${searchInput ? `?city=${encodeURIComponent(searchInput)}` : selectedCity ? `?city=${encodeURIComponent(selectedCity)}` : ""}`}
-                className="lux-btn px-6 py-3 rounded-xl text-sm whitespace-nowrap">
+                className="lux-btn px-4 py-2 rounded-lg text-xs whitespace-nowrap">
                 Search
               </Link>
-            </div>
-            <div className="flex items-center gap-1 flex-wrap mt-3">
-              {["All", ...CITIES].map(c => (
-                <button key={c}
-                  onClick={() => { setSelectedCity(c === "All" ? "" : c); try { localStorage.setItem("sb_city", c === "All" ? "" : c); window.dispatchEvent(new Event("sb:city-change")); } catch {} }}
-                  className={`px-2.5 py-1 rounded-md text-[0.7rem] font-medium transition-all ${(c === "All" && !selectedCity) || c === selectedCity ? "bg-gold-500 text-white shadow-gold" : "text-white/50 hover:text-white/80 hover:bg-white/10"}`}>
-                  {c}
-                </button>
-              ))}
             </div>
           </div>
         </div>
@@ -364,66 +354,313 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ STATS ═══ */}
-      <section className="py-14 bg-white border-y border-luxury-100">
-        <div className="max-w-4xl mx-auto px-5">
-          <p className="text-center text-xs font-bold text-luxury-400 uppercase tracking-[0.22em] mb-10">StayBid by the Numbers</p>
-          <div className="grid grid-cols-3 gap-6 text-center">
-            {[
-              { value: hotelCounter, suffix: "+", label: "Hotels Listed",    sub: "Verified properties across India", icon: "🏨" },
-              { value: cityCounter,  suffix: "+", label: "Cities Covered",   sub: "Mountain & hill stations", icon: "🗺️" },
-              { value: savingCounter,suffix: "%", label: "Average Savings",  sub: "vs. other OTA platforms", icon: "💰" },
-            ].map(s => (
-              <div key={s.label} className="group p-6 rounded-3xl border border-luxury-100 hover:border-gold-200 hover:shadow-luxury transition-all duration-300 hover:-translate-y-0.5">
-                <div className="text-3xl mb-3">{s.icon}</div>
-                <p className="font-display font-semibold text-luxury-900 mb-1" style={{ fontSize: "2.5rem" }}>
-                  {s.value}{s.suffix}
-                </p>
-                <p className="text-sm font-semibold text-luxury-800 mb-1">{s.label}</p>
-                <p className="text-xs text-luxury-400 leading-relaxed">{s.sub}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ═══ HI-TECH ANIMATED STATS ═══ */}
+      <HiTechStats hotelCounter={hotelCounter} cityCounter={cityCounter} savingCounter={savingCounter} />
 
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section className="max-w-7xl mx-auto px-5 py-20 md:py-28 bg-white">
-        <div className="text-center mb-14">
-          <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.22em] uppercase mb-3">Simple Process</p>
-          <h2 className="font-display font-light text-luxury-900" style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)" }}>How StayBid Works</h2>
-          <div className="gold-line w-20 mx-auto mt-4" />
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { num: "01", title: "Search & Browse", desc: "Discover premium hotels in your destination. Review rooms, amenities, and verified guest ratings." },
-            { num: "02", title: "Name Your Price", desc: "Submit a bid with your budget. Hotels see your offer and compete to win your booking." },
-            { num: "03", title: "Book & Save", desc: "Accept the best counter-offer and confirm instantly. Save up to 40% off published rates." },
-          ].map(s => (
-            <div key={s.num} className="group relative p-7 rounded-3xl bg-white border border-luxury-100 hover:border-gold-200 hover:shadow-luxury-lg transition-all duration-300 overflow-hidden hover:-translate-y-1">
-              <span className="absolute top-4 right-5 font-display text-7xl font-bold text-luxury-100 group-hover:text-gold-100 transition-colors leading-none select-none">{s.num}</span>
-              <h3 className="font-semibold text-luxury-900 text-[1rem] mb-2 relative">{s.title}</h3>
-              <p className="text-luxury-500 text-sm leading-relaxed relative">{s.desc}</p>
+      {/* ═══ HINDI NARRATED FEATURE EXPLAINERS ═══ */}
+      <FeatureExplainers />
+
+      {/* ═══ FOOTER — All nav links live here ═══ */}
+      <footer className="lux-bg border-t border-gold-500/20 pt-12 pb-8">
+        <div className="max-w-7xl mx-auto px-5">
+          <div className="grid md:grid-cols-4 gap-8 mb-10">
+            <div>
+              <Link href="/" className="flex items-center gap-2.5 select-none mb-3">
+                <div className="w-9 h-9 rounded-lg lux-btn flex items-center justify-center text-white font-bold text-sm">S</div>
+                <span className="font-display text-xl text-white tracking-wide">StayBid</span>
+              </Link>
+              <p className="text-white/50 text-xs leading-relaxed">India&apos;s first reverse-auction hotel platform. Naam apni price, hotels karenge compete.</p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ═══ FOOTER ═══ */}
-      <footer className="border-t border-luxury-200 py-10 bg-white">
-        <div className="max-w-7xl mx-auto px-5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2.5 select-none">
-            <div className="w-8 h-8 rounded-lg lux-btn flex items-center justify-center text-white font-bold text-xs">S</div>
-            <span className="font-display text-xl text-luxury-800 tracking-wide">StayBid</span>
-          </Link>
-          <p className="text-sm text-luxury-400">© 2026 StayBid. Crafted with care in India.</p>
-          <div className="flex items-center gap-5 text-sm text-luxury-400">
-            {[{ href: "/hotels", label: "Hotels" }, { href: "/flash-deals", label: "Deals" }, { href: "/bid", label: "Place Bid" }].map(l => (
-              <Link key={l.href} href={l.href} className="hover:text-luxury-700 transition-colors">{l.label}</Link>
-            ))}
+            <div>
+              <p className="text-[0.65rem] font-bold text-gold-400 tracking-widest uppercase mb-3">Explore</p>
+              <ul className="space-y-2">
+                {[{ href: "/", label: "🏠 Home" }, { href: "/hotels", label: "🏨 Hotels" }, { href: "/flash-deals", label: "⚡ Flash Deals" }, { href: "/bid", label: "🎯 Place Bid" }].map(l => (
+                  <li key={l.href}><Link href={l.href} className="text-sm text-white/60 hover:text-gold-300 transition-colors">{l.label}</Link></li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-[0.65rem] font-bold text-gold-400 tracking-widest uppercase mb-3">Your Account</p>
+              <ul className="space-y-2">
+                {[{ href: "/my-bids", label: "📋 My Bids" }, { href: "/bookings", label: "🎫 Bookings" }, { href: "/wallet", label: "💰 Wallet" }, { href: "/hotel-partner", label: "🏢 Partner" }, { href: "/profile", label: "👤 Profile" }].map(l => (
+                  <li key={l.href}><Link href={l.href} className="text-sm text-white/60 hover:text-gold-300 transition-colors">{l.label}</Link></li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-[0.65rem] font-bold text-gold-400 tracking-widest uppercase mb-3">Trust & Support</p>
+              <ul className="space-y-2 text-sm text-white/60">
+                <li>🔒 Secure Razorpay Payments</li>
+                <li>✅ Verified Hotels Only</li>
+                <li>💬 24×7 Support</li>
+                <li>🏔️ Curated Hill Stays</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-white/40">© 2026 StayBid. Crafted with care in India.</p>
+            <p className="text-[0.65rem] text-gold-400/70 tracking-widest uppercase font-semibold">Luxury · Reverse Auction · India</p>
           </div>
         </div>
       </footer>
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HI-TECH ANIMATED STATS
+   ═══════════════════════════════════════════════════════════════════ */
+function HiTechStats({ hotelCounter, cityCounter, savingCounter }: { hotelCounter: number; cityCounter: number; savingCounter: number }) {
+  return (
+    <section className="relative py-16 overflow-hidden" style={{ background: "linear-gradient(180deg,#0a0812 0%,#0f0d1e 50%,#0a0812 100%)" }}>
+      <style>{`
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }
+        @keyframes ringSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes numberGlow { 0%,100% { text-shadow: 0 0 20px rgba(240,180,41,0.4), 0 0 40px rgba(240,180,41,0.2); } 50% { text-shadow: 0 0 30px rgba(240,180,41,0.7), 0 0 60px rgba(240,180,41,0.35); } }
+        .hitech-grid { background-image: linear-gradient(rgba(240,180,41,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(240,180,41,0.08) 1px, transparent 1px); background-size: 40px 40px; animation: gridMove 20s linear infinite; }
+        .hitech-ring { animation: ringSpin 12s linear infinite; }
+        .hitech-number { animation: numberGlow 3s ease-in-out infinite; }
+      `}</style>
+      <div className="absolute inset-0 hitech-grid opacity-30" />
+      <div className="relative max-w-5xl mx-auto px-5">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gold-500/40 bg-gold-500/10 mb-3">
+            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+            <span className="text-[0.6rem] font-bold text-gold-300 tracking-[0.22em] uppercase">Live Data · Real-Time</span>
+          </div>
+          <h2 className="font-display font-light text-white" style={{ fontSize: "clamp(1.6rem,3vw,2.2rem)" }}>
+            StayBid <span className="lux-gold-text font-semibold">by the Numbers</span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 md:gap-6">
+          {[
+            { value: hotelCounter,  suffix: "+", label: "Hotels Listed",  sub: "Verified properties", icon: "🏨" },
+            { value: cityCounter,   suffix: "+", label: "Cities Covered", sub: "Hill stations",       icon: "🗺️" },
+            { value: savingCounter, suffix: "%", label: "Avg. Savings",   sub: "vs. other OTAs",      icon: "💰" },
+          ].map(s => (
+            <div key={s.label} className="relative lux-glass lux-border rounded-2xl p-4 md:p-6 text-center overflow-hidden group">
+              <div className="absolute top-2 right-2 w-8 h-8 md:w-10 md:h-10 rounded-full border border-gold-400/30 hitech-ring" style={{ borderTopColor: "transparent", borderRightColor: "transparent" }} />
+              <div className="relative">
+                <div className="text-2xl md:text-3xl mb-2 md:mb-3">{s.icon}</div>
+                <p className="font-display font-bold lux-gold-text hitech-number tabular-nums leading-none" style={{ fontSize: "clamp(1.8rem, 5vw, 3rem)" }}>
+                  {s.value}{s.suffix}
+                </p>
+                <p className="text-xs md:text-sm font-bold text-white/90 mt-2 mb-0.5">{s.label}</p>
+                <p className="text-[0.6rem] md:text-xs text-white/40">{s.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HINDI NARRATED FEATURE EXPLAINERS (with speech + animations)
+   ═══════════════════════════════════════════════════════════════════ */
+type Feature = {
+  id: string;
+  icon: string;
+  title: string;
+  hiTitle: string;
+  color: string;
+  steps: { emoji: string; hi: string; en: string }[];
+  cta: { href: string; label: string };
+};
+
+const FEATURES: Feature[] = [
+  {
+    id: "flash",
+    icon: "⚡",
+    title: "Flash Deals",
+    hiTitle: "फ्लैश डील्स",
+    color: "#ef4444",
+    cta: { href: "/flash-deals", label: "Browse Flash Deals →" },
+    steps: [
+      { emoji: "⚡", hi: "फ्लैश डील्स सिर्फ आज के लिए होती हैं — बहुत कम दाम पर।",             en: "Flash Deals are same-day only — at massively reduced prices." },
+      { emoji: "⏰", hi: "हर डील की टाइमर होती है। रात बारह बजे सब डील्स ख़त्म हो जाती हैं।",   en: "Every deal has a live timer and expires at midnight." },
+      { emoji: "🎯", hi: "डील पर क्लिक करें, तारीख़ चुनें, और तुरंत बुक कर लें।",                 en: "Click a deal, pick your dates, and book instantly." },
+      { emoji: "💳", hi: "रज़रपे से सुरक्षित पेमेंट करें — बुकिंग तुरंत कन्फर्म हो जाती है।",        en: "Pay securely via Razorpay — your booking confirms in seconds." },
+    ],
+  },
+  {
+    id: "hotels",
+    icon: "🏨",
+    title: "Hotels",
+    hiTitle: "होटल्स",
+    color: "#c9911a",
+    cta: { href: "/hotels", label: "Explore Hotels →" },
+    steps: [
+      { emoji: "🔍", hi: "होटल्स पेज पर शहर या नाम से सर्च करें।",                                     en: "On the Hotels page, search by city or hotel name." },
+      { emoji: "🖼️", hi: "फोटो गैलरी देखें, कमरे के टाइप, एमिनिटीज़ और रिव्यूज़ पढ़ें।",             en: "Browse the photo gallery, rooms, amenities and guest reviews." },
+      { emoji: "📅", hi: "चेक-इन, चेक-आउट और गेस्ट्स की संख्या चुनें।",                               en: "Pick check-in, check-out and number of guests." },
+      { emoji: "⚖️", hi: "हम दूसरे ओटीए पोर्टल से प्राइस कम्पेयर दिखाते हैं — StayBid हमेशा सस्ता।",      en: "We compare prices with other OTAs — StayBid is always cheaper." },
+      { emoji: "✅", hi: "बुक नाउ दबाएँ, पेमेंट करें, और बुकिंग तुरंत कन्फर्म।",                           en: "Hit Book Now, pay, and get instant confirmation." },
+    ],
+  },
+  {
+    id: "bid",
+    icon: "🎯",
+    title: "Place Bid",
+    hiTitle: "अपना दाम ख़ुद तय करें",
+    color: "#f0b429",
+    cta: { href: "/bid", label: "Place Your Bid →" },
+    steps: [
+      { emoji: "💭", hi: "आप ख़ुद अपना बजट बताएं — जितना देना चाहते हैं उतना।",                        en: "You decide your own budget — bid whatever you can pay." },
+      { emoji: "📤", hi: "अपनी बिड सबमिट करें। होटल्स को नोटिफ़िकेशन मिलती है।",                          en: "Submit your bid. Hotels get notified instantly." },
+      { emoji: "🤝", hi: "होटल्स आपस में कम्पीट करते हैं — accept, counter या reject करते हैं।",         en: "Hotels compete — they accept, counter-offer or reject." },
+      { emoji: "🔔", hi: "My Bids सेक्शन में रीयल-टाइम में अपडेट्स मिलते हैं।",                           en: "Check My Bids for live updates on your offer." },
+      { emoji: "💸", hi: "अच्छी ऑफ़र accept करें, पेमेंट करें — चालीस परसेंट तक बचत।",                   en: "Accept the best counter, pay, and save up to 40%." },
+    ],
+  },
+];
+
+function FeatureExplainers() {
+  const [active, setActive] = useState(0);
+  const [step, setStep]     = useState(-1);
+  const [playing, setPlaying] = useState(false);
+  const feat = FEATURES[active];
+  const timeoutsRef = useRef<number[]>([]);
+
+  const stopAll = useCallback(() => {
+    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current = [];
+    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.cancel();
+    setPlaying(false);
+  }, []);
+
+  useEffect(() => () => stopAll(), [stopAll]);
+  useEffect(() => { stopAll(); setStep(-1); }, [active, stopAll]);
+
+  const playStep = (i: number) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return 3500;
+    const u = new SpeechSynthesisUtterance(feat.steps[i].hi);
+    u.lang = "hi-IN";
+    u.rate = 0.95;
+    u.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const hi = voices.find(v => v.lang?.toLowerCase().startsWith("hi"));
+    if (hi) u.voice = hi;
+    window.speechSynthesis.speak(u);
+    // estimate duration based on chars (~70ms per char, min 3s)
+    return Math.max(3000, feat.steps[i].hi.length * 80);
+  };
+
+  const play = () => {
+    stopAll();
+    setPlaying(true);
+    // warm up voices list
+    if (typeof window !== "undefined" && window.speechSynthesis) window.speechSynthesis.getVoices();
+    let cumulative = 300;
+    feat.steps.forEach((_, i) => {
+      const t = window.setTimeout(() => {
+        setStep(i);
+        const dur = playStep(i);
+        if (i === feat.steps.length - 1) {
+          const end = window.setTimeout(() => { setPlaying(false); }, dur + 400);
+          timeoutsRef.current.push(end);
+        }
+      }, cumulative);
+      timeoutsRef.current.push(t);
+      // advance schedule by estimated duration
+      cumulative += Math.max(3000, feat.steps[i].hi.length * 80) + 300;
+    });
+  };
+
+  return (
+    <section className="relative py-16 md:py-20 overflow-hidden" style={{ background: "linear-gradient(180deg,#0a0812 0%,#0e0a1c 100%)" }}>
+      <style>{`
+        @keyframes stepIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .step-in { animation: stepIn 0.4s cubic-bezier(0.3,1,0.3,1) both; }
+        @keyframes speakWave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        .wave-bar { animation: speakWave 0.6s ease-in-out infinite; transform-origin: bottom; }
+      `}</style>
+
+      <div className="max-w-5xl mx-auto px-5">
+        <div className="text-center mb-8">
+          <p className="text-gold-400 text-[0.65rem] font-bold tracking-[0.22em] uppercase mb-2">Complete Walkthrough · Hindi Voice</p>
+          <h2 className="font-display font-light text-white" style={{ fontSize: "clamp(1.7rem,3.5vw,2.4rem)" }}>
+            StayBid <span className="lux-gold-text font-semibold">कैसे काम करता है</span>
+          </h2>
+          <p className="text-white/50 text-xs md:text-sm mt-2">Play दबाएँ — हिंदी में पूरा समझाएँगे</p>
+        </div>
+
+        {/* Feature tabs */}
+        <div className="flex items-center justify-center gap-2 md:gap-3 mb-6 flex-wrap">
+          {FEATURES.map((f, i) => (
+            <button key={f.id} onClick={() => setActive(i)}
+              className={`nav3d-chip flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${active === i ? "nav3d-chip-active" : "text-white/60"}`}>
+              <span className="text-lg">{f.icon}</span>
+              <span>{f.title}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Player card */}
+        <div className="lux-glass lux-border rounded-3xl p-5 md:p-8 relative overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
+               style={{ background: `radial-gradient(circle, ${feat.color}22, transparent 70%)` }} />
+
+          <div className="flex items-start justify-between gap-3 mb-5 relative">
+            <div>
+              <p className="text-[0.6rem] font-bold tracking-[0.22em] uppercase" style={{ color: feat.color }}>Feature {active + 1} of {FEATURES.length}</p>
+              <h3 className="font-display text-white text-2xl md:text-3xl mt-1">
+                {feat.icon} {feat.title} <span className="text-white/40 text-lg md:text-xl">· {feat.hiTitle}</span>
+              </h3>
+            </div>
+            <button
+              onClick={playing ? stopAll : play}
+              className="lux-btn flex items-center gap-2 px-4 py-2.5 md:px-5 md:py-3 rounded-full text-xs md:text-sm whitespace-nowrap shrink-0">
+              {playing ? (<><span>⏹</span><span>Stop</span></>) : (<><span>▶</span><span>Play in Hindi</span></>)}
+            </button>
+          </div>
+
+          {/* Sound wave visualizer when playing */}
+          {playing && (
+            <div className="flex items-end justify-center gap-1 h-6 mb-4">
+              {[0.1, 0.25, 0.4, 0.2, 0.35, 0.15].map((d, i) => (
+                <span key={i} className="wave-bar w-1 rounded-full" style={{ height: "100%", background: feat.color, animationDelay: `${d}s` }} />
+              ))}
+            </div>
+          )}
+
+          {/* Steps */}
+          <div className="space-y-2.5 relative">
+            {feat.steps.map((s, i) => {
+              const visible = step >= i || !playing;
+              const isCurrent = step === i && playing;
+              return (
+                <div key={i}
+                  className={`flex items-start gap-3 md:gap-4 p-3 md:p-4 rounded-2xl border transition-all duration-500 ${isCurrent ? "border-gold-400/70 bg-gold-500/10 scale-[1.02]" : "border-white/10 bg-white/[0.02]"} ${visible ? "step-in opacity-100" : "opacity-30"}`}
+                  style={isCurrent ? { boxShadow: `0 0 24px ${feat.color}44` } : undefined}>
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl shrink-0"
+                       style={{ background: `linear-gradient(135deg, ${feat.color}33, ${feat.color}11)`, border: `1px solid ${feat.color}55` }}>
+                    {s.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm md:text-base leading-snug">{s.hi}</p>
+                    <p className="text-white/40 text-[0.7rem] md:text-xs mt-1 leading-snug">{s.en}</p>
+                  </div>
+                  <div className="text-[0.65rem] font-bold tabular-nums shrink-0" style={{ color: feat.color }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex items-center justify-between flex-wrap gap-3 relative">
+            <p className="text-[0.65rem] text-white/40">🔊 Browser speech synthesis uses your device&apos;s Hindi voice.</p>
+            <Link href={feat.cta.href} className="lux-btn px-5 py-2.5 rounded-full text-xs md:text-sm">{feat.cta.label}</Link>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

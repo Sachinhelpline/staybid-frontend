@@ -284,22 +284,8 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Desktop nav */}
+          {/* Desktop nav — primary links moved to footer; only user actions remain */}
           <div className="hidden md:flex items-center gap-1.5">
-            {NAV_LINKS.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link key={item.href} href={item.href}
-                  className={`nav3d-chip flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium tracking-wide text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
-                  <span className="text-base">{item.icon}</span>
-                  {item.label}
-                  {item.pulse && !active && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-                </Link>
-              );
-            })}
-
-            <div className="h-5 w-px bg-white/10 mx-1" />
-
             {user ? (
               <>
                 {USER_LINKS.map((item) => {
