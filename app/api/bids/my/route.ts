@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authUserId, sbSelect } from "@/lib/sb-server";
+import { authPayload, sbSelect, resolveUserIds } from "@/lib/sb-server";
 
 export async function GET(req: NextRequest) {
-  const customerId = authUserId(req);
-  if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const payload = authPayload(req);
+  const primaryId = payload?.id || payload?.user_id || payload?.sub;
+  if (!primaryId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const bids = await sbSelect(`bids?customerId=eq.${customerId}&select=*`);
+  // Union both phone-variant user IDs so bids stored under either don't get lost.
+  const customerIds = await resolveUserIds(primaryId, payload?.phone);
+  const bids = await sbSelect(`bids?customerId=in.(${customerIds.join(",")})&select=*`);
   if (!bids.length) return NextResponse.json({ bids: [] });
 
   // Collect unique IDs

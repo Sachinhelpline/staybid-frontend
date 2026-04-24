@@ -85,6 +85,34 @@ export async function sbUpdate(table: string, filter: string, patch: any): Promi
   return Array.isArray(j) ? j[0] : j;
 }
 
+// Find all user IDs sharing the same phone (handles +91 prefix variants).
+// Mirrors resolveOwnerIds from partner routes so customer-side endpoints
+// (my-bids, bookings) don't miss rows stored under the alternate phone format.
+export async function resolveUserIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
+  const ids: string[] = [primaryId];
+  let rawPhone = "";
+  try {
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
+    const users = await uRes.json();
+    if (Array.isArray(users) && users[0]?.phone) {
+      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    }
+  } catch {}
+  if (!rawPhone && jwtPhone) {
+    rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
+  }
+  if (!rawPhone) return ids;
+  try {
+    const allRes = await fetch(
+      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
+      { headers: SB_H }
+    );
+    const all = await allRes.json();
+    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
+  } catch {}
+  return ids;
+}
+
 export function genId(prefix: string = "b"): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }

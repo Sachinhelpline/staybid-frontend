@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const today     = new Date().toISOString().split("T")[0];
 const tomorrow  = new Date(Date.now() + 86400000).toISOString().split("T")[0];
@@ -208,6 +209,21 @@ export default function PartnerDashboard() {
       }
     } catch(e: any) { alert(e.message || "Save failed"); }
     finally { setSavingRoom(""); }
+  }
+
+  // ── Room images (add / remove via partner self-serve) ────────────────────
+  async function saveRoomImages(roomId: string, images: string[]) {
+    const token = getToken();
+    try {
+      const res = await fetch(`/api/rooms/${roomId}/images`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ images }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Upload failed");
+      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, images: d.room?.images || images } : r));
+    } catch (e: any) { alert(e.message || "Image save failed"); }
   }
 
   // ── Create flash deal ────────────────────────────────────────────────────
@@ -1017,6 +1033,40 @@ export default function PartnerDashboard() {
                           className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "!bg-emerald-500" : ""}`}>
                           {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? "✓ Saved!" : "Save Pricing"}
                         </button>
+
+                        {/* ── Room Photos (owner self-serve gallery) ── */}
+                        <div className="mt-4 pt-4 border-t border-luxury-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">
+                              📸 Room Photos ({(r.images || []).length})
+                            </p>
+                            <span className="text-[0.6rem] text-luxury-400">Shown to guests on booking</span>
+                          </div>
+
+                          {(r.images || []).length > 0 && (
+                            <div className="grid grid-cols-4 gap-2 mb-3">
+                              {(r.images || []).map((url: string, i: number) => (
+                                <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-luxury-200 group">
+                                  <img src={url} alt={`Room photo ${i+1}`} className="w-full h-full object-cover" />
+                                  <button
+                                    onClick={() => saveRoomImages(r.id, (r.images || []).filter((_: string, j: number) => j !== i))}
+                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[0.6rem] font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Remove photo">
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <ImageUpload
+                            folder={`rooms/${r.id}`}
+                            onUpload={(url) => saveRoomImages(r.id, [...(r.images || []), url])}
+                          />
+                          <p className="text-[0.55rem] text-luxury-400 mt-1">
+                            Upload high-quality photos (JPG/PNG). First photo shows as the cover.
+                          </p>
+                        </div>
 
                         {/* ── Room Numbers Inventory ── */}
                         {(() => {

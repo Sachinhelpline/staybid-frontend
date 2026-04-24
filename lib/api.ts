@@ -73,8 +73,9 @@ export const api = {
   getFlashDeals:     (city?: string) => direct(`/api/flash/near${city ? `?city=${encodeURIComponent(city)}` : ""}`),
   getMyBookings:     ()            => direct("/api/bookings/my"),
 
-  // Wallet & profile — still on Railway until migrated
-  getWallet:     () => request("/api/wallet"),
+  // Wallet — Supabase-backed Next.js route (Railway cold-starts too often).
+  // Derives totals from accepted bids + real bookings.
+  getWallet:     () => direct("/api/wallet"),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
 
   // Hotel owner — existing Next.js routes
