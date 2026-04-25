@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     requireOnboardUser(req);
     const hotelId = new URL(req.url).searchParams.get("hotelId");
     if (!hotelId) return NextResponse.json({ rooms: [] });
-    const rooms = await sbSelect<any>("rooms", `"hotelId"=eq.${encodeURIComponent(hotelId)}&order=basePrice.asc`);
+    const rooms = await sbSelect<any>("rooms", `"hotelId"=eq.${encodeURIComponent(hotelId)}&order="floorPrice".asc`);
     return NextResponse.json({ rooms });
   } catch (e: any) {
     if (e?.message === "UNAUTHORIZED") return NextResponse.json({ error: "auth required" }, { status: 401 });
@@ -28,14 +28,21 @@ export async function POST(req: Request) {
     const own = await sbSelect<any>("hotels", `id=eq.${encodeURIComponent(body.hotelId)}&"ownerId"=eq.${claims.sub}&limit=1`);
     if (!own[0]) return NextResponse.json({ error: "hotel not found or not yours" }, { status: 404 });
 
+    const type = body.type || "Standard Room";
+    const basePrice = body.basePrice || 4999;
+    const floorPrice = body.floorPrice || Math.round(basePrice * 0.78);
+    // Existing customer-facing schema requires `name` and `mrp` to be NOT NULL.
+    // Default `name` to the type, `mrp` to basePrice — keep onboarding minimal.
     const row: any = {
       hotelId: body.hotelId,
-      type: body.type || "Standard Room",
+      type,
+      name: body.name || type,
+      mrp: body.mrp || basePrice,
       capacity: body.capacity || 2,
-      basePrice: body.basePrice || 4999,
-      floorPrice: body.floorPrice || Math.round((body.basePrice || 4999) * 0.78),
+      basePrice,
+      floorPrice,
       amenities: body.amenities || [],
-      description: body.description || null,
+      description: body.description || "",
       bedrooms: body.bedrooms || 1,
       bathrooms: body.bathrooms || 1,
       size_sqft: body.size_sqft || null,

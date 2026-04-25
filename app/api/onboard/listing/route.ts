@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       // Get the most recent draft for this user
       const rows = await sbSelect<any>(
         "hotels",
-        `"ownerId"=eq.${claims.sub}&status=neq.published&order=published_at.desc.nullsfirst&limit=1`
+        `"ownerId"=eq.${claims.sub}&order="createdAt".desc&limit=1`
       );
       hotel = rows[0] || null;
     }
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     if (!hotel) return NextResponse.json({ hotel: null });
 
     const [rooms, hotelImgs, roomImgs, kyc, bank, agr] = await Promise.all([
-      sbSelect<any>("rooms", `"hotelId"=eq.${encodeURIComponent(hotel.id)}&order=basePrice.asc`),
+      sbSelect<any>("rooms", `"hotelId"=eq.${encodeURIComponent(hotel.id)}&order="floorPrice".asc`),
       sbSelect<any>("hotel_images", `hotel_id=eq.${encodeURIComponent(hotel.id)}&order=sort_order.asc`),
       sbSelect<any>("room_images", `hotel_id=eq.${encodeURIComponent(hotel.id)}`),
       sbSelect<any>("kyc_submissions", `user_id=eq.${claims.sub}&hotel_id=eq.${encodeURIComponent(hotel.id)}&order=updated_at.desc&limit=1`),
