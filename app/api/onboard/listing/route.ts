@@ -46,7 +46,10 @@ export async function GET(req: Request) {
     ]);
 
     const checklist = {
-      basics: !!(hotel.name && hotel.city && hotel.lat && hotel.lng),
+      // Only name + city are mandatory (matches existing frontend schema).
+      // Lat/lng/address/contact are stored if the user fills them but are
+      // optional. This keeps the publish gate aligned with the customer site.
+      basics: !!(hotel.name && hotel.city),
       images: hotelImgs.length >= 3,
       rooms: rooms.length >= 1,
       kyc: !!(kyc[0] && kyc[0].consent_listing && kyc[0].consent_price_compare && kyc[0].consent_image_rights && kyc[0].consent_legal),

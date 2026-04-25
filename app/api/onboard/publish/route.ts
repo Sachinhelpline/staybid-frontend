@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     ]);
 
     const checklist = {
-      basics: !!(hotel.name && hotel.city && hotel.lat && hotel.lng),
+      basics: !!(hotel.name && hotel.city),
       images: hotelImgs.length >= 3,
       rooms: rooms.length >= 1,
       kyc: !!(kyc[0] && kyc[0].consent_listing && kyc[0].consent_price_compare && kyc[0].consent_image_rights && kyc[0].consent_legal),
