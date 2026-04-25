@@ -167,6 +167,7 @@ export function Navbar() {
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   if (pathname?.startsWith("/partner")) return null;
+  if (pathname?.startsWith("/onboard")) return null;   // onboarding panel has its own header
   if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
 
   const isActive = (href: string) =>
