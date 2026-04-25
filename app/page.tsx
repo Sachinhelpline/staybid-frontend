@@ -156,6 +156,18 @@ export default function Home() {
         </div>
 
         {/* Coverflow stage — full-width relative parent so arrows anchor to viewport edges */}
+        <style>{`
+          @keyframes cfZoom {
+            0%,100% { transform: scale(1.00); }
+            50%     { transform: scale(1.06); }
+          }
+          @keyframes cfGlow {
+            0%,100% { box-shadow: 0 30px 80px -10px rgba(240,180,41,0.30), 0 0 0 1px rgba(240,180,41,0.18); }
+            50%     { box-shadow: 0 36px 90px -10px rgba(240,180,41,0.55), 0 0 0 1px rgba(240,180,41,0.40); }
+          }
+          .cf-img-pulse { animation: cfZoom 6s ease-in-out infinite; will-change: transform; }
+          .cf-card-glow { animation: cfGlow 3.2s ease-in-out infinite; }
+        `}</style>
         <div
           className="relative w-full mx-auto overflow-hidden"
           style={{ perspective: "1400px", height: "clamp(320px, 42vw, 420px)", touchAction: "pan-y" }}
@@ -179,14 +191,16 @@ export default function Home() {
                 if (diff < -len / 2) diff += len;
 
                 const abs = Math.abs(diff);
-                if (abs > 3) return null; // hide far slides
+                if (abs > 2) return null; // only show center + 2 neighbors (cleaner stage)
 
                 const isCenter = diff === 0;
-                const translateX = diff * 58;         // percent
-                const rotateY    = -diff * 22;        // deg
-                const translateZ = isCenter ? 0 : -140 - abs * 40;
-                const scale      = isCenter ? 1 : Math.max(0.62, 1 - abs * 0.14);
-                const opacity    = abs >= 3 ? 0 : abs === 2 ? 0.35 : abs === 1 ? 0.75 : 1;
+                // Wider gap so neighbor cards don't visually overlap the center
+                const translateX = diff * 72;         // percent
+                const rotateY    = -diff * 28;        // deg — sharper turn helps neighbors recede
+                const translateZ = isCenter ? 0 : -220 - abs * 60;
+                const scale      = isCenter ? 1 : Math.max(0.55, 1 - abs * 0.18);
+                // Side cards much dimmer so they read as "preview shadows" only
+                const opacity    = isCenter ? 1 : abs === 1 ? 0.40 : 0.18;
                 const zIndex     = 20 - abs;
 
                 const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
@@ -223,51 +237,71 @@ export default function Home() {
                       willChange: "transform, opacity",
                     }}
                   >
-                    <div className={`lux-glass lux-border rounded-3xl overflow-hidden ${isCenter ? "lux-pulse shadow-2xl" : ""}`}
-                         style={{ boxShadow: isCenter ? "0 30px 80px -10px rgba(240,180,41,0.35), 0 0 0 1px rgba(240,180,41,0.2)" : "0 20px 50px -15px rgba(0,0,0,0.6)" }}>
+                    <div className={`lux-glass lux-border rounded-3xl overflow-hidden ${isCenter ? "cf-card-glow" : ""}`}
+                         style={{ boxShadow: isCenter ? undefined : "0 20px 50px -15px rgba(0,0,0,0.6)" }}>
                       <div className="relative h-48 overflow-hidden">
                         {img ? (
-                          <img src={img} alt={d.hotel?.name} className="w-full h-full object-cover" draggable={false} />
+                          <img
+                            src={img}
+                            alt={d.hotel?.name}
+                            className={`w-full h-full object-cover ${isCenter ? "cf-img-pulse" : ""}`}
+                            draggable={false}
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}>
                             <span className="text-5xl opacity-20">🏨</span>
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                        <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-red-500/40 px-2 py-0.5 rounded-full">
-                          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
-                          <span className="text-[0.6rem] font-bold text-red-400 uppercase">Today · {(() => { const a = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng); return a ? `${a}, ${d.city}` : d.city; })()}</span>
-                        </div>
-                        <span className="absolute top-3 right-3 badge-gold">{d.discount}% OFF</span>
-                        <div className={`absolute bottom-3 left-3 flex items-center gap-1 ${isUrgent ? "text-red-400" : "text-white/80"}`}>
-                          {isUrgent && <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />}
-                          <span className="text-[0.65rem] font-mono font-semibold bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded">
-                            {String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
-                          </span>
-                        </div>
+                        {/* Heavy dim curtain on side cards so their text/badges/photo
+                            never compete with the active card up front. They
+                            become abstract "preview shadows" only. */}
+                        {!isCenter && (
+                          <div className="absolute inset-0" style={{ background: "rgba(8,6,14,0.55)", backdropFilter: "blur(2px)" }} />
+                        )}
+                        {/* Top + bottom badges only on the active card */}
+                        {isCenter && (
+                          <>
+                            <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-red-500/40 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
+                              <span className="text-[0.6rem] font-bold text-red-400 uppercase">Today · {(() => { const a = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng); return a ? `${a}, ${d.city}` : d.city; })()}</span>
+                            </div>
+                            <span className="absolute top-3 right-3 badge-gold">{d.discount}% OFF</span>
+                            <div className={`absolute bottom-3 left-3 flex items-center gap-1 ${isUrgent ? "text-red-400" : "text-white/80"}`}>
+                              {isUrgent && <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />}
+                              <span className="text-[0.65rem] font-mono font-semibold bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded">
+                                {String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-white text-sm leading-snug mb-0.5 line-clamp-1">{d.hotel?.name || "Hotel"}</h3>
-                        <p className="text-white/40 text-[0.65rem] mb-2">{d.room?.type || "Room"}</p>
-                        <div className="mb-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[0.6rem] font-semibold ${leftSlots <= 2 ? "text-red-400" : leftSlots <= 5 ? "text-amber-400" : "text-white/50"}`}>
-                              {bookedSlots}/{totalSlots} booked · <span className={leftSlots <= 2 ? "text-red-400 font-bold" : "text-gold-400 font-bold"}>{leftSlots} left</span>
-                            </span>
+                      {/* Bottom info strip — ONLY on center card. Side cards just
+                          show their image so the foreground card reads cleanly. */}
+                      {isCenter && (
+                        <div className="p-4">
+                          <h3 className="font-semibold text-white text-sm leading-snug mb-0.5 line-clamp-1">{d.hotel?.name || "Hotel"}</h3>
+                          <p className="text-white/40 text-[0.65rem] mb-2">{d.room?.type || "Room"}</p>
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-[0.6rem] font-semibold ${leftSlots <= 2 ? "text-red-400" : leftSlots <= 5 ? "text-amber-400" : "text-white/50"}`}>
+                                {bookedSlots}/{totalSlots} booked · <span className={leftSlots <= 2 ? "text-red-400 font-bold" : "text-gold-400 font-bold"}>{leftSlots} left</span>
+                              </span>
+                            </div>
+                            <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-700 ${leftSlots <= 2 ? "bg-red-500" : "bg-gradient-to-r from-gold-500 to-gold-300"}`}
+                                style={{ width: `${Math.min(100, (bookedSlots / totalSlots) * 100)}%` }} />
+                            </div>
                           </div>
-                          <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-700 ${leftSlots <= 2 ? "bg-red-500" : "bg-gradient-to-r from-gold-500 to-gold-300"}`}
-                              style={{ width: `${Math.min(100, (bookedSlots / totalSlots) * 100)}%` }} />
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-white/30 text-[0.6rem] line-through">₹{d.floorPrice}</p>
+                              <p className="text-white font-bold text-lg">₹{d.aiPrice}<span className="text-white/40 text-[0.6rem] font-normal">/night</span></p>
+                            </div>
+                            <span className="lux-btn px-3 py-1.5 rounded-lg text-[0.7rem] font-bold">Book</span>
                           </div>
                         </div>
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <p className="text-white/30 text-[0.6rem] line-through">₹{d.floorPrice}</p>
-                            <p className="text-white font-bold text-lg">₹{d.aiPrice}<span className="text-white/40 text-[0.6rem] font-normal">/night</span></p>
-                          </div>
-                          <span className="lux-btn px-3 py-1.5 rounded-lg text-[0.7rem] font-bold">Book</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 );

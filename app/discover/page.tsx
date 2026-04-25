@@ -23,6 +23,15 @@ type Item = { hotel: any; score: number; reasons: string[]; exploration?: boolea
 const SLIDES = ["Overview", "Amenities", "Rooms", "Reviews"] as const;
 type SlideKey = typeof SLIDES[number];
 
+// Build a robust image list for a room — falls back to the parent hotel's
+// images so an empty room.images[] still gets a credible reel.
+function roomImages(room: any, hotel: any): string[] {
+  const own = (room?.images || []).filter(Boolean);
+  if (own.length >= 2) return own;
+  const fromHotel = (hotel?.images || []).filter(Boolean);
+  return [...own, ...fromHotel].filter(Boolean).slice(0, 8);
+}
+
 const FAKE_REVIEWS = [
   { name: "Priya M.", rating: 5, text: "Absolutely breathtaking. The view from our suite at sunrise was unreal — we woke up inside a painting." },
   { name: "Rohan K.", rating: 5, text: "Service was on another level. Staff remembered our names from check-in. Felt like family." },
@@ -44,6 +53,10 @@ export default function DiscoverPage() {
   // Default to "peek" so the hotel photo dominates; user drags up to read more.
   const [sheetState, setSheetState] = useState<"peek" | "mid" | "full">("peek");
   const [actionOpen, setActionOpen] = useState(false);
+  // Room reel — when set, a fullscreen Ken-Burns slideshow of THAT room's
+  // photos opens on top of the discovery sheet. Tap a room card to launch.
+  const [roomReel, setRoomReel] = useState<any | null>(null);
+  const [roomPhotoIdx, setRoomPhotoIdx] = useState(0);
   const dwellStart = useRef<number>(Date.now());
 
   const loadFeed = useCallback(async () => {
@@ -149,6 +162,15 @@ export default function DiscoverPage() {
     const id = setInterval(() => setPhotoIdx((i) => (i + 1) % imgs.length), 4500);
     return () => clearInterval(id);
   }, [current]);
+
+  // Room reel auto-cycle — when a room reel is open, rotate its images
+  useEffect(() => {
+    if (!roomReel) return;
+    const imgs = roomImages(roomReel, current?.hotel);
+    if (imgs.length < 2) return;
+    const id = setInterval(() => setRoomPhotoIdx((i) => (i + 1) % imgs.length), 3500);
+    return () => clearInterval(id);
+  }, [roomReel, current]);
 
   // ── Prefetch next 2 hotels: hero+thumb images AND warm /hotels/[id] page ──
   // Customer often taps "Full Details" — having the route prefetched + the
@@ -552,9 +574,19 @@ export default function DiscoverPage() {
                 {slideKey === "Rooms" && (
                   <div>
                     <p className="text-white/50 text-[0.58rem] uppercase tracking-widest mb-3">Room categories</p>
+                    <p className="text-white/40 text-[0.62rem] mb-2">Tap a room to open the full reel tour ↓</p>
                     <div className="space-y-2.5">
                       {(h.rooms || []).map((r: any) => (
-                        <div key={r.id} className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => {
+                            track("swipe_detail", { hotelId: h.id, roomId: r.id, meta: { from: "room_card" } });
+                            setRoomPhotoIdx(0);
+                            setRoomReel(r);
+                          }}
+                          className="w-full text-left rounded-2xl bg-white/5 border border-white/10 p-3 active:scale-[0.985] transition-transform"
+                        >
                           <div className="flex items-center justify-between gap-3 mb-1.5">
                             <div>
                               <p className="text-white font-semibold text-[0.9rem] leading-tight">{r.name || r.type}</p>
@@ -576,7 +608,8 @@ export default function DiscoverPage() {
                               ))}
                             </div>
                           )}
-                        </div>
+                          <p className="text-gold-300/80 text-[0.6rem] mt-2 font-semibold">▶ Tap for full room tour</p>
+                        </button>
                       ))}
                       {(!h.rooms || h.rooms.length === 0) && (
                         <p className="text-white/50 text-sm">Room data loads on the full hotel page.</p>
@@ -717,6 +750,154 @@ export default function DiscoverPage() {
           )}
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* ── ROOM REEL — fullscreen Ken-Burns tour of one room ── */}
+      {/* ════════════════════════════════════════════════════════ */}
+      {roomReel && (() => {
+        const imgs = roomImages(roomReel, h);
+        const active = imgs[roomPhotoIdx] || imgs[0];
+        const r = roomReel;
+        return (
+          <div className="absolute inset-0 z-[70] bg-black overflow-hidden">
+            {/* Photo */}
+            {active ? (
+              <img
+                key={`${r.id}-${roomPhotoIdx}`}
+                src={active}
+                alt={r.name || r.type}
+                className="kb-img absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-30"
+                style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}>🛏️</div>
+            )}
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/70 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/85 to-transparent" />
+
+            {/* Photo pips */}
+            {imgs.length > 1 && (
+              <div className="absolute top-3 left-4 right-16 z-20 flex gap-1">
+                {imgs.map((_, i) => (
+                  <div key={i} className="flex-1 h-[2px] bg-white/25 rounded-full overflow-hidden">
+                    <div className={`h-full bg-white transition-all duration-300 ${i <= roomPhotoIdx ? "w-full" : "w-0"}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setRoomReel(null)}
+              aria-label="Close room tour"
+              className="absolute top-3 right-3 z-30 glass w-9 h-9 rounded-full flex items-center justify-center text-white text-lg active:scale-90"
+              style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.25)" }}
+            >
+              ✕
+            </button>
+
+            {/* Tap zones — left half = prev, right half = next */}
+            <button
+              type="button"
+              aria-label="Previous photo"
+              onClick={() => setRoomPhotoIdx((i) => (i - 1 + imgs.length) % Math.max(1, imgs.length))}
+              className="absolute top-16 bottom-56 left-0 w-1/3 z-10"
+              style={{ background: "transparent" }}
+            />
+            <button
+              type="button"
+              aria-label="Next photo"
+              onClick={() => setRoomPhotoIdx((i) => (i + 1) % Math.max(1, imgs.length))}
+              className="absolute top-16 bottom-56 right-0 w-1/3 z-10"
+              style={{ background: "transparent" }}
+            />
+
+            {/* Bottom info card — translucent so the photo dominates */}
+            <div
+              className="absolute left-0 right-0 bottom-0 z-20 px-5 pt-5 pb-7"
+              style={{
+                background: "linear-gradient(180deg, rgba(8,6,14,0.10) 0%, rgba(8,6,14,0.55) 60%, rgba(8,6,14,0.78) 100%)",
+                backdropFilter: "blur(10px) saturate(1.2)",
+                WebkitBackdropFilter: "blur(10px) saturate(1.2)",
+              }}
+            >
+              <p className="text-white/55 text-[0.58rem] uppercase tracking-[0.2em] mb-1" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
+                {h?.name} · Room Tour
+              </p>
+              <div className="flex items-end justify-between gap-3 mb-2">
+                <h3 className="font-display font-light text-white text-[1.5rem] leading-tight" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.7)" }}>
+                  {r.name || r.type}
+                </h3>
+                <div className="text-right shrink-0">
+                  {r.mrp && r.mrp > r.floorPrice && (
+                    <p className="text-white/50 text-[0.62rem] line-through" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>₹{r.mrp.toLocaleString()}</p>
+                  )}
+                  <p className="text-gold-300 font-bold text-lg leading-none" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>
+                    ₹{(r.floorPrice || 0).toLocaleString()}
+                  </p>
+                  <p className="text-white/55 text-[0.58rem]" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>per night</p>
+                </div>
+              </div>
+              <p className="text-white/75 text-[0.7rem] mb-2" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
+                Sleeps {r.capacity || 2} · Photo {roomPhotoIdx + 1} of {imgs.length || 1}
+              </p>
+              {r.description && (
+                <p className="text-white/80 text-[0.78rem] leading-relaxed mb-3 line-clamp-3" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
+                  {r.description}
+                </p>
+              )}
+              {r.amenities?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {r.amenities.slice(0, 6).map((a: string) => (
+                    <span key={a} className="text-[0.6rem] px-2 py-0.5 rounded-full bg-white/15 border border-white/25 text-white/95"
+                      style={{ backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
+                      ✓ {a}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    track("click_book", { hotelId: h.id, roomId: r.id, meta: { from: "room_reel" } });
+                    setRoomReel(null);
+                    router.push(`/hotels/${h.id}?intent=book&roomId=${r.id}#availability-picker`);
+                  }}
+                  className="py-3 rounded-2xl text-black font-bold text-[0.82rem] active:scale-95 transition-transform"
+                  style={{
+                    background: "linear-gradient(135deg,#f0b429,#c9911a)",
+                    boxShadow: "0 8px 20px -4px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.3)",
+                  }}
+                >
+                  ⚡ Book This Room
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    track("click_bid", { hotelId: h.id, roomId: r.id, meta: { intent: "negotiate", from: "room_reel" } });
+                    setRoomReel(null);
+                    router.push(`/hotels/${h.id}?intent=negotiate&roomId=${r.id}#availability-picker`);
+                  }}
+                  className="py-3 rounded-2xl font-bold text-[0.82rem] active:scale-95 transition-transform"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(240,180,41,0.06))",
+                    border: "1px solid rgba(240,180,41,0.45)",
+                    color: "#f0b429",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                  }}
+                >
+                  💬 Negotiate
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ════════════════════════════════════════════════════════ */}
       {/* ── FIRST-VISIT ONBOARDING OVERLAY (shown ONCE, ever) ── */}
