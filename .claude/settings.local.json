@@ -51,7 +51,9 @@
       "Bash(git commit -m 'chore\\(claude-code\\): consolidate settings.local.json with broad allow patterns *)",
       "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__get_publishable_keys",
       "Bash(git commit -m 'fix\\(onboard\\): relax basics gate to name+city only \\(matches existing schema\\) *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(curl -fs \"https://staybids.in/api/onboard/_debug\")",
+      "Bash(curl -s \"https://staybids.in/api/onboard/_debug\")"
     ]
   }
 }
