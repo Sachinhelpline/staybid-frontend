@@ -28,18 +28,17 @@ export async function POST(req: Request) {
     const own = await sbSelect<any>("hotels", `id=eq.${encodeURIComponent(body.hotelId)}&"ownerId"=eq.${claims.sub}&limit=1`);
     if (!own[0]) return NextResponse.json({ error: "hotel not found or not yours" }, { status: 404 });
 
+    // Existing customer schema uses `mrp` (rack rate) + `floorPrice` (min bid).
+    // The wizard's "basePrice" maps to `mrp`. There is no separate basePrice column.
     const type = body.type || "Standard Room";
-    const basePrice = body.basePrice || 4999;
-    const floorPrice = body.floorPrice || Math.round(basePrice * 0.78);
-    // Existing customer-facing schema requires `name` and `mrp` to be NOT NULL.
-    // Default `name` to the type, `mrp` to basePrice — keep onboarding minimal.
+    const mrp = body.mrp || body.basePrice || 4999;
+    const floorPrice = body.floorPrice || Math.round(mrp * 0.78);
     const row: any = {
       hotelId: body.hotelId,
       type,
       name: body.name || type,
-      mrp: body.mrp || basePrice,
+      mrp,
       capacity: body.capacity || 2,
-      basePrice,
       floorPrice,
       amenities: body.amenities || [],
       description: body.description || "",

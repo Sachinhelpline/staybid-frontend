@@ -15,7 +15,9 @@ type Hotel = {
   contact_phone?: string; contact_email?: string; contact_website?: string;
   amenities?: string[]; status: string; preview_viewed?: boolean; public_id?: string;
 };
-type Room = { id: string; hotelId: string; type: string; capacity: number; basePrice: number; floorPrice: number; amenities: string[]; description?: string; quantity?: number; size_sqft?: number; bedrooms?: number; bathrooms?: number };
+// Wizard uses `basePrice` in the form; existing schema column is `mrp`.
+// API maps basePrice → mrp on save; on load we read whichever exists.
+type Room = { id: string; hotelId: string; type: string; name?: string; capacity: number; basePrice?: number; mrp?: number; floorPrice: number; amenities: string[]; description?: string; quantity?: number; size_sqft?: number; bedrooms?: number; bathrooms?: number };
 type ImageRow = { id: string; url: string; storage_path?: string; sort_order?: number; kind?: string };
 type Listing = {
   hotel: Hotel | null; rooms: Room[]; hotelImages: ImageRow[]; roomImages: ImageRow[];
@@ -410,7 +412,7 @@ function RoomCard({ room, hotelId, listing, onEdit, onDelete, onChange }: any) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-luxury-900">{room.type}</div>
-          <div className="text-xs text-luxury-500">Sleeps {room.capacity} · ₹{room.basePrice?.toLocaleString("en-IN")} / night · floor ₹{room.floorPrice?.toLocaleString("en-IN")}</div>
+          <div className="text-xs text-luxury-500">Sleeps {room.capacity} · ₹{(room.basePrice ?? room.mrp ?? 0).toLocaleString("en-IN")} / night · floor ₹{room.floorPrice?.toLocaleString("en-IN")}</div>
           {room.amenities?.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {room.amenities.map((a: string) => <span key={a} className="text-[11px] px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200 text-gold-800">{a}</span>)}
@@ -752,7 +754,7 @@ function PreviewSection({ listing, onChange }: { listing: Listing | null; onChan
               {rooms.map((r) => (
                 <div key={r.id} className="card-luxury p-4">
                   <div className="font-semibold text-luxury-900">{r.type}</div>
-                  <div className="text-xs text-luxury-500">Sleeps {r.capacity} · ₹{r.basePrice?.toLocaleString("en-IN")} / night</div>
+                  <div className="text-xs text-luxury-500">Sleeps {r.capacity} · ₹{(r.basePrice ?? r.mrp ?? 0).toLocaleString("en-IN")} / night</div>
                   {r.description && <div className="text-sm text-luxury-700 mt-1">{r.description}</div>}
                 </div>
               ))}
