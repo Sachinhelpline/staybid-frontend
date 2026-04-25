@@ -7,7 +7,8 @@ function VerifyInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const [identifier] = useState(sp.get("id") || "");
-  const [code, setCode] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(sp.get("dev"));
+  const [code, setCode] = useState(sp.get("dev") || "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -48,6 +49,7 @@ function VerifyInner() {
       });
       const j = await r.json();
       if (!r.ok) { setErr(j.error || "Could not resend"); return; }
+      if (j.devOtp) { setDevOtp(j.devOtp); setCode(j.devOtp); }
       setInfo("New code sent."); setSecsLeft(30);
     } catch (e: any) { setErr(e?.message || "Failed"); }
   };
@@ -60,6 +62,14 @@ function VerifyInner() {
           We sent a 6-digit code to <span className="font-semibold text-luxury-800">{identifier}</span>
         </p>
       </div>
+
+      {devOtp && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm">
+          <div className="font-semibold">Dev mode (no real email/SMS configured)</div>
+          <div className="mt-1">Your one-time code: <span className="font-mono text-lg font-bold tracking-wider">{devOtp}</span></div>
+          <div className="text-xs text-amber-700 mt-1">This banner disappears automatically once SendGrid / SMS keys are added to Vercel.</div>
+        </div>
+      )}
 
       <form onSubmit={submit} className="card-luxury p-7 space-y-4">
         <Field label="6-digit code">

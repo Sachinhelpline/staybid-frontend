@@ -43,7 +43,11 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('/c/tmp/f.json'\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")",
       "Bash(python -c \"import json,sys; d=json.loads\\(sys.stdin.read\\(\\)\\); deals=d.get\\('deals',[]\\); print\\(f'deals: {len\\(deals\\)}'\\); [print\\(f\\\\\"  {dl['id']} hotel={dl.get\\('hotelId'\\)} price={dl.get\\('aiPrice'\\)} discount={dl.get\\('discount'\\)}%\\\\\"\\) for dl in deals]\")",
       "Bash(python3 -c ' *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "PowerShell(npm install bcryptjs jsonwebtoken nanoid @sendgrid/mail @types/bcryptjs @types/jsonwebtoken --no-audit --no-fund 2>&1)",
+      "PowerShell($out = npx tsc --noEmit 2>&1 | Out-String; if \\($LASTEXITCODE -eq 0\\) { \"TS OK\" } else { $out.Substring\\(0, [Math]::Min\\(6000, $out.Length\\)\\) })",
+      "PowerShell($env:SKIP_ENV_VALIDATION=\"1\"; $out = npx next build 2>&1 | Out-String; if \\($LASTEXITCODE -eq 0\\) { \"BUILD OK\"; \\($out -split \"`n\" | Select-Object -Last 30\\) -join \"`n\" } else { \\($out -split \"`n\" | Select-Object -Last 80\\) -join \"`n\" })",
+      "Bash(git fetch *)"
     ]
   }
 }

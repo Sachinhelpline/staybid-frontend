@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { sbInsert, sbSelect, sbUpdate } from "@/lib/onboard/supabase-admin";
 import { generateOtp, sha256 } from "@/lib/onboard/password";
-import { sendEmail, otpEmail } from "@/lib/onboard/email";
-import { sendSms } from "@/lib/onboard/sms";
+import { sendEmail, otpEmail, EMAIL_IS_MOCK } from "@/lib/onboard/email";
+import { sendSms, SMS_IS_MOCK } from "@/lib/onboard/sms";
 
 // POST /api/onboard/auth/signup
 // Body: { email, phone, name } — at least one of email/phone required.
-// Creates a pending onboarding_user (if absent) and sends OTP(s).
-// Idempotent: re-sending for the same identifier just resends a fresh OTP.
+// In dev/mock mode the response includes `devOtp` so testers don't need to
+// scrape Vercel logs. As soon as a real provider is configured (SENDGRID_API_KEY
+// etc.), `devOtp` automatically disappears from the response.
 export async function POST(req: Request) {
   try {
     const { email, phone, name } = await req.json();
@@ -18,7 +19,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email or phone is required" }, { status: 400 });
     }
 
-    // Find or create user
     let user = await findUser(cleanEmail, cleanPhone);
     if (!user) {
       user = await sbInsert("onboarding_users", {
@@ -28,7 +28,6 @@ export async function POST(req: Request) {
         role: "owner",
       });
     } else if (user.password_hash) {
-      // Already has a password — they should sign in instead
       return NextResponse.json(
         { error: "Account already exists. Please sign in.", existing: true },
         { status: 409 }
@@ -37,17 +36,23 @@ export async function POST(req: Request) {
       await sbUpdate("onboarding_users", `id=eq.${user.id}`, { name });
     }
 
-    // Send OTPs (email + sms in parallel where applicable)
-    const tasks: Promise<any>[] = [];
-    if (cleanEmail) tasks.push(issueOtp(cleanEmail, "email", name));
-    if (cleanPhone) tasks.push(issueOtp(cleanPhone, "sms", name));
-    await Promise.all(tasks);
+    const devOtp: { email?: string; sms?: string } = {};
+    if (cleanEmail) {
+      const code = await issueOtp(cleanEmail, "email", name);
+      if (EMAIL_IS_MOCK) devOtp.email = code;
+    }
+    if (cleanPhone) {
+      const code = await issueOtp(cleanPhone, "sms", name);
+      if (SMS_IS_MOCK) devOtp.sms = code;
+    }
 
-    return NextResponse.json({
+    const out: any = {
       ok: true,
       userId: user.id,
       sentTo: { email: !!cleanEmail, phone: !!cleanPhone },
-    });
+    };
+    if (devOtp.email || devOtp.sms) out.devOtp = devOtp;
+    return NextResponse.json(out);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "signup failed" }, { status: 500 });
   }
@@ -62,23 +67,18 @@ async function findUser(email: string | null, phone: string | null) {
   return rows[0];
 }
 
-async function issueOtp(identifier: string, channel: "email" | "sms", name?: string) {
+async function issueOtp(identifier: string, channel: "email" | "sms", name?: string): Promise<string> {
   const code = generateOtp(6);
   const code_hash = sha256(code);
   const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  await sbInsert("otp_codes", {
-    identifier,
-    channel,
-    code_hash,
-    purpose: "signup",
-    expires_at,
-  });
+  await sbInsert("otp_codes", { identifier, channel, code_hash, purpose: "signup", expires_at });
   if (channel === "email") {
     const { subject, html } = otpEmail(code, name);
     await sendEmail({ to: identifier, subject, html });
   } else {
     await sendSms(identifier, code);
   }
+  return code;
 }
 
 function normalizePhone(p?: string): string | null {

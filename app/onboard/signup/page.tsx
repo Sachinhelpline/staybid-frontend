@@ -28,7 +28,9 @@ export default function SignupPage() {
         setErr(j.error || "Signup failed"); setBusy(false); return;
       }
       const id = email || phone;
-      router.push(`/onboard/verify?id=${encodeURIComponent(id)}`);
+      const dev = j?.devOtp?.email || j?.devOtp?.sms;
+      const qs = `id=${encodeURIComponent(id)}${dev ? `&dev=${encodeURIComponent(dev)}` : ""}`;
+      router.push(`/onboard/verify?${qs}`);
     } catch (e: any) {
       setErr(e?.message || "Signup failed"); setBusy(false);
     }

@@ -58,3 +58,4 @@ export function otpEmail(code: string, name?: string) {
 }
 
 export const EMAIL_PROVIDER = PROVIDER;
+export const EMAIL_IS_MOCK = PROVIDER === "mock";

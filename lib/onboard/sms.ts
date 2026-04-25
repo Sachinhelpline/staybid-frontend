@@ -59,3 +59,8 @@ export async function sendSms(phone: string, code: string): Promise<{ provider: 
 }
 
 export const SMS_PROVIDER = PROVIDER;
+// "railway-whatsapp" with no real backend support also effectively logs to
+// console, so treat it as mock from the dev-OTP-exposure standpoint.
+export const SMS_IS_MOCK =
+  PROVIDER === "mock" ||
+  (PROVIDER === "railway-whatsapp" && !process.env.RAILWAY_OTP_REAL);

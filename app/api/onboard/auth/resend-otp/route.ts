@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { sbInsert, sbSelect } from "@/lib/onboard/supabase-admin";
 import { generateOtp, sha256 } from "@/lib/onboard/password";
-import { sendEmail, otpEmail } from "@/lib/onboard/email";
-import { sendSms } from "@/lib/onboard/sms";
+import { sendEmail, otpEmail, EMAIL_IS_MOCK } from "@/lib/onboard/email";
+import { sendSms, SMS_IS_MOCK } from "@/lib/onboard/sms";
 
 export async function POST(req: Request) {
   try {
@@ -28,13 +28,16 @@ export async function POST(req: Request) {
       purpose: "signup",
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     });
+    let isMock = false;
     if (isEmail) {
       const { subject, html } = otpEmail(code);
       await sendEmail({ to: identifier, subject, html });
+      isMock = EMAIL_IS_MOCK;
     } else {
       await sendSms(identifier, code);
+      isMock = SMS_IS_MOCK;
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(isMock ? { ok: true, devOtp: code } : { ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "resend failed" }, { status: 500 });
   }
