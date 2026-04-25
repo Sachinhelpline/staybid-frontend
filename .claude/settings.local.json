@@ -47,7 +47,8 @@
       "PowerShell(npm install bcryptjs jsonwebtoken nanoid @sendgrid/mail @types/bcryptjs @types/jsonwebtoken --no-audit --no-fund 2>&1)",
       "PowerShell($out = npx tsc --noEmit 2>&1 | Out-String; if \\($LASTEXITCODE -eq 0\\) { \"TS OK\" } else { $out.Substring\\(0, [Math]::Min\\(6000, $out.Length\\)\\) })",
       "PowerShell($env:SKIP_ENV_VALIDATION=\"1\"; $out = npx next build 2>&1 | Out-String; if \\($LASTEXITCODE -eq 0\\) { \"BUILD OK\"; \\($out -split \"`n\" | Select-Object -Last 30\\) -join \"`n\" } else { \\($out -split \"`n\" | Select-Object -Last 80\\) -join \"`n\" })",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(git commit -m 'chore\\(claude-code\\): consolidate settings.local.json with broad allow patterns *)"
     ]
   }
 }
