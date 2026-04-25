@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -166,6 +167,7 @@ export function Navbar() {
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
   if (pathname?.startsWith("/partner")) return null;
+  if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -279,8 +281,9 @@ export function Navbar() {
               <LogoMark size={36} />
               <BrandText className="text-[1.25rem] hidden sm:inline" dark />
             </Link>
-            <div className="ml-1">
+            <div className="ml-1 flex items-center gap-1.5">
               <LocationChip compact />
+              <ModeToggle />
             </div>
           </div>
 

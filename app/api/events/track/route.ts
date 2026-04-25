@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     type: String(e.type || "unknown").slice(0, 40),
     hotelId: e.hotelId || null,
     roomId: e.roomId || null,
-    meta: e.meta ? JSON.stringify(e.meta).slice(0, 4000) : null,
+    meta: e.meta && typeof e.meta === "object" ? e.meta : null,
     ua,
     createdAt: e.ts || now,
   }));
