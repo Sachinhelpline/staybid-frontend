@@ -425,21 +425,70 @@ export default function DiscoverPage() {
             )}
           </div>
 
-          {/* ── Swipe-up action FAB (bottom center, always visible) ── */}
+          {/* ── Swipe-up action FAB (bottom center, always visible) ──
+              True 3D live-button feel: layered shadows + inset highlights +
+              press-down translate on active so it physically depresses. */}
+          <style>{`
+            @keyframes fabBob {
+              0%,100% { transform: translate(-50%, 0); }
+              50%     { transform: translate(-50%, -3px); }
+            }
+            @keyframes fabSheen {
+              0%   { background-position: -120% 0; }
+              100% { background-position: 220% 0; }
+            }
+            .fab-3d {
+              position: relative;
+              animation: fabBob 2.6s ease-in-out infinite;
+              transition: transform 0.12s cubic-bezier(0.2,0.8,0.2,1), box-shadow 0.12s ease;
+            }
+            .fab-3d::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              border-radius: 9999px;
+              background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,0.55) 50%, transparent 65%);
+              background-size: 220% 100%;
+              animation: fabSheen 3.2s ease-in-out infinite;
+              mix-blend-mode: overlay;
+              pointer-events: none;
+            }
+            .fab-3d:active {
+              transform: translate(-50%, 2px) scale(0.97);
+              animation-play-state: paused;
+              box-shadow:
+                0 2px 6px -1px rgba(201,145,26,0.55),
+                inset 0 -1px 0 rgba(0,0,0,0.18),
+                inset 0 2px 4px rgba(0,0,0,0.25) !important;
+            }
+          `}</style>
           <button
             onClick={() => setActionOpen(true)}
-            className="absolute left-1/2 -translate-x-1/2 z-40 pointer-events-auto glass flex items-center gap-1.5 px-4 py-2 rounded-full text-[0.72rem] font-semibold transition-transform active:scale-95"
+            aria-label="Open Book or Negotiate"
+            className="fab-3d absolute left-1/2 z-40 pointer-events-auto flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[0.74rem] font-bold tracking-wide overflow-hidden"
             style={{
-              bottom: `calc(${sheetHeights[sheetState]} - 22px)`,
+              bottom: `calc(${sheetHeights[sheetState]} - 24px)`,
+              // Multi-stop gold gradient with a top glossy band — reads as a
+              // physical embossed pill, not a flat tab.
+              background:
+                "linear-gradient(180deg, #ffd76b 0%, #f0b429 38%, #d99a16 72%, #b07a0c 100%)",
+              color: "#0a0612",
+              border: "1px solid rgba(255,255,255,0.55)",
+              // Stack: outer glow + lifted drop shadow + top inner highlight + bottom inner shadow
+              boxShadow: [
+                "0 0 18px rgba(240,180,41,0.55)",         // ambient glow
+                "0 10px 22px -4px rgba(201,145,26,0.65)", // lift shadow
+                "0 4px 10px -2px rgba(0,0,0,0.45)",       // ground shadow
+                "inset 0 1.5px 0 rgba(255,255,255,0.85)", // top glossy edge
+                "inset 0 -2px 0 rgba(110,70,5,0.55)",     // bottom rim shadow
+                "inset 0 0 0 1px rgba(255,255,255,0.18)", // soft bevel
+              ].join(", "),
+              textShadow: "0 1px 0 rgba(255,255,255,0.45)",
               transition: "bottom 0.3s cubic-bezier(0.3,1,0.3,1)",
-              background: "linear-gradient(135deg, rgba(240,180,41,0.92), rgba(201,145,26,0.88))",
-              color: "#0a0f23",
-              boxShadow: "0 8px 24px -4px rgba(240,180,41,0.6), inset 0 1px 0 rgba(255,255,255,0.3)",
-              border: "1px solid rgba(255,255,255,0.25)",
             }}
           >
-            <span>⬆</span>
-            <span>Book · Bid</span>
+            <span style={{ fontSize: "0.85rem", filter: "drop-shadow(0 1px 0 rgba(255,255,255,0.5))" }}>⬆</span>
+            <span>Book · Negotiate</span>
           </button>
 
           {/* ════════════════════════════════════════════════════════ */}
