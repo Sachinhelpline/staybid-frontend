@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { requireOnboardUser } from "@/lib/onboard/jwt";
 import { sbInsert, sbSelect, sbUpdate } from "@/lib/onboard/supabase-admin";
 
@@ -33,7 +34,10 @@ export async function POST(req: Request) {
     const type = body.type || "Standard Room";
     const mrp = body.mrp || body.basePrice || 4999;
     const floorPrice = body.floorPrice || Math.round(mrp * 0.78);
+    // Existing schema has rooms.id NOT NULL with no default — generate ourselves.
+    const roomId = body.id || `rm_${crypto.randomUUID()}`;
     const row: any = {
+      id: roomId,
       hotelId: body.hotelId,
       type,
       name: body.name || type,
