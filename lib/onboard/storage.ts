@@ -4,7 +4,7 @@
 
 import { SB } from "./supabase-admin";
 
-export type UploadKind = "hotel-images" | "room-images" | "kyc-documents" | "bank-docs";
+export type UploadKind = "hotel-images" | "room-images" | "kyc-documents" | "bank-docs" | "verification-videos";
 
 export type UploadResult = {
   url: string;
@@ -47,6 +47,7 @@ export async function uploadBuffer(opts: {
   }
 
   const isPublic = opts.bucket === "hotel-images" || opts.bucket === "room-images";
+  // verification-videos and KYC docs are private; signed URL below.
   let publicUrl = `${SB.url}/storage/v1/object/public/${opts.bucket}/${key}`;
   if (!isPublic) {
     // Issue a signed URL for private buckets (default 7-day expiry)

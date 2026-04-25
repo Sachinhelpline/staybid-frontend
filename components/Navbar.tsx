@@ -14,10 +14,11 @@ const NAV_LINKS = [
 ];
 
 const USER_LINKS = [
-  { href: "/my-bids",       label: "My Bids",  icon: "📋" },
-  { href: "/bookings",      label: "Bookings", icon: "🎫" },
-  { href: "/wallet",        label: "Wallet",   icon: "💰" },
-  { href: "/hotel-partner", label: "Partner",  icon: "🏢" },
+  { href: "/my-bids",       label: "My Bids",       icon: "📋" },
+  { href: "/bookings",      label: "Bookings",      icon: "🎫" },
+  { href: "/verification",  label: "Verification",  icon: "🎬" },
+  { href: "/wallet",        label: "Wallet",        icon: "💰" },
+  { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
 ];
 
 const BOTTOM_PRIMARY = [
