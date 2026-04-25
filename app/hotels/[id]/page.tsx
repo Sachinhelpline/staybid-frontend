@@ -764,9 +764,11 @@ export default function HotelDetail() {
     <div className="bg-luxury-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-5 py-10">
 
-        {/* ── Flash Deal Banner ── */}
+        {/* ── Flash Deal Banner (sticky so it follows the customer while they
+            browse photos / rooms / reviews — they can book the deal from
+            anywhere on the page without going back to /flash-deals) ── */}
         {dealId && dealPrice && (
-          <div className="mb-6 p-4 rounded-2xl border border-gold-300 bg-gradient-to-r from-gold-50 to-amber-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="sticky top-2 z-30 mb-6 p-4 rounded-2xl border border-gold-300 bg-gradient-to-r from-gold-50 to-amber-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-gold backdrop-blur-sm">
             <div className="flex items-center gap-3">
               <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
               <div>
@@ -1894,10 +1896,18 @@ export default function HotelDetail() {
                 </button>
                 <button
                   onClick={() => {
-                    // Close the flash modal and stay on hotel page — strip deal params so
-                    // the modal doesn't auto-reopen if the user interacts with rooms.
+                    // Close the flash modal but PRESERVE deal context so the
+                    // sticky flash-deal banner + Book CTA stays visible. We
+                    // only drop `directBook` so the modal doesn't auto-reopen
+                    // — the customer can browse photos/rooms and then click
+                    // the banner's "Book This Flash Deal" CTA right here.
                     setFlashBookOpen(false);
-                    router.replace(`/hotels/${hotel.id}`);
+                    const qs = new URLSearchParams();
+                    if (dealId)       qs.set("dealId",    dealId);
+                    if (dealPrice)    qs.set("dealPrice", dealPrice);
+                    if (dealRoomId)   qs.set("roomId",    dealRoomId);
+                    if (dealDiscount) qs.set("discount",  dealDiscount);
+                    router.replace(`/hotels/${hotel.id}?${qs.toString()}`);
                   }}
                   disabled={bookLoading}
                   className="btn-3d btn-3d-white w-full"
