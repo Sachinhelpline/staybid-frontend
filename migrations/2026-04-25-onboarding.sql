@@ -122,3 +122,20 @@ ALTER TABLE public.hotels ADD COLUMN IF NOT EXISTS public_id       TEXT UNIQUE; 
 ALTER TABLE public.hotels ADD COLUMN IF NOT EXISTS source          TEXT;     -- where data came from
 ALTER TABLE public.hotels ADD COLUMN IF NOT EXISTS amenities       JSONB;
 ALTER TABLE public.hotels ADD COLUMN IF NOT EXISTS photos          JSONB;    -- array of urls
+
+-- ---------------------------------------------------------------------------
+-- 7. Grants — Supabase requires explicit GRANTs for anon / authenticated /
+--    service_role to access tables via PostgREST, even when RLS is disabled.
+--    Without this, every API call fails with `42501 permission denied`.
+-- ---------------------------------------------------------------------------
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON public.onboarding_users TO anon, authenticated, service_role;
+GRANT ALL ON public.otp_codes        TO anon, authenticated, service_role;
+GRANT ALL ON public.agents           TO anon, authenticated, service_role;
+GRANT ALL ON public.hotel_drafts     TO anon, authenticated, service_role;
+GRANT USAGE ON SEQUENCE public.hotel_serial_seq TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.next_hotel_id() TO anon, authenticated, service_role;
+
+-- Force PostgREST to refresh its schema cache so new tables/columns are
+-- visible without restarting the API.
+NOTIFY pgrst, 'reload schema';
