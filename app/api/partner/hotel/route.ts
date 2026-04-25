@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 
 const SB_URL  = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 // JWT-format anon key required for RLS-enabled tables (users)
@@ -10,39 +11,11 @@ function decodeJwt(t: string) {
   catch { return null; }
 }
 
-/** Find all user IDs sharing the same phone (handles +91 prefix variants).
- *  Takes an optional JWT-derived phone fallback for when the users SELECT
- *  is blocked by RLS and the DB row for primaryId can't be read. */
-async function resolveOwnerIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
-  const ids: string[] = [primaryId];
-  let rawPhone = "";
-  try {
-    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
-    const users = await uRes.json();
-    if (Array.isArray(users) && users[0]?.phone) {
-      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
-    }
-  } catch { /* ignore */ }
-
-  if (!rawPhone && jwtPhone) {
-    rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
-  }
-  if (!rawPhone) return ids;
-
-  try {
-    const allRes = await fetch(
-      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
-      { headers: SB_H }
-    );
-    const all = await allRes.json();
-    if (Array.isArray(all)) {
-      all.forEach((u: any) => {
-        if (u.id && !ids.includes(u.id)) ids.push(u.id);
-      });
-    }
-  } catch { /* ignore */ }
-  return ids;
-}
+// Cross-pool resolver lives in lib/partner/owner-ids.ts — bridges the legacy
+// `users` (Railway customer pool) with `onboarding_users` (self-service /onboard
+// pool) by phone (with/without +91) and email, so a host who onboarded via
+// /onboard can sign into /partner with the same phone and see their hotel.
+const resolveOwnerIds = (id: string, p?: string, e?: string) => resolveOwnerIdsCrossPool(id, p, e);
 
 export async function GET(req: NextRequest) {
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
@@ -52,7 +25,8 @@ export async function GET(req: NextRequest) {
 
   // Resolve all user IDs for this phone (handles duplicate records with/without +91)
   const headerPhone = req.headers.get("x-phone") || "";
-  const ownerIds = await resolveOwnerIds(payload.id, payload.phone || headerPhone);
+  const headerEmail = req.headers.get("x-email") || "";
+  const ownerIds = await resolveOwnerIds(payload.id, payload.phone || headerPhone, payload.email || headerEmail);
 
   const hRes  = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=*`, { headers: SB_H });
   const hotels = await hRes.json();
@@ -124,8 +98,8 @@ export async function PATCH(req: NextRequest) {
   const fields = ["name","description","amenities","images","city","state","starRating"];
   for (const f of fields) { if (updates[f] !== undefined) allowed[f] = updates[f]; }
 
-  // Update for any matching owner ID
-  const ownerIds = await resolveOwnerIds(payload.id, payload.phone);
+  // Update for any matching owner ID (across customer + onboarding pools)
+  const ownerIds = await resolveOwnerIds(payload.id, payload.phone, payload.email);
   const hRes = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})`, {
     method: "PATCH", headers: SB_H, body: JSON.stringify(allowed),
   });

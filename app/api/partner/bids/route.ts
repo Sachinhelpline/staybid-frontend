@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
@@ -12,28 +13,8 @@ function decodeJwt(token: string): any {
   } catch { return null; }
 }
 
-async function resolveOwnerIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
-  const ids: string[] = [primaryId];
-  let rawPhone = "";
-  try {
-    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_HEADERS });
-    const users = await uRes.json();
-    if (Array.isArray(users) && users[0]?.phone) {
-      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
-    }
-  } catch { /* ignore */ }
-  if (!rawPhone && jwtPhone) rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
-  if (!rawPhone) return ids;
-  try {
-    const allRes = await fetch(
-      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
-      { headers: SB_HEADERS }
-    );
-    const all = await allRes.json();
-    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
-  } catch { /* ignore */ }
-  return ids;
-}
+// resolveOwnerIds: cross-pool resolver in lib/partner/owner-ids.ts
+const resolveOwnerIds = (id: string, p?: string, e?: string) => resolveOwnerIdsCrossPool(id, p, e);
 
 async function enrichBids(bids: any[]): Promise<any[]> {
   if (!bids.length) return [];
@@ -96,7 +77,7 @@ export async function GET(req: NextRequest) {
   } catch { /* fall through */ }
 
   if (!bids.length) {
-    const ownerIds = await resolveOwnerIds(payload.id, payload.phone);
+    const ownerIds = await resolveOwnerIds(payload.id, payload.phone, payload.email);
     const hotelRes = await fetch(
       `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=id`,
       { headers: SB_HEADERS }
