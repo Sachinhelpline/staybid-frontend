@@ -48,17 +48,59 @@ export default function DiscoverPage() {
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
+    // ── Sanitize signals before send ──
+    // priceBand can become [Infinity, Infinity] after viewing a hotel with no
+    // rooms — JSON serializes that to [null,null] and some mobile WebViews
+    // choke on the request. Strip non-finite values defensively.
+    const rawSig = getSignals();
+    const safeSig: any = { ...rawSig };
+    if (Array.isArray(rawSig.priceBand)) {
+      const [a, b] = rawSig.priceBand;
+      if (!Number.isFinite(a) || !Number.isFinite(b)) delete safeSig.priceBand;
+    }
+    const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+
+    // ── Primary: ranked feed ──
     try {
-      const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
       const r = await fetch("/api/discover/feed", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-        body: JSON.stringify({ limit: 30, signals: getSignals() }),
+        body: JSON.stringify({ limit: 30, signals: safeSig }),
+        cache: "no-store",
       });
-      const d = await r.json();
-      setItems(d.items || []);
-    } catch { setItems([]); }
-    finally { setLoading(false); }
+      if (r.ok) {
+        const d = await r.json();
+        if (Array.isArray(d?.items) && d.items.length > 0) {
+          setItems(d.items);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {}
+
+    // ── Fallback: plain hotels list mapped into Item shape ──
+    // Ensures mobile users always see SOMETHING even if /discover/feed
+    // fails (cold backend, stale SW, network hiccup, JWT mismatch, etc.).
+    try {
+      const r2 = await fetch("/api/hotels?limit=30", { cache: "no-store" });
+      const d2 = await r2.json();
+      const hotels = Array.isArray(d2?.hotels) ? d2.hotels : [];
+      const mapped = hotels.map((h: any) => ({
+        hotel: {
+          ...h,
+          minPrice: h.rooms?.length
+            ? Math.min(...h.rooms.map((r: any) => r.floorPrice || 99999))
+            : null,
+        },
+        score: 0,
+        reasons: [],
+      }));
+      setItems(mapped);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -256,6 +298,9 @@ export default function DiscoverPage() {
         .glass { backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); }
         .sheet-scroll::-webkit-scrollbar { width: 3px; }
         .sheet-scroll::-webkit-scrollbar-thumb { background: rgba(240,180,41,0.3); border-radius: 3px; }
+        /* Text-shadow rail for the translucent sheet — keeps copy legible
+           against the live hotel photo bleeding through the glass. */
+        .sheet-scroll, .sheet-scroll * { text-shadow: 0 1px 2px rgba(0,0,0,0.55); }
       `}</style>
 
       {/* ── Top chrome: ONE toggle (Compare) mirroring navbar chip language ── */}
@@ -383,14 +428,14 @@ export default function DiscoverPage() {
             style={{
               height: sheetHeights[sheetState],
               transition: "height 0.3s cubic-bezier(0.3,1,0.3,1), background 0.3s ease",
-              // Truly translucent glass — hotel photo stays visible behind.
-              // Slightly more opacity in the "full" state for readability.
+              // ULTRA-translucent glass — photo shows ~85-90% clear behind.
+              // "full" stays slightly stronger for long-form readability.
               background:
                 sheetState === "full"
-                  ? "linear-gradient(180deg, rgba(8,6,14,0.55) 0%, rgba(8,6,14,0.78) 30%, rgba(8,6,14,0.85) 100%)"
-                  : "linear-gradient(180deg, rgba(8,6,14,0.20) 0%, rgba(8,6,14,0.45) 60%, rgba(8,6,14,0.62) 100%)",
-              backdropFilter: "blur(28px) saturate(1.5)",
-              WebkitBackdropFilter: "blur(28px) saturate(1.5)",
+                  ? "linear-gradient(180deg, rgba(8,6,14,0.32) 0%, rgba(8,6,14,0.55) 35%, rgba(8,6,14,0.65) 100%)"
+                  : "linear-gradient(180deg, rgba(8,6,14,0.06) 0%, rgba(8,6,14,0.14) 55%, rgba(8,6,14,0.22) 100%)",
+              backdropFilter: "blur(14px) saturate(1.3)",
+              WebkitBackdropFilter: "blur(14px) saturate(1.3)",
               borderTopLeftRadius: "28px",
               borderTopRightRadius: "28px",
               borderTop: "1px solid rgba(240,180,41,0.30)",
