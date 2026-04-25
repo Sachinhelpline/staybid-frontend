@@ -135,6 +135,19 @@ export default function HotelDetail() {
           if (room) setFlashAdults(room.capacity || 2);
         }
         if (directBook && dealId) setFlashBookOpen(true);
+        // ── Deep-link from /discover Negotiate CTA: auto-open the picker
+        // pre-targeting the cheapest room with intent=negotiate. Once user
+        // picks dates, the picker auto-resumes into the Negotiate modal.
+        const intent = searchParams.get("intent");
+        if (intent === "negotiate" && d.hotel?.rooms?.length) {
+          const cheapest = d.hotel.rooms.reduce((acc: any, r: any) =>
+            (!acc || (r.floorPrice || 99999) < (acc.floorPrice || 99999)) ? r : acc, null);
+          if (cheapest) setPickerModal({ intent: "negotiate", room: cheapest });
+        } else if (intent === "book" && d.hotel?.rooms?.length) {
+          const cheapest = d.hotel.rooms.reduce((acc: any, r: any) =>
+            (!acc || (r.floorPrice || 99999) < (acc.floorPrice || 99999)) ? r : acc, null);
+          if (cheapest) setPickerModal({ intent: "book", room: cheapest });
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));

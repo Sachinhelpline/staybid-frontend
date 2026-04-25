@@ -72,29 +72,65 @@ export default function Home() {
     return () => clearInterval(t);
   }, [selectedCity]);
 
-  // ═══ 3D COVERFLOW AUTO-ADVANCE ═══
-  const pauseRef = useRef(false);
+  // ═══ 3D COVERFLOW — bullet-proof auto-advance + smooth iPhone-style swipe ═══
+  // Use a "pauseUntil" timestamp instead of a sticky ref. The interval checks
+  // against Date.now() each tick — if a hover/touch handler forgets to clear,
+  // it self-recovers automatically once the deadline passes. No more stuck state.
+  const pauseUntilRef = useRef<number>(0);
+  const pauseFor = (ms: number) => { pauseUntilRef.current = Math.max(pauseUntilRef.current, Date.now() + ms); };
+
   useEffect(() => {
     if (deals.length === 0) return;
     const t = setInterval(() => {
-      if (!pauseRef.current) setActiveIdx((i) => (i + 1) % deals.length);
+      if (Date.now() >= pauseUntilRef.current) {
+        setActiveIdx((i) => (i + 1) % deals.length);
+      }
     }, 4000);
     return () => clearInterval(t);
   }, [deals.length]);
 
-  const goNext = useCallback(() => { if (deals.length) setActiveIdx((i) => (i + 1) % deals.length); }, [deals.length]);
-  const goPrev = useCallback(() => { if (deals.length) setActiveIdx((i) => (i - 1 + deals.length) % deals.length); }, [deals.length]);
+  const goNext = useCallback(() => {
+    if (!deals.length) return;
+    setActiveIdx((i) => (i + 1) % deals.length);
+    pauseFor(5000);
+  }, [deals.length]);
+  const goPrev = useCallback(() => {
+    if (!deals.length) return;
+    setActiveIdx((i) => (i - 1 + deals.length) % deals.length);
+    pauseFor(5000);
+  }, [deals.length]);
 
-  // Touch swipe
-  const touchStart = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; pauseRef.current = true; };
-  const onTouchEnd   = (e: React.TouchEvent) => {
-    if (touchStart.current == null) return;
-    const dx = e.changedTouches[0].clientX - touchStart.current;
-    if (dx > 40) goPrev();
-    else if (dx < -40) goNext();
-    touchStart.current = null;
-    setTimeout(() => { pauseRef.current = false; }, 2500);
+  // ── iPhone-Photos style touch: live drag preview + snap on release ──
+  // Track current X during move so we can show the cards following the finger.
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const [dragX, setDragX] = useState(0); // px offset of the active card during drag
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    pauseFor(8000);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = (e.touches[0].clientY - (touchStartY.current ?? 0));
+    // Lock to horizontal once user moves > vertical
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDragX(dx);
+      // Don't preventDefault — keep page scrollable when gesture is vertical
+    }
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    // 25px is iPhone's typical swipe threshold
+    if (dx > 25) goPrev();
+    else if (dx < -25) goNext();
+    setDragX(0);
+    pauseFor(5000);
   };
 
   return (
@@ -119,13 +155,14 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Coverflow stage */}
+        {/* Coverflow stage — full-width relative parent so arrows anchor to viewport edges */}
         <div
-          className="relative mx-auto"
-          style={{ perspective: "1400px", height: "clamp(320px, 42vw, 420px)" }}
-          onMouseEnter={() => { pauseRef.current = true; }}
-          onMouseLeave={() => { pauseRef.current = false; }}
+          className="relative w-full mx-auto overflow-hidden"
+          style={{ perspective: "1400px", height: "clamp(320px, 42vw, 420px)", touchAction: "pan-y" }}
+          onMouseEnter={() => pauseFor(60_000)}
+          onMouseLeave={() => { pauseUntilRef.current = 0; }}
           onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         >
           {deals.length === 0 ? (
@@ -164,6 +201,9 @@ export default function Home() {
                 const dealUrl  = `/hotels/${d.hotelId}?dealId=${d.id}&dealPrice=${d.aiPrice}&roomId=${d.roomId}&discount=${d.discount}&directBook=true`;
                 const img = d.hotel?.images?.[0] || d.room?.images?.[0];
 
+                // Live drag offset: only shift the visible cluster, don't transition while dragging
+                const dragging = dragX !== 0;
+                const liveDx = dragging ? dragX : 0; // px
                 return (
                   <div
                     key={d.id}
@@ -171,11 +211,16 @@ export default function Home() {
                     className="absolute cursor-pointer select-none"
                     style={{
                       width: "min(72vw, 320px)",
-                      transform: `translate3d(${translateX}%, 0, ${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
-                      transition: "transform 0.7s cubic-bezier(0.25, 1, 0.3, 1), opacity 0.5s ease",
+                      transform: `translate3d(calc(${translateX}% + ${liveDx}px), 0, ${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+                      transition: dragging
+                        ? "none"
+                        : "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease",
                       opacity,
                       zIndex,
                       transformStyle: "preserve-3d",
+                      // Non-center cards shouldn't intercept the right-arrow tap
+                      pointerEvents: isCenter ? "auto" : abs <= 1 ? "auto" : "none",
+                      willChange: "transform, opacity",
                     }}
                   >
                     <div className={`lux-glass lux-border rounded-3xl overflow-hidden ${isCenter ? "lux-pulse shadow-2xl" : ""}`}
@@ -230,15 +275,52 @@ export default function Home() {
             </div>
           )}
 
-          {/* Nav arrows */}
+          {/* Nav arrows — explicit inline left/right + high z-index so 3D-transformed
+              cards never block them, and pointer-events:auto so they always fire. */}
           {deals.length > 1 && (
             <>
-              <button onClick={goPrev}
-                className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full lux-glass lux-border flex items-center justify-center text-white hover:text-gold-400 transition-colors">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                aria-label="Previous deal"
+                className="lux-glass lux-border flex items-center justify-center text-white hover:text-gold-400 transition-colors active:scale-90"
+                style={{
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "9999px",
+                  zIndex: 50,
+                  pointerEvents: "auto",
+                  fontSize: "1.6rem",
+                  lineHeight: 1,
+                  paddingBottom: "3px",
+                }}
+              >
                 ‹
               </button>
-              <button onClick={goNext}
-                className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full lux-glass lux-border flex items-center justify-center text-white hover:text-gold-400 transition-colors">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); goNext(); }}
+                aria-label="Next deal"
+                className="lux-glass lux-border flex items-center justify-center text-white hover:text-gold-400 transition-colors active:scale-90"
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "9999px",
+                  zIndex: 50,
+                  pointerEvents: "auto",
+                  fontSize: "1.6rem",
+                  lineHeight: 1,
+                  paddingBottom: "3px",
+                }}
+              >
                 ›
               </button>
             </>

@@ -41,7 +41,8 @@ export default function DiscoverPage() {
   const [loading, setLoading]   = useState(true);
   const [showHint, setShowHint] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [sheetState, setSheetState] = useState<"peek" | "mid" | "full">("mid");
+  // Default to "peek" so the hotel photo dominates; user drags up to read more.
+  const [sheetState, setSheetState] = useState<"peek" | "mid" | "full">("peek");
   const [actionOpen, setActionOpen] = useState(false);
   const dwellStart = useRef<number>(Date.now());
 
@@ -223,10 +224,11 @@ export default function DiscoverPage() {
   const images: string[] = (h?.images || []).filter(Boolean);
   const activeImg = images[photoIdx] || images[0];
 
-  // Sheet heights — mid is default, peek collapses, full expands to nearly full screen
+  // Sheet heights — peek shows just the tab strip + a sliver of content
+  // (photo stays full-screen behind the translucent glass at all times).
   const sheetHeights: Record<typeof sheetState, string> = {
-    peek: "22vh",
-    mid:  "48vh",
+    peek: "30vh",
+    mid:  "55vh",
     full: "92vh",
   };
 
@@ -380,14 +382,19 @@ export default function DiscoverPage() {
             className="absolute bottom-0 left-0 right-0 z-30 sheet-up"
             style={{
               height: sheetHeights[sheetState],
-              transition: "height 0.3s cubic-bezier(0.3,1,0.3,1)",
-              background: "linear-gradient(180deg, rgba(12,10,22,0.78) 0%, rgba(8,6,14,0.95) 18%, rgba(8,6,14,0.98) 100%)",
-              backdropFilter: "blur(20px) saturate(1.4)",
-              WebkitBackdropFilter: "blur(20px) saturate(1.4)",
-              borderTopLeftRadius: "24px",
-              borderTopRightRadius: "24px",
-              borderTop: "1px solid rgba(240,180,41,0.25)",
-              boxShadow: "0 -20px 50px rgba(0,0,0,0.6)",
+              transition: "height 0.3s cubic-bezier(0.3,1,0.3,1), background 0.3s ease",
+              // Truly translucent glass — hotel photo stays visible behind.
+              // Slightly more opacity in the "full" state for readability.
+              background:
+                sheetState === "full"
+                  ? "linear-gradient(180deg, rgba(8,6,14,0.55) 0%, rgba(8,6,14,0.78) 30%, rgba(8,6,14,0.85) 100%)"
+                  : "linear-gradient(180deg, rgba(8,6,14,0.20) 0%, rgba(8,6,14,0.45) 60%, rgba(8,6,14,0.62) 100%)",
+              backdropFilter: "blur(28px) saturate(1.5)",
+              WebkitBackdropFilter: "blur(28px) saturate(1.5)",
+              borderTopLeftRadius: "28px",
+              borderTopRightRadius: "28px",
+              borderTop: "1px solid rgba(240,180,41,0.30)",
+              boxShadow: "0 -20px 50px rgba(0,0,0,0.45)",
             }}
           >
             {/* Drag handle */}
@@ -595,7 +602,7 @@ export default function DiscoverPage() {
                     onClick={() => {
                       track("click_book", { hotelId: h.id });
                       setActionOpen(false);
-                      router.push(`/hotels/${h.id}#availability-picker`);
+                      router.push(`/hotels/${h.id}?intent=book#availability-picker`);
                     }}
                     className="flex flex-col items-center gap-1 py-4 rounded-2xl text-black font-bold active:scale-95 transition-transform"
                     style={{
@@ -609,15 +616,22 @@ export default function DiscoverPage() {
 
                   <button
                     onClick={() => {
-                      track("click_bid", { hotelId: h.id });
+                      track("click_bid", { hotelId: h.id, meta: { intent: "negotiate" } });
                       setActionOpen(false);
-                      router.push(`/bid?hotelId=${h.id}`);
+                      // Open the hotel page focused on the availability picker;
+                      // ?intent=negotiate makes the page auto-open the Negotiate
+                      // modal once dates are selected.
+                      router.push(`/hotels/${h.id}?intent=negotiate#availability-picker`);
                     }}
-                    className="flex flex-col items-center gap-1 py-4 rounded-2xl text-white font-bold active:scale-95 transition-transform border border-white/20"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
+                    className="flex flex-col items-center gap-1 py-4 rounded-2xl text-white font-bold active:scale-95 transition-transform"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(240,180,41,0.06))",
+                      border: "1px solid rgba(240,180,41,0.45)",
+                      color: "#f0b429",
+                    }}
                   >
-                    <span className="text-xl">🤝</span>
-                    <span className="text-[0.82rem]">Place Bid</span>
+                    <span className="text-xl">💬</span>
+                    <span className="text-[0.82rem]">Negotiate</span>
                   </button>
 
                   <button
