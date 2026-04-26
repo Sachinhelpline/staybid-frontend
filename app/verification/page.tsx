@@ -55,10 +55,15 @@ export default function VerificationPage() {
           id: b.id, bidId: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
           status: b.status, checkIn: b.request?.checkIn, checkOut: b.request?.checkOut,
         }));
-      const merged = [...bks, ...bids].reduce<Booking[]>((acc, b) => {
-        if (!acc.find((x) => x.hotelId === b.hotelId && x.checkIn === b.checkIn)) acc.push(b);
-        return acc;
-      }, []);
+      // BULLETPROOF dedup: by id only. The previous hotelId+checkIn dedup
+      // dropped fresh bids whose request.checkIn didn't exactly match the
+      // sibling booking row (timezone offset / null / different format),
+      // hiding the booking from the verification list entirely.
+      const seen = new Set<string>();
+      const merged: Booking[] = [];
+      for (const b of [...bks, ...bids]) {
+        if (b.id && !seen.has(b.id)) { seen.add(b.id); merged.push(b); }
+      }
       setBookings(merged);
 
       try {

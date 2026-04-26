@@ -23,6 +23,18 @@ export async function GET(req: NextRequest) {
     sbSelect(`bids?customerId=in.(${inList})&status=eq.ACCEPTED&select=*`),
   ]);
 
+  // BULLETPROOF: pull authoritative paid amounts (from bid_paid_amounts)
+  // for every accepted bid. This is what the customer actually paid via
+  // Razorpay — bid.amount may be the floor (corrupted by fallback path).
+  const allBidIds = acceptedBids.map((b: any) => b.id).filter(Boolean);
+  const paidById: Record<string, number> = {};
+  if (allBidIds.length) {
+    try {
+      const paidRows = await sbSelect(`bid_paid_amounts?bid_id=in.(${allBidIds.join(",")})&select=bid_id,paid_total`);
+      for (const r of paidRows) paidById[r.bid_id] = Number(r.paid_total);
+    } catch {}
+  }
+
   // Gather hotel names for nice transaction descriptions
   const hotelIds = Array.from(new Set([
     ...bookings.map((b: any) => b.hotelId),
@@ -47,7 +59,8 @@ export async function GET(req: NextRequest) {
   const bidTxns = effectiveBids.map((b: any) => ({
     id: `bid_${b.id}`,
     type: "DEBIT",
-    amount: Number(b.amount || 0),
+    // Authoritative paid amount first, then bid.amount fallback.
+    amount: paidById[b.id] ?? Number(b.amount || 0),
     description: `Booking — ${hotelName(b.hotelId)}`,
     createdAt: b.updatedAt || b.createdAt,
   }));
