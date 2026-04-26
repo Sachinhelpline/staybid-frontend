@@ -1,14 +1,12 @@
 // Single source of truth for "what did the customer ACTUALLY pay" on a bid.
-// Backend often stores bid.amount = floor price (because flash bids below floor
-// are accepted only via dealId fallback), so the bid.amount column doesn't
-// reflect the real payment. We embed `paid:X` and `rate:Y` tokens in the
-// bid message at booking time; this helper extracts them.
 //
-// Resolution order:
-//   1. paid:X token in bid.message       (works on customer + partner view)
-//   2. localStorage paid_amount_{bidId}   (customer device only — fastest)
-//   3. localStorage deal_price_{bidId}    (legacy per-night value)
-//   4. bid.totalAmount / bid.amount       (backend value — may be floor)
+// Resolution order (highest authority first):
+//   1. server-side bid_paid_amounts table (via /api/bid/paid?ids=...)
+//   2. paid:X token in bid.message          (legacy — pre-bulletproof bookings)
+//   3. localStorage paid_amount_{bidId}      (same device only)
+//   4. localStorage deal_price_{bidId}       (legacy per-night)
+//   5. bid.totalAmount / bid.amount          (backend — corrupted to floor in
+//                                              the flash-fallback path)
 
 export function extractPaidFromMessage(msg?: string | null): { total?: number; rate?: number } {
   if (!msg) return {};
@@ -20,12 +18,27 @@ export function extractPaidFromMessage(msg?: string | null): { total?: number; r
   };
 }
 
+export type PaidServerInfo = { paidTotal?: number; paidPerNight?: number | null; nights?: number };
+
+export async function fetchServerPaid(ids: string[]): Promise<Record<string, PaidServerInfo>> {
+  if (!ids.length) return {};
+  try {
+    const r = await fetch(`/api/bid/paid?ids=${ids.map(encodeURIComponent).join(",")}`, { cache: "no-store" });
+    if (!r.ok) return {};
+    const j = await r.json();
+    return j.paid || {};
+  } catch { return {}; }
+}
+
 export function resolvePaidAmount(bid: {
   id?: string;
   amount?: number;
   totalAmount?: number;
   message?: string | null;
+  serverPaid?: PaidServerInfo;     // injected by caller after bulk fetch
 }): number {
+  if (bid.serverPaid?.paidTotal) return bid.serverPaid.paidTotal;
+
   const fromMsg = extractPaidFromMessage(bid.message);
   if (fromMsg.total) return fromMsg.total;
 

@@ -427,6 +427,21 @@ export default function HotelDetail() {
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
       localStorage.setItem(`paid_amount_${bidRes.bid.id}`, String(paidTotal));
 
+      // BULLETPROOF: record paid amount server-side so partner panel + every
+      // surface reads the truth (bid.amount may have been corrupted to floor).
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: dealRoomId,
+            customerId: user.id,
+            paidTotal, paidPerNight: paidPerNight, nights: flashNights,
+            flow: "flash", dealId,
+            razorpayPaymentId: payResult.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+
       // Step 2.5: If customer extended qty (>1 room) or nights (>1), post upgrade request.
       // The endpoint auto-approves when units are free, else creates a pending block that
       // shows up in the hotel owner's dashboard for approval.
@@ -585,6 +600,20 @@ export default function HotelDetail() {
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
 
+      // BULLETPROOF paid-amount record (Book Now)
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: bnRoom.id,
+            customerId: user.id,
+            paidTotal: total, paidPerNight: total / nights, nights,
+            flow: "book-now",
+            razorpayPaymentId: payResult.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+
       // Step 3: Send confirmation email
       await sendBookingEmail({
         bookingId: bidRes.bid.id,
@@ -641,6 +670,23 @@ export default function HotelDetail() {
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
+
+      // BULLETPROOF paid-amount record. For instant-confirm (above-floor) bids
+      // we know the customer paid `negAmt * nights`. For below-floor bids no
+      // payment was taken yet — partner side will see negAmt as the *intent*.
+      try {
+        const paidTotal = isAboveFloor ? negAmt * nights : negAmt * nights;
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: negRoom.id,
+            customerId: user.id,
+            paidTotal, paidPerNight: negAmt, nights,
+            flow: "negotiate",
+            razorpayPaymentId: paymentId,
+          }),
+        });
+      } catch {}
 
       if (isAboveFloor) {
         let accepted = false;

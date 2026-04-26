@@ -64,27 +64,46 @@ export async function GET(req: NextRequest) {
   const rqArr = Array.isArray(requests) ? requests : [];
   const rmArr = Array.isArray(bRooms)   ? bRooms   : [];
 
+  // BULLETPROOF: pull server-recorded paid amounts in one batch
+  const paidByBid: Record<string, any> = {};
+  try {
+    const ids = bookingsArr.map((b: any) => b.id).filter(Boolean);
+    if (ids.length) {
+      const pRes = await fetch(
+        `${SB_URL}/rest/v1/bid_paid_amounts?bid_id=in.(${ids.map((i: string) => encodeURIComponent(i)).join(",")})&select=bid_id,paid_total,paid_per_night,nights,flow,razorpay_payment_id`,
+        { headers: SB_H }
+      );
+      const arr = await pRes.json();
+      if (Array.isArray(arr)) for (const r of arr) paidByBid[r.bid_id] = r;
+    }
+  } catch { /* ignore */ }
+
   const bookings = bookingsArr.map((b: any) => {
     const u  = uArr.find((x: any) => x.id === b.customerId);
     const rq = rqArr.find((x: any) => x.id === b.requestId);
     const rm = rmArr.find((x: any) => x.id === b.roomId);
-    // BUG-FIX 1: when a flash deal is paid below floor, the bid.amount column
-    // stores the floor (₹1899) — NOT the actual amount the customer paid (₹20).
-    // We embed `paid:X` and `rate:Y` tokens in bid.message at booking time.
-    // Override b.amount + b.counterAmount here so every partner-dashboard
-    // display (revenue, totals, per-night) shows the real figure.
+    // BULLETPROOF paid-amount resolution (priority order):
+    //   1. bid_paid_amounts row (server-authoritative, written at booking time)
+    //   2. legacy paid:/rate: tokens in bid.message (pre-bulletproof bookings)
+    //   3. fall back to b.amount (may be corrupted to floor)
+    const serverPaid = paidByBid[b.id];
     const msg = String(b.message || "");
-    const paidTotal = msg.match(/paid:\s*(\d+(?:\.\d+)?)/i);
-    const paidRate  = msg.match(/rate:\s*(\d+(?:\.\d+)?)/i);
-    const paidAmount = paidRate ? parseFloat(paidRate[1])
-                     : paidTotal ? parseFloat(paidTotal[1])
-                     : null;
+    const paidTotalMsg = msg.match(/paid:\s*(\d+(?:\.\d+)?)/i);
+    const paidRateMsg  = msg.match(/rate:\s*(\d+(?:\.\d+)?)/i);
+    const perNight = serverPaid?.paid_per_night
+      ? Number(serverPaid.paid_per_night)
+      : (paidRateMsg ? parseFloat(paidRateMsg[1])
+        : (paidTotalMsg ? parseFloat(paidTotalMsg[1]) : null));
+    const totalPaid = serverPaid?.paid_total
+      ? Number(serverPaid.paid_total)
+      : (paidTotalMsg ? parseFloat(paidTotalMsg[1]) : null);
     return {
       ...b,
-      // Per-night rate for partner display. Falls back to backend value.
-      amount: paidAmount ?? b.amount,
-      // Total customer actually paid (before commission).
-      paidTotal: paidTotal ? parseFloat(paidTotal[1]) : null,
+      amount: perNight ?? b.amount,
+      paidTotal: totalPaid,
+      paidPerNight: perNight,
+      paidFlow: serverPaid?.flow || null,
+      razorpayPaymentId: serverPaid?.razorpay_payment_id || null,
       guestName: u?.name || null,
       guestPhone: u?.phone || null,
       customer: u || null,

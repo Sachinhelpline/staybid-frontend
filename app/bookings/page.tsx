@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { resolvePaidAmount } from "@/lib/paid-amount";
+import { resolvePaidAmount, fetchServerPaid } from "@/lib/paid-amount";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -336,6 +336,17 @@ export default function BookingsPage() {
         return true;
       });
       merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // BULLETPROOF: bulk-fetch server-recorded paid amounts and merge.
+      // bid.amount may have been corrupted to floor; bid_paid_amounts is the
+      // authoritative source written at booking time across all flows.
+      try {
+        const ids = merged.map((x: any) => x.id).filter(Boolean);
+        if (ids.length) {
+          const j = await fetchServerPaid(ids);
+          merged.forEach((b: any) => { if (j[b.id]) b.serverPaid = j[b.id]; });
+        }
+      } catch {}
       setBookings(merged);
 
       // Fetch allocated room # for each booking/bid

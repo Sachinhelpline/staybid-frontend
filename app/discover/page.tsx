@@ -94,20 +94,37 @@ export default function DiscoverPage() {
     // ── Fallback: plain hotels list mapped into Item shape ──
     // Ensures mobile users always see SOMETHING even if /discover/feed
     // fails (cold backend, stale SW, network hiccup, JWT mismatch, etc.).
+    // BULLETPROOF: identical minPrice computation as /hotels listing —
+    // pulls active flash deals so Explore and Compare never disagree on
+    // the displayed "starting from" price.
     try {
-      const r2 = await fetch("/api/hotels?limit=30", { cache: "no-store" });
+      const [r2, fr] = await Promise.all([
+        fetch("/api/hotels?limit=30",   { cache: "no-store" }),
+        fetch("/api/flash/near",        { cache: "no-store" }).catch(() => null),
+      ]);
       const d2 = await r2.json();
+      const fd = fr ? await fr.json().catch(() => ({})) : {};
+      const dealsByHotel: Record<string, any[]> = {};
+      for (const d of (fd?.deals || [])) (dealsByHotel[d.hotelId] ||= []).push(d);
+
       const hotels = Array.isArray(d2?.hotels) ? d2.hotels : [];
-      const mapped = hotels.map((h: any) => ({
-        hotel: {
-          ...h,
-          minPrice: h.rooms?.length
-            ? Math.min(...h.rooms.map((r: any) => r.floorPrice || 99999))
-            : null,
-        },
-        score: 0,
-        reasons: [],
-      }));
+      const mapped = hotels.map((h: any) => {
+        const flashMin = (dealsByHotel[h.id] || []).length
+          ? Math.min(...dealsByHotel[h.id].map((d: any) => d.aiPrice ?? d.dealPrice ?? Infinity))
+          : Infinity;
+        const roomMin = h.rooms?.length
+          ? Math.min(...h.rooms.map((r: any) => r.floorPrice || 99999))
+          : Infinity;
+        const minPrice = Math.min(flashMin, roomMin);
+        return {
+          hotel: {
+            ...h,
+            minPrice: minPrice === Infinity ? null : minPrice,
+            flashDeals: dealsByHotel[h.id] || [],
+          },
+          score: 0, reasons: [],
+        };
+      });
       setItems(mapped);
     } catch {
       setItems([]);

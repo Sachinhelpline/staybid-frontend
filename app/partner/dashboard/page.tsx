@@ -104,13 +104,25 @@ export default function PartnerDashboard() {
     loadAll(token, user);
   }, []);
 
-  // ── Live auto-refresh every 20s (silent, no spinner) ───────────────────
+  // ── Live auto-refresh every 20s + on focus (silent, no spinner) ────────
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const t = setInterval(() => { refreshLive(token); }, 20_000);
-    return () => clearInterval(t);
-  }, []);
+    const t = setInterval(() => {
+      refreshLive(token);
+      // Also refresh calendar so today's check-ins / new bookings surface
+      // even if the partner is on a different tab.
+      if (hotel?.id) loadCalendar();
+    }, 20_000);
+    const onFocus = () => { refreshLive(token); if (hotel?.id) loadCalendar(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [hotel?.id]);
 
   // ── AI prices recalculate every 60s ────────────────────────────────────
   useEffect(() => {

@@ -45,8 +45,11 @@ export default function VerificationPage() {
         status: b.status, checkIn: b.checkIn, checkOut: b.checkOut,
       }));
       const bids = (biRes?.bids || [])
-        // Newest accepted/confirmed first so brand-new bookings surface at top.
-        .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        // Case-insensitive status match — Railway sometimes returns lowercase.
+        // Includes ACCEPTED, CONFIRMED, COUNTER (tentative) so a fresh
+        // booking always surfaces, regardless of the exact status the
+        // backend persisted.
+        .filter((b: any) => /(accepted|confirmed|counter)/i.test(String(b.status || "")))
         .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
         .map((b: any) => ({
           id: b.id, bidId: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
