@@ -23,10 +23,20 @@ export default function PartnerVerification() {
   const [refreshing, setRefreshing] = useState(false);
 
   // BUG-FIX 3: extract loader so it can be re-invoked on focus / refresh.
+  // BULLETPROOF (v2): also call /api/verify/backfill so any newly-accepted
+  // bid for this hotel auto-gets a vp_request. The partner doesn't have to
+  // wait for the customer to click "Request Verification Video".
   const load = useCallback(async (hotelId: string, silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
     try {
+      try {
+        await fetch("/api/verify/backfill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hotelId }),
+        });
+      } catch {}
       const [rs, cs] = await Promise.all([
         fetch(`/api/verify/list?role=partner&id=${hotelId}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
         fetch(`/api/verify/complaint?hotelId=${hotelId}`,    { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),

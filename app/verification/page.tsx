@@ -35,6 +35,19 @@ export default function VerificationPage() {
     setRefreshing(true);
     setErr(null);
     try {
+      // BULLETPROOF: backfill — auto-create a vp_request for every accepted
+      // bid that doesn't have one. The customer no longer has to click
+      // "Request Verification Video" manually; cards appear immediately
+      // for every confirmed booking, and the partner panel mirrors them.
+      if (user?.id) {
+        try {
+          await fetch("/api/verify/backfill", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ customerId: user.id }),
+          });
+        } catch {}
+      }
       const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
       const [bRes, biRes] = await Promise.all([
         fetch(`${API}/api/bookings/my`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
