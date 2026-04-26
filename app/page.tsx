@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
+import { computeMinPrice, formatINR } from "@/lib/min-price";
 import FeatureExplainers from "@/components/FeatureExplainers";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
@@ -462,7 +463,7 @@ export default function Home() {
                         <span className="text-xs font-semibold text-white/80">{h.avgRating.toFixed(1)}</span>
                       </div>
                     )}
-                    <p className="text-xs text-white/50">From <span className="font-bold text-white">₹{h.rooms?.[0]?.floorPrice || "—"}</span>/night</p>
+                    <p className="text-xs text-white/50">From <span className="font-bold text-white">₹{formatINR(computeMinPrice(h))}</span>/night</p>
                   </div>
                 </Link>
               ))}
