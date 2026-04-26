@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { resolvePaidAmount } from "@/lib/paid-amount";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -46,11 +47,10 @@ function BookingCard({ b, unitNumber }: { b: any; unitNumber?: string }) {
   const checkInRaw  = b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn  || b.Request?.checkIn  || stored?.checkIn;
   const checkOutRaw = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut || b.Request?.checkOut || stored?.checkOut;
 
-  // Flash deal price override — deal was booked at floor price internally but user paid deal price
-  const storedDealPrice = typeof window !== "undefined"
-    ? localStorage.getItem(`deal_price_${b.id}`)
-    : null;
-  const displayAmount = storedDealPrice ? parseFloat(storedDealPrice) : (b.totalAmount || 0);
+  // BUG-FIX 1: resolvePaidAmount looks at message `paid:X` token first
+  // (works for hotel + customer views), then localStorage, then bid.amount.
+  // This fixes the "paid ₹20, booking shows ₹1899" mismatch.
+  const displayAmount = resolvePaidAmount(b);
 
   const checkIn  = checkInRaw  ? new Date(checkInRaw)  : null;
   const checkOut = checkOutRaw ? new Date(checkOutRaw) : null;

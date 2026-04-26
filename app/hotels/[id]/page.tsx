@@ -392,12 +392,23 @@ export default function HotelDetail() {
         guests: flashAdults + flashChildren,
       });
 
+      // BUG-FIX 1: always embed actual paid total in the bid message as a
+      // structured `paid:X` token. The fallback `placeBid` writes floorPrice
+      // as bid.amount (because backend rejects below-floor without dealId),
+      // which is what the hotel was seeing as ₹1899 even though the customer
+      // paid ₹20. Both customer + partner views now parse this token first,
+      // then fall back to bid.amount only if it's missing.
+      const paidTotal = flashGrandTotal;
+      const paidPerNight = dealAmt;
+      const baseMsg = `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""}`;
+      const paidTokens = `paid:${paidTotal} | rate:${paidPerNight} | Razorpay: ${payResult.razorpay_payment_id}`;
+
       let bidRes: any;
       try {
         bidRes = await api.placeBid({
           hotelId: hotel.id, roomId: dealRoomId!,
           amount: dealAmt,
-          message: `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""} | Total ₹${flashGrandTotal} | Razorpay: ${payResult.razorpay_payment_id}`,
+          message: `${baseMsg} | ${paidTokens}`,
           requestId: reqRes?.request?.id,
           dealId: dealId,
         });
@@ -405,7 +416,7 @@ export default function HotelDetail() {
         bidRes = await api.placeBid({
           hotelId: hotel.id, roomId: dealRoomId!,
           amount: floorAmt,
-          message: `Flash Deal @ ₹${dealAmt} | ${flashNights} nights | Total ₹${flashGrandTotal} | Razorpay: ${payResult.razorpay_payment_id}`,
+          message: `${baseMsg} | ${paidTokens}`,
           requestId: reqRes?.request?.id,
           dealId: dealId,
         });
@@ -414,6 +425,7 @@ export default function HotelDetail() {
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
+      localStorage.setItem(`paid_amount_${bidRes.bid.id}`, String(paidTotal));
 
       // Step 2.5: If customer extended qty (>1 room) or nights (>1), post upgrade request.
       // The endpoint auto-approves when units are free, else creates a pending block that

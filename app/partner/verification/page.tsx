@@ -6,7 +6,7 @@
 //   • Tab 2 – Submitted Proofs : already recorded, AI report attached
 //   • Tab 3 – Complaints       : guest evidence side-by-side with hotel video
 //
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
@@ -20,6 +20,21 @@ export default function PartnerVerification() {
   const [requests, setRequests] = useState<any[]>([]);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // BUG-FIX 3: extract loader so it can be re-invoked on focus / refresh.
+  const load = useCallback(async (hotelId: string, silent = false) => {
+    if (!silent) setLoading(true);
+    setRefreshing(true);
+    try {
+      const [rs, cs] = await Promise.all([
+        fetch(`/api/verify/list?role=partner&id=${hotelId}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+        fetch(`/api/verify/complaint?hotelId=${hotelId}`,    { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+      ]);
+      setRequests(rs.requests || []);
+      setComplaints(cs.complaints || []);
+    } finally { setLoading(false); setRefreshing(false); }
+  }, []);
 
   useEffect(() => {
     const u = localStorage.getItem("sb_partner_user");
@@ -28,15 +43,17 @@ export default function PartnerVerification() {
     setPartner(parsed);
     const hotelId = parsed.hotel?.id;
     if (!hotelId) { setLoading(false); return; }
+    load(hotelId, false);
 
-    Promise.all([
-      fetch(`/api/verify/list?role=partner&id=${hotelId}`).then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/verify/complaint?hotelId=${hotelId}`).then((r) => r.json()).catch(() => ({})),
-    ]).then(([rs, cs]) => {
-      setRequests(rs.requests || []);
-      setComplaints(cs.complaints || []);
-    }).finally(() => setLoading(false));
-  }, [router]);
+    const onVis = () => { if (document.visibilityState === "visible") load(hotelId, true); };
+    const onFocus = () => load(hotelId, true);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [router, load]);
 
   const pending   = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const submitted = useMemo(() => requests.filter((r) => r.status === "uploaded" || r.status === "verified" || r.status === "rejected"), [requests]);
@@ -52,7 +69,15 @@ export default function PartnerVerification() {
             <h1 className="font-display text-3xl text-luxury-900">Verification & Complaints</h1>
             <p className="text-sm text-luxury-500 mt-1">{partner.hotel.name} · {partner.hotel.id}</p>
           </div>
-          <Link href="/partner/dashboard" className="text-sm text-luxury-500 hover:text-gold-700">← Dashboard</Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => partner?.hotel?.id && load(partner.hotel.id, true)}
+              disabled={refreshing}
+              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50">
+              {refreshing ? "Refreshing…" : "↻ Refresh"}
+            </button>
+            <Link href="/partner/dashboard" className="text-sm text-luxury-500 hover:text-gold-700">← Dashboard</Link>
+          </div>
         </div>
 
         <div className="flex gap-2 mb-5 border-b border-luxury-200">

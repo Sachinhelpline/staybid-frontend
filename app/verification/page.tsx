@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -24,58 +24,80 @@ export default function VerificationPage() {
   const [tier, setTier] = useState<"silver"|"gold"|"platinum">("silver");
   const [statusByBooking, setStatusByBooking] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // BUG-FIX 3: extract the loader so it can be re-invoked on visibility/focus
+  // and via a manual Refresh button. Previously this fired only once on mount,
+  // so a brand-new booking made elsewhere never appeared until a hard reload.
+  const loadAll = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setRefreshing(true);
+    setErr(null);
+    try {
+      const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
+      const [bRes, biRes] = await Promise.all([
+        fetch(`${API}/api/bookings/my`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+        fetch(`${API}/api/bids/my`,     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+      ]);
+      const bks: Booking[] = (bRes?.bookings || []).map((b: any) => ({
+        id: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
+        status: b.status, checkIn: b.checkIn, checkOut: b.checkOut,
+      }));
+      const bids = (biRes?.bids || [])
+        // Newest accepted/confirmed first so brand-new bookings surface at top.
+        .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
+        .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .map((b: any) => ({
+          id: b.id, bidId: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
+          status: b.status, checkIn: b.request?.checkIn, checkOut: b.request?.checkOut,
+        }));
+      const merged = [...bks, ...bids].reduce<Booking[]>((acc, b) => {
+        if (!acc.find((x) => x.hotelId === b.hotelId && x.checkIn === b.checkIn)) acc.push(b);
+        return acc;
+      }, []);
+      setBookings(merged);
+
+      try {
+        const tr = await fetch("/api/users/me/tier", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+        if (tr.ok) {
+          const tj = await tr.json();
+          if (tj?.tier) setTier(tj.tier);
+        }
+      } catch {}
+
+      const sm: Record<string, any> = {};
+      await Promise.all(merged.map(async (b) => {
+        try {
+          const s = await fetch(`/api/verify/status/${b.id}`, { cache: "no-store" }).then((r) => r.json());
+          sm[b.id] = s;
+        } catch {}
+      }));
+      setStatusByBooking(sm);
+    } catch (e: any) { setErr(e?.message || "Failed to load"); }
+    finally { setLoading(false); setRefreshing(false); }
+  }, [token]);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user || !token) { router.push("/auth"); return; }
-    (async () => {
-      try {
-        // Pull confirmed bookings (merged with accepted bids — same source as /bookings)
-        const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
-        const [bRes, biRes] = await Promise.all([
-          fetch(`${API}/api/bookings/my`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()).catch(() => ({})),
-          fetch(`${API}/api/bids/my`,     { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()).catch(() => ({})),
-        ]);
-        const bks: Booking[] = (bRes?.bookings || []).map((b: any) => ({
-          id: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
-          status: b.status, checkIn: b.checkIn, checkOut: b.checkOut,
-        }));
-        const bids = (biRes?.bids || [])
-          .filter((b: any) => b.status === "ACCEPTED" || b.status === "CONFIRMED")
-          .map((b: any) => ({
-            id: b.id, bidId: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
-            status: b.status, checkIn: b.request?.checkIn, checkOut: b.request?.checkOut,
-          }));
-        // Dedupe by hotelId+checkIn
-        const merged = [...bks, ...bids].reduce<Booking[]>((acc, b) => {
-          if (!acc.find((x) => x.hotelId === b.hotelId && x.checkIn === b.checkIn)) acc.push(b);
-          return acc;
-        }, []);
-        setBookings(merged);
+    loadAll(false);
+  }, [user, token, authLoading, router, loadAll]);
 
-        // Canonical tier from server — derived from spend, matches Wallet/Profile.
-        try {
-          const tr = await fetch("/api/users/me/tier", { headers: { Authorization: `Bearer ${token}` } });
-          if (tr.ok) {
-            const tj = await tr.json();
-            if (tj?.tier) setTier(tj.tier);
-          }
-        } catch {}
-
-        // Fetch verification status for each
-        const sm: Record<string, any> = {};
-        await Promise.all(merged.map(async (b) => {
-          try {
-            const s = await fetch(`/api/verify/status/${b.id}`).then((r) => r.json());
-            sm[b.id] = s;
-          } catch {}
-        }));
-        setStatusByBooking(sm);
-      } catch (e: any) { setErr(e?.message || "Failed to load"); }
-      finally { setLoading(false); }
-    })();
-  }, [user, token, authLoading, router]);
+  // BUG-FIX 3: re-fetch when the tab regains visibility / window focus, so a
+  // booking made in another tab (or a confirmation that lands while this page
+  // is hidden) appears without a manual reload.
+  useEffect(() => {
+    if (!user || !token) return;
+    const onVis = () => { if (document.visibilityState === "visible") loadAll(true); };
+    const onFocus = () => loadAll(true);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user, token, loadAll]);
 
   if (authLoading || loading) {
     return <div className="max-w-4xl mx-auto p-12 text-center text-luxury-500">Loading…</div>;
@@ -89,9 +111,18 @@ export default function VerificationPage() {
             <h1 className="font-display text-3xl text-luxury-900">Requests, Complaints & Verification</h1>
             <p className="text-sm text-luxury-500 mt-1">Hotel-recorded room proofs · raise complaints with video evidence</p>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${TIER_BADGE[tier]}`}>
-            {tier} member
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => loadAll(true)}
+              disabled={refreshing}
+              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50"
+              aria-label="Refresh">
+              {refreshing ? "Refreshing…" : "↻ Refresh"}
+            </button>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${TIER_BADGE[tier]}`}>
+              {tier} member
+            </span>
+          </div>
         </div>
 
         {err && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}

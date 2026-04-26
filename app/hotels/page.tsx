@@ -24,8 +24,24 @@ function HotelList() {
   const fetchHotels = useCallback((params: Record<string, string>) => {
     setLoading(true);
     setApiError("");
-    api.getHotels(params)
-      .then((d) => { setHotels(d.hotels || []); setTotal(d.total || 0); })
+    // BUG-FIX 2: fetch active flash deals in parallel and merge them onto
+    // each hotel so the listing card prefers the deal price over floor.
+    Promise.all([
+      api.getHotels(params).catch((e: any) => { throw e; }),
+      api.getFlashDeals?.(params.city)?.catch?.(() => ({ deals: [] })) || Promise.resolve({ deals: [] }),
+    ])
+      .then(([hotelsRes, dealsRes]: any[]) => {
+        const dealsByHotel: Record<string, any[]> = {};
+        for (const d of (dealsRes?.deals || [])) {
+          (dealsByHotel[d.hotelId] ||= []).push(d);
+        }
+        const enriched = (hotelsRes.hotels || []).map((h: any) => ({
+          ...h,
+          flashDeals: dealsByHotel[h.id] || [],
+        }));
+        setHotels(enriched);
+        setTotal(hotelsRes.total || 0);
+      })
       .catch((e) => {
         setHotels([]);
         setApiError(e.message || "Server se data nahi aa raha. Thodi der baad try karein.");
@@ -108,9 +124,17 @@ function HotelList() {
       {!loading && hotels.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {hotels.map((h: any, idx: number) => {
-            const minPrice = h.rooms?.length
+            // BUG-FIX 2: prefer ACTIVE flash deal price over room.floorPrice
+            // for the "Starting from" badge. Hotels were showing ₹3899
+            // (floor) even though a ₹999 deal was live.
+            const flashMin = (h.flashDeals || []).length
+              ? Math.min(...h.flashDeals.map((d: any) => d.aiPrice ?? d.dealPrice ?? Infinity))
+              : Infinity;
+            const roomMin = h.rooms?.length
               ? Math.min(...h.rooms.map((r: any) => r.floorPrice))
-              : null;
+              : Infinity;
+            const minPrice = Math.min(flashMin, roomMin);
+            const showFlash = flashMin < roomMin;
 
             return (
               <Link
@@ -186,11 +210,13 @@ function HotelList() {
                   )}
 
                   {/* Price — pushed to bottom */}
-                  {minPrice && (
+                  {minPrice && minPrice !== Infinity && (
                     <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between">
-                      <span className="text-xs text-white/50 tracking-wide">Starting from</span>
+                      <span className="text-xs text-white/50 tracking-wide">
+                        {showFlash ? "⚡ Flash deal from" : "Starting from"}
+                      </span>
                       <div>
-                        <span className="text-xl font-bold text-white">₹{minPrice}</span>
+                        <span className={`text-xl font-bold ${showFlash ? "text-gold-300" : "text-white"}`}>₹{minPrice}</span>
                         <span className="text-xs text-white/50 ml-1">/night</span>
                       </div>
                     </div>

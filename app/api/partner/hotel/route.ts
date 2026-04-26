@@ -68,8 +68,23 @@ export async function GET(req: NextRequest) {
     const u  = uArr.find((x: any) => x.id === b.customerId);
     const rq = rqArr.find((x: any) => x.id === b.requestId);
     const rm = rmArr.find((x: any) => x.id === b.roomId);
+    // BUG-FIX 1: when a flash deal is paid below floor, the bid.amount column
+    // stores the floor (₹1899) — NOT the actual amount the customer paid (₹20).
+    // We embed `paid:X` and `rate:Y` tokens in bid.message at booking time.
+    // Override b.amount + b.counterAmount here so every partner-dashboard
+    // display (revenue, totals, per-night) shows the real figure.
+    const msg = String(b.message || "");
+    const paidTotal = msg.match(/paid:\s*(\d+(?:\.\d+)?)/i);
+    const paidRate  = msg.match(/rate:\s*(\d+(?:\.\d+)?)/i);
+    const paidAmount = paidRate ? parseFloat(paidRate[1])
+                     : paidTotal ? parseFloat(paidTotal[1])
+                     : null;
     return {
       ...b,
+      // Per-night rate for partner display. Falls back to backend value.
+      amount: paidAmount ?? b.amount,
+      // Total customer actually paid (before commission).
+      paidTotal: paidTotal ? parseFloat(paidTotal[1]) : null,
       guestName: u?.name || null,
       guestPhone: u?.phone || null,
       customer: u || null,
