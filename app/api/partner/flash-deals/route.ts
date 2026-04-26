@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
@@ -44,21 +45,48 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { hotelId, roomId, dealPrice, discount, durationHours, maxRooms } = body;
+  if (!hotelId || !roomId || !dealPrice) {
+    return NextResponse.json({ error: "hotelId, roomId, dealPrice required" }, { status: 400 });
+  }
 
-  // Verify ownership using all owner IDs
+  // Verify ownership and pull city (NOT NULL on flash_deals)
   const ownerIds = await resolveOwnerIds(payload.id, payload.phone, payload.email);
   const hRes = await fetch(
-    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&id=eq.${hotelId}&select=id`,
+    `${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&id=eq.${hotelId}&select=id,city`,
     { headers: SB_H }
   );
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  const city = hotels[0].city || "Unknown";
+
+  // Pull room.floorPrice (NOT NULL); fall back to dealPrice * 0.78 if missing
+  let floorPrice = Math.round(Number(dealPrice) * 0.78);
+  try {
+    const rR = await fetch(`${SB_URL}/rest/v1/rooms?id=eq.${roomId}&select=floorPrice`, { headers: SB_H });
+    const rJ = await rR.json();
+    if (Array.isArray(rJ) && rJ[0]?.floorPrice) floorPrice = rJ[0].floorPrice;
+  } catch {}
 
   const validUntil = new Date(Date.now() + (durationHours || 24) * 3600000).toISOString();
+
+  // Existing schema column names: aiPrice (not dealPrice), maxBookings (not maxRooms).
+  // id is NOT NULL with no default — generate one.
+  const dealRow = {
+    id: `fd_${crypto.randomUUID()}`,
+    hotelId,
+    roomId,
+    city,
+    aiPrice:    Number(dealPrice),
+    floorPrice,
+    discount:   Number(discount) || 0,
+    validUntil,
+    maxBookings: Number(maxRooms) || 1,
+    isActive: true,
+  };
   const res = await fetch(`${SB_URL}/rest/v1/flash_deals`, {
     method: "POST",
     headers: SB_H,
-    body: JSON.stringify({ hotelId, roomId, dealPrice, discount, validUntil, maxRooms: maxRooms || 1, isActive: true }),
+    body: JSON.stringify(dealRow),
   });
   if (!res.ok) return NextResponse.json({ error: await res.text() }, { status: 500 });
   const deal = await res.json().catch(() => []);
