@@ -30,14 +30,25 @@ function HotelList() {
       api.getHotels(params).catch((e: any) => { throw e; }),
       api.getFlashDeals?.(params.city)?.catch?.(() => ({ deals: [] })) || Promise.resolve({ deals: [] }),
     ])
-      .then(([hotelsRes, dealsRes]: any[]) => {
+      .then(async ([hotelsRes, dealsRes]: any[]) => {
         const dealsByHotel: Record<string, any[]> = {};
         for (const d of (dealsRes?.deals || [])) {
           (dealsByHotel[d.hotelId] ||= []).push(d);
         }
-        const enriched = (hotelsRes.hotels || []).map((h: any) => ({
+        // Fetch competitor min per hotel in parallel (small list — first page)
+        const hotels = hotelsRes.hotels || [];
+        const compMins = await Promise.all(
+          hotels.map((h: any) =>
+            fetch(`/api/pricing/competitor/${h.id}`)
+              .then((r) => r.json())
+              .then((j) => j?.competitor_min ?? null)
+              .catch(() => null)
+          )
+        );
+        const enriched = hotels.map((h: any, i: number) => ({
           ...h,
           flashDeals: dealsByHotel[h.id] || [],
+          competitor_min: compMins[i],
         }));
         setHotels(enriched);
         setTotal(hotelsRes.total || 0);
@@ -209,18 +220,33 @@ function HotelList() {
                     </div>
                   )}
 
-                  {/* Price — pushed to bottom */}
-                  {minPrice && minPrice !== Infinity && (
-                    <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between">
-                      <span className="text-xs text-white/50 tracking-wide">
-                        {showFlash ? "⚡ Flash deal from" : "Starting from"}
-                      </span>
-                      <div>
-                        <span className={`text-xl font-bold ${showFlash ? "text-gold-300" : "text-white"}`}>₹{minPrice}</span>
-                        <span className="text-xs text-white/50 ml-1">/night</span>
+                  {/* Price — pushed to bottom. Shows competitor min strikethrough
+                      + "Best price guaranteed" copy when our price beats market. */}
+                  {minPrice && minPrice !== Infinity && (() => {
+                    const competitorMin = h.competitor_min || h.competitorMin;
+                    const beatsMarket = competitorMin && competitorMin > minPrice;
+                    return (
+                      <div className="mt-auto pt-4 border-t border-white/10">
+                        {beatsMarket && (
+                          <div className="text-[10px] text-emerald-300 font-semibold tracking-wide mb-1">
+                            ✅ Best price guaranteed
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/50 tracking-wide">
+                            {showFlash ? "⚡ Flash deal from" : "Starting from"}
+                          </span>
+                          <div>
+                            <span className={`text-xl font-bold ${showFlash ? "text-gold-300" : "text-white"}`}>₹{minPrice}</span>
+                            {beatsMarket && (
+                              <span className="text-xs text-white/40 line-through ml-1.5">₹{competitorMin}</span>
+                            )}
+                            <span className="text-xs text-white/50 ml-1">/night</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </Link>
             );
