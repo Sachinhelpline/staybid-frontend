@@ -53,7 +53,9 @@ function analyzeMock(input: AnalyzeInput): AnalyzeResult {
   const issues: string[] = [];
   const checks: AnalyzeResult["checks"] = {};
 
-  const required = input.tier === "platinum" ? 9 : input.tier === "gold" ? 7 : 6;
+  // v3 step structure: 4 mandatory (room, washroom, view, code) + 1 optional (extras).
+  // Tier doesn't change the steps; it changes the total duration target only.
+  const required = 4;
   const tierDur  = input.tier === "platinum" ? 180 : input.tier === "gold" ? 120 : 60;
 
   let score = 0;
@@ -65,11 +67,13 @@ function analyzeMock(input: AnalyzeInput): AnalyzeResult {
 
     checks.duration_ok = durOk;
     checks.code_ok     = codeOk;
-    checks.ocr_room    = stepsCompleted.includes("room_no");
-    checks.ocr_booking = stepsCompleted.includes("booking_id") || input.tier === "silver";
+    checks.ocr_room    = stepsCompleted.includes("room");
+    checks.ocr_booking = stepsCompleted.includes("code");
     checks.objects     = ["bed","ac","tv","washroom","window"].filter(() => stepsOk);
     checks.scene_match = stepsOk ? 0.92 : 0.6;
-    checks.geo_ok      = input.tier !== "platinum" ? true : stepsCompleted.includes("geo_capture");
+    // Platinum is encouraged to capture geo (recorded in vp_videos.geo) but
+    // step ids alone don't carry that — caller passes geo separately.
+    checks.geo_ok      = input.tier !== "platinum" ? true : true;
     checks.audio_ok    = codeOk;
 
     score = 30

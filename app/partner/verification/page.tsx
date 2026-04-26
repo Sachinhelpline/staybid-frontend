@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
 
 type Tab = "pending" | "submitted" | "complaints";
 
@@ -136,7 +137,7 @@ function SubmittedRow({ r }: { r: any }) {
         )}
       </div>
       {data?.hotelVideo && (
-        <video src={data.hotelVideo.url} controls className="w-full mt-3 rounded-xl bg-black aspect-video" />
+        <div className="mt-3"><AdaptiveVideoPlayer src={data.hotelVideo.url} urls={data.hotelVideo.urls} className="w-full aspect-video" /></div>
       )}
     </div>
   );
@@ -177,6 +178,23 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
     } finally { setBusy(false); }
   };
 
+  const runAi = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/verify/dispute", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ complaintId: c.id }),
+      });
+      if (!r.ok) { alert("Analysis failed"); return; }
+      window.location.reload();
+    } finally { setBusy(false); }
+  };
+
+  const verdictColor =
+    c.ai_verdict === "customer_correct" ? "bg-red-50 border-red-200 text-red-900" :
+    c.ai_verdict === "hotel_correct"    ? "bg-emerald-50 border-emerald-200 text-emerald-900" :
+    c.ai_verdict === "inconclusive"     ? "bg-amber-50 border-amber-200 text-amber-900" : "";
+
   return (
     <div className="card-luxury p-4">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -191,6 +209,34 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
         <SideVideo title="Hotel proof" video={hotelVid} />
         <SideVideo title="Guest evidence" video={evidence} />
       </div>
+
+      {/* AI Verdict block (only visible after /api/verify/dispute runs) */}
+      {c.ai_verdict ? (
+        <div className={`mt-3 p-3 rounded-2xl border ${verdictColor}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold">
+              AI Verdict: {c.ai_verdict.replace("_", " ")} · confidence {c.ai_confidence}%
+            </div>
+            {c.auto_approvable && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">Auto-approvable</span>}
+          </div>
+          {Array.isArray(c.discrepancies) && c.discrepancies.length > 0 && (
+            <ul className="mt-2 text-xs space-y-0.5 list-disc pl-5">
+              {c.discrepancies.map((d: any, i: number) => <li key={i}>{d.message}</li>)}
+            </ul>
+          )}
+          {c.recommended_resolution && (
+            <div className="text-xs mt-2 opacity-80">Recommended: <span className="font-bold">{c.recommended_resolution}</span></div>
+          )}
+        </div>
+      ) : c.status === "open" && (
+        <div className="mt-3 flex items-center justify-between gap-2 p-3 rounded-2xl bg-luxury-50 border border-luxury-200">
+          <div className="text-xs text-luxury-700">Run AI dispute analysis to compare both videos.</div>
+          <button onClick={runAi} disabled={busy} className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold disabled:opacity-50">
+            {busy ? "Analysing…" : "🧠 Run AI Analysis"}
+          </button>
+        </div>
+      )}
+
       {c.status === "open" && (
         <div className="mt-3 flex flex-wrap gap-2 justify-end">
           <button onClick={() => resolve("refund")}        disabled={busy} className="px-4 py-2 text-xs rounded-full bg-red-600 text-white">Full Refund</button>
@@ -208,7 +254,7 @@ function SideVideo({ title, video }: { title: string; video: any }) {
     <div>
       <div className="text-xs uppercase tracking-widest text-luxury-500 mb-1">{title}</div>
       {video ? (
-        <video src={video.url} controls className="w-full rounded-xl bg-black aspect-video" />
+        <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
       ) : (
         <div className="rounded-xl bg-luxury-100 aspect-video flex items-center justify-center text-luxury-400 text-xs">No video</div>
       )}

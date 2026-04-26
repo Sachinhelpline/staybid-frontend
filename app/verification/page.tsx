@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
 
 type Booking = {
   id: string; bidId?: string; hotelId: string; hotelName?: string;
@@ -205,7 +206,7 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId }: any) {
   ];
   return (
     <div className="mt-4 space-y-3">
-      <video src={video.url} controls className="w-full rounded-xl bg-black aspect-video" />
+      <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {report ? (
           <div className="card-luxury p-3 text-xs">
