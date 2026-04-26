@@ -56,7 +56,10 @@
       "Bash(curl -s \"https://staybids.in/api/onboard/_debug\")",
       "Bash(curl -fs \"https://staybids.in/api/onboard/diag\" -o /tmp/d.json)",
       "Bash(curl -s -w \"HTTP:%{http_code}\\\\n\" \"https://staybids.in/api/onboard/diag\" -o /dev/null)",
-      "Bash(curl -s -w \"HTTP:%{http_code}\\\\n\" \"https://staybid-customer-frontend.vercel.app/api/onboard/diag\")"
+      "Bash(curl -s -w \"HTTP:%{http_code}\\\\n\" \"https://staybid-customer-frontend.vercel.app/api/onboard/diag\")",
+      "Bash(curl -s \"https://www.staybids.in/api/bid/paid?ids=test\")",
+      "mcp__1c4ea02e-a8f5-465c-b18b-5a020dce110f__deploy_to_vercel",
+      "Bash(npx vercel *)"
     ]
   }
 }
