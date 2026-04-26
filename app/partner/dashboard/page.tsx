@@ -520,6 +520,9 @@ export default function PartnerDashboard() {
     { id:"flash",     icon:"⚡", label:"Flash Deals"},
     { id:"bookings",  icon:"📅", label:"Bookings"   },
     { id:"availability", icon:"🗓️", label:"Availability" },
+    // Verification = dedicated page (different layout). Treated as a tab so
+    // partners discover it in the same row, but clicking routes out.
+    { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
     { id:"profile",   icon:"⚙️", label:"Profile"    },
   ] as const;
 
@@ -571,19 +574,29 @@ export default function PartnerDashboard() {
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-luxury-200 sticky top-[60px] z-30 overflow-x-auto">
         <div className="max-w-7xl mx-auto px-5 flex gap-1 py-2">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id as any)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                tab === t.id
-                  ? "bg-gold-500/10 text-gold-600 border border-gold-400/30"
-                  : "text-luxury-500 hover:text-luxury-800 hover:bg-luxury-50"
-              }`}>
-              <span>{t.icon}</span>{t.label}
-              {t.id === "bids" && pendingBids > 0 && tab !== "bids" && (
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              )}
-            </button>
-          ))}
+          {TABS.map((t: any) => {
+            const cls = `flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              tab === t.id
+                ? "bg-gold-500/10 text-gold-600 border border-gold-400/30"
+                : "text-luxury-500 hover:text-luxury-800 hover:bg-luxury-50"
+            }`;
+            // Tabs with `href` route to a dedicated page (e.g. Verification).
+            if (t.href) {
+              return (
+                <a key={t.id} href={t.href} className={cls}>
+                  <span>{t.icon}</span>{t.label}
+                </a>
+              );
+            }
+            return (
+              <button key={t.id} onClick={() => setTab(t.id as any)} className={cls}>
+                <span>{t.icon}</span>{t.label}
+                {t.id === "bids" && pendingBids > 0 && tab !== "bids" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

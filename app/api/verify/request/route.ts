@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { sbInsert, sbSelect, sbUpdate, SB } from "@/lib/onboard/supabase-admin";
+import { sbInsert, sbSelect } from "@/lib/onboard/supabase-admin";
 import { generateVerificationCode } from "@/lib/verify/codes";
-import { durationForTier, normaliseTier, SLA_HOURS, Tier } from "@/lib/verify/tiers";
+import { durationForTier, SLA_HOURS, Tier } from "@/lib/verify/tiers";
+import { computeTierFromSpend } from "@/lib/tier";
 
 // POST /api/verify/request   { bookingId, bidId?, tier?, customerId, hotelId }
 // Customer-initiated: creates a vp_request (or returns the existing pending one).
@@ -23,14 +24,25 @@ export async function POST(req: Request) {
     const { bookingId, bidId, hotelId } = body;
     if (!bookingId || !hotelId) return NextResponse.json({ error: "bookingId + hotelId required" }, { status: 400 });
 
-    // Pull customer tier from users table (defaults to silver)
+    // Compute tier from the SAME source the wallet uses — totalSpend over
+    // accepted bids + bookings. Never trust a stale users.tier column or
+    // a client-supplied tier; this guarantees verification + wallet always
+    // agree on what tier the customer is.
     let tier: Tier = "silver";
     try {
-      const r = await fetch(`${SB.url}/rest/v1/users?id=eq.${payload.id}&select=tier`, { headers: { apikey: SB.key, Authorization: `Bearer ${SB.key}` } });
-      const us = await r.json();
-      if (Array.isArray(us) && us[0]?.tier) tier = normaliseTier(us[0].tier);
+      const url = new URL(req.url);
+      const base = `${url.protocol}//${url.host}`;
+      const wRes = await fetch(`${base}/api/wallet`, {
+        headers: { Authorization: req.headers.get("authorization") || "" },
+        cache: "no-store",
+      });
+      if (wRes.ok) {
+        const w = await wRes.json();
+        const spend = w?.totalDebit || w?.total_debit || w?.spent || w?._computedSpend || 0;
+        tier = computeTierFromSpend(spend);
+      }
     } catch {}
-    if (body.tier) tier = normaliseTier(body.tier); // explicit override
+    // No client override — server is the source of truth.
 
     // Reuse pending request if one exists (idempotent)
     const existing = await sbSelect<any>(

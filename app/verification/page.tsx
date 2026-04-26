@@ -53,7 +53,14 @@ export default function VerificationPage() {
         }, []);
         setBookings(merged);
 
-        if ((user as any).tier) setTier((user as any).tier);
+        // Canonical tier from server — derived from spend, matches Wallet/Profile.
+        try {
+          const tr = await fetch("/api/users/me/tier", { headers: { Authorization: `Bearer ${token}` } });
+          if (tr.ok) {
+            const tj = await tr.json();
+            if (tj?.tier) setTier(tj.tier);
+          }
+        } catch {}
 
         // Fetch verification status for each
         const sm: Record<string, any> = {};
