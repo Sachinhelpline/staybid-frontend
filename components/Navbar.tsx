@@ -175,11 +175,12 @@ export function Navbar() {
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
   const moreLinks = user ? [
-    { href: "/my-bids",       label: "My Bids",  icon: "📋" },
-    { href: "/bookings",      label: "Bookings", icon: "🎫" },
-    { href: "/wallet",        label: "Wallet",   icon: "💰" },
-    { href: "/hotel-partner", label: "Partner",  icon: "🏢" },
-    { href: "/profile",       label: "Profile",  icon: "👤" },
+    { href: "/my-bids",       label: "My Bids",       icon: "📋" },
+    { href: "/bookings",      label: "Bookings",      icon: "🎫" },
+    { href: "/verification",  label: "Verification",  icon: "🎬" },
+    { href: "/wallet",        label: "Wallet",        icon: "💰" },
+    { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
+    { href: "/profile",       label: "Profile",       icon: "👤" },
   ] : [];
 
   return (
