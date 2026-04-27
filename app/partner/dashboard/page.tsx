@@ -1289,7 +1289,31 @@ export default function PartnerDashboard() {
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-luxury-900 text-base">{fmtCur(total)}</p>
                         <p className="text-xs text-luxury-400">{fmtCur(b.counterAmount || b.amount)}/night</p>
-                        <span className="inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Confirmed ›</span>
+                        <span className={`inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                          b.status === "CHECKED_OUT" ? "bg-purple-50 text-purple-700 border-purple-200" :
+                          b.status === "CHECKED_IN"  ? "bg-blue-50 text-blue-700 border-blue-200" :
+                          "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}>{b.status === "CHECKED_OUT" ? "Checked out" : b.status === "CHECKED_IN" ? "Checked in" : "Confirmed"} ›</span>
+                        {/* Check-in / Check-out actions — additive layer, doesn't affect confirm flow */}
+                        <div className="flex gap-1.5 mt-2 justify-end" onClick={(e) => e.stopPropagation()}>
+                          {b.status !== "CHECKED_IN" && b.status !== "CHECKED_OUT" && (
+                            <button onClick={async (e) => {
+                              e.stopPropagation();
+                              const tkn = getToken();
+                              await fetch(`/api/partner/checkin/${b.id}`, { method: "POST", headers: { Authorization: `Bearer ${tkn}` } });
+                              refreshLive(tkn || "");
+                            }} className="text-[10px] px-2 py-1 rounded-full bg-blue-600 text-white font-bold hover:bg-blue-700">Mark Check-in</button>
+                          )}
+                          {b.status === "CHECKED_IN" && (
+                            <button onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm("Mark check-out? This starts the 4-hour feedback window.")) return;
+                              const tkn = getToken();
+                              await fetch(`/api/partner/checkout/${b.id}`, { method: "POST", headers: { Authorization: `Bearer ${tkn}` } });
+                              refreshLive(tkn || "");
+                            }} className="text-[10px] px-2 py-1 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700">Mark Check-out</button>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
