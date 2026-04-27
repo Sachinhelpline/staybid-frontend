@@ -35,10 +35,10 @@ export default function VerificationPage() {
     setRefreshing(true);
     setErr(null);
     try {
-      // BULLETPROOF: backfill — auto-create a vp_request for every accepted
-      // bid that doesn't have one. The customer no longer has to click
-      // "Request Verification Video" manually; cards appear immediately
-      // for every confirmed booking, and the partner panel mirrors them.
+      // BULLETPROOF (v3): single Supabase-DIRECT endpoint replaces
+      // Railway-bridged fetch + per-booking /verify/status loop. Works
+      // for Firebase + backend tokens, never drops a fresh booking,
+      // ships verification + AI report in one round-trip.
       if (user?.id) {
         try {
           await fetch("/api/verify/backfill", {
@@ -48,36 +48,40 @@ export default function VerificationPage() {
           });
         } catch {}
       }
-      const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
-      const [bRes, biRes] = await Promise.all([
-        fetch(`${API}/api/bookings/my`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
-        fetch(`${API}/api/bids/my`,     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
-      ]);
-      const bks: Booking[] = (bRes?.bookings || []).map((b: any) => ({
-        id: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
+      if (!user?.id) { setLoading(false); setRefreshing(false); return; }
+      const direct = await fetch(
+        `/api/my/verification-bookings?customerId=${encodeURIComponent(user.id)}`,
+        { cache: "no-store" }
+      ).then((r) => r.json()).catch(() => ({ bookings: [] }));
+
+      const merged: Booking[] = (direct.bookings || []).map((b: any) => ({
+        id: b.id, bidId: b.bidId, hotelId: b.hotelId, hotelName: b.hotelName,
         status: b.status, checkIn: b.checkIn, checkOut: b.checkOut,
       }));
-      const bids = (biRes?.bids || [])
-        // Case-insensitive status match — Railway sometimes returns lowercase.
-        // Includes ACCEPTED, CONFIRMED, COUNTER (tentative) so a fresh
-        // booking always surfaces, regardless of the exact status the
-        // backend persisted.
-        .filter((b: any) => /(accepted|confirmed|counter)/i.test(String(b.status || "")))
-        .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-        .map((b: any) => ({
-          id: b.id, bidId: b.id, hotelId: b.hotelId, hotelName: b.hotel?.name,
-          status: b.status, checkIn: b.request?.checkIn, checkOut: b.request?.checkOut,
-        }));
-      // BULLETPROOF dedup: by id only. The previous hotelId+checkIn dedup
-      // dropped fresh bids whose request.checkIn didn't exactly match the
-      // sibling booking row (timezone offset / null / different format),
-      // hiding the booking from the verification list entirely.
-      const seen = new Set<string>();
-      const merged: Booking[] = [];
-      for (const b of [...bks, ...bids]) {
-        if (b.id && !seen.has(b.id)) { seen.add(b.id); merged.push(b); }
-      }
       setBookings(merged);
+
+      // Build the status-by-booking map directly from the same response.
+      const sm: Record<string, any> = {};
+      for (const b of (direct.bookings || [])) {
+        if (b.verification) {
+          sm[b.id] = {
+            request: {
+              id: b.verification.requestId,
+              status: b.verification.status,
+              tier: b.verification.tier,
+              required_secs: b.verification.requiredSecs,
+              verification_code: b.verification.verificationCode,
+              due_by: b.verification.dueBy,
+              hotel_video_id: b.verification.hotelVideo?.id || null,
+              customer_video_id: b.verification.customerVideo?.id || null,
+            },
+            hotelVideo:    b.verification.hotelVideo,
+            customerVideo: b.verification.customerVideo,
+            report:        b.verification.report,
+          };
+        }
+      }
+      setStatusByBooking(sm);
 
       try {
         const tr = await fetch("/api/users/me/tier", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
@@ -86,18 +90,9 @@ export default function VerificationPage() {
           if (tj?.tier) setTier(tj.tier);
         }
       } catch {}
-
-      const sm: Record<string, any> = {};
-      await Promise.all(merged.map(async (b) => {
-        try {
-          const s = await fetch(`/api/verify/status/${b.id}`, { cache: "no-store" }).then((r) => r.json());
-          sm[b.id] = s;
-        } catch {}
-      }));
-      setStatusByBooking(sm);
     } catch (e: any) { setErr(e?.message || "Failed to load"); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [token]);
+  }, [token, user?.id]);
 
   useEffect(() => {
     if (authLoading) return;
