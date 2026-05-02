@@ -1,0 +1,60 @@
+/* Admin panel responsive tweaks */
+@media (max-width: 767px) {
+  .admin-chart-row,
+  .admin-queues-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Force any 2-3 col fixed grids to single column */
+  .admin-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* h1/h2 size shrink */
+  .admin-h1 {
+    font-size: 22px !important;
+  }
+
+  /* Tab bars: allow horizontal scroll if needed */
+  .admin-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-tabs button {
+    flex-shrink: 0;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+  }
+
+  /* Filter rows: stack vertically */
+  .admin-filters input,
+  .admin-filters select,
+  .admin-filters button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .admin-filters {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .admin-filters > span {
+    margin-left: 0 !important;
+    text-align: left !important;
+  }
+
+  /* Modal: full width on tiny screens */
+  .admin-modal {
+    padding: 20px !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Always: tables horizontal-scrollable, hide scrollbar visually */
+.admin-data-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}

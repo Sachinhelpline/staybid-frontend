@@ -128,7 +128,7 @@ export default function AdminUsers() {
       </h1>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <input
           placeholder="Search name, email, phone…"
           value={search}
