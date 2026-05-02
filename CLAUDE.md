@@ -517,6 +517,123 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:208404139595:web:6f498125e246b8a8be07ce
 
 ---
 
+---
+
+## Admin Panel — Session 1 Build (May 2026)
+
+Full admin panel scaffold built at `/admin/**` in the same `staybid-frontend` repo. Separate auth, separate design system (dark luxury), no overlap with customer/partner panels.
+
+### Routes (12 nav items, all live)
+| Route | Status | Description |
+|-------|--------|-------------|
+| `/admin/login` | ✅ Built | Phone OTP login, role gating (admin/super_admin only) |
+| `/admin` | ✅ Built | Dashboard — 6 KPI cards, 3 recharts, live ticker, queues |
+| `/admin/users` | ✅ Built | Users table + tier/status override modal |
+| `/admin/hotels` | ✅ Built | Hotels table + status/commission override modal |
+| `/admin/bookings` | ✅ Built | Bids table + 6-step workflow timeline modal |
+| `/admin/verification` | 🟡 Stub | Session 2 — video review + AI report + verdict |
+| `/admin/complaints` | 🟡 Stub | Session 2 — list + resolution flow |
+| `/admin/pricing` | 🟡 Stub | Session 2 — AI status + flash deals + overrides |
+| `/admin/fraud` | 🟡 Stub | Session 2 — flags + risk matrix |
+| `/admin/finance` | 🟡 Stub | Session 2 — commission ledger + payouts |
+| `/admin/feedback` | 🟡 Stub | Session 2 — feedback list + ratings |
+| `/admin/settings` | 🟡 Stub | Session 2 — config + team + logs |
+
+### Files Created
+
+```
+app/admin/
+├── layout.tsx                  # Auth-protected shell (sidebar + topbar + Syne/DM Sans fonts)
+├── login/page.tsx              # Admin OTP login (separate from customer/partner)
+├── page.tsx                    # Dashboard (KPIs + 3 charts + 3 panel queues)
+├── users/page.tsx              # Users management
+├── hotels/page.tsx             # Hotels management
+├── bookings/page.tsx           # Bookings & bids w/ timeline
+├── verification/page.tsx       # Stub
+├── complaints/page.tsx         # Stub
+├── pricing/page.tsx            # Stub
+├── fraud/page.tsx              # Stub
+├── finance/page.tsx            # Stub
+├── feedback/page.tsx           # Stub
+└── settings/page.tsx           # Stub
+
+components/admin/
+├── sidebar.tsx                 # Collapsible 11-item nav, gold active accent
+├── topbar.tsx                  # Search + notif badges + logout
+├── kpi-card.tsx                # Reusable metric card
+├── data-table.tsx              # Paginated table (sticky header, hover highlight)
+├── stub-page.tsx               # Coming-in-Session-2 placeholder
+└── charts/
+    ├── line-chart.tsx          # Recharts wrapper (admin theme)
+    ├── bar-chart.tsx
+    └── pie-chart.tsx
+
+app/api/admin/
+├── dashboard/route.ts          # KPIs + 7-day trends + live ticker + queues + notif counts
+├── users/route.ts              # GET (filter/search) + PATCH (tier/status override)
+├── hotels/route.ts              # GET (with rooms/bookings/GMV) + PATCH (status/commission)
+├── bookings/route.ts           # GET bids joined with hotels + paid amounts + dates
+├── verification/pending/route.ts
+├── verification/submitted/route.ts
+├── complaints/route.ts
+├── pricing/status/route.ts
+├── fraud/flags/route.ts
+├── finance/commissions/route.ts
+├── feedback/route.ts
+└── logs/route.ts
+```
+
+### Design System (Dark Luxury — separate from customer panel)
+- **Colors:** `#07080C` bg, `#0F1117` surface, `#151820` cards, `rgba(255,255,255,0.07)` borders
+- **Accents:** `#D4AF37` gold (primary), `#F0D060` gold2, `#2ECC71` green, `#FF4757` red, `#3D9CF5` blue, `#A855F7` purple
+- **Text:** `#E8EAF0` primary, `#8A8FA8` secondary
+- **Fonts:** Syne (display, headings) + DM Sans (body) — loaded via Google Fonts in `layout.tsx`
+- **Radius:** 14px cards, 10px inputs, 8px pills
+- **All inline styles** (no Tailwind classes for admin) — keeps dark theme isolated from customer's gold/cream palette
+
+### Authentication
+- Separate localStorage keys: `sb_admin_token` + `sb_admin_user` (no collision with `sb_token` or `sb_partner_token`)
+- Login flow: phone OTP via Railway backend `/api/auth/send-otp` + `/api/auth/verify-otp`
+- After verify: checks `user.role === "admin" || "super_admin"` — else "Access denied"
+- Layout `useEffect` redirects to `/admin/login` if missing/invalid token
+- Customer Navbar already hidden on `/admin/**` via existing pathname check pattern (Navbar.tsx)
+
+### Supabase Direct Queries
+All admin API routes hit Supabase REST directly using anon JWT key (same one used in partner panel):
+```
+SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co"
+SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." (anon JWT, in CLAUDE.md)
+```
+No Railway dependency for admin reads — works even when Railway is cold.
+
+### Dependencies Added
+- `recharts` — installed with `npm install recharts --legacy-peer-deps`
+- Used for line/bar/pie charts in dashboard
+
+### Real Data Wired
+- Dashboard pulls from: `bookings`, `bids`, `users`, `vp_requests`, `complaints`, `vp_videos`
+- Users from `users` table — tier/status filters work
+- Hotels from `hotels` joined with `rooms` + `bookings` for GMV/MTD enrichment
+- Bookings from `bids` joined with `hotels` + `bid_paid_amounts` + `bid_requests` (for check-in/out dates)
+
+### Pending for Session 2
+1. Video verification 3-tab view (Pending/Submitted/Complaints) + AdaptiveVideoPlayer integration + verdict modal
+2. Complaint resolution flow (AI verdict + Razorpay refund trigger + manual notes)
+3. Pricing admin (AI status, flash deal CRUD, override management)
+4. Fraud risk matrix (heatmap, duplicate merge, block actions)
+5. Finance ledger + payout queue + CSV/PDF export
+6. Settings (config, team management, action logs)
+7. Real Socket.io listeners (currently 30s polling on dashboard)
+8. CSV export utility (`lib/admin/export.ts`)
+
+### Things to Avoid (Admin)
+- Don't share localStorage tokens between customer/partner/admin
+- Don't reuse customer Tailwind utility classes (admin is intentionally inline-styled dark)
+- Don't add admin routes outside `/admin/**` — sidebar/topbar/auth all key off this prefix
+- Don't query users/hotels via publishable Supabase key — RLS blocks; use the anon JWT key
+
+---
+
 ## How to Start a New Session with Full Memory
 
 Run this command inside the project folder:
