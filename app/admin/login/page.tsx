@@ -1,82 +1,42 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
 
 export default function AdminLogin() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
 
-  function fullPhone() {
-    return phone.startsWith("+91") ? phone : `+91${phone}`;
-  }
-
-  async function sendOtp() {
+  async function login() {
     if (!phone || phone.length < 10) {
       setError("Enter a valid 10-digit phone number");
       return;
     }
-    setLoading(true);
-    setError("");
-    setInfo("");
-    try {
-      // Uses the proxy-aware api.sendOtp helper (works on Jio etc.)
-      await api.sendOtp(fullPhone());
-      setStep("otp");
-      setInfo(`OTP sent on WhatsApp to +91 ${phone}`);
-    } catch (e: any) {
-      setError(e?.message || "Failed to send OTP. Check your connection and try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function verifyOtp() {
-    if (!otp || otp.length < 4) {
-      setError("Enter the 6-digit OTP");
+    if (!pin) {
+      setError("Enter the master PIN");
       return;
     }
     setLoading(true);
     setError("");
-    setInfo("");
     try {
-      // 1. Verify OTP through Railway (proxy-aware)
-      const data = await api.verifyOtp(fullPhone(), otp);
-      if (!data?.token) {
-        throw new Error("Invalid OTP — please try again");
-      }
-
-      // 2. Check role in Supabase directly (Railway's user object can be stale)
-      const roleRes = await fetch("/api/admin/check-role", {
+      const res = await fetch("/api/admin/check-role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone() }),
+        body: JSON.stringify({ phone: `+91${phone}`, pin }),
       });
-      const roleData = await roleRes.json();
-
-      if (!roleData.ok) {
-        setError(roleData.error || "Access denied. Admin accounts only.");
+      const data = await res.json();
+      if (!data.ok) {
+        setError(data.error || "Login failed");
         return;
       }
-
-      // 3. Save and redirect
-      const user = { ...(data.user || {}), ...(roleData.user || {}), role: roleData.role };
       localStorage.setItem("sb_admin_token", data.token);
-      localStorage.setItem("sb_admin_user", JSON.stringify(user));
+      localStorage.setItem("sb_admin_user", JSON.stringify(data.user));
       router.push("/admin");
     } catch (e: any) {
-      const msg = String(e?.message || "");
-      // Railway's verify-otp returns { error: "Invalid OTP" } on bad code
-      if (msg.toLowerCase().includes("otp") || msg.toLowerCase().includes("invalid")) {
-        setError("Invalid OTP. Check your WhatsApp and try the latest one.");
-      } else {
-        setError(msg || "Something went wrong");
-      }
+      setError(e.message || "Network error");
     } finally {
       setLoading(false);
     }
@@ -110,7 +70,6 @@ export default function AdminLogin() {
           boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
         }}
       >
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚡</div>
           <div style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, fontSize: 24, color: "#D4AF37" }}>
@@ -119,109 +78,100 @@ export default function AdminLogin() {
           <div style={{ color: "#8A8FA8", fontSize: 14, marginTop: 6 }}>God-mode control panel</div>
         </div>
 
-        {error && <Banner kind="error" text={error} />}
-        {info && !error && <Banner kind="info" text={info} />}
-
-        {step === "phone" ? (
-          <>
-            <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
-              Admin Phone Number
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <span style={prefixStyle}>+91</span>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                placeholder="98XXXXXXXX"
-                onKeyDown={(e) => e.key === "Enter" && sendOtp()}
-                style={inputStyle}
-                autoFocus
-              />
-            </div>
-            <button onClick={sendOtp} disabled={loading} style={primaryBtn(loading)}>
-              {loading ? "Sending OTP…" : "Send OTP →"}
-            </button>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <button
-                onClick={() => {
-                  setStep("phone");
-                  setOtp("");
-                  setError("");
-                  setInfo("");
-                }}
-                style={{ background: "none", border: "none", color: "#D4AF37", cursor: "pointer", fontSize: 18 }}
-              >
-                ←
-              </button>
-              <span style={{ color: "#8A8FA8", fontSize: 13 }}>Change number</span>
-            </div>
-            <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
-              Enter 6-digit OTP from WhatsApp
-            </label>
-            <input
-              type="text"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="• • • • • •"
-              onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
-              style={otpStyle}
-              autoFocus
-            />
-            <button onClick={verifyOtp} disabled={loading} style={primaryBtn(loading)}>
-              {loading ? "Verifying…" : "Access Admin Panel →"}
-            </button>
-            <button
-              onClick={sendOtp}
-              disabled={loading}
-              style={{
-                marginTop: 12,
-                width: "100%",
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 10,
-                padding: "10px",
-                color: "#8A8FA8",
-                fontSize: 13,
-                cursor: "pointer",
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              Resend OTP
-            </button>
-          </>
+        {error && (
+          <div
+            style={{
+              background: "rgba(255,71,87,0.1)",
+              border: "1px solid rgba(255,71,87,0.3)",
+              borderRadius: 10,
+              padding: "10px 14px",
+              color: "#FF4757",
+              fontSize: 13,
+              marginBottom: 18,
+              lineHeight: 1.5,
+              wordBreak: "break-word",
+            }}
+          >
+            {error}
+          </div>
         )}
 
-        <p style={{ textAlign: "center", color: "#8A8FA8", fontSize: 12, marginTop: 24, lineHeight: 1.6 }}>
-          Admin access only. Unauthorized attempts are logged.
+        <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
+          Admin Phone Number
+        </label>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <span style={prefixStyle}>+91</span>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="98XXXXXXXX"
+            style={inputStyle}
+            autoFocus
+          />
+        </div>
+
+        <label style={{ display: "block", color: "#8A8FA8", fontSize: 13, marginBottom: 8 }}>
+          Master PIN
+        </label>
+        <div style={{ position: "relative" }}>
+          <input
+            type={showPin ? "text" : "password"}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="Enter master PIN"
+            onKeyDown={(e) => e.key === "Enter" && login()}
+            style={{ ...inputStyle, paddingRight: 60, width: "100%", boxSizing: "border-box" }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPin((s) => !s)}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#8A8FA8",
+              fontSize: 12,
+              cursor: "pointer",
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            {showPin ? "HIDE" : "SHOW"}
+          </button>
+        </div>
+
+        <button onClick={login} disabled={loading} style={primaryBtn(loading)}>
+          {loading ? "Verifying…" : "Access Admin Panel →"}
+        </button>
+
+        <div
+          style={{
+            marginTop: 18,
+            padding: 14,
+            background: "rgba(212,175,55,0.05)",
+            border: "1px solid rgba(212,175,55,0.15)",
+            borderRadius: 10,
+            color: "#D4AF37",
+            fontSize: 12,
+            lineHeight: 1.6,
+          }}
+        >
+          <strong>Default master PIN:</strong>{" "}
+          <code style={{ background: "#000", padding: "2px 6px", borderRadius: 4 }}>StayBidAdmin@2026</code>
           <br />
-          <span style={{ opacity: 0.6 }}>OTP via WhatsApp · expires in 5 min</span>
+          <span style={{ color: "#8A8FA8" }}>
+            Override by setting <code>ADMIN_MASTER_PIN</code> env var on Vercel. Phone must have role
+            <code> super_admin</code> or <code>admin</code> in Supabase.
+          </span>
+        </div>
+
+        <p style={{ textAlign: "center", color: "#8A8FA8", fontSize: 11, marginTop: 18 }}>
+          Admin access only · Unauthorized attempts are logged
         </p>
       </div>
-    </div>
-  );
-}
-
-function Banner({ kind, text }: { kind: "error" | "info"; text: string }) {
-  const isErr = kind === "error";
-  return (
-    <div
-      style={{
-        background: isErr ? "rgba(255,71,87,0.1)" : "rgba(46,204,113,0.1)",
-        border: `1px solid ${isErr ? "rgba(255,71,87,0.3)" : "rgba(46,204,113,0.3)"}`,
-        borderRadius: 10,
-        padding: "10px 14px",
-        color: isErr ? "#FF4757" : "#2ECC71",
-        fontSize: 13,
-        marginBottom: 18,
-        lineHeight: 1.5,
-        wordBreak: "break-word",
-      }}
-    >
-      {text}
     </div>
   );
 }
@@ -244,20 +194,7 @@ const inputStyle: React.CSSProperties = {
   color: "#E8EAF0",
   fontSize: 16,
   outline: "none",
-  letterSpacing: "0.1em",
-};
-const otpStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#151820",
-  border: "1px solid rgba(255,255,255,0.07)",
-  borderRadius: 10,
-  padding: "14px",
-  color: "#E8EAF0",
-  fontSize: 22,
-  outline: "none",
-  textAlign: "center",
-  letterSpacing: "0.4em",
-  boxSizing: "border-box",
+  letterSpacing: "0.05em",
 };
 function primaryBtn(loading: boolean): React.CSSProperties {
   return {
