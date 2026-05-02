@@ -1,13 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
+import { io, type Socket } from "socket.io-client";
 import KpiCard from "@/components/admin/kpi-card";
 import AdminLineChart from "@/components/admin/charts/line-chart";
 import AdminBarChart from "@/components/admin/charts/bar-chart";
 import AdminPieChart from "@/components/admin/charts/pie-chart";
 
+const RAILWAY = "https://staybid-live-production.up.railway.app";
+
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">("connecting");
+  const [pulse, setPulse] = useState(0);
 
   function load() {
     fetch("/api/admin/dashboard")
@@ -19,7 +24,37 @@ export default function AdminDashboard() {
   useEffect(() => {
     load();
     const t = setInterval(load, 30000);
-    return () => clearInterval(t);
+
+    let socket: Socket | null = null;
+    try {
+      socket = io(RAILWAY, { transports: ["websocket", "polling"], timeout: 5000 });
+      socket.on("connect", () => {
+        setLiveStatus("live");
+        socket?.emit("join:admin");
+      });
+      socket.on("disconnect", () => setLiveStatus("offline"));
+      socket.on("connect_error", () => setLiveStatus("offline"));
+
+      const onAnyBid = (b: any) => {
+        setData((prev: any) => {
+          if (!prev) return prev;
+          const recentBids = [b, ...(prev.recentBids || [])].slice(0, 20);
+          return { ...prev, recentBids };
+        });
+        setPulse((p) => p + 1);
+      };
+      socket.on("bid:new", onAnyBid);
+      socket.on("bid:counter", onAnyBid);
+      socket.on("bid:accepted", onAnyBid);
+      socket.on("bid:rejected", onAnyBid);
+    } catch {
+      setLiveStatus("offline");
+    }
+
+    return () => {
+      clearInterval(t);
+      socket?.disconnect();
+    };
   }, []);
 
   const k = data?.kpi || {};
@@ -27,14 +62,48 @@ export default function AdminDashboard() {
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
       {/* Title */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#E8EAF0", fontSize: 28, margin: 0 }}>
-          Dashboard
-        </h1>
-        <p style={{ color: "#8A8FA8", fontSize: 14, marginTop: 4 }}>
-          Real-time overview of platform performance
-        </p>
+      <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <h1 style={{ fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#E8EAF0", fontSize: 28, margin: 0 }}>
+            Dashboard
+          </h1>
+          <p style={{ color: "#8A8FA8", fontSize: 14, marginTop: 4 }}>
+            Real-time overview of platform performance
+          </p>
+        </div>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 14px",
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 600,
+            background: liveStatus === "live" ? "rgba(46,204,113,0.1)" : liveStatus === "offline" ? "rgba(255,71,87,0.1)" : "rgba(212,175,55,0.1)",
+            color: liveStatus === "live" ? "#2ECC71" : liveStatus === "offline" ? "#FF4757" : "#D4AF37",
+            border: `1px solid ${liveStatus === "live" ? "rgba(46,204,113,0.3)" : liveStatus === "offline" ? "rgba(255,71,87,0.3)" : "rgba(212,175,55,0.3)"}`,
+          }}
+        >
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: liveStatus === "live" ? "#2ECC71" : liveStatus === "offline" ? "#FF4757" : "#D4AF37",
+              boxShadow: liveStatus === "live" ? "0 0 8px #2ECC71" : "none",
+              animation: liveStatus === "live" ? "pulse 2s infinite" : "none",
+            }}
+          />
+          {liveStatus === "live" ? `LIVE${pulse > 0 ? ` · ${pulse} events` : ""}` : liveStatus === "offline" ? "OFFLINE" : "CONNECTING…"}
+        </div>
       </div>
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
 
       {/* KPI Grid */}
       <div
@@ -54,7 +123,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 16, marginBottom: 24 }}>
+      <div className="admin-chart-row" style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 16, marginBottom: 24 }}>
         <Card title="Bookings Trend (7 days)">
           {loading ? <Skel /> : <AdminLineChart data={data?.bookingTrend || []} color="#D4AF37" />}
         </Card>
@@ -67,7 +136,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Live ticker + queues */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+      <div className="admin-queues-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <Card title="🔴 Live Bid Ticker" subtitle={`${data?.recentBids?.length || 0} latest bids`}>
           {(data?.recentBids || []).slice(0, 7).map((b: any, i: number) => (
             <div
