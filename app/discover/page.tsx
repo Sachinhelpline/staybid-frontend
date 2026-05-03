@@ -107,25 +107,30 @@ export default function DiscoverPage() {
     markViewed(h.id, h.city, minPrice, h.amenities || []);
   }, [hotelIdx, items]);
 
+  // Try to hide mobile browser chrome (URL bar + share/menu) on first touch.
+  // Fullscreen API only works after a user gesture; iOS Safari ignores it for
+  // non-video elements, but Android Chrome/Firefox honour it. Best-effort.
+  const fullscreenAsked = useRef(false);
+  const tryFullscreen = useCallback(() => {
+    if (fullscreenAsked.current) return;
+    fullscreenAsked.current = true;
+    try {
+      const el: any = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (req) req.call(el).catch(() => {});
+    } catch {}
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden select-none" style={{ WebkitUserSelect: "none" }}>
-      {/* Top branding chrome (Reels-only) */}
-      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between px-4 pt-3 pb-6 bg-gradient-to-b from-black/55 to-transparent pointer-events-none">
-        <Link
-          href="/hotels"
-          className="pointer-events-auto flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[0.72rem] font-semibold transition-transform active:scale-95"
-          style={{
-            background: "linear-gradient(135deg, rgba(240,180,41,0.22), rgba(240,180,41,0.05))",
-            border: "1px solid rgba(240,180,41,0.45)",
-            color: "#f0b429",
-            backdropFilter: "blur(14px) saturate(1.4)",
-            WebkitBackdropFilter: "blur(14px) saturate(1.4)",
-            boxShadow: "0 2px 8px rgba(201,145,26,0.2), inset 0 1px 0 rgba(255,255,255,0.22)",
-          }}
-        >
-          <span>☰</span>
-          <span>Compare</span>
-        </Link>
+    <div
+      className="fixed inset-0 bg-black overflow-hidden select-none"
+      style={{ WebkitUserSelect: "none" }}
+      onTouchStartCapture={tryFullscreen}
+      onClickCapture={tryFullscreen}
+    >
+      {/* Top branding chrome (Reels-only). Compare moved to bottom-right
+          floating button so it doesn't overlap the hotel profile chip. */}
+      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-center px-4 pt-3 pb-3 bg-gradient-to-b from-black/55 to-transparent pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-1.5">
           <span className="text-[0.58rem] font-bold tracking-[0.3em] uppercase text-white/70">StayBid</span>
           <span className="text-white/30 text-xs">·</span>
@@ -137,6 +142,28 @@ export default function DiscoverPage() {
           </span>
         </div>
       </div>
+
+      {/* Compare floating chip — TOP-RIGHT corner. Sits above the right
+          action rail (which starts at bottom:180px) and clear of the hotel
+          profile chip (which is at top:60px on the LEFT side). */}
+      <Link
+        href="/hotels"
+        className="absolute z-40 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[0.62rem] font-bold transition-transform active:scale-95"
+        style={{
+          right: "12px",
+          top: "10px",
+          background: "linear-gradient(135deg, rgba(240,180,41,0.28), rgba(240,180,41,0.08))",
+          border: "1px solid rgba(240,180,41,0.5)",
+          color: "#ffd76b",
+          backdropFilter: "blur(14px) saturate(1.4)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.4)",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.22)",
+        }}
+        aria-label="Switch to hotel comparison view"
+      >
+        <span>☰</span>
+        <span>Compare</span>
+      </Link>
 
       {/* Loading + empty states */}
       {loading && items.length === 0 && (
