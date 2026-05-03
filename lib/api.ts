@@ -99,6 +99,17 @@ export const api = {
 
   // Influencer system — Supabase-backed Next.js routes (no Railway dependency).
   // `id` accepts either the influencer row id (`inf_...`) or the underlying user_id.
+  // Influencer referrals (Session 3)
+  resolveReferral:    (code: string) => fetch(`/api/referrals/resolve/${encodeURIComponent(code)}`).then(r => r.json()),
+  trackReferral:      (code: string, opts: { eventType?: "click" | "signup" | "bid" | "booking"; targetType?: string; targetId?: string } = {}) =>
+    direct("/api/referrals/track", { method: "POST", body: JSON.stringify({ code, ...opts }) }),
+  attributeReferral:  (requestId: string, code: string) =>
+    direct("/api/referrals/attribute", { method: "POST", body: JSON.stringify({ requestId, code }) }),
+  listReferralCodes:  (influencerId: string) =>
+    direct(`/api/influencer/${encodeURIComponent(influencerId)}/codes`),
+  createReferralCode: (influencerId: string, data: { label?: string | null; hotelId?: string | null; code?: string } = {}) =>
+    direct(`/api/influencer/${encodeURIComponent(influencerId)}/codes`, { method: "POST", body: JSON.stringify(data) }),
+
   // Loyalty points (Session 4)
   getPoints:        ()                                => direct("/api/points"),
   getPointsHistory: (limit = 50, offset = 0)          => direct(`/api/points/history?limit=${limit}&offset=${offset}`),
