@@ -181,6 +181,7 @@ export function Navbar() {
     { href: "/verification",  label: "Verification",  icon: "🎬" },
     { href: "/wallet",        label: "Wallet",        icon: "💰" },
     { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
+    { href: "/influencer",    label: "Creator",       icon: "✨" },
     { href: "/profile",       label: "Profile",       icon: "👤" },
   ] : [];
 

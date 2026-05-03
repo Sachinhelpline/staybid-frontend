@@ -99,6 +99,7 @@ export const api = {
 
   // Influencer system — Supabase-backed Next.js routes (no Railway dependency).
   // `id` accepts either the influencer row id (`inf_...`) or the underlying user_id.
+  getMyInfluencer:           ()                      => direct("/api/influencer/me"),
   registerInfluencer:        (data: any)             => direct("/api/influencer/register", { method: "POST", body: JSON.stringify(data) }),
   verifyInfluencer:          (data: any)             => direct("/api/influencer/verify",   { method: "POST", body: JSON.stringify(data) }),
   getInfluencerProfile:      (id: string)            => direct(`/api/influencer/${encodeURIComponent(id)}`),
