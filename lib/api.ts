@@ -96,4 +96,14 @@ export const api = {
       body: JSON.stringify(data),
     }).then((r) => r.json());
   },
+
+  // Influencer system — Supabase-backed Next.js routes (no Railway dependency).
+  // `id` accepts either the influencer row id (`inf_...`) or the underlying user_id.
+  registerInfluencer:        (data: any)             => direct("/api/influencer/register", { method: "POST", body: JSON.stringify(data) }),
+  verifyInfluencer:          (data: any)             => direct("/api/influencer/verify",   { method: "POST", body: JSON.stringify(data) }),
+  getInfluencerProfile:      (id: string)            => direct(`/api/influencer/${encodeURIComponent(id)}`),
+  updateInfluencerProfile:   (id: string, data: any) => direct(`/api/influencer/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(data) }),
+  getInfluencerStats:        (id: string)            => direct(`/api/influencer/${encodeURIComponent(id)}/stats`),
+  getInfluencerEarnings:     (id: string, status?: string) =>
+    direct(`/api/influencer/${encodeURIComponent(id)}/earnings${status ? `?status=${encodeURIComponent(status)}` : ""}`),
 };
