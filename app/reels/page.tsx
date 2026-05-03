@@ -342,8 +342,9 @@ function CommentDrawer({
 // ── Share sheet ───────────────────────────────────────────────────────
 function ShareSheet({ video, onClose }: { video: Video | null; onClose: () => void }) {
   if (!video) return null;
-  const url  = `${typeof window !== "undefined" ? window.location.origin : "https://staybids.in"}/hotels/${video.hotel_id}`;
-  const text = video.title || `Check out this hotel on StayBid! ${url}`;
+  const v = video; // captured non-null local for closure narrowing
+  const url  = `${typeof window !== "undefined" ? window.location.origin : "https://staybids.in"}/hotels/${v.hotel_id}`;
+  const text = v.title || `Check out this hotel on StayBid! ${url}`;
   async function share(platform: string) {
     if (platform === "copy") {
       await navigator.clipboard.writeText(url).catch(() => {});
@@ -352,7 +353,7 @@ function ShareSheet({ video, onClose }: { video: Video | null; onClose: () => vo
       return;
     }
     if (platform === "native" && navigator.share) {
-      await navigator.share({ title: video.title || "StayBid Reel", url }).catch(() => {});
+      await navigator.share({ title: v.title || "StayBid Reel", url }).catch(() => {});
       onClose();
       return;
     }
