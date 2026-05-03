@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/hotels", label: "Hotels", icon: "🏨" },
   { href: "/admin/bookings", label: "Bookings & Bids", icon: "📋" },
   { href: "/admin/verification", label: "Verification", icon: "🎥" },
+  { href: "/admin/videos", label: "Hotel Videos", icon: "🎬" },
   { href: "/admin/complaints", label: "Complaints", icon: "🚨" },
   { href: "/admin/pricing", label: "Pricing & Deals", icon: "💰" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },

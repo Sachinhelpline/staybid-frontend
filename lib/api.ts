@@ -99,6 +99,32 @@ export const api = {
 
   // Influencer system — Supabase-backed Next.js routes (no Railway dependency).
   // `id` accepts either the influencer row id (`inf_...`) or the underlying user_id.
+  // Hotel videos (Session 2) — room walkthroughs uploaded by hotels, moderated by admin
+  uploadVideo: (data: {
+    hotelId: string; videoUrl: string; roomType?: string; roomId?: string; title?: string;
+    thumbnailUrl?: string; durationSeconds?: number; quality?: string; sizeBytes?: number;
+  }) => direct("/api/videos/upload", { method: "POST", body: JSON.stringify(data) }),
+  getHotelVideos:    (hotelId: string, status?: string) =>
+    direct(`/api/videos/${encodeURIComponent(hotelId)}${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  deleteVideo:       (id: string) =>
+    direct(`/api/videos/delete/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  getAdminVideoQueue: (status: "pending" | "approved" | "rejected" | "all" = "pending") =>
+    fetch(`/api/admin/videos/pending?status=${status}`).then(r => r.json()),
+  approveVideo: (id: string) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    return fetch(`/api/admin/videos/${encodeURIComponent(id)}/approve`, {
+      method: "POST", headers: { ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+    }).then(r => r.json());
+  },
+  rejectVideo: (id: string, reason: string) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    return fetch(`/api/admin/videos/${encodeURIComponent(id)}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+      body: JSON.stringify({ reason }),
+    }).then(r => r.json());
+  },
+
   getMyInfluencer:           ()                      => direct("/api/influencer/me"),
   registerInfluencer:        (data: any)             => direct("/api/influencer/register", { method: "POST", body: JSON.stringify(data) }),
   verifyInfluencer:          (data: any)             => direct("/api/influencer/verify",   { method: "POST", body: JSON.stringify(data) }),
