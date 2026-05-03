@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSoundStore } from "@/lib/sound-store";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -540,7 +541,9 @@ const HotelCard = memo(function HotelCard({
   const [followersLive, setFollowersLive] = useState(followers);
   const [viewCount, setViewCount] = useState(baseViews);
 
-  // Video play/pause sync with active state + ensure audio plays after unmute
+  // Video play/pause sync with active state + ensure audio plays after unmute.
+  // When a card scrolls out of view we reset currentTime so the next visit
+  // restarts the reel (TikTok / Instagram behavior).
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -551,6 +554,10 @@ const HotelCard = memo(function HotelCard({
       if (p && typeof p.then === "function") p.catch(() => {});
     } else {
       v.pause();
+      if (!active) {
+        try { v.currentTime = 0; } catch {}
+        if (paused) setPaused(false);
+      }
     }
   }, [active, paused, muted]);
 
@@ -639,22 +646,31 @@ const HotelCard = memo(function HotelCard({
       onTouchEnd={handleDoubleTap}
       onDoubleClick={handleDoubleTap}
     >
-      {/* Reel video (with photo poster as fallback / first paint) */}
+      {/* Reel video (with photo poster as fallback / first paint).
+          NOTE: webkit-playsinline must be passed via spread because React's
+          camelCase prop is `playsInline`; the WebKit-prefixed variant is
+          required by older iOS Safari (≤ iOS 9.3) and some embedded WebViews. */}
       {!videoBroken && (
         <video
           ref={videoRef}
           src={videoSrc}
           poster={activeImg}
           loop
+          autoPlay
           muted={muted}
           playsInline
           preload="auto"
-          className="absolute inset-0 w-full h-full object-cover"
+          {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
+          className="absolute inset-0 w-full h-full"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
           onError={() => setVideoBroken(true)}
           onClick={(e) => {
-            // Single-tap on video toggles play/pause (avoid stealing double-tap)
+            // Tap on video:
+            //   - if currently muted globally → UNMUTE (user gesture required)
+            //   - else → toggle play/pause
             e.stopPropagation();
             const v = videoRef.current; if (!v) return;
+            if (muted) { onMuteToggle(); return; }
             if (v.paused) { v.play().catch(()=>{}); setPaused(false); }
             else          { v.pause(); setPaused(true); }
           }}
@@ -901,7 +917,9 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [muted, setMuted] = useState(true);
+  // ── GLOBAL mute state — same source for every reel + the rail button.
+  const { isMuted, hasInteracted, toggleMute } = useSoundStore();
+  const muted = isMuted;
   const [commentsOpen, setCommentsOpen] = useState<{ open: boolean; name: string }>({ open: false, name: "" });
   const [moreOpen, setMoreOpen] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
@@ -1038,16 +1056,58 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
           100% { transform: scale(1);   opacity: 0.85; }
         }
 
+        html, body { overscroll-behavior: none; }
         .ig-feed {
           height: 100dvh;
+          width: 100vw;
           overflow-y: auto;
           overflow-x: hidden;
           scroll-snap-type: y mandatory;
           scroll-behavior: smooth;
           -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
           background: #000;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
-        .ig-feed::-webkit-scrollbar { display: none; }
+        .ig-feed::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .ig-card { scroll-snap-align: start; scroll-snap-stop: always; }
+
+        /* First-load tap-to-unmute hint */
+        @keyframes igUnmuteBob {
+          0%,100% { transform: translateY(0); }
+          50%     { transform: translateY(-6px); }
+        }
+        @keyframes igUnmuteGlow {
+          0%,100% { box-shadow: 0 0 0 0 rgba(255,215,107,0.55), 0 8px 24px rgba(0,0,0,0.55); }
+          50%     { box-shadow: 0 0 0 14px rgba(255,215,107,0.0), 0 8px 24px rgba(0,0,0,0.55); }
+        }
+        .ig-unmute-hint {
+          position: fixed;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 70;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 18px;
+          border-radius: 9999px;
+          background: rgba(20,16,30,0.78);
+          border: 1px solid rgba(255,215,107,0.45);
+          color: #fff;
+          font-size: 0.86rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          animation: igUnmuteBob 2.2s ease-in-out infinite, igUnmuteGlow 2.2s ease-in-out infinite;
+          cursor: pointer;
+        }
+        .ig-unmute-hint .ig-unmute-icon {
+          font-size: 1.3rem; line-height: 1;
+          filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+        }
 
         .ig-kb {
           animation: igFade 0.45s ease-out, igKenBurns 11s ease-in-out infinite;
@@ -1328,7 +1388,7 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
             item={it}
             active={i === activeIdx}
             muted={muted}
-            onMuteToggle={() => setMuted((m) => !m)}
+            onMuteToggle={toggleMute}
             onTrackEvent={onTrackEvent}
             onBook={handleBook}
             onNegotiate={handleNegotiate}
@@ -1359,7 +1419,7 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         onClose={() => setMoreOpen({ open: false, id: "" })}
         hotelId={moreOpen.id}
         muted={muted}
-        onToggleMute={() => setMuted((m) => !m)}
+        onToggleMute={toggleMute}
         onShare={() => {
           const it = items.find((x) => x.hotel.id === moreOpen.id);
           if (it) handleShare(it.hotel);
@@ -1375,6 +1435,21 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         creator={creatorOpen}
         hotels={items.map((it) => it.hotel)}
       />
+
+      {/* First-load: prompt user to tap & unmute. Once they've ever toggled
+          mute (hasInteracted=true) we never show this again. Tapping it
+          immediately unmutes (which is the user gesture browsers require). */}
+      {muted && !hasInteracted && items.length > 0 && (
+        <button
+          className="ig-unmute-hint"
+          onClick={() => { toggleMute(); onTrackEvent?.("ig_first_unmute", {}); }}
+          aria-label="Tap to unmute reels"
+        >
+          <span className="ig-unmute-icon">🔇</span>
+          <span>Tap to unmute</span>
+        </button>
+      )}
+
       <Toast msg={toast} />
     </>
   );

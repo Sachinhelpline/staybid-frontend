@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export function ServerStatus() {
+  const pathname = usePathname();
   const [down, setDown] = useState(false);
 
   useEffect(() => {
@@ -22,6 +24,14 @@ export function ServerStatus() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Never show on full-screen reel surfaces — the red bar would push the
+  // 100dvh feed down and create the "card" look.
+  if (pathname?.startsWith("/discover")) return null;
+  if (pathname?.startsWith("/reels")) return null;
+  if (pathname?.startsWith("/admin")) return null;
+  if (pathname?.startsWith("/partner")) return null;
+  if (pathname?.startsWith("/onboard")) return null;
 
   if (!down) return null;
 
