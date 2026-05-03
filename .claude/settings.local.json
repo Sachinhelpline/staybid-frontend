@@ -69,7 +69,10 @@
       "Bash(curl -s https://www.staybids.in)",
       "Bash(git ls-remote *)",
       "Bash(tee /tmp/tsc.out)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(curl -s https://www.staybids.in/)",
+      "Bash(curl -sI https://www.staybids.in/reels)",
+      "Bash(curl -sI https://www.staybids.in/saved)"
     ]
   }
 }

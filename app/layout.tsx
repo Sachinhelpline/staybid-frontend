@@ -70,11 +70,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ServerStatus />
           <Navbar />
           <main className="min-h-screen">{children}</main>
-          <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v17</div>
+          <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v18</div>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
 // Build version — bump to force client cache purge + reload
-var SB_BUILD="v17-trending-saved-notifs-2026-05-03";
+var SB_BUILD="v18-desktop-nav-reels-visible-2026-05-03";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev!==SB_BUILD){
