@@ -382,9 +382,13 @@ function CommentDrawer({
   const [draft, setDraft]       = useState("");
   const [sending, setSending]   = useState(false);
 
+  // Reply state — when set, the next post will be a child of this comment
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
+
   useEffect(() => {
     if (!video) return;
     setComments([]);
+    setReplyTo(null);
     fetch(`/api/videos/comments/${video.id}`)
       .then(r => r.json())
       .then(d => setComments(d.comments || []))
@@ -398,18 +402,30 @@ function CommentDrawer({
       const res = await fetch(`/api/videos/comments/${video.id}`, {
         method: "POST",
         headers: AUTH_H(),
-        body: JSON.stringify({ body: draft }),
+        body: JSON.stringify({ body: draft, parentId: replyTo?.id || null }),
       });
       const d = await res.json();
       if (d.comment) {
         setComments(c => [...c, d.comment]);
         setDraft("");
+        setReplyTo(null);
       }
     } catch {}
     setSending(false);
   }
 
   if (!video) return null;
+
+  // Build a 2-level tree: root comments + their replies
+  const roots = comments.filter(c => !(c as any).parent_id);
+  const repliesByParent: Record<string, Comment[]> = {};
+  comments.forEach(c => {
+    const p = (c as any).parent_id;
+    if (p) {
+      if (!repliesByParent[p]) repliesByParent[p] = [];
+      repliesByParent[p].push(c);
+    }
+  });
 
   return (
     <div
@@ -418,7 +434,7 @@ function CommentDrawer({
       style={{ background: "rgba(0,0,0,0.5)" }}>
       <div
         className="bg-white rounded-t-3xl flex flex-col"
-        style={{ maxHeight: "70dvh" }}
+        style={{ maxHeight: "75dvh" }}
         onClick={e => e.stopPropagation()}>
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
@@ -431,27 +447,39 @@ function CommentDrawer({
 
         {/* List */}
         <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-3">
-          {comments.length === 0 && (
+          {roots.length === 0 && (
             <p className="text-center text-luxury-500 text-sm py-8">No comments yet. Be the first!</p>
           )}
-          {comments.map(c => (
-            <div key={c.id} className="flex gap-2">
-              <div className="w-7 h-7 rounded-full bg-luxury-100 flex items-center justify-center text-xs font-bold text-luxury-600 flex-shrink-0">
-                {c.user_id.slice(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-luxury-700">{c.user_id.slice(0, 8)}…</p>
-                <p className="text-sm text-luxury-800">{c.body}</p>
-              </div>
+          {roots.map(c => (
+            <div key={c.id}>
+              <CommentRow c={c} onReply={() => setReplyTo(c)} />
+              {/* Replies (one level deep) */}
+              {repliesByParent[c.id]?.length > 0 && (
+                <div className="ml-9 mt-2 space-y-2 border-l-2 border-luxury-100 pl-3">
+                  {repliesByParent[c.id].map(r => (
+                    <CommentRow key={r.id} c={r} small onReply={() => setReplyTo(c)} />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Reply pill */}
+        {replyTo && (
+          <div className="px-4 py-1.5 bg-luxury-50 border-t border-luxury-100 flex items-center justify-between">
+            <p className="text-xs text-luxury-600">
+              Replying to <span className="font-semibold">{replyTo.user_id.slice(0, 8)}…</span>
+            </p>
+            <button onClick={() => setReplyTo(null)} className="text-xs font-bold text-luxury-500 hover:text-luxury-800">Cancel</button>
+          </div>
+        )}
 
         {/* Input */}
         <div className="border-t border-luxury-100 px-4 py-3 flex items-center gap-3">
           <input
             className="flex-1 border border-luxury-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-gold-400"
-            placeholder="Add a comment…"
+            placeholder={replyTo ? "Add a reply…" : "Add a comment…"}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") send(); }}
@@ -464,6 +492,24 @@ function CommentDrawer({
             {sending ? "…" : "Post"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentRow({ c, onReply, small }: { c: Comment; onReply: () => void; small?: boolean }) {
+  const av = small ? "w-6 h-6 text-[0.6rem]" : "w-7 h-7 text-xs";
+  return (
+    <div className="flex gap-2">
+      <div className={`${av} rounded-full bg-luxury-100 flex items-center justify-center font-bold text-luxury-600 flex-shrink-0`}>
+        {c.user_id.slice(0, 2).toUpperCase()}
+      </div>
+      <div className="flex-1">
+        <p className="text-xs font-semibold text-luxury-700">{c.user_id.slice(0, 8)}…</p>
+        <p className={`${small ? "text-xs" : "text-sm"} text-luxury-800`}>{c.body}</p>
+        <button onClick={onReply} className="text-[0.65rem] font-bold text-luxury-500 mt-0.5 hover:text-gold-700">
+          Reply
+        </button>
       </div>
     </div>
   );
@@ -545,25 +591,39 @@ function EmptyFeed() {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────
+type FeedMode = "foryou" | "following";
+
 export default function ReelsPage() {
   const [videos, setVideos]           = useState<Video[]>([]);
   const [loading, setLoading]         = useState(true);
   const [activeIdx, setActiveIdx]     = useState(0);
   const [commentVideo, setCommentVideo] = useState<Video | null>(null);
   const [shareVideo, setShareVideo]   = useState<Video | null>(null);
+  const [mode, setMode]               = useState<FeedMode>("foryou");
+  const [tag, setTag]                 = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const tag = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("tag")
-      : null;
-    const url = `/api/videos/feed?limit=20${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`;
-    fetch(url)
+    if (typeof window === "undefined") return;
+    const t = new URLSearchParams(window.location.search).get("tag");
+    setTag(t || null);
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    setActiveIdx(0);
+    const params: string[] = ["limit=20"];
+    if (tag) params.push(`tag=${encodeURIComponent(tag)}`);
+    if (mode === "following") params.push("following=1");
+    const headers: Record<string, string> = {};
+    const token = SB_TOKEN();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    fetch(`/api/videos/feed?${params.join("&")}`, { headers })
       .then(r => r.json())
       .then(d => setVideos(d.videos || []))
-      .catch(() => {})
+      .catch(() => setVideos([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [mode, tag]);
 
   // Track which reel is visible via IntersectionObserver
   useEffect(() => {
@@ -587,21 +647,72 @@ export default function ReelsPage() {
     return () => observer.disconnect();
   }, [videos]);
 
+  // Top-bar toggle (For You / Following + tag chip if filtered)
+  const TopBar = (
+    <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center pt-3 pointer-events-none">
+      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-full p-1 pointer-events-auto">
+        {(["foryou", "following"] as FeedMode[]).map(m => (
+          <button
+            key={m}
+            onClick={() => { setMode(m); setTag(null); }}
+            className="px-4 py-1.5 rounded-full text-xs font-bold transition-all"
+            style={{
+              background: mode === m ? "linear-gradient(135deg,#c9911a,#f0b429)" : "transparent",
+              color: mode === m ? "#000" : "rgba(255,255,255,0.85)",
+            }}>
+            {m === "foryou" ? "For You" : "Following"}
+          </button>
+        ))}
+      </div>
+      {tag && (
+        <button
+          onClick={() => setTag(null)}
+          className="mt-2 pointer-events-auto bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/20">
+          #{tag} ✕
+        </button>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="text-5xl mb-3 animate-bounce">🎬</div>
-          <p className="text-white/60 text-sm">Loading reels…</p>
+      <div className="fixed inset-0 bg-black">
+        {TopBar}
+        <div className="h-full flex items-center justify-center text-center text-white">
+          <div>
+            <div className="text-5xl mb-3 animate-bounce">🎬</div>
+            <p className="text-white/60 text-sm">Loading reels…</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (!loading && videos.length === 0) return <EmptyFeed />;
+  if (!loading && videos.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black">
+        {TopBar}
+        {mode === "following" ? (
+          <div className="h-full flex flex-col items-center justify-center text-center text-white px-8">
+            <div className="text-6xl mb-4">👥</div>
+            <h2 className="font-bold text-xl mb-2">No reels from people you follow</h2>
+            <p className="text-white/60 text-sm mb-6">Switch to <span className="font-bold text-gold-300">For You</span> and start following creators whose vibe you like.</p>
+            <button onClick={() => setMode("foryou")}
+              className="px-6 py-2.5 rounded-full font-bold text-black"
+              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+              Browse For You
+            </button>
+          </div>
+        ) : (
+          <EmptyFeed />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
+      {TopBar}
       {/* Scroll container */}
       <div
         ref={containerRef}

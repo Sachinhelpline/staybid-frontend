@@ -1,17 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SB_URL, SB_READ } from "@/lib/sb";
+import { SB_URL, SB_READ, userFromReq } from "@/lib/sb";
 
 // GET /api/videos/feed — approved videos for the reels feed
 // Enriches each video with hotel info AND creator (influencer) info so the
 // reels UI can render avatar + name + link to the public profile.
+// Phase C: ?following=1 filters to videos uploaded by creators the
+// current user follows (auth required, otherwise returns empty list).
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit  = Math.min(Number(searchParams.get("limit") || 20), 50);
   const offset = Number(searchParams.get("offset") || 0);
   const hotelId = searchParams.get("hotelId");
   const tag    = searchParams.get("tag"); // optional hashtag filter
+  const followingMode = searchParams.get("following") === "1";
 
-  let url = `${SB_URL}/rest/v1/hotel_videos?verification_status=eq.approved&order=created_at.desc&limit=${limit}&offset=${offset}&select=*`;
+  // Following filter: pull the user's follow list, map to user_ids, restrict feed
+  let uploaderFilter = "";
+  if (followingMode) {
+    const me = userFromReq(req);
+    if (!me) return NextResponse.json({ videos: [] });
+    const follows = await fetch(
+      `${SB_URL}/rest/v1/user_follows?follower_id=eq.${encodeURIComponent(me.id)}&select=influencer_id`,
+      { headers: SB_READ }
+    ).then(r => r.json()).catch(() => []);
+    const infIds: string[] = Array.isArray(follows) ? follows.map((r: any) => r.influencer_id).filter(Boolean) : [];
+    if (infIds.length === 0) return NextResponse.json({ videos: [] });
+    const infs = await fetch(
+      `${SB_URL}/rest/v1/influencers?id=in.(${infIds.map(id => `"${id}"`).join(",")})&select=user_id`,
+      { headers: SB_READ }
+    ).then(r => r.json()).catch(() => []);
+    const userIds: string[] = Array.isArray(infs) ? infs.map((i: any) => i.user_id).filter(Boolean) : [];
+    if (userIds.length === 0) return NextResponse.json({ videos: [] });
+    uploaderFilter = `&uploaded_by=in.(${userIds.map(id => `"${id}"`).join(",")})`;
+  }
+
+  let url = `${SB_URL}/rest/v1/hotel_videos?verification_status=eq.approved&order=created_at.desc&limit=${limit}&offset=${offset}&select=*${uploaderFilter}`;
   if (hotelId) url += `&hotel_id=eq.${encodeURIComponent(hotelId)}`;
   if (tag)     url += `&title=ilike.*%23${encodeURIComponent(tag)}*`;
 
