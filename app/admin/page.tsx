@@ -60,19 +60,37 @@ export default function AdminDashboard() {
   const k = data?.kpi || {};
 
   // Platform-systems widget — pulls counts for the new Session 1/2/4/5/6
-  // tables (influencers, hotel videos, points, saves, notifications). Lives
-  // in a sibling component so the existing dashboard markup stays untouched.
+  // tables (influencers, hotel videos, points, saves, notifications). Now
+  // realtime-driven via Supabase Realtime: any INSERT/UPDATE on the new
+  // tables triggers an immediate refetch (debounced 800ms to coalesce bursts).
   function PlatformSystems() {
     const [w, setW] = useState<any>(null);
+    const [pulses, setPulses] = useState(0);
     useEffect(() => {
       let alive = true;
       const load = () => fetch("/api/admin/overview").then(r => r.json()).then(d => { if (alive) setW(d?.widgets || null); }).catch(() => {});
       load();
-      const t = setInterval(load, 60_000);
-      return () => { alive = false; clearInterval(t); };
+      const slow = setInterval(load, 60_000);
+
+      let debounce: any = null;
+      let unsub: (() => void) | null = null;
+      (async () => {
+        const { subscribeTables } = await import("@/lib/realtime");
+        if (!alive) return;
+        unsub = subscribeTables(
+          ["influencers","influencer_commissions","influencer_referral_codes","referral_events","hotel_videos","user_points","points_history","user_saves","notification_queue"],
+          () => {
+            setPulses((p) => p + 1);
+            if (debounce) clearTimeout(debounce);
+            debounce = setTimeout(load, 800);
+          }
+        );
+      })();
+
+      return () => { alive = false; clearInterval(slow); if (debounce) clearTimeout(debounce); unsub?.(); };
     }, []);
     if (!w) return null;
-    const widgets = [
+    const widgets: { title: string; value: any; icon: string; color: string; sub: string; href: string }[] = [
       { title: "Influencers",        value: `${w.influencersActive}/${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: "active / total", href: "/admin/users" },
       { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#D4AF37", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
       { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#F0D060", sub: "earning users",                href: "/admin/revenue" },
@@ -80,12 +98,23 @@ export default function AdminDashboard() {
       { title: "Notifications Queue",value: w.notifPending,                                   icon: "📨", color: "#2ECC71", sub: "pending dispatch",             href: "/admin" },
     ];
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 24 }}>
-        {widgets.map((x) => (
-          <a key={x.title} href={x.href} style={{ textDecoration: "none" }}>
-            <KpiCard title={x.title} value={x.value as any} icon={x.icon} color={x.color} sub={x.sub} />
-          </a>
-        ))}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <span style={{ fontSize: 12, color: "#8A8FA8", fontFamily: "DM Sans, sans-serif", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Platform Systems
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 9px", borderRadius: 999, fontSize: 10, fontWeight: 700, background: "rgba(46,204,113,0.12)", color: "#2ECC71", border: "1px solid rgba(46,204,113,0.3)" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#2ECC71", boxShadow: "0 0 6px #2ECC71" }} />
+            REALTIME{pulses > 0 ? ` · ${pulses}` : ""}
+          </span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+          {widgets.map((x) => (
+            <a key={x.title} href={x.href} style={{ textDecoration: "none" }}>
+              <KpiCard title={x.title} value={x.value as any} icon={x.icon} color={x.color} sub={x.sub} />
+            </a>
+          ))}
+        </div>
       </div>
     );
   }
