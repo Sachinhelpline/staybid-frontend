@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
 
-// GET /api/videos/feed — approved videos for the reels feed, newest first
-// Joins hotel info from the hotels table via Supabase's PostgREST embedding.
+// GET /api/videos/feed — approved videos for the reels feed
+// Enriches each video with hotel info AND creator (influencer) info so the
+// reels UI can render avatar + name + link to the public profile.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit  = Math.min(Number(searchParams.get("limit") || 20), 50);
   const offset = Number(searchParams.get("offset") || 0);
   const hotelId = searchParams.get("hotelId");
+  const tag    = searchParams.get("tag"); // optional hashtag filter
 
   let url = `${SB_URL}/rest/v1/hotel_videos?verification_status=eq.approved&order=created_at.desc&limit=${limit}&offset=${offset}&select=*`;
   if (hotelId) url += `&hotel_id=eq.${encodeURIComponent(hotelId)}`;
+  if (tag)     url += `&title=ilike.*%23${encodeURIComponent(tag)}*`;
 
   const res = await fetch(url, { headers: SB_READ });
   if (!res.ok) return NextResponse.json({ videos: [] });
@@ -20,12 +23,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ videos: [] });
   }
 
-  // Enrich with hotel info
-  const seen: Record<string, boolean> = {};
+  // Dedup hotel + uploader IDs (no Set spread for downlevelIteration safety)
+  const hSeen: Record<string, boolean> = {};
   const hotelIds: string[] = [];
+  const uSeen: Record<string, boolean> = {};
+  const uploaderIds: string[] = [];
   videos.forEach((v: any) => {
-    if (v.hotel_id && !seen[v.hotel_id]) { seen[v.hotel_id] = true; hotelIds.push(v.hotel_id); }
+    if (v.hotel_id    && !hSeen[v.hotel_id])    { hSeen[v.hotel_id]    = true; hotelIds.push(v.hotel_id); }
+    if (v.uploaded_by && !uSeen[v.uploaded_by]) { uSeen[v.uploaded_by] = true; uploaderIds.push(v.uploaded_by); }
   });
+
+  // Hotel enrichment
   let hotelMap: Record<string, any> = {};
   if (hotelIds.length > 0) {
     const hRes = await fetch(
@@ -36,7 +44,22 @@ export async function GET(req: NextRequest) {
     if (Array.isArray(hotels)) hotels.forEach((h: any) => { hotelMap[h.id] = h; });
   }
 
+  // Creator enrichment — find influencers whose user_id matches an uploader
+  let creatorMap: Record<string, any> = {};
+  if (uploaderIds.length > 0) {
+    const cRes = await fetch(
+      `${SB_URL}/rest/v1/influencers?user_id=in.(${uploaderIds.map(id => `"${id}"`).join(",")})&select=id,user_id,display_name,avatar_url,verification_tier,followers_count,total_followers`,
+      { headers: SB_READ }
+    );
+    const creators = await cRes.json().catch(() => []);
+    if (Array.isArray(creators)) creators.forEach((c: any) => { creatorMap[c.user_id] = c; });
+  }
+
   return NextResponse.json({
-    videos: videos.map((v: any) => ({ ...v, hotel: hotelMap[v.hotel_id] || null })),
+    videos: videos.map((v: any) => ({
+      ...v,
+      hotel:   hotelMap[v.hotel_id]      || null,
+      creator: v.uploaded_by ? (creatorMap[v.uploaded_by] || null) : null,
+    })),
   });
 }

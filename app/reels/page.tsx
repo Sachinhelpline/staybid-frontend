@@ -23,7 +23,25 @@ type Video = {
   hotel_id: string;
   hotel?: { id: string; name: string; city: string; star_rating?: number; images?: string[] };
   uploaded_by?: string;
+  creator?: {
+    id: string;
+    user_id: string;
+    display_name?: string;
+    avatar_url?: string;
+    verification_tier?: number;
+    followers_count?: number;
+    total_followers?: number;
+  } | null;
 };
+
+// Pull #hashtags from a caption — returns { plain, tags }
+// ASCII-word regex; avoids \p{} unicode flag for older TS targets.
+function splitCaption(caption: string): { plain: string; tags: string[] } {
+  const re = /#[A-Za-z0-9_]+/g;
+  const tags = (caption.match(re) || []).map(t => t.slice(1));
+  const plain = caption.replace(re, "").replace(/\s+/g, " ").trim();
+  return { plain, tags };
+}
 
 type Comment = { id: string; user_id: string; body: string; created_at: string };
 
@@ -55,19 +73,69 @@ function ReelCard({
   const [likes, setLikes]     = useState(video.likes_count || 0);
   const [playing, setPlaying] = useState(false);
   const [saved, setSaved]     = useState(false);
+  const [following, setFollowing] = useState(false);
+
+  // Watch-time tracking — start timestamp when card becomes active,
+  // POST to /api/videos/track-view when card leaves OR video ends.
+  const playStartRef = useRef<number>(0);
+  const reportedRef  = useRef<boolean>(false);
+
+  function reportWatch(completed: boolean) {
+    if (reportedRef.current) return;
+    if (!playStartRef.current) return;
+    const watchSeconds = Math.max(0, Math.round((Date.now() - playStartRef.current) / 1000));
+    if (watchSeconds < 1) return; // skip flicks
+    reportedRef.current = true;
+    fetch("/api/videos/track-view", {
+      method: "POST",
+      headers: AUTH_H(),
+      body: JSON.stringify({
+        videoId: video.id,
+        watchSeconds,
+        completed,
+        hotelId: video.hotel_id,
+        creatorInfluencerId: video.creator?.id || null,
+      }),
+    }).catch(() => {});
+  }
 
   // Auto-play / pause based on visibility
   useEffect(() => {
     const el = vidRef.current;
     if (!el) return;
     if (isActive) {
+      reportedRef.current = false;
+      playStartRef.current = Date.now();
       el.play().then(() => setPlaying(true)).catch(() => {});
     } else {
+      reportWatch(false);
       el.pause();
       el.currentTime = 0;
       setPlaying(false);
     }
+    return () => { if (isActive) reportWatch(false); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
+
+  // Check follow state once when creator loads
+  useEffect(() => {
+    if (!SB_TOKEN() || !video.creator?.id) return;
+    fetch(`/api/influencer/follow/${video.creator.id}`, {
+      headers: { Authorization: `Bearer ${SB_TOKEN()}` },
+    })
+      .then(r => r.json())
+      .then(d => setFollowing(!!d.following))
+      .catch(() => {});
+  }, [video.creator?.id]);
+
+  async function toggleFollow() {
+    if (!video.creator?.id) return;
+    const prev = following;
+    setFollowing(!prev);
+    try {
+      await fetch(`/api/influencer/follow/${video.creator.id}`, { method: "POST", headers: AUTH_H() });
+    } catch { setFollowing(prev); }
+  }
 
   // Check if user liked this video
   useEffect(() => {
@@ -120,6 +188,13 @@ function ReelCard({
         preload="metadata"
         className="absolute inset-0 w-full h-full object-cover"
         onClick={() => setMuted(m => !m)}
+        onTimeUpdate={(e) => {
+          // Treat 90%+ watched on a single loop pass as a completion event
+          const el = e.currentTarget;
+          if (!reportedRef.current && el.duration > 0 && el.currentTime / el.duration >= 0.9) {
+            reportWatch(true);
+          }
+        }}
         style={{ background: "#000" }}
       />
 
@@ -170,20 +245,75 @@ function ReelCard({
 
       {/* Bottom overlay */}
       <div className="absolute bottom-0 left-0 right-16 px-4 pb-6 z-10">
-        {/* Creator */}
-        {video.uploaded_by && (
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold">
-              ✨
+        {/* Creator chip — links to public profile */}
+        {(() => {
+          const c = video.creator;
+          if (!c) {
+            // No registered influencer — fallback "Hotel Reel" badge
+            return (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold">
+                  🏨
+                </div>
+                <span className="text-white text-sm font-semibold drop-shadow">Hotel Direct</span>
+              </div>
+            );
+          }
+          const initials = (c.display_name || "C").slice(0, 2).toUpperCase();
+          return (
+            <div className="flex items-center gap-2 mb-3">
+              <Link href={`/influencer/public/${c.id}`} className="flex items-center gap-2">
+                {c.avatar_url
+                  ? <img src={c.avatar_url} alt={c.display_name || "creator"} className="w-9 h-9 rounded-full object-cover ring-2 ring-white/40" />
+                  : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/40">
+                      {initials}
+                    </div>
+                }
+                <div className="leading-tight">
+                  <p className="text-white text-sm font-bold drop-shadow flex items-center gap-1">
+                    {c.display_name || "Creator"}
+                    {c.verification_tier && c.verification_tier >= 2 ? <span className="text-[0.7rem]">✓</span> : null}
+                  </p>
+                  <p className="text-white/70 text-[0.65rem] font-semibold">
+                    {fmtNum(c.followers_count || c.total_followers || 0)} followers
+                  </p>
+                </div>
+              </Link>
+              <button
+                onClick={toggleFollow}
+                className={`ml-2 px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all ${
+                  following
+                    ? "bg-white/15 text-white border border-white/40"
+                    : "bg-white text-black"
+                }`}>
+                {following ? "Following" : "Follow"}
+              </button>
             </div>
-            <span className="text-white text-sm font-semibold">Creator</span>
-          </div>
-        )}
+          );
+        })()}
 
-        {/* Title / caption */}
-        <p className="text-white text-sm font-medium leading-snug mb-2 line-clamp-2">
-          {video.title || (hotel ? `${hotel.name} · ${hotel.city}` : "Hotel Reel")}
-        </p>
+        {/* Caption + hashtags */}
+        {(() => {
+          const raw = video.title || (hotel ? `${hotel.name} · ${hotel.city}` : "Hotel Reel");
+          const { plain, tags } = splitCaption(raw);
+          return (
+            <>
+              <p className="text-white text-sm font-medium leading-snug mb-2 line-clamp-2 drop-shadow">
+                {plain || raw}
+              </p>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {tags.slice(0, 6).map(t => (
+                    <Link key={t} href={`/reels?tag=${encodeURIComponent(t)}`}
+                      className="text-white/90 text-xs font-bold drop-shadow hover:text-gold-300">
+                      #{t}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Hotel chip */}
         {hotel && (
@@ -199,7 +329,7 @@ function ReelCard({
         {hotel && (
           <Link
             href={`/hotels/${hotel.id}`}
-            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-bold text-sm text-white"
+            className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-2xl font-bold text-sm text-white shadow-lg"
             style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
             🛎️ Book This Stay
           </Link>
@@ -424,7 +554,11 @@ export default function ReelsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/videos/feed?limit=20")
+    const tag = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("tag")
+      : null;
+    const url = `/api/videos/feed?limit=20${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`;
+    fetch(url)
       .then(r => r.json())
       .then(d => setVideos(d.videos || []))
       .catch(() => {})
