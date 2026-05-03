@@ -66,7 +66,22 @@ export const api = {
     return direct(`/api/hotels${q}`);
   },
   getHotel:          (id: string)  => direct(`/api/hotels/${id}`),
-  createBidRequest:  (data: any)   => direct("/api/bids/request", { method: "POST", body: JSON.stringify(data) }),
+  // Wraps the underlying call so a stored sb_ref code (set by /r/[code]) is
+  // auto-attributed to the new bid_request — closes the referral loop without
+  // touching every booking handler.
+  createBidRequest:  async (data: any) => {
+    const result = await direct("/api/bids/request", { method: "POST", body: JSON.stringify(data) });
+    try {
+      const ref = typeof window !== "undefined"
+        ? (localStorage.getItem("sb_ref") || (document.cookie.match(/(?:^|;\s*)sb_ref=([^;]+)/)?.[1] || ""))
+        : "";
+      const reqId = result?.request?.id || result?.id;
+      if (ref && reqId) {
+        await direct("/api/referrals/attribute", { method: "POST", body: JSON.stringify({ requestId: reqId, code: decodeURIComponent(ref) }) }).catch(() => {});
+      }
+    } catch {}
+    return result;
+  },
   placeBid:          (data: any)   => direct("/api/bids/place",   { method: "POST", body: JSON.stringify(data) }),
   acceptBid:         (id: string)  => direct(`/api/bids/${id}/accept`, { method: "POST" }),
   getMyBids:         ()            => direct("/api/bids/my"),
