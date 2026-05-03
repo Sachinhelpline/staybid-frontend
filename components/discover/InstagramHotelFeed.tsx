@@ -76,26 +76,56 @@ function hashtagsFor(h: any): string[] {
 }
 
 // ─── Synthesized content creators per hotel (until backend ships real ones) ─
+// Each creator carries a `sourceType` so the feed can filter by who posted
+// the reel: the hotel itself, a content creator/influencer, or a regular
+// customer (public traveller).
+export type SourceType = "all" | "hotel" | "creator" | "public";
 type Creator = {
   handle: string;
   name: string;
   verified: boolean;
   bio: string;
-  avatarHue: number; // for gradient avatar
+  avatarHue: number;
+  sourceType: Exclude<SourceType, "all">;
 };
-const CREATOR_HANDLES: Creator[] = [
-  { handle: "wanderlust.in",  name: "Riya • Wanderlust India",  verified: true,  bio: "Travel storyteller • 60+ cities across India 🌏 • DM for collabs", avatarHue: 320 },
-  { handle: "hotelhopper",    name: "Hotel Hopper",             verified: true,  bio: "Luxury stays decoded. Honest reviews. No paid posts.",                avatarHue: 30 },
-  { handle: "trail.diaries",  name: "Trail Diaries",            verified: false, bio: "Mountains, monasteries, and magic ☁️🗻",                              avatarHue: 200 },
-  { handle: "luxe.escape",    name: "Luxe Escape",              verified: true,  bio: "Curating India's finest boutique hotels • TripAdvisor Top Reviewer", avatarHue: 280 },
-  { handle: "indiastays",     name: "India Stays",              verified: true,  bio: "🇮🇳 Real rooms. Real prices. Real reels.",                            avatarHue: 0 },
-  { handle: "mountain.muse",  name: "Mountain Muse",            verified: false, bio: "Slow travel · sustainable stays · Himalayan home",                  avatarHue: 150 },
-  { handle: "the.staybid",    name: "StayBid Official",         verified: true,  bio: "India's first reverse-auction hotel platform. Bid your stay.",      avatarHue: 45 },
-  { handle: "voyager.vivek",  name: "Vivek • Voyager",          verified: false, bio: "Solo trips · budget bids · pin-drop guides",                        avatarHue: 100 },
+const CREATOR_POOL: Creator[] = [
+  // ── Hotels (official accounts) ──
+  { handle: "the.staybid",     name: "StayBid Official",         verified: true,  bio: "India's first reverse-auction hotel platform. Bid your stay.",      avatarHue: 45,  sourceType: "hotel" },
+  { handle: "hotelhopper",     name: "Hotel Hopper",             verified: true,  bio: "Luxury stays decoded. Honest reviews. No paid posts.",                avatarHue: 30,  sourceType: "hotel" },
+  { handle: "indiastays",      name: "India Stays",              verified: true,  bio: "🇮🇳 Real rooms. Real prices. Real reels.",                            avatarHue: 0,   sourceType: "hotel" },
+  // ── Creators (verified influencers) ──
+  { handle: "wanderlust.in",   name: "Riya • Wanderlust India",  verified: true,  bio: "Travel storyteller • 60+ cities across India 🌏 • DM for collabs", avatarHue: 320, sourceType: "creator" },
+  { handle: "luxe.escape",     name: "Luxe Escape",              verified: true,  bio: "Curating India's finest boutique hotels • TripAdvisor Top Reviewer", avatarHue: 280, sourceType: "creator" },
+  { handle: "trail.diaries",   name: "Trail Diaries",            verified: false, bio: "Mountains, monasteries, and magic ☁️🗻",                              avatarHue: 200, sourceType: "creator" },
+  { handle: "mountain.muse",   name: "Mountain Muse",            verified: false, bio: "Slow travel · sustainable stays · Himalayan home",                  avatarHue: 150, sourceType: "creator" },
+  { handle: "voyager.vivek",   name: "Vivek • Voyager",          verified: false, bio: "Solo trips · budget bids · pin-drop guides",                        avatarHue: 100, sourceType: "creator" },
+  // ── Public (real customer travellers) ──
+  { handle: "priya_traveller", name: "Priya M. · #travelfam",    verified: false, bio: "Just a happy guest. Posting honest stays from real bookings.",      avatarHue: 340, sourceType: "public" },
+  { handle: "rahul_solo",      name: "Rahul Bhatt",              verified: false, bio: "Solo travel @ 26 · ₹1500/night challenge · DM for itineraries",     avatarHue: 220, sourceType: "public" },
+  { handle: "nikita.rk",       name: "Nikita Rastogi",           verified: false, bio: "Foodie + hotel hopper · Honest reviews after every stay",          avatarHue: 60,  sourceType: "public" },
+  { handle: "amit.b.travel",   name: "Amit B.",                  verified: false, bio: "Family man, weekend escapes only. Real photos, real stays.",       avatarHue: 180, sourceType: "public" },
 ];
 function creatorFor(h: any): Creator {
-  return CREATOR_HANDLES[hashStr(h?.id || h?.name || "x") % CREATOR_HANDLES.length];
+  return CREATOR_POOL[hashStr(h?.id || h?.name || "x") % CREATOR_POOL.length];
 }
+function sourceFor(h: any): Exclude<SourceType, "all"> {
+  return creatorFor(h).sourceType;
+}
+
+const SOURCE_LABEL: Record<SourceType, string> = {
+  all:     "All sources",
+  hotel:   "Hotels",
+  creator: "Creators",
+  public:  "Public",
+};
+const SOURCE_ICON: Record<SourceType, string> = {
+  all:     "🌐",
+  hotel:   "🏨",
+  creator: "✨",
+  public:  "👤",
+};
+
+const FALLBACK_CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun", "Nainital", "Goa", "Jaipur"];
 
 const SAMPLE_COMMENTS = [
   { user: "priya_m", text: "Looks like a dream 😍 saving for our anniversary trip", time: "2h", likes: 14 },
@@ -468,6 +498,133 @@ function CreatorProfileSheet({
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Filter Sheet — pick which user-type's reels to watch + which city
+// ─────────────────────────────────────────────────────────────────────────
+function FilterSheet({
+  open, onClose,
+  source, city, onChange,
+  cityOptions, sourceCounts,
+}: {
+  open: boolean;
+  onClose: () => void;
+  source: SourceType;
+  city: string; // "all" | city name
+  onChange: (next: { source: SourceType; city: string }) => void;
+  cityOptions: string[];
+  sourceCounts: Record<SourceType, number>;
+}) {
+  if (!open) return null;
+  const sources: SourceType[] = ["all", "hotel", "creator", "public"];
+  const cities = ["all", ...cityOptions];
+  return (
+    <div className="fixed inset-0 z-[88] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: "78vh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-2">
+          <p className="text-white font-semibold text-[0.92rem]">Filter reels</p>
+          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+        </div>
+
+        {/* ── Source: Hotels / Creators / Public / All ── */}
+        <div className="px-5 pt-2 pb-3">
+          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-2">Whose reels</p>
+          <div className="grid grid-cols-2 gap-2">
+            {sources.map((s) => {
+              const active = s === source;
+              return (
+                <button
+                  key={s}
+                  onClick={() => onChange({ source: s, city })}
+                  className="ig-filter-pill flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all"
+                  style={{
+                    background: active
+                      ? "linear-gradient(135deg, rgba(240,180,41,0.30), rgba(255,69,141,0.18))"
+                      : "rgba(255,255,255,0.05)",
+                    border: active ? "1px solid rgba(240,180,41,0.65)" : "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: active ? "0 4px 14px rgba(240,180,41,0.25), inset 0 1px 0 rgba(255,255,255,0.18)" : "none",
+                  }}
+                >
+                  <span className="text-lg">{SOURCE_ICON[s]}</span>
+                  <span className="flex-1">
+                    <span className={`block text-[0.86rem] font-bold ${active ? "text-white" : "text-white/85"}`}>
+                      {SOURCE_LABEL[s]}
+                    </span>
+                    <span className="block text-[0.62rem] text-white/55">
+                      {sourceCounts[s]} {sourceCounts[s] === 1 ? "reel" : "reels"}
+                    </span>
+                  </span>
+                  {active && <span className="text-gold-300">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Location ── */}
+        <div className="px-5 pt-1 pb-2 border-t border-white/8">
+          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-2 mt-3">📍 Location</p>
+          <div
+            className="flex flex-wrap gap-1.5 overflow-y-auto pr-1"
+            style={{ maxHeight: "32vh" }}
+          >
+            {cities.map((c) => {
+              const active = c === city;
+              return (
+                <button
+                  key={c}
+                  onClick={() => onChange({ source, city: c })}
+                  className="px-3 py-1.5 rounded-full text-[0.74rem] font-bold transition-all"
+                  style={{
+                    background: active
+                      ? "linear-gradient(135deg, #ffd76b, #f0b429)"
+                      : "rgba(255,255,255,0.06)",
+                    color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
+                    border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.12)",
+                    boxShadow: active ? "0 3px 10px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
+                  }}
+                >
+                  {c === "all" ? "🌐 All India" : `📍 ${c}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="px-5 pt-3 flex gap-2">
+          <button
+            onClick={() => onChange({ source: "all", city: "all" })}
+            className="flex-1 py-3 rounded-xl text-white/85 text-[0.82rem] font-semibold"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)" }}
+          >
+            Reset
+          </button>
+          <button
+            onClick={onClose}
+            className="ig-cta-3d ig-cta-book"
+            style={{ flex: 2, padding: "12px", fontSize: "0.86rem" }}
+          >
+            <span className="ig-cta-icon">▶</span>
+            <span className="ig-cta-text">Show reels</span>
+          </button>
         </div>
       </div>
     </div>
@@ -925,6 +1082,64 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // ── Filter state (source: hotel/creator/public/all + city) ──
+  const [filterSource, setFilterSource] = useState<SourceType>("all");
+  const [filterCity, setFilterCity]     = useState<string>("all");
+  const [filterOpen, setFilterOpen]     = useState(false);
+  // Hydrate from localStorage + default city to user's chosen nav city
+  useEffect(() => {
+    try {
+      const fs = localStorage.getItem("sb_reel_filter_source") as SourceType | null;
+      if (fs && ["all", "hotel", "creator", "public"].includes(fs)) setFilterSource(fs);
+      const fc = localStorage.getItem("sb_reel_filter_city");
+      if (fc) setFilterCity(fc);
+      else {
+        const navCity = localStorage.getItem("sb_city");
+        if (navCity) setFilterCity(navCity);
+      }
+    } catch {}
+  }, []);
+  const persistFilter = useCallback((src: SourceType, c: string) => {
+    setFilterSource(src);
+    setFilterCity(c);
+    try {
+      localStorage.setItem("sb_reel_filter_source", src);
+      localStorage.setItem("sb_reel_filter_city", c);
+    } catch {}
+    onTrackEvent?.("ig_filter_change", { source: src, city: c });
+  }, [onTrackEvent]);
+
+  // City list — distinct cities present in the feed (so we never offer a city
+  // the user can't actually filter to).
+  const cityOptions = (() => {
+    const seen = new Set<string>();
+    items.forEach((it) => { if (it.hotel?.city) seen.add(String(it.hotel.city)); });
+    const list = Array.from(seen).sort();
+    return list.length > 0 ? list : FALLBACK_CITIES;
+  })();
+
+  // Counts per source — surfaced in the filter sheet
+  const sourceCounts: Record<SourceType, number> = (() => {
+    const c: Record<SourceType, number> = { all: items.length, hotel: 0, creator: 0, public: 0 };
+    items.forEach((it) => { c[sourceFor(it.hotel)]++; });
+    return c;
+  })();
+
+  // Apply filter
+  const filteredItems = items.filter((it) => {
+    const okSrc = filterSource === "all" || sourceFor(it.hotel) === filterSource;
+    const okCity = filterCity === "all" || (it.hotel?.city && it.hotel.city === filterCity);
+    return okSrc && okCity;
+  });
+
+  // When filter changes, reset scroll to top
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    root.scrollTo({ top: 0, behavior: "smooth" });
+    setActiveIdx(0);
+  }, [filterSource, filterCity]);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2200);
@@ -944,7 +1159,7 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
           if (idx >= 0 && idx !== activeIdx) {
             setActiveIdx(idx);
             onIndexChange?.(idx);
-            if (idx >= items.length - 3) onLoadMore?.();
+            if (idx >= filteredItems.length - 3) onLoadMore?.();
           }
         }
       },
@@ -952,7 +1167,7 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
     );
     cards.forEach((c) => io.observe(c));
     return () => io.disconnect();
-  }, [items.length, activeIdx, onIndexChange, onLoadMore]);
+  }, [filteredItems.length, activeIdx, onIndexChange, onLoadMore]);
 
   const handleBook = useCallback((h: any) => {
     onTrackEvent?.("ig_click_book", { hotelId: h.id });
@@ -1072,6 +1287,27 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         }
         .ig-feed::-webkit-scrollbar { display: none; width: 0; height: 0; }
         .ig-card { scroll-snap-align: start; scroll-snap-stop: always; }
+
+        /* Filter chip (top-left of reel feed) */
+        .ig-filter-chip {
+          position: fixed;
+          top: 10px;
+          left: 12px;
+          z-index: 41;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 11px;
+          border-radius: 9999px;
+          color: #fff;
+          background: linear-gradient(135deg, rgba(255,69,141,0.30), rgba(185,100,255,0.18));
+          border: 1px solid rgba(255,255,255,0.25);
+          backdrop-filter: blur(14px) saturate(1.4);
+          -webkit-backdrop-filter: blur(14px) saturate(1.4);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.20);
+          transition: transform 0.12s ease;
+        }
+        .ig-filter-chip:active { transform: scale(0.94); }
 
         /* First-load tap-to-unmute hint */
         @keyframes igUnmuteBob {
@@ -1381,8 +1617,25 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         .ig-toast { animation: igToastIn 2.2s ease forwards; }
       `}</style>
 
+      {/* ── Filter chip — top-LEFT, shows current filter; tap to open sheet ── */}
+      <button
+        onClick={() => setFilterOpen(true)}
+        className="ig-filter-chip"
+        aria-label="Open reel filters"
+      >
+        <span className="text-base leading-none">{SOURCE_ICON[filterSource]}</span>
+        <span className="text-[0.66rem] font-bold tracking-wide">
+          {SOURCE_LABEL[filterSource]}
+        </span>
+        <span className="opacity-50">·</span>
+        <span className="text-[0.66rem] font-semibold">
+          📍 {filterCity === "all" ? "All India" : filterCity}
+        </span>
+        <span className="opacity-60">▾</span>
+      </button>
+
       <div ref={containerRef} className="ig-feed">
-        {items.map((it, i) => (
+        {filteredItems.map((it, i) => (
           <HotelCard
             key={it.hotel.id || i}
             item={it}
@@ -1399,15 +1652,36 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
             onOpenCreator={(c) => setCreatorOpen(c)}
           />
         ))}
-        {items.length === 0 && (
-          <section className="ig-card flex items-center justify-center text-center text-white/70">
+        {filteredItems.length === 0 && (
+          <section className="ig-card flex items-center justify-center text-center text-white/70 px-6">
             <div>
-              <p className="text-5xl mb-2">🏔️</p>
-              <p className="text-sm">No hotels yet</p>
+              <p className="text-6xl mb-3">🔍</p>
+              <p className="text-white font-semibold mb-1.5">No reels match this filter</p>
+              <p className="text-white/55 text-[0.78rem] mb-4">
+                Try switching to a different source or location.
+              </p>
+              <button
+                onClick={() => persistFilter("all", "all")}
+                className="ig-cta-3d ig-cta-book inline-flex"
+                style={{ padding: "10px 18px", fontSize: "0.82rem" }}
+              >
+                <span className="ig-cta-icon">↻</span>
+                <span className="ig-cta-text">Reset filter</span>
+              </button>
             </div>
           </section>
         )}
       </div>
+
+      <FilterSheet
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        source={filterSource}
+        city={filterCity}
+        onChange={({ source, city }) => persistFilter(source, city)}
+        cityOptions={cityOptions}
+        sourceCounts={sourceCounts}
+      />
 
       <CommentDrawer
         open={commentsOpen.open}
