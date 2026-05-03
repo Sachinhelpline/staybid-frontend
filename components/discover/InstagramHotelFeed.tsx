@@ -127,6 +127,53 @@ const SOURCE_ICON: Record<SourceType, string> = {
 
 const FALLBACK_CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun", "Nainital", "Goa", "Jaipur"];
 
+// ─────────────────────────────────────────────────────────────────────────
+// Anti-bypass communication guard
+// ───────────────────────────────────────────────────────────────────────
+// Rule: hotels, creators and customers MUST NOT use the public comment
+// stream as a private messaging back-channel. If they could exchange phone
+// numbers, emails, WhatsApp/Telegram/Instagram handles or off-platform
+// links, off-platform bookings would happen and StayBid's reverse-auction
+// commission would be bypassed.
+// Every public comment posted in the reel feed is run through this
+// sanitizer. Matched personal-contact substrings are replaced with `•••••`
+// and the user is shown a warning toast. The masked comment still posts so
+// genuine sentiment ("looks lovely!") survives, but the contact channel is
+// dead.
+//
+// ⚠️ This is the public layer ONLY. After a booking is CONFIRMED, the user
+// can chat with that specific property through the booking page (separate
+// feature, /bookings → already gated to booking owner ↔ booked hotel).
+// ─────────────────────────────────────────────────────────────────────────
+const CONTACT_PATTERNS: RegExp[] = [
+  // Phone — international and Indian formats (8–14 digits with separators)
+  /\+?\d[\d\s\-().]{7,16}\d/g,
+  // Email
+  /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/gi,
+  // URLs
+  /(https?:\/\/|www\.)\S+/gi,
+  // Bare domains (.com, .in, etc.)
+  /\b[a-z0-9-]+\.(com|in|co\.in|net|org|io|me|app|xyz|live|shop)(\/\S*)?\b/gi,
+  // WhatsApp / Telegram / Signal / Skype / Zoom — any reference is a flag
+  /\b(whats[\s.]?app|wa\.?me|telegram|t\.?me|signal|skype|google\s*meet|zoom\s*meeting)\b/gi,
+  // "DM me", "call me", "ping me", "reach out", "drop your number"
+  /\b(d\.?m\.?\s*(me|@)?|inbox\s*me|message\s*me|call\s*me|ping\s*me|reach\s*out\s*to\s*me|drop\s*(your\s*)?(number|contact|whatsapp))\b/gi,
+  // Social handles outside @hotel/creator chips: "insta: x", "fb: y"
+  /\b(insta(gram)?|fb|facebook|snap(chat)?|twitter|x\.com)\s*[:\-@]\s*\S+/gi,
+  // "Off-platform", "outside the app", "directly with hotel"
+  /\b(off[-\s]?platform|outside\s*(the\s*)?(app|platform)|book\s*direct(ly)?|side\s*deal)\b/gi,
+];
+
+function sanitizeComment(text: string): { clean: string; blocked: boolean } {
+  let clean = text;
+  let blocked = false;
+  for (const p of CONTACT_PATTERNS) {
+    if (p.test(clean)) blocked = true;
+    clean = clean.replace(p, "•••••");
+  }
+  return { clean, blocked };
+}
+
 const SAMPLE_COMMENTS = [
   { user: "priya_m", text: "Looks like a dream 😍 saving for our anniversary trip", time: "2h", likes: 14 },
   { user: "rohan.k", text: "Booked through StayBid, saved ₹4,200 vs MakeMyTrip — same suite", time: "5h", likes: 32 },
@@ -164,9 +211,17 @@ function spawnHearts(originX: number, originY: number, count = 12): Heart[] {
 // Comment Drawer
 // ─────────────────────────────────────────────────────────────────────────
 function CommentDrawer({
-  open, onClose, hotelName,
-}: { open: boolean; onClose: () => void; hotelName: string }) {
-  const [comments, setComments] = useState(SAMPLE_COMMENTS);
+  open, onClose, hotelName, onMaskedToast,
+}: {
+  open: boolean;
+  onClose: () => void;
+  hotelName: string;
+  onMaskedToast?: (msg: string) => void;
+}) {
+  // Sample comments are run through the same sanitizer to stay consistent
+  // with the live rule (defense-in-depth).
+  const seedComments = SAMPLE_COMMENTS.map((c) => ({ ...c, text: sanitizeComment(c.text).clean }));
+  const [comments, setComments] = useState(seedComments);
   const [input, setInput] = useState("");
   if (!open) return null;
   return (
@@ -189,6 +244,25 @@ function CommentDrawer({
           <p className="text-white font-semibold text-sm">Comments</p>
           <button onClick={onClose} className="text-white/55 text-xl">✕</button>
         </div>
+
+        {/* ⚠️ Public-comments-only notice. Tells users that personal contact
+            info is auto-masked so the platform stays the booking channel. */}
+        <div
+          className="mx-5 mt-3 mb-1 px-3 py-2 rounded-xl flex items-start gap-2"
+          style={{
+            background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.08))",
+            border: "1px solid rgba(240,180,41,0.30)",
+          }}
+        >
+          <span className="text-base leading-none mt-0.5">🛡️</span>
+          <p className="text-white/85 text-[0.66rem] leading-snug">
+            Public comments only. Phone, email, WhatsApp, social handles & off-platform links are auto-masked.
+            <span className="text-white/55"> Booked guests can chat with their property from </span>
+            <span className="text-gold-300 font-semibold">My Bookings</span>
+            <span className="text-white/55">.</span>
+          </p>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4" style={{ WebkitOverflowScrolling: "touch" }}>
           {comments.map((c, i) => (
             <div
@@ -211,10 +285,12 @@ function CommentDrawer({
                 <div className="flex items-center gap-3 mt-0.5 text-white/45 text-[0.62rem]">
                   <span>{c.time}</span>
                   <span>{c.likes} likes</span>
-                  <button className="font-semibold">Reply</button>
+                  {/* Reply intentionally removed — private replies between
+                      hotels/creators/customers would create a DM channel
+                      that bypasses the booking flow. */}
                 </div>
               </div>
-              <button className="text-white/40 text-[0.7rem] mt-1">🤍</button>
+              <button className="text-white/40 text-[0.7rem] mt-1" aria-label="Like comment">🤍</button>
             </div>
           ))}
           {comments.length === 0 && <p className="text-white/45 text-sm text-center pt-8">Be the first to comment on {hotelName}</p>}
@@ -224,7 +300,11 @@ function CommentDrawer({
             e.preventDefault();
             const text = input.trim();
             if (!text) return;
-            setComments((c) => [{ user: "you", text, time: "now", likes: 0 }, ...c]);
+            const { clean, blocked } = sanitizeComment(text);
+            if (blocked) {
+              onMaskedToast?.("🛡️ Personal contact info hidden — keep bookings on StayBid");
+            }
+            setComments((c) => [{ user: "you", text: clean, time: "now", likes: 0 }, ...c]);
             setInput("");
           }}
           className="flex items-center gap-2 px-4 py-3 border-t border-white/8"
@@ -235,7 +315,7 @@ function CommentDrawer({
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={`Comment on ${hotelName}…`}
+            placeholder={`Public comment on ${hotelName}… (no contacts)`}
             className="ig-comment-input flex-1 rounded-full px-4 py-2 text-[0.82rem] outline-none transition-colors"
             style={{
               color: "#ffffff",
@@ -245,6 +325,7 @@ function CommentDrawer({
               fontWeight: 500,
             }}
             autoComplete="off"
+            maxLength={500}
           />
           <button type="submit" disabled={!input.trim()} className="text-gold-300 font-bold text-[0.82rem] px-2 disabled:opacity-30">
             Post
@@ -400,34 +481,47 @@ function CreatorProfileSheet({
             </div>
           </div>
 
-          {/* Name + bio */}
+          {/* Name + bio (bio passes through the same sanitizer that scrubs
+              comments — creators must not use the bio as a contact billboard) */}
           <p className="text-white font-semibold text-[0.92rem] leading-tight">{creator.name}</p>
-          <p className="text-white/75 text-[0.78rem] mt-1 leading-snug whitespace-pre-line">{creator.bio}</p>
+          <p className="text-white/75 text-[0.78rem] mt-1 leading-snug whitespace-pre-line">
+            {sanitizeComment(creator.bio).clean}
+          </p>
           <p className="text-gold-300 text-[0.74rem] mt-1">❤️ {fmtCount(likesTotal)} likes earned · {reelsCount} reels published</p>
 
-          {/* CTAs */}
+          {/* CTAs — Message removed: customers ↔ creators / hotel owners can
+              not have a private DM channel before a confirmed booking, or
+              off-platform booking would bypass StayBid commission. */}
           <div className="mt-3 flex items-center gap-2">
             <button
               onClick={() => setFollowed((f) => !f)}
               className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
-              style={{ flex: 1, padding: "10px 14px", fontSize: "0.82rem" }}
+              style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
             >
               <span className="ig-follow-label">{followed ? "✓ Following" : "+ Follow"}</span>
             </button>
             <button
               className="ig-cta-3d"
-              style={{ flex: 1, padding: "10px 14px", fontSize: "0.78rem", color: "#fff" }}
+              style={{ flex: 1, padding: "11px 14px", fontSize: "0.78rem", color: "#fff" }}
+              aria-label="Share creator profile"
             >
-              <span className="ig-cta-icon">💬</span>
-              <span className="ig-cta-text">Message</span>
+              <span className="ig-cta-icon">↗</span>
+              <span className="ig-cta-text">Share</span>
             </button>
-            <button
-              className="px-3 py-2.5 rounded-xl text-white/80 text-base"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)" }}
-              aria-label="Share profile"
-            >
-              ↗
-            </button>
+          </div>
+
+          {/* Anti-bypass notice on creator profile */}
+          <div
+            className="mt-2 px-3 py-1.5 rounded-lg flex items-start gap-2"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            <span className="text-[0.78rem] leading-none mt-0.5">🛡️</span>
+            <p className="text-white/60 text-[0.62rem] leading-snug">
+              Direct messages aren't available. After your booking is confirmed, chat with the property from My Bookings.
+            </p>
           </div>
 
           {/* Highlights row */}
@@ -793,7 +887,11 @@ const HotelCard = memo(function HotelCard({
   const activeImg = images[photoIdx] || images[0];
   const initials = (h.name || "?").split(" ").slice(0, 2).map((s: string) => s[0]).join("").toUpperCase();
   const tags = hashtagsFor(h);
-  const description = h.description || `Welcome to ${h.name} — a curated escape in ${h.city || "the hills"}. Real-time bidding. Verified luxury. Book at your price.`;
+  // Sanitize the hotel-supplied description — anti-bypass: a hotel could
+  // otherwise sneak a phone number / WhatsApp link into its public bio to
+  // pull customers off-platform.
+  const rawDescription = h.description || `Welcome to ${h.name} — a curated escape in ${h.city || "the hills"}. Real-time bidding. Verified luxury. Book at your price.`;
+  const description = sanitizeComment(rawDescription).clean;
 
   return (
     <section
@@ -1687,6 +1785,7 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         open={commentsOpen.open}
         onClose={() => setCommentsOpen({ open: false, name: "" })}
         hotelName={commentsOpen.name}
+        onMaskedToast={showToast}
       />
       <MoreMenu
         open={moreOpen.open}

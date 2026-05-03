@@ -1,6 +1,6 @@
 // StayBid Service Worker — network-first strategy
 // Bump CACHE_NAME on every release so browsers fetch the new code.
-const CACHE_NAME = 'staybid-v24-2026-05-04-source-location-filter';
+const CACHE_NAME = 'staybid-v25-2026-05-04-anti-bypass-comment-guard';
 
 const PRECACHE_URLS = [
   '/manifest.json',
