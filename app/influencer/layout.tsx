@@ -31,14 +31,22 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
       .then((d) => {
         const reg = !!d?.registered;
         setRegistered(reg);
-        if (!reg && pathname !== "/influencer/register" && pathname !== "/influencer") {
+        // Routing matrix:
+        //   /influencer (index)       → register-or-dashboard based on reg
+        //   /influencer/register      → dashboard if already registered
+        //   /influencer/<other>       → register if not registered
+        if (pathname === "/influencer") {
+          router.replace(reg ? "/influencer/dashboard" : "/influencer/register");
+        } else if (pathname === "/influencer/register" && reg) {
+          router.replace("/influencer/dashboard");
+        } else if (!reg && pathname !== "/influencer/register") {
           router.replace("/influencer/register");
         }
-        if (reg && (pathname === "/influencer" || pathname === "/influencer/register")) {
-          router.replace("/influencer/dashboard");
-        }
       })
-      .catch(() => setRegistered(false))
+      .catch(() => {
+        setRegistered(false);
+        if (pathname !== "/influencer/register") router.replace("/influencer/register");
+      })
       .finally(() => setChecking(false));
   }, [authLoading, user, pathname, router, isPublic]);
 
