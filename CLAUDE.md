@@ -634,9 +634,176 @@ No Railway dependency for admin reads — works even when Railway is cold.
 
 ---
 
+---
+
+## 🎬 Instagram-for-Hotels — Phases A-D (May 2026, v14 → v18)
+
+Sessions 1-6 built the **data + admin layer** (influencer registration, points, referrals, admin moderation). Phases A-D built the **user-facing Instagram-style experience** on top.
+
+**Current live version: v18** (commit `0efb0c4` on main, Vercel READY)
+
+### Live URLs added in this batch
+- `https://www.staybids.in/reels` — Instagram-style vertical video feed
+- `https://www.staybids.in/influencer/upload` — creator video upload
+- `https://www.staybids.in/influencer/public/[id]` — public creator profile (rebuilt with avatar + Follow + reels grid)
+- `https://www.staybids.in/tag/[name]` — hashtag landing page
+- `https://www.staybids.in/saved` — user's saved collection (videos + hotels + creators + deals)
+
+### Phase A — Foundation (v14)
+- `/reels` page: full-screen vertical scroll-snap video cards, IntersectionObserver-driven autoplay, mute toggle, like/comment/share/save action rail, Book CTA, comment drawer
+- `/influencer/upload`: Supabase Storage upload to `hotel-videos` bucket, progress bar, my-reels grid below the form
+- Tables: `video_likes`, `video_comments`, `user_follows` with denormalized count triggers (`likes_count`, `comments_count`, `views_count`, `followers_count` on hotel_videos / influencers)
+- Routes: `/api/videos/feed`, `/api/videos/like/[id]`, `/api/videos/comments/[id]`, `/api/influencer/follow/[id]`, `/api/influencer/my-videos`
+- Navbar: Reels link added; `/reels` route hidden from Navbar
+
+### Phase B — Creator chip + watch-time tracking (v15)
+- `/api/videos/feed` enriched: each video now joins `hotel` AND `creator` (influencer profile)
+- `/reels` real creator chip: avatar (image or initials), display name, ✓ verified pill, follower count, Follow button — links to `/influencer/public/[id]`
+- Falls back to "🏨 Hotel Direct" badge when uploader is not a creator
+- Hashtag parser splits caption into plain text + clickable `#tags`
+- Watch-time tracking: records start time on visibility, reports on swipe-away (`event_type: video_view`), 90% playback fires `video_complete`. Writes to `referral_events.metadata` JSONB column.
+- `increment_video_view` RPC bumps `hotel_videos.views_count`
+
+### Phase C — Social graph completion (v16)
+- "For You" / "Following" toggle at top of `/reels` (gold gradient on active)
+- `/api/videos/feed?following=1` filters to creators current user follows (Bearer token → `user_follows` → `influencer.user_ids`)
+- `/api/influencer/following` lists user's follow-list with creator details
+- Public creator profile rebuild: avatar, big Follow / ✓ Following button (optimistic), 4-stat grid (Followers / Reels / Hotels / Rating), 3-col reels grid with view + like overlays
+- Comment drawer threading: `parent_id` support, "Reply" link, "Replying to user…" pill, Cancel chip, indented reply rendering with gold left-border
+- Schema: `influencers.display_name`, `avatar_url`, `following_count`; `referral_events.metadata` JSONB + indexes; `fn_user_follows_following_count` trigger
+
+### Phase D — Discovery polish (v17)
+- Trending hashtags: Postgres RPC `trending_hashtags(p_days, p_limit)` extracts `#tags` from approved video titles in N-day window
+- `/api/hashtags/trending` wraps the RPC; horizontal "🔥 Trending #tag1 #tag2…" strip in `/reels` TopBar (hidden when a tag filter is active)
+- `/tag/[name]` landing page: hero + count + "▶ Watch in Reels" CTA + related-tags chips + 3-col reels grid
+- Reel caption hashtags now link to `/tag/[name]` (not `/reels?tag=…` anymore)
+- `/saved` page with 5-tab filter (All / Reels / Hotels / Creators / Flash Deals); enriched route `/api/discover/saves/enriched` joins each save with its target in one round-trip; hover ✕ to remove (optimistic)
+- Notification triggers (zero backend code, all Postgres):
+  - `fn_notify_on_video_like` → queues `video_like` for video owner
+  - `fn_notify_on_video_comment` → queues `video_comment` for owner + `comment_reply` for parent author when threaded
+  - `fn_notify_on_follow` → queues `new_follower` for the followed creator
+  - All payloads include `fromUserId`; self-events skipped; reuses existing `notification_queue` worker
+
+### v18 — Desktop nav fix
+- Bug: Desktop top nav rendered only `USER_LINKS`; `NAV_LINKS` (containing Reels) was unused with a "moved to footer" comment, so desktop visitors never saw the Reels link
+- Fix: Restored `NAV_LINKS` rendering in desktop top nav for **all users (logged in or not)**
+- Reels chip gets a small gold "NEW" pill when not active
+- Mobile bottom bar (`BOTTOM_PRIMARY`) had it since v14
+
+### New / Updated Files (Phases A-D)
+```
+app/reels/page.tsx                              # Instagram-style feed (large file, single-file architecture)
+app/saved/page.tsx                              # Saved collection
+app/tag/[name]/page.tsx                         # Hashtag landing
+app/influencer/upload/page.tsx                  # Creator upload
+app/influencer/public/[id]/page.tsx             # Rebuilt with Follow button + reels grid
+app/influencer/layout.tsx                       # Upload tab added
+
+app/api/videos/feed/route.ts                    # Enriched with hotel + creator + ?following=1
+app/api/videos/like/[id]/route.ts               # Toggle like
+app/api/videos/comments/[id]/route.ts           # GET / POST / DELETE with parent_id
+app/api/videos/track-view/route.ts              # Watch-time → referral_events
+app/api/videos/upload/route.ts                  # Existed; metadata insert
+app/api/influencer/follow/[id]/route.ts         # Toggle follow
+app/api/influencer/following/route.ts           # User's follow list
+app/api/influencer/public/[id]/route.ts         # Returns videos + live followers + avatar
+app/api/influencer/my-videos/route.ts           # Creator's own uploads
+app/api/hashtags/trending/route.ts              # Wraps RPC
+app/api/hashtags/[name]/route.ts                # Per-tag videos + related tags
+app/api/discover/saves/enriched/route.ts        # Joins saves with target details
+
+components/Navbar.tsx                           # NAV_LINKS rendered on desktop; Saved + Reels added
+public/sw.js                                    # CACHE_NAME bumped to v18
+app/layout.tsx                                  # SB_BUILD = v18-...; badge "v18"
+
+lib/sb.ts                                       # Already existed; SB_URL/SB_KEY/SB_H/userFromReq used by every new route
+lib/api.ts                                      # Social methods added (toggleVideoLike, postComment, toggleFollow, getVideoFeed, etc.)
+
+migrations/2026-05-03-phase-c-social.sql        # Display name / avatar / following_count / metadata
+migrations/2026-05-03-phase-d-discovery.sql     # trending_hashtags RPC + 3 notification triggers
+```
+
+### New Supabase Tables (full list as of v18)
+| Table | Purpose | Triggers |
+|-------|---------|----------|
+| `influencers` | Creator profiles (Sessions 1+) | display_name, avatar_url, followers_count, following_count |
+| `influencer_commissions` | 12% / 15% commission rows |  |
+| `influencer_referral_codes` | Per-creator referral codes |  |
+| `referral_events` | Click / signup / bid / booking / video_view / video_complete | `metadata` JSONB for watch_seconds etc. |
+| `hotel_videos` | Reel uploads (status: pending / approved / rejected) | likes_count, comments_count, views_count, uploader_type |
+| `user_points` | Loyalty wallet (Session 4) |  |
+| `points_history` | Loyalty ledger |  |
+| `user_saves` | Bookmark target_type + target_id (video/hotel/influencer/deal) |  |
+| `notification_queue` | All push/email/sms notifs (Session 6) | populated by 3 social triggers in Phase D |
+| **`video_likes`** | Phase A — one-row-per-(user,video) | `fn_video_likes_count` updates `hotel_videos.likes_count`; `fn_notify_on_video_like` queues notif |
+| **`video_comments`** | Phase A — `parent_id` for threading | `fn_video_comments_count` updates count; `fn_notify_on_video_comment` queues 1-2 notifs |
+| **`user_follows`** | Phase A — follower_id → influencer_id | `fn_user_follows_count` updates followers_count; `fn_user_follows_following_count` updates following_count; `fn_notify_on_follow` queues notif |
+
+### New Supabase RPCs
+- `trending_hashtags(p_days INT, p_limit INT)` → `(tag TEXT, uses BIGINT)` — extracts `#tags` from approved video titles
+- `increment_video_view(p_video_id TEXT)` → `void` — bumps `hotel_videos.views_count`
+- (Existing from Sessions) `fn_on_bid_accepted` — replaces backend bid-accept logic
+
+### lib/api.ts methods added in this batch
+```
+// Videos
+uploadVideo, getHotelVideos, deleteVideo
+getVideoFeed, getMyCreatorVideos
+toggleVideoLike, checkVideoLike
+getVideoComments, postComment, deleteComment
+
+// Social graph
+toggleFollow, checkFollow
+
+// Hashtags + Saves used direct fetch (no api wrapper) — keeps lib/api.ts smaller
+```
+
+### Storage buckets
+- `hotel-videos` — creator/hotel video uploads (public read, anon-key write)
+- `hotel-images` — existing; thumbnails + hotel photos
+
+### Service Worker / cache version history
+- v10 → original
+- v11 → first cache-bust to expose Sessions 1-6
+- v12 → desktop nav added Points + Creator
+- v13 → /influencer routing fix
+- **v14** — Phase A (reels feed + creator upload + social tables)
+- **v15** — Phase B (creator chip + watch-time)
+- **v16** — Phase C (Following filter + threaded comments + public profile rebuild)
+- **v17** — Phase D (trending hashtags + saved collection + notif triggers)
+- **v18** — Desktop nav Reels link visible (current)
+
+When the user says "frontend par change nahi dikh raha" → 99% of the time it's the Service Worker serving cached assets. Always bump `CACHE_NAME` in `public/sw.js` AND `SB_BUILD` in `app/layout.tsx` AND the visible `>vN<` badge together. The kill-switch in `app/layout.tsx` then unregisters old SW + reloads on first visit.
+
+### Things to Avoid (Phases A-D)
+- Don't add new social actions outside `/api/videos/...` and `/api/influencer/...` — keeps Realtime subscriptions clean
+- Don't widen comment threading past 1 level — drawer height becomes unmanageable
+- Don't drop `referral_events.metadata` — analytics queries (avg watch time per video) read from it
+- Don't query `hotel_videos` without `verification_status=eq.approved` filter on the public feed — admin moderation lives there
+- The Supabase Storage anon key (`SUPABASE_URL` + anon JWT) is OK in client code; it's the same one already in `lib/supabase.ts`
+
+### What's NOT done yet (Phase E candidates)
+1. **Notification queue worker** — triggers fire and rows accumulate, but nothing drains them. Needs MSG91/SendGrid/FCM connector. Out of scope until those keys exist.
+2. **Search bar** in /reels (search by tag, creator name, hotel)
+3. **Push notification permission prompt** in browser + service worker push handler
+4. **Reels analytics dashboard** for creators (watch-time per reel, drop-off curve, conversion to bookings)
+5. **Video moderation auto-approve** — currently every reel sits in `pending` until admin approves at `/admin/videos`
+6. **Audio/music library** for reels (creators can pick a track)
+
+---
+
 ## How to Start a New Session with Full Memory
 
 Run this command inside the project folder:
 ```bash
 claude "Read CLAUDE.md fully, then ask me what to work on next for StayBid frontend"
 ```
+
+### Key context to mention if starting fresh
+- Branch: `claude/frosty-khorana-a44bd9` (also pushed to `main`, both auto-deploy)
+- Current production version: **v18** (commit `0efb0c4`)
+- Supabase project: `uxxhbdqedazpmvbvaosh` — use `lib/sb.ts` helpers for any new Next.js API route
+- Live site: `https://www.staybids.in` served from Vercel project `staybid-customer-frontend` (NOT `staybid-frontend`)
+- All 12+ Supabase tables live, ALL triggers + RPCs live (no backend Railway changes needed)
+- Pattern: additive migrations only, TEXT IDs (CUIDs), Bearer token via `userFromReq()`, push to branch then `branch:main`
+- Always bump `public/sw.js` CACHE_NAME + `app/layout.tsx` SB_BUILD + badge together when shipping UI changes
