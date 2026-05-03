@@ -18,6 +18,8 @@ const USER_LINKS = [
   { href: "/bookings",      label: "Bookings",      icon: "🎫" },
   { href: "/verification",  label: "Verification",  icon: "🎬" },
   { href: "/wallet",        label: "Wallet",        icon: "💰" },
+  { href: "/points",        label: "Points",        icon: "⭐" },
+  { href: "/influencer",    label: "Creator",       icon: "✨" },
   { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
 ];
 
