@@ -72,7 +72,8 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(curl -s https://www.staybids.in/)",
       "Bash(curl -sI https://www.staybids.in/reels)",
-      "Bash(curl -sI https://www.staybids.in/saved)"
+      "Bash(curl -sI https://www.staybids.in/saved)",
+      "Bash(git mv *)"
     ]
   }
 }
