@@ -21,7 +21,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Enrich with hotel info
-  const hotelIds = [...new Set(videos.map((v: any) => v.hotel_id).filter(Boolean))];
+  const seen: Record<string, boolean> = {};
+  const hotelIds: string[] = [];
+  videos.forEach((v: any) => {
+    if (v.hotel_id && !seen[v.hotel_id]) { seen[v.hotel_id] = true; hotelIds.push(v.hotel_id); }
+  });
   let hotelMap: Record<string, any> = {};
   if (hotelIds.length > 0) {
     const hRes = await fetch(
