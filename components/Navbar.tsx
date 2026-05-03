@@ -10,6 +10,7 @@ const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehr
 const NAV_LINKS = [
   { href: "/hotels",      label: "Hotels",      icon: "🏨" },
   { href: "/flash-deals", label: "Flash Deals", icon: "⚡", pulse: true },
+  { href: "/reels",       label: "Reels",       icon: "🎬" },
   { href: "/bid",         label: "Place Bid",   icon: "🎯" },
 ];
 
@@ -26,6 +27,7 @@ const USER_LINKS = [
 const BOTTOM_PRIMARY = [
   { href: "/",            label: "Home",      icon: "🏠" },
   { href: "/hotels",      label: "Hotels",    icon: "🏨" },
+  { href: "/reels",       label: "Reels",     icon: "🎬" },
   { href: "/flash-deals", label: "Deals",     icon: "⚡", pulse: true },
   { href: "/bid",         label: "Place Bid", icon: "🎯" },
 ];
@@ -173,6 +175,7 @@ export function Navbar() {
   if (pathname?.startsWith("/admin")) return null;     // admin panel has its own header
   if (pathname?.startsWith("/onboard")) return null;   // onboarding panel has its own header
   if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
+  if (pathname?.startsWith("/reels")) return null;     // Instagram-style video feed
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");

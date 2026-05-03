@@ -59,7 +59,14 @@
       "Bash(curl -s -w \"HTTP:%{http_code}\\\\n\" \"https://staybid-customer-frontend.vercel.app/api/onboard/diag\")",
       "Bash(curl -s \"https://www.staybids.in/api/bid/paid?ids=test\")",
       "mcp__1c4ea02e-a8f5-465c-b18b-5a020dce110f__deploy_to_vercel",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(npx tsc *)",
+      "Bash(git reset *)",
+      "Bash(gh pr create --base main --head claude/frosty-khorana-a44bd9 --title 'Session 1: Influencer ecosystem foundation \\(DB + API + UI\\)' --body ' *)",
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__list_tables",
+      "Bash(curl -sI https://staybids.in)",
+      "Bash(curl -s https://staybids.in)",
+      "Bash(curl -s https://www.staybids.in)"
     ]
   }
 }

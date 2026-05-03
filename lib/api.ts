@@ -184,6 +184,42 @@ export const api = {
     }).then(r => r.json());
   },
 
+  // Social graph — likes, comments, follows
+  toggleVideoLike:     (videoId: string) =>
+    direct(`/api/videos/like/${encodeURIComponent(videoId)}`, { method: "POST" }),
+  checkVideoLike:      (videoId: string) =>
+    fetch(`/api/videos/like/${encodeURIComponent(videoId)}`, {
+      headers: typeof window !== "undefined" && localStorage.getItem("sb_token")
+        ? { Authorization: `Bearer ${localStorage.getItem("sb_token")}` }
+        : {},
+    }).then(r => r.json()),
+  getVideoComments:    (videoId: string) =>
+    fetch(`/api/videos/comments/${encodeURIComponent(videoId)}`).then(r => r.json()),
+  postComment:         (videoId: string, body: string, parentId?: string) =>
+    direct(`/api/videos/comments/${encodeURIComponent(videoId)}`, {
+      method: "POST", body: JSON.stringify({ body, parentId }),
+    }),
+  deleteComment:       (videoId: string, commentId: string) =>
+    direct(`/api/videos/comments/${encodeURIComponent(videoId)}`, {
+      method: "DELETE", body: JSON.stringify({ commentId }),
+    }),
+  toggleFollow:        (influencerId: string) =>
+    direct(`/api/influencer/follow/${encodeURIComponent(influencerId)}`, { method: "POST" }),
+  checkFollow:         (influencerId: string) =>
+    fetch(`/api/influencer/follow/${encodeURIComponent(influencerId)}`, {
+      headers: typeof window !== "undefined" && localStorage.getItem("sb_token")
+        ? { Authorization: `Bearer ${localStorage.getItem("sb_token")}` }
+        : {},
+    }).then(r => r.json()),
+  getVideoFeed:        (limit = 20, offset = 0) =>
+    fetch(`/api/videos/feed?limit=${limit}&offset=${offset}`).then(r => r.json()),
+  getMyCreatorVideos:  () =>
+    fetch("/api/influencer/my-videos", {
+      headers: typeof window !== "undefined" && localStorage.getItem("sb_token")
+        ? { Authorization: `Bearer ${localStorage.getItem("sb_token")}` }
+        : {},
+    }).then(r => r.json()),
+
   getMyInfluencer:           ()                      => direct("/api/influencer/me"),
   registerInfluencer:        (data: any)             => direct("/api/influencer/register", { method: "POST", body: JSON.stringify(data) }),
   verifyInfluencer:          (data: any)             => direct("/api/influencer/verify",   { method: "POST", body: JSON.stringify(data) }),
