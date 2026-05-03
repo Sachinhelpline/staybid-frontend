@@ -18,7 +18,11 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
   const [checking, setChecking] = useState(true);
   const [registered, setRegistered] = useState(false);
 
+  // Public creator profile pages skip the entire auth check.
+  const isPublic = !!pathname && pathname.startsWith("/influencer/public");
+
   useEffect(() => {
+    if (isPublic) { setChecking(false); return; }
     if (authLoading) return;
     if (!user) { router.push("/auth?next=/influencer"); return; }
 
@@ -35,7 +39,10 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
       })
       .catch(() => setRegistered(false))
       .finally(() => setChecking(false));
-  }, [authLoading, user, pathname, router]);
+  }, [authLoading, user, pathname, router, isPublic]);
+
+  // Public profile renders without the chrome/tabs.
+  if (isPublic) return <>{children}</>;
 
   if (authLoading || checking) {
     return (

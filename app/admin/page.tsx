@@ -59,6 +59,37 @@ export default function AdminDashboard() {
 
   const k = data?.kpi || {};
 
+  // Platform-systems widget — pulls counts for the new Session 1/2/4/5/6
+  // tables (influencers, hotel videos, points, saves, notifications). Lives
+  // in a sibling component so the existing dashboard markup stays untouched.
+  function PlatformSystems() {
+    const [w, setW] = useState<any>(null);
+    useEffect(() => {
+      let alive = true;
+      const load = () => fetch("/api/admin/overview").then(r => r.json()).then(d => { if (alive) setW(d?.widgets || null); }).catch(() => {});
+      load();
+      const t = setInterval(load, 60_000);
+      return () => { alive = false; clearInterval(t); };
+    }, []);
+    if (!w) return null;
+    const widgets = [
+      { title: "Influencers",        value: `${w.influencersActive}/${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: "active / total", href: "/admin/users" },
+      { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#D4AF37", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
+      { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#F0D060", sub: "earning users",                href: "/admin/revenue" },
+      { title: "Saves",              value: w.savesTotal,                                     icon: "🔖", color: "#3D9CF5", sub: "across all targets",           href: "/admin" },
+      { title: "Notifications Queue",value: w.notifPending,                                   icon: "📨", color: "#2ECC71", sub: "pending dispatch",             href: "/admin" },
+    ];
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 24 }}>
+        {widgets.map((x) => (
+          <a key={x.title} href={x.href} style={{ textDecoration: "none" }}>
+            <KpiCard title={x.title} value={x.value as any} icon={x.icon} color={x.color} sub={x.sub} />
+          </a>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
       {/* Title */}
@@ -121,6 +152,9 @@ export default function AdminDashboard() {
         <KpiCard title="Fraud Flags" value={k.fraud || 0} icon="🛡️" color="#FF4757" sub="needs attention" />
         <KpiCard title="New Users" value={k.newUsers || 0} icon="👤" color="#F0D060" sub={`of ${k.totalUsers || 0} total`} />
       </div>
+
+      {/* Platform systems row (Sessions 1, 2, 4–6 — additive overlay) */}
+      <PlatformSystems />
 
       {/* Charts row */}
       <div className="admin-chart-row" style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: 16, marginBottom: 24 }}>

@@ -99,6 +99,39 @@ export const api = {
 
   // Influencer system — Supabase-backed Next.js routes (no Railway dependency).
   // `id` accepts either the influencer row id (`inf_...`) or the underlying user_id.
+  // Loyalty points (Session 4)
+  getPoints:        ()                                => direct("/api/points"),
+  getPointsHistory: (limit = 50, offset = 0)          => direct(`/api/points/history?limit=${limit}&offset=${offset}`),
+  redeemPoints:     (points: number, opts: { reason?: string; sourceType?: string; sourceId?: string } = {}) =>
+    direct("/api/points/redeem", { method: "POST", body: JSON.stringify({ points, ...opts }) }),
+  adminAdjustPoints: (userId: string, delta: number, reason?: string) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    return fetch("/api/admin/points/adjust", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(t ? { Authorization: `Bearer ${t}` } : {}) },
+      body: JSON.stringify({ userId, delta, reason }),
+    }).then(r => r.json());
+  },
+  getAdminRevenue:  () => fetch("/api/admin/revenue").then(r => r.json()),
+
+  // Discovery & saves (Session 5)
+  getDiscoverItems: (limit = 30) => fetch(`/api/discover/items?limit=${limit}`).then(r => r.json()),
+  saveItem:    (targetType: "hotel" | "video" | "influencer" | "deal", targetId: string) =>
+    direct("/api/discover/save",   { method: "POST",   body: JSON.stringify({ targetType, targetId }) }),
+  unsaveItem:  (targetType: "hotel" | "video" | "influencer" | "deal", targetId: string) =>
+    direct("/api/discover/save",   { method: "DELETE", body: JSON.stringify({ targetType, targetId }) }),
+  getMySaves:  (type?: "hotel" | "video" | "influencer" | "deal") =>
+    direct(`/api/discover/saves${type ? `?type=${type}` : ""}`),
+  getPublicInfluencer: (id: string) =>
+    fetch(`/api/influencer/public/${encodeURIComponent(id)}`).then(r => r.json()),
+
+  // Notifications + admin overview (Session 6)
+  enqueueNotification: (data: { channel: "email" | "sms" | "push" | "whatsapp"; template: string; payload?: any; userId?: string; scheduledAt?: string }) =>
+    direct("/api/notifications/queue", { method: "POST", body: JSON.stringify(data) }),
+  getAdminOverview:    () => fetch("/api/admin/overview").then(r => r.json()),
+  getAdminNotifications: (status: "pending" | "sent" | "failed" | "all" = "pending") =>
+    fetch(`/api/admin/notifications?status=${status}`).then(r => r.json()),
+
   // Hotel videos (Session 2) — room walkthroughs uploaded by hotels, moderated by admin
   uploadVideo: (data: {
     hotelId: string; videoUrl: string; roomType?: string; roomId?: string; title?: string;
