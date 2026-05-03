@@ -1,6 +1,6 @@
 // StayBid Service Worker — network-first strategy
 // Bump CACHE_NAME on every release so browsers fetch the new code.
-const CACHE_NAME = 'staybid-v16-2026-05-03-social-graph-following';
+const CACHE_NAME = 'staybid-v17-2026-05-03-trending-saved-notifs';
 
 const PRECACHE_URLS = [
   '/manifest.json',

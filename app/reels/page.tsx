@@ -304,7 +304,7 @@ function ReelCard({
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {tags.slice(0, 6).map(t => (
-                    <Link key={t} href={`/reels?tag=${encodeURIComponent(t)}`}
+                    <Link key={t} href={`/tag/${encodeURIComponent(t.toLowerCase())}`}
                       className="text-white/90 text-xs font-bold drop-shadow hover:text-gold-300">
                       #{t}
                     </Link>
@@ -601,12 +601,21 @@ export default function ReelsPage() {
   const [shareVideo, setShareVideo]   = useState<Video | null>(null);
   const [mode, setMode]               = useState<FeedMode>("foryou");
   const [tag, setTag]                 = useState<string | null>(null);
+  const [trending, setTrending]       = useState<{ tag: string; uses: number }[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const t = new URLSearchParams(window.location.search).get("tag");
     setTag(t || null);
+  }, []);
+
+  // Load trending hashtags once
+  useEffect(() => {
+    fetch("/api/hashtags/trending?limit=12")
+      .then(r => r.json())
+      .then(d => setTrending(d.tags || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -670,6 +679,23 @@ export default function ReelsPage() {
           className="mt-2 pointer-events-auto bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/20">
           #{tag} ✕
         </button>
+      )}
+      {/* Trending hashtags strip */}
+      {!tag && trending.length > 0 && (
+        <div className="w-full mt-3 px-3 pointer-events-auto overflow-x-auto"
+          style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+          <div className="flex items-center gap-1.5 w-max">
+            <span className="text-white/70 text-[0.65rem] font-bold uppercase tracking-widest mr-1">🔥 Trending</span>
+            {trending.map(t => (
+              <button
+                key={t.tag}
+                onClick={() => setTag(t.tag)}
+                className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/15 hover:border-gold-300 transition-colors whitespace-nowrap">
+                #{t.tag}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

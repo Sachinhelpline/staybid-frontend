@@ -17,6 +17,7 @@ const NAV_LINKS = [
 const USER_LINKS = [
   { href: "/my-bids",       label: "My Bids",       icon: "📋" },
   { href: "/bookings",      label: "Bookings",      icon: "🎫" },
+  { href: "/saved",         label: "Saved",         icon: "🔖" },
   { href: "/verification",  label: "Verification",  icon: "🎬" },
   { href: "/wallet",        label: "Wallet",        icon: "💰" },
   { href: "/points",        label: "Points",        icon: "⭐" },
