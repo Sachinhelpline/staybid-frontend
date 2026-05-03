@@ -18,6 +18,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
+import InstagramHotelFeed from "@/components/discover/InstagramHotelFeed";
+
+type ViewMode = "luxury" | "instagram";
 
 type Item = { hotel: any; score: number; reasons: string[]; exploration?: boolean };
 const SLIDES = ["Overview", "Amenities", "Rooms", "Reviews"] as const;
@@ -58,6 +61,21 @@ export default function DiscoverPage() {
   const [roomReel, setRoomReel] = useState<any | null>(null);
   const [roomPhotoIdx, setRoomPhotoIdx] = useState(0);
   const dwellStart = useRef<number>(Date.now());
+
+  // ─── UI mode toggle (Luxury vs Instagram) ────────────────────────────────
+  // Persisted in localStorage as `sb_disco_mode_v1`. Default: "luxury".
+  const [viewMode, setViewMode] = useState<ViewMode>("luxury");
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem("sb_disco_mode_v1") as ViewMode | null;
+      if (m === "instagram" || m === "luxury") setViewMode(m);
+    } catch {}
+  }, []);
+  const switchMode = useCallback((m: ViewMode) => {
+    setViewMode(m);
+    try { localStorage.setItem("sb_disco_mode_v1", m); } catch {}
+    track("mode_toggle" as any, { meta: { ui: m } });
+  }, []);
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -359,9 +377,40 @@ export default function DiscoverPage() {
           <span>Compare</span>
         </Link>
         <div className="pointer-events-auto flex items-center gap-1.5">
-          <span className="text-[0.58rem] font-bold tracking-[0.3em] uppercase text-white/70">StayBid</span>
-          <span className="text-white/30 text-xs">·</span>
-          <span className="text-[0.58rem] font-bold tracking-widest uppercase text-gold-300">Explore</span>
+          {/* ── UI MODE TOGGLE: Luxury ⇄ Instagram ── */}
+          <div
+            className="glass flex items-center p-[2px] rounded-full"
+            style={{
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <button
+              onClick={() => switchMode("luxury")}
+              className="px-2.5 py-1 rounded-full text-[0.6rem] font-bold tracking-wide transition-all"
+              style={{
+                background: viewMode === "luxury" ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "transparent",
+                color: viewMode === "luxury" ? "#1a1208" : "rgba(255,255,255,0.75)",
+                boxShadow: viewMode === "luxury" ? "0 2px 8px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.5)" : "none",
+              }}
+              aria-pressed={viewMode === "luxury"}
+            >
+              ✦ Luxury
+            </button>
+            <button
+              onClick={() => switchMode("instagram")}
+              className="px-2.5 py-1 rounded-full text-[0.6rem] font-bold tracking-wide transition-all"
+              style={{
+                background: viewMode === "instagram" ? "linear-gradient(135deg,#ff458d,#b964ff)" : "transparent",
+                color: "#fff",
+                boxShadow: viewMode === "instagram" ? "0 2px 10px rgba(255,69,141,0.55), inset 0 1px 0 rgba(255,255,255,0.4)" : "none",
+              }}
+              aria-pressed={viewMode === "instagram"}
+            >
+              ▶ Reels
+            </button>
+          </div>
         </div>
       </div>
 
@@ -378,7 +427,21 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {h && (
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* ── INSTAGRAM-LEVEL UI (switchable mode) ── */}
+      {/* ════════════════════════════════════════════════════════ */}
+      {viewMode === "instagram" && items.length > 0 && (
+        <div className="absolute inset-0 z-10">
+          <InstagramHotelFeed
+            items={items as any}
+            onIndexChange={(i) => setHotelIdx(i)}
+            onLoadMore={loadFeed}
+            onTrackEvent={(name, payload) => track(name as any, payload)}
+          />
+        </div>
+      )}
+
+      {viewMode === "luxury" && h && (
         <div key={h.id} className="absolute inset-0">
           {/* ── HERO zone (swipe surface for hotel + slide nav) ── */}
           <div
