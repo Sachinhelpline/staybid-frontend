@@ -1,6 +1,8 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
 // CreateFlow — Instagram-style "+" upload flow on the Reels home.
+// Posts are committed to PostsStore (lib/posts-store) which the feed reads
+// reactively, so a new upload appears at the top of the feed instantly.
 // Three entry types: Reel · Photo · Story. Each runs the same composer:
 //   1. Pick media file (input type=file)
 //   2. Preview + caption + emoji bar + tags + audio picker
@@ -12,6 +14,7 @@
 //                 the browser; no backend storage)
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback } from "react";
+import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 
 // ─── Sample music library (royalty-free / Mixkit) ─────────────────────────
 export const AUDIO_LIBRARY: AudioTrack[] = [
@@ -317,6 +320,7 @@ export function Composer({
   const [warnedSanitize, setWarnedSanitize] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const { addPost } = usePosts();
 
   // Reset when reopened
   useEffect(() => {
@@ -369,12 +373,10 @@ export function Composer({
       audio: audio ? { name: audio.name, url: audio.url } : null,
       createdAt: Date.now(),
     };
-    try {
-      const raw = localStorage.getItem("sb_user_posts");
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.unshift(userPost);
-      localStorage.setItem("sb_user_posts", JSON.stringify(arr.slice(0, 100)));
-    } catch {}
+    // Commit to the global reactive PostsStore — feed picks it up instantly.
+    // The store persists to localStorage internally, so we don't need a
+    // separate localStorage write here.
+    try { addPost(userPost as StoreUserPost); } catch {}
     setTimeout(() => {
       setPosting(false);
       onPosted(userPost);

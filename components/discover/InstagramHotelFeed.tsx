@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
+import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
 import { CreateFlow, AudioPicker, type AudioTrack } from "@/components/discover/CreateFlow";
 
@@ -54,7 +55,12 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 function videoForHotel(h: any): string {
-  if (h?.videoUrl && /^https?:\/\//.test(h.videoUrl)) return h.videoUrl;
+  const v = h?.videoUrl;
+  // Accept both remote http(s) URLs and local blob: URLs (user uploads).
+  if (typeof v === "string" && (v.startsWith("http") || v.startsWith("blob:"))) return v;
+  // User photo/story post with no video — return empty so the <video>
+  // errors out and the photo fallback (h.images[0]) renders instead.
+  if (h?._userPost) return "";
   return DUMMY_HOTEL_VIDEOS[hashStr(h?.id || h?.name || "x") % DUMMY_HOTEL_VIDEOS.length];
 }
 function pseudoStat(seed: string, salt: string, min: number, max: number) {
@@ -1024,8 +1030,10 @@ const HotelCard = memo(function HotelCard({
     }
   }, [active, paused, muted, gain, customAudio]);
 
-  // Slow Ken-Burns photo cycle as a fallback (only if no video src or video errors)
-  const [videoBroken, setVideoBroken] = useState(false);
+  // Slow Ken-Burns photo cycle as a fallback (only if no video src or video errors).
+  // Initialize as TRUE when there's no video source (user photo/story uploads)
+  // so the photo renders immediately without waiting for an onError event.
+  const [videoBroken, setVideoBroken] = useState(!videoSrc);
   useEffect(() => {
     if (!active || images.length < 2 || !videoBroken) return;
     const id = setInterval(() => setPhotoIdx((i) => (i + 1) % images.length), 3800);
@@ -1309,9 +1317,21 @@ const HotelCard = memo(function HotelCard({
       {/* BOTTOM-LEFT: caption + price + equal CTAs */}
       <div className="absolute left-3 right-20 z-30" style={{ bottom: "20px" }}>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
+          {h._userPost && (
+            <span
+              className="ig-pill"
+              style={{
+                background: "linear-gradient(135deg, rgba(255,69,141,0.40), rgba(185,100,255,0.25))",
+                border: "1px solid rgba(255,69,141,0.6)",
+                color: "#ffe1ee",
+              }}
+            >
+              ✨ YOUR {String(h._userPostKind || "POST").toUpperCase()}
+            </span>
+          )}
           {h.starRating > 0 && <span className="ig-pill ig-pill-gold">{"★".repeat(Math.min(h.starRating, 5))}</span>}
           {h.avgRating > 0 && <span className="ig-pill">★ {Number(h.avgRating).toFixed(1)}</span>}
-          <span className="ig-pill ig-pill-live"><span className="ig-dot" /> LIVE BIDDING</span>
+          {!h._userPost && <span className="ig-pill ig-pill-live"><span className="ig-dot" /> LIVE BIDDING</span>}
           <span className="ig-pill">{fmtCount(viewCount)} views</span>
         </div>
 
@@ -1358,24 +1378,41 @@ const HotelCard = memo(function HotelCard({
           </span>
         </button>
 
-        {/* Price + EQUAL 3D translucent CTAs */}
-        <div className="mt-3 flex items-end gap-2">
-          <div className="flex flex-col leading-none mr-1 shrink-0">
-            <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
-            <span className="text-white font-bold text-[1.1rem]">
-              ₹{(h.minPrice || h.rooms?.[0]?.floorPrice || 0).toLocaleString()}
-              <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
+        {/* Price + EQUAL 3D translucent CTAs.
+            For user-uploaded posts there's nothing to book — replace the
+            row with a "Posted ✓" badge (and a Delete button via the More
+            menu, which still works because user posts route through the
+            same handler). */}
+        {h._userPost ? (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-white/65 text-[0.7rem] flex items-center gap-1.5">
+              <span style={{
+                width: 8, height: 8, borderRadius: 9999,
+                background: "#2ecc71",
+                boxShadow: "0 0 8px rgba(46,204,113,0.7)",
+              }} />
+              Posted to your profile · visible only on this device
             </span>
           </div>
-          <button onClick={(e) => { e.stopPropagation(); onBook(h); }} className="ig-cta-3d ig-cta-book">
-            <span className="ig-cta-icon">⚡</span>
-            <span className="ig-cta-text">Book Now</span>
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onNegotiate(h); }} className="ig-cta-3d ig-cta-bid">
-            <span className="ig-cta-icon">💬</span>
-            <span className="ig-cta-text">Bid</span>
-          </button>
-        </div>
+        ) : (
+          <div className="mt-3 flex items-end gap-2">
+            <div className="flex flex-col leading-none mr-1 shrink-0">
+              <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
+              <span className="text-white font-bold text-[1.1rem]">
+                ₹{(h.minPrice || h.rooms?.[0]?.floorPrice || 0).toLocaleString()}
+                <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
+              </span>
+            </div>
+            <button onClick={(e) => { e.stopPropagation(); onBook(h); }} className="ig-cta-3d ig-cta-book">
+              <span className="ig-cta-icon">⚡</span>
+              <span className="ig-cta-text">Book Now</span>
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onNegotiate(h); }} className="ig-cta-3d ig-cta-bid">
+              <span className="ig-cta-icon">💬</span>
+              <span className="ig-cta-text">Bid</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Custom soundtrack audio element — only mounted when user has
@@ -1468,10 +1505,51 @@ const HotelCard = memo(function HotelCard({
 // ─────────────────────────────────────────────────────────────────────────
 // Feed
 // ─────────────────────────────────────────────────────────────────────────
-export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, onTrackEvent }: Props) {
+export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+
+  // ── User-uploaded posts injected at the top of the feed ─────────────────
+  // Pulled live from PostsStore so a brand-new upload appears immediately.
+  // Photos & stories don't have a video track — we surface them as cards
+  // whose hotel.images[] is the uploaded image; the existing Ken-Burns
+  // fallback inside HotelCard handles them when videoBroken triggers.
+  const { posts: userPosts } = usePosts();
+  const items: Item[] = (() => {
+    const userItems: Item[] = userPosts.map((p) => {
+      const isVideo = p.kind === "reel" || (p.mediaMime || "").startsWith("video/");
+      return {
+        hotel: {
+          id: p.id,                           // post-* id
+          name: "Your post",
+          city: "You",
+          state: "",
+          starRating: 0,
+          avgRating: 0,
+          rooms: [],
+          flashDeals: [],
+          minPrice: null,
+          amenities: [],
+          description: p.caption || "",
+          // For reels: feed video plays the user's clip (videoForHotel honours
+          // h.videoUrl when present). For photos/stories: no videoUrl, so
+          // the <video> errors out and the image fallback shows.
+          videoUrl: isVideo ? p.mediaUrl : undefined,
+          images: [p.mediaUrl],
+          // Mark so the card can show a "Your post" pill and skip nav links
+          // that would point to a non-existent /hotels/<post-id>.
+          _userPost: true,
+          _userPostKind: p.kind,
+          _userPostAudio: p.audio,
+          _userPostTags: p.tags,
+        },
+        score: 999,
+        reasons: ["Your upload"],
+      } as Item;
+    });
+    return [...userItems, ...propItems];
+  })();
   // ── GLOBAL mute / gain state — same source for every reel + the rail button.
   const { isMuted, hasInteracted, toggleMute, gain, setGain } = useSoundStore();
   const muted = isMuted;

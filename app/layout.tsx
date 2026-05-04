@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth";
 import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
+import { PostsProvider } from "@/lib/posts-store";
 import { Navbar } from "@/components/Navbar";
 import { ServerStatus } from "@/components/ServerStatus";
 export const viewport: Viewport = {
@@ -71,16 +72,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <SoundProvider>
            <FollowProvider>
+            <PostsProvider>
             <ServerStatus />
             <Navbar />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v28</div>
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v29</div>
+            </PostsProvider>
            </FollowProvider>
           </SoundProvider>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
 // Build version — bump to force client cache purge + reload
-var SB_BUILD="v28-fix-sound-and-overlap-2026-05-04";
+var SB_BUILD="v29-user-posts-in-feed-2026-05-04";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev!==SB_BUILD){
