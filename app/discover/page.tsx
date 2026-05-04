@@ -143,15 +143,15 @@ export default function DiscoverPage() {
         </div>
       </div>
 
-      {/* Compare floating chip — TOP-RIGHT corner. Sits above the right
-          action rail (which starts at bottom:180px) and clear of the hotel
-          profile chip (which is at top:60px on the LEFT side). */}
+      {/* Compare floating chip — TOP-RIGHT, slim. Mirror size to the
+          filter chip on the left so the top row reads as a balanced trio
+          (filter · brand · compare). */}
       <Link
         href="/hotels"
-        className="absolute z-40 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[0.62rem] font-bold transition-transform active:scale-95"
+        className="absolute z-40 flex items-center gap-1 px-2 py-1 rounded-full text-[0.58rem] font-bold transition-transform active:scale-95"
         style={{
-          right: "12px",
-          top: "10px",
+          right: "10px",
+          top: "8px",
           background: "linear-gradient(135deg, rgba(240,180,41,0.28), rgba(240,180,41,0.08))",
           border: "1px solid rgba(240,180,41,0.5)",
           color: "#ffd76b",

@@ -996,12 +996,16 @@ const HotelCard = memo(function HotelCard({
     if (a) { a.muted = muted; a.volume = 1; }
 
     if (active && !paused) {
-      // Resume + apply gain on first user gesture flow
+      // Resume audio context on first user gesture
       resumeAudio();
-      // Apply gain only when the video is the audio source. If a custom
-      // track is picked, gain on the audio element instead.
+      // ⚠️ NEVER call applyGain on the <video> element. Web Audio's
+      // createMediaElementSource silently mutes any media element that's
+      // CORS-tainted (and the dummy Google-CDN videos can be tainted on
+      // some browsers / connections). That was the "no sound in feed" bug.
+      // Native HTMLMediaElement.volume = 1 is plenty for the feed.
+      // Gain is still applied to *custom* audio elements (Mixkit + uploads),
+      // where we control the source and CORS is clean.
       if (useCustom && a) applyGain(a, gain);
-      else                applyGain(v, gain);
 
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
@@ -1119,7 +1123,6 @@ const HotelCard = memo(function HotelCard({
           muted={muted}
           playsInline
           preload="auto"
-          crossOrigin="anonymous"
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -1741,25 +1744,30 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         .ig-feed::-webkit-scrollbar { display: none; width: 0; height: 0; }
         .ig-card { scroll-snap-align: start; scroll-snap-stop: always; }
 
-        /* Filter chip (top-left of reel feed) */
+        /* Filter chip — slim, top-LEFT, doesn't collide with the brand
+           label (top-center) or Compare (top-right). */
         .ig-filter-chip {
           position: fixed;
-          top: 10px;
-          left: 12px;
+          top: 8px;
+          left: 10px;
           z-index: 41;
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 11px;
+          gap: 4px;
+          padding: 4px 8px;
+          max-width: 42vw;
           border-radius: 9999px;
           color: #fff;
           background: linear-gradient(135deg, rgba(255,69,141,0.30), rgba(185,100,255,0.18));
-          border: 1px solid rgba(255,255,255,0.25);
+          border: 1px solid rgba(255,255,255,0.22);
           backdrop-filter: blur(14px) saturate(1.4);
           -webkit-backdrop-filter: blur(14px) saturate(1.4);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.20);
+          box-shadow: 0 3px 10px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
           transition: transform 0.12s ease;
+          font-size: 0.6rem;
+          line-height: 1.05;
         }
+        .ig-filter-chip > * { font-size: 0.58rem !important; }
         .ig-filter-chip:active { transform: scale(0.94); }
 
         /* Avatar tap-popover (Instagram-style) */
@@ -1809,32 +1817,35 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         }
         .ig-create-fab {
           position: fixed;
-          right: 14px;
-          top: calc(50% - 28px);
+          right: 12px;
+          /* Sit just BELOW the bottom of the right action rail (rail starts
+             at bottom:180 going up, so the area between bottom:130 and
+             bottom:170 is open and doesn't overlap with mute/like icons). */
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 130px);
           z-index: 42;
-          width: 56px; height: 56px;
+          width: 36px; height: 36px;
           border-radius: 9999px;
           display: flex; align-items: center; justify-content: center;
           background: linear-gradient(135deg, #ff458d 0%, #b964ff 50%, #5b8dff 100%);
-          border: 2px solid rgba(255,255,255,0.45);
+          border: 1.5px solid rgba(255,255,255,0.45);
           color: #fff;
           font-weight: 900;
           animation: igFabPulse 2.4s ease-in-out infinite;
           transition: transform 0.15s ease;
         }
-        .ig-create-fab:active { transform: scale(0.94); }
+        .ig-create-fab:active { transform: scale(0.92); }
         .ig-create-fab-plus {
-          font-size: 1.9rem;
+          font-size: 1.25rem;
           line-height: 1;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.45);
-          margin-top: -2px;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+          margin-top: -1px;
         }
         .ig-create-fab-glow {
           position: absolute;
-          inset: -6px;
+          inset: -4px;
           border-radius: 9999px;
           pointer-events: none;
-          background: radial-gradient(circle, rgba(255,69,141,0.35) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(255,69,141,0.3) 0%, transparent 70%);
         }
 
         /* CreateSheet card buttons */
@@ -2158,21 +2169,23 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         .ig-toast { animation: igToastIn 2.2s ease forwards; }
       `}</style>
 
-      {/* ── Filter chip — top-LEFT, shows current filter; tap to open sheet ── */}
+      {/* ── Filter chip — slim, top-LEFT. Shows current filter; tap to open
+          the source/location sheet. Compact text so it doesn't bleed
+          into the centered brand label. ── */}
       <button
         onClick={() => setFilterOpen(true)}
         className="ig-filter-chip"
         aria-label="Open reel filters"
       >
-        <span className="text-base leading-none">{SOURCE_ICON[filterSource]}</span>
-        <span className="text-[0.66rem] font-bold tracking-wide">
-          {SOURCE_LABEL[filterSource]}
+        <span style={{ fontSize: "0.78rem", lineHeight: 1 }}>{SOURCE_ICON[filterSource]}</span>
+        <span style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.02em" }}>
+          {filterSource === "all" ? "All" : SOURCE_LABEL[filterSource]}
         </span>
-        <span className="opacity-50">·</span>
-        <span className="text-[0.66rem] font-semibold">
-          📍 {filterCity === "all" ? "All India" : filterCity}
+        <span style={{ opacity: 0.5 }}>·</span>
+        <span style={{ fontSize: "0.58rem", fontWeight: 600, maxWidth: "70px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          📍{filterCity === "all" ? "India" : filterCity}
         </span>
-        <span className="opacity-60">▾</span>
+        <span style={{ opacity: 0.6, fontSize: "0.55rem" }}>▾</span>
       </button>
 
       {/* Active entity/highlight badge with clear (×). Sits beneath the

@@ -74,7 +74,8 @@
       "Bash(curl -sI https://www.staybids.in/reels)",
       "Bash(curl -sI https://www.staybids.in/saved)",
       "Bash(git mv *)",
-      "Bash(curl -sL \"https://www.staybids.in/discover\")"
+      "Bash(curl -sL \"https://www.staybids.in/discover\")",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
