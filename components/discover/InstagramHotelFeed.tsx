@@ -20,6 +20,7 @@ import { useEffect, useRef, useState, useCallback, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSoundStore } from "@/lib/sound-store";
+import { useFollow } from "@/lib/follow-store";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -126,6 +127,54 @@ const SOURCE_ICON: Record<SourceType, string> = {
 };
 
 const FALLBACK_CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun", "Nainital", "Goa", "Jaipur"];
+
+// ─── Profile-highlight themes → live filter actions ─────────────────────
+// Each highlight in the profile sheet ("Mountains", "Beaches", etc.) maps
+// to a filter the main feed will apply when tapped.
+type Highlight = {
+  key: string;
+  label: string;
+  emoji: string;
+  cities?: string[];      // OR'd against hotel.city
+  amenityRe?: RegExp;     // matched on hotel.amenities
+  starsAtLeast?: number;  // hotel.starRating filter
+};
+const HIGHLIGHTS: Highlight[] = [
+  { key: "mountains", emoji: "🌄", label: "Mountains", cities: ["Mussoorie","Dhanaulti","Rishikesh","Shimla","Manali","Nainital","Dehradun","Dharamshala","Kasol","Auli"] },
+  { key: "beaches",   emoji: "🏖", label: "Beaches",   cities: ["Goa","Pondicherry","Varkala","Gokarna","Diu","Mahabalipuram","Puri"] },
+  { key: "foodie",    emoji: "🍜", label: "Foodie",    amenityRe: /(restaurant|kitchen|bar|cafe|food|in[-\s]?house\s*dining)/i },
+  { key: "suites",    emoji: "🛏",  label: "Suites",   starsAtLeast: 5 },
+  { key: "toppicks",  emoji: "✨", label: "Top picks" },
+  { key: "solo",      emoji: "🎒", label: "Solo" },
+];
+
+function applyHighlight(items: any[], hl: Highlight): any[] {
+  return items.filter((it) => {
+    const h = it.hotel;
+    if (hl.cities && hl.cities.length) {
+      const match = hl.cities.some((c) => (h.city || "").toLowerCase().includes(c.toLowerCase()));
+      if (!match) return false;
+    }
+    if (hl.amenityRe) {
+      const a = (h.amenities || []).join(" ");
+      if (!hl.amenityRe.test(a)) return false;
+    }
+    if (hl.starsAtLeast && (h.starRating || 0) < hl.starsAtLeast) return false;
+    return true;
+  });
+}
+
+// ─── Hotel-as-entity helper — lets the same profile sheet render hotels ──
+function entityFromHotel(h: any): Creator {
+  return {
+    handle: (h.name || "hotel").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 24) || "hotel",
+    name: h.name || "Hotel",
+    verified: !!h.trustBadge || (h.starRating || 0) >= 4,
+    bio: `${h.starRating ? "★".repeat(Math.min(5, h.starRating)) + " · " : ""}${h.city || ""}${h.state ? ", " + h.state : ""}\n${h.description || "Verified property on StayBid · live reverse-auction · book at your price."}`,
+    avatarHue: hashStr(h.id || h.name || "x") % 360,
+    sourceType: "hotel",
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Anti-bypass communication guard
@@ -396,25 +445,47 @@ function MoreMenu({
 // Creator Profile Sheet — slide-up Instagram-style profile view
 // ─────────────────────────────────────────────────────────────────────────
 function CreatorProfileSheet({
-  open, onClose, creator, hotels,
+  open, onClose, creator, hotels, onPickReel, onApplyHighlight,
 }: {
   open: boolean;
   onClose: () => void;
   creator: Creator | null;
-  hotels: any[]; // all hotels in feed; we'll show only those tagged to this creator
+  hotels: any[];
+  onPickReel?: (hotelId: string) => void;
+  onApplyHighlight?: (hl: Highlight) => void;
 }) {
-  const [followed, setFollowed] = useState(false);
-  const [tab, setTab] = useState<"reels" | "tagged">("reels");
+  const [tab, setTab] = useState<"reels" | "tagged" | "followers" | "following">("reels");
+  const [followerQuery, setFollowerQuery] = useState("");
+  const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers } = useFollow();
+
+  // Reset to default tab whenever a new profile is opened
+  useEffect(() => {
+    if (open) { setTab("reels"); setFollowerQuery(""); }
+  }, [open, creator?.handle]);
+
   if (!open || !creator) return null;
 
-  // Reels created by this creator: any hotel whose creatorFor === this creator
-  const myReels = hotels.filter((h) => creatorFor(h).handle === creator.handle).slice(0, 18);
-  // Tagged hotels: all the rest treated as collaboration (synthetic)
-  const tagged = hotels.filter((h) => creatorFor(h).handle !== creator.handle).slice(0, 9);
+  const followed = isFollowing(creator.handle);
+  // Reels created by this entity. For hotels we synth: all reels for this hotel id;
+  // for creators we use creatorFor(h).
+  const myReels =
+    creator.sourceType === "hotel" && /^[a-z0-9_]+$/.test(creator.handle)
+      ? hotels.filter((h) => entityFromHotel(h).handle === creator.handle).slice(0, 18)
+      : hotels.filter((h) => creatorFor(h).handle === creator.handle).slice(0, 18);
+  const tagged = hotels.filter((h) => !myReels.includes(h)).slice(0, 9);
 
-  // Synthesized stats keyed off the handle so they're stable
-  const followers = pseudoStat(creator.handle, "followers", 12_400, 542_000);
-  const following = pseudoStat(creator.handle, "following", 180, 2400);
+  // Live followers from the global store (synthesized base + any users who
+  // tapped Follow at runtime — including the current user themselves).
+  const followersList = searchFollowers(creator.handle, followerQuery);
+  // "Following" tab shows handles the CURRENT USER follows, not the creator's
+  // following list (we don't have that for synthesized entities). This makes
+  // the user's own follow graph searchable from any profile sheet they open.
+  const followingList = follows
+    .map((h) => `@${h}`)
+    .filter((s) => !followerQuery || s.toLowerCase().includes(followerQuery.toLowerCase()));
+
+  const followers = followerCount(creator.handle);
+  const followingTotal = followingCount();
   const likesTotal = pseudoStat(creator.handle, "likes", 84_000, 4_200_000);
   const reelsCount = Math.max(myReels.length, pseudoStat(creator.handle, "reels", 12, 320));
 
@@ -466,18 +537,18 @@ function CreatorProfileSheet({
               </div>
             </div>
             <div className="flex-1 grid grid-cols-3 gap-3 text-center">
-              <div>
+              <button onClick={() => setTab("reels")} className="text-center">
                 <p className="text-white font-bold text-[1.05rem] leading-none">{fmtCount(reelsCount)}</p>
                 <p className="text-white/55 text-[0.66rem] mt-1">Reels</p>
-              </div>
-              <div>
+              </button>
+              <button onClick={() => setTab("followers")} className="text-center">
                 <p className="text-white font-bold text-[1.05rem] leading-none">{fmtCount(followers)}</p>
                 <p className="text-white/55 text-[0.66rem] mt-1">Followers</p>
-              </div>
-              <div>
-                <p className="text-white font-bold text-[1.05rem] leading-none">{fmtCount(following)}</p>
+              </button>
+              <button onClick={() => setTab("following")} className="text-center">
+                <p className="text-white font-bold text-[1.05rem] leading-none">{fmtCount(followingTotal)}</p>
                 <p className="text-white/55 text-[0.66rem] mt-1">Following</p>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -494,7 +565,7 @@ function CreatorProfileSheet({
               off-platform booking would bypass StayBid commission. */}
           <div className="mt-3 flex items-center gap-2">
             <button
-              onClick={() => setFollowed((f) => !f)}
+              onClick={() => toggleFollow(creator.handle)}
               className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
               style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
             >
@@ -524,74 +595,161 @@ function CreatorProfileSheet({
             </p>
           </div>
 
-          {/* Highlights row */}
+          {/* Highlights row — LIVE: tap applies a theme filter to the feed */}
           <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {["🌄 Mountains", "🏖 Beaches", "🍜 Foodie", "🛏 Suites", "✨ Top picks", "🎒 Solo"].map((t, i) => (
-              <div key={t} className="flex flex-col items-center shrink-0">
-                <div className="w-[58px] h-[58px] rounded-full p-[2px]"
-                  style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.7), rgba(255,69,141,0.5))" }}>
-                  <div className="w-full h-full rounded-full flex items-center justify-center text-lg"
+            {HIGHLIGHTS.map((hl, i) => (
+              <button
+                key={hl.key}
+                onClick={() => { onApplyHighlight?.(hl); onClose(); }}
+                className="flex flex-col items-center shrink-0 active:scale-95 transition-transform"
+              >
+                <div className="w-[60px] h-[60px] rounded-full p-[2px]"
+                  style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.85), rgba(255,69,141,0.65))" }}>
+                  <div className="w-full h-full rounded-full flex items-center justify-center text-xl"
                     style={{ background: `linear-gradient(135deg, hsl(${(creator.avatarHue + i*40)%360},60%,30%), #0a0612)`, border: "2px solid #000" }}>
-                    {t.split(" ")[0]}
+                    {hl.emoji}
                   </div>
                 </div>
-                <span className="text-white/65 text-[0.58rem] mt-1.5 max-w-[64px] truncate">{t.split(" ").slice(1).join(" ")}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Tabs */}
-          <div className="mt-5 grid grid-cols-2 border-t border-white/10">
-            {(["reels", "tagged"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="py-3 text-[0.74rem] font-bold tracking-wide transition-colors relative"
-                style={{
-                  color: tab === t ? "#fff" : "rgba(255,255,255,0.4)",
-                }}
-              >
-                {t === "reels" ? "▶ REELS" : "🏨 TAGGED"}
-                {tab === t && (
-                  <span className="absolute left-1/4 right-1/4 bottom-0 h-[2px]"
-                    style={{ background: "linear-gradient(90deg,#ffd76b,#ff458d,#b964ff)" }} />
-                )}
+                <span className="text-white/80 text-[0.62rem] mt-1.5 font-semibold max-w-[68px] truncate">{hl.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-3 gap-[2px] mt-1">
-            {(tab === "reels" ? myReels : tagged).map((h, i) => (
-              <Link
-                key={h.id || i}
-                href={`/hotels/${h.id}`}
-                className="ig-reel-tile relative aspect-[9/14] overflow-hidden bg-black/40"
-                onClick={onClose}
-              >
-                {h.images?.[0] ? (
-                  <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl opacity-50">🏨</div>
-                )}
-                <div className="absolute top-1 right-1 text-white text-[0.6rem] flex items-center gap-1">
-                  <span>▶</span>
-                  <span className="font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
-                    {fmtCount(pseudoStat(h.id || h.name, "tile_views", 1200, 480000))}
-                  </span>
-                </div>
-                <div className="absolute bottom-1 left-1 right-1 text-white text-[0.58rem] truncate font-semibold"
-                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.85)" }}>
-                  {h.name}
-                </div>
-              </Link>
-            ))}
-            {(tab === "reels" ? myReels : tagged).length === 0 && (
-              <div className="col-span-3 py-12 text-center text-white/45 text-sm">
-                No {tab === "reels" ? "reels" : "tagged hotels"} yet.
-              </div>
-            )}
+          {/* Tabs */}
+          <div className="mt-5 grid grid-cols-4 border-t border-white/10">
+            {(["reels", "tagged", "followers", "following"] as const).map((t) => {
+              const labelMap: Record<typeof t, string> = {
+                reels: "▶ REELS",
+                tagged: "🏨 TAGGED",
+                followers: "👥 FOLLOWERS",
+                following: "➕ FOLLOWING",
+              };
+              return (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className="py-3 text-[0.62rem] font-bold tracking-wide transition-colors relative"
+                  style={{ color: tab === t ? "#fff" : "rgba(255,255,255,0.4)" }}
+                >
+                  {labelMap[t]}
+                  {tab === t && (
+                    <span className="absolute left-3 right-3 bottom-0 h-[2px]"
+                      style={{ background: "linear-gradient(90deg,#ffd76b,#ff458d,#b964ff)" }} />
+                  )}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Tab content */}
+          {(tab === "reels" || tab === "tagged") && (
+            <div className="grid grid-cols-3 gap-[2px] mt-1">
+              {(tab === "reels" ? myReels : tagged).map((h, i) => (
+                <button
+                  key={h.id || i}
+                  type="button"
+                  onClick={() => {
+                    // Play this exact reel in the feed (don't jump to hotel page)
+                    onPickReel?.(h.id);
+                    onClose();
+                  }}
+                  className="ig-reel-tile relative aspect-[9/14] overflow-hidden bg-black/40 active:scale-95 transition-transform"
+                >
+                  {h.images?.[0] ? (
+                    <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-2xl opacity-50">🏨</div>
+                  )}
+                  <div className="absolute top-1 right-1 text-white text-[0.6rem] flex items-center gap-1">
+                    <span>▶</span>
+                    <span className="font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+                      {fmtCount(pseudoStat(h.id || h.name, "tile_views", 1200, 480000))}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-1 left-1 right-1 text-white text-[0.58rem] truncate font-semibold"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.85)" }}>
+                    {h.name}
+                  </div>
+                </button>
+              ))}
+              {(tab === "reels" ? myReels : tagged).length === 0 && (
+                <div className="col-span-3 py-12 text-center text-white/45 text-sm">
+                  No {tab === "reels" ? "reels" : "tagged hotels"} yet.
+                </div>
+              )}
+            </div>
+          )}
+
+          {(tab === "followers" || tab === "following") && (
+            <div className="mt-3">
+              <div className="relative mb-3">
+                <input
+                  value={followerQuery}
+                  onChange={(e) => setFollowerQuery(e.target.value)}
+                  placeholder={tab === "followers" ? "Search followers…" : "Search who you follow…"}
+                  className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-none"
+                  style={{
+                    color: "#ffffff",
+                    caretColor: "#ffd76b",
+                    background: "rgba(255,255,255,0.10)",
+                    border: "1px solid rgba(255,255,255,0.20)",
+                    fontWeight: 500,
+                  }}
+                  autoComplete="off"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-base pointer-events-none">🔍</span>
+              </div>
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {(tab === "followers" ? followersList : followingList).map((entry, i) => {
+                  // entry shape: "Display Name|@handle"
+                  const [dn, hndl] = entry.includes("|") ? entry.split("|") : [entry, entry];
+                  const cleanHandle = hndl.replace(/^@/, "");
+                  const youFollow = isFollowing(cleanHandle);
+                  const isYou = cleanHandle === "you (you)";
+                  return (
+                    <div key={`${entry}-${i}`} className="ig-comment-row flex items-center gap-3 px-1 py-2"
+                      style={{ animationDelay: `${Math.min(i * 22, 300)}ms` }}>
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-[0.72rem] font-bold text-white shrink-0"
+                        style={{
+                          background: `conic-gradient(from ${(hashStr(entry) % 360)}deg, #f0b429, #ff458d, #b964ff, #f0b429)`,
+                        }}
+                      >
+                        <span className="w-[30px] h-[30px] rounded-full flex items-center justify-center"
+                          style={{ background: `linear-gradient(135deg, hsl(${hashStr(entry) % 360},65%,55%), #0a0612)`, border: "1.5px solid #000" }}>
+                          {dn.slice(0, 1).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-[0.82rem] font-semibold truncate">{dn}{isYou && <span className="text-gold-300 ml-1">· you</span>}</p>
+                        <p className="text-white/50 text-[0.66rem] truncate">{hndl}</p>
+                      </div>
+                      {!isYou && (
+                        <button
+                          onClick={() => toggleFollow(cleanHandle)}
+                          className={`px-3 py-1 rounded-full text-[0.66rem] font-bold transition-colors ${youFollow ? "text-white" : "text-black"}`}
+                          style={{
+                            background: youFollow ? "rgba(255,255,255,0.10)" : "linear-gradient(135deg,#ffd76b,#f0b429)",
+                            border: youFollow ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.45)",
+                            boxShadow: youFollow ? "none" : "0 2px 6px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+                          }}
+                        >
+                          {youFollow ? "Following" : "Follow"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {(tab === "followers" ? followersList : followingList).length === 0 && (
+                  <p className="py-10 text-center text-white/45 text-sm">
+                    {tab === "followers"
+                      ? (followerQuery ? "No matching followers." : "No followers yet.")
+                      : (followerQuery ? "No matches." : "You're not following anyone yet. Tap Follow on any reel or profile.")}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -753,7 +911,7 @@ function Toast({ msg }: { msg: string | null }) {
 // ─────────────────────────────────────────────────────────────────────────
 const HotelCard = memo(function HotelCard({
   item, active, muted, onMuteToggle,
-  onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenCreator,
+  onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenEntity, onWatchEntity,
 }: {
   item: Item;
   active: boolean;
@@ -766,30 +924,36 @@ const HotelCard = memo(function HotelCard({
   onOpenComments: (h: any) => void;
   onOpenMore: (h: any) => void;
   onCopyLink: (h: any) => void;
-  onOpenCreator: (c: Creator) => void;
+  onOpenEntity: (e: Creator) => void;     // open profile sheet for any entity
+  onWatchEntity: (e: Creator) => void;    // filter feed to that entity's reels
 }) {
   const h = item.hotel;
   const images: string[] = (h.images || []).filter(Boolean);
   const videoSrc = videoForHotel(h);
   const creator = creatorFor(h);
+  const hotelEntity = entityFromHotel(h);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [followed, setFollowed] = useState(false);
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [showCaption, setShowCaption] = useState(false);
   const [followSparkle, setFollowSparkle] = useState(0);
+  // Tap-on-avatar popover (Instagram-style "View Profile / Watch Reels")
+  const [avatarMenu, setAvatarMenu] = useState<null | { kind: "hotel" | "creator" }>(null);
   const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
 
+  // GLOBAL follow state — shared across cards, profile sheets, sub-chips
+  const { isFollowing, toggleFollow, followerCount } = useFollow();
+  const followed = isFollowing(hotelEntity.handle);
+  const followersLive = followerCount(hotelEntity.handle);
+
   const initialLikes = pseudoStat(h.id || "x", "likes", 1240, 28400);
-  const followers = pseudoStat(h.id || "x", "followers", 5800, 184000);
   const baseViews = pseudoStat(h.id || "x", "views", 14000, 580000);
   const comments = pseudoStat(h.id || "x", "comments", 38, 920);
   const [likeCount, setLikeCount] = useState(initialLikes);
-  const [followersLive, setFollowersLive] = useState(followers);
   const [viewCount, setViewCount] = useState(baseViews);
 
   // Video play/pause sync with active state + ensure audio plays after unmute.
@@ -875,14 +1039,10 @@ const HotelCard = memo(function HotelCard({
   }, [liked, h.id, onTrackEvent]);
 
   const handleFollowClick = useCallback(() => {
-    setFollowed((f) => {
-      const next = !f;
-      setFollowersLive((c) => c + (next ? 1 : -1));
-      return next;
-    });
+    toggleFollow(hotelEntity.handle);
     setFollowSparkle((n) => n + 1);
-    onTrackEvent?.("ig_follow", { hotelId: h.id });
-  }, [h.id, onTrackEvent]);
+    onTrackEvent?.("ig_follow", { hotelId: h.id, handle: hotelEntity.handle });
+  }, [h.id, hotelEntity.handle, toggleFollow, onTrackEvent]);
 
   const activeImg = images[photoIdx] || images[0];
   const initials = (h.name || "?").split(" ").slice(0, 2).map((s: string) => s[0]).join("").toUpperCase();
@@ -955,9 +1115,16 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-      {/* Top-LEFT: hotel profile chip (pushed below brand chrome to avoid overlap) */}
+      {/* Top-LEFT: hotel profile chip (pushed below brand chrome to avoid overlap).
+          Avatar tap → popover (View Profile / Watch Reels).
+          Name tap   → opens hotel profile sheet directly. */}
       <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "60px" }}>
-        <Link href={`/hotels/${h.id}`} className="ig-avatar relative shrink-0" aria-label={`Open ${h.name}`}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setAvatarMenu({ kind: "hotel" }); }}
+          className="ig-avatar relative shrink-0"
+          aria-label={`${h.name} profile options`}
+        >
           <span className="ig-avatar-inner">
             {h.images?.[0] ? (
               <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover rounded-full" />
@@ -965,14 +1132,23 @@ const HotelCard = memo(function HotelCard({
               <span className="text-[0.78rem] font-bold text-black">{initials}</span>
             )}
           </span>
-        </Link>
+        </button>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 leading-none">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenEntity(hotelEntity);
+              onTrackEvent?.("ig_open_hotel_profile", { hotelId: h.id });
+            }}
+            className="flex items-center gap-1.5 leading-none active:scale-95 transition-transform"
+            aria-label={`Open ${h.name} profile`}
+          >
             <span className="text-white font-semibold text-[0.92rem] truncate" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>
               {(h.name || "Hotel").toLowerCase().replace(/\s+/g, "_").slice(0, 22)}
             </span>
             <span className="ig-verified" title="Verified hotel">✓</span>
-          </div>
+          </button>
           <div className="mt-0.5 flex items-center gap-1.5 text-[0.62rem] text-white/75" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
             <span>📍 {h.city || "—"}</span>
             <span className="opacity-50">·</span>
@@ -981,7 +1157,7 @@ const HotelCard = memo(function HotelCard({
           {/* Creator subline — who made this reel (taps open creator profile) */}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onOpenCreator(creator); onTrackEvent?.("ig_open_creator", { handle: creator.handle }); }}
+            onClick={(e) => { e.stopPropagation(); onOpenEntity(creator); onTrackEvent?.("ig_open_creator", { handle: creator.handle }); }}
             className="mt-1.5 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full transition-transform active:scale-95"
             style={{
               background: "rgba(0,0,0,0.45)",
@@ -1145,6 +1321,51 @@ const HotelCard = memo(function HotelCard({
         </div>
       </div>
 
+      {/* Avatar popover — Instagram-style options menu when user taps the
+          profile photo. Two actions: View Profile (opens profile sheet)
+          and Watch Reels (filters main feed to this entity's reels). */}
+      {avatarMenu && (
+        <>
+          <div
+            className="absolute inset-0 z-40"
+            style={{ background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)" }}
+            onClick={(e) => { e.stopPropagation(); setAvatarMenu(null); }}
+          />
+          <div
+            className="absolute z-50 ig-avatar-menu"
+            style={{ top: "118px", left: "12px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => {
+                onOpenEntity(avatarMenu.kind === "hotel" ? hotelEntity : creator);
+                setAvatarMenu(null);
+              }}
+              className="ig-avatar-menu-btn"
+            >
+              <span className="text-base">👤</span>
+              <span>View Profile</span>
+            </button>
+            <button
+              onClick={() => {
+                onWatchEntity(avatarMenu.kind === "hotel" ? hotelEntity : creator);
+                setAvatarMenu(null);
+              }}
+              className="ig-avatar-menu-btn"
+            >
+              <span className="text-base">📺</span>
+              <span>Watch Reels</span>
+            </button>
+            <button
+              onClick={() => setAvatarMenu(null)}
+              className="ig-avatar-menu-btn ig-avatar-menu-cancel"
+            >
+              <span>Cancel</span>
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Floating like-burst hearts */}
       {hearts.map((b) => (
         <span
@@ -1180,10 +1401,14 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // ── Filter state (source: hotel/creator/public/all + city) ──
+  // ── Filter state (source: hotel/creator/public/all + city + entity-handle + highlight) ──
   const [filterSource, setFilterSource] = useState<SourceType>("all");
   const [filterCity, setFilterCity]     = useState<string>("all");
   const [filterOpen, setFilterOpen]     = useState(false);
+  // entity handle filter — set by "Watch Reels" from a profile/avatar menu.
+  const [filterEntity, setFilterEntity] = useState<string | null>(null);
+  // active highlight filter (Mountains, Beaches, etc.) from the profile sheet.
+  const [filterHighlight, setFilterHighlight] = useState<Highlight | null>(null);
   // Hydrate from localStorage + default city to user's chosen nav city
   useEffect(() => {
     try {
@@ -1224,11 +1449,19 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
   })();
 
   // Apply filter
-  const filteredItems = items.filter((it) => {
+  let filteredItems = items.filter((it) => {
     const okSrc = filterSource === "all" || sourceFor(it.hotel) === filterSource;
     const okCity = filterCity === "all" || (it.hotel?.city && it.hotel.city === filterCity);
     return okSrc && okCity;
   });
+  if (filterEntity) {
+    filteredItems = filteredItems.filter((it) => {
+      return creatorFor(it.hotel).handle === filterEntity || entityFromHotel(it.hotel).handle === filterEntity;
+    });
+  }
+  if (filterHighlight) {
+    filteredItems = applyHighlight(filteredItems, filterHighlight);
+  }
 
   // When filter changes, reset scroll to top
   useEffect(() => {
@@ -1236,7 +1469,48 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
     if (!root) return;
     root.scrollTo({ top: 0, behavior: "smooth" });
     setActiveIdx(0);
-  }, [filterSource, filterCity]);
+  }, [filterSource, filterCity, filterEntity, filterHighlight]);
+
+  // Scroll to a specific hotel's reel when picked from a profile grid.
+  const scrollToHotel = useCallback((hotelId: string) => {
+    // Make sure the hotel survives current filters; if not, clear them.
+    const visibleNow = filteredItems.findIndex((it) => it.hotel.id === hotelId);
+    if (visibleNow < 0) {
+      setFilterSource("all"); setFilterCity("all");
+      setFilterEntity(null); setFilterHighlight(null);
+    }
+    // Defer scroll to next tick so the (possibly) new filteredItems renders.
+    setTimeout(() => {
+      const root = containerRef.current;
+      if (!root) return;
+      const cards = root.querySelectorAll<HTMLElement>(".ig-card");
+      let targetIdx = -1;
+      const useItems = visibleNow >= 0 ? filteredItems : items;
+      for (let i = 0; i < useItems.length; i++) {
+        if (useItems[i].hotel.id === hotelId) { targetIdx = i; break; }
+      }
+      if (targetIdx >= 0 && cards[targetIdx]) {
+        cards[targetIdx].scrollIntoView({ behavior: "smooth", block: "start" });
+        setActiveIdx(targetIdx);
+      }
+    }, 60);
+  }, [filteredItems, items]);
+
+  const handleWatchEntity = useCallback((entity: Creator) => {
+    setFilterEntity(entity.handle);
+    setFilterHighlight(null);
+    setFilterCity("all");
+    setFilterSource("all");
+    onTrackEvent?.("ig_watch_entity_reels", { handle: entity.handle });
+  }, [onTrackEvent]);
+
+  const handleApplyHighlight = useCallback((hl: Highlight) => {
+    setFilterHighlight(hl);
+    setFilterEntity(null);
+    setFilterCity("all");
+    setFilterSource("all");
+    onTrackEvent?.("ig_apply_highlight", { key: hl.key });
+  }, [onTrackEvent]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -1406,6 +1680,42 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
           transition: transform 0.12s ease;
         }
         .ig-filter-chip:active { transform: scale(0.94); }
+
+        /* Avatar tap-popover (Instagram-style) */
+        @keyframes igMenuIn {
+          from { transform: translateY(-6px) scale(0.96); opacity: 0; }
+          to   { transform: translateY(0)    scale(1);    opacity: 1; }
+        }
+        .ig-avatar-menu {
+          min-width: 200px;
+          padding: 6px;
+          border-radius: 16px;
+          background: linear-gradient(180deg, rgba(20,16,30,0.94) 0%, rgba(8,5,16,0.94) 100%);
+          border: 1px solid rgba(255,255,255,0.14);
+          backdrop-filter: blur(18px) saturate(1.4);
+          -webkit-backdrop-filter: blur(18px) saturate(1.4);
+          box-shadow: 0 16px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+          animation: igMenuIn 0.18s ease-out both;
+        }
+        .ig-avatar-menu-btn {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%;
+          padding: 10px 14px;
+          border-radius: 10px;
+          color: #fff;
+          font-size: 0.84rem;
+          font-weight: 600;
+          background: transparent;
+          transition: background 0.12s ease;
+          text-align: left;
+        }
+        .ig-avatar-menu-btn:active { background: rgba(255,255,255,0.10); }
+        .ig-avatar-menu-cancel {
+          color: rgba(255,255,255,0.55);
+          font-weight: 500;
+          justify-content: center;
+          margin-top: 2px;
+        }
 
         /* First-load tap-to-unmute hint */
         @keyframes igUnmuteBob {
@@ -1732,6 +2042,36 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         <span className="opacity-60">▾</span>
       </button>
 
+      {/* Active entity/highlight badge with clear (×). Sits beneath the
+          filter chip when a profile-driven filter is in effect. */}
+      {(filterEntity || filterHighlight) && (
+        <div
+          className="fixed z-41 flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+          style={{
+            top: "44px",
+            left: "12px",
+            background: "linear-gradient(135deg, rgba(240,180,41,0.30), rgba(255,69,141,0.18))",
+            border: "1px solid rgba(240,180,41,0.45)",
+            color: "#ffd76b",
+            fontSize: "0.6rem",
+            fontWeight: 700,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: "0 3px 10px rgba(0,0,0,0.35)",
+          }}
+        >
+          {filterEntity && <span>📺 @{filterEntity}</span>}
+          {filterHighlight && <span>{filterHighlight.emoji} {filterHighlight.label}</span>}
+          <button
+            onClick={() => { setFilterEntity(null); setFilterHighlight(null); }}
+            className="ml-1 text-white/80 text-[0.7rem] leading-none"
+            aria-label="Clear filter"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div ref={containerRef} className="ig-feed">
         {filteredItems.map((it, i) => (
           <HotelCard
@@ -1747,7 +2087,8 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
             onCopyLink={handleCopyLink}
             onOpenComments={(h) => setCommentsOpen({ open: true, name: h.name })}
             onOpenMore={(h) => setMoreOpen({ open: true, id: h.id })}
-            onOpenCreator={(c) => setCreatorOpen(c)}
+            onOpenEntity={(e) => setCreatorOpen(e)}
+            onWatchEntity={handleWatchEntity}
           />
         ))}
         {filteredItems.length === 0 && (
@@ -1807,6 +2148,8 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         onClose={() => setCreatorOpen(null)}
         creator={creatorOpen}
         hotels={items.map((it) => it.hotel)}
+        onPickReel={scrollToHotel}
+        onApplyHighlight={handleApplyHighlight}
       />
 
       {/* First-load: prompt user to tap & unmute. Once they've ever toggled
