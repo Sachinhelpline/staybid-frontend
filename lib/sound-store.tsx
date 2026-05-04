@@ -27,26 +27,38 @@ import {
 type SoundCtx = {
   isMuted: boolean;
   hasInteracted: boolean;
+  /**
+   * Web-Audio gain multiplier applied on top of the native HTMLMediaElement
+   * volume (which caps at 1.0). 1.0 = unchanged, >1 = amplified.
+   */
+  gain: number;
   toggleMute: () => void;
   setMuted: (m: boolean) => void;
+  setGain: (g: number) => void;
   markInteracted: () => void;
 };
+
+const DEFAULT_GAIN = 1.8;
 
 const Ctx = createContext<SoundCtx>({
   isMuted: true,
   hasInteracted: false,
+  gain: DEFAULT_GAIN,
   toggleMute: () => {},
   setMuted: () => {},
+  setGain: () => {},
   markInteracted: () => {},
 });
 
 const LS_MUTE = "sb_reel_mute";
 const LS_INTERACTED = "sb_reel_interacted";
+const LS_GAIN = "sb_reel_gain";
 
 export function SoundProvider({ children }: { children: ReactNode }) {
   // SSR-safe: always start muted (browsers require muted for autoplay).
   const [isMuted, setMutedState] = useState(true);
   const [hasInteracted, setHasInteractedState] = useState(false);
+  const [gain, setGainState] = useState<number>(DEFAULT_GAIN);
 
   // Hydrate from localStorage after mount
   useEffect(() => {
@@ -54,7 +66,15 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       const m = localStorage.getItem(LS_MUTE);
       if (m === "0") setMutedState(false);
       if (localStorage.getItem(LS_INTERACTED) === "1") setHasInteractedState(true);
+      const g = parseFloat(localStorage.getItem(LS_GAIN) || "");
+      if (!Number.isNaN(g) && g >= 0 && g <= 4) setGainState(g);
     } catch {}
+  }, []);
+
+  const setGain = useCallback((g: number) => {
+    const clamped = Math.max(0, Math.min(4, g));
+    setGainState(clamped);
+    try { localStorage.setItem(LS_GAIN, String(clamped)); } catch {}
   }, []);
 
   const persist = useCallback((muted: boolean) => {
@@ -85,7 +105,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ isMuted, hasInteracted, toggleMute, setMuted, markInteracted }}>
+    <Ctx.Provider value={{ isMuted, hasInteracted, gain, toggleMute, setMuted, setGain, markInteracted }}>
       {children}
     </Ctx.Provider>
   );

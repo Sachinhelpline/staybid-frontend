@@ -21,6 +21,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
+import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
+import { CreateFlow, AudioPicker, type AudioTrack } from "@/components/discover/CreateFlow";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -389,16 +391,18 @@ function CommentDrawer({
 // More Menu
 // ─────────────────────────────────────────────────────────────────────────
 function MoreMenu({
-  open, onClose, hotelId, onShare, onCopy, onToggleMute, muted,
+  open, onClose, hotelId, onShare, onCopy, onToggleMute, muted, gain, onCycleGain,
 }: {
   open: boolean; onClose: () => void; hotelId: string;
   onShare: () => void; onCopy: () => void; onToggleMute: () => void; muted: boolean;
+  gain: number; onCycleGain: () => void;
 }) {
   if (!open) return null;
   const items = [
     { icon: "📋", label: "Copy link", onClick: onCopy },
     { icon: "↗", label: "Share to…", onClick: onShare },
     { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
+    { icon: "🎚", label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
     { icon: "🏨", label: "Open hotel page", href: `/hotels/${hotelId}` },
     { icon: "🚩", label: "Report this reel", danger: true },
     { icon: "🚫", label: "Not interested" },
@@ -430,7 +434,16 @@ function MoreMenu({
               return <Link key={i} href={it.href} onClick={onClose}>{inner}</Link>;
             }
             return (
-              <button key={i} onClick={() => { it.onClick?.(); onClose(); }} className="w-full text-left">
+              <button
+                key={i}
+                onClick={() => {
+                  it.onClick?.();
+                  // Volume booster stays open so the user can tap multiple
+                  // times to climb the gain cycle.
+                  if (!(it as any).keepOpen) onClose();
+                }}
+                className="w-full text-left"
+              >
                 {inner}
               </button>
             );
@@ -950,31 +963,62 @@ const HotelCard = memo(function HotelCard({
   const followed = isFollowing(hotelEntity.handle);
   const followersLive = followerCount(hotelEntity.handle);
 
+  // GLOBAL gain (volume booster) — read here so the gain node updates when
+  // the user moves the slider in the right rail.
+  const { gain } = useSoundStore();
+  // Per-card audio override (custom soundtrack picked from the audio strip)
+  const [customAudio, setCustomAudio] = useState<AudioTrack | null>(null);
+  const [audioPickerOpen, setAudioPickerOpen] = useState(false);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
   const initialLikes = pseudoStat(h.id || "x", "likes", 1240, 28400);
   const baseViews = pseudoStat(h.id || "x", "views", 14000, 580000);
   const comments = pseudoStat(h.id || "x", "comments", 38, 920);
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [viewCount, setViewCount] = useState(baseViews);
 
-  // Video play/pause sync with active state + ensure audio plays after unmute.
-  // When a card scrolls out of view we reset currentTime so the next visit
-  // restarts the reel (TikTok / Instagram behavior).
+  // Video play/pause sync with active state. Three signals:
+  //   1. video.muted   — controls the native track on the <video>
+  //   2. Web-Audio gain — boosts louder than 1.0 when user has bumped the
+  //      volume slider (lib/audio-amplifier).
+  //   3. customAudio   — when the user picks a soundtrack from the audio
+  //      strip, we mute the video and play <audio src={customAudio.url}>
+  //      in sync.
   useEffect(() => {
     const v = videoRef.current;
+    const a = audioElRef.current;
     if (!v) return;
-    v.muted = muted;
-    if (!muted) v.volume = 1;
+    const useCustom = !!customAudio;
+    // When custom audio is in use, mute the video (so two tracks don't
+    // double up). Otherwise honour the global mute state.
+    v.muted = useCustom ? true : muted;
+    v.volume = 1;
+    if (a) { a.muted = muted; a.volume = 1; }
+
     if (active && !paused) {
+      // Resume + apply gain on first user gesture flow
+      resumeAudio();
+      // Apply gain only when the video is the audio source. If a custom
+      // track is picked, gain on the audio element instead.
+      if (useCustom && a) applyGain(a, gain);
+      else                applyGain(v, gain);
+
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
+      if (useCustom && a) {
+        const ap = a.play();
+        if (ap && typeof ap.then === "function") ap.catch(() => {});
+      }
     } else {
       v.pause();
+      if (a) a.pause();
       if (!active) {
         try { v.currentTime = 0; } catch {}
+        try { if (a) a.currentTime = 0; } catch {}
         if (paused) setPaused(false);
       }
     }
-  }, [active, paused, muted]);
+  }, [active, paused, muted, gain, customAudio]);
 
   // Slow Ken-Burns photo cycle as a fallback (only if no video src or video errors)
   const [videoBroken, setVideoBroken] = useState(false);
@@ -1075,6 +1119,7 @@ const HotelCard = memo(function HotelCard({
           muted={muted}
           playsInline
           preload="auto"
+          crossOrigin="anonymous"
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -1203,7 +1248,9 @@ const HotelCard = memo(function HotelCard({
           aria-label={muted ? "Unmute" : "Mute"}
         >
           <span className="ig-icon">{muted ? "🔇" : "🔊"}</span>
-          <span className="ig-rail-count">{muted ? "Off" : "On"}</span>
+          <span className="ig-rail-count">
+            {muted ? "Off" : `${gain.toFixed(1)}×`}
+          </span>
         </button>
         <button
           aria-label="Like"
@@ -1294,12 +1341,19 @@ const HotelCard = memo(function HotelCard({
           </button>
         )}
 
-        <div className="ig-audio-strip">
-          <span className="ig-audio-icon">🎵</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setAudioPickerOpen(true); }}
+          className="ig-audio-strip ig-audio-strip-btn"
+          aria-label="Choose soundtrack for this reel"
+        >
+          <span className="ig-audio-icon">{customAudio?.emoji || "🎵"}</span>
           <span className="ig-audio-text">
-            Original audio · {h.name} · StayBid Live · Real-time room availability
+            {customAudio
+              ? `${customAudio.name} · ${customAudio.artist} · tap to change`
+              : `Original audio · ${h.name} · StayBid Live · tap to change`}
           </span>
-        </div>
+        </button>
 
         {/* Price + EQUAL 3D translucent CTAs */}
         <div className="mt-3 flex items-end gap-2">
@@ -1320,6 +1374,28 @@ const HotelCard = memo(function HotelCard({
           </button>
         </div>
       </div>
+
+      {/* Custom soundtrack audio element — only mounted when user has
+          picked an alternate track for THIS reel. crossOrigin set so Web
+          Audio can mount a gain node on it. */}
+      {customAudio && (
+        <audio
+          ref={audioElRef}
+          src={customAudio.url}
+          loop
+          preload="auto"
+          crossOrigin="anonymous"
+        />
+      )}
+
+      {/* Per-card audio picker (replaces the soundtrack on this single reel) */}
+      <AudioPicker
+        open={audioPickerOpen}
+        onClose={() => setAudioPickerOpen(false)}
+        current={customAudio}
+        onPick={(t) => setCustomAudio(t)}
+        allowOriginal
+      />
 
       {/* Avatar popover — Instagram-style options menu when user taps the
           profile photo. Two actions: View Profile (opens profile sheet)
@@ -1393,9 +1469,14 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
-  // ── GLOBAL mute state — same source for every reel + the rail button.
-  const { isMuted, hasInteracted, toggleMute } = useSoundStore();
+  // ── GLOBAL mute / gain state — same source for every reel + the rail button.
+  const { isMuted, hasInteracted, toggleMute, gain, setGain } = useSoundStore();
   const muted = isMuted;
+  const cycleGain = useCallback(() => {
+    const steps = [1.0, 1.5, 1.8, 2.2, 2.6, 3.0];
+    const i = steps.findIndex((s) => Math.abs(s - gain) < 0.05);
+    setGain(steps[(i + 1) % steps.length] ?? 1.8);
+  }, [gain, setGain]);
   const [commentsOpen, setCommentsOpen] = useState<{ open: boolean; name: string }>({ open: false, name: "" });
   const [moreOpen, setMoreOpen] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
@@ -1716,6 +1797,58 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
           justify-content: center;
           margin-top: 2px;
         }
+
+        /* Tappable audio strip */
+        .ig-audio-strip-btn { transition: transform 0.12s ease; cursor: pointer; }
+        .ig-audio-strip-btn:active { transform: scale(0.97); }
+
+        /* + Create FAB */
+        @keyframes igFabPulse {
+          0%,100% { box-shadow: 0 8px 22px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.55); }
+          50%     { box-shadow: 0 8px 22px rgba(255,69,141,0.55), 0 0 0 14px rgba(255,69,141,0); }
+        }
+        .ig-create-fab {
+          position: fixed;
+          right: 14px;
+          top: calc(50% - 28px);
+          z-index: 42;
+          width: 56px; height: 56px;
+          border-radius: 9999px;
+          display: flex; align-items: center; justify-content: center;
+          background: linear-gradient(135deg, #ff458d 0%, #b964ff 50%, #5b8dff 100%);
+          border: 2px solid rgba(255,255,255,0.45);
+          color: #fff;
+          font-weight: 900;
+          animation: igFabPulse 2.4s ease-in-out infinite;
+          transition: transform 0.15s ease;
+        }
+        .ig-create-fab:active { transform: scale(0.94); }
+        .ig-create-fab-plus {
+          font-size: 1.9rem;
+          line-height: 1;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.45);
+          margin-top: -2px;
+        }
+        .ig-create-fab-glow {
+          position: absolute;
+          inset: -6px;
+          border-radius: 9999px;
+          pointer-events: none;
+          background: radial-gradient(circle, rgba(255,69,141,0.35) 0%, transparent 70%);
+        }
+
+        /* CreateSheet card buttons */
+        .ig-create-card-btn {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 12px;
+          border-radius: 14px;
+          color: #fff;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.10);
+          text-align: left;
+          transition: transform 0.12s ease;
+        }
+        .ig-create-card-btn:active { transform: scale(0.97); }
 
         /* First-load tap-to-unmute hint */
         @keyframes igUnmuteBob {
@@ -2133,6 +2266,8 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         onClose={() => setMoreOpen({ open: false, id: "" })}
         hotelId={moreOpen.id}
         muted={muted}
+        gain={gain}
+        onCycleGain={cycleGain}
         onToggleMute={toggleMute}
         onShare={() => {
           const it = items.find((x) => x.hotel.id === moreOpen.id);
@@ -2141,6 +2276,16 @@ export default function InstagramHotelFeed({ items, onIndexChange, onLoadMore, o
         onCopy={() => {
           const it = items.find((x) => x.hotel.id === moreOpen.id);
           if (it) handleCopyLink(it.hotel);
+        }}
+      />
+
+      {/* + Plus button (Create flow) — Instagram-style, available on every
+          reel screen so user can post from anywhere. */}
+      <CreateFlow
+        sanitize={sanitizeComment}
+        onPosted={(p) => {
+          showToast(`✨ ${p.kind === "reel" ? "Reel" : p.kind === "photo" ? "Photo" : "Story"} posted to your profile`);
+          onTrackEvent?.("ig_create_post", { kind: p.kind, hasAudio: !!p.audio, tagsCount: p.tags.length });
         }}
       />
       <CreatorProfileSheet
