@@ -929,12 +929,13 @@ function Toast({ msg }: { msg: string | null }) {
 // HotelCard — one Reels card per hotel
 // ─────────────────────────────────────────────────────────────────────────
 const HotelCard = memo(function HotelCard({
-  item, active, muted, onMuteToggle,
+  item, active, muted, hasInteracted, onMuteToggle,
   onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenEntity, onWatchEntity,
 }: {
   item: Item;
   active: boolean;
   muted: boolean;
+  hasInteracted: boolean;                  // gate the "Tap to unmute" coach mark
   onMuteToggle: () => void;
   onTrackEvent?: (n: string, p: any) => void;
   onBook: (h: any) => void;
@@ -1137,11 +1138,24 @@ const HotelCard = memo(function HotelCard({
           onError={() => setVideoBroken(true)}
           onClick={(e) => {
             // Tap on video:
-            //   - if currently muted globally → UNMUTE (user gesture required)
+            //   - if currently muted globally → UNMUTE inside the user
+            //     gesture so the browser autoplay policy allows audio.
+            //     We mutate v.muted/v.volume and call v.play() DIRECTLY
+            //     here (not via state→useEffect) because some browsers
+            //     drop the gesture context across React's render cycle.
             //   - else → toggle play/pause
             e.stopPropagation();
             const v = videoRef.current; if (!v) return;
-            if (muted) { onMuteToggle(); return; }
+            if (muted) {
+              try {
+                v.muted = false;
+                v.volume = 1;
+                const p = v.play();
+                if (p && typeof p.then === "function") p.catch(() => {});
+              } catch {}
+              onMuteToggle();
+              return;
+            }
             if (v.paused) { v.play().catch(()=>{}); setPaused(false); }
             else          { v.pause(); setPaused(true); }
           }}
@@ -1165,6 +1179,33 @@ const HotelCard = memo(function HotelCard({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
           <div className="ig-pause-badge">▶</div>
         </div>
+      )}
+
+      {/* "🔇 Tap to unmute" coach mark — only on the FIRST reel the user
+          ever views, until they interact with sound for the first time.
+          Auto-dismisses on tap (which also unmutes via the user gesture). */}
+      {active && muted && !hasInteracted && !videoBroken && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            const v = videoRef.current;
+            if (v) {
+              try {
+                v.muted = false;
+                v.volume = 1;
+                const p = v.play();
+                if (p && typeof p.then === "function") p.catch(() => {});
+              } catch {}
+            }
+            onMuteToggle();
+          }}
+          className="ig-tap-unmute"
+          aria-label="Tap to unmute"
+        >
+          <span className="ig-tap-unmute-icon">🔇</span>
+          <span className="ig-tap-unmute-label">Tap to unmute</span>
+        </button>
       )}
 
       {/* Top + bottom dark gradients */}
@@ -1252,9 +1293,27 @@ const HotelCard = memo(function HotelCard({
 
       {/* Right action rail (Instagram Reels style) */}
       <div className="absolute right-2.5 z-30 flex flex-col items-center gap-4" style={{ bottom: "180px" }}>
-        {/* Mute toggle (top of rail to avoid top-corner overlap) */}
+        {/* Mute toggle (top of rail to avoid top-corner overlap).
+            Mutates the video directly inside the click handler so the
+            browser autoplay policy treats this as a real user gesture
+            for unmuting — state-only flips were sometimes ignored on
+            iOS Safari + Android Chrome. */}
         <button
-          onClick={(e) => { e.stopPropagation(); onMuteToggle(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            const v = videoRef.current;
+            if (v && muted) {
+              try {
+                v.muted = false;
+                v.volume = 1;
+                const p = v.play();
+                if (p && typeof p.then === "function") p.catch(() => {});
+              } catch {}
+            } else if (v && !muted) {
+              try { v.muted = true; } catch {}
+            }
+            onMuteToggle();
+          }}
           className="ig-rail-btn"
           aria-label={muted ? "Unmute" : "Mute"}
         >
@@ -1926,6 +1985,42 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           background: radial-gradient(circle, rgba(255,69,141,0.3) 0%, transparent 70%);
         }
 
+        /* Tap-to-unmute coach mark — top-center, only on first reel */
+        @keyframes igUnmuteBob {
+          0%,100% { transform: translate(-50%, 0) scale(1); }
+          50%     { transform: translate(-50%, -3px) scale(1.03); }
+        }
+        @keyframes igUnmutePulse {
+          0%,100% { box-shadow: 0 6px 22px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,255,255,0.35); }
+          50%     { box-shadow: 0 6px 22px rgba(0,0,0,0.45), 0 0 0 12px rgba(255,255,255,0); }
+        }
+        .ig-tap-unmute {
+          position: absolute;
+          left: 50%;
+          top: calc(env(safe-area-inset-top, 0px) + 132px);
+          transform: translate(-50%, 0);
+          z-index: 39;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 16px;
+          border-radius: 9999px;
+          background: rgba(20,16,30,0.85);
+          border: 1px solid rgba(255,255,255,0.28);
+          color: #fff;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          backdrop-filter: blur(14px) saturate(1.4);
+          -webkit-backdrop-filter: blur(14px) saturate(1.4);
+          animation:
+            igUnmuteBob 1.8s ease-in-out infinite,
+            igUnmutePulse 1.8s ease-in-out infinite;
+        }
+        .ig-tap-unmute:active { transform: translate(-50%, 1px) scale(0.97); }
+        .ig-tap-unmute-icon { font-size: 1rem; line-height: 1; }
+        .ig-tap-unmute-label { line-height: 1; }
+
         /* CreateSheet card buttons */
         .ig-create-card-btn {
           display: flex; align-items: center; gap: 10px;
@@ -2303,6 +2398,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             item={it}
             active={i === activeIdx}
             muted={muted}
+            hasInteracted={hasInteracted}
             onMuteToggle={toggleMute}
             onTrackEvent={onTrackEvent}
             onBook={handleBook}

@@ -771,7 +771,18 @@ toggleFollow, checkFollow
 - **v15** — Phase B (creator chip + watch-time)
 - **v16** — Phase C (Following filter + threaded comments + public profile rebuild)
 - **v17** — Phase D (trending hashtags + saved collection + notif triggers)
-- **v18** — Desktop nav Reels link visible (current)
+- **v18** — Desktop nav Reels link visible
+- **v19** — `/discover` Instagram-mode toggle (added Reels-style card view alongside Luxury Ken-Burns)
+- **v20** — Reels-only locked: Luxury rendering removed from `/discover`, root `/` redirects into `/discover`
+- **v21** — Per-hotel videos + 3D actions (love-bomb hearts, 3D Follow, equal 3D translucent Book/Bid CTAs, comment drawer, More menu, share toast)
+- **v22** — Creator profile sheet + fullscreen + layout fixes (sound unmute, slower hearts, comment input visibility, profile chip moved off the brand chrome)
+- **v23** — Global SoundProvider + true-fullscreen viewport (ServerStatus hidden on /discover, /reels, /admin, /partner, /onboard)
+- **v24** — Source filter (Hotels / Creators / Public) + location picker
+- **v25** — Anti-bypass communication guard (`sanitizeComment`) on every public surface
+- **v26** — Live profile graph (FollowProvider with real-time counts + searchable followers/following) + reel-grid scrolls feed + tappable highlights filter
+- **v27** — Create flow (`+` FAB → Reel/Photo/Story composer with audio picker, emoji bar, tag chips), audio amplifier (Web Audio gain), swappable per-reel soundtracks
+- **v28** — Sound restored (CORS taint fix), `+` button & filter chip shrunk + repositioned
+- **v29** — User uploads now appear in feed + profile via PostsProvider (current)
 
 When the user says "frontend par change nahi dikh raha" → 99% of the time it's the Service Worker serving cached assets. Always bump `CACHE_NAME` in `public/sw.js` AND `SB_BUILD` in `app/layout.tsx` AND the visible `>vN<` badge together. The kill-switch in `app/layout.tsx` then unregisters old SW + reloads on first visit.
 
@@ -800,10 +811,183 @@ claude "Read CLAUDE.md fully, then ask me what to work on next for StayBid front
 ```
 
 ### Key context to mention if starting fresh
-- Branch: `claude/frosty-khorana-a44bd9` (also pushed to `main`, both auto-deploy)
-- Current production version: **v18** (commit `0efb0c4`)
+- Branch: `claude/sleepy-elgamal-1dfbc1` (worktree, also pushed to `main`)
+- Current production version: **v29** (commit `da91f1e`)
 - Supabase project: `uxxhbdqedazpmvbvaosh` — use `lib/sb.ts` helpers for any new Next.js API route
 - Live site: `https://www.staybids.in` served from Vercel project `staybid-customer-frontend` (NOT `staybid-frontend`)
 - All 12+ Supabase tables live, ALL triggers + RPCs live (no backend Railway changes needed)
 - Pattern: additive migrations only, TEXT IDs (CUIDs), Bearer token via `userFromReq()`, push to branch then `branch:main`
 - Always bump `public/sw.js` CACHE_NAME + `app/layout.tsx` SB_BUILD + badge together when shipping UI changes
+
+---
+
+## Reels-Home Era (v19 → v29, May 2026)
+
+This batch turned `/discover` into a **standalone Instagram-style Reels home** and made `/` redirect into it. The old Luxury Ken-Burns + bottom-sheet UI was removed from the active code; it's preserved at `app/_home-luxury-backup.tsx` (filename starts with `_` so Next.js does NOT register it as a route — fully intact for restoration).
+
+### Live entry point
+- `https://www.staybids.in/` → server-redirects to `/discover`
+- `/discover` → renders **only** the Reels feed (no Luxury fallback in the active code)
+
+### Feed architecture (`components/discover/InstagramHotelFeed.tsx`)
+~2300-line monolith. One file holds the entire feed because state is dense and tightly coupled. Key pieces (search by these keywords if you need to find them):
+
+| Piece | Where to look |
+|-------|---------------|
+| Per-hotel reel video | `videoForHotel()` — accepts `http(s)`, `blob:`, returns `""` for `_userPost && !videoUrl` (photo posts), else dummy Google-CDN clip by hash |
+| Hotel-as-creator entity | `entityFromHotel()` — wraps a hotel into the `Creator` shape so the same profile sheet renders for hotel chips and creator chips |
+| 12-pool creator cycle | `CREATOR_POOL` — 3 hotel handles, 5 verified creators, 4 public travellers; `creatorFor(h)` + `sourceFor(h)` |
+| Anti-bypass sanitizer | `sanitizeComment(text)` + `CONTACT_PATTERNS` — phone / email / URL / domain / WhatsApp / DM / "off-platform" / handle-share patterns scrubbed to `•••••` |
+| Synthesized stats | `pseudoStat(seed, salt, min, max)` — stable per-hotel like / view / follower / comment counts |
+| Right-rail mute + gain | `MoreMenu` has "Volume booster (1.8× — tap to change)" — cycles `[1.0, 1.5, 1.8, 2.2, 2.6, 3.0]` via `cycleGain` |
+| Per-card audio override | `customAudio` state + tappable `.ig-audio-strip-btn` opens `<AudioPicker>`; mounts a synced `<audio crossOrigin="anonymous">` and mutes the video |
+| Highlight → filter map | `applyHighlight(items, hl)` — Mountains/Beaches/Foodie/Suites/Top picks each map to a filter predicate |
+| Avatar tap menu | `avatarMenu` state + `.ig-avatar-menu` — Instagram-style "View Profile" / "Watch Reels" popover |
+| Profile sheet (creators + hotels) | `CreatorProfileSheet` — 4 tabs (Reels / Tagged / Followers / Following), reel-grid items call `onPickReel(hotelId)` to scroll the main feed instead of navigating |
+| Filter chip | `.ig-filter-chip` — slim top-LEFT pill ("All · 📍India ▾"), opens `<FilterSheet>` |
+| Floating Create | `<CreateFlow>` mounts `<CreateFAB>` (36×36 right-edge bottom 130px), `<CreateSheet>`, `<Composer>`, `<AudioPicker>` |
+
+### Stores (lib/*-store.tsx)
+Three React Context providers wrapping `<children>` in `app/layout.tsx` (in this order, outermost first):
+```
+AuthProvider
+└── SoundProvider          ← lib/sound-store.tsx
+   └── FollowProvider      ← lib/follow-store.tsx
+      └── PostsProvider    ← lib/posts-store.tsx
+```
+
+#### `lib/sound-store.tsx` — `useSoundStore()`
+```ts
+{ isMuted, hasInteracted, gain, toggleMute, setMuted, setGain, markInteracted }
+```
+- Default mute = true (mobile autoplay policy)
+- `gain` ∈ [0, 4]; default 1.8; persisted to `sb_reel_gain`
+- The video itself NEVER routes through Web Audio — only custom-audio elements do (CORS taint silences cross-origin video sources). This was the v28 fix for "no sound in feed."
+
+#### `lib/follow-store.tsx` — `useFollow()`
+```ts
+{ follows, isFollowing, toggleFollow, followerCount, followingCount,
+  followers, searchFollowers, myDisplayName, setMyDisplayName }
+```
+- `follows: string[]` of handles (persisted as `sb_follows_v1`)
+- `followerCount(handle)` = synthesized `baseFollowerCount(handle)` + 1 if user follows
+- `followers(handle)` = 80–600 synthesized `"Display Name|@handle"` entries + the user pinned at top if they follow
+- `searchFollowers(handle, q)` = client-side `.includes(q)` filter
+
+#### `lib/posts-store.tsx` — `usePosts()`
+```ts
+{ posts, addPost, removePost }
+```
+- `UserPost = { id, kind, mediaUrl, mediaMime, caption, tags, audio, createdAt }`
+- Media is a `URL.createObjectURL` blob — survives nav, **dies on hard reload** (the underlying File is gone). Persisting binary across reloads needs IndexedDB or backend upload.
+
+### Audio amplifier (`lib/audio-amplifier.ts`)
+Tiny wrapper around Web Audio:
+```ts
+applyGain(media: HTMLMediaElement, gainValue: number)  // 0–4
+resumeAudio()                                          // run inside user gesture
+```
+- One AudioContext per page, one MediaElementSourceNode per media element (the API is single-shot).
+- **Never call `applyGain` on cross-origin video** — it silences. Only safe on same-origin or CORS-clean media (we use it on `<audio>` from Mixkit + uploaded blobs).
+
+### Create flow (`components/discover/CreateFlow.tsx`)
+Self-contained file holding `<CreateFAB>` + `<CreateSheet>` + `<Composer>` + `<AudioPicker>`. Wired into the feed via `<CreateFlow sanitize={sanitizeComment} onPosted={…}>`.
+
+- **`+` FAB** → CreateSheet with 3 cards (Reel / Photo / Story)
+- **Composer** has 2 steps: pick file → preview + caption (with emoji bar + sanitizer warn) + tag chips + audio picker + Post
+- **AudioPicker** sources: 🎙 Original, 📥 Mixkit library (8 tracks), 📥 Device upload (`<input accept="audio/*">` + `URL.createObjectURL`)
+- On Post: writes via `usePosts().addPost()`. Feed picks up the new entry instantly.
+
+### Anti-bypass guard (v25, locked-in)
+**Rule:** hotels ↔ creators ↔ customers must NOT use the public reel surfaces as a private DM channel before a booking is confirmed. `sanitizeComment()` scrubs every public-display string:
+
+- Comment input (on submit) → masked + warning toast
+- Sample seed comments (defense in depth)
+- Creator bio in profile sheet
+- Hotel `description` field shown in caption
+- Composer caption (on Post)
+
+Visual surfaces removed because they were private-DM channels:
+- ❌ "💬 Message" button on creator profile
+- ❌ "Reply" affordance on each public comment
+
+After-booking chat is gated to `/bookings` (already authenticated booking-owner ↔ booked-property only) — out of scope for the reels guard.
+
+### `_home-luxury-backup.tsx`
+The pre-v20 luxury homepage lives at `app/_home-luxury-backup.tsx`. Filename starts with `_` so Next.js App Router does NOT register it as a route. To restore the old homepage:
+1. Delete `app/page.tsx` (currently a 12-line redirect into `/discover`).
+2. Rename `app/_home-luxury-backup.tsx` → `app/page.tsx`.
+
+### `_home-luxury-backup.tsx` is the only frozen artifact
+- The original `/discover` Luxury rendering code was deleted from `app/discover/page.tsx` outright (recoverable from git at commit `4b404c3`).
+- `viewMode` state and `ViewMode` type also removed — there's no toggle, only Reels.
+
+### localStorage Keys (current full list, all routes)
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `sb_token` | JWT string | Customer auth token |
+| `sb_user` | JSON | Customer user object |
+| `sb_token_type` | `"backend"` \| `"firebase"` | HS256 vs RS256 |
+| `sb_partner_token` | JWT | Partner auth |
+| `sb_partner_user` | JSON | Partner user + hotel |
+| `sb_admin_token` | JWT | Admin auth |
+| `sb_admin_user` | JSON | Admin user |
+| `bid_dates_{bidId}` | `{checkIn, checkOut}` | Booking-date fallback |
+| `deal_price_{bidId}` | Price string | Flash-deal display price |
+| `sb_city` | City string | Nav location chip (also seeds reel filter default) |
+| `sb_build` | Build version string | SW kill-switch trigger |
+| **`sb_reel_mute`** | `"0"` / `"1"` | Global reel mute (sound-store) |
+| **`sb_reel_interacted`** | `"1"` | First mute/unmute happened |
+| **`sb_reel_gain`** | Number string `"1.0"`–`"3.0"` | Volume booster (sound-store) |
+| **`sb_reel_filter_source`** | `"all"` \| `"hotel"` \| `"creator"` \| `"public"` | Reel filter source |
+| **`sb_reel_filter_city`** | `"all"` or city name | Reel filter location |
+| **`sb_follows_v1`** | JSON array of handles | Follow graph (follow-store) |
+| **`sb_user_display_name`** | String | Display name shown at top of follower lists |
+| **`sb_user_posts`** | JSON array of `UserPost` | User-uploaded reels/photos/stories |
+
+### Service-worker version map (continued)
+- v18 → desktop-nav-reels-visible
+- v19 → discover-instagram-mode (toggle)
+- v20 → reels-only-root-redirect (Luxury removed)
+- v21 → reels-videos-3d-actions
+- v22 → creator-profile-fullscreen
+- v23 → global-sound-true-fullscreen
+- v24 → source-location-filter
+- v25 → anti-bypass-comment-guard
+- v26 → live-profile-graph
+- v27 → create-flow-audio-amp
+- v28 → fix-sound-and-overlap
+- **v29 → user-posts-in-feed (current)**
+
+### Things to Avoid (Reels-Home Era)
+- **Never** call `applyGain` on the `<video>` element in `InstagramHotelFeed`. It silences any cross-origin video. Custom `<audio>` elements only.
+- **Never** add a private-DM affordance (Reply, Message, Inbox, Chat) to any reel surface. Anti-bypass rule v25 is non-negotiable until the post-booking messaging feature ships under `/bookings`.
+- **Never** restore Luxury mode without deleting v20–v29's many tap-to-action wires that assume Reels-only — better to fork a `/discover-luxury` route.
+- Don't strip `_userPost` flags from the Item shape — they drive the "✨ YOUR REEL" pill, the suppressed Book/Bid row, the `videoForHotel` blob fallback, and `videoBroken` initial state.
+- Don't store user-post media as base64 in localStorage — 5 MB cap is too small. Use IndexedDB if persistence across hard reloads becomes required.
+- Don't query `commondatastorage.googleapis.com/gtv-videos-bucket/` with `crossOrigin="anonymous"` — fails CORS preflight on some browsers and the video element 404's. Just use the URL bare.
+
+### Files added during this era
+```
+app/_home-luxury-backup.tsx                # preserved old homepage (NOT a route)
+app/page.tsx                               # rewritten — now just redirects to /discover
+app/discover/page.tsx                      # rewritten — Reels-only
+
+components/discover/InstagramHotelFeed.tsx # ~2300 lines, the entire feed UI
+components/discover/CreateFlow.tsx         # FAB + CreateSheet + Composer + AudioPicker
+
+lib/sound-store.tsx                        # global mute + gain (Web Audio)
+lib/follow-store.tsx                       # global follow graph + searchable followers
+lib/posts-store.tsx                        # user uploads visible in feed + profile
+lib/audio-amplifier.ts                     # Web Audio gain helper
+
+.claude/launch.json                        # one-server config: next-dev on :3000
+```
+
+### Files modified
+```
+app/layout.tsx        # wraps SoundProvider → FollowProvider → PostsProvider; SB_BUILD + badge bumped per release
+components/Navbar.tsx # already hides on /discover and /reels (line 178/179)
+components/ServerStatus.tsx # hides on /discover, /reels, /admin, /partner, /onboard (added v23)
+public/sw.js          # CACHE_NAME bumped per release
+```

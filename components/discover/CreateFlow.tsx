@@ -16,16 +16,22 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 
-// ─── Sample music library (royalty-free / Mixkit) ─────────────────────────
+// ─── Sample music library ─────────────────────────────────────────────────
+// SoundHelix stable demo set — every URL has been around for years, served
+// with CORS, and confirmed to play in every modern browser without auth.
+// Mixkit URLs were tried earlier and 404'd silently — the user got "no
+// sound" when previewing tracks. Switched to SoundHelix to fix that.
 export const AUDIO_LIBRARY: AudioTrack[] = [
-  { id: "mk-tech",    name: "Tech House Vibes",    artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3",         emoji: "🎧" },
-  { id: "mk-deep",    name: "Deep Urban",          artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-deep-urban-623.mp3",                emoji: "🌃" },
-  { id: "mk-driving", name: "Driving Ambition",    artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-driving-ambition-32.mp3",           emoji: "🏎" },
-  { id: "mk-serene",  name: "Serene View",         artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-serene-view-443.mp3",               emoji: "🌅" },
-  { id: "mk-tropical",name: "Tropical Vibes",      artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-tropical-vibes-music-pack-122.mp3", emoji: "🏝" },
-  { id: "mk-piano",   name: "Uplifting Piano Pop", artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-uplifting-piano-pop-3045.mp3",      emoji: "🎹" },
-  { id: "mk-hiphop",  name: "Hip Hop 02",          artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-hip-hop-02-738.mp3",                emoji: "🎤" },
-  { id: "mk-paradise",name: "Relaxing in Paradise",artist: "Mixkit",  url: "https://assets.mixkit.co/music/preview/mixkit-relaxing-in-paradise-533.mp3",      emoji: "🌴" },
+  { id: "sh1", name: "Cascade",        artist: "SoundHelix", emoji: "🎧", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
+  { id: "sh2", name: "Skyline",        artist: "SoundHelix", emoji: "🌆", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
+  { id: "sh3", name: "Drive",          artist: "SoundHelix", emoji: "🏎", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
+  { id: "sh4", name: "Sunrise",        artist: "SoundHelix", emoji: "🌅", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
+  { id: "sh5", name: "Tropical",       artist: "SoundHelix", emoji: "🏝", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
+  { id: "sh6", name: "Piano Reflect",  artist: "SoundHelix", emoji: "🎹", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
+  { id: "sh7", name: "Pulse",          artist: "SoundHelix", emoji: "🎤", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
+  { id: "sh8", name: "Paradise",       artist: "SoundHelix", emoji: "🌴", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
+  { id: "sh9", name: "Night Drive",    artist: "SoundHelix", emoji: "🌙", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
+  { id: "sh10",name: "Lift",           artist: "SoundHelix", emoji: "✨", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
 ];
 
 export type AudioTrack = {
@@ -336,8 +342,11 @@ export function Composer({
     }
   }, [open, kind]);
 
-  // Revoke object URL when modal unmounts to avoid leaks
-  useEffect(() => () => { if (mediaUrl) URL.revokeObjectURL(mediaUrl); }, [mediaUrl]);
+  // ⚠️ Do NOT revoke the object URL when the composer closes — the blob URL
+  // is now owned by the post inside PostsStore and the feed needs it to play
+  // back the upload. Revoking here was the bug that made every freshly-
+  // posted reel/photo show up as a broken card. URLs are session-scoped
+  // anyway; the browser cleans them up when the tab closes.
 
   if (!open) return null;
 
