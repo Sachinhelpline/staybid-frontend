@@ -1525,30 +1525,41 @@ const HotelCard = memo(function HotelCard({
             <span className="opacity-50">·</span>
             <span>{fmtCount(followersLive)} followers</span>
           </div>
-          {/* Creator subline — who made this reel (taps open creator profile) */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onOpenEntity(creator); onTrackEvent?.("ig_open_creator", { handle: creator.handle }); }}
-            className="mt-1.5 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full transition-transform active:scale-95"
-            style={{
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-            }}
-          >
-            <span
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[0.58rem] font-bold text-white"
-              style={{ background: `conic-gradient(from ${creator.avatarHue}deg, #f0b429, #ff458d, #b964ff, #f0b429)` }}
+          {/* Creator subline — only shown for CREATOR or PUBLIC reels.
+              For HOTEL-source reels, the hotel itself IS the author —
+              showing a second @creator chip below would be both
+              redundant AND misleading (e.g. a Mussoorie hotel reel
+              showing "@indiastays" below it implied a different
+              poster, which the user explicitly flagged as wrong).
+              User-uploaded posts also skip this — `_userPost` reels
+              already show "YOU" in the bottom strip. */}
+          {creator.sourceType !== "hotel" && !h._userPost && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenEntity(creator); onTrackEvent?.("ig_open_creator", { handle: creator.handle }); }}
+              className="mt-1.5 inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-full transition-transform active:scale-95"
+              style={{
+                background: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
             >
-              <span className="w-[12px] h-[12px] rounded-full flex items-center justify-center"
-                style={{ background: `linear-gradient(135deg, hsl(${creator.avatarHue},70%,55%), hsl(${(creator.avatarHue+60)%360},70%,40%))`, fontSize: "0.5rem" }}>
-                {creator.name.slice(0, 1).toUpperCase()}
+              <span
+                className="w-4 h-4 rounded-full flex items-center justify-center text-[0.58rem] font-bold text-white"
+                style={{ background: `conic-gradient(from ${creator.avatarHue}deg, #f0b429, #ff458d, #b964ff, #f0b429)` }}
+              >
+                <span className="w-[12px] h-[12px] rounded-full flex items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, hsl(${creator.avatarHue},70%,55%), hsl(${(creator.avatarHue+60)%360},70%,40%))`, fontSize: "0.5rem" }}>
+                  {creator.name.slice(0, 1).toUpperCase()}
+                </span>
               </span>
-            </span>
-            <span className="text-white/90 text-[0.6rem] font-semibold">@{creator.handle}</span>
-            {creator.verified && <span className="ig-verified" style={{ width: 10, height: 10, fontSize: 7 }}>✓</span>}
-          </button>
+              <span className="text-white/90 text-[0.6rem] font-semibold">
+                {creator.sourceType === "creator" ? "✦ Posted by " : "By "}@{creator.handle}
+              </span>
+              {creator.verified && <span className="ig-verified" style={{ width: 10, height: 10, fontSize: 7 }}>✓</span>}
+            </button>
+          )}
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); handleFollowClick(); }}
