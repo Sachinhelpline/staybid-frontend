@@ -1748,43 +1748,67 @@ const HotelCard = memo(function HotelCard({
         )}
       </div>
 
-      {/* Custom soundtrack audio element — only mounted when user has
-          picked an alternate track for THIS reel.
-          ⚠️ NO crossOrigin="anonymous" — it triggers a CORS preflight that
-          some library hosts (and most user-uploaded blobs) can't satisfy,
-          and the silent failure looked exactly like "Use button does
-          nothing". Web-Audio gain still works opportunistically; if the
-          host is CORS-clean we boost, otherwise the native track plays.
-          onCanPlay fires once the file has buffered enough to start —
-          we kick off play() there too so user-uploaded MP3s (which can
-          take 100-500ms to load) reliably start the moment they're ready. */}
-      {customAudio && (
-        <audio
-          ref={audioElRef}
-          src={customAudio.url}
-          loop
-          preload="auto"
-          onCanPlay={() => {
-            const a = audioElRef.current;
-            if (!a) return;
-            if (active && customAudio && !paused) {
-              try {
-                a.muted = false;
-                a.volume = 1;
-                const p = a.play();
-                if (p && typeof p.then === "function") p.catch(() => {});
-              } catch {}
-            }
-          }}
-          onError={() => {
-            // Surface a hint when the picked file isn't decodable
-            // (e.g. unusual codec). Keep the picker open so user can
-            // try a different file.
-            // (We don't pop a toast here to avoid noise; the absence
-            // of audio is signal enough on the failed track.)
-          }}
-        />
-      )}
+      {/* Custom soundtrack audio element — ALWAYS MOUNTED.
+          Earlier we mounted this conditionally on `customAudio &&`. That
+          looked correct but broke iOS Safari + some Android Chrome:
+          the user gesture (tap "Use") propagates through React's commit
+          BEFORE the element exists, so by the time the audio element
+          mounts and we call play(), the gesture-allow window is gone.
+          Solution: keep a permanent <audio> element on the card. When
+          customAudio is null, src="" → no playback. When user picks a
+          track, src updates → autoPlay + onCanPlay both fire. The
+          gesture-allow chain stays intact because the element existed
+          BEFORE the user's interaction. */}
+      <audio
+        ref={audioElRef}
+        src={customAudio?.url || ""}
+        loop
+        preload="auto"
+        autoPlay={!!customAudio}
+        onLoadedData={() => {
+          const a = audioElRef.current;
+          if (!a || !customAudio) return;
+          if (active && !paused) {
+            try {
+              a.muted = false;
+              a.volume = 1;
+              const p = a.play();
+              if (p && typeof p.then === "function") p.catch(() => {});
+            } catch {}
+          }
+        }}
+        onCanPlay={() => {
+          const a = audioElRef.current;
+          if (!a || !customAudio) return;
+          if (active && !paused) {
+            try {
+              a.muted = false;
+              a.volume = 1;
+              const p = a.play();
+              if (p && typeof p.then === "function") p.catch(() => {});
+            } catch {}
+          }
+        }}
+        onError={(e) => {
+          // Some files (uncommon WAV sample rates, weird MP3 tags) won't
+          // decode in this browser. Surface a clear message so the user
+          // knows to try a different file rather than think the feature
+          // is broken.
+          const a = e.currentTarget as HTMLAudioElement;
+          const code = a?.error?.code;
+          if (customAudio) {
+            const reason =
+              code === 4 ? "Browser can't decode this audio format. Try MP3 or M4A." :
+              code === 3 ? "Audio file may be corrupt. Re-export and retry." :
+              code === 2 ? "Couldn't fetch the audio. Check your connection." :
+              "Audio failed to play.";
+            onTrackEvent?.("ig_audio_error", { hotelId: h.id, code, reason });
+            // Fall back: clear the custom audio so the video resumes its
+            // own track instead of leaving the user with silence.
+            setCustomAudio(null);
+          }
+        }}
+      />
 
       {/* Per-card audio picker (replaces the soundtrack on this single reel) */}
       <AudioPicker
@@ -1792,25 +1816,30 @@ const HotelCard = memo(function HotelCard({
         onClose={() => setAudioPickerOpen(false)}
         current={customAudio}
         onPick={(t) => {
-          // Picking a track is an explicit "I want sound" gesture — force
-          // unmute globally and try to start playback inside this same
-          // user-gesture tick so iOS Safari / Android Chrome honour it.
+          // Picking a track is an explicit "I want sound" gesture.
+          // The audio element is ALWAYS mounted now, so we can poke its
+          // src directly INSIDE the user-gesture tick — that's what gets
+          // iOS Safari / Android Chrome to honour the playback. State
+          // catches up after re-render.
           setCustomAudio(t);
           if (muted) onMuteToggle();
-          // Defer one tick so the new <audio> element has mounted with
-          // the picked src, then call play() directly. The useEffect path
-          // also runs but on some browsers loses the gesture context
-          // across the React commit boundary.
-          setTimeout(() => {
-            const a = audioElRef.current;
-            if (!a || !t) return;
+          const a = audioElRef.current;
+          if (a) {
             try {
-              a.muted = false;
-              a.volume = 1;
-              const p = a.play();
-              if (p && typeof p.then === "function") p.catch(() => {});
+              if (t) {
+                a.src = t.url;
+                a.muted = false;
+                a.volume = 1;
+                a.load();
+                const p = a.play();
+                if (p && typeof p.then === "function") p.catch(() => {});
+              } else {
+                a.pause();
+                a.removeAttribute("src");
+                a.load();
+              }
             } catch {}
-          }, 60);
+          }
         }}
         allowOriginal
       />

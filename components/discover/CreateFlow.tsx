@@ -16,36 +16,40 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 
-// ─── Music library ────────────────────────────────────────────────────────
-// Categorised, royalty-free, CORS-clean. We can't legally ship licensed
-// Bollywood music, but we curate a "Trending India" / "Cinematic" /
-// "Lo-fi" / "Energy" selection that gives the picker an Instagram-store
-// vibe. Users can also upload from their own device — that path was the
-// blocker the user reported, fixed via onCanPlay in the feed.
-export type AudioCategory = "trending" | "india" | "cinematic" | "lofi" | "energy" | "ambient";
+// ─── Music library — honest, royalty-free, CORS-clean ────────────────────
+// Tracks are SoundHelix's free demo set, every URL has been stable for
+// years and plays reliably across browsers. Earlier we labelled tracks
+// with names like "Royal Sitar" / "Mumbai Nights" / "Festival Drive" to
+// fake a Bollywood category — they don't actually contain Indian music
+// and the user noticed. Names + categories are now accurate.
+//
+// Real Bollywood / licensed pop music can't legally ship inside a
+// reel-feed app without a music licence (PPL / IPRS / Saregama / etc.).
+// The honest path for that content is the "Upload from device" flow —
+// the user picks the actual song they own from their phone.
+export type AudioCategory = "trending" | "india" | "cinematic" | "lofi" | "energy";
 
 export const AUDIO_LIBRARY: (AudioTrack & { category: AudioCategory })[] = [
-  // ── Trending (general-purpose pop / energetic) ──
-  { id: "sh1",  name: "Cascade",         artist: "SoundHelix", emoji: "🎧", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
-  { id: "sh2",  name: "Skyline",         artist: "SoundHelix", emoji: "🌆", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
-  { id: "sh10", name: "Lift",            artist: "SoundHelix", emoji: "✨", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
-  { id: "sh16", name: "Pulse Beat",      artist: "SoundHelix", emoji: "🔥", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3" },
-  // ── India / Bollywood-style instrumentals (royalty-free) ──
-  { id: "sh11", name: "Royal Sitar",     artist: "Free Library", emoji: "🪕", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
-  { id: "sh12", name: "Mumbai Nights",   artist: "Free Library", emoji: "🌃", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
-  { id: "sh13", name: "Festival Drive",  artist: "Free Library", emoji: "🪔", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
-  { id: "sh14", name: "Desert Rhythm",   artist: "Free Library", emoji: "🐪", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" },
+  // ── Trending (energetic electronica) ──
+  { id: "sh1",  name: "Cascade",         artist: "SoundHelix", emoji: "🎧", category: "trending",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
+  { id: "sh2",  name: "Skyline",         artist: "SoundHelix", emoji: "🌆", category: "trending",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
+  { id: "sh10", name: "Lift",            artist: "SoundHelix", emoji: "✨", category: "trending",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+  { id: "sh11", name: "Momentum",        artist: "SoundHelix", emoji: "⚡", category: "trending",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
   // ── Cinematic ──
   { id: "sh4",  name: "Sunrise",         artist: "SoundHelix", emoji: "🌅", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
   { id: "sh6",  name: "Piano Reflect",   artist: "SoundHelix", emoji: "🎹", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
-  { id: "sh15", name: "Mountain Mist",   artist: "Free Library", emoji: "🏔", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+  { id: "sh15", name: "Wide Horizon",    artist: "SoundHelix", emoji: "🏔", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+  { id: "sh12", name: "Open Sky",        artist: "SoundHelix", emoji: "☁️", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
   // ── Lo-fi / chill ──
-  { id: "sh9",  name: "Night Drive",     artist: "SoundHelix", emoji: "🌙", category: "lofi", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
-  { id: "sh8",  name: "Paradise",        artist: "SoundHelix", emoji: "🌴", category: "lofi", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
+  { id: "sh9",  name: "Night Drive",     artist: "SoundHelix", emoji: "🌙", category: "lofi",      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
+  { id: "sh8",  name: "Paradise",        artist: "SoundHelix", emoji: "🌴", category: "lofi",      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
+  { id: "sh13", name: "Slow Pulse",      artist: "SoundHelix", emoji: "💜", category: "lofi",      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
   // ── Energy / EDM ──
-  { id: "sh3",  name: "Drive",           artist: "SoundHelix", emoji: "🏎", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
-  { id: "sh5",  name: "Tropical Pulse",  artist: "SoundHelix", emoji: "🏝", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
-  { id: "sh7",  name: "Crowd Anthem",    artist: "SoundHelix", emoji: "🎤", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
+  { id: "sh3",  name: "Drive",           artist: "SoundHelix", emoji: "🏎", category: "energy",    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
+  { id: "sh5",  name: "Tropical Pulse",  artist: "SoundHelix", emoji: "🏝", category: "energy",    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
+  { id: "sh7",  name: "Crowd Anthem",    artist: "SoundHelix", emoji: "🎤", category: "energy",    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
+  { id: "sh14", name: "Big Room",        artist: "SoundHelix", emoji: "🎛", category: "energy",    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" },
+  { id: "sh16", name: "Pulse Beat",      artist: "SoundHelix", emoji: "🔥", category: "energy",    url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3" },
 ];
 
 export const AUDIO_CATEGORIES: { id: AudioCategory; label: string; emoji: string }[] = [
@@ -54,7 +58,6 @@ export const AUDIO_CATEGORIES: { id: AudioCategory; label: string; emoji: string
   { id: "cinematic", label: "Cinematic",     emoji: "🎬" },
   { id: "lofi",      label: "Lo-fi",         emoji: "🌙" },
   { id: "energy",    label: "Energy",        emoji: "⚡" },
-  { id: "ambient",   label: "Ambient",       emoji: "🌊" },
 ];
 
 export type AudioTrack = {
@@ -628,6 +631,38 @@ export function AudioPicker({
           <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1 mt-1">
             {category === "all" ? "Library" : (AUDIO_CATEGORIES.find((c) => c.id === category)?.label || "Library")}
           </p>
+          {/* India / Bolly is licensed music — we can't ship it. Direct
+              users to the upload flow instead of pretending we have it. */}
+          {category === "india" && (
+            <div
+              className="my-2 p-4 rounded-2xl"
+              style={{
+                background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))",
+                border: "1px solid rgba(240,180,41,0.32)",
+              }}
+            >
+              <p className="text-2xl mb-1.5">🪕 🎬 🎵</p>
+              <p className="text-white font-semibold text-[0.88rem] leading-snug mb-1.5">
+                Bollywood music is copyright-protected
+              </p>
+              <p className="text-white/70 text-[0.74rem] leading-snug mb-3">
+                Stock libraries can't carry licensed Hindi / Punjabi / regional songs. Pick a track you already own
+                from your phone — it'll be the soundtrack of your reel.
+              </p>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
+                style={{
+                  background: "linear-gradient(135deg,#ffd76b,#f0b429)",
+                  boxShadow: "0 6px 18px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.5)",
+                  border: "1px solid rgba(255,255,255,0.45)",
+                }}
+              >
+                📥 Upload song from device
+              </button>
+            </div>
+          )}
           {list.map((t) => {
             const active = current?.id === t.id;
             const isPreviewing = previewing === t.id;
