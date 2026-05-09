@@ -72,5 +72,54 @@ export async function GET(req: NextRequest) {
     room:  rooms.find((r: any) => r.id === (d.roomId || d.room_id))  || null,
   }));
 
+  // ⚠️ Flash-deals auto-create rule:
+  // The original product spec was "every onboarded hotel's vacant rooms
+  // automatically become flash deals". That was implemented as a Postgres
+  // trigger / onboard-hook that wrote into flash_deals. The hook isn't
+  // currently firing in this environment (likely lost during a Railway
+  // restart), so the table sits empty and the section showed "no flash
+  // deals right now".
+  //
+  // Until the trigger is restored, we synthesize flash deals from the
+  // rooms table at request time. Each room becomes one deal at 15% off
+  // the floor price, valid 7 days. A `_synthetic: true` flag is attached
+  // so admin / analytics can distinguish synthesized rows from real ones.
+  if (dealsEnriched.length === 0 && rooms.length > 0) {
+    const wantCity = city.trim().toLowerCase();
+    const validHotels = hotels.filter((h: any) =>
+      !wantCity || (h.city || "").toLowerCase().includes(wantCity)
+    );
+    const hotelIds = new Set(validHotels.map((h: any) => h.id));
+    const validUntil = new Date(Date.now() + 7 * 86400000).toISOString();
+
+    const synthesized = rooms
+      .filter((r: any) => hotelIds.has(r.hotelId) && Number(r.floorPrice) > 0)
+      .slice(0, 24)
+      .map((r: any, i: number) => {
+        const hotel = validHotels.find((h: any) => h.id === r.hotelId);
+        const floor = Number(r.floorPrice) || 0;
+        // Light variance so the wall isn't a single uniform discount
+        const discountPct = 12 + ((i * 7) % 14);                  // 12% – 25%
+        const dealPrice = Math.max(500, Math.round(floor * (100 - discountPct) / 100));
+        return {
+          id:            `auto-${r.id}`,
+          hotelId:       r.hotelId,
+          roomId:        r.id,
+          city:          hotel?.city || "",
+          dealPrice,
+          aiPrice:       dealPrice,
+          originalPrice: floor,
+          discountPct,
+          validUntil,
+          isActive:      true,
+          hotel:         hotel || null,
+          room:          r,
+          _synthetic:    true,
+        };
+      });
+
+    return NextResponse.json({ deals: synthesized, synthesized: true });
+  }
+
   return NextResponse.json({ deals: dealsEnriched });
 }

@@ -1039,7 +1039,14 @@ const HotelCard = memo(function HotelCard({
       try {
         a.muted = false;
         a.volume = 1;
-        applyGain(a, gain);
+        // ⚠️ DO NOT call applyGain on this audio element.
+        // applyGain → createMediaElementSource → Web Audio graph. The moment
+        // ANY cross-origin media without a CORS-clean response (most public
+        // MP3 hosts, including SoundHelix) is connected to Web Audio, the
+        // browser silences the output for security. That was the actual
+        // root cause of "I picked audio, no sound plays" — the picked
+        // track WAS playing, just routed through Web Audio and silenced.
+        // Native volume (capped at 1.0) is plenty loud and ALWAYS audible.
         const p = a.play();
         if (p && typeof p.then === "function") p.catch(() => {});
       } catch {}
@@ -1052,7 +1059,7 @@ const HotelCard = memo(function HotelCard({
       const el = audioElRef.current;
       if (el) { try { el.pause(); el.currentTime = 0; } catch {} }
     };
-  }, [active, customAudio, paused, gain]);
+  }, [active, customAudio, paused]);
 
   // Video play/pause sync with active state. Three signals:
   //   1. video.muted   — controls the native track on the <video>
@@ -1087,6 +1094,10 @@ const HotelCard = memo(function HotelCard({
   // Initialize as TRUE when there's no video source (user photo/story uploads)
   // so the photo renders immediately without waiting for an onError event.
   const [videoBroken, setVideoBroken] = useState(!videoSrc);
+  // Track WHY the video couldn't play — codec? network? — so the fallback
+  // surface can tell the user something actionable instead of a vague
+  // "preview unavailable".
+  const [videoErrorMsg, setVideoErrorMsg] = useState<string>("");
   useEffect(() => {
     if (!active || images.length < 2 || !videoBroken) return;
     const id = setInterval(() => setPhotoIdx((i) => (i + 1) % images.length), 3800);
@@ -1177,7 +1188,10 @@ const HotelCard = memo(function HotelCard({
       {!videoBroken && (
         <video
           ref={videoRef}
-          src={videoSrc}
+          // Use <source> for the user-post case so we can hint the codec
+          // (helps Chromium pick the right decoder when the file is iOS
+          // HEVC). For the dummy CDN clips we keep the simple src=.
+          {...(h._userPost ? {} : { src: videoSrc })}
           poster={activeImg}
           loop
           autoPlay
@@ -1187,7 +1201,22 @@ const HotelCard = memo(function HotelCard({
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={() => setVideoBroken(true)}
+          onError={(e) => {
+            const v = e.currentTarget as HTMLVideoElement;
+            const code = v?.error?.code;
+            const mime = h._userPostMime || "";
+            // 4 = MEDIA_ERR_SRC_NOT_SUPPORTED — codec/format isn't decodable
+            // 3 = MEDIA_ERR_DECODE — file is corrupt or partially supported
+            // 2 = MEDIA_ERR_NETWORK — fetch failed
+            // 1 = MEDIA_ERR_ABORTED — user / browser cancelled
+            const msg =
+              code === 4 ? `Your browser can't play ${mime || "this format"}. Try uploading an MP4 (H.264 / AAC).` :
+              code === 3 ? `Could not decode the video — file may be corrupt. Re-record or convert to MP4.` :
+              code === 2 ? `Network failed while loading the video. Try again on Wi-Fi.` :
+              `Video failed to play${mime ? ` (${mime})` : ""}.`;
+            setVideoErrorMsg(msg);
+            setVideoBroken(true);
+          }}
           onClick={(e) => {
             // Tap on video:
             //   - if currently muted globally → UNMUTE inside the user
@@ -1211,7 +1240,14 @@ const HotelCard = memo(function HotelCard({
             if (v.paused) { v.play().catch(()=>{}); setPaused(false); }
             else          { v.pause(); setPaused(true); }
           }}
-        />
+        >
+          {/* For user posts, drop the codec hint as a <source> child so
+              Chromium picks the right decoder. The <video src=…> path is
+              skipped via the spread above. */}
+          {h._userPost && videoSrc ? (
+            <source src={videoSrc} type={h._userPostMime || "video/mp4"} />
+          ) : null}
+        </video>
       )}
       {videoBroken && (activeImg ? (
         <img
@@ -1222,10 +1258,9 @@ const HotelCard = memo(function HotelCard({
           className="ig-kb absolute inset-0 w-full h-full object-cover"
         />
       ) : h._userPost ? (
-        // User post whose media is unrecoverable (typically: blob URL was
-        // wiped after a hard reload). Show a meaningful placeholder
-        // instead of pure black — colourful gradient + kind badge +
-        // caption preview so the user knows it's THEIR post.
+        // User post whose media couldn't be played. Show a coloured
+        // gradient + kind badge + the SPECIFIC reason (codec name etc.)
+        // so the user can act on it instead of staring at a black square.
         <div
           className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
           style={{
@@ -1237,11 +1272,16 @@ const HotelCard = memo(function HotelCard({
           </span>
           <p className="text-white font-semibold text-base mb-1">Your {h._userPostKind || "post"}</p>
           {h.description && (
-            <p className="text-white/70 text-[0.78rem] leading-snug max-w-xs line-clamp-3">
+            <p className="text-white/70 text-[0.78rem] leading-snug max-w-xs line-clamp-3 mb-3">
               {h.description}
             </p>
           )}
-          <p className="text-white/40 text-[0.6rem] mt-3">Media preview unavailable · reupload to refresh</p>
+          <p className="text-amber-300/90 text-[0.7rem] leading-snug max-w-xs">
+            {videoErrorMsg || "Media preview unavailable · reupload to refresh"}
+          </p>
+          {h._userPostMime && (
+            <p className="text-white/35 text-[0.58rem] mt-1.5 font-mono">{h._userPostMime}</p>
+          )}
         </div>
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-40"
@@ -1703,6 +1743,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           _userPostKind: p.kind,
           _userPostAudio: p.audio,
           _userPostTags: p.tags,
+          // MIME type forwarded so the video element can hint codec via
+          // <source type=…> and the fallback can tell the user *why*
+          // their format failed (HEVC / MOV are the usual culprits).
+          _userPostMime: p.mediaMime || "",
         },
         score: 999,
         reasons: ["Your upload"],

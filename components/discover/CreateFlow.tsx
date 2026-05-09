@@ -346,6 +346,7 @@ export function Composer({
   const [step, setStep] = useState<"pick" | "edit">("pick");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string>("");
+  const [formatWarning, setFormatWarning] = useState<string>("");
   const [caption, setCaption] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [audio, setAudio] = useState<AudioTrack | null>(null);
@@ -367,6 +368,7 @@ export function Composer({
       setAudio(null);
       setPosting(false);
       setWarnedSanitize(false);
+      setFormatWarning("");
     }
   }, [open, kind]);
 
@@ -387,6 +389,24 @@ export function Composer({
     const url = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaUrl(url);
+    // For VIDEO files, probe whether the browser can decode the format.
+    // canPlayType returns "" for unsupported, "maybe" / "probably" otherwise.
+    // iPhone HEVC (.mov, video/quicktime) and some Android camera
+    // formats fail in Chromium — we warn before the user posts so they
+    // don't end up with a black-screen reel.
+    setFormatWarning("");
+    if (file.type.startsWith("video/")) {
+      try {
+        const probe = document.createElement("video");
+        const can = probe.canPlayType(file.type);
+        if (can === "") {
+          setFormatWarning(
+            `Your browser may not be able to play "${file.type || "this format"}". ` +
+            "If the preview shows a black screen, re-record or convert to MP4 (H.264 / AAC) before posting."
+          );
+        }
+      } catch {}
+    }
     setStep("edit");
   };
 
@@ -505,6 +525,21 @@ export function Composer({
                   <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
                 )}
               </div>
+              {/* Format warning surfaces here so the user knows BEFORE
+                  posting that the file probably won't play in the feed. */}
+              {formatWarning && (
+                <p
+                  className="mt-2 text-amber-300 text-[0.7rem] leading-snug px-2"
+                  style={{
+                    background: "rgba(245,158,11,0.10)",
+                    border: "1px solid rgba(245,158,11,0.35)",
+                    borderRadius: 10,
+                    padding: "8px 10px",
+                  }}
+                >
+                  ⚠️ {formatWarning}
+                </p>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
