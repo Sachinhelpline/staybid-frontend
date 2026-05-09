@@ -49,6 +49,9 @@ export type UserPost = {
   kind: ContentKind;
   mediaUrl: string;
   mediaMime: string;
+  /** First-frame JPEG data-URL captured at upload time (~30-80 KB).
+      Survives blob-URL death; serves as <video poster=…> + grid thumb. */
+  posterUrl?: string;
   caption: string;
   tags: string[];
   audio: { name: string; url: string } | null;
@@ -57,6 +60,70 @@ export type UserPost = {
 
 // Common emoji set used across the composer
 const EMOJI_BAR = ["❤️", "🔥", "✨", "😍", "🥳", "🌄", "🛏", "🍴", "📍", "🌟", "🌊", "☀️", "🌙", "🎵", "🙏"];
+
+/**
+ * Best-effort first-frame capture from any browser-decodable video.
+ * Returns a JPEG data-URL or "" if the codec couldn't decode at all
+ * (e.g. iPhone HEVC on Chromium). The data-URL is small (~30–80 KB) so
+ * it survives localStorage and works as a poster image even after the
+ * blob URL dies on hard reload — that's the "bulletproof" angle.
+ *
+ * For browsers that decode the file (most MP4 / H.264 videos), this
+ * also gives us a meaningful thumbnail BEFORE the user posts, so the
+ * profile grid never has to render a video element at all.
+ */
+async function extractVideoThumbnail(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v: string) => { if (!settled) { settled = true; resolve(v); } };
+    let tempUrl = "";
+    try {
+      tempUrl = URL.createObjectURL(file);
+      const v = document.createElement("video");
+      v.preload = "auto";
+      v.muted = true;
+      v.playsInline = true;
+      (v as any).webkitPlaysInline = true;
+      v.src = tempUrl;
+      v.onloadedmetadata = () => {
+        // Seek to a meaningful frame — first frames are often black.
+        const target = Math.min(0.6, (v.duration || 1) / 4);
+        try { v.currentTime = target; } catch {}
+      };
+      v.onseeked = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          // Scale down — 720px is plenty for a poster thumbnail.
+          const w = v.videoWidth || 720;
+          const h = v.videoHeight || 1280;
+          const scale = Math.min(1, 720 / Math.max(w, h));
+          canvas.width  = Math.max(1, Math.round(w * scale));
+          canvas.height = Math.max(1, Math.round(h * scale));
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+            const data = canvas.toDataURL("image/jpeg", 0.72);
+            finish(data);
+          } else {
+            finish("");
+          }
+        } catch { finish(""); }
+        finally { try { URL.revokeObjectURL(tempUrl); } catch {} }
+      };
+      v.onerror = () => {
+        try { URL.revokeObjectURL(tempUrl); } catch {}
+        finish("");
+      };
+      // Hard timeout — if metadata never loads we just give up.
+      setTimeout(() => {
+        try { URL.revokeObjectURL(tempUrl); } catch {}
+        finish("");
+      }, 4000);
+    } catch {
+      finish("");
+    }
+  });
+}
 
 const TAG_PRESETS = ["TravelDiaries", "LuxuryStay", "BudgetTrip", "Foodie", "Mountains", "Beaches", "Solo", "Couple", "Family", "WeekendGetaway", "StayBidLife", "VerifiedStay"];
 
@@ -346,6 +413,7 @@ export function Composer({
   const [step, setStep] = useState<"pick" | "edit">("pick");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string>("");
+  const [posterUrl, setPosterUrl] = useState<string>("");
   const [formatWarning, setFormatWarning] = useState<string>("");
   const [caption, setCaption] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -383,17 +451,13 @@ export function Composer({
   const accept = kind === "photo" ? "image/*" : kind === "story" ? "image/*,video/*" : "video/*";
   const isVideo = mediaFile?.type.startsWith("video/");
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaUrl(url);
-    // For VIDEO files, probe whether the browser can decode the format.
-    // canPlayType returns "" for unsupported, "maybe" / "probably" otherwise.
-    // iPhone HEVC (.mov, video/quicktime) and some Android camera
-    // formats fail in Chromium — we warn before the user posts so they
-    // don't end up with a black-screen reel.
+    setPosterUrl("");
     setFormatWarning("");
     if (file.type.startsWith("video/")) {
       try {
@@ -402,10 +466,18 @@ export function Composer({
         if (can === "") {
           setFormatWarning(
             `Your browser may not be able to play "${file.type || "this format"}". ` +
-            "If the preview shows a black screen, re-record or convert to MP4 (H.264 / AAC) before posting."
+            "We'll still capture a thumbnail so the post isn't blank, but the reel may not animate. " +
+            "Convert to MP4 (H.264 / AAC) for full playback."
           );
         }
       } catch {}
+      // Kick off thumbnail extraction in the background — the user can
+      // continue editing while the canvas grabs a frame. Posts always
+      // ship WITH a poster when one is recoverable.
+      extractVideoThumbnail(file).then(setPosterUrl).catch(() => setPosterUrl(""));
+    } else if (file.type.startsWith("image/")) {
+      // Photos use the source image itself as their own poster.
+      setPosterUrl(url);
     }
     setStep("edit");
   };
@@ -425,6 +497,10 @@ export function Composer({
       kind,
       mediaUrl,                          // local object URL — survives session
       mediaMime: mediaFile.type,
+      // Persist the captured first-frame poster (data-URL JPEG). Survives
+      // page reload, gives the feed + profile grid a real preview even
+      // when the codec can't be decoded.
+      posterUrl,
       caption: sanitizedCaption,
       tags,
       audio: audio ? { name: audio.name, url: audio.url } : null,

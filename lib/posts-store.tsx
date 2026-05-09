@@ -29,6 +29,14 @@ export type UserPost = {
   kind: ContentKind;
   mediaUrl: string;
   mediaMime: string;
+  /**
+   * Poster image (data-URL JPEG, ~30-80 KB) extracted from the first
+   * frame of the uploaded video. Used as the profile-grid thumbnail
+   * AND as the <video poster=…> on the feed card so the user sees a
+   * real preview even if the codec failed or the blob URL died on
+   * reload. Empty string when extraction failed (codec unsupported).
+   */
+  posterUrl?: string;
   caption: string;
   tags: string[];
   audio: { name: string; url: string } | null;

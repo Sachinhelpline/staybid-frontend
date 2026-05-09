@@ -686,40 +686,75 @@ function CreatorProfileSheet({
                   }}
                   className="ig-reel-tile relative aspect-[9/14] overflow-hidden bg-black/40 active:scale-95 transition-transform"
                 >
-                  {/* User video posts have a blob VIDEO url in h.videoUrl —
-                      a browser can't render that with <img>, so use <video>
-                      muted + auto-loop to make it a live thumbnail. Photo
-                      posts and hotel cards still use <img>. */}
-                  {h._userPost && h.videoUrl ? (
-                    <video
-                      src={h.videoUrl}
-                      muted
-                      loop
-                      playsInline
-                      autoPlay
-                      preload="metadata"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : h.images?.[0] ? (
+                  {/* Profile grid always renders an <img> — for user video
+                      posts that's the captured first-frame poster (data
+                      URL JPEG), so it works regardless of codec support
+                      and without spinning up a <video> element per tile.
+                      A small ▶ overlay marks reels visually. */}
+                  {h.images?.[0] ? (
                     <img
                       src={h.images[0]}
                       alt={h.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        // Silently degrade to gradient placeholder (broken
-                        // blob URLs after a hard reload land here).
                         (e.currentTarget as HTMLImageElement).style.display = "none";
                       }}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl opacity-50">🏨</div>
+                    <div className="w-full h-full flex items-center justify-center text-2xl opacity-50"
+                      style={{ background: h._userPost ? "linear-gradient(135deg,#3a1f5c,#0a0816)" : undefined }}>
+                      {h._userPost ? (h._userPostKind === "photo" ? "📷" : h._userPostKind === "story" ? "📖" : "🎬") : "🏨"}
+                    </div>
                   )}
-                  <div className="absolute top-1 right-1 text-white text-[0.6rem] flex items-center gap-1">
-                    <span>▶</span>
-                    <span className="font-bold" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+                  {/* Kind badge — Reel ▶ / Photo 📷 / Story 📖 — so each
+                      post type is instantly distinguishable in the grid.
+                      Photo tiles also get a subtle inset border so they
+                      pop against the (more common) reel tiles. */}
+                  <div
+                    className="absolute top-1 right-1 px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                    style={{
+                      background: h._userPost && h._userPostKind === "photo"
+                        ? "rgba(255,255,255,0.20)"
+                        : h._userPost && h._userPostKind === "story"
+                        ? "linear-gradient(135deg, rgba(255,69,141,0.45), rgba(185,100,255,0.30))"
+                        : "rgba(0,0,0,0.45)",
+                      border: "1px solid rgba(255,255,255,0.22)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                    }}
+                  >
+                    <span className="text-[0.62rem] leading-none">
+                      {h._userPost && h._userPostKind === "photo" ? "📷" :
+                       h._userPost && h._userPostKind === "story" ? "📖" : "▶"}
+                    </span>
+                    <span className="text-white text-[0.56rem] font-bold leading-none" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
                       {fmtCount(pseudoStat(h.id || h.name, "tile_views", 1200, 480000))}
                     </span>
                   </div>
+                  {/* Story-style rainbow ring overlay so stories stand
+                      out even at a glance. */}
+                  {h._userPost && h._userPostKind === "story" && (
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        boxShadow: "inset 0 0 0 2px transparent",
+                        backgroundImage: "linear-gradient(135deg, rgba(255,69,141,0.20), rgba(185,100,255,0.20), rgba(91,141,255,0.20))",
+                        mixBlendMode: "overlay",
+                      }}
+                    />
+                  )}
+                  {/* "YOUR POST" pill at top-left for any user-uploaded tile */}
+                  {h._userPost && (
+                    <div
+                      className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full text-white text-[0.52rem] font-bold tracking-wide"
+                      style={{
+                        background: "linear-gradient(135deg,#ff458d,#b964ff)",
+                        textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+                      }}
+                    >
+                      YOU
+                    </div>
+                  )}
                   <div className="absolute bottom-1 left-1 right-1 text-white text-[0.58rem] truncate font-semibold"
                     style={{ textShadow: "0 1px 3px rgba(0,0,0,0.85)" }}>
                     {h.name}
@@ -1732,11 +1767,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // h.videoUrl when present). For photos/stories: no videoUrl, so
           // the <video> errors out and the image fallback shows.
           videoUrl: isVideo ? p.mediaUrl : undefined,
-          // ⚠️ Only put the media URL in images[] if it's actually an image.
-          // For VIDEO posts, images[] must be empty — otherwise <img>
-          // fallback (and the video poster=) tries to load a video URL as
-          // an image, which paints a black square.
-          images: isVideo ? [] : [p.mediaUrl],
+          // For VIDEO posts: the captured poster (first-frame JPEG data-URL)
+          // populates images[] so the <video poster=…> attribute and the
+          // image fallback both render the real preview instead of a
+          // black square. Photos use the photo itself.
+          images: isVideo
+            ? (p.posterUrl ? [p.posterUrl] : [])
+            : [p.mediaUrl],
+          posterUrl: p.posterUrl || "",
           // Mark so the card can show a "Your post" pill and skip nav links
           // that would point to a non-existent /hotels/<post-id>.
           _userPost: true,
@@ -2352,17 +2390,31 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-spark.s4 { --sx:  30px; --sy:   2px; }
         .ig-spark.s5 { --sx: -32px; --sy:   4px; }
 
-        /* ─── Right rail ──────────────────────────────────────────────────── */
+        /* ─── Right rail (translucent glass buttons) ──────────────────── */
         .ig-rail-btn {
-          display: flex; flex-direction: column; align-items: center;
-          gap: 3px; color: #fff; font-size: 0.62rem; font-weight: 700;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 2px;
+          color: #fff;
+          font-size: 0.6rem; font-weight: 700;
           text-shadow: 0 1px 3px rgba(0,0,0,0.7);
-          transition: transform 0.12s ease;
+          transition: transform 0.12s ease, background 0.18s ease, border-color 0.18s ease;
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.18);
+          backdrop-filter: blur(14px) saturate(1.3);
+          -webkit-backdrop-filter: blur(14px) saturate(1.3);
+          padding: 7px 6px 5px;
+          border-radius: 14px;
+          min-width: 48px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
         }
-        .ig-rail-btn:active { transform: scale(0.86); }
+        .ig-rail-btn:active {
+          transform: scale(0.88);
+          background: rgba(255,255,255,0.18);
+          border-color: rgba(255,255,255,0.32);
+        }
         .ig-icon {
-          font-size: 1.7rem; line-height: 1;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+          font-size: 1.45rem; line-height: 1;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55));
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
         .ig-rail-count { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
