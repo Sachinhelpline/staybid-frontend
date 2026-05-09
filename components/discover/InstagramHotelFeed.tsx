@@ -403,22 +403,37 @@ function CommentDrawer({
 // More Menu
 // ─────────────────────────────────────────────────────────────────────────
 function MoreMenu({
-  open, onClose, hotelId, onShare, onCopy, onToggleMute, muted, gain, onCycleGain,
+  open, onClose, hotelId, isUserPost, onShare, onCopy, onToggleMute, muted, gain, onCycleGain, onEditPost, onDeletePost,
 }: {
   open: boolean; onClose: () => void; hotelId: string;
+  isUserPost?: boolean;
   onShare: () => void; onCopy: () => void; onToggleMute: () => void; muted: boolean;
   gain: number; onCycleGain: () => void;
+  onEditPost?: () => void;
+  onDeletePost?: () => void;
 }) {
   if (!open) return null;
-  const items = [
-    { icon: "📋", label: "Copy link", onClick: onCopy },
-    { icon: "↗", label: "Share to…", onClick: onShare },
-    { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
-    { icon: "🎚", label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
-    { icon: "🏨", label: "Open hotel page", href: `/hotels/${hotelId}` },
-    { icon: "🚩", label: "Report this reel", danger: true },
-    { icon: "🚫", label: "Not interested" },
-  ];
+  // For user-uploaded posts the menu pivots to author actions:
+  // Edit + Delete take priority, "Open hotel page" + "Report" disappear
+  // (they don't apply to a post the user owns themselves).
+  const items = isUserPost
+    ? [
+        { icon: "✏️",  label: "Edit post",                                 onClick: onEditPost },
+        { icon: "🗑",  label: "Delete post",                               onClick: onDeletePost, danger: true },
+        { icon: "📋",  label: "Copy link",                                 onClick: onCopy },
+        { icon: "↗",   label: "Share to…",                                 onClick: onShare },
+        { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
+        { icon: "🎚",  label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
+      ]
+    : [
+        { icon: "📋",  label: "Copy link",                                 onClick: onCopy },
+        { icon: "↗",   label: "Share to…",                                 onClick: onShare },
+        { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
+        { icon: "🎚",  label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
+        { icon: "🏨",  label: "Open hotel page",                           href: `/hotels/${hotelId}` },
+        { icon: "🚩",  label: "Report this reel",                          danger: true },
+        { icon: "🚫",  label: "Not interested" },
+      ];
   return (
     <div className="fixed inset-0 z-[80] flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
@@ -972,6 +987,116 @@ function FilterSheet({
             <span className="ig-cta-icon">▶</span>
             <span className="ig-cta-text">Show reels</span>
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Edit-post sheet — slide-up drawer for changing caption + tags on an
+// already-posted user reel/photo/story. Media itself is NOT editable
+// (user can Delete + Re-create for that). Save calls addPost with the
+// same id which the PostsStore dedupes → replaces in place.
+// ─────────────────────────────────────────────────────────────────────────
+function EditPostSheet({
+  post, onClose, onSave, sanitize,
+}: {
+  post: any;
+  onClose: () => void;
+  onSave: (updated: any) => void;
+  sanitize?: (s: string) => { clean: string; blocked: boolean };
+}) {
+  const [caption, setCaption] = useState<string>(post.caption || "");
+  const [tags, setTags] = useState<string[]>(Array.isArray(post.tags) ? post.tags : []);
+  const TAG_PRESETS = ["TravelDiaries","LuxuryStay","BudgetTrip","Foodie","Mountains","Beaches","Solo","Couple","Family","WeekendGetaway","StayBidLife","VerifiedStay"];
+  const EMOJI_BAR = ["❤️","🔥","✨","😍","🥳","🌄","🛏","🍴","📍","🌟"];
+  const toggleTag = (t: string) => setTags((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t]);
+  const insertEmoji = (e: string) => setCaption((c) => c + e);
+
+  const save = () => {
+    const cleanCaption = sanitize ? sanitize(caption).clean : caption;
+    onSave({ ...post, caption: cleanCaption, tags });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[88] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: "82vh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8">
+          <button onClick={onClose} className="text-white/85 text-[0.84rem]">Cancel</button>
+          <p className="text-white font-semibold text-[0.92rem]">
+            Edit {post.kind === "photo" ? "photo" : post.kind === "story" ? "story" : "reel"}
+          </p>
+          <button onClick={save} className="text-gold-300 font-bold text-[0.84rem]">Save</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {post.posterUrl && (
+            <div className="w-full max-w-[200px] mx-auto rounded-xl overflow-hidden" style={{ aspectRatio: "9/14" }}>
+              <img src={post.posterUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          <div>
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Caption</p>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="Write a caption…"
+              className="w-full rounded-xl px-3 py-2 text-[0.82rem] outline-none resize-none"
+              style={{
+                color: "#fff",
+                caretColor: "#ffd76b",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.20)",
+                minHeight: 70,
+                fontWeight: 500,
+              }}
+            />
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {EMOJI_BAR.map((e) => (
+                <button key={e} type="button" onClick={() => insertEmoji(e)}
+                  className="px-2 py-1 rounded-full text-base"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TAG_PRESETS.map((t) => {
+                const active = tags.includes(t);
+                return (
+                  <button key={t} type="button" onClick={() => toggleTag(t)}
+                    className="px-3 py-1 rounded-full text-[0.7rem] font-bold transition-all"
+                    style={{
+                      background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.05)",
+                      color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
+                      border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
+                    }}>#{t}</button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1629,13 +1754,35 @@ const HotelCard = memo(function HotelCard({
           some library hosts (and most user-uploaded blobs) can't satisfy,
           and the silent failure looked exactly like "Use button does
           nothing". Web-Audio gain still works opportunistically; if the
-          host is CORS-clean we boost, otherwise the native track plays. */}
+          host is CORS-clean we boost, otherwise the native track plays.
+          onCanPlay fires once the file has buffered enough to start —
+          we kick off play() there too so user-uploaded MP3s (which can
+          take 100-500ms to load) reliably start the moment they're ready. */}
       {customAudio && (
         <audio
           ref={audioElRef}
           src={customAudio.url}
           loop
           preload="auto"
+          onCanPlay={() => {
+            const a = audioElRef.current;
+            if (!a) return;
+            if (active && customAudio && !paused) {
+              try {
+                a.muted = false;
+                a.volume = 1;
+                const p = a.play();
+                if (p && typeof p.then === "function") p.catch(() => {});
+              } catch {}
+            }
+          }}
+          onError={() => {
+            // Surface a hint when the picked file isn't decodable
+            // (e.g. unusual codec). Keep the picker open so user can
+            // try a different file.
+            // (We don't pop a toast here to avoid noise; the absence
+            // of audio is signal enough on the failed track.)
+          }}
         />
       )}
 
@@ -1746,7 +1893,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // Photos & stories don't have a video track — we surface them as cards
   // whose hotel.images[] is the uploaded image; the existing Ken-Burns
   // fallback inside HotelCard handles them when videoBroken triggers.
-  const { posts: userPosts } = usePosts();
+  const { posts: userPosts, removePost, addPost } = usePosts();
+  const [editPostId, setEditPostId] = useState<string | null>(null);
   const items: Item[] = (() => {
     const userItems: Item[] = userPosts.map((p) => {
       const isVideo = p.kind === "reel" || (p.mediaMime || "").startsWith("video/");
@@ -1754,7 +1902,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         hotel: {
           id: p.id,                           // post-* id
           name: "Your post",
-          city: "You",
+          // If the user attached a location, surface it as `city` so the
+          // existing top-chip + filter-by-city logic Just Works™ for
+          // user posts. Falls back to "You" when no location was picked.
+          city: (p.location?.name?.split(",")[0] || "You").trim(),
           state: "",
           starRating: 0,
           avgRating: 0,
@@ -1785,6 +1936,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // <source type=…> and the fallback can tell the user *why*
           // their format failed (HEVC / MOV are the usual culprits).
           _userPostMime: p.mediaMime || "",
+          _userPostLocation: p.location || null,
         },
         score: 999,
         reasons: ["Your upload"],
@@ -2390,31 +2542,28 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-spark.s4 { --sx:  30px; --sy:   2px; }
         .ig-spark.s5 { --sx: -32px; --sy:   4px; }
 
-        /* ─── Right rail (translucent glass buttons) ──────────────────── */
+        /* ─── Right rail (Instagram-style borderless icons) ─────────────
+           Icons sit directly on the video — no pills, no borders, no
+           background. Just a soft drop-shadow under each glyph for
+           legibility. Compact like Instagram Reels. */
         .ig-rail-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 2px;
+          gap: 1px;
           color: #fff;
-          font-size: 0.6rem; font-weight: 700;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.7);
-          transition: transform 0.12s ease, background 0.18s ease, border-color 0.18s ease;
-          background: rgba(255,255,255,0.10);
-          border: 1px solid rgba(255,255,255,0.18);
-          backdrop-filter: blur(14px) saturate(1.3);
-          -webkit-backdrop-filter: blur(14px) saturate(1.3);
-          padding: 7px 6px 5px;
-          border-radius: 14px;
-          min-width: 48px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
+          font-size: 0.58rem; font-weight: 700;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+          transition: transform 0.12s ease;
+          background: transparent;
+          border: 0;
+          padding: 4px;
+          border-radius: 0;
+          min-width: 36px;
+          box-shadow: none;
         }
-        .ig-rail-btn:active {
-          transform: scale(0.88);
-          background: rgba(255,255,255,0.18);
-          border-color: rgba(255,255,255,0.32);
-        }
+        .ig-rail-btn:active { transform: scale(0.86); }
         .ig-icon {
           font-size: 1.45rem; line-height: 1;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+          filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
         .ig-rail-count { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
@@ -2671,6 +2820,19 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         open={moreOpen.open}
         onClose={() => setMoreOpen({ open: false, id: "" })}
         hotelId={moreOpen.id}
+        isUserPost={(items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any)?._userPost}
+        onEditPost={() => {
+          const it = items.find((x) => x.hotel.id === moreOpen.id);
+          if (it) setEditPostId(moreOpen.id);
+        }}
+        onDeletePost={() => {
+          const id = moreOpen.id;
+          if (!id) return;
+          if (typeof window !== "undefined" && !window.confirm("Delete this post? This cannot be undone.")) return;
+          removePost(id);
+          showToast("🗑 Post deleted");
+          onTrackEvent?.("ig_delete_post", { id });
+        }}
         muted={muted}
         gain={gain}
         onCycleGain={cycleGain}
@@ -2704,6 +2866,29 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           }, 100);
         }}
       />
+      {/* ── Inline Edit-post sheet — caption + tags only. Media replace
+            is intentionally NOT supported; user can Delete + Re-create
+            for new media. PostsStore.addPost dedupes by id so saving
+            here replaces the post in-place, preserving posterUrl +
+            mediaUrl + audio. ── */}
+      {editPostId && (() => {
+        const existing = userPosts.find((p) => p.id === editPostId);
+        if (!existing) return null;
+        return (
+          <EditPostSheet
+            post={existing}
+            sanitize={sanitizeComment}
+            onClose={() => setEditPostId(null)}
+            onSave={(updated) => {
+              addPost(updated);
+              showToast("✓ Post updated");
+              setEditPostId(null);
+              onTrackEvent?.("ig_edit_post", { id: updated.id });
+            }}
+          />
+        );
+      })()}
+
       <CreatorProfileSheet
         open={!!creatorOpen}
         onClose={() => setCreatorOpen(null)}

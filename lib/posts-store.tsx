@@ -40,6 +40,8 @@ export type UserPost = {
   caption: string;
   tags: string[];
   audio: { name: string; url: string } | null;
+  /** Location attached to this post (optional). */
+  location?: { name: string; lat?: number; lng?: number } | null;
   createdAt: number;
 };
 

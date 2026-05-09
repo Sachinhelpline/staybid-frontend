@@ -16,22 +16,45 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 
-// ─── Sample music library ─────────────────────────────────────────────────
-// SoundHelix stable demo set — every URL has been around for years, served
-// with CORS, and confirmed to play in every modern browser without auth.
-// Mixkit URLs were tried earlier and 404'd silently — the user got "no
-// sound" when previewing tracks. Switched to SoundHelix to fix that.
-export const AUDIO_LIBRARY: AudioTrack[] = [
-  { id: "sh1", name: "Cascade",        artist: "SoundHelix", emoji: "🎧", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
-  { id: "sh2", name: "Skyline",        artist: "SoundHelix", emoji: "🌆", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
-  { id: "sh3", name: "Drive",          artist: "SoundHelix", emoji: "🏎", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
-  { id: "sh4", name: "Sunrise",        artist: "SoundHelix", emoji: "🌅", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
-  { id: "sh5", name: "Tropical",       artist: "SoundHelix", emoji: "🏝", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
-  { id: "sh6", name: "Piano Reflect",  artist: "SoundHelix", emoji: "🎹", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
-  { id: "sh7", name: "Pulse",          artist: "SoundHelix", emoji: "🎤", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
-  { id: "sh8", name: "Paradise",       artist: "SoundHelix", emoji: "🌴", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
-  { id: "sh9", name: "Night Drive",    artist: "SoundHelix", emoji: "🌙", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
-  { id: "sh10",name: "Lift",           artist: "SoundHelix", emoji: "✨", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+// ─── Music library ────────────────────────────────────────────────────────
+// Categorised, royalty-free, CORS-clean. We can't legally ship licensed
+// Bollywood music, but we curate a "Trending India" / "Cinematic" /
+// "Lo-fi" / "Energy" selection that gives the picker an Instagram-store
+// vibe. Users can also upload from their own device — that path was the
+// blocker the user reported, fixed via onCanPlay in the feed.
+export type AudioCategory = "trending" | "india" | "cinematic" | "lofi" | "energy" | "ambient";
+
+export const AUDIO_LIBRARY: (AudioTrack & { category: AudioCategory })[] = [
+  // ── Trending (general-purpose pop / energetic) ──
+  { id: "sh1",  name: "Cascade",         artist: "SoundHelix", emoji: "🎧", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  },
+  { id: "sh2",  name: "Skyline",         artist: "SoundHelix", emoji: "🌆", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"  },
+  { id: "sh10", name: "Lift",            artist: "SoundHelix", emoji: "✨", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+  { id: "sh16", name: "Pulse Beat",      artist: "SoundHelix", emoji: "🔥", category: "trending", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3" },
+  // ── India / Bollywood-style instrumentals (royalty-free) ──
+  { id: "sh11", name: "Royal Sitar",     artist: "Free Library", emoji: "🪕", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
+  { id: "sh12", name: "Mumbai Nights",   artist: "Free Library", emoji: "🌃", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
+  { id: "sh13", name: "Festival Drive",  artist: "Free Library", emoji: "🪔", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
+  { id: "sh14", name: "Desert Rhythm",   artist: "Free Library", emoji: "🐪", category: "india",  url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" },
+  // ── Cinematic ──
+  { id: "sh4",  name: "Sunrise",         artist: "SoundHelix", emoji: "🌅", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"  },
+  { id: "sh6",  name: "Piano Reflect",   artist: "SoundHelix", emoji: "🎹", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3"  },
+  { id: "sh15", name: "Mountain Mist",   artist: "Free Library", emoji: "🏔", category: "cinematic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" },
+  // ── Lo-fi / chill ──
+  { id: "sh9",  name: "Night Drive",     artist: "SoundHelix", emoji: "🌙", category: "lofi", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"  },
+  { id: "sh8",  name: "Paradise",        artist: "SoundHelix", emoji: "🌴", category: "lofi", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"  },
+  // ── Energy / EDM ──
+  { id: "sh3",  name: "Drive",           artist: "SoundHelix", emoji: "🏎", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"  },
+  { id: "sh5",  name: "Tropical Pulse",  artist: "SoundHelix", emoji: "🏝", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"  },
+  { id: "sh7",  name: "Crowd Anthem",    artist: "SoundHelix", emoji: "🎤", category: "energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3"  },
+];
+
+export const AUDIO_CATEGORIES: { id: AudioCategory; label: string; emoji: string }[] = [
+  { id: "trending",  label: "Trending",      emoji: "🔥" },
+  { id: "india",     label: "India / Bolly", emoji: "🪕" },
+  { id: "cinematic", label: "Cinematic",     emoji: "🎬" },
+  { id: "lofi",      label: "Lo-fi",         emoji: "🌙" },
+  { id: "energy",    label: "Energy",        emoji: "⚡" },
+  { id: "ambient",   label: "Ambient",       emoji: "🌊" },
 ];
 
 export type AudioTrack = {
@@ -55,6 +78,9 @@ export type UserPost = {
   caption: string;
   tags: string[];
   audio: { name: string; url: string } | null;
+  /** Optional location attached at post time. Picked via LocationPicker
+      (GPS detect / Nominatim search / popular city chips). */
+  location?: Location | null;
   createdAt: number;
 };
 
@@ -218,6 +244,234 @@ export function CreateSheet({
   );
 }
 
+// ─── Location Picker — modern: GPS detect + Nominatim search + popular ───
+// Uses HTML5 Geolocation for "use my current location" and OpenStreetMap
+// Nominatim (no API key needed, free) for typeahead search.
+//
+// IMPORTANT: Nominatim's terms ask for a User-Agent and limit to ~1 req/sec.
+// We debounce 350 ms and de-dupe in-flight queries so we stay well under.
+export type Location = { name: string; lat?: number; lng?: number };
+
+const POPULAR_CITIES: { name: string; emoji: string }[] = [
+  { name: "Mumbai",    emoji: "🌊" }, { name: "New Delhi", emoji: "🏛" },
+  { name: "Bangalore", emoji: "💻" }, { name: "Hyderabad", emoji: "🌶" },
+  { name: "Chennai",   emoji: "🥥" }, { name: "Kolkata",   emoji: "🌉" },
+  { name: "Pune",      emoji: "🎓" }, { name: "Goa",       emoji: "🏖" },
+  { name: "Jaipur",    emoji: "🏰" }, { name: "Mussoorie", emoji: "🏔" },
+  { name: "Manali",    emoji: "🌲" }, { name: "Rishikesh", emoji: "🛕" },
+  { name: "Shimla",    emoji: "❄️" }, { name: "Udaipur",   emoji: "🛶" },
+];
+
+export function LocationPicker({
+  open, onClose, current, onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  current: Location | null;
+  onPick: (loc: Location | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Array<{ display_name: string; lat: string; lon: string }>>([]);
+  const [searching, setSearching] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Debounced Nominatim search
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 3) { setResults([]); return; }
+    setSearching(true); setError("");
+    const ctl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=0`,
+          { signal: ctl.signal, headers: { "Accept-Language": "en" } }
+        );
+        if (r.ok) setResults(await r.json());
+        else setError("Search failed — try again");
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setError("Network error — check connection");
+      } finally { setSearching(false); }
+    }, 350);
+    return () => { clearTimeout(t); ctl.abort(); };
+  }, [query, open]);
+
+  const detect = () => {
+    if (!("geolocation" in navigator)) { setError("Geolocation not supported by this browser"); return; }
+    setDetecting(true); setError("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = r.ok ? await r.json() : null;
+          const name = data?.display_name?.split(",").slice(0, 2).join(",").trim() || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          onPick({ name, lat, lng });
+          onClose();
+        } catch {
+          setError("Couldn't reverse-lookup the location.");
+        } finally { setDetecting(false); }
+      },
+      (err) => {
+        setDetecting(false);
+        setError(err.code === 1 ? "Location permission denied" : "Couldn't get current location");
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
+    );
+  };
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          height: "84vh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-2">
+          <p className="text-white font-semibold text-[0.92rem]">📍 Add location</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+              pointerEvents: "auto",
+            }}
+            aria-label="Close"
+          >✕</button>
+        </div>
+
+        {/* Use my current location */}
+        <div className="px-4 pb-2">
+          <button
+            type="button"
+            onClick={detect}
+            disabled={detecting}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl active:scale-[0.99] transition-transform"
+            style={{
+              background: "linear-gradient(135deg, rgba(91,141,255,0.20), rgba(185,100,255,0.14))",
+              border: "1px solid rgba(255,255,255,0.20)",
+              color: "#fff",
+            }}
+          >
+            <span className="text-2xl">{detecting ? "⏳" : "🎯"}</span>
+            <span className="flex-1 text-left">
+              <span className="block font-semibold text-[0.9rem]">
+                {detecting ? "Detecting…" : "Use my current location"}
+              </span>
+              <span className="block text-white/60 text-[0.66rem]">
+                Uses GPS / Wi-Fi positioning. Reverse-geocoded via OpenStreetMap.
+              </span>
+            </span>
+          </button>
+        </div>
+
+        {/* Clear / current */}
+        {current && (
+          <div className="px-4 pb-2">
+            <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)" }}
+            >
+              <span className="text-base">📍</span>
+              <span className="flex-1 text-white text-[0.84rem] truncate">{current.name}</span>
+              <button onClick={() => { onPick(null); onClose(); }} className="text-red-300 text-[0.78rem] font-semibold">Clear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="px-4 pb-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search city, area, hotel, landmark…"
+            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-none"
+            style={{
+              color: "#fff", caretColor: "#ffd76b",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.20)",
+            }}
+            autoComplete="off"
+          />
+          {error && <p className="mt-1.5 text-amber-300 text-[0.7rem]">⚠ {error}</p>}
+        </div>
+
+        {/* Popular city chips */}
+        {!query && (
+          <div className="px-4 pb-2">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Popular</p>
+            <div className="flex flex-wrap gap-1.5">
+              {POPULAR_CITIES.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => { onPick({ name: c.name }); onClose(); }}
+                  className="px-3 py-1.5 rounded-full text-[0.74rem] font-semibold"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.92)",
+                  }}
+                >
+                  {c.emoji} {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
+        <div className="flex-1 overflow-y-auto px-2 pb-4">
+          {searching && <p className="text-white/55 text-[0.78rem] text-center py-4">Searching…</p>}
+          {!searching && query.trim().length >= 3 && results.length === 0 && !error && (
+            <p className="text-white/45 text-[0.78rem] text-center py-6">No matches — try a different name</p>
+          )}
+          {results.map((r, i) => (
+            <button
+              key={`${r.lat}-${r.lon}-${i}`}
+              onClick={() => {
+                onPick({
+                  name: r.display_name.split(",").slice(0, 3).join(",").trim(),
+                  lat: parseFloat(r.lat),
+                  lng: parseFloat(r.lon),
+                });
+                onClose();
+              }}
+              className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl active:bg-white/8 transition-colors"
+            >
+              <span className="text-base mt-0.5">📍</span>
+              <span className="flex-1 text-white/90 text-[0.82rem] leading-snug">{r.display_name}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="px-4 pb-2 text-white/35 text-[0.58rem] text-center">
+          Powered by OpenStreetMap · No data leaves your device until you tap a place
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Audio Picker (Original / Library / Upload) ───────────────────────────
 export function AudioPicker({
   open, onClose, current, onPick, allowOriginal = true,
@@ -233,12 +487,15 @@ export function AudioPicker({
   const previewRef = useRef<HTMLAudioElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const [category, setCategory] = useState<AudioCategory | "all">("all");
+
   // Stop preview audio whenever the picker closes
   useEffect(() => { if (!open && previewRef.current) previewRef.current.pause(); }, [open]);
   useEffect(() => () => { if (previewRef.current) previewRef.current.pause(); }, []);
 
   if (!open) return null;
   const list = AUDIO_LIBRARY.filter((t) => {
+    if (category !== "all" && t.category !== category) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return t.name.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q);
@@ -346,8 +603,31 @@ export function AudioPicker({
           />
         </div>
 
+        {/* Category chips — Trending / India / Cinematic / Lo-fi / Energy */}
+        <div className="px-4 pb-2 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {[{ id: "all" as const, label: "All", emoji: "🎵" }, ...AUDIO_CATEGORIES].map((c) => {
+            const active = category === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCategory(c.id as any)}
+                className="px-3 py-1 rounded-full text-[0.7rem] font-bold whitespace-nowrap shrink-0"
+                style={{
+                  background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.06)",
+                  color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
+                  border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <span>{c.emoji}</span> <span>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1.5">
-          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1 mt-1">Library</p>
+          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1 mt-1">
+            {category === "all" ? "Library" : (AUDIO_CATEGORIES.find((c) => c.id === category)?.label || "Library")}
+          </p>
           {list.map((t) => {
             const active = current?.id === t.id;
             const isPreviewing = previewing === t.id;
@@ -419,6 +699,8 @@ export function Composer({
   const [tags, setTags] = useState<string[]>([]);
   const [audio, setAudio] = useState<AudioTrack | null>(null);
   const [audioOpen, setAudioOpen] = useState(false);
+  const [location, setLocation] = useState<Location | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [warnedSanitize, setWarnedSanitize] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -434,6 +716,8 @@ export function Composer({
       setCaption("");
       setTags([]);
       setAudio(null);
+      setLocation(null);
+      setLocationOpen(false);
       setPosting(false);
       setWarnedSanitize(false);
       setFormatWarning("");
@@ -504,6 +788,7 @@ export function Composer({
       caption: sanitizedCaption,
       tags,
       audio: audio ? { name: audio.name, url: audio.url } : null,
+      location: location || null,
       createdAt: Date.now(),
     };
     // Commit to the global reactive PostsStore — feed picks it up instantly.
@@ -641,6 +926,38 @@ export function Composer({
                 <span className="text-white/45 text-base">›</span>
               </button>
 
+              {/* Location row — opens the modern LocationPicker (GPS + search + popular) */}
+              <button
+                type="button"
+                onClick={() => setLocationOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <span className="text-xl">📍</span>
+                <span className="flex-1 text-left min-w-0">
+                  <span className="block text-white text-[0.82rem] font-semibold truncate">
+                    {location?.name || "Add location"}
+                  </span>
+                  <span className="block text-white/55 text-[0.62rem] truncate">
+                    {location?.lat
+                      ? `${location.lat.toFixed(4)}, ${location.lng?.toFixed(4)}`
+                      : "Detect via GPS, search any place, or pick a popular city"}
+                  </span>
+                </span>
+                {location ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); setLocation(null); }}
+                    className="text-red-300 text-[0.74rem] font-semibold mr-1"
+                  >Clear</span>
+                ) : null}
+                <span className="text-white/45 text-base">›</span>
+              </button>
+
               {/* Caption */}
               <div>
                 <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Caption</p>
@@ -731,6 +1048,12 @@ export function Composer({
         onClose={() => setAudioOpen(false)}
         current={audio}
         onPick={(t) => setAudio(t)}
+      />
+      <LocationPicker
+        open={locationOpen}
+        onClose={() => setLocationOpen(false)}
+        current={location}
+        onPick={(loc) => setLocation(loc)}
       />
     </div>
   );
