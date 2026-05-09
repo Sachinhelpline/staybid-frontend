@@ -674,8 +674,31 @@ function CreatorProfileSheet({
                   }}
                   className="ig-reel-tile relative aspect-[9/14] overflow-hidden bg-black/40 active:scale-95 transition-transform"
                 >
-                  {h.images?.[0] ? (
-                    <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover" />
+                  {/* User video posts have a blob VIDEO url in h.videoUrl —
+                      a browser can't render that with <img>, so use <video>
+                      muted + auto-loop to make it a live thumbnail. Photo
+                      posts and hotel cards still use <img>. */}
+                  {h._userPost && h.videoUrl ? (
+                    <video
+                      src={h.videoUrl}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : h.images?.[0] ? (
+                    <img
+                      src={h.images[0]}
+                      alt={h.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Silently degrade to gradient placeholder (broken
+                        // blob URLs after a hard reload land here).
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-2xl opacity-50">🏨</div>
                   )}
@@ -1475,15 +1498,18 @@ const HotelCard = memo(function HotelCard({
       </div>
 
       {/* Custom soundtrack audio element — only mounted when user has
-          picked an alternate track for THIS reel. crossOrigin set so Web
-          Audio can mount a gain node on it. */}
+          picked an alternate track for THIS reel.
+          ⚠️ NO crossOrigin="anonymous" — it triggers a CORS preflight that
+          some library hosts (and most user-uploaded blobs) can't satisfy,
+          and the silent failure looked exactly like "Use button does
+          nothing". Web-Audio gain still works opportunistically; if the
+          host is CORS-clean we boost, otherwise the native track plays. */}
       {customAudio && (
         <audio
           ref={audioElRef}
           src={customAudio.url}
           loop
           preload="auto"
-          crossOrigin="anonymous"
         />
       )}
 
@@ -1492,7 +1518,27 @@ const HotelCard = memo(function HotelCard({
         open={audioPickerOpen}
         onClose={() => setAudioPickerOpen(false)}
         current={customAudio}
-        onPick={(t) => setCustomAudio(t)}
+        onPick={(t) => {
+          // Picking a track is an explicit "I want sound" gesture — force
+          // unmute globally and try to start playback inside this same
+          // user-gesture tick so iOS Safari / Android Chrome honour it.
+          setCustomAudio(t);
+          if (muted) onMuteToggle();
+          // Defer one tick so the new <audio> element has mounted with
+          // the picked src, then call play() directly. The useEffect path
+          // also runs but on some browsers loses the gesture context
+          // across the React commit boundary.
+          setTimeout(() => {
+            const a = audioElRef.current;
+            if (!a || !t) return;
+            try {
+              a.muted = false;
+              a.volume = 1;
+              const p = a.play();
+              if (p && typeof p.then === "function") p.catch(() => {});
+            } catch {}
+          }, 60);
+        }}
         allowOriginal
       />
 
@@ -1595,7 +1641,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // h.videoUrl when present). For photos/stories: no videoUrl, so
           // the <video> errors out and the image fallback shows.
           videoUrl: isVideo ? p.mediaUrl : undefined,
-          images: [p.mediaUrl],
+          // ⚠️ Only put the media URL in images[] if it's actually an image.
+          // For VIDEO posts, images[] must be empty — otherwise <img>
+          // fallback (and the video poster=) tries to load a video URL as
+          // an image, which paints a black square.
+          images: isVideo ? [] : [p.mediaUrl],
           // Mark so the card can show a "Your post" pill and skip nav links
           // that would point to a non-existent /hotels/<post-id>.
           _userPost: true,

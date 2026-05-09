@@ -67,11 +67,30 @@ export default function MyBidsPage() {
     setTimeout(() => setCelebrateId(""), 5000);
   };
 
+  // Resolve checkIn/checkOut from the bid record. Backend stores dates on
+  // BidRequest, NOT on Bid — so b.checkIn is usually undefined; pull from
+  // b.request, b.bidRequest (camelCase variants), and finally the
+  // localStorage `bid_dates_{bidId}` fallback the booking flow writes.
+  const resolveDates = (b: any) => {
+    let stored: any = null;
+    try {
+      stored = JSON.parse(localStorage.getItem(`bid_dates_${b.id}`) || "null");
+    } catch {}
+    return {
+      checkIn:  b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn  || b.Request?.checkIn  || stored?.checkIn  || null,
+      checkOut: b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut || b.Request?.checkOut || stored?.checkOut || null,
+    };
+  };
+
   const fetchBids = (silent = false) => {
     if (!silent) setLoading(true);
     api.getMyBids()
       .then(async (d) => {
-        const list = d.bids || [];
+        // Normalize: every bid gets checkIn/checkOut from the fallback chain
+        const list = (d.bids || []).map((b: any) => {
+          const { checkIn, checkOut } = resolveDates(b);
+          return { ...b, checkIn, checkOut };
+        });
         // Fetch unit assignments for these bid IDs (shows allocated room #)
         try {
           const token = localStorage.getItem("sb_token");

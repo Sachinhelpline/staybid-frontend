@@ -75,7 +75,8 @@
       "Bash(curl -sI https://www.staybids.in/saved)",
       "Bash(git mv *)",
       "Bash(curl -sL \"https://www.staybids.in/discover\")",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\\\\.claude\\\\worktrees\\\\sleepy-elgamal-1dfbc1\"; $out = & npx tsc --noEmit -p . 2>&1 | Out-String; $matches = $out -split \"`n\" | Where-Object { $_ -match 'discover|InstagramHotel|my-bids|register/route|flash/near' }; $matches[0..30])"
     ]
   }
 }

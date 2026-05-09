@@ -15,16 +15,36 @@ async function sb(path: string) {
 
 export async function GET(req: NextRequest) {
   const city = req.nextUrl.searchParams.get("city") || "";
-  const nowIso = new Date().toISOString();
 
-  let filter = `select=*&isActive=eq.true&validUntil=gt.${encodeURIComponent(nowIso)}`;
+  // ⚠️ Bug fix (May 2026): the previous implementation filtered deals on
+  // the SERVER with `validUntil=gt.${nowIso}`. Two problems:
+  //   1. `flash_deals.validUntil` is a TEXT column (per CLAUDE.md), and
+  //      PostgREST `gt` against TEXT does string comparison — fine for
+  //      strict ISO 8601 strings, but anything stored without the "T" or
+  //      "Z" delimiter (e.g., "2026-05-04 12:00:00") fails sort and the
+  //      whole row drops out.
+  //   2. Older deals saved with relative timestamps drop out instantly.
+  // Net result: the entire flash-deals section showed empty.
+  //
+  // New approach — fetch every active deal, filter expiry CLIENT-SIDE
+  // with permissive Date parsing. If we can't parse validUntil, we keep
+  // the deal (better to show a stale deal than to hide everything).
+  let filter = `select=*&isActive=eq.true`;
   if (city) filter += `&city=ilike.${encodeURIComponent(city)}`;
 
-  const [deals, hotels, rooms] = await Promise.all([
+  const [dealsRaw, hotels, rooms] = await Promise.all([
     sb(`flash_deals?${filter}`),
     sb(`hotels?select=*`),
     sb(`rooms?select=*`),
   ]);
+
+  const now = Date.now();
+  const deals = dealsRaw.filter((d: any) => {
+    if (!d?.validUntil) return true;                  // no expiry recorded → keep
+    const t = new Date(String(d.validUntil)).getTime();
+    if (!Number.isFinite(t)) return true;             // un-parsable → keep (safer than hiding)
+    return t > now;                                   // future → keep
+  });
 
   const dealsEnriched = deals.map((d: any) => ({
     ...d,
