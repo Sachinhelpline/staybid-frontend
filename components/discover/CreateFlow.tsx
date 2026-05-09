@@ -105,7 +105,21 @@ export function CreateSheet({
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
         <div className="flex items-center justify-between px-5 pb-2">
           <p className="text-white font-semibold text-[0.92rem]">Create</p>
-          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+              pointerEvents: "auto",
+            }}
+            aria-label="Close"
+          >✕</button>
         </div>
         <div className="px-4 pt-2 space-y-2.5">
           {cards.map((c) => (
@@ -204,7 +218,21 @@ export function AudioPicker({
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
         <div className="flex items-center justify-between px-5 pb-2">
           <p className="text-white font-semibold text-[0.92rem]">🎵 Choose audio</p>
-          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+              pointerEvents: "auto",
+            }}
+            aria-label="Close"
+          >✕</button>
         </div>
 
         <div className="px-5 pb-2">

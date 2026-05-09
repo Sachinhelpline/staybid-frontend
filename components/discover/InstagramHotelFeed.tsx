@@ -299,7 +299,13 @@ function CommentDrawer({
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
         <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8">
           <p className="text-white font-semibold text-sm">Comments</p>
-          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
+            className="ig-close-btn"
+            aria-label="Close"
+          >✕</button>
         </div>
 
         {/* ⚠️ Public-comments-only notice. Tells users that personal contact
@@ -530,7 +536,13 @@ function CreatorProfileSheet({
             <span className="text-white font-semibold text-[0.92rem]">@{creator.handle}</span>
             {creator.verified && <span className="ig-verified">✓</span>}
           </div>
-          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
+            className="ig-close-btn"
+            aria-label="Close"
+          >✕</button>
         </div>
 
         <div className="overflow-y-auto px-5 pb-6 flex-1" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -835,7 +847,13 @@ function FilterSheet({
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
         <div className="flex items-center justify-between px-5 pb-2">
           <p className="text-white font-semibold text-[0.92rem]">Filter reels</p>
-          <button onClick={onClose} className="text-white/55 text-xl">✕</button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
+            className="ig-close-btn"
+            aria-label="Close"
+          >✕</button>
         </div>
 
         {/* ── Source: Hotels / Creators / Public / All ── */}
@@ -1007,6 +1025,35 @@ const HotelCard = memo(function HotelCard({
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [viewCount, setViewCount] = useState(baseViews);
 
+  // ═══ DEDICATED audio sync — runs independently of the video useEffect.
+  // Bug previously: picking custom audio on reel A then scrolling to reel B
+  // didn't stop A's audio because pause was tangled inside a multi-condition
+  // video effect that early-returned on certain refs being null. Now the
+  // audio element has its OWN tightly-scoped lifecycle: mounted only when
+  // customAudio is set, played only when active && !paused, paused HARD
+  // every other moment + on cleanup. ═══
+  useEffect(() => {
+    const a = audioElRef.current;
+    if (!a) return;
+    if (active && customAudio && !paused) {
+      try {
+        a.muted = false;
+        a.volume = 1;
+        applyGain(a, gain);
+        const p = a.play();
+        if (p && typeof p.then === "function") p.catch(() => {});
+      } catch {}
+    } else {
+      try { a.pause(); a.currentTime = 0; } catch {}
+    }
+    // Cleanup runs on every dep change AND unmount — ensures the audio
+    // never leaks across reels.
+    return () => {
+      const el = audioElRef.current;
+      if (el) { try { el.pause(); el.currentTime = 0; } catch {} }
+    };
+  }, [active, customAudio, paused, gain]);
+
   // Video play/pause sync with active state. Three signals:
   //   1. video.muted   — controls the native track on the <video>
   //   2. Web-Audio gain — boosts louder than 1.0 when user has bumped the
@@ -1016,43 +1063,25 @@ const HotelCard = memo(function HotelCard({
   //      in sync.
   useEffect(() => {
     const v = videoRef.current;
-    const a = audioElRef.current;
     if (!v) return;
     const useCustom = !!customAudio;
     // When custom audio is in use, mute the video (so two tracks don't
     // double up). Otherwise honour the global mute state.
     v.muted = useCustom ? true : muted;
     v.volume = 1;
-    if (a) { a.muted = muted; a.volume = 1; }
 
     if (active && !paused) {
-      // Resume audio context on first user gesture
       resumeAudio();
-      // ⚠️ NEVER call applyGain on the <video> element. Web Audio's
-      // createMediaElementSource silently mutes any media element that's
-      // CORS-tainted (and the dummy Google-CDN videos can be tainted on
-      // some browsers / connections). That was the "no sound in feed" bug.
-      // Native HTMLMediaElement.volume = 1 is plenty for the feed.
-      // Gain is still applied to *custom* audio elements (Mixkit + uploads),
-      // where we control the source and CORS is clean.
-      if (useCustom && a) applyGain(a, gain);
-
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
-      if (useCustom && a) {
-        const ap = a.play();
-        if (ap && typeof ap.then === "function") ap.catch(() => {});
-      }
     } else {
       v.pause();
-      if (a) a.pause();
       if (!active) {
         try { v.currentTime = 0; } catch {}
-        try { if (a) a.currentTime = 0; } catch {}
         if (paused) setPaused(false);
       }
     }
-  }, [active, paused, muted, gain, customAudio]);
+  }, [active, paused, muted, customAudio]);
 
   // Slow Ken-Burns photo cycle as a fallback (only if no video src or video errors).
   // Initialize as TRUE when there's no video source (user photo/story uploads)
@@ -1192,6 +1221,28 @@ const HotelCard = memo(function HotelCard({
           draggable={false}
           className="ig-kb absolute inset-0 w-full h-full object-cover"
         />
+      ) : h._userPost ? (
+        // User post whose media is unrecoverable (typically: blob URL was
+        // wiped after a hard reload). Show a meaningful placeholder
+        // instead of pure black — colourful gradient + kind badge +
+        // caption preview so the user knows it's THEIR post.
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
+          style={{
+            background: "linear-gradient(135deg,#3a1f5c 0%,#1a2050 50%,#0a0816 100%)",
+          }}
+        >
+          <span className="text-6xl mb-3 opacity-90">
+            {h._userPostKind === "photo" ? "📷" : h._userPostKind === "story" ? "📖" : "🎬"}
+          </span>
+          <p className="text-white font-semibold text-base mb-1">Your {h._userPostKind || "post"}</p>
+          {h.description && (
+            <p className="text-white/70 text-[0.78rem] leading-snug max-w-xs line-clamp-3">
+              {h.description}
+            </p>
+          )}
+          <p className="text-white/40 text-[0.6rem] mt-3">Media preview unavailable · reupload to refresh</p>
+        </div>
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-7xl opacity-40"
           style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}>🏨</div>
@@ -2035,6 +2086,28 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           background: radial-gradient(circle, rgba(255,69,141,0.3) 0%, transparent 70%);
         }
 
+        /* Drawer close button — explicit z-index + relative position so it
+           sits above the content's stopPropagation guard, and a generous
+           hit target so taps land on touchscreens. */
+        .ig-close-btn {
+          position: relative;
+          z-index: 5;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 9999px;
+          color: rgba(255,255,255,0.85);
+          font-size: 1.15rem;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          pointer-events: auto;
+          transition: background 0.12s ease, transform 0.12s ease;
+        }
+        .ig-close-btn:hover { background: rgba(255,255,255,0.12); }
+        .ig-close-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
+
         /* Tap-to-unmute coach mark — top-center, only on first reel */
         @keyframes igUnmuteBob {
           0%,100% { transform: translate(-50%, 0) scale(1); }
@@ -2523,6 +2596,16 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         onPosted={(p) => {
           showToast(`✨ ${p.kind === "reel" ? "Reel" : p.kind === "photo" ? "Photo" : "Story"} posted to your profile`);
           onTrackEvent?.("ig_create_post", { kind: p.kind, hasAudio: !!p.audio, tagsCount: p.tags.length });
+          // Scroll the feed to the very top so the new post (which lands at
+          // index 0 via PostsStore) is visible immediately. Without this,
+          // the user sees their old card still in the viewport and reports
+          // "my upload didn't show".
+          setTimeout(() => {
+            const root = containerRef.current;
+            if (!root) return;
+            root.scrollTo({ top: 0, behavior: "smooth" });
+            setActiveIdx(0);
+          }, 100);
         }}
       />
       <CreatorProfileSheet

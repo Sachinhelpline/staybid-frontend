@@ -76,7 +76,8 @@
       "Bash(git mv *)",
       "Bash(curl -sL \"https://www.staybids.in/discover\")",
       "mcp__Claude_Preview__preview_start",
-      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\\\\.claude\\\\worktrees\\\\sleepy-elgamal-1dfbc1\"; $out = & npx tsc --noEmit -p . 2>&1 | Out-String; $matches = $out -split \"`n\" | Where-Object { $_ -match 'discover|InstagramHotel|my-bids|register/route|flash/near' }; $matches[0..30])"
+      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\\\\.claude\\\\worktrees\\\\sleepy-elgamal-1dfbc1\"; $out = & npx tsc --noEmit -p . 2>&1 | Out-String; $matches = $out -split \"`n\" | Where-Object { $_ -match 'discover|InstagramHotel|my-bids|register/route|flash/near' }; $matches[0..30])",
+      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\"; git log --oneline --all -- \"app/api/flash/near/route.ts\" 2>$null | Select-Object -First 5)"
     ]
   }
 }
