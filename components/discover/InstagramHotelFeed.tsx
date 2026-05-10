@@ -24,6 +24,7 @@ import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
 import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack } from "@/components/discover/CreateFlow";
+import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
@@ -171,6 +172,148 @@ function applyHighlight(items: any[], hl: Highlight): any[] {
     if (hl.starsAtLeast && (h.starRating || 0) < hl.starsAtLeast) return false;
     return true;
   });
+}
+
+// ─── Self tier banner — surfaces the user's account state on their own
+// profile sheet. PUBLIC sees the upgrade CTAs; PENDING/CREATOR/HOTEL see
+// their respective dashboards. Lives in this file because the profile
+// sheet is the only consumer.
+function SelfTierBanner({
+  tier, stats, onClose,
+}: {
+  tier: "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN";
+  stats: { earnings?: number; bookings?: number; followers?: number } | null;
+  onClose: () => void;
+}) {
+  if (tier === "PUBLIC") {
+    return (
+      <div
+        className="mt-2 px-3 py-2.5 rounded-xl"
+        style={{
+          background: "linear-gradient(135deg, rgba(255,69,141,0.10), rgba(185,100,255,0.06))",
+          border: "1px solid rgba(255,69,141,0.32)",
+        }}
+      >
+        <p className="text-white text-[0.78rem] font-semibold mb-1.5">✨ Want to earn from StayBid?</p>
+        <p className="text-white/65 text-[0.66rem] leading-snug mb-2">
+          Upgrade to a Creator (12% commission on bookings) or list your Hotel. Admin reviews KYC within 24 h.
+        </p>
+        <Link
+          href="/upgrade"
+          onClick={() => onClose()}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.72rem] font-bold text-black"
+          style={{
+            background: "linear-gradient(135deg,#ffd76b,#f0b429)",
+            boxShadow: "0 3px 10px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5)",
+            border: "1px solid rgba(255,255,255,0.45)",
+          }}
+        >
+          Explore upgrade options →
+        </Link>
+      </div>
+    );
+  }
+  if (tier === "PENDING_CREATOR") {
+    return (
+      <div
+        className="mt-2 px-3 py-2.5 rounded-xl"
+        style={{
+          background: "linear-gradient(135deg, rgba(240,180,41,0.10), rgba(255,69,141,0.06))",
+          border: "1px solid rgba(240,180,41,0.45)",
+        }}
+      >
+        <p className="text-white text-[0.78rem] font-semibold mb-1">⏳ Creator application under review</p>
+        <p className="text-white/65 text-[0.66rem] leading-snug">
+          Most KYC reviews finish within 24 hours. You can keep posting reels meanwhile — once approved
+          your creator badge + commissions activate automatically.
+        </p>
+      </div>
+    );
+  }
+  if (tier === "CREATOR") {
+    return (
+      <div
+        className="mt-2 px-3 py-2.5 rounded-xl"
+        style={{
+          background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))",
+          border: "1px solid rgba(46,204,113,0.45)",
+        }}
+      >
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="text-white text-[0.78rem] font-semibold">✨ Active Creator</p>
+          <Link
+            href="/influencer/dashboard"
+            onClick={() => onClose()}
+            className="text-emerald-300 text-[0.66rem] font-bold hover:underline"
+          >
+            Open hub →
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <SelfStat label="Earned"    value={stats?.earnings != null ? `₹${(stats.earnings || 0).toLocaleString("en-IN")}` : "—"} />
+          <SelfStat label="Bookings"  value={stats?.bookings != null ? String(stats.bookings) : "—"} />
+          <SelfStat label="Followers" value={stats?.followers != null ? (stats.followers >= 1000 ? `${(stats.followers / 1000).toFixed(1)}K` : String(stats.followers)) : "—"} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Link href="/influencer/referrals" onClick={() => onClose()}
+            className="px-2.5 py-1 rounded-full text-[0.64rem] font-bold"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.92)" }}
+          >🔗 Referrals</Link>
+          <Link href="/influencer/earnings" onClick={() => onClose()}
+            className="px-2.5 py-1 rounded-full text-[0.64rem] font-bold"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.92)" }}
+          >💸 Earnings</Link>
+        </div>
+      </div>
+    );
+  }
+  if (tier === "HOTEL") {
+    return (
+      <div
+        className="mt-2 px-3 py-2.5 rounded-xl flex items-center gap-2"
+        style={{
+          background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))",
+          border: "1px solid rgba(46,204,113,0.45)",
+        }}
+      >
+        <span className="text-base">🏨</span>
+        <p className="flex-1 text-white text-[0.78rem] font-semibold">Active Hotel partner</p>
+        <Link
+          href="/hotel-partner"
+          onClick={() => onClose()}
+          className="text-emerald-300 text-[0.66rem] font-bold hover:underline"
+        >
+          Open dashboard →
+        </Link>
+      </div>
+    );
+  }
+  if (tier === "BLOCKED") {
+    return (
+      <div
+        className="mt-2 px-3 py-2.5 rounded-xl"
+        style={{
+          background: "rgba(239,68,68,0.10)",
+          border: "1px solid rgba(239,68,68,0.45)",
+        }}
+      >
+        <p className="text-red-300 text-[0.78rem] font-semibold mb-0.5">🚫 Account blocked</p>
+        <p className="text-red-200/85 text-[0.66rem] leading-snug">
+          Trust &amp; safety has paused this account. Reach out via support to appeal.
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
+function SelfStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-center px-1.5 py-1 rounded-lg" style={{ background: "rgba(0,0,0,0.30)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <p className="text-white font-bold text-[0.78rem] leading-none">{value}</p>
+      <p className="text-white/55 text-[0.56rem] mt-0.5 uppercase tracking-wider">{label}</p>
+    </div>
+  );
 }
 
 // ─── Hotel-as-entity helper — lets the same profile sheet render hotels ──
@@ -510,12 +653,68 @@ function CreatorProfileSheet({
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   // Self-only: filter the personal reels grid to a single tagged highlight
   const [selectedHighlight, setSelectedHighlight] = useState<string | null>(null);
+  // Self-only: account-tier check (PUBLIC / PENDING_CREATOR / CREATOR / HOTEL).
+  // Lightweight one-shot — calls api.getMyInfluencer() the first time the
+  // user opens their own profile, caches the result for the lifetime of
+  // this sheet instance.
+  const [accountTier, setAccountTier] = useState<"UNKNOWN" | "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED">("UNKNOWN");
+  const [accountStats, setAccountStats] = useState<{ earnings?: number; bookings?: number; followers?: number } | null>(null);
   const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers, myAvatarUrl, myDisplayName, myBio, myLocation, myWebsite, myCustomHighlights } = useFollow();
 
   // Reset to default tab whenever a new profile is opened
   useEffect(() => {
     if (open) { setTab("reels"); setFollowerQuery(""); setSelectedHighlight(null); }
   }, [open, creator?.handle]);
+
+  // Probe account tier for self profile only — don't waste an API hit on
+  // every profile sheet open.
+  useEffect(() => {
+    if (!open) return;
+    if (!(creator as any)?._isSelf) return;
+    if (accountTier !== "UNKNOWN") return;
+    let cancelled = false;
+    (async () => {
+      type TierLite = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED";
+      let detected: TierLite = "PUBLIC";
+      let stats: { earnings?: number; bookings?: number; followers?: number } | null = null;
+      try {
+        const inf = await api.getMyInfluencer();
+        if (inf?.registered && inf?.influencer) {
+          const status = String(inf.influencer.status || "").toUpperCase();
+          if (status === "BLOCKED") detected = "BLOCKED";
+          else if (status === "PENDING") detected = "PENDING_CREATOR";
+          else detected = "CREATOR";
+          stats = {
+            earnings: Number(inf.influencer.total_earnings) || 0,
+            followers: Number(inf.influencer.total_followers) || 0,
+          };
+          // Best-effort booking count
+          try {
+            const s = await api.getInfluencerStats?.(inf.influencer.id);
+            if (s?.derived?.totalBookings != null) stats!.bookings = Number(s.derived.totalBookings);
+          } catch {}
+        }
+      } catch {}
+      // Hotel partner check (fallback)
+      if (detected === "PUBLIC") {
+        try {
+          const tok = typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") : null;
+          if (tok) {
+            const r = await fetch("/api/partner/hotel", { headers: { Authorization: `Bearer ${tok}` } });
+            if (r.ok) {
+              const data = await r.json();
+              if (data?.hotel) detected = "HOTEL";
+            }
+          }
+        } catch {}
+      }
+      if (!cancelled) {
+        setAccountTier(detected);
+        setAccountStats(stats);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, (creator as any)?._isSelf, accountTier]);
 
   if (!open || !creator) return null;
 
@@ -684,6 +883,18 @@ function CreatorProfileSheet({
             </a>
           )}
           <p className="text-gold-300 text-[0.74rem] mt-1">❤️ {fmtCount(likesTotal)} likes earned · {reelsCount} reels published</p>
+
+          {/* Account-tier banner — shown ONLY on self profile so the user
+              always knows what kind of account they have + what unlocks
+              if they upgrade. Public users see two upgrade paths;
+              creators / hotel partners see their dashboard link. */}
+          {(creator as any)._isSelf && accountTier !== "UNKNOWN" && (
+            <SelfTierBanner
+              tier={accountTier}
+              stats={accountStats}
+              onClose={onClose}
+            />
+          )}
 
           {/* CTAs — Message removed (anti-bypass v25). Follow → Edit
               profile when this is the user's own pseudo-entity, since

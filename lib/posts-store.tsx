@@ -104,7 +104,23 @@ export function PostsProvider({ children }: { children: ReactNode }) {
 
   const addPost = useCallback((p: UserPost) => {
     setPosts((prev) => {
-      const next = [p, ...prev.filter((x) => x.id !== p.id)].slice(0, 100);
+      // Defensive dedup. We dedupe both by id (the obvious case) AND by a
+      // content fingerprint within a 5-second window — that catches the
+      // user-reported "reel showed up twice" bug, where Strict Mode re-
+      // entry or rapid double-tap on Post would commit two PostsStore
+      // entries with different timestamp-based ids but identical content.
+      const dupeWindow = 5000;
+      const fp = (x: UserPost) =>
+        `${x.kind}|${x.mediaMime}|${(x.posterUrl || "").slice(0, 96)}|${x.caption}`;
+      const incoming = fp(p);
+      const filtered = prev.filter((x) => {
+        if (x.id === p.id) return false;
+        // If the existing post is recent and matches by content, drop it
+        // — the new entry is the most recent.
+        if (Math.abs((x.createdAt || 0) - (p.createdAt || 0)) < dupeWindow && fp(x) === incoming) return false;
+        return true;
+      });
+      const next = [p, ...filtered].slice(0, 100);
       persist(next);
       return next;
     });

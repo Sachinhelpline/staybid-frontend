@@ -1449,6 +1449,13 @@ export function Composer({
   const [warnedSanitize, setWarnedSanitize] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  // Guard against synchronous double-fire: setPosting(true) is async, so
+  // tapping the header "Post" button + the footer "Post to your profile"
+  // (or React Strict Mode replaying effects in dev) could both pass the
+  // `disabled={posting}` check before the state actually flushed and
+  // commit the same upload twice. The ref flips immediately, before any
+  // re-render, so the second call is a no-op.
+  const postedRef = useRef(false);
   const { addPost } = usePosts();
 
   // Reset when reopened
@@ -1468,6 +1475,7 @@ export function Composer({
       setHighlightOpen(false);
       setSaveAsPost(false);
       setPosting(false);
+      postedRef.current = false;
       setWarnedSanitize(false);
       setFormatWarning("");
     }
@@ -1523,6 +1531,9 @@ export function Composer({
 
   const post = () => {
     if (!mediaFile || !mediaUrl) return;
+    // Hard double-fire guard — see postedRef declaration for the reasoning.
+    if (postedRef.current) return;
+    postedRef.current = true;
     const sanitizedCaption = sanitize ? sanitize(caption).clean : caption;
     setPosting(true);
     const userPost: UserPost = {
