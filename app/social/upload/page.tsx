@@ -1,16 +1,17 @@
 "use client";
-// /social/upload — minimal upload flow that ships a post to /api/social/posts.
-// Uses the existing CreateFlow Composer for media + caption + audio +
-// location. On Post: writes the resulting blob to social_posts via the
-// new API route, then routes back to /social/feed.
+// /social/upload — uploads pass through Supabase Storage so the resulting
+// URLs are publicly addressable across devices. Pure blob URLs would only
+// work in the uploader's own browser session.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CreateFlow } from "@/components/discover/CreateFlow";
+import { uploadSocialMedia } from "@/lib/social/storage-upload";
 
 export default function SocialUploadPage() {
   const router = useRouter();
   const [me, setMe] = useState<any | null>(null);
   const [postedToast, setPostedToast] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
@@ -49,25 +50,46 @@ export default function SocialUploadPage() {
         onPosted={async (p) => {
           const tok = localStorage.getItem("sb_token");
           if (!tok) return;
+          setUploading(true);
+          setPostedToast("⬆ Uploading to StayBid…");
           try {
-            await fetch("/api/social/posts", {
+            // 1) Push the binary to Supabase Storage so every viewer
+            //    on every device gets a real public URL — not a local
+            //    blob: URL that only the uploader can resolve.
+            const uploaded = await uploadSocialMedia({
+              mediaBlobUrl:  p.mediaUrl,
+              mediaMime:     p.mediaMime || "",
+              kind:          p.kind.toUpperCase() as "PHOTO" | "REEL" | "STORY",
+              posterDataUrl: p.posterUrl,
+              userId:        me?.user_id || "anon",
+            });
+
+            // 2) Create the social_posts row with the PUBLIC URLs.
+            const postRes = await fetch("/api/social/posts", {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
               body: JSON.stringify({
-                mediaType: p.kind.toUpperCase(),
-                mediaUrl:  p.mediaUrl,
-                thumbnailUrl: p.posterUrl || null,
-                caption:   p.caption || "",
-                soundTrack: p.audio?.name || null,
-                soundUrl:   p.audio?.url || null,
+                mediaType:    p.kind.toUpperCase(),
+                mediaUrl:     uploaded.mediaUrl,
+                thumbnailUrl: uploaded.thumbnailUrl || null,
+                caption:      p.caption || "",
+                soundTrack:   p.audio?.name || null,
+                soundUrl:     p.audio?.url || null,
                 locationName: p.location?.name || null,
                 locationLat:  p.location?.lat,
                 locationLng:  p.location?.lng,
               }),
             });
-            setPostedToast("✓ Posted to your social profile");
-            setTimeout(() => router.push("/social/feed"), 800);
-          } catch {}
+            if (!postRes.ok) throw new Error(`Post creation failed: ${postRes.status}`);
+
+            setPostedToast("✓ Posted publicly to /social/feed");
+            setTimeout(() => router.push("/social/feed"), 900);
+          } catch (err: any) {
+            setPostedToast(`✕ ${err?.message?.slice(0, 80) || "Upload failed"} — try again`);
+            setTimeout(() => setPostedToast(null), 3500);
+          } finally {
+            setUploading(false);
+          }
         }}
       />
 

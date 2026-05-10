@@ -24,6 +24,7 @@ import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
 import { CreateFlow, AudioPicker, type AudioTrack } from "@/components/discover/CreateFlow";
+import { uploadSocialMedia } from "@/lib/social/storage-upload";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -2892,18 +2893,75 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       <CreateFlow
         sanitize={sanitizeComment}
         onPosted={(p) => {
-          showToast(`✨ ${p.kind === "reel" ? "Reel" : p.kind === "photo" ? "Photo" : "Story"} posted to your profile`);
+          showToast(`⬆ Uploading ${p.kind}…`);
           onTrackEvent?.("ig_create_post", { kind: p.kind, hasAudio: !!p.audio, tagsCount: p.tags.length });
-          // Scroll the feed to the very top so the new post (which lands at
-          // index 0 via PostsStore) is visible immediately. Without this,
-          // the user sees their old card still in the viewport and reports
-          // "my upload didn't show".
+          // Scroll the feed to the very top so the local PostsStore
+          // copy is visible immediately for instant feedback.
           setTimeout(() => {
             const root = containerRef.current;
             if (!root) return;
             root.scrollTo({ top: 0, behavior: "smooth" });
             setActiveIdx(0);
           }, 100);
+          // Background — push the binary to Supabase Storage and create
+          // the social_posts row so the post is publicly visible (every
+          // device + every browser, not just the uploader's session).
+          (async () => {
+            try {
+              const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+              if (!tok) {
+                showToast("ℹ Sign in to share publicly");
+                return;
+              }
+              // Decode the user id from the JWT for the storage path
+              let userId = "anon";
+              try {
+                const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+                userId = payload.id || payload.user_id || payload.sub || "anon";
+              } catch {}
+              const uploaded = await uploadSocialMedia({
+                mediaBlobUrl:  p.mediaUrl,
+                mediaMime:     p.mediaMime || "",
+                kind:          p.kind.toUpperCase() as "PHOTO" | "REEL" | "STORY",
+                posterDataUrl: p.posterUrl,
+                userId,
+              });
+              const postRes = await fetch("/api/social/posts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+                body: JSON.stringify({
+                  mediaType:    p.kind.toUpperCase(),
+                  mediaUrl:     uploaded.mediaUrl,
+                  thumbnailUrl: uploaded.thumbnailUrl || null,
+                  caption:      p.caption || "",
+                  soundTrack:   p.audio?.name || null,
+                  soundUrl:     p.audio?.url || null,
+                  locationName: (p as any).location?.name || null,
+                  locationLat:  (p as any).location?.lat,
+                  locationLng:  (p as any).location?.lng,
+                }),
+              });
+              if (postRes.ok) {
+                // Replace the local PostsStore copy's blob URL with the
+                // public Supabase URL — addPost dedupes by id, so this
+                // updates in place. Without this, after the next page
+                // reload the local post would point at a dead blob URL
+                // and render the "Media preview unavailable" fallback.
+                try {
+                  addPost({
+                    ...(p as any),
+                    mediaUrl:  uploaded.mediaUrl,
+                    posterUrl: uploaded.thumbnailUrl || (p as any).posterUrl,
+                  });
+                } catch {}
+                showToast("✓ Posted publicly to /social/feed");
+              } else {
+                showToast("⚠ Saved locally — public post failed");
+              }
+            } catch (err: any) {
+              showToast(`⚠ Public upload failed: ${err?.message?.slice(0, 50) || "try again"}`);
+            }
+          })();
         }}
       />
       {/* ── Inline Edit-post sheet — caption + tags only. Media replace
