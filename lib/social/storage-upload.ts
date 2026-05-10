@@ -3,16 +3,21 @@
 // already produces locally and pushes them to Supabase Storage so the
 // resulting URLs are publicly addressable across devices and sessions.
 // ───────────────────────────────────────────────────────────────────────────
-// Reuses the existing buckets (hotel-videos for video, hotel-images for
-// photos + thumbnails). Both buckets are pre-configured with public read +
-// anon-key write — same pattern used by /influencer/upload.
+// Bucket: `social-media` (public read, anon-key write).
+// Created via the social_media_bucket migration on 2026-05-10 — note this
+// is a SINGLE bucket for both video and photo content because (a) the
+// CLAUDE.md-noted `hotel-videos` bucket never actually existed and the
+// /influencer/upload code 404'd silently against it, and (b) Supabase
+// Storage doesn't care about file MIME for retrieval — only the policies
+// + URL path matter. One bucket = one policy set = simpler.
 // ═══════════════════════════════════════════════════════════════════════════
 "use client";
 
 const SB_URL  = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
 
-type Bucket = "hotel-videos" | "hotel-images";
+const BUCKET = "social-media";
+type Bucket = typeof BUCKET;
 
 function safeExt(mime: string, fallback: string): string {
   const m = (mime || "").split("/")[1]?.split(";")[0]?.toLowerCase() || fallback;
@@ -68,26 +73,26 @@ export async function uploadSocialMedia({
   // 1) Resolve the in-memory blob via the existing object URL.
   const mediaBlob = await fetch(mediaBlobUrl).then((r) => r.blob());
   const isVideo = kind === "REEL" || kind === "STORY" || (mediaMime || "").startsWith("video/");
-  const bucket: Bucket = isVideo ? "hotel-videos" : "hotel-images";
   const ext = safeExt(mediaMime, isVideo ? "mp4" : "jpg");
   const stamp = Date.now();
   const rand  = Math.random().toString(36).slice(2, 8);
   const owner = (userId || "anon").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32) || "anon";
-  const path  = `social/${owner}/${stamp}-${rand}.${ext}`;
+  const subdir = isVideo ? "videos" : "photos";
+  const path = `${subdir}/${owner}/${stamp}-${rand}.${ext}`;
   const mediaUrl = await pushToStorage(
     mediaBlob,
-    bucket,
+    BUCKET,
     path,
     mediaMime || (isVideo ? "video/mp4" : "image/jpeg")
   );
 
-  // 2) Thumbnail: data URL → blob → image bucket.
+  // 2) Thumbnail: data URL → blob → same bucket, thumbs subdir.
   let thumbnailUrl = "";
   if (isVideo && posterDataUrl?.startsWith("data:")) {
     try {
       const posterBlob = await fetch(posterDataUrl).then((r) => r.blob());
-      const posterPath = `social/${owner}/thumb-${stamp}-${rand}.jpg`;
-      thumbnailUrl = await pushToStorage(posterBlob, "hotel-images", posterPath, "image/jpeg");
+      const posterPath = `thumbs/${owner}/${stamp}-${rand}.jpg`;
+      thumbnailUrl = await pushToStorage(posterBlob, BUCKET, posterPath, "image/jpeg");
     } catch {
       thumbnailUrl = ""; // poster upload failure is non-fatal
     }
@@ -95,5 +100,5 @@ export async function uploadSocialMedia({
     thumbnailUrl = mediaUrl;
   }
 
-  return { mediaUrl, thumbnailUrl, bucket };
+  return { mediaUrl, thumbnailUrl, bucket: BUCKET };
 }
