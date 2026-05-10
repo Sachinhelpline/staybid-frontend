@@ -32,21 +32,22 @@ export default function InfluencerLayout({ children }: { children: React.ReactNo
       .then((d) => {
         const reg = !!d?.registered;
         setRegistered(reg);
-        // Routing matrix:
-        //   /influencer (index)       → register-or-dashboard based on reg
-        //   /influencer/register      → dashboard if already registered
-        //   /influencer/<other>       → register if not registered
-        if (pathname === "/influencer") {
-          router.replace(reg ? "/influencer/dashboard" : "/influencer/register");
-        } else if (pathname === "/influencer/register" && reg) {
+        // Routing matrix (post-/upgrade era):
+        //   Registered users → land on dashboard.
+        //   Unregistered users → punted to /upgrade (the new single entry
+        //     for the creator application). This replaces the old in-hub
+        //     /influencer/register page so the form lives in one place.
+        if (!reg) {
+          router.replace("/upgrade");
+          return;
+        }
+        if (pathname === "/influencer" || pathname === "/influencer/register") {
           router.replace("/influencer/dashboard");
-        } else if (!reg && pathname !== "/influencer/register") {
-          router.replace("/influencer/register");
         }
       })
       .catch(() => {
         setRegistered(false);
-        if (pathname !== "/influencer/register") router.replace("/influencer/register");
+        router.replace("/upgrade");
       })
       .finally(() => setChecking(false));
   }, [authLoading, user, pathname, router, isPublic]);

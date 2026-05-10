@@ -246,7 +246,7 @@ function SelfTierBanner({
             onClick={() => onClose()}
             className="text-emerald-300 text-[0.66rem] font-bold hover:underline"
           >
-            Open hub →
+            Open Creator Dashboard →
           </Link>
         </div>
         <div className="grid grid-cols-3 gap-1.5">
