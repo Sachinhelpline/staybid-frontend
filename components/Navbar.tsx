@@ -22,7 +22,10 @@ const USER_LINKS = [
   { href: "/wallet",        label: "Wallet",        icon: "💰" },
   { href: "/points",        label: "Points",        icon: "⭐" },
   { href: "/influencer",    label: "Creator",       icon: "✨" },
-  { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
+  // Real hotel partner panel lives in a separate Vercel deployment +
+  // GitHub repo (Sachinhelpline/staybid-hotel-panel). External link so the
+  // user lands on the actual dashboard, not the old in-repo demo.
+  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",       icon: "🏢", external: true },
 ];
 
 const BOTTOM_PRIMARY = [
@@ -186,7 +189,10 @@ export function Navbar() {
     { href: "/bookings",      label: "Bookings",      icon: "🎫" },
     { href: "/verification",  label: "Verification",  icon: "🎬" },
     { href: "/wallet",        label: "Wallet",        icon: "💰" },
-    { href: "/hotel-partner", label: "Partner",       icon: "🏢" },
+    // Real hotel partner panel lives in a separate Vercel deployment +
+  // GitHub repo (Sachinhelpline/staybid-hotel-panel). External link so the
+  // user lands on the actual dashboard, not the old in-repo demo.
+  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",       icon: "🏢", external: true },
     { href: "/influencer",    label: "Creator",       icon: "✨" },
     { href: "/profile",       label: "Profile",       icon: "👤" },
   ] : [];
@@ -328,6 +334,17 @@ export function Navbar() {
               <>
                 {USER_LINKS.map((item) => {
                   const active = isActive(item.href);
+                  // External entries (e.g. real hotel-panel) open in a new tab.
+                  if ((item as any).external) {
+                    return (
+                      <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
+                        className="nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70">
+                        <span className="text-sm">{item.icon}</span>
+                        {item.label}
+                        <span className="ml-0.5 text-[0.6rem] opacity-60">↗</span>
+                      </a>
+                    );
+                  }
                   return (
                     <Link key={item.href} href={item.href}
                       className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
@@ -428,6 +445,15 @@ export function Navbar() {
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {moreLinks.map((item) => {
                     const active = isActive(item.href);
+                    if ((item as any).external) {
+                      return (
+                        <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" onClick={() => setMoreOpen(false)}
+                          className="nav3d-chip flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl text-center text-white/70">
+                          <span className="text-xl">{item.icon}</span>
+                          <span className="text-[0.6rem] font-bold tracking-wide leading-tight">{item.label} ↗</span>
+                        </a>
+                      );
+                    }
                     return (
                       <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)}
                         className={`nav3d-chip flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl text-center text-white/70 ${active ? "nav3d-chip-active" : ""}`}>

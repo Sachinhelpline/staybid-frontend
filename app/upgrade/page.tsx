@@ -1,15 +1,15 @@
 "use client";
 // Upgrade landing page — single entry for Public users to apply to become
-// either a Creator or a Hotel Partner. Both paths route into existing
-// onboarding flows (`/influencer/register` and `/hotel-partner`) so we
-// don't duplicate any backend work; this page just makes the choice
-// discoverable + explains the perks/KYC/approval flow upfront.
+// either a Creator or a Hotel Partner. Creator path routes to the in-repo
+// /influencer/register flow; Hotel path links out to the dedicated hotel
+// partner panel deployment (Sachinhelpline/staybid-hotel-panel) since the
+// real partner dashboard lives there, not in this customer-frontend repo.
 //
 // Account states are read from /api/proxy/api/auth/me + getMyInfluencer():
 //   PUBLIC          — can apply to either path
 //   PENDING_CREATOR — application under admin review
 //   CREATOR         — approved, links to /influencer/dashboard
-//   HOTEL           — approved hotel partner, links to /hotel-partner
+//   HOTEL           — approved hotel partner, links to staybid-hotel-panel.vercel.app
 //   BLOCKED         — read-only "support" CTA
 //
 // Admin-side approval (PENDING → ACTIVE / BLOCKED) lives at /admin/users
@@ -21,6 +21,8 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
 type Tier = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN";
+
+const HOTEL_PANEL_URL = "https://staybid-hotel-panel.vercel.app";
 
 export default function UpgradePage() {
   const { user, loading: authLoading } = useAuth();
@@ -126,7 +128,10 @@ export default function UpgradePage() {
           <UpgradeCard
             kind="hotel"
             tier={tier}
-            onAction={() => router.push("/hotel-partner")}
+            onAction={() => {
+              // External: real partner panel lives in a separate Vercel deploy.
+              if (typeof window !== "undefined") window.open(HOTEL_PANEL_URL, "_blank", "noopener,noreferrer");
+            }}
           />
         </div>
 
@@ -211,9 +216,14 @@ function StatusBanner({ tier, influencer, hotelOwned }: { tier: Tier; influencer
           <p className="font-bold text-luxury-900 text-sm">You're an active Hotel partner</p>
           <p className="text-luxury-600 text-xs">{hotelOwned?.name || "Your hotel"} · {hotelOwned?.city || ""}</p>
         </div>
-        <Link href="/hotel-partner" className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm">
-          Open dashboard →
-        </Link>
+        <a
+          href={HOTEL_PANEL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm"
+        >
+          Open dashboard ↗
+        </a>
       </div>
     );
   }

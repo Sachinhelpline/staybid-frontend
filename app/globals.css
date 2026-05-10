@@ -29,6 +29,36 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── Reel-page fullscreen lock ─────────────────────────────────────
+   Applied by /discover and /reels via useEffect on mount. Belt-and-
+   braces fullscreen on every device + browser (iOS Safari, Android
+   Chrome, Samsung Internet, Firefox mobile, every desktop browser):
+
+   • position:fixed on body — kills iOS Safari's "rubber-band" scroll
+     that left a gap below the feed when the URL bar collapsed.
+   • 100dvh — modern dynamic viewport that grows when the URL bar
+     hides; 100vh fallback for browsers without dvh support.
+   • overflow:hidden + overscroll-behavior:none — prevents the page
+     from scrolling at the body level (only the reel feed scrolls).
+   • The class is toggled imperatively so it never affects pages
+     other than the reel feed. */
+html.is-reel-page,
+body.is-reel-page {
+  height: 100vh;          /* fallback */
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  background: #000;
+  margin: 0;
+  padding: 0;
+}
+body.is-reel-page {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+}
+
 ::selection {
   background: rgba(201, 145, 26, 0.18);
   color: var(--text-primary);

@@ -610,6 +610,17 @@ export default function ReelsPage() {
     setTag(t || null);
   }, []);
 
+  // Fullscreen body lock — see globals.css `.is-reel-page`. Same one
+  // used by /discover so the behaviour matches across both routes.
+  useEffect(() => {
+    document.documentElement.classList.add("is-reel-page");
+    document.body.classList.add("is-reel-page");
+    return () => {
+      document.documentElement.classList.remove("is-reel-page");
+      document.body.classList.remove("is-reel-page");
+    };
+  }, []);
+
   // Load trending hashtags once
   useEffect(() => {
     fetch("/api/hashtags/trending?limit=12")
@@ -737,13 +748,13 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
+    <div className="fixed inset-0 bg-black overflow-hidden" style={{ height: "100dvh", width: "100vw" }}>
       {TopBar}
       {/* Scroll container */}
       <div
         ref={containerRef}
         className="h-full overflow-y-scroll"
-        style={{ scrollSnapType: "y mandatory", scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}>
+        style={{ scrollSnapType: "y mandatory", scrollBehavior: "smooth", WebkitOverflowScrolling: "touch", height: "100dvh" }}>
         {videos.map((v, i) => (
           <div key={v.id} data-index={i} style={{ height: "100dvh" }}>
             <ReelCard

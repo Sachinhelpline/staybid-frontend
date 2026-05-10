@@ -159,6 +159,19 @@ export default function DiscoverPage() {
     loadFeed();
   }, [loadFeed]);
 
+  // Lock body to fullscreen for the lifetime of the reel page. The
+  // `is-reel-page` class (defined in globals.css) pins html+body to
+  // 100dvh, kills overscroll, and removes the URL-bar gap that was
+  // making "kabhi fullscreen, kabhi nahi" behaviour on Android.
+  useEffect(() => {
+    document.documentElement.classList.add("is-reel-page");
+    document.body.classList.add("is-reel-page");
+    return () => {
+      document.documentElement.classList.remove("is-reel-page");
+      document.body.classList.remove("is-reel-page");
+    };
+  }, []);
+
   // Record hotel_view + markViewed when active card changes
   useEffect(() => {
     const it = items[hotelIdx];
@@ -187,7 +200,10 @@ export default function DiscoverPage() {
   return (
     <div
       className="fixed inset-0 bg-black overflow-hidden select-none"
-      style={{ WebkitUserSelect: "none" }}
+      // Belt-and-braces: even if the body class lock is somehow stripped
+      // by a third-party script, this inline fixed-inset-0 + 100dvh keeps
+      // the reel feed pinned to the full visible viewport.
+      style={{ WebkitUserSelect: "none", height: "100dvh", width: "100vw" }}
       onTouchStartCapture={tryFullscreen}
       onClickCapture={tryFullscreen}
     >

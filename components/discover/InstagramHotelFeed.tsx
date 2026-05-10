@@ -278,13 +278,15 @@ function SelfTierBanner({
       >
         <span className="text-base">🏨</span>
         <p className="flex-1 text-white text-[0.78rem] font-semibold">Active Hotel partner</p>
-        <Link
-          href="/hotel-partner"
+        <a
+          href="https://staybid-hotel-panel.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={() => onClose()}
           className="text-emerald-300 text-[0.66rem] font-bold hover:underline"
         >
-          Open dashboard →
-        </Link>
+          Open dashboard ↗
+        </a>
       </div>
     );
   }
