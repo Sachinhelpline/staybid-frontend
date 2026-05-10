@@ -1728,18 +1728,30 @@ const HotelCard = memo(function HotelCard({
             row with a "Posted ✓" badge (and a Delete button via the More
             menu, which still works because user posts route through the
             same handler). */}
-        {h._userPost ? (
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-white/65 text-[0.7rem] flex items-center gap-1.5">
-              <span style={{
-                width: 8, height: 8, borderRadius: 9999,
-                background: "#2ecc71",
-                boxShadow: "0 0 8px rgba(46,204,113,0.7)",
-              }} />
-              Posted to your profile · visible only on this device
-            </span>
-          </div>
-        ) : (
+        {h._userPost ? (() => {
+          // Determine the public-vs-local state by checking whether the
+          // URLs currently point at Supabase Storage (https://) or are
+          // still local blob: URLs (upload pending or failed).
+          const url0 = h.videoUrl || h.images?.[0] || "";
+          const isPublic = typeof url0 === "string" && url0.startsWith("http");
+          return (
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-white/85 text-[0.7rem] flex items-center gap-1.5">
+                <span style={{
+                  width: 8, height: 8, borderRadius: 9999,
+                  background: isPublic ? "#2ecc71" : "#f59e0b",
+                  boxShadow: isPublic
+                    ? "0 0 8px rgba(46,204,113,0.7)"
+                    : "0 0 8px rgba(245,158,11,0.7)",
+                  animation: isPublic ? undefined : "pulseGlow 1.6s ease-in-out infinite",
+                }} />
+                {isPublic
+                  ? <>Posted publicly · visible to everyone on <Link href="/social/feed" className="text-gold-300 font-semibold underline" onClick={(e) => e.stopPropagation()}>/social/feed</Link></>
+                  : "Uploading to public feed… visible everywhere once done"}
+              </span>
+            </div>
+          );
+        })() : (
           <div className="mt-3 flex items-end gap-2">
             <div className="flex flex-col leading-none mr-1 shrink-0">
               <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
