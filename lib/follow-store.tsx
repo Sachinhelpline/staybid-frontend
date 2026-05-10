@@ -27,6 +27,7 @@ import {
 
 const LS_FOLLOWS = "sb_follows_v1";
 const LS_NAME    = "sb_user_display_name";
+const LS_AVATAR  = "sb_user_avatar_url";
 
 // Stable hash so synthesized follower bases are deterministic per handle.
 function hashStr(s: string): number {
@@ -79,6 +80,10 @@ type FollowCtx = {
   searchFollowers: (handle: string, q: string) => string[];
   myDisplayName: string;
   setMyDisplayName: (name: string) => void;
+  /** User-chosen profile picture (data-URL, capped ~256x256 JPEG so it fits
+      under localStorage's 5 MB ceiling). Empty string = use initials fallback. */
+  myAvatarUrl: string;
+  setMyAvatarUrl: (url: string) => void;
 };
 
 const Ctx = createContext<FollowCtx>({
@@ -91,11 +96,14 @@ const Ctx = createContext<FollowCtx>({
   searchFollowers: () => [],
   myDisplayName: "You",
   setMyDisplayName: () => {},
+  myAvatarUrl: "",
+  setMyAvatarUrl: () => {},
 });
 
 export function FollowProvider({ children }: { children: ReactNode }) {
   const [follows, setFollows] = useState<string[]>([]);
   const [myDisplayName, setMyDisplayNameState] = useState<string>("You");
+  const [myAvatarUrl, setMyAvatarUrlState] = useState<string>("");
 
   // Hydrate
   useEffect(() => {
@@ -107,6 +115,8 @@ export function FollowProvider({ children }: { children: ReactNode }) {
       }
       const n = localStorage.getItem(LS_NAME);
       if (n) setMyDisplayNameState(n);
+      const a = localStorage.getItem(LS_AVATAR);
+      if (a) setMyAvatarUrlState(a);
     } catch {}
   }, []);
 
@@ -165,6 +175,14 @@ export function FollowProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem(LS_NAME, name); } catch {}
   }, []);
 
+  const setMyAvatarUrl = useCallback((url: string) => {
+    setMyAvatarUrlState(url);
+    try {
+      if (url) localStorage.setItem(LS_AVATAR, url);
+      else localStorage.removeItem(LS_AVATAR);
+    } catch {}
+  }, []);
+
   const value = useMemo<FollowCtx>(() => ({
     follows,
     isFollowing,
@@ -175,7 +193,9 @@ export function FollowProvider({ children }: { children: ReactNode }) {
     searchFollowers,
     myDisplayName,
     setMyDisplayName,
-  }), [follows, isFollowing, toggleFollow, followerCount, followingCount, followers, searchFollowers, myDisplayName, setMyDisplayName]);
+    myAvatarUrl,
+    setMyAvatarUrl,
+  }), [follows, isFollowing, toggleFollow, followerCount, followingCount, followers, searchFollowers, myDisplayName, setMyDisplayName, myAvatarUrl, setMyAvatarUrl]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

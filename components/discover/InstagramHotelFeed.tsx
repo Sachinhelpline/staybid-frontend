@@ -23,7 +23,7 @@ import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
-import { CreateFlow, AudioPicker, type AudioTrack } from "@/components/discover/CreateFlow";
+import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack } from "@/components/discover/CreateFlow";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
@@ -507,7 +507,8 @@ function CreatorProfileSheet({
 }) {
   const [tab, setTab] = useState<"reels" | "tagged" | "followers" | "following">("reels");
   const [followerQuery, setFollowerQuery] = useState("");
-  const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers } = useFollow();
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers, myAvatarUrl, myDisplayName } = useFollow();
 
   // Reset to default tab whenever a new profile is opened
   useEffect(() => {
@@ -582,7 +583,7 @@ function CreatorProfileSheet({
               }}
             >
               <div
-                className="w-full h-full rounded-full flex items-center justify-center text-[2rem] font-bold"
+                className="w-full h-full rounded-full flex items-center justify-center text-[2rem] font-bold overflow-hidden"
                 style={{
                   background: `linear-gradient(135deg, hsl(${creator.avatarHue},70%,60%), hsl(${(creator.avatarHue+60)%360},70%,40%))`,
                   border: "2px solid #000",
@@ -590,7 +591,13 @@ function CreatorProfileSheet({
                   textShadow: "0 2px 6px rgba(0,0,0,0.5)",
                 }}
               >
-                {creator.name.slice(0, 1).toUpperCase()}
+                {(creator as any)._isSelf && myAvatarUrl ? (
+                  <img src={myAvatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (creator as any)._isSelf && myDisplayName && myDisplayName !== "You" ? (
+                  myDisplayName.slice(0, 1).toUpperCase()
+                ) : (
+                  creator.name.slice(0, 1).toUpperCase()
+                )}
               </div>
             </div>
             <div className="flex-1 grid grid-cols-3 gap-3 text-center">
@@ -623,11 +630,11 @@ function CreatorProfileSheet({
           <div className="mt-3 flex items-center gap-2">
             {(creator as any)._isSelf ? (
               <button
-                onClick={() => { onClose(); }}
+                onClick={() => setEditProfileOpen(true)}
                 className="ig-follow-3d ig-follow-3d-on"
                 style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
               >
-                <span className="ig-follow-label">✦ This is your profile</span>
+                <span className="ig-follow-label">✏️ Edit profile photo</span>
               </button>
             ) : (
               <button
@@ -877,6 +884,9 @@ function CreatorProfileSheet({
           )}
         </div>
       </div>
+
+      {/* Mounted at sheet level so its z-index sits above this overlay */}
+      <ProfilePhotoEditor open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
     </div>
   );
 }
@@ -1170,6 +1180,7 @@ const HotelCard = memo(function HotelCard({
   onWatchEntity: (e: Creator) => void;    // filter feed to that entity's reels
 }) {
   const h = item.hotel;
+  const router = useRouter();
   const images: string[] = (h.images || []).filter(Boolean);
   const videoSrc = videoForHotel(h);
   const creator = creatorFor(h);
@@ -1188,7 +1199,7 @@ const HotelCard = memo(function HotelCard({
   const cardRef = useRef<HTMLElement | null>(null);
 
   // GLOBAL follow state — shared across cards, profile sheets, sub-chips
-  const { isFollowing, toggleFollow, followerCount } = useFollow();
+  const { isFollowing, toggleFollow, followerCount, myAvatarUrl, myDisplayName } = useFollow();
   const followed = isFollowing(hotelEntity.handle);
   const followersLive = followerCount(hotelEntity.handle);
 
@@ -1518,10 +1529,17 @@ const HotelCard = memo(function HotelCard({
           aria-label={`${h.name} profile options`}
         >
           <span className="ig-avatar-inner">
-            {h.images?.[0] ? (
+            {/* For YOUR posts, prefer the user's chosen profile photo —
+                otherwise fall back to the post's poster/image, otherwise
+                show display-name initials. */}
+            {h._isSelf && myAvatarUrl ? (
+              <img src={myAvatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
+            ) : h.images?.[0] ? (
               <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover rounded-full" />
             ) : (
-              <span className="text-[0.78rem] font-bold text-black">{initials}</span>
+              <span className="text-[0.78rem] font-bold text-black">
+                {h._isSelf ? (myDisplayName || "Y").slice(0, 1).toUpperCase() : initials}
+              </span>
             )}
           </span>
         </button>
@@ -1537,9 +1555,13 @@ const HotelCard = memo(function HotelCard({
             aria-label={`Open ${h.name} profile`}
           >
             <span className="text-white font-semibold text-[0.92rem] truncate" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>
-              {(h.name || "Hotel").toLowerCase().replace(/\s+/g, "_").slice(0, 22)}
+              {h._isSelf
+                ? (myDisplayName && myDisplayName !== "You"
+                    ? myDisplayName
+                    : "Your post")
+                : (h.name || "Hotel").toLowerCase().replace(/\s+/g, "_").slice(0, 22)}
             </span>
-            <span className="ig-verified" title="Verified hotel">✓</span>
+            {!h._isSelf && <span className="ig-verified" title="Verified hotel">✓</span>}
           </button>
           <div className="mt-0.5 flex items-center gap-1.5 text-[0.62rem] text-white/75" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.7)" }}>
             <span>📍 {h.city || "—"}</span>
@@ -1762,12 +1784,46 @@ const HotelCard = memo(function HotelCard({
           </span>
         </button>
 
+        {/* Tagged-hotel pill — user posts that have tagged a real hotel
+            surface a clickable "🏨 At {Hotel}" link. Tapping it routes
+            to /hotels/[id] so any viewer can explore + book directly.
+            Shown on BOTH your own and other users' public posts. */}
+        {h._userPostTaggedHotel?.id && (
+          <Link
+            href={`/hotels/${h._userPostTaggedHotel.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full mb-2"
+            style={{
+              background: "linear-gradient(135deg, rgba(240,180,41,0.20), rgba(255,69,141,0.14))",
+              border: "1px solid rgba(240,180,41,0.55)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
+            <span
+              className="w-5 h-5 rounded-md overflow-hidden flex items-center justify-center text-[0.66rem]"
+              style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}
+            >
+              {h._userPostTaggedHotel.image ? (
+                <img src={h._userPostTaggedHotel.image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                "🏨"
+              )}
+            </span>
+            <span className="text-white text-[0.7rem] font-semibold truncate max-w-[180px]">
+              At {h._userPostTaggedHotel.name}
+            </span>
+            <span className="text-gold-300 text-[0.66rem] font-bold">Explore ›</span>
+          </Link>
+        )}
+
         {/* Price + EQUAL 3D translucent CTAs.
-            For user-uploaded posts there's nothing to book — replace the
-            row with a "Posted ✓" badge (and a Delete button via the More
-            menu, which still works because user posts route through the
-            same handler). */}
-        {h._isSelf ? (() => {
+            For user-uploaded posts WITHOUT a tagged hotel, there's nothing
+            to book — replace the row with a status badge (and a Delete
+            button via the More menu).
+            User posts WITH a tagged hotel get Book/Bid that route to
+            that hotel. */}
+        {h._isSelf && !h._userPostTaggedHotel?.id ? (() => {
           // Status badge ONLY on YOUR uploads — tells you whether the
           // public Supabase upload finished (other devices can see it)
           // or is still pending. Other users' public posts don't need
@@ -1792,20 +1848,48 @@ const HotelCard = memo(function HotelCard({
               </span>
             </div>
           );
-        })() : !h._userPost ? (
+        })() : (!h._userPost || h._userPostTaggedHotel?.id) ? (
           <div className="mt-3 flex items-end gap-2">
             <div className="flex flex-col leading-none mr-1 shrink-0">
               <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
               <span className="text-white font-bold text-[1.1rem]">
-                ₹{(h.minPrice || h.rooms?.[0]?.floorPrice || 0).toLocaleString()}
-                <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
+                {h._userPostTaggedHotel?.id ? (
+                  <span className="text-[0.92rem]">View rates ›</span>
+                ) : (
+                  <>
+                    ₹{(h.minPrice || h.rooms?.[0]?.floorPrice || 0).toLocaleString()}
+                    <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
+                  </>
+                )}
               </span>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); onBook(h); }} className="ig-cta-3d ig-cta-book">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (h._userPostTaggedHotel?.id) {
+                  router.push(`/hotels/${h._userPostTaggedHotel.id}`);
+                  onTrackEvent?.("ig_tagged_hotel_book", { hotelId: h._userPostTaggedHotel.id });
+                } else {
+                  onBook(h);
+                }
+              }}
+              className="ig-cta-3d ig-cta-book"
+            >
               <span className="ig-cta-icon">⚡</span>
               <span className="ig-cta-text">Book Now</span>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onNegotiate(h); }} className="ig-cta-3d ig-cta-bid">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (h._userPostTaggedHotel?.id) {
+                  router.push(`/hotels/${h._userPostTaggedHotel.id}`);
+                  onTrackEvent?.("ig_tagged_hotel_bid", { hotelId: h._userPostTaggedHotel.id });
+                } else {
+                  onNegotiate(h);
+                }
+              }}
+              className="ig-cta-3d ig-cta-bid"
+            >
               <span className="ig-cta-icon">💬</span>
               <span className="ig-cta-text">Bid</span>
             </button>
@@ -1988,6 +2072,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // whose hotel.images[] is the uploaded image; the existing Ken-Burns
   // fallback inside HotelCard handles them when videoBroken triggers.
   const { posts: userPosts, removePost, addPost } = usePosts();
+  const { myDisplayName: ownerName } = useFollow();
   const [editPostId, setEditPostId] = useState<string | null>(null);
   const items: Item[] = (() => {
     const userItems: Item[] = userPosts.map((p) => {
@@ -1995,7 +2080,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       return {
         hotel: {
           id: p.id,                           // post-* id
-          name: "Your post",
+          name: ownerName && ownerName !== "You" ? ownerName : "Your post",
           // If the user attached a location, surface it as `city` so the
           // existing top-chip + filter-by-city logic Just Works™ for
           // user posts. Falls back to "You" when no location was picked.
@@ -2023,6 +2108,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // Mark so the card can show a "Your post" pill and skip nav links
           // that would point to a non-existent /hotels/<post-id>.
           _userPost: true,
+          // ALL posts in PostsStore belong to the current user — flagging
+          // them as `_isSelf` makes the card swap the Follow button for a
+          // "✦ You" badge (you can't follow yourself) and the profile
+          // sheet show "✦ This is your profile" instead.
+          _isSelf: true,
           _userPostKind: p.kind,
           _userPostAudio: p.audio,
           _userPostTags: p.tags,
@@ -2031,6 +2121,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // their format failed (HEVC / MOV are the usual culprits).
           _userPostMime: p.mediaMime || "",
           _userPostLocation: p.location || null,
+          // Tagged hotel — viewers tap "Explore hotel" / Book / Bid on
+          // user posts to land straight on the hotel's page.
+          _userPostTaggedHotel: p.taggedHotel || null,
         },
         score: 999,
         reasons: ["Your upload"],

@@ -42,6 +42,13 @@ export type UserPost = {
   audio: { name: string; url: string } | null;
   /** Location attached to this post (optional). */
   location?: { name: string; lat?: number; lng?: number } | null;
+  /**
+   * Tagged hotel — set when a public user attaches a real StayBid hotel to
+   * their post. Lets the feed surface a "🏨 At {Hotel}" pill, route the
+   * Book/Bid CTAs to that hotel, and let viewers explore the hotel page
+   * straight from the reel.
+   */
+  taggedHotel?: { id: string; name: string; city?: string; image?: string } | null;
   createdAt: number;
 };
 

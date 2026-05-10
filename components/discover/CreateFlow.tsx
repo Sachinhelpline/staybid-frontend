@@ -15,6 +15,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
+import { useFollow } from "@/lib/follow-store";
+import { api } from "@/lib/api";
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
 // Tracks are SoundHelix's free demo set, every URL has been stable for
@@ -84,8 +86,14 @@ export type UserPost = {
   /** Optional location attached at post time. Picked via LocationPicker
       (GPS detect / Nominatim search / popular city chips). */
   location?: Location | null;
+  /** Optional tagged StayBid hotel — picked from the HotelPicker. Surfaces
+      a "🏨 At {Hotel}" pill in the feed and routes Book/Bid on the post
+      to that hotel page. */
+  taggedHotel?: TaggedHotel | null;
   createdAt: number;
 };
+
+export type TaggedHotel = { id: string; name: string; city?: string; image?: string };
 
 // Common emoji set used across the composer
 const EMOJI_BAR = ["❤️", "🔥", "✨", "😍", "🥳", "🌄", "🛏", "🍴", "📍", "🌟", "🌊", "☀️", "🌙", "🎵", "🙏"];
@@ -475,6 +483,353 @@ export function LocationPicker({
   );
 }
 
+// ─── Hotel Picker — search StayBid hotels and tag one to a post ──────────
+// Pulls hotels from /api/hotels (Supabase-backed). Debounced search keeps
+// load light; once tagged, the picked hotel surfaces in the feed as a
+// "🏨 At {Hotel}" pill and the post inherits Book/Bid CTAs to that hotel
+// — that's the "viewer can explore the hotel from the reel" UX.
+export function HotelPicker({
+  open, onClose, current, onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  current: TaggedHotel | null;
+  onPick: (hotel: TaggedHotel | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [hotels, setHotels] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Initial fetch (top hotels) + debounced search on query change
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    setLoading(true); setError("");
+    const t = setTimeout(async () => {
+      try {
+        const params: Record<string, string> = { limit: "30" };
+        if (q.length >= 2) params.search = q;
+        const data = await api.getHotels(params);
+        const list = Array.isArray(data?.hotels) ? data.hotels : Array.isArray(data) ? data : [];
+        setHotels(list);
+      } catch (e: any) {
+        setError(e?.message || "Couldn't load hotels");
+        setHotels([]);
+      } finally { setLoading(false); }
+    }, q.length >= 2 ? 320 : 0);
+    return () => clearTimeout(t);
+  }, [open, query]);
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          height: "84vh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-2">
+          <p className="text-white font-semibold text-[0.92rem]">🏨 Tag a hotel</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+              pointerEvents: "auto",
+            }}
+            aria-label="Close"
+          >✕</button>
+        </div>
+
+        {/* Current tag (with Clear) */}
+        {current && (
+          <div className="px-4 pb-2">
+            <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)" }}
+            >
+              <span className="text-base">🏨</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-white text-[0.84rem] font-semibold truncate">{current.name}</span>
+                {current.city && <span className="block text-white/55 text-[0.62rem] truncate">📍 {current.city}</span>}
+              </span>
+              <button onClick={() => { onPick(null); onClose(); }} className="text-red-300 text-[0.78rem] font-semibold">Clear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="px-4 pb-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search hotel name or city…"
+            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-none"
+            style={{
+              color: "#fff", caretColor: "#ffd76b",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.20)",
+            }}
+            autoComplete="off"
+          />
+          {error && <p className="mt-1.5 text-amber-300 text-[0.7rem]">⚠ {error}</p>}
+        </div>
+
+        {/* Results */}
+        <div className="flex-1 overflow-y-auto px-2 pb-4">
+          {loading && <p className="text-white/55 text-[0.78rem] text-center py-4">Loading hotels…</p>}
+          {!loading && hotels.length === 0 && !error && (
+            <p className="text-white/45 text-[0.78rem] text-center py-6">
+              {query.trim() ? "No matches — try a different name" : "No hotels yet"}
+            </p>
+          )}
+          {hotels.map((h) => {
+            const img = (h.images && h.images[0]) || h.image || "";
+            return (
+              <button
+                key={h.id}
+                onClick={() => {
+                  onPick({
+                    id: String(h.id),
+                    name: h.name || "Hotel",
+                    city: h.city || "",
+                    image: img || "",
+                  });
+                  onClose();
+                }}
+                className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-xl active:bg-white/8 transition-colors"
+              >
+                <div
+                  className="w-12 h-12 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "1px solid rgba(255,255,255,0.10)" }}
+                >
+                  {img ? (
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xl">🏨</span>
+                  )}
+                </div>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-white text-[0.86rem] font-semibold truncate">{h.name}</span>
+                  <span className="block text-white/55 text-[0.66rem] truncate">
+                    {h.city ? `📍 ${h.city}` : ""}
+                    {h.starRating ? ` · ${"★".repeat(Math.min(5, Number(h.starRating)))}` : ""}
+                  </span>
+                </span>
+                <span className="text-white/40 text-base">›</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="px-4 pb-2 text-white/35 text-[0.58rem] text-center">
+          Tagging a hotel lets viewers tap straight through to its profile and book or bid.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Profile photo editor — pick & resize a small JPEG (≤256 px, ~30 KB) ──
+// Stored as a data-URL on FollowStore (`myAvatarUrl`) so the feed avatar +
+// profile sheet pick it up everywhere immediately.
+export function ProfilePhotoEditor({
+  open, onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { myAvatarUrl, setMyAvatarUrl, myDisplayName, setMyDisplayName } = useFollow();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [preview, setPreview] = useState<string>(myAvatarUrl);
+  const [name, setName] = useState<string>(myDisplayName === "You" ? "" : myDisplayName);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setPreview(myAvatarUrl);
+      setName(myDisplayName === "You" ? "" : myDisplayName);
+      setError("");
+    }
+  }, [open, myAvatarUrl, myDisplayName]);
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please pick an image file.");
+      return;
+    }
+    setError("");
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const max = 256;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { setError("Couldn't process image."); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+          setPreview(dataUrl);
+        } finally {
+          try { URL.revokeObjectURL(url); } catch {}
+        }
+      };
+      img.onerror = () => {
+        setError("Couldn't load that image.");
+        try { URL.revokeObjectURL(url); } catch {}
+      };
+      img.src = url;
+    } catch {
+      setError("Something went wrong reading the file.");
+    }
+  };
+
+  const save = () => {
+    setMyAvatarUrl(preview || "");
+    if (name.trim()) setMyDisplayName(name.trim().slice(0, 32));
+    onClose();
+  };
+
+  if (!open) return null;
+  const initials = (name || myDisplayName || "Y").trim().slice(0, 1).toUpperCase();
+
+  return (
+    <div className="fixed inset-0 z-[94] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-2">
+          <p className="text-white font-semibold text-[0.92rem]">✏️ Edit profile</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+            }}
+            aria-label="Close"
+          >✕</button>
+        </div>
+
+        <div className="px-5 pt-2 pb-3 flex flex-col items-center">
+          <div
+            className="w-[120px] h-[120px] rounded-full p-[3px] shrink-0"
+            style={{
+              background: "conic-gradient(from 0deg, #f0b429, #ff458d, #b964ff, #f0b429)",
+            }}
+          >
+            <div
+              className="w-full h-full rounded-full flex items-center justify-center text-[2.4rem] font-bold overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg, #ff458d, #b964ff)",
+                border: "2px solid #000",
+                color: "#fff",
+                textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+              }}
+            >
+              {preview ? (
+                <img src={preview} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
+              style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+            >
+              📷 {preview ? "Change photo" : "Upload photo"}
+            </button>
+            {preview && (
+              <button
+                type="button"
+                onClick={() => setPreview("")}
+                className="px-3 py-2 rounded-full text-[0.74rem] font-semibold text-red-300"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)" }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+          {error && <p className="mt-2 text-amber-300 text-[0.72rem]">⚠ {error}</p>}
+        </div>
+
+        <div className="px-5 pb-3">
+          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Display name</p>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            maxLength={32}
+            className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-none"
+            style={{
+              color: "#fff", caretColor: "#ffd76b",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.20)",
+            }}
+          />
+        </div>
+
+        <div className="px-5 pb-1">
+          <button
+            onClick={save}
+            className="ig-cta-3d ig-cta-book w-full"
+            style={{ padding: "12px", fontSize: "0.86rem" }}
+          >
+            <span className="ig-cta-icon">✓</span>
+            <span className="ig-cta-text">Save profile</span>
+          </button>
+        </div>
+
+        <p className="px-5 pt-2 text-white/35 text-[0.58rem] text-center">
+          Stays on your device · used wherever your reels show up
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Audio Picker (Original / Library / Upload) ───────────────────────────
 export function AudioPicker({
   open, onClose, current, onPick, allowOriginal = true,
@@ -736,11 +1091,15 @@ export function Composer({
   const [audioOpen, setAudioOpen] = useState(false);
   const [location, setLocation] = useState<Location | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [taggedHotel, setTaggedHotel] = useState<TaggedHotel | null>(null);
+  const [hotelOpen, setHotelOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [warnedSanitize, setWarnedSanitize] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const { addPost } = usePosts();
+  const { myAvatarUrl, myDisplayName } = useFollow();
 
   // Reset when reopened
   useEffect(() => {
@@ -753,6 +1112,9 @@ export function Composer({
       setAudio(null);
       setLocation(null);
       setLocationOpen(false);
+      setTaggedHotel(null);
+      setHotelOpen(false);
+      setProfileOpen(false);
       setPosting(false);
       setWarnedSanitize(false);
       setFormatWarning("");
@@ -824,6 +1186,7 @@ export function Composer({
       tags,
       audio: audio ? { name: audio.name, url: audio.url } : null,
       location: location || null,
+      taggedHotel: taggedHotel || null,
       createdAt: Date.now(),
     };
     // Commit to the global reactive PostsStore — feed picks it up instantly.
@@ -881,6 +1244,29 @@ export function Composer({
         {/* Step 1: pick a file */}
         {step === "pick" && (
           <div className="flex-1 flex flex-col items-center justify-center px-5 text-center">
+            {/* Profile chip — quick access to "Edit profile photo + name" so
+                the avatar shown on the user's reels is theirs, not initials. */}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="mb-4 inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full active:scale-95 transition-transform"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)" }}
+            >
+              <span
+                className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[0.7rem] font-bold text-white"
+                style={{
+                  background: myAvatarUrl ? "transparent" : "linear-gradient(135deg,#ff458d,#b964ff)",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                }}
+              >
+                {myAvatarUrl ? <img src={myAvatarUrl} alt="" className="w-full h-full object-cover" /> : (myDisplayName || "Y").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="text-white/85 text-[0.74rem] font-semibold">
+                {myAvatarUrl ? "Edit profile" : "Add profile photo"}
+              </span>
+              <span className="text-white/40 text-base">›</span>
+            </button>
+
             <div
               onClick={() => fileRef.current?.click()}
               className="w-full max-w-xs aspect-[4/5] rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
@@ -993,6 +1379,53 @@ export function Composer({
                 <span className="text-white/45 text-base">›</span>
               </button>
 
+              {/* Hotel tag row — viewers tap through to the hotel page from
+                  the reel, so public-user reels turn into discovery + a
+                  direct booking funnel for that property. */}
+              <button
+                type="button"
+                onClick={() => setHotelOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: taggedHotel
+                    ? "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))"
+                    : "rgba(255,255,255,0.04)",
+                  border: taggedHotel
+                    ? "1px solid rgba(240,180,41,0.45)"
+                    : "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <span
+                  className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center text-base"
+                  style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "1px solid rgba(255,255,255,0.10)" }}
+                >
+                  {taggedHotel?.image ? (
+                    <img src={taggedHotel.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>🏨</span>
+                  )}
+                </span>
+                <span className="flex-1 text-left min-w-0">
+                  <span className="block text-white text-[0.82rem] font-semibold truncate">
+                    {taggedHotel ? taggedHotel.name : "Tag a hotel"}
+                  </span>
+                  <span className="block text-white/55 text-[0.62rem] truncate">
+                    {taggedHotel
+                      ? (taggedHotel.city ? `📍 ${taggedHotel.city} · viewers can book or bid from this reel` : "viewers can book or bid from this reel")
+                      : "Tag a StayBid hotel so viewers can book or bid right from your reel"}
+                  </span>
+                </span>
+                {taggedHotel ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); setTaggedHotel(null); }}
+                    className="text-red-300 text-[0.74rem] font-semibold mr-1"
+                  >Clear</span>
+                ) : null}
+                <span className="text-white/45 text-base">›</span>
+              </button>
+
               {/* Caption */}
               <div>
                 <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Caption</p>
@@ -1089,6 +1522,16 @@ export function Composer({
         onClose={() => setLocationOpen(false)}
         current={location}
         onPick={(loc) => setLocation(loc)}
+      />
+      <HotelPicker
+        open={hotelOpen}
+        onClose={() => setHotelOpen(false)}
+        current={taggedHotel}
+        onPick={(h) => setTaggedHotel(h)}
+      />
+      <ProfilePhotoEditor
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
       />
     </div>
   );
