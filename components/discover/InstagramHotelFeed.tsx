@@ -174,7 +174,7 @@ function applyHighlight(items: any[], hl: Highlight): any[] {
 }
 
 // ─── Hotel-as-entity helper — lets the same profile sheet render hotels ──
-function entityFromHotel(h: any): Creator {
+function entityFromHotel(h: any): Creator & { _isSelf?: boolean } {
   return {
     handle: (h.name || "hotel").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 24) || "hotel",
     name: h.name || "Hotel",
@@ -182,6 +182,10 @@ function entityFromHotel(h: any): Creator {
     bio: `${h.starRating ? "★".repeat(Math.min(5, h.starRating)) + " · " : ""}${h.city || ""}${h.state ? ", " + h.state : ""}\n${h.description || "Verified property on StayBid · live reverse-auction · book at your price."}`,
     avatarHue: hashStr(h.id || h.name || "x") % 360,
     sourceType: "hotel",
+    // Set to true when this is the user's own pseudo-entity so the
+    // profile sheet replaces Follow → Edit profile (you can't follow
+    // yourself).
+    _isSelf: !!h._userPost,
   };
 }
 
@@ -607,17 +611,27 @@ function CreatorProfileSheet({
           </p>
           <p className="text-gold-300 text-[0.74rem] mt-1">❤️ {fmtCount(likesTotal)} likes earned · {reelsCount} reels published</p>
 
-          {/* CTAs — Message removed: customers ↔ creators / hotel owners can
-              not have a private DM channel before a confirmed booking, or
-              off-platform booking would bypass StayBid commission. */}
+          {/* CTAs — Message removed (anti-bypass v25). Follow → Edit
+              profile when this is the user's own pseudo-entity, since
+              following yourself is meaningless. */}
           <div className="mt-3 flex items-center gap-2">
-            <button
-              onClick={() => toggleFollow(creator.handle)}
-              className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
-              style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
-            >
-              <span className="ig-follow-label">{followed ? "✓ Following" : "+ Follow"}</span>
-            </button>
+            {(creator as any)._isSelf ? (
+              <button
+                onClick={() => { onClose(); }}
+                className="ig-follow-3d ig-follow-3d-on"
+                style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
+              >
+                <span className="ig-follow-label">✦ This is your profile</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => toggleFollow(creator.handle)}
+                className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
+                style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
+              >
+                <span className="ig-follow-label">{followed ? "✓ Following" : "+ Follow"}</span>
+              </button>
+            )}
             <button
               className="ig-cta-3d"
               style={{ flex: 1, padding: "11px 14px", fontSize: "0.78rem", color: "#fff" }}
@@ -1562,19 +1576,37 @@ const HotelCard = memo(function HotelCard({
             </button>
           )}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); handleFollowClick(); }}
-          className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
-        >
-          <span className="ig-follow-label">{followed ? "Following" : "Follow"}</span>
-          {followSparkle > 0 && (
-            <span key={followSparkle} className="ig-follow-sparkle" aria-hidden>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <span key={i} className={`ig-spark s${i}`}>✦</span>
-              ))}
-            </span>
-          )}
-        </button>
+        {h._userPost ? (
+          // Following yourself makes no sense — replace the Follow button
+          // on user's own reels with a small "You ✦" badge so the layout
+          // stays balanced and the ownership stays visually obvious.
+          <span
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[0.7rem] font-bold shrink-0"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,69,141,0.20), rgba(185,100,255,0.15))",
+              border: "1px solid rgba(255,69,141,0.40)",
+              color: "#fff",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
+            ✦ You
+          </span>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleFollowClick(); }}
+            className={`ig-follow-3d ${followed ? "ig-follow-3d-on" : ""}`}
+          >
+            <span className="ig-follow-label">{followed ? "Following" : "Follow"}</span>
+            {followSparkle > 0 && (
+              <span key={followSparkle} className="ig-follow-sparkle" aria-hidden>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <span key={i} className={`ig-spark s${i}`}>✦</span>
+                ))}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Right action rail (Instagram Reels style) */}
