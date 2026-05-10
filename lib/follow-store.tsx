@@ -25,9 +25,25 @@ import {
   type ReactNode,
 } from "react";
 
-const LS_FOLLOWS = "sb_follows_v1";
-const LS_NAME    = "sb_user_display_name";
-const LS_AVATAR  = "sb_user_avatar_url";
+const LS_FOLLOWS    = "sb_follows_v1";
+const LS_NAME       = "sb_user_display_name";
+const LS_AVATAR     = "sb_user_avatar_url";
+const LS_BIO        = "sb_user_bio";
+const LS_LOCATION   = "sb_user_location";
+const LS_WEBSITE    = "sb_user_website";
+const LS_HIGHLIGHTS = "sb_user_custom_highlights_v1";
+
+/** Built-in profile highlights that mirror the InstagramHotelFeed
+    HIGHLIGHTS list. Custom highlights live alongside these. */
+export type HighlightChip = { key: string; label: string; emoji: string; custom?: boolean };
+export const BUILTIN_HIGHLIGHTS: HighlightChip[] = [
+  { key: "mountains", label: "Mountains",  emoji: "🌄" },
+  { key: "beaches",   label: "Beaches",    emoji: "🏖" },
+  { key: "foodie",    label: "Foodie",     emoji: "🍜" },
+  { key: "suites",    label: "Suites",     emoji: "🛏" },
+  { key: "toppicks",  label: "Top picks",  emoji: "✨" },
+  { key: "solo",      label: "Solo",       emoji: "🎒" },
+];
 
 // Stable hash so synthesized follower bases are deterministic per handle.
 function hashStr(s: string): number {
@@ -84,6 +100,20 @@ type FollowCtx = {
       under localStorage's 5 MB ceiling). Empty string = use initials fallback. */
   myAvatarUrl: string;
   setMyAvatarUrl: (url: string) => void;
+  /** Free-form bio — surfaced on the user's own profile sheet. Sanitized
+      at render-time (anti-bypass for off-platform contact). */
+  myBio: string;
+  setMyBio: (bio: string) => void;
+  /** Optional location string ("Mumbai, India"). */
+  myLocation: string;
+  setMyLocation: (loc: string) => void;
+  /** Optional website / link. */
+  myWebsite: string;
+  setMyWebsite: (url: string) => void;
+  /** Custom highlight chips the user has created on their profile. */
+  myCustomHighlights: HighlightChip[];
+  addCustomHighlight: (h: HighlightChip) => void;
+  removeCustomHighlight: (key: string) => void;
 };
 
 const Ctx = createContext<FollowCtx>({
@@ -98,12 +128,25 @@ const Ctx = createContext<FollowCtx>({
   setMyDisplayName: () => {},
   myAvatarUrl: "",
   setMyAvatarUrl: () => {},
+  myBio: "",
+  setMyBio: () => {},
+  myLocation: "",
+  setMyLocation: () => {},
+  myWebsite: "",
+  setMyWebsite: () => {},
+  myCustomHighlights: [],
+  addCustomHighlight: () => {},
+  removeCustomHighlight: () => {},
 });
 
 export function FollowProvider({ children }: { children: ReactNode }) {
   const [follows, setFollows] = useState<string[]>([]);
   const [myDisplayName, setMyDisplayNameState] = useState<string>("You");
-  const [myAvatarUrl, setMyAvatarUrlState] = useState<string>("");
+  const [myAvatarUrl, setMyAvatarUrlState]   = useState<string>("");
+  const [myBio, setMyBioState]               = useState<string>("");
+  const [myLocation, setMyLocationState]     = useState<string>("");
+  const [myWebsite, setMyWebsiteState]       = useState<string>("");
+  const [myCustomHighlights, setCustomHighlights] = useState<HighlightChip[]>([]);
 
   // Hydrate
   useEffect(() => {
@@ -117,6 +160,17 @@ export function FollowProvider({ children }: { children: ReactNode }) {
       if (n) setMyDisplayNameState(n);
       const a = localStorage.getItem(LS_AVATAR);
       if (a) setMyAvatarUrlState(a);
+      const b = localStorage.getItem(LS_BIO);
+      if (b) setMyBioState(b);
+      const l = localStorage.getItem(LS_LOCATION);
+      if (l) setMyLocationState(l);
+      const w = localStorage.getItem(LS_WEBSITE);
+      if (w) setMyWebsiteState(w);
+      const hl = localStorage.getItem(LS_HIGHLIGHTS);
+      if (hl) {
+        const parsed = JSON.parse(hl);
+        if (Array.isArray(parsed)) setCustomHighlights(parsed);
+      }
     } catch {}
   }, []);
 
@@ -183,6 +237,51 @@ export function FollowProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
+  const setMyBio = useCallback((bio: string) => {
+    setMyBioState(bio);
+    try {
+      if (bio) localStorage.setItem(LS_BIO, bio);
+      else localStorage.removeItem(LS_BIO);
+    } catch {}
+  }, []);
+
+  const setMyLocation = useCallback((loc: string) => {
+    setMyLocationState(loc);
+    try {
+      if (loc) localStorage.setItem(LS_LOCATION, loc);
+      else localStorage.removeItem(LS_LOCATION);
+    } catch {}
+  }, []);
+
+  const setMyWebsite = useCallback((url: string) => {
+    setMyWebsiteState(url);
+    try {
+      if (url) localStorage.setItem(LS_WEBSITE, url);
+      else localStorage.removeItem(LS_WEBSITE);
+    } catch {}
+  }, []);
+
+  const persistHighlights = useCallback((next: HighlightChip[]) => {
+    try { localStorage.setItem(LS_HIGHLIGHTS, JSON.stringify(next)); } catch {}
+  }, []);
+
+  const addCustomHighlight = useCallback((h: HighlightChip) => {
+    setCustomHighlights((prev) => {
+      const filtered = prev.filter((p) => p.key !== h.key);
+      const next = [{ ...h, custom: true }, ...filtered].slice(0, 24);
+      persistHighlights(next);
+      return next;
+    });
+  }, [persistHighlights]);
+
+  const removeCustomHighlight = useCallback((key: string) => {
+    setCustomHighlights((prev) => {
+      const next = prev.filter((p) => p.key !== key);
+      persistHighlights(next);
+      return next;
+    });
+  }, [persistHighlights]);
+
   const value = useMemo<FollowCtx>(() => ({
     follows,
     isFollowing,
@@ -195,7 +294,16 @@ export function FollowProvider({ children }: { children: ReactNode }) {
     setMyDisplayName,
     myAvatarUrl,
     setMyAvatarUrl,
-  }), [follows, isFollowing, toggleFollow, followerCount, followingCount, followers, searchFollowers, myDisplayName, setMyDisplayName, myAvatarUrl, setMyAvatarUrl]);
+    myBio,
+    setMyBio,
+    myLocation,
+    setMyLocation,
+    myWebsite,
+    setMyWebsite,
+    myCustomHighlights,
+    addCustomHighlight,
+    removeCustomHighlight,
+  }), [follows, isFollowing, toggleFollow, followerCount, followingCount, followers, searchFollowers, myDisplayName, setMyDisplayName, myAvatarUrl, setMyAvatarUrl, myBio, setMyBio, myLocation, setMyLocation, myWebsite, setMyWebsite, myCustomHighlights, addCustomHighlight, removeCustomHighlight]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

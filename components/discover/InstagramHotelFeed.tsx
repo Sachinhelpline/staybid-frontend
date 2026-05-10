@@ -508,22 +508,39 @@ function CreatorProfileSheet({
   const [tab, setTab] = useState<"reels" | "tagged" | "followers" | "following">("reels");
   const [followerQuery, setFollowerQuery] = useState("");
   const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers, myAvatarUrl, myDisplayName } = useFollow();
+  // Self-only: filter the personal reels grid to a single tagged highlight
+  const [selectedHighlight, setSelectedHighlight] = useState<string | null>(null);
+  const { isFollowing, toggleFollow, followerCount, followingCount, follows, searchFollowers, myAvatarUrl, myDisplayName, myBio, myLocation, myWebsite, myCustomHighlights } = useFollow();
 
   // Reset to default tab whenever a new profile is opened
   useEffect(() => {
-    if (open) { setTab("reels"); setFollowerQuery(""); }
+    if (open) { setTab("reels"); setFollowerQuery(""); setSelectedHighlight(null); }
   }, [open, creator?.handle]);
 
   if (!open || !creator) return null;
 
   const followed = isFollowing(creator.handle);
   // Reels created by this entity. For hotels we synth: all reels for this hotel id;
-  // for creators we use creatorFor(h).
-  const myReels =
+  // for creators we use creatorFor(h). De-duplicated by id so the grid never
+  // shows the same post twice (was happening when PostsStore got accidental
+  // duplicates from rapid re-uploads — the screenshot the user flagged).
+  const myReelsRaw =
     creator.sourceType === "hotel" && /^[a-z0-9_]+$/.test(creator.handle)
-      ? hotels.filter((h) => entityFromHotel(h).handle === creator.handle).slice(0, 18)
-      : hotels.filter((h) => creatorFor(h).handle === creator.handle).slice(0, 18);
+      ? hotels.filter((h) => entityFromHotel(h).handle === creator.handle)
+      : hotels.filter((h) => creatorFor(h).handle === creator.handle);
+  const seenReelIds = new Set<string>();
+  let myReels = myReelsRaw.filter((h: any) => {
+    const id = String(h?.id || "");
+    if (!id || seenReelIds.has(id)) return false;
+    seenReelIds.add(id);
+    return true;
+  });
+  // Self profile: a user-picked highlight bucket filters the grid down to
+  // posts tagged with that highlight key (Instagram-style story highlights).
+  if ((creator as any)._isSelf && selectedHighlight) {
+    myReels = myReels.filter((h: any) => h._userPostHighlight?.key === selectedHighlight);
+  }
+  myReels = myReels.slice(0, 36);
   const tagged = hotels.filter((h) => !myReels.includes(h)).slice(0, 9);
 
   // Live followers from the global store (synthesized base + any users who
@@ -573,14 +590,21 @@ function CreatorProfileSheet({
         </div>
 
         <div className="overflow-y-auto px-5 pb-6 flex-1" style={{ WebkitOverflowScrolling: "touch" }}>
-          {/* Header: avatar + 3 stats */}
+          {/* Header: avatar + 3 stats. Tapping the avatar on YOUR profile
+              opens the profile editor directly (no menu) — that's the
+              "round circle redirects to edit profile" behavior the user
+              asked for. */}
           <div className="flex items-center gap-5 pt-2 pb-3">
-            <div
-              className="w-[88px] h-[88px] rounded-full p-[3px] shrink-0"
+            <button
+              type="button"
+              onClick={(creator as any)._isSelf ? () => setEditProfileOpen(true) : undefined}
+              className="w-[88px] h-[88px] rounded-full p-[3px] shrink-0 active:scale-95 transition-transform"
               style={{
                 background: `conic-gradient(from ${creator.avatarHue}deg, #f0b429, #ff458d, #b964ff, #f0b429)`,
                 animation: "igRingPulse 2.6s ease-in-out infinite",
+                cursor: (creator as any)._isSelf ? "pointer" : "default",
               }}
+              aria-label={(creator as any)._isSelf ? "Edit profile" : "Profile picture"}
             >
               <div
                 className="w-full h-full rounded-full flex items-center justify-center text-[2rem] font-bold overflow-hidden"
@@ -599,7 +623,26 @@ function CreatorProfileSheet({
                   creator.name.slice(0, 1).toUpperCase()
                 )}
               </div>
-            </div>
+              {(creator as any)._isSelf && (
+                <span
+                  className="absolute"
+                  style={{
+                    transform: "translate(64px, -28px)",
+                    background: "linear-gradient(135deg,#ffd76b,#f0b429)",
+                    color: "#1a1208",
+                    fontWeight: 700,
+                    fontSize: "0.62rem",
+                    padding: "3px 8px",
+                    borderRadius: 9999,
+                    border: "2px solid #000",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.4)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  ✏️ Edit
+                </span>
+              )}
+            </button>
             <div className="flex-1 grid grid-cols-3 gap-3 text-center">
               <button onClick={() => setTab("reels")} className="text-center">
                 <p className="text-white font-bold text-[1.05rem] leading-none">{fmtCount(reelsCount)}</p>
@@ -616,12 +659,30 @@ function CreatorProfileSheet({
             </div>
           </div>
 
-          {/* Name + bio (bio passes through the same sanitizer that scrubs
-              comments — creators must not use the bio as a contact billboard) */}
-          <p className="text-white font-semibold text-[0.92rem] leading-tight">{creator.name}</p>
-          <p className="text-white/75 text-[0.78rem] mt-1 leading-snug whitespace-pre-line">
-            {sanitizeComment(creator.bio).clean}
+          {/* Name + bio. Self profile pulls from FollowStore (myBio, myLocation,
+              myWebsite). Other profiles use the synthesized creator.bio. Bio
+              text is sanitized in either case — anti-bypass guard. */}
+          <p className="text-white font-semibold text-[0.92rem] leading-tight">
+            {(creator as any)._isSelf && myDisplayName && myDisplayName !== "You" ? myDisplayName : creator.name}
           </p>
+          <p className="text-white/75 text-[0.78rem] mt-1 leading-snug whitespace-pre-line">
+            {sanitizeComment((creator as any)._isSelf ? (myBio || "Tap “Edit profile” to add a bio about your travels.") : creator.bio).clean}
+          </p>
+          {(creator as any)._isSelf && myLocation && (
+            <p className="text-white/70 text-[0.72rem] mt-1">📍 {sanitizeComment(myLocation).clean}</p>
+          )}
+          {(creator as any)._isSelf && myWebsite && /^https?:\/\//i.test(myWebsite) && (
+            <a
+              href={myWebsite}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-[0.74rem] mt-1 truncate"
+              style={{ color: "#5b8dff" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              🔗 {myWebsite}
+            </a>
+          )}
           <p className="text-gold-300 text-[0.74rem] mt-1">❤️ {fmtCount(likesTotal)} likes earned · {reelsCount} reels published</p>
 
           {/* CTAs — Message removed (anti-bypass v25). Follow → Edit
@@ -634,7 +695,7 @@ function CreatorProfileSheet({
                 className="ig-follow-3d ig-follow-3d-on"
                 style={{ flex: 2, padding: "11px 16px", fontSize: "0.86rem" }}
               >
-                <span className="ig-follow-label">✏️ Edit profile photo</span>
+                <span className="ig-follow-label">✏️ Edit profile</span>
               </button>
             ) : (
               <button
@@ -669,25 +730,77 @@ function CreatorProfileSheet({
             </p>
           </div>
 
-          {/* Highlights row — LIVE: tap applies a theme filter to the feed */}
-          <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {HIGHLIGHTS.map((hl, i) => (
-              <button
-                key={hl.key}
-                onClick={() => { onApplyHighlight?.(hl); onClose(); }}
-                className="flex flex-col items-center shrink-0 active:scale-95 transition-transform"
-              >
-                <div className="w-[60px] h-[60px] rounded-full p-[2px]"
-                  style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.85), rgba(255,69,141,0.65))" }}>
-                  <div className="w-full h-full rounded-full flex items-center justify-center text-xl"
-                    style={{ background: `linear-gradient(135deg, hsl(${(creator.avatarHue + i*40)%360},60%,30%), #0a0612)`, border: "2px solid #000" }}>
-                    {hl.emoji}
-                  </div>
-                </div>
-                <span className="text-white/80 text-[0.62rem] mt-1.5 font-semibold max-w-[68px] truncate">{hl.label}</span>
-              </button>
-            ))}
-          </div>
+          {/* Highlights row.
+              On self profile: tap → filter the personal reel grid to posts
+              tagged with this highlight (Instagram story-highlight UX).
+              On other profiles: tap → apply a theme filter to the main feed.
+              Custom highlights (from FollowStore) appear after the built-ins. */}
+          {(() => {
+            const isSelf = !!(creator as any)._isSelf;
+            const allHighlights: (Highlight & { custom?: boolean })[] = [
+              ...HIGHLIGHTS,
+              ...(isSelf ? myCustomHighlights.map((h) => ({ key: h.key, label: h.label, emoji: h.emoji, custom: true })) : []),
+            ];
+            return (
+              <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-1">
+                {/* "All reels" reset chip — self only, when a highlight is active */}
+                {isSelf && selectedHighlight && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedHighlight(null)}
+                    className="flex flex-col items-center shrink-0 active:scale-95 transition-transform"
+                  >
+                    <div className="w-[60px] h-[60px] rounded-full p-[2px]"
+                      style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.45), rgba(255,255,255,0.18))" }}>
+                      <div className="w-full h-full rounded-full flex items-center justify-center text-xl"
+                        style={{ background: "#0a0612", border: "2px solid #000" }}>
+                        ↺
+                      </div>
+                    </div>
+                    <span className="text-white/80 text-[0.62rem] mt-1.5 font-semibold max-w-[68px] truncate">All reels</span>
+                  </button>
+                )}
+                {allHighlights.map((hl, i) => {
+                  const active = isSelf && selectedHighlight === hl.key;
+                  return (
+                    <button
+                      key={hl.key}
+                      onClick={() => {
+                        if (isSelf) {
+                          // Toggle highlight filter for the personal grid
+                          setSelectedHighlight((cur) => cur === hl.key ? null : hl.key);
+                        } else {
+                          onApplyHighlight?.(hl as Highlight);
+                          onClose();
+                        }
+                      }}
+                      className="flex flex-col items-center shrink-0 active:scale-95 transition-transform"
+                    >
+                      <div className="w-[60px] h-[60px] rounded-full p-[2px]"
+                        style={{
+                          background: active
+                            ? "conic-gradient(from 0deg, #ffd76b, #ff458d, #b964ff, #ffd76b)"
+                            : "linear-gradient(135deg, rgba(240,180,41,0.85), rgba(255,69,141,0.65))",
+                        }}
+                      >
+                        <div className="w-full h-full rounded-full flex items-center justify-center text-xl"
+                          style={{
+                            background: `linear-gradient(135deg, hsl(${(creator.avatarHue + i*40)%360},60%,30%), #0a0612)`,
+                            border: "2px solid #000",
+                          }}
+                        >
+                          {hl.emoji}
+                        </div>
+                      </div>
+                      <span className={`text-[0.62rem] mt-1.5 font-semibold max-w-[68px] truncate ${active ? "text-gold-300" : "text-white/80"}`}>
+                        {hl.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Tabs */}
           <div className="mt-5 grid grid-cols-4 border-t border-white/10">
@@ -786,18 +899,11 @@ function CreatorProfileSheet({
                       }}
                     />
                   )}
-                  {/* "YOUR POST" pill at top-left for any user-uploaded tile */}
-                  {h._userPost && (
-                    <div
-                      className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full text-white text-[0.52rem] font-bold tracking-wide"
-                      style={{
-                        background: "linear-gradient(135deg,#ff458d,#b964ff)",
-                        textShadow: "0 1px 2px rgba(0,0,0,0.6)",
-                      }}
-                    >
-                      YOU
-                    </div>
-                  )}
+                  {/* "YOU" tile pill removed from the personal grid per
+                      user feedback — it's redundant on your own profile.
+                      The badge still appears on the main feed cards
+                      (where many other people's reels are mixed in) so
+                      it remains useful there. */}
                   <div className="absolute bottom-1 left-1 right-1 text-white text-[0.58rem] truncate font-semibold"
                     style={{ textShadow: "0 1px 3px rgba(0,0,0,0.85)" }}>
                     {h.name}
@@ -1163,6 +1269,7 @@ function Toast({ msg }: { msg: string | null }) {
 const HotelCard = memo(function HotelCard({
   item, active, muted, hasInteracted, onMuteToggle,
   onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenEntity, onWatchEntity,
+  hasOwnStories, onOpenStories,
 }: {
   item: Item;
   active: boolean;
@@ -1178,6 +1285,11 @@ const HotelCard = memo(function HotelCard({
   onCopyLink: (h: any) => void;
   onOpenEntity: (e: Creator) => void;     // open profile sheet for any entity
   onWatchEntity: (e: Creator) => void;    // filter feed to that entity's reels
+  /** True when the current user has any active (non-expired) stories. Lights
+      up the story ring on the user's own avatar + makes the avatar tap open
+      the StoryViewer instead of the popover menu. */
+  hasOwnStories?: boolean;
+  onOpenStories?: () => void;
 }) {
   const h = item.hotel;
   const router = useRouter();
@@ -1524,9 +1636,20 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "60px" }}>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setAvatarMenu({ kind: "hotel" }); }}
-          className="ig-avatar relative shrink-0"
-          aria-label={`${h.name} profile options`}
+          onClick={(e) => {
+            e.stopPropagation();
+            // Self with active stories → open the StoryViewer directly
+            // (Instagram-style "tap the story ring to view"). Else fall
+            // back to the existing avatar popover menu.
+            if (h._isSelf && hasOwnStories && onOpenStories) {
+              onOpenStories();
+              onTrackEvent?.("ig_open_stories_from_avatar", { hotelId: h.id });
+              return;
+            }
+            setAvatarMenu({ kind: "hotel" });
+          }}
+          className={`ig-avatar relative shrink-0${h._isSelf && hasOwnStories ? " has-story" : ""}`}
+          aria-label={h._isSelf && hasOwnStories ? "View your story" : `${h.name} profile options`}
         >
           <span className="ig-avatar-inner">
             {/* For YOUR posts, prefer the user's chosen profile photo —
@@ -2059,6 +2182,241 @@ const HotelCard = memo(function HotelCard({
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// Story Viewer — Instagram-style fullscreen with progress bars at the top.
+// Each image story plays for 5 s; videos play to natural duration. Tap left
+// = previous, tap right = next, tap & hold = pause. Closes on the last
+// story's end OR on ✕ tap. Stories that have already expired (storyExpiresAt
+// in the past) are filtered out by the caller.
+// ─────────────────────────────────────────────────────────────────────────
+function StoryViewer({
+  open, stories, ownerName, ownerAvatar, onClose,
+}: {
+  open: boolean;
+  stories: any[];                       // UserPost[] with kind === "story"
+  ownerName: string;
+  ownerAvatar: string;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(0);
+  const [progress, setProgress] = useState(0);   // 0–100 of current story
+  const [paused, setPaused] = useState(false);
+  const startedAt = useRef<number>(0);
+  const accumulated = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const story = stories[idx];
+  const isVideo = story && (story.kind === "story") && (story.mediaMime || "").startsWith("video/");
+  const STORY_MS = 5000; // image duration
+
+  useEffect(() => {
+    if (!open) return;
+    setIdx(0);
+    setProgress(0);
+    accumulated.current = 0;
+    startedAt.current = performance.now();
+    setPaused(false);
+  }, [open, stories.length]);
+
+  // Auto-advance for image stories. Video stories rely on onEnded.
+  useEffect(() => {
+    if (!open || !story) return;
+    if (isVideo) return;
+    if (paused) return;
+    startedAt.current = performance.now();
+    const tick = () => {
+      const elapsed = accumulated.current + (performance.now() - startedAt.current);
+      const p = Math.min(100, (elapsed / STORY_MS) * 100);
+      setProgress(p);
+      if (p >= 100) {
+        if (idx < stories.length - 1) {
+          setIdx(idx + 1);
+          accumulated.current = 0;
+          setProgress(0);
+        } else {
+          onClose();
+        }
+        return;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [open, idx, isVideo, paused, story, stories.length, onClose]);
+
+  // Pause / resume bookkeeping
+  const pause = () => {
+    if (paused) return;
+    accumulated.current = accumulated.current + (performance.now() - startedAt.current);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (videoRef.current) { try { videoRef.current.pause(); } catch {} }
+    setPaused(true);
+  };
+  const resume = () => {
+    if (!paused) return;
+    startedAt.current = performance.now();
+    if (videoRef.current) { try { videoRef.current.play(); } catch {} }
+    setPaused(false);
+  };
+
+  if (!open || stories.length === 0 || !story) return null;
+  const goPrev = () => {
+    if (idx > 0) {
+      setIdx(idx - 1);
+      accumulated.current = 0;
+      setProgress(0);
+    }
+  };
+  const goNext = () => {
+    if (idx < stories.length - 1) {
+      setIdx(idx + 1);
+      accumulated.current = 0;
+      setProgress(0);
+    } else {
+      onClose();
+    }
+  };
+
+  const captionRaw = String(story.caption || "");
+  const captionClean = sanitizeComment(captionRaw).clean;
+
+  return (
+    <div className="fixed inset-0 z-[96] bg-black flex items-center justify-center" onClick={onClose}>
+      <div
+        className="relative w-full h-full max-w-md mx-auto overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Progress bars at top */}
+        <div className="absolute top-2 left-3 right-3 z-30 flex gap-1">
+          {stories.map((_, i) => (
+            <div key={i} className="flex-1 h-[2.5px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.30)" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: i < idx ? "100%" : i === idx ? `${progress}%` : "0%",
+                  background: "#fff",
+                  transition: i === idx && !paused ? "width 0.05s linear" : "none",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Header: avatar + name + ✕ */}
+        <div className="absolute top-7 left-3 right-3 z-30 flex items-center gap-2.5">
+          <span
+            className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-[0.86rem] font-bold shrink-0"
+            style={{
+              background: ownerAvatar ? "transparent" : "linear-gradient(135deg,#ff458d,#b964ff)",
+              border: "1.5px solid rgba(255,255,255,0.55)",
+            }}
+          >
+            {ownerAvatar ? <img src={ownerAvatar} alt="" className="w-full h-full object-cover" /> : (ownerName || "Y").slice(0, 1).toUpperCase()}
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-white text-[0.84rem] font-semibold truncate">
+              {ownerName && ownerName !== "You" ? ownerName : "Your story"}
+            </span>
+            <span className="block text-white/65 text-[0.62rem]">
+              {(() => {
+                const ageMs = Date.now() - (story.createdAt || Date.now());
+                const ageH = Math.floor(ageMs / 3_600_000);
+                if (ageH >= 1) return `${ageH}h ago`;
+                const ageM = Math.max(0, Math.floor(ageMs / 60_000));
+                return `${ageM}m ago`;
+              })()}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.22)",
+              color: "#fff",
+              fontSize: "1.1rem",
+            }}
+            aria-label="Close story"
+          >✕</button>
+        </div>
+
+        {/* Media */}
+        <div className="absolute inset-0">
+          {isVideo ? (
+            <video
+              ref={videoRef}
+              src={story.mediaUrl || ""}
+              className="w-full h-full object-contain bg-black"
+              autoPlay
+              playsInline
+              muted={false}
+              onEnded={goNext}
+              onError={goNext}
+            />
+          ) : (
+            <img
+              src={story.posterUrl || story.mediaUrl || ""}
+              alt=""
+              className="w-full h-full object-contain bg-black"
+            />
+          )}
+        </div>
+
+        {/* Caption (sanitized) */}
+        {captionClean && (
+          <div
+            className="absolute left-4 right-4 z-30 text-center"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          >
+            <p
+              className="text-white text-[0.86rem] leading-snug font-medium px-3 py-2 inline-block rounded-2xl"
+              style={{
+                background: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                textShadow: "0 1px 3px rgba(0,0,0,0.7)",
+              }}
+            >
+              {captionClean}
+            </p>
+          </div>
+        )}
+
+        {/* Tap zones: left = prev, right = next, hold = pause */}
+        <button
+          type="button"
+          aria-label="Previous story"
+          className="absolute top-0 bottom-0 left-0 z-20"
+          style={{ width: "30%" }}
+          onPointerDown={pause}
+          onPointerUp={() => { resume(); goPrev(); }}
+          onPointerLeave={resume}
+        />
+        <button
+          type="button"
+          aria-label="Next story"
+          className="absolute top-0 bottom-0 right-0 z-20"
+          style={{ width: "30%" }}
+          onPointerDown={pause}
+          onPointerUp={() => { resume(); goNext(); }}
+          onPointerLeave={resume}
+        />
+        <button
+          type="button"
+          aria-label="Pause story"
+          className="absolute top-0 bottom-0 left-[30%] right-[30%] z-10"
+          onPointerDown={pause}
+          onPointerUp={resume}
+          onPointerLeave={resume}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Feed
 // ─────────────────────────────────────────────────────────────────────────
 export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent }: Props) {
@@ -2071,11 +2429,35 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // Photos & stories don't have a video track — we surface them as cards
   // whose hotel.images[] is the uploaded image; the existing Ken-Burns
   // fallback inside HotelCard handles them when videoBroken triggers.
-  const { posts: userPosts, removePost, addPost } = usePosts();
-  const { myDisplayName: ownerName } = useFollow();
+  const { posts: rawUserPosts, removePost, addPost } = usePosts();
+  const { myDisplayName: ownerName, myAvatarUrl: ownerAvatar } = useFollow();
   const [editPostId, setEditPostId] = useState<string | null>(null);
+
+  // ── Story expiry sweep ──
+  // Stories live for 24h unless `keepAsPost` is on. We filter them out
+  // here on every render so the feed + story rail always reflect the
+  // current state without needing a background timer.
+  const now = Date.now();
+  const userPosts = rawUserPosts.filter((p: any) => {
+    if (p.kind !== "story") return true;
+    if (p.keepAsPost) return true;          // saved as post → keep forever
+    if (!p.storyExpiresAt) return true;     // no expiry set → grandfathered
+    return p.storyExpiresAt > now;
+  });
+
+  // Active stories — used to render the story ring around the user's avatar
+  // and feed the StoryViewer on tap.
+  const activeStories = userPosts.filter((p: any) => p.kind === "story");
+  const [storyOpen, setStoryOpen] = useState(false);
+
   const items: Item[] = (() => {
-    const userItems: Item[] = userPosts.map((p) => {
+    // Stories that are NOT also saved-as-post should NOT appear in the
+    // main feed — they live on the story ring and the StoryViewer only.
+    const visibleInFeed = userPosts.filter((p: any) => {
+      if (p.kind !== "story") return true;
+      return !!p.keepAsPost;
+    });
+    const userItems: Item[] = visibleInFeed.map((p) => {
       const isVideo = p.kind === "reel" || (p.mediaMime || "").startsWith("video/");
       return {
         hotel: {
@@ -2124,6 +2506,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // Tagged hotel — viewers tap "Explore hotel" / Book / Bid on
           // user posts to land straight on the hotel's page.
           _userPostTaggedHotel: p.taggedHotel || null,
+          // Highlight bucket — surfaced on the profile-sheet highlight
+          // grid so the user can browse their own reels by theme.
+          _userPostHighlight: (p as any).highlight || null,
         },
         score: 999,
         reasons: ["Your upload"],
@@ -2650,11 +3035,23 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           background: conic-gradient(from 220deg, #f0b429, #ff458d, #b964ff, #f0b429);
           animation: igRingPulse 2.6s ease-in-out infinite;
         }
+        /* Active-story ring — same colours but a thicker rotating edge so
+           a glance tells you "tap me, there's a story here". */
+        .ig-avatar.has-story {
+          padding: 3px;
+          background: conic-gradient(from 0deg, #ff458d, #b964ff, #5b8dff, #2ecc71, #ffd76b, #ff458d);
+          animation: igStoryRingSpin 3.6s linear infinite;
+          box-shadow: 0 0 0 1.5px #000 inset, 0 0 12px rgba(255,69,141,0.45);
+        }
         .ig-avatar-inner {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%; border-radius: 9999px;
           background: linear-gradient(135deg,#ffd76b,#f0b429);
           border: 2px solid #000; overflow: hidden;
+        }
+        @keyframes igStoryRingSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
         .ig-verified {
           display: inline-flex; align-items: center; justify-content: center;
@@ -2964,6 +3361,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             onOpenMore={(h) => setMoreOpen({ open: true, id: h.id })}
             onOpenEntity={(e) => setCreatorOpen(e)}
             onWatchEntity={handleWatchEntity}
+            hasOwnStories={activeStories.length > 0}
+            onOpenStories={() => setStoryOpen(true)}
           />
         ))}
         {filteredItems.length === 0 && (
@@ -3157,6 +3556,15 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       )}
 
       <Toast msg={toast} />
+
+      {/* Story viewer — fed by activeStories (24h-filtered above). */}
+      <StoryViewer
+        open={storyOpen}
+        stories={activeStories}
+        ownerName={ownerName}
+        ownerAvatar={ownerAvatar}
+        onClose={() => setStoryOpen(false)}
+      />
     </>
   );
 }

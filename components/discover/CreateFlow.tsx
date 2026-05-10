@@ -90,6 +90,15 @@ export type UserPost = {
       a "🏨 At {Hotel}" pill in the feed and routes Book/Bid on the post
       to that hotel page. */
   taggedHotel?: TaggedHotel | null;
+  /** Optional highlight bucket — built-in (mountains/beaches/foodie/suites/
+      toppicks/solo) or user-created custom one. Drives the highlight grid
+      filter on the user's profile sheet. */
+  highlight?: { key: string; label: string; emoji: string; custom?: boolean } | null;
+  /** Story-only — auto-expire timestamp (createdAt + 24h). */
+  storyExpiresAt?: number;
+  /** Story-only — when on, the story also surfaces in the feed and
+      survives past 24h. */
+  keepAsPost?: boolean;
   createdAt: number;
 };
 
@@ -645,28 +654,47 @@ export function HotelPicker({
   );
 }
 
-// ─── Profile photo editor — pick & resize a small JPEG (≤256 px, ~30 KB) ──
-// Stored as a data-URL on FollowStore (`myAvatarUrl`) so the feed avatar +
-// profile sheet pick it up everywhere immediately.
+// ─── Profile editor — avatar, display name, bio, location, website + custom
+// highlight management. NOTE: phone numbers are intentionally not editable
+// here (anti-bypass + the phone is the auth identity, set via OTP, never
+// surfaced as profile metadata). Avatar resizes to ≤256 px JPEG (~30 KB)
+// so it fits localStorage's 5 MB ceiling.
 export function ProfilePhotoEditor({
   open, onClose,
 }: {
   open: boolean;
   onClose: () => void;
 }) {
-  const { myAvatarUrl, setMyAvatarUrl, myDisplayName, setMyDisplayName } = useFollow();
+  const {
+    myAvatarUrl, setMyAvatarUrl,
+    myDisplayName, setMyDisplayName,
+    myBio, setMyBio,
+    myLocation, setMyLocation,
+    myWebsite, setMyWebsite,
+    myCustomHighlights, addCustomHighlight, removeCustomHighlight,
+  } = useFollow();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string>(myAvatarUrl);
-  const [name, setName] = useState<string>(myDisplayName === "You" ? "" : myDisplayName);
-  const [error, setError] = useState("");
+  const [name, setName]       = useState<string>(myDisplayName === "You" ? "" : myDisplayName);
+  const [bio, setBio]         = useState<string>(myBio);
+  const [location, setLocation] = useState<string>(myLocation);
+  const [website, setWebsite] = useState<string>(myWebsite);
+  const [error, setError]     = useState("");
+  const [hlLabel, setHlLabel] = useState("");
+  const [hlEmoji, setHlEmoji] = useState("✨");
 
   useEffect(() => {
     if (open) {
       setPreview(myAvatarUrl);
       setName(myDisplayName === "You" ? "" : myDisplayName);
+      setBio(myBio);
+      setLocation(myLocation);
+      setWebsite(myWebsite);
       setError("");
+      setHlLabel("");
+      setHlEmoji("✨");
     }
-  }, [open, myAvatarUrl, myDisplayName]);
+  }, [open, myAvatarUrl, myDisplayName, myBio, myLocation, myWebsite]);
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -708,8 +736,20 @@ export function ProfilePhotoEditor({
 
   const save = () => {
     setMyAvatarUrl(preview || "");
-    if (name.trim()) setMyDisplayName(name.trim().slice(0, 32));
+    setMyDisplayName(name.trim() ? name.trim().slice(0, 32) : "You");
+    setMyBio(bio.trim().slice(0, 280));
+    setMyLocation(location.trim().slice(0, 80));
+    setMyWebsite(website.trim().slice(0, 120));
     onClose();
+  };
+
+  const addHighlight = () => {
+    const label = hlLabel.trim();
+    if (!label) return;
+    const key = "custom-" + label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 32);
+    addCustomHighlight({ key, label: label.slice(0, 24), emoji: hlEmoji || "✨", custom: true });
+    setHlLabel("");
+    setHlEmoji("✨");
   };
 
   if (!open) return null;
@@ -722,11 +762,13 @@ export function ProfilePhotoEditor({
         className="relative w-full ig-drawer-up"
         onClick={(e) => e.stopPropagation()}
         style={{
+          height: "94vh",
           background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
           borderTop: "1px solid rgba(255,255,255,0.12)",
           boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
+          display: "flex", flexDirection: "column",
         }}
       >
         <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
@@ -747,71 +789,195 @@ export function ProfilePhotoEditor({
           >✕</button>
         </div>
 
-        <div className="px-5 pt-2 pb-3 flex flex-col items-center">
-          <div
-            className="w-[120px] h-[120px] rounded-full p-[3px] shrink-0"
-            style={{
-              background: "conic-gradient(from 0deg, #f0b429, #ff458d, #b964ff, #f0b429)",
-            }}
-          >
+        <div className="flex-1 overflow-y-auto px-5 pb-4">
+          {/* Avatar */}
+          <div className="pt-2 pb-3 flex flex-col items-center">
             <div
-              className="w-full h-full rounded-full flex items-center justify-center text-[2.4rem] font-bold overflow-hidden"
+              className="w-[120px] h-[120px] rounded-full p-[3px] shrink-0"
               style={{
-                background: "linear-gradient(135deg, #ff458d, #b964ff)",
-                border: "2px solid #000",
-                color: "#fff",
-                textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+                background: "conic-gradient(from 0deg, #f0b429, #ff458d, #b964ff, #f0b429)",
               }}
             >
-              {preview ? (
-                <img src={preview} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
+              <div
+                className="w-full h-full rounded-full flex items-center justify-center text-[2.4rem] font-bold overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, #ff458d, #b964ff)",
+                  border: "2px solid #000",
+                  color: "#fff",
+                  textShadow: "0 2px 6px rgba(0,0,0,0.5)",
+                }}
+              >
+                {preview ? (
+                  <img src={preview} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{initials}</span>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
-              style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
-            >
-              📷 {preview ? "Change photo" : "Upload photo"}
-            </button>
-            {preview && (
+            <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => setPreview("")}
-                className="px-3 py-2 rounded-full text-[0.74rem] font-semibold text-red-300"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)" }}
+                onClick={() => fileRef.current?.click()}
+                className="px-4 py-2 rounded-full text-[0.78rem] font-bold text-black"
+                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
               >
-                Remove
+                📷 {preview ? "Change photo" : "Upload photo"}
               </button>
-            )}
+              {preview && (
+                <button
+                  type="button"
+                  onClick={() => setPreview("")}
+                  className="px-3 py-2 rounded-full text-[0.74rem] font-semibold text-red-300"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)" }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+            {error && <p className="mt-2 text-amber-300 text-[0.72rem]">⚠ {error}</p>}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
-          {error && <p className="mt-2 text-amber-300 text-[0.72rem]">⚠ {error}</p>}
+
+          {/* Display name */}
+          <div className="pb-3">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Display name</p>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              maxLength={32}
+              className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-none"
+              style={{
+                color: "#fff", caretColor: "#ffd76b",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.20)",
+              }}
+            />
+          </div>
+
+          {/* Bio */}
+          <div className="pb-3">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Bio</p>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Travel storyteller · Mumbai · Always bidding for the best room"
+              rows={3}
+              maxLength={280}
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none resize-none"
+              style={{
+                color: "#fff", caretColor: "#ffd76b",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.20)",
+                minHeight: 70,
+              }}
+            />
+            <p className="text-white/40 text-[0.6rem] mt-1">
+              🛡️ Phone numbers, emails and off-platform links are auto-scrubbed when shown.
+            </p>
+          </div>
+
+          {/* Location */}
+          <div className="pb-3">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Location</p>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="📍 Mumbai, India"
+              maxLength={80}
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+              style={{
+                color: "#fff", caretColor: "#ffd76b",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.20)",
+              }}
+            />
+          </div>
+
+          {/* Website */}
+          <div className="pb-3">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Website</p>
+            <input
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://yourblog.com"
+              maxLength={120}
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+              style={{
+                color: "#fff", caretColor: "#ffd76b",
+                background: "rgba(255,255,255,0.10)",
+                border: "1px solid rgba(255,255,255,0.20)",
+              }}
+            />
+          </div>
+
+          {/* Custom highlights manager */}
+          <div className="pb-3">
+            <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">My highlights</p>
+            <p className="text-white/55 text-[0.66rem] mb-2">
+              Built-in highlights (Mountains, Beaches, Foodie, Suites, Top picks, Solo) are always shown. Add custom ones below — they appear on your profile alongside the built-ins.
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {myCustomHighlights.map((h) => (
+                <span key={h.key}
+                  className="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-full text-[0.74rem] font-semibold"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.92)" }}
+                >
+                  <span>{h.emoji}</span>
+                  <span>{h.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomHighlight(h.key)}
+                    className="ml-1 w-5 h-5 rounded-full flex items-center justify-center text-[0.7rem]"
+                    style={{ background: "rgba(255,69,141,0.20)", color: "#ff8eb6" }}
+                    aria-label={`Remove ${h.label}`}
+                  >✕</button>
+                </span>
+              ))}
+              {myCustomHighlights.length === 0 && (
+                <span className="text-white/40 text-[0.7rem]">No custom highlights yet.</span>
+              )}
+            </div>
+            <div className="flex gap-2 items-stretch">
+              <input
+                value={hlEmoji}
+                onChange={(e) => setHlEmoji(e.target.value.slice(0, 4) || "✨")}
+                maxLength={4}
+                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-none text-center"
+                style={{
+                  color: "#fff", caretColor: "#ffd76b",
+                  background: "rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.20)",
+                }}
+                aria-label="Highlight emoji"
+              />
+              <input
+                value={hlLabel}
+                onChange={(e) => setHlLabel(e.target.value)}
+                placeholder="Highlight name (e.g. Goa 2026)"
+                maxLength={24}
+                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+                style={{
+                  color: "#fff", caretColor: "#ffd76b",
+                  background: "rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.20)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={addHighlight}
+                disabled={!hlLabel.trim()}
+                className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+              >
+                + Add
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="px-5 pb-3">
-          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Display name</p>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Your name"
-            maxLength={32}
-            className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-none"
-            style={{
-              color: "#fff", caretColor: "#ffd76b",
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.20)",
-            }}
-          />
-        </div>
-
-        <div className="px-5 pb-1">
+        <div className="px-5 pt-1">
           <button
             onClick={save}
             className="ig-cta-3d ig-cta-book w-full"
@@ -823,7 +989,190 @@ export function ProfilePhotoEditor({
         </div>
 
         <p className="px-5 pt-2 text-white/35 text-[0.58rem] text-center">
-          Stays on your device · used wherever your reels show up
+          Stays on your device · phone number stays hidden by design
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Highlight picker — surfaced in the Composer so creators can drop a
+// reel into the same buckets that show on their profile (Mountains/
+// Beaches/Foodie/Suites/Top picks/Solo) plus any custom ones they've made.
+// "+ New highlight" opens an inline create row.
+export type HighlightTag = { key: string; label: string; emoji: string; custom?: boolean };
+
+export function HighlightPicker({
+  open, onClose, current, onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  current: HighlightTag | null;
+  onPick: (h: HighlightTag | null) => void;
+}) {
+  const { myCustomHighlights, addCustomHighlight } = useFollow();
+  const [creating, setCreating] = useState(false);
+  const [hlLabel, setHlLabel] = useState("");
+  const [hlEmoji, setHlEmoji] = useState("✨");
+
+  // Mirror the InstagramHotelFeed's HIGHLIGHTS so the user sees the same
+  // chips here that they'll see on their profile.
+  const builtins: HighlightTag[] = [
+    { key: "mountains", label: "Mountains",  emoji: "🌄" },
+    { key: "beaches",   label: "Beaches",    emoji: "🏖" },
+    { key: "foodie",    label: "Foodie",     emoji: "🍜" },
+    { key: "suites",    label: "Suites",     emoji: "🛏" },
+    { key: "toppicks",  label: "Top picks",  emoji: "✨" },
+    { key: "solo",      label: "Solo",       emoji: "🎒" },
+  ];
+  const all: HighlightTag[] = [
+    ...builtins,
+    ...myCustomHighlights.map((h) => ({ key: h.key, label: h.label, emoji: h.emoji, custom: true })),
+  ];
+
+  if (!open) return null;
+  const create = () => {
+    const label = hlLabel.trim();
+    if (!label) return;
+    const key = "custom-" + label.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 32);
+    const h: HighlightTag = { key, label: label.slice(0, 24), emoji: hlEmoji || "✨", custom: true };
+    addCustomHighlight(h);
+    onPick(h);
+    setCreating(false);
+    setHlLabel("");
+    setHlEmoji("✨");
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: "78vh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
+          display: "flex", flexDirection: "column",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-2">
+          <p className="text-white font-semibold text-[0.92rem]">✨ Add to highlight</p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            style={{
+              position: "relative", zIndex: 5,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 9999,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+            }}
+            aria-label="Close"
+          >✕</button>
+        </div>
+
+        {/* Current */}
+        {current && (
+          <div className="px-4 pb-2">
+            <div
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))", border: "1px solid rgba(240,180,41,0.45)" }}
+            >
+              <span className="text-base">{current.emoji}</span>
+              <span className="flex-1 text-white text-[0.84rem] font-semibold truncate">{current.label}</span>
+              <button onClick={() => { onPick(null); onClose(); }} className="text-red-300 text-[0.78rem] font-semibold">Clear</button>
+            </div>
+          </div>
+        )}
+
+        {/* Built-in + custom highlight grid */}
+        <div className="px-4 pb-2 grid grid-cols-3 gap-2 overflow-y-auto" style={{ maxHeight: "44vh" }}>
+          {all.map((h) => {
+            const active = current?.key === h.key;
+            return (
+              <button
+                key={h.key}
+                onClick={() => { onPick(h); onClose(); }}
+                className="flex flex-col items-center justify-center py-3 rounded-2xl transition-transform active:scale-95"
+                style={{
+                  background: active
+                    ? "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(255,69,141,0.12))"
+                    : "rgba(255,255,255,0.05)",
+                  border: active ? "1px solid rgba(240,180,41,0.55)" : "1px solid rgba(255,255,255,0.10)",
+                  boxShadow: active ? "0 4px 14px rgba(240,180,41,0.20)" : "none",
+                }}
+              >
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-2xl mb-1"
+                  style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "2px solid rgba(255,255,255,0.18)" }}
+                >
+                  {h.emoji}
+                </div>
+                <span className="text-white/90 text-[0.7rem] font-semibold truncate max-w-[90%]">{h.label}</span>
+                {h.custom && <span className="text-white/40 text-[0.55rem] mt-0.5">custom</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Create new */}
+        <div className="px-4 pt-2 pb-1 border-t border-white/8">
+          {!creating ? (
+            <button
+              onClick={() => setCreating(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[0.84rem] font-bold text-black"
+              style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+            >
+              + New highlight
+            </button>
+          ) : (
+            <div className="flex gap-2 items-stretch">
+              <input
+                value={hlEmoji}
+                onChange={(e) => setHlEmoji(e.target.value.slice(0, 4) || "✨")}
+                maxLength={4}
+                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-none text-center"
+                style={{
+                  color: "#fff", caretColor: "#ffd76b",
+                  background: "rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.20)",
+                }}
+                aria-label="Highlight emoji"
+              />
+              <input
+                value={hlLabel}
+                onChange={(e) => setHlLabel(e.target.value)}
+                placeholder="Highlight name"
+                maxLength={24}
+                autoFocus
+                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+                style={{
+                  color: "#fff", caretColor: "#ffd76b",
+                  background: "rgba(255,255,255,0.10)",
+                  border: "1px solid rgba(255,255,255,0.20)",
+                }}
+              />
+              <button
+                onClick={create}
+                disabled={!hlLabel.trim()}
+                className="px-3 rounded-xl text-[0.78rem] font-bold text-black disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)", border: "1px solid rgba(255,255,255,0.45)" }}
+              >
+                Create
+              </button>
+            </div>
+          )}
+        </div>
+
+        <p className="px-4 pt-2 text-white/35 text-[0.58rem] text-center">
+          Reels you tag with a highlight show up on your profile in that bucket.
         </p>
       </div>
     </div>
@@ -1093,13 +1442,14 @@ export function Composer({
   const [locationOpen, setLocationOpen] = useState(false);
   const [taggedHotel, setTaggedHotel] = useState<TaggedHotel | null>(null);
   const [hotelOpen, setHotelOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [highlight, setHighlight] = useState<HighlightTag | null>(null);
+  const [highlightOpen, setHighlightOpen] = useState(false);
+  const [saveAsPost, setSaveAsPost] = useState(false); // story-only toggle
   const [posting, setPosting] = useState(false);
   const [warnedSanitize, setWarnedSanitize] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const { addPost } = usePosts();
-  const { myAvatarUrl, myDisplayName } = useFollow();
 
   // Reset when reopened
   useEffect(() => {
@@ -1114,7 +1464,9 @@ export function Composer({
       setLocationOpen(false);
       setTaggedHotel(null);
       setHotelOpen(false);
-      setProfileOpen(false);
+      setHighlight(null);
+      setHighlightOpen(false);
+      setSaveAsPost(false);
       setPosting(false);
       setWarnedSanitize(false);
       setFormatWarning("");
@@ -1187,6 +1539,13 @@ export function Composer({
       audio: audio ? { name: audio.name, url: audio.url } : null,
       location: location || null,
       taggedHotel: taggedHotel || null,
+      // Highlight bucket (built-in or custom). Picked optionally; null = no
+      // bucket, post just shows under the main "Reels" tab.
+      highlight: highlight || null,
+      // Story-only metadata. Stories live for 24h unless `keepAsPost` is on.
+      ...(kind === "story"
+        ? { storyExpiresAt: Date.now() + 24 * 60 * 60 * 1000, keepAsPost: !!saveAsPost }
+        : {}),
       createdAt: Date.now(),
     };
     // Commit to the global reactive PostsStore — feed picks it up instantly.
@@ -1241,32 +1600,11 @@ export function Composer({
           </button>
         </div>
 
-        {/* Step 1: pick a file */}
+        {/* Step 1: pick a file. Profile-photo entry was removed per user
+            feedback — viewers reach it from the round avatar in their own
+            profile sheet now (a single, discoverable entry point). */}
         {step === "pick" && (
           <div className="flex-1 flex flex-col items-center justify-center px-5 text-center">
-            {/* Profile chip — quick access to "Edit profile photo + name" so
-                the avatar shown on the user's reels is theirs, not initials. */}
-            <button
-              type="button"
-              onClick={() => setProfileOpen(true)}
-              className="mb-4 inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full active:scale-95 transition-transform"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)" }}
-            >
-              <span
-                className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[0.7rem] font-bold text-white"
-                style={{
-                  background: myAvatarUrl ? "transparent" : "linear-gradient(135deg,#ff458d,#b964ff)",
-                  border: "1px solid rgba(255,255,255,0.25)",
-                }}
-              >
-                {myAvatarUrl ? <img src={myAvatarUrl} alt="" className="w-full h-full object-cover" /> : (myDisplayName || "Y").slice(0, 1).toUpperCase()}
-              </span>
-              <span className="text-white/85 text-[0.74rem] font-semibold">
-                {myAvatarUrl ? "Edit profile" : "Add profile photo"}
-              </span>
-              <span className="text-white/40 text-base">›</span>
-            </button>
-
             <div
               onClick={() => fileRef.current?.click()}
               className="w-full max-w-xs aspect-[4/5] rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
@@ -1378,6 +1716,94 @@ export function Composer({
                 ) : null}
                 <span className="text-white/45 text-base">›</span>
               </button>
+
+              {/* Highlight bucket — optional. Reels/photos tagged with a
+                  highlight show up on the user's profile in the matching
+                  bucket (Mountains/Beaches/Foodie/Suites/Top picks/Solo
+                  or any custom one they've created). Stories don't get
+                  this row — they live in their own 24h surface. */}
+              {kind !== "story" && (
+                <button
+                  type="button"
+                  onClick={() => setHighlightOpen(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{
+                    background: highlight
+                      ? "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.10))"
+                      : "rgba(255,255,255,0.04)",
+                    border: highlight
+                      ? "1px solid rgba(240,180,41,0.45)"
+                      : "1px solid rgba(255,255,255,0.10)",
+                  }}
+                >
+                  <span
+                    className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-base"
+                    style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)", border: "2px solid rgba(255,255,255,0.18)" }}
+                  >
+                    {highlight?.emoji || "✨"}
+                  </span>
+                  <span className="flex-1 text-left min-w-0">
+                    <span className="block text-white text-[0.82rem] font-semibold truncate">
+                      {highlight ? highlight.label : "Add to highlight"}
+                    </span>
+                    <span className="block text-white/55 text-[0.62rem] truncate">
+                      {highlight
+                        ? "Shows up on your profile in this bucket"
+                        : "Mountains · Beaches · Foodie · Suites · or create your own"}
+                    </span>
+                  </span>
+                  {highlight ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setHighlight(null); }}
+                      className="text-red-300 text-[0.74rem] font-semibold mr-1"
+                    >Clear</span>
+                  ) : null}
+                  <span className="text-white/45 text-base">›</span>
+                </button>
+              )}
+
+              {/* Story-only: Save as post toggle. When ON, the story will
+                  also appear in the regular feed AND survive past 24h. */}
+              {kind === "story" && (
+                <button
+                  type="button"
+                  onClick={() => setSaveAsPost((v) => !v)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left"
+                  style={{
+                    background: saveAsPost
+                      ? "linear-gradient(135deg, rgba(46,204,113,0.18), rgba(91,141,255,0.10))"
+                      : "rgba(255,255,255,0.04)",
+                    border: saveAsPost
+                      ? "1px solid rgba(46,204,113,0.45)"
+                      : "1px solid rgba(255,255,255,0.10)",
+                  }}
+                >
+                  <span className="text-xl">💾</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-white text-[0.82rem] font-semibold truncate">
+                      Also save as a post
+                    </span>
+                    <span className="block text-white/55 text-[0.62rem] leading-snug">
+                      {saveAsPost
+                        ? "Live for 24h on your story ring AND saved to your profile reels"
+                        : "Story disappears after 24 hours unless you turn this on"}
+                    </span>
+                  </span>
+                  <span
+                    className="w-10 h-6 rounded-full relative shrink-0 transition-colors"
+                    style={{
+                      background: saveAsPost ? "linear-gradient(135deg,#2ecc71,#5b8dff)" : "rgba(255,255,255,0.20)",
+                    }}
+                  >
+                    <span
+                      className="absolute top-[2px] w-5 h-5 rounded-full bg-white shadow-md transition-all"
+                      style={{ left: saveAsPost ? "18px" : "2px" }}
+                    />
+                  </span>
+                </button>
+              )}
 
               {/* Hotel tag row — viewers tap through to the hotel page from
                   the reel, so public-user reels turn into discovery + a
@@ -1529,9 +1955,11 @@ export function Composer({
         current={taggedHotel}
         onPick={(h) => setTaggedHotel(h)}
       />
-      <ProfilePhotoEditor
-        open={profileOpen}
-        onClose={() => setProfileOpen(false)}
+      <HighlightPicker
+        open={highlightOpen}
+        onClose={() => setHighlightOpen(false)}
+        current={highlight}
+        onPick={(h) => setHighlight(h)}
       />
     </div>
   );

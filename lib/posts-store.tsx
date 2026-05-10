@@ -49,6 +49,24 @@ export type UserPost = {
    * straight from the reel.
    */
   taggedHotel?: { id: string; name: string; city?: string; image?: string } | null;
+  /**
+   * Highlight bucket — built-in (mountains/beaches/foodie/suites/toppicks/solo)
+   * or a user-created custom highlight. Posts tagged with a highlight key
+   * appear in that highlight's grid on the user's profile sheet, the same
+   * way Instagram's story highlights work.
+   */
+  highlight?: { key: string; label: string; emoji: string } | null;
+  /**
+   * Story-only — auto-expire timestamp. Stories created at T live for 24h
+   * (storyExpiresAt = T + 24h). Past expiry, they're filtered out of the
+   * story rail + viewer (but kept in localStorage if `keepAsPost`).
+   */
+  storyExpiresAt?: number;
+  /**
+   * Story-only — when true, the story is *also* surfaced in the regular
+   * feed (and survives past 24h). Toggled in the Composer at create time.
+   */
+  keepAsPost?: boolean;
   createdAt: number;
 };
 
