@@ -19,6 +19,55 @@ export default function DiscoverPage() {
   const [hotelIdx, setHotelIdx] = useState(0);
   const dwellStart = useRef<number>(Date.now());
 
+  // Decode the current user's id once — used to flag posts as `_isSelf`
+  // when the social_posts row was authored by them.
+  const myUserId = (() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const t = localStorage.getItem("sb_token") || "";
+      if (!t) return "";
+      const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return p.id || p.user_id || p.sub || "";
+    } catch { return ""; }
+  })();
+
+  // Convert a social_posts row (joined with author + hotel) into the
+  // Item shape the InstagramHotelFeed already understands. Public posts
+  // — anyone's reels / photos / stories — are merged into the SAME
+  // /discover feed so users explore everything in one place.
+  const socialPostToItem = (post: any): Item => {
+    const a = post.author;
+    const isVideo = post.media_type === "REEL" || post.media_type === "STORY";
+    const isSelf = !!a?.user_id && a.user_id === myUserId;
+    return {
+      hotel: {
+        id:           post.id,
+        name:         a?.display_name || `@${a?.username || "user"}`,
+        city:         post.location_name || post.hotel?.city || "",
+        state:        post.hotel?.state || "",
+        starRating:   post.hotel?.starRating || post.hotel?.star_rating || 0,
+        avgRating:    post.hotel?.avgRating || 0,
+        rooms:        post.hotel?.rooms || [],
+        flashDeals:   [],
+        minPrice:     post.hotel?.minPrice ?? null,
+        amenities:    post.hotel?.amenities || [],
+        description:  post.caption || "",
+        videoUrl:     isVideo ? post.media_url : undefined,
+        images:       isVideo ? (post.thumbnail_url ? [post.thumbnail_url] : []) : [post.media_url],
+        _userPost:    true,
+        _isSelf:      isSelf,
+        _publicAuthor: a,                          // {username, display_name, user_type, ...}
+        _userPostKind: String(post.media_type || "reel").toLowerCase(),
+        _userPostMime: "",
+        _userPostLocation: post.location_name
+          ? { name: post.location_name, lat: post.location_lat, lng: post.location_lng }
+          : null,
+      } as any,
+      score: 0,
+      reasons: [a?.user_type === "HOTEL" ? "Verified hotel" : a?.user_type === "CREATOR" ? "Creator" : "Member"],
+    };
+  };
+
   const loadFeed = useCallback(async () => {
     setLoading(true);
     // Sanitize signals — priceBand can become [Infinity,Infinity] after
@@ -32,6 +81,18 @@ export default function DiscoverPage() {
     }
     const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
 
+    // ── Pull public posts (everyone's reels) from /api/social/feed.
+    // These are the user-uploaded reels / photos / stories that show up
+    // alongside hotels in the SAME unified feed at /discover.
+    let publicItems: Item[] = [];
+    try {
+      const sr = await fetch("/api/social/feed?limit=30", { cache: "no-store" });
+      if (sr.ok) {
+        const sd = await sr.json();
+        if (Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem);
+      }
+    } catch {}
+
     // Primary: ranked discover feed
     try {
       const r = await fetch("/api/discover/feed", {
@@ -43,7 +104,9 @@ export default function DiscoverPage() {
       if (r.ok) {
         const d = await r.json();
         if (Array.isArray(d?.items) && d.items.length > 0) {
-          setItems(d.items);
+          // Public user/creator/hotel posts go FIRST — newest content
+          // floats to the top so the feed feels alive.
+          setItems([...publicItems, ...d.items]);
           setLoading(false);
           return;
         }
@@ -82,13 +145,13 @@ export default function DiscoverPage() {
           score: 0, reasons: [],
         };
       });
-      setItems(mapped);
+      setItems([...publicItems, ...mapped]);
     } catch {
-      setItems([]);
+      setItems(publicItems);  // even if hotels fetch failed, show public posts
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [myUserId]);
 
   useEffect(() => {
     initTracking();

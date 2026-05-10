@@ -175,17 +175,23 @@ function applyHighlight(items: any[], hl: Highlight): any[] {
 
 // ─── Hotel-as-entity helper — lets the same profile sheet render hotels ──
 function entityFromHotel(h: any): Creator & { _isSelf?: boolean } {
+  // For public user posts, prefer the author's real handle/name over the
+  // auto-slug from the post title — so "Riya Sharma's reel" shows
+  // "@riya_sharma" in the chip, not "your_post".
+  const author = h._publicAuthor;
+  const handle = author?.username
+    ? String(author.username).toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 24)
+    : ((h.name || "hotel").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 24) || "hotel");
   return {
-    handle: (h.name || "hotel").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 24) || "hotel",
-    name: h.name || "Hotel",
-    verified: !!h.trustBadge || (h.starRating || 0) >= 4,
-    bio: `${h.starRating ? "★".repeat(Math.min(5, h.starRating)) + " · " : ""}${h.city || ""}${h.state ? ", " + h.state : ""}\n${h.description || "Verified property on StayBid · live reverse-auction · book at your price."}`,
+    handle,
+    name: author?.display_name || h.name || "Hotel",
+    verified: author?.is_verified ?? (!!h.trustBadge || (h.starRating || 0) >= 4),
+    bio: author?.bio || `${h.starRating ? "★".repeat(Math.min(5, h.starRating)) + " · " : ""}${h.city || ""}${h.state ? ", " + h.state : ""}\n${h.description || "Verified property on StayBid · live reverse-auction · book at your price."}`,
     avatarHue: hashStr(h.id || h.name || "x") % 360,
-    sourceType: "hotel",
-    // Set to true when this is the user's own pseudo-entity so the
-    // profile sheet replaces Follow → Edit profile (you can't follow
-    // yourself).
-    _isSelf: !!h._userPost,
+    sourceType: author?.user_type === "CREATOR" ? "creator" : author?.user_type === "PUBLIC" ? "public" : "hotel",
+    // _isSelf only when the post is YOURS — separates "user post"
+    // (anyone's upload, _userPost=true) from "your post" specifically.
+    _isSelf: !!h._isSelf,
   };
 }
 
@@ -1576,10 +1582,11 @@ const HotelCard = memo(function HotelCard({
             </button>
           )}
         </div>
-        {h._userPost ? (
+        {h._isSelf ? (
           // Following yourself makes no sense — replace the Follow button
-          // on user's own reels with a small "You ✦" badge so the layout
-          // stays balanced and the ownership stays visually obvious.
+          // on YOUR OWN reels with a small "You ✦" badge. Other users'
+          // public posts (also _userPost=true) keep the normal Follow
+          // button so you can follow them.
           <span
             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[0.7rem] font-bold shrink-0"
             style={{
@@ -1760,10 +1767,12 @@ const HotelCard = memo(function HotelCard({
             row with a "Posted ✓" badge (and a Delete button via the More
             menu, which still works because user posts route through the
             same handler). */}
-        {h._userPost ? (() => {
-          // Determine the public-vs-local state by checking whether the
-          // URLs currently point at Supabase Storage (https://) or are
-          // still local blob: URLs (upload pending or failed).
+        {h._isSelf ? (() => {
+          // Status badge ONLY on YOUR uploads — tells you whether the
+          // public Supabase upload finished (other devices can see it)
+          // or is still pending. Other users' public posts don't need
+          // this badge — for them the post is already public and the
+          // Book/Bid row is more useful.
           const url0 = h.videoUrl || h.images?.[0] || "";
           const isPublic = typeof url0 === "string" && url0.startsWith("http");
           return (
@@ -1778,12 +1787,12 @@ const HotelCard = memo(function HotelCard({
                   animation: isPublic ? undefined : "pulseGlow 1.6s ease-in-out infinite",
                 }} />
                 {isPublic
-                  ? <>Posted publicly · visible to everyone on <Link href="/social/feed" className="text-gold-300 font-semibold underline" onClick={(e) => e.stopPropagation()}>/social/feed</Link></>
-                  : "Uploading to public feed… visible everywhere once done"}
+                  ? "Live in the Reels feed · everyone can see this"
+                  : "Uploading to the public feed… visible everywhere once done"}
               </span>
             </div>
           );
-        })() : (
+        })() : !h._userPost ? (
           <div className="mt-3 flex items-end gap-2">
             <div className="flex flex-col leading-none mr-1 shrink-0">
               <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
@@ -1801,7 +1810,7 @@ const HotelCard = memo(function HotelCard({
               <span className="ig-cta-text">Bid</span>
             </button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Custom soundtrack audio element — ALWAYS MOUNTED.
