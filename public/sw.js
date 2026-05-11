@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v57-2026-05-11-instagram-fast';
-const HTML_CACHE = 'staybid-html-v57';
+const CACHE_NAME = 'staybid-v58-2026-05-11-floating-dock';
+const HTML_CACHE = 'staybid-html-v58';
 
 const PRECACHE_URLS = [
   '/manifest.json',

@@ -358,12 +358,17 @@ export function LocationGlobeModal({ activeCity, onClose }: {
 
           <div className="loc-search-wrap">
             <span className="loc-search-icon">🔎</span>
+            {/* No autoFocus — opening the modal must NOT pop up the mobile
+                keyboard. The user explicitly taps this input when they want
+                to search; otherwise the popular-destinations wheel below is
+                the primary affordance. */}
             <input
               className="loc-search"
               placeholder="Search city — Goa, Jaipur, Manali…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              autoFocus
+              inputMode="search"
+              enterKeyHint="search"
             />
           </div>
 

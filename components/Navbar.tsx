@@ -34,9 +34,11 @@ const USER_LINKS = [
 const BOTTOM_PRIMARY = [
   { href: "/",            label: "Home",      icon: "🏠" },
   { href: "/hotels",      label: "Hotels",    icon: "🏨" },
-  { href: "/reels",       label: "Discover",  icon: "🎬" },
+  // Centre slot → upsized into the brand FAB. "Discover" → "Reels" for the
+  // shorter label so it fits the dock without truncation.
+  { href: "/discover",    label: "Reels",     icon: "🎬" },
   { href: "/flash-deals", label: "Deals",     icon: "⚡", pulse: true },
-  { href: "/bid",         label: "Place Bid", icon: "🎯" },
+  { href: "/bid",         label: "Bid",       icon: "🎯" },
 ];
 
 function LogoMark({ size = 36 }: { size?: number }) {
@@ -189,49 +191,189 @@ export function Navbar() {
         }
         .nav3d-chip:hover::before { opacity: 1; animation: navShine 1.6s linear; }
 
-        /* Mobile bottom nav */
-        .bottom3d {
+        /* ─── Mobile floating dock (v58 — modern 3D, iOS-style magnification) ─── */
+        @keyframes dockPulse {
+          0%, 100% { box-shadow: 0 6px 20px rgba(240,180,41,0.45), 0 0 0 0 rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
+          50%      { box-shadow: 0 8px 28px rgba(240,180,41,0.55), 0 0 0 6px rgba(240,180,41,0), inset 0 1px 0 rgba(255,255,255,0.4); }
+        }
+        @keyframes dockRing {
+          0%   { transform: scale(0.6); opacity: 1; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes dockPopIn {
+          0%   { transform: translateY(20px) scale(0.9); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes dockGlowSlide {
+          0%, 100% { background-position: 0% 50%; }
+          50%      { background-position: 100% 50%; }
+        }
+
+        /* Floating capsule — margin from edges, glass, depth */
+        .dock {
+          position: fixed;
+          left: 50%;
+          bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+          transform: translateX(-50%);
+          z-index: 50;
+          padding: 6px;
+          border-radius: 999px;
           background:
-            linear-gradient(180deg, rgba(14,12,22,0.94) 0%, rgba(8,6,14,0.98) 100%);
-          backdrop-filter: blur(22px) saturate(180%);
-          -webkit-backdrop-filter: blur(22px) saturate(180%);
-          border-top: 1px solid rgba(240,180,41,0.25);
-          box-shadow: 0 -8px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+            linear-gradient(180deg, rgba(20,18,30,0.78) 0%, rgba(10,8,16,0.85) 100%);
+          backdrop-filter: blur(28px) saturate(180%);
+          -webkit-backdrop-filter: blur(28px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow:
+            0 18px 50px rgba(0,0,0,0.55),
+            0 4px 14px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(255,255,255,0.10),
+            inset 0 -1px 0 rgba(0,0,0,0.4);
+          animation: dockPopIn 0.45s cubic-bezier(.34,1.4,.64,1) both;
+          display: flex; align-items: center;
+          /* Compact width — doesn't span full screen, less visual noise */
+          max-width: calc(100vw - 24px);
         }
-        .bottom3d::before {
-          content:""; position:absolute; left:0; right:0; top:-1px; height:1px;
-          background: linear-gradient(90deg, transparent, rgba(240,180,41,0.65), transparent);
+        .dock::before {
+          /* Top-edge gold sheen */
+          content: ""; position: absolute; inset: 0;
+          border-radius: 999px;
+          background: linear-gradient(180deg, rgba(240,180,41,0.18) 0%, transparent 30%);
+          pointer-events: none;
+          opacity: 0.55;
         }
-        .bottom3d-btn {
+
+        /* Each dock button — iOS-dock magnification */
+        .dock-btn {
           position: relative;
-          transition: transform .2s cubic-bezier(.3,1,.3,1);
+          flex: 0 0 auto;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          width: 56px; height: 56px;
+          border-radius: 50%;
+          background: transparent;
+          color: rgba(255,255,255,0.55);
+          /* Spring transition for the magnify effect */
+          transition:
+            transform 0.35s cubic-bezier(.34,1.5,.64,1),
+            color 0.25s ease,
+            background 0.25s ease;
+          will-change: transform;
+          gap: 1px;
+          isolation: isolate;
         }
-        .bottom3d-btn:active { transform: scale(0.92); }
-        .bottom3d-icon {
-          display:flex; align-items:center; justify-content:center;
-          width: 42px; height: 30px; border-radius: 14px;
-          background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
-          border: 1px solid rgba(255,255,255,0.05);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-          transition: all .3s;
+        .dock-btn-icon {
+          font-size: 1.25rem;
+          line-height: 1;
+          filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
+          transition: transform 0.35s cubic-bezier(.34,1.5,.64,1);
         }
-        .bottom3d-btn.is-active .bottom3d-icon {
-          background: linear-gradient(180deg, rgba(240,180,41,0.32), rgba(201,145,26,0.1));
-          border-color: rgba(240,180,41,0.6);
-          box-shadow: 0 4px 14px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
-          transform: translateY(-2px) scale(1.05);
+        .dock-btn-label {
+          font-size: 0.52rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          margin-top: 1px;
+          opacity: 0.7;
+          transition: opacity 0.25s, transform 0.35s cubic-bezier(.34,1.5,.64,1);
         }
-        .bottom3d-label {
-          font-size: 0.6rem; font-weight: 700; letter-spacing: .04em;
-          color: rgba(255,255,255,0.45);
-          transition: color .2s;
+
+        /* Hover / active grows the button, label brightens */
+        .dock-btn:hover { color: rgba(255,255,255,0.92); }
+        .dock-btn:hover .dock-btn-icon { transform: translateY(-2px) scale(1.12); }
+        .dock-btn:hover .dock-btn-label { opacity: 1; transform: translateY(1px); }
+        .dock-btn:active .dock-btn-icon { transform: scale(0.92); }
+
+        /* Active route — permanent gold-glow capsule behind the icon */
+        .dock-btn.is-active {
+          color: #fff;
+          background:
+            radial-gradient(circle at 50% 50%, rgba(240,180,41,0.35) 0%, rgba(240,180,41,0.05) 70%);
         }
-        .bottom3d-btn.is-active .bottom3d-label { color: #fbd26a; }
+        .dock-btn.is-active .dock-btn-icon {
+          transform: translateY(-3px) scale(1.18);
+          filter: drop-shadow(0 4px 8px rgba(240,180,41,0.55));
+        }
+        .dock-btn.is-active .dock-btn-label {
+          opacity: 1;
+          color: #fbd26a;
+          letter-spacing: 0.08em;
+        }
+
+        /* Active gold indicator dot underneath */
+        .dock-btn.is-active::after {
+          content: "";
+          position: absolute;
+          bottom: 6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 4px; height: 4px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f0d060, #f0b429);
+          box-shadow: 0 0 8px #f0b429, 0 0 14px rgba(240,180,41,0.55);
+          animation: dockPulse 2.4s ease-in-out infinite;
+        }
+
+        /* iOS-dock magnification — siblings of the hovered button shrink slightly */
+        .dock:hover .dock-btn:not(:hover):not(.is-active) .dock-btn-icon {
+          transform: scale(0.94);
+          opacity: 0.85;
+        }
+
+        /* Centered FAB — bigger, raises out of the dock for emphasis */
+        .dock-fab {
+          width: 64px; height: 64px;
+          margin: 0 -2px;
+          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
+          color: #1a1208;
+          border-radius: 50%;
+          box-shadow:
+            0 10px 26px rgba(240,180,41,0.45),
+            0 4px 10px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.5),
+            inset 0 -2px 0 rgba(120,80,0,0.3);
+          animation: dockPulse 3s ease-in-out infinite;
+          position: relative;
+          z-index: 2;
+        }
+        .dock-fab .dock-btn-icon { font-size: 1.55rem; color: #1a1208; filter: none; }
+        .dock-fab .dock-btn-label {
+          color: #1a1208;
+          opacity: 0.85;
+          font-size: 0.48rem;
+        }
+        .dock-fab:hover { color: #1a1208; }
+        .dock-fab.is-active::after { display: none; }
+
+        /* Pulse-red dot for new content (Flash Deals) */
+        .dock-btn-pulse {
+          position: absolute;
+          top: 9px; right: 11px;
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: #ff3859;
+          box-shadow: 0 0 8px #ff3859, 0 0 0 2px rgba(20,18,30,0.95);
+        }
+        .dock-btn-pulse::after {
+          content: ""; position: absolute; inset: -3px;
+          border-radius: 50%; border: 1.5px solid #ff3859;
+          animation: dockRing 1.8s ease-out infinite;
+        }
+
+        /* Compact width on narrow screens */
+        @media (max-width: 380px) {
+          .dock-btn { width: 50px; height: 50px; }
+          .dock-fab { width: 58px; height: 58px; }
+          .dock-btn-icon { font-size: 1.15rem; }
+          .dock-fab .dock-btn-icon { font-size: 1.4rem; }
+          .dock-btn-label { font-size: 0.48rem; }
+        }
 
         @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .sheet-in { animation: sheetIn 0.28s cubic-bezier(0.34,1.2,0.64,1) both; }
         .bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
-        @media (max-width: 767px) { body { padding-bottom: 76px; } }
+        /* Floating dock floats over content but content still needs breathing
+           room so the last item isn't hidden under it. 84px = 56 dock height
+           + 12 bottom gap + ~16 safe-area inset. */
+        @media (max-width: 767px) { body { padding-bottom: 84px; } }
       `}</style>
 
       {/* ── TOP NAV (3D reflective) ────────────────────────────────── */}
@@ -338,51 +480,65 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* ── MOBILE BOTTOM NAV (3D reflective) ───────────────────── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bottom-nav bottom3d relative">
-        <div className="flex items-stretch" style={{ height: "66px" }}>
-          {BOTTOM_PRIMARY.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link key={item.href} href={item.href}
-                className={`bottom3d-btn flex-1 flex flex-col items-center justify-center gap-1 ${active ? "is-active" : ""}`}>
-                <div className="bottom3d-icon relative">
-                  <span className="text-[1.15rem]">{item.icon}</span>
-                  {item.pulse && !active && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                  )}
-                </div>
-                <span className="bottom3d-label">{item.label}</span>
-              </Link>
-            );
-          })}
-          {/* The right-most slot used to say "More" but the user pointed
-              out their account is right there — rename to the account
-              first-name (falls back to "Account" / "Sign in" by state)
-              and use the user's initials as the icon so it matches the
-              avatar elsewhere. Behaves identically — tap opens the same
-              sheet. */}
-          <button onClick={() => setMoreOpen(!moreOpen)}
-            className={`bottom3d-btn flex-1 flex flex-col items-center justify-center gap-1 ${moreOpen ? "is-active" : ""}`}>
-            <div className="bottom3d-icon">
-              {user ? (
-                <span
-                  className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full text-[0.66rem] font-bold text-white"
-                  style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}
-                >
-                  {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
-                </span>
-              ) : (
-                <span className="text-[1.15rem]">{moreOpen ? "✕" : "👤"}</span>
-              )}
-            </div>
-            <span className="bottom3d-label">
-              {user
-                ? (user.name ? user.name.split(" ")[0].slice(0, 12) : "Account")
-                : "Sign in"}
+      {/* ── MOBILE FLOATING DOCK (v58 — iOS-style magnification + 3D) ───
+          Compact capsule floating above content, doesn't span full width.
+          Active route grows + gets a permanent gold glow + animated dot.
+          Hovering/touching a button magnifies it; siblings shrink. The
+          centre Discover slot is upsized into a glowing gold FAB to
+          anchor the brand. */}
+      <div className="dock md:hidden">
+        {BOTTOM_PRIMARY.map((item, i) => {
+          const active = isActive(item.href);
+          // Centre slot (Reels/Discover) is the upsized brand FAB
+          const isFab = item.href === "/discover" || item.href === "/reels";
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              prefetch
+              className={`dock-btn ${isFab ? "dock-fab" : ""} ${active ? "is-active" : ""}`}
+            >
+              <span className="dock-btn-icon">{item.icon}</span>
+              <span className="dock-btn-label">{item.label}</span>
+              {item.pulse && !active && <span className="dock-btn-pulse" />}
+            </Link>
+          );
+        })}
+        {/* Account button — initials avatar OR sign-in. Opens the More sheet. */}
+        <button
+          onClick={() => setMoreOpen(!moreOpen)}
+          aria-label={user ? (user.name || "Account") : "Sign in"}
+          className={`dock-btn ${moreOpen ? "is-active" : ""}`}
+        >
+          {user ? (
+            <span
+              className="dock-btn-icon"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg,#c9911a,#f0b429)",
+                color: "#fff",
+                fontSize: "0.62rem",
+                fontWeight: 800,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(240,180,41,0.4)",
+              }}
+            >
+              {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
             </span>
-          </button>
-        </div>
+          ) : (
+            <span className="dock-btn-icon">{moreOpen ? "✕" : "👤"}</span>
+          )}
+          <span className="dock-btn-label">
+            {user
+              ? (user.name ? user.name.split(" ")[0].slice(0, 8) : "Me")
+              : "Sign In"}
+          </span>
+        </button>
       </div>
 
       {/* ── MOBILE MORE SHEET ─────────────────────────────────── */}
@@ -390,7 +546,7 @@ export function Navbar() {
         <>
           <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)} />
-          <div className="md:hidden fixed bottom-[66px] left-0 right-0 z-50 sheet-in"
+          <div className="md:hidden fixed bottom-[84px] left-0 right-0 z-50 sheet-in"
             style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 50px rgba(0,0,0,0.7)", border: "1px solid rgba(240,180,41,0.25)" }}>
 
             <div className="flex justify-center pt-3 pb-1">
