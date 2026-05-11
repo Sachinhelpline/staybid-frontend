@@ -118,6 +118,9 @@ export function DialerNav() {
   const [open, setOpen] = useState(false);
   const [rotation, setRotation] = useState(activeIdx);
   const [snapping, setSnapping] = useState(false);
+  // Once the user starts scrolling, fade out the up/down arrow hints
+  // (they've understood the affordance, no need to keep distracting).
+  const [interacted, setInteracted] = useState(false);
 
   const fabDragRef = useRef<{ sx: number; sy: number; fx: number; fy: number; moved: boolean; t: number } | null>(null);
   const pickerDragRef = useRef<{ sy: number; sr: number; moved: boolean } | null>(null);
@@ -200,8 +203,10 @@ export function DialerNav() {
     fabDragRef.current = null;
 
     if (!wasDrag && elapsed < FAB_TAP_MAX_MS) {
-      // Pure tap → open picker
+      // Pure tap → open picker; reset the "interacted" flag so the
+      // up/down arrow hints pulse fresh for this open session.
       setOpen(true);
+      setInteracted(false);
       wakePicker();
       schedulePickerClose();
       return;
@@ -230,7 +235,11 @@ export function DialerNav() {
   const onPickerMove = useCallback((cy: number) => {
     if (!pickerDragRef.current) return;
     const dy = cy - pickerDragRef.current.sy;
-    if (Math.abs(dy) > 4) pickerDragRef.current.moved = true;
+    if (Math.abs(dy) > 4 && !pickerDragRef.current.moved) {
+      pickerDragRef.current.moved = true;
+      // First real movement → fade out the arrow hints
+      setInteracted(true);
+    }
     // Downward drag → items move down, so rotation decreases (earlier items come into view)
     const next = pickerDragRef.current.sr - dy / DRAG_PX_PER_ITEM;
     setRotation(((next % N) + N) % N);
@@ -378,7 +387,11 @@ export function DialerNav() {
           animation: dialerBackdropIn 0.25s ease both;
         }
 
-        /* ── iPhone-style picker ──────────────────────────────── */
+        /* ── iPhone-style picker ──────────────────────────────────────
+           v64: TRUE translucent (0.25 alpha) — no "solid box" feel.
+           Selection box / gold band removed — only the centre gold-pill
+           item indicates selection (no rectangular bracket around it).
+           Top/bottom fades kept but much subtler. */
         .dialer-picker {
           position: fixed;
           width: ${PICKER_WIDTH}px;
@@ -386,46 +399,71 @@ export function DialerNav() {
           z-index: 59;
           padding: 18px 0;
           border-radius: 28px;
-          background: linear-gradient(180deg, rgba(22,18,32,0.78), rgba(10,8,16,0.94));
-          backdrop-filter: blur(28px) saturate(200%);
-          -webkit-backdrop-filter: blur(28px) saturate(200%);
-          /* Borderless picker container — just glass + shadow for depth */
+          background: linear-gradient(180deg, rgba(22,18,32,0.22), rgba(10,8,16,0.30));
+          backdrop-filter: blur(20px) saturate(160%);
+          -webkit-backdrop-filter: blur(20px) saturate(160%);
           border: none;
           box-shadow:
-            0 18px 60px rgba(0,0,0,0.6),
-            0 4px 14px rgba(0,0,0,0.4),
-            inset 0 1px 0 rgba(255,255,255,0.12);
+            0 18px 50px rgba(0,0,0,0.45),
+            0 4px 10px rgba(0,0,0,0.30);
           touch-action: none;
           animation: dialerPickerIn 0.32s cubic-bezier(.34,1.4,.64,1) both;
           transform-origin: center center;
         }
-        /* Gold selection band marking the centre slot */
-        .dialer-picker::before {
-          content: "";
-          position: absolute;
-          left: 10px; right: 10px;
-          top: 50%;
-          height: 56px;
-          margin-top: -28px;
-          border-radius: 18px;
-          background: linear-gradient(180deg, rgba(240,180,41,0.06), rgba(240,180,41,0.02));
-          border-top: 1px solid rgba(240,180,41,0.45);
-          border-bottom: 1px solid rgba(240,180,41,0.45);
-          pointer-events: none;
-        }
-        /* Top/bottom fade — items at extremes ease out into the void */
+        /* Subtle vertical fade at top + bottom so extreme items dissolve
+           into the translucent backdrop rather than getting clipped.
+           No selection band — the gold centre item alone marks selection. */
         .dialer-picker::after {
           content: "";
           position: absolute; inset: 0;
           border-radius: 28px;
           background:
             linear-gradient(180deg,
-              rgba(10,8,16,0.85) 0%,
-              transparent 18%,
-              transparent 82%,
-              rgba(10,8,16,0.85) 100%);
+              rgba(10,8,16,0.55) 0%,
+              transparent 22%,
+              transparent 78%,
+              rgba(10,8,16,0.55) 100%);
           pointer-events: none;
         }
+
+        /* ── Up / Down chevron hints ───────────────────────────────────
+           Tells users "this list scrolls vertically". Pulsing animation
+           draws the eye; they fade out once the user has interacted.
+           When picker first opens, both arrows pulse so the affordance
+           is immediately visible. */
+        @keyframes dialerArrowPulseUp {
+          0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.55; }
+          50%      { transform: translate(-50%, -4px) scale(1.15); opacity: 1; }
+        }
+        @keyframes dialerArrowPulseDown {
+          0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.55; }
+          50%      { transform: translate(-50%, 4px) scale(1.15); opacity: 1; }
+        }
+        .dialer-picker-arrow {
+          position: absolute;
+          left: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex; align-items: center; justify-content: center;
+          color: #fbd26a;
+          font-size: 0.9rem;
+          font-weight: 800;
+          line-height: 1;
+          pointer-events: none;
+          filter: drop-shadow(0 0 6px rgba(240,180,41,0.65));
+          transition: opacity 0.4s ease;
+          z-index: 11;
+        }
+        .dialer-picker-arrow.up {
+          top: -2px;
+          animation: dialerArrowPulseUp 1.4s ease-in-out infinite;
+        }
+        .dialer-picker-arrow.down {
+          bottom: -2px;
+          animation: dialerArrowPulseDown 1.4s ease-in-out infinite;
+        }
+        /* After user interacts, arrows fade out to reduce visual noise */
+        .dialer-picker.interacted .dialer-picker-arrow { opacity: 0.18; }
 
         /* Wheel track inside the picker — items absolutely positioned. */
         .dialer-picker-track {
@@ -556,7 +594,7 @@ export function DialerNav() {
         <>
           <div className="dialer-backdrop" onClick={() => setOpen(false)} />
           <div
-            className="dialer-picker"
+            className={`dialer-picker ${interacted ? "interacted" : ""}`}
             style={{ left: `${pickerLeft}px`, top: `${pickerTop}px` }}
             onTouchStart={(e) => onPickerStart(e.touches[0].clientY)}
             onTouchMove={(e) => onPickerMove(e.touches[0].clientY)}
@@ -567,6 +605,12 @@ export function DialerNav() {
             onMouseUp={onPickerEnd}
             onMouseLeave={() => { if (pickerDragRef.current) onPickerEnd(); }}
           >
+            {/* Pulsing up/down chevrons — visual hint that the picker
+                scrolls vertically. Fade out once user starts dragging
+                (.interacted class). */}
+            <span className="dialer-picker-arrow up" aria-hidden>▲</span>
+            <span className="dialer-picker-arrow down" aria-hidden>▼</span>
+
             <div className="dialer-picker-track">
               {ITEMS.map((item, i) => {
                 // Signed wrapped distance from centre. Range: (-N/2, N/2]
@@ -607,12 +651,16 @@ export function DialerNav() {
                         }
                         setOpen(false);
                       } else {
-                        // Tapping a non-centre item snaps it to centre
-                        setSnapping(true);
-                        setRotation(i);
-                        if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
-                        snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
-                        schedulePickerClose();
+                        // v64: tapping ANY visible item navigates directly
+                        // (no "snap to centre then tap again" two-step).
+                        if (item.href !== pathname) {
+                          if (item.external) {
+                            window.open(item.href, "_blank", "noopener,noreferrer");
+                          } else {
+                            router.push(item.href);
+                          }
+                        }
+                        setOpen(false);
                       }
                     }}
                   >
