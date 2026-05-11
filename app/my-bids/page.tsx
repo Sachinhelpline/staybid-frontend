@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
+import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -169,7 +170,16 @@ export default function MyBidsPage() {
   const handlePayNow = async (b: any) => {
     setActionLoading(b.id);
     try {
-      const perNight = Number(b.counterAmount || b.amount || 0);
+      // Active price the customer accepts at:
+      //   COUNTER → hotel's counter
+      //   ACCEPTED at customer's preferred (below-floor) → customer's bid (from message)
+      //   else → bid.amount
+      const customerBid = extractCustomerBidFromMessage(b.message);
+      const perNight = Number(
+        b.counterAmount
+          ?? (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : (customerBid ?? b.amount))
+          ?? 0
+      );
       const nights = nightsBetween(b.checkIn, b.checkOut);
       const total = perNight * nights;
       if (!total) throw new Error("Invalid amount");
@@ -336,10 +346,24 @@ export default function MyBidsPage() {
           {filtered.map((b: any, idx: number) => {
             const meta  = STATUS_META[b.status] || STATUS_META.PENDING;
             const paid  = isPaid(b);
-            const confirmAmt = b.counterAmount || b.amount;
+            // BUG-FIX: below-floor bids are stored at floor in bid.amount (backend
+            // rejects below-floor). The customer's actual bid intent lives in the
+            // message ("Guest's preferred price: ₹X/night"). resolveBidDisplayAmount
+            // recovers it so My Bids shows what the customer ACTUALLY bid, not floor.
+            const customerBid = extractCustomerBidFromMessage(b.message);
+            const yourBid = customerBid ?? Number(b.amount || 0);
+            // Active price = what the customer would pay if they accept now.
+            //   COUNTER: hotel's counter
+            //   ACCEPTED: hotel accepted at customer's bid (use customerBid if below-floor, else bid.amount)
+            //   else: customer's bid
+            const confirmAmt = b.status === "COUNTER"
+              ? (b.counterAmount || b.amount)
+              : (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : yourBid);
             const nights = nightsBetween(b.checkIn, b.checkOut);
             const total = Number(confirmAmt) * nights;
             const isCelebrating = celebrateId === b.id;
+            const floorAmt = Number(b.amount || 0); // what backend recorded (floor if below-floor)
+            const wasBelowFloor = customerBid != null && customerBid < floorAmt;
 
             return (
               <div key={b.id}
@@ -384,8 +408,11 @@ export default function MyBidsPage() {
                 <div className="grid grid-cols-3 gap-3 mb-3">
                   <div>
                     <p className="text-[0.6rem] text-white/40 uppercase tracking-[0.2em] mb-1">Your Bid</p>
-                    <p className="text-sm font-bold gold-text">₹{b.amount}</p>
+                    <p className="text-sm font-bold gold-text">₹{yourBid.toLocaleString("en-IN")}</p>
                     <p className="text-[0.6rem] text-white/40">/night</p>
+                    {wasBelowFloor && (
+                      <p className="text-[0.55rem] text-white/35 mt-0.5">below min · pending review</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-[0.6rem] text-white/40 uppercase tracking-[0.2em] mb-1">Check-in</p>
