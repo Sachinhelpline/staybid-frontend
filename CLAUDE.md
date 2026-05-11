@@ -811,13 +811,16 @@ claude "Read CLAUDE.md fully, then ask me what to work on next for StayBid front
 ```
 
 ### Key context to mention if starting fresh
-- Branch: `claude/reverent-gates-39aab8` (worktree, pushed to `main` on every commit)
-- Current production version: **v49** (commit `5f7e59d` on main)
+- Branch: `claude/heuristic-knuth-23cf5e` (worktree, pushed to `main` on every commit)
+- Current production version: **v56** (commit `34eb650` on main — last green Vercel deploy was v55; v56 perf changes uncommitted in worktree)
 - Supabase project: `uxxhbdqedazpmvbvaosh` — use `lib/sb.ts` helpers for any new Next.js API route
 - Live site: `https://www.staybids.in` served from Vercel project `staybid-customer-frontend` (NOT `staybid-frontend`)
 - All 12+ Supabase tables live, ALL triggers + RPCs live (no backend Railway changes needed)
 - Pattern: additive migrations only, TEXT IDs (CUIDs), Bearer token via `userFromReq()`, push to branch then `branch:main`
 - Always bump `public/sw.js` CACHE_NAME + `app/layout.tsx` SB_BUILD + badge together when shipping UI changes
+- City filter pipeline: globe picker writes `sb_city` + fires `sb:city-change` → /hotels, /flash-deals, /discover all subscribe and re-filter live. New consumer pages should subscribe to the same event.
+- Reel-page fullscreen: use `useReelFullscreen()` from `lib/useReelFullscreen.ts` — never reinvent the body-class lock inline. The hook drives `--reel-vh` from `visualViewport.height` and that's what `globals.css .is-reel-page` reads.
+- Vercel build gotchas (CLAUDE.md "Things to Avoid"): no `for..of` on `Map.keys()` (use `Array.from(...).forEach()`), and verify `@types/react-dom` is in `package.json` whenever importing from `react-dom`.
 
 ---
 
@@ -1109,5 +1112,107 @@ Tiers detected by `useAccountTier()` in `components/upgrade/UpgradeSection.tsx`.
 - **Never** strip the `_isSelf` flag from user post items — drives "✦ You" badge, story ring, status banner, SelfTierBanner, profile-edit avatar route.
 - **Never** persist data-URLs larger than ~80 KB to localStorage — that's why ProfilePhotoEditor scales to 256 px @ 0.8 JPEG quality. For full-resolution avatars, use Supabase Storage.
 - **Never** show the user's phone number on any public surface — it's only allowed in the read-only identity strip on `/upgrade` (visible only to the signed-in user themselves) and in the admin creator-review modal.
+
+---
+
+## Flash Deals + Live Location + Performance Era (v53 → v56, May 2026)
+
+This batch covered three big themes: (1) ultra-premium **Flash Deals** with one-deal-per-hotel + live availability + upgrade ladder, (2) **animated globe location picker** that drives a single `sb_city` source-of-truth across hotels/flash-deals/reels, and (3) **performance hardening** — bulletproof reel-page fullscreen, dynamic-imported feed, cross-mode prefetch, network-first service worker.
+
+### v53 — Flash Deals: one-deal-per-hotel + upgrade ladder + premium UI
+- **API rule** ([app/api/flash/near/route.ts](app/api/flash/near/route.ts)) — Earlier the synthesized fallback produced one row per **room**, so a hotel with 3 rooms showed 3 cards. Now:
+  - Pool real + synthesized deals per hotel; pick the cheapest **available** room as the headline deal.
+  - **Live availability** join: `hotel_room_units` + ACCEPTED/COUNTER `bids` + `room_blocks` overlapping today→tomorrow. Hotels with zero free units are **hidden entirely**.
+  - Every other room in the same hotel returns inside an `upgrades[]` array with `dealPrice`, `extraPerNight` (delta from headline), `unitsFree`, `available` flag. Sold rooms render as disabled chips, not removed (so user sees what's gone).
+  - Payload shape changed: top-level `generatedAt`, `unitsFree`/`unitsTotal`/`upgrades`/`roomTypesAvailable`, `discount` (was `discountPct` on synthesized rows). Customer hotel page still reads `aiPrice`/`floorPrice` so it keeps working.
+  - Sorted by biggest discount first, then cheapest price.
+- **Premium animated UI** ([app/flash-deals/page.tsx](app/flash-deals/page.tsx)):
+  - Animated mesh background, gradient-shift gold title ("Flash *Deals*"), Cormorant Garamond italic.
+  - Live ticker chips with CountUp animation: deals live · hotels · avg off · ₹ savings today (each value animates from previous → current on refresh).
+  - Cards: ken-burns image zoom, shimmer sweep across the photo, pulsing red LIVE pill, rotated gold/red discount stamp (red if ≥25%), SVG countdown ring with monospace HH:MM:SS, slot meter with shimmer.
+  - Inline **upgrade chips** on every card — tap "Suite" chip → headline price live-flips to that room's deal price (no reload).
+  - Tap card → premium drawer: hero image, room picker with units-free per row, 5-line "How this deal works" rules, sticky CTA. Locks body scroll; bottom-sheet on mobile, centered modal on desktop.
+- **Build-error fix** documented in CLAUDE.md "Things to Avoid": Vercel's tsconfig lacks `downlevelIteration`, so `for (const x of map.keys())` errors at build. Use `Array.from(map.keys()).forEach(...)` instead.
+
+### v54 — Live globe location picker + cross-page reactive filter
+- **New shared component** ([components/LocationGlobePicker.tsx](components/LocationGlobePicker.tsx)) — ~350 lines of self-contained premium globe modal. Imported by both Navbar and reels FilterSheet.
+  - Animated conic-gradient globe (~20s spin), faux green-continent overlay, 2 orbital dots (gold + red, opposite directions, different speeds), shimmer sweep across the sphere, gold-shimmer headline city name, pulsing LIVE pill.
+  - **Auto-detect**: `Geolocation` + Nominatim reverse-geocode. States: `idle` · `locating` (yellow pulse ring) · `denied` · `fallback` (detected city not in supported list).
+  - **Manual** city search with "Use 'whatever-typed'" custom-city option, "🌐 Show me everywhere" reset to "anywhere in India".
+  - **Portal mount** to `document.body` — escapes the navbar's `backdrop-filter` containing-block trap (was the original "modal stuck inside 64px navbar" bug). z-index 9999.
+- **Single source of truth**: every city pick writes `localStorage.sb_city` + fires `window.dispatchEvent(new Event('sb:city-change'))`. The Navbar chip, /hotels, /flash-deals, and reels feed all subscribe to that event.
+- **Race-condition fix**: `/hotels` and `/flash-deals` previously fired an unfiltered fetch on mount, then a city-filtered fetch when `sb_city` was hydrated from localStorage. The slower no-city response could overwrite the fresher city-filtered one. Both now use a `hydrated` flag: `useEffect(..., [city, hydrated])` skips the first fetch until `sb_city` is read in the hydration `useEffect`.
+- **Reels feed sync**: `InstagramHotelFeed` also subscribes to `sb:city-change` and updates `filterCity` live without a remount.
+
+### v55 — Globe also reachable from reels filter
+- On `/discover` and `/reels` the Navbar is hidden (CLAUDE.md "Reels-only locked" rule, v20). So the globe was unreachable inside the reel feed.
+- Fix: the reels FilterSheet's Location section now has a **mini-globe launcher** above the quick-pick city pills. Tapping it opens the same shared `LocationGlobeModal`. The pick writes `sb_city` + fires `sb:city-change`, which the feed already listens to, so `filterCity` updates instantly without re-mounting the feed.
+
+### v56 — Reel fullscreen reliability + performance hardening
+- **`useReelFullscreen()` hook** ([lib/useReelFullscreen.ts](lib/useReelFullscreen.ts)) — replaces the old inline `is-reel-page` body-class effect.
+  - **Root cause of "kabhi fullscreen kabhi nahi"**: Android Chrome / Samsung Internet still leave 8–20px of phantom space at the bottom even with `100dvh` because the URL bar's collapsed/expanded state isn't always reflected in the dynamic viewport unit. iOS Safari ignores `requestFullscreen()` on non-`<video>` elements entirely. And stale SW chunks could serve old HTML missing the `is-reel-page` class.
+  - **Fix**: Read REAL viewport height from `window.visualViewport.height` (iOS 13+ / Chrome 61+) and write it to CSS var `--reel-vh`. The reel CSS in `globals.css` reads `var(--reel-vh, 100dvh)` instead of `100dvh`. Re-read on `resize`, `scroll`, `fullscreenchange`, `orientationchange` so the lock survives URL-bar appear/disappear in real time.
+  - Best-effort `requestFullscreen()` is still attempted on first user gesture (works on Android Chrome / Firefox; iOS Safari silently no-ops, which is fine — the visualViewport-driven lock alone is enough).
+  - Verified live in preview: `--reel-vh: 642px` matches `visualViewport.height: 642px` exactly; resize to 375×812 → `--reel-vh: 812px` instantly.
+- **Dynamic-imported `InstagramHotelFeed`** in [app/discover/page.tsx](app/discover/page.tsx) — the 2300-line component used to be in the initial bundle. Now it loads after first paint via `next/dynamic({ ssr: false })`. Page topbar + loading spinner appear ~300ms faster on cold start.
+- **Cross-mode prefetch** for Explore↔Compare swap:
+  - `/discover` `useEffect(() => { router.prefetch("/hotels") }, [])` warms up the Compare destination.
+  - `/hotels` does the reverse for the ✨ Explore chip.
+  - `ModeToggle` ([components/ModeToggle.tsx](components/ModeToggle.tsx)) also prefetches `/discover` on mount + uses `<Link prefetch>` so first-tap is instant from any page.
+- **Service-worker rewrite** ([public/sw.js](public/sw.js)) — clean, production-grade caching:
+  - HTML navigations → **network-first w/ 2.5s timeout**, cache fallback. Users instantly see new code; offline still works.
+  - `/_next/static/` hashed chunks → **cache-first** (immutable URLs).
+  - `/api/` + `/_next/data/` → **network-only** (deals/prices must be fresh).
+  - Everything else → **stale-while-revalidate**.
+  - `skipWaiting` + `clients.claim` on install; on activate, delete every cache that isn't the current `CACHE_NAME`.
+- **Layout startup script tuned** ([app/layout.tsx](app/layout.tsx)):
+  - Version-mismatch reload only fires if a **stale** `sb_build` is detected. First visits don't reload anymore (was costing ~300ms of nothing).
+  - SW registration deferred to `requestIdleCallback` (Safari fallback: `setTimeout` 1.5s) so it doesn't compete with main-thread work during initial render.
+- **Vercel build fixes shipped on top of v53–v55**:
+  - `fix(flash-deals api): Array.from(map.keys()).forEach` — `for..of MapIterator` was failing without `downlevelIteration`.
+  - `fix(deps): add @types/react-dom` — `LocationGlobePicker.tsx` imports `createPortal` from `react-dom`; package.json was missing types.
+
+### Files added (this era)
+```
+app/flash-deals/page.tsx                        # full rewrite — premium v53 UI
+components/LocationGlobePicker.tsx              # shared globe modal — Navbar + reels both use
+lib/useReelFullscreen.ts                        # visualViewport-driven fullscreen hook (v56)
+```
+
+### Files modified (this era)
+```
+app/api/flash/near/route.ts                     # one-deal-per-hotel + upgrade ladder + live availability
+app/hotels/page.tsx                             # `hydrated` guard, sb:city-change listener, /discover prefetch
+app/flash-deals/page.tsx                        # also wired to sb:city-change + hydrated guard
+app/discover/page.tsx                           # useReelFullscreen hook, dynamic-import feed, /hotels prefetch
+app/reels/page.tsx                              # useReelFullscreen hook
+app/globals.css                                 # `.is-reel-page` uses var(--reel-vh) instead of 100dvh
+app/layout.tsx                                  # SB_BUILD v56, deferred SW reg, smarter version-mismatch check
+components/Navbar.tsx                           # imports shared LocationGlobeModal (524 inline lines removed)
+components/ModeToggle.tsx                       # prefetch + <Link prefetch> on render
+components/discover/InstagramHotelFeed.tsx      # sb:city-change subscribe, globe launcher in FilterSheet
+public/sw.js                                    # network-first HTML, cache-first chunks, SWR rest
+package.json                                    # +@types/react-dom devDep
+```
+
+### Service-worker version map (continued)
+- v50 → ultra-luxury-calendar
+- v51 → calendar-on-every-date-picker
+- v52 → context-aware-calendar
+- v53 → flash-deals-live-premium (one deal per hotel)
+- v54 → globe-location-picker (animated picker + cross-page reactive city filter)
+- v55 → globe-in-reels-filter (reels FilterSheet uses shared globe)
+- **v56 → perf-fullscreen (current)** — useReelFullscreen, dynamic feed import, cross-mode prefetch, hardened SW
+
+### Things to Avoid (Flash Deals + Performance Era)
+- **Never** read viewport height with `window.innerHeight` directly on `/discover` or `/reels` — always read `getComputedStyle(html).getPropertyValue('--reel-vh')` or use `100dvh` as a final fallback. innerHeight is wrong while the URL bar is transitioning.
+- **Never** call `requestFullscreen()` from `useReelFullscreen` outside a user gesture handler — it'll silently reject. The hook attaches a one-time `touchstart`/`click` listener to handle this correctly.
+- **Never** add per-route inline `is-reel-page` toggles again — use the shared hook so any change to fullscreen behaviour stays in one place.
+- **Never** revert the SW to a cache-first strategy for HTML — that's exactly what caused "kabhi fullscreen kabhi nahi" before. Cache-first HTML serves outdated `/discover` markup missing the latest `--reel-vh` wiring.
+- **Never** show multiple flash deals for the same hotel — the dedup happens in `/api/flash/near`. If you ever bypass the dedup, the customer sees N near-identical cards and the upgrade-ladder UX breaks.
+- **Never** use `for..of map.keys()` / `for..of set.values()` in API routes — `tsconfig` doesn't enable `downlevelIteration`. Use `Array.from(...).forEach()`.
+- **Never** import from `react-dom` without verifying `@types/react-dom` is in `package.json` — Vercel's strict TS check will fail the build (we hit this on v55).
+- **Never** strip the `sb:city-change` event listener from `/hotels`, `/flash-deals`, or `InstagramHotelFeed` — they're the live filter pipeline. Without them, the globe picker writes `sb_city` but nothing visibly changes.
+- **Never** mount `LocationGlobeModal` inside a `position: fixed` ancestor that has `backdrop-filter` or `transform` — it'll be trapped inside that ancestor's stacking context. Always portal to `document.body` (the shared component already does this).
 
 ---

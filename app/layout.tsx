@@ -7,7 +7,10 @@ import { PostsProvider } from "@/lib/posts-store";
 import { Navbar } from "@/components/Navbar";
 import { ServerStatus } from "@/components/ServerStatus";
 export const viewport: Viewport = {
-  themeColor: '#0a0f23',
+  // Black theme color so the OS status-bar / app-switcher chrome blends
+  // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
+  // which clashed with the #07060e reel bg.
+  themeColor: '#07060e',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -68,6 +71,40 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* ── Critical CSS — inlined so users see a dark background + spinner
+            within ~50ms of first byte. No FOUC, no white flash. The body
+            background is the same #07060e as the reel feed so the transition
+            into /discover feels seamless. */}
+        <style dangerouslySetInnerHTML={{__html: `
+          html,body{margin:0;padding:0;background:#07060e;color:#f0eee2;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+          body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+          .sb-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07060e;z-index:0;pointer-events:none}
+          .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(240,180,41,0.18);border-top-color:#f0b429;animation:sbSpin .8s linear infinite}
+          @keyframes sbSpin{to{transform:rotate(360deg)}}
+        `}} />
+
+        {/* ── Mobile URL-bar collapse trick: scroll to 1px right after first
+            paint so Android Chrome / Samsung Internet collapse the URL bar
+            before the reel feed mounts. Runs synchronously to land in the
+            same animation frame as paint. */}
+        <script dangerouslySetInnerHTML={{__html: `
+          (function(){
+            try{
+              // Mark PWA mode so the reel pages can skip the body-lock dance
+              if(window.matchMedia && (window.matchMedia('(display-mode:fullscreen)').matches || window.matchMedia('(display-mode:standalone)').matches)){
+                document.documentElement.classList.add('sb-pwa');
+              }
+              // Collapse URL bar on mobile browsers (Android Chrome respects this).
+              // iOS Safari ignores it for non-video, but the visualViewport-driven
+              // --reel-vh in useReelFullscreen still pins the feed correctly.
+              var collapse=function(){try{window.scrollTo(0,1);setTimeout(function(){if(window.scrollY<2)window.scrollTo(0,0);},50);}catch(e){}};
+              if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',collapse);}else{collapse();}
+              window.addEventListener('load',collapse);
+            }catch(e){}
+          })();
+        `}} />
+      </head>
       <body>
         <AuthProvider>
           <SoundProvider>
@@ -76,7 +113,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ServerStatus />
             <Navbar />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v56</div>
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v57</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -87,7 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v56-perf-fullscreen-2026-05-11";
+var SB_BUILD="v57-instagram-fast-2026-05-11";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){
