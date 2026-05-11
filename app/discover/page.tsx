@@ -8,8 +8,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
-import InstagramHotelFeed from "@/components/discover/InstagramHotelFeed";
+import { useReelFullscreen } from "@/lib/useReelFullscreen";
+
+// Heavy ~2300-line component — dynamic-import keeps the initial bundle small
+// so cold-start render of the topbar + loading spinner is faster.
+const InstagramHotelFeed = dynamic(() => import("@/components/discover/InstagramHotelFeed"), {
+  ssr: false,
+  loading: () => null, // page already shows its own loading spinner
+});
 
 type Item = { hotel: any; score: number; reasons: string[]; exploration?: boolean };
 
@@ -159,18 +168,10 @@ export default function DiscoverPage() {
     loadFeed();
   }, [loadFeed]);
 
-  // Lock body to fullscreen for the lifetime of the reel page. The
-  // `is-reel-page` class (defined in globals.css) pins html+body to
-  // 100dvh, kills overscroll, and removes the URL-bar gap that was
-  // making "kabhi fullscreen, kabhi nahi" behaviour on Android.
-  useEffect(() => {
-    document.documentElement.classList.add("is-reel-page");
-    document.body.classList.add("is-reel-page");
-    return () => {
-      document.documentElement.classList.remove("is-reel-page");
-      document.body.classList.remove("is-reel-page");
-    };
-  }, []);
+  // Bulletproof reel-page fullscreen: visualViewport-driven height +
+  // body class lock + best-effort requestFullscreen on first touch.
+  // Replaces the older 100dvh-only approach that was flaky on Android.
+  useReelFullscreen();
 
   // Record hotel_view + markViewed when active card changes
   useEffect(() => {
@@ -183,29 +184,21 @@ export default function DiscoverPage() {
     markViewed(h.id, h.city, minPrice, h.amenities || []);
   }, [hotelIdx, items]);
 
-  // Try to hide mobile browser chrome (URL bar + share/menu) on first touch.
-  // Fullscreen API only works after a user gesture; iOS Safari ignores it for
-  // non-video elements, but Android Chrome/Firefox honour it. Best-effort.
-  const fullscreenAsked = useRef(false);
-  const tryFullscreen = useCallback(() => {
-    if (fullscreenAsked.current) return;
-    fullscreenAsked.current = true;
-    try {
-      const el: any = document.documentElement;
-      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-      if (req) req.call(el).catch(() => {});
-    } catch {}
-  }, []);
+  // Prefetch the Compare destination (/hotels) so the cross-mode swap
+  // feels instant — Link prefetches happen on hover/touch by default but
+  // the floating chip is the primary path, so warm it up immediately.
+  const router = useRouter();
+  useEffect(() => {
+    try { router.prefetch("/hotels"); } catch {}
+  }, [router]);
 
   return (
     <div
       className="fixed inset-0 bg-black overflow-hidden select-none"
       // Belt-and-braces: even if the body class lock is somehow stripped
-      // by a third-party script, this inline fixed-inset-0 + 100dvh keeps
-      // the reel feed pinned to the full visible viewport.
-      style={{ WebkitUserSelect: "none", height: "100dvh", width: "100vw" }}
-      onTouchStartCapture={tryFullscreen}
-      onClickCapture={tryFullscreen}
+      // by a third-party script, this inline fixed-inset-0 + visualViewport
+      // height keeps the reel feed pinned to the full visible viewport.
+      style={{ WebkitUserSelect: "none", height: "var(--reel-vh, 100dvh)", width: "100vw" }}
     >
       {/* Top branding chrome (Reels-only). Compare moved to bottom-right
           floating button so it doesn't overlap the hotel profile chip. */}

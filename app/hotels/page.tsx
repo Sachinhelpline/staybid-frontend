@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 
 function HotelList() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [hotels, setHotels] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,11 @@ function HotelList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [apiError, setApiError] = useState("");
   const [hydrated, setHydrated] = useState(false);
+
+  // Warm up /discover so the ✨ Explore chip swap is instant.
+  useEffect(() => {
+    try { router.prefetch("/discover"); } catch {}
+  }, [router]);
 
   // Debounce search — wait 350ms after user stops typing before firing API
   useEffect(() => {

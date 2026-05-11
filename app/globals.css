@@ -44,14 +44,22 @@ body {
      other than the reel feed. */
 html.is-reel-page,
 body.is-reel-page {
-  height: 100vh;          /* fallback */
+  /* `--reel-vh` is set by useReelFullscreen() to visualViewport.height (px).
+     That tracks URL-bar show/hide on Android Chrome / Samsung Internet
+     better than 100dvh, so the feed never leaves a phantom strip.
+     Fallback chain: visualViewport → 100dvh → 100vh. */
+  height: 100vh;
   height: 100dvh;
+  height: var(--reel-vh, 100dvh);
+  max-height: var(--reel-vh, 100dvh);
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
   background: #000;
   margin: 0;
   padding: 0;
+  /* Block iOS rubber-band bounce */
+  touch-action: pan-x pan-y;
 }
 body.is-reel-page {
   position: fixed;

@@ -4,10 +4,20 @@
 // On /discover:               the same visual chip ("☰ Compare") is rendered
 //                             INSIDE the reel page itself (since navbar is hidden there).
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export function ModeToggle() {
   const pathname = usePathname() || "";
+  const router = useRouter();
+
+  // Prefetch the destination on mount so the Explore↔Compare swap is
+  // instant the first time the user taps it (no waterfall load).
+  useEffect(() => {
+    if (pathname.startsWith("/discover") || pathname.startsWith("/partner")) return;
+    try { router.prefetch("/discover"); } catch {}
+  }, [pathname, router]);
+
   // On /discover the navbar is hidden entirely, so this component only
   // renders the "to /discover" state. The discover page renders its own
   // matching chip to return to /hotels.
@@ -16,6 +26,7 @@ export function ModeToggle() {
   return (
     <Link
       href="/discover"
+      prefetch
       aria-label="Switch to Discovery reels mode"
       className="relative flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[0.72rem] font-semibold overflow-hidden transition-transform active:scale-95"
       style={{

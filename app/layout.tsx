@@ -76,38 +76,47 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ServerStatus />
             <Navbar />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v55</div>
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v56</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
         </AuthProvider>
               <script dangerouslySetInnerHTML={{__html: `
-// Build version — bump to force client cache purge + reload
-var SB_BUILD="v55-globe-in-reels-filter-2026-05-11";
+// ── Build version + service-worker bootstrap ──────────────────────────
+// Tuned for cold-start speed: SW registers AFTER first paint (requestIdle
+// or 1.5s timeout), version-mismatch reload happens only when actually
+// needed (not on every fresh visit). The SW itself uses network-first for
+// HTML so users instantly see new code without a forced reload.
+var SB_BUILD="v56-perf-fullscreen-2026-05-11";
 try{
   var prev=localStorage.getItem("sb_build");
-  if(prev!==SB_BUILD){
+  if(prev && prev!==SB_BUILD){
+    // Only force-reload when we have a STALE prev (not a first visit).
+    // First visits don't need a reload — the SW will install + take over
+    // on its own and the page is already current.
     localStorage.setItem("sb_build",SB_BUILD);
     if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}
-    if("serviceWorker" in navigator && prev){
+    if("serviceWorker" in navigator){
       navigator.serviceWorker.getRegistrations().then(function(rs){
         rs.forEach(function(r){r.unregister();});
-        setTimeout(function(){window.location.reload();},200);
+        setTimeout(function(){window.location.reload();},150);
       });
     }
+  } else if(!prev){
+    localStorage.setItem("sb_build",SB_BUILD);
   }
 }catch(e){}
 if("serviceWorker" in navigator){
-  window.addEventListener("load",function(){
+  // Defer SW registration until after first paint so it doesn't compete
+  // with the main thread during initial render. Falls back to a 1.5s
+  // timeout if requestIdleCallback isn't supported (Safari).
+  var registerSW=function(){
     navigator.serviceWorker.register("/sw.js?v="+SB_BUILD).then(function(reg){
-      // Force check for new SW on every load
       reg.update();
-      // When a new SW takes control, reload the page so the user sees the latest build
       var refreshing=false;
       navigator.serviceWorker.addEventListener("controllerchange",function(){
         if(refreshing)return; refreshing=true; window.location.reload();
       });
-      // If there's a waiting SW, tell it to activate immediately
       if(reg.waiting)reg.waiting.postMessage("SKIP_WAITING");
       reg.addEventListener("updatefound",function(){
         var nw=reg.installing; if(!nw)return;
@@ -118,7 +127,12 @@ if("serviceWorker" in navigator){
         });
       });
     }).catch(function(){});
-  });
+  };
+  if("requestIdleCallback" in window){
+    window.addEventListener("load",function(){requestIdleCallback(registerSW,{timeout:2000});});
+  } else {
+    window.addEventListener("load",function(){setTimeout(registerSW,1500);});
+  }
 }`}} />
       </body>
     </html>

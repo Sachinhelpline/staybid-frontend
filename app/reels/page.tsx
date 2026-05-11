@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useReelFullscreen } from "@/lib/useReelFullscreen";
 
 type Video = {
   id: string;
@@ -610,16 +611,8 @@ export default function ReelsPage() {
     setTag(t || null);
   }, []);
 
-  // Fullscreen body lock — see globals.css `.is-reel-page`. Same one
-  // used by /discover so the behaviour matches across both routes.
-  useEffect(() => {
-    document.documentElement.classList.add("is-reel-page");
-    document.body.classList.add("is-reel-page");
-    return () => {
-      document.documentElement.classList.remove("is-reel-page");
-      document.body.classList.remove("is-reel-page");
-    };
-  }, []);
+  // Bulletproof reel-page fullscreen — same hook as /discover.
+  useReelFullscreen();
 
   // Load trending hashtags once
   useEffect(() => {
