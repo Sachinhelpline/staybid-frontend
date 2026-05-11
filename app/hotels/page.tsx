@@ -14,6 +14,7 @@ function HotelList() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [apiError, setApiError] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
   // Debounce search — wait 350ms after user stops typing before firing API
   useEffect(() => {
@@ -60,12 +61,32 @@ function HotelList() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Hydrate city from `sb_city` (premium globe picker in Navbar) BEFORE the
+  // first fetch. Without this, two requests race (no-city + sb_city) and the
+  // slower one overwrites the correct response.
   useEffect(() => {
+    if (!searchParams.get("city")) {
+      try {
+        const sb = localStorage.getItem("sb_city");
+        if (sb) setCity(sb);
+      } catch {}
+    }
+    setHydrated(true);
+    const apply = () => {
+      try { setCity(localStorage.getItem("sb_city") || ""); } catch {}
+    };
+    window.addEventListener("sb:city-change", apply);
+    return () => window.removeEventListener("sb:city-change", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return; // skip until sb_city is read
     const p: Record<string, string> = {};
     if (city)           p.city = city;
     if (debouncedSearch) p.q = debouncedSearch;
     fetchHotels(p);
-  }, [city, debouncedSearch, fetchHotels]);
+  }, [city, debouncedSearch, fetchHotels, hydrated]);
 
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 

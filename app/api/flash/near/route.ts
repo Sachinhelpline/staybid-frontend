@@ -13,52 +13,36 @@ async function sb(path: string) {
   } catch { return []; }
 }
 
+function toISO(d: Date) { return d.toISOString().slice(0, 10); }
+function rangesOverlap(a1: string, a2: string, b1: string, b2: string) { return a1 < b2 && b1 < a2; }
+
 export async function GET(req: NextRequest) {
   const city = req.nextUrl.searchParams.get("city") || "";
 
-  // ⚠️ Bulletproof flash-deals fetch (May 2026)
-  // Earlier history of bugs in this route:
-  //   • Server-side filter `validUntil=gt.${nowIso}` against a TEXT column
-  //     dropped any row that wasn't strict ISO 8601.
-  //   • `isActive=eq.true` requires the column to be exactly "isActive"
-  //     (camelCase). If the column was renamed/recased to is_active or
-  //     active, the filter silently returned []. Section emptied.
-  //
-  // New strategy — be greedy. Try the most-specific filter first, fall
-  // through to broader filters until something returns rows. Then do all
-  // expiry / activeness checks CLIENT-SIDE with permissive parsing.
+  // ─── 1) Pull raw deals + parallel side-load ───────────────────────────
   const baseSelect = `select=*${city ? `&city=ilike.${encodeURIComponent(city)}` : ""}`;
   const tries = [
-    `${baseSelect}&isActive=eq.true`,    // canonical
-    `${baseSelect}&is_active=eq.true`,   // snake_case fallback
-    `${baseSelect}&active=eq.true`,      // shortest fallback
-    `${baseSelect}`,                     // last resort: every row
+    `${baseSelect}&isActive=eq.true`,
+    `${baseSelect}&is_active=eq.true`,
+    `${baseSelect}&active=eq.true`,
+    `${baseSelect}`,
   ];
-
   let dealsRaw: any[] = [];
   for (const f of tries) {
     const r = await sb(`flash_deals?${f}`);
     if (Array.isArray(r) && r.length > 0) { dealsRaw = r; break; }
   }
-
-  // Even if no rows came back, never error — return an empty list and let
-  // the UI show its empty state. Side-load hotels + rooms in parallel.
   const [hotels, rooms] = await Promise.all([
     sb(`hotels?select=*`),
     sb(`rooms?select=*`),
   ]);
 
   const now = Date.now();
-  // Permissive activeness — treat any of: isActive=true, is_active=true,
-  // active=true, OR none of those columns set at all, as ACTIVE.
   const activeOnly = dealsRaw.filter((d: any) => {
     const v = d?.isActive ?? d?.is_active ?? d?.active;
     return v === undefined || v === null || v === true || v === "true" || v === 1;
   });
-
-  // Permissive expiry — keep the deal unless the date parses AND is in
-  // the past. Un-parsable / missing dates pass through.
-  const deals = activeOnly.filter((d: any) => {
+  const liveDeals = activeOnly.filter((d: any) => {
     const raw = d?.validUntil ?? d?.valid_until ?? d?.expiresAt ?? d?.expires_at;
     if (!raw) return true;
     const t = new Date(String(raw)).getTime();
@@ -66,60 +50,217 @@ export async function GET(req: NextRequest) {
     return t > now;
   });
 
-  const dealsEnriched = deals.map((d: any) => ({
-    ...d,
-    hotel: hotels.find((h: any) => h.id === (d.hotelId || d.hotel_id)) || null,
-    room:  rooms.find((r: any) => r.id === (d.roomId || d.room_id))  || null,
-  }));
+  // ─── 2) Build a per-hotel pool of "candidate" deals (real + synthesized) ──
+  // ⚠️ Flash-deal rule (May 2026):
+  //   Only ONE deal per hotel. Synthesize from rooms only if the hotel has
+  //   no real flash deal. The picked deal is the cheapest *available* room
+  //   tonight; all other rooms with availability become "upgrade" options.
+  type Candidate = {
+    id:            string;
+    hotelId:       string;
+    roomId:        string;
+    city:          string;
+    aiPrice:       number;
+    floorPrice:    number;
+    discount:      number;
+    validUntil:    string;
+    maxBookings?:  number;
+    bookingCount?: number;
+    _synthetic?:   boolean;
+    raw:           any;
+  };
 
-  // ⚠️ Flash-deals auto-create rule:
-  // The original product spec was "every onboarded hotel's vacant rooms
-  // automatically become flash deals". That was implemented as a Postgres
-  // trigger / onboard-hook that wrote into flash_deals. The hook isn't
-  // currently firing in this environment (likely lost during a Railway
-  // restart), so the table sits empty and the section showed "no flash
-  // deals right now".
-  //
-  // Until the trigger is restored, we synthesize flash deals from the
-  // rooms table at request time. Each room becomes one deal at 15% off
-  // the floor price, valid 7 days. A `_synthetic: true` flag is attached
-  // so admin / analytics can distinguish synthesized rows from real ones.
-  if (dealsEnriched.length === 0 && rooms.length > 0) {
-    const wantCity = city.trim().toLowerCase();
-    const validHotels = hotels.filter((h: any) =>
-      !wantCity || (h.city || "").toLowerCase().includes(wantCity)
-    );
-    const hotelIds = new Set(validHotels.map((h: any) => h.id));
-    const validUntil = new Date(Date.now() + 7 * 86400000).toISOString();
-
-    const synthesized = rooms
-      .filter((r: any) => hotelIds.has(r.hotelId) && Number(r.floorPrice) > 0)
-      .slice(0, 24)
-      .map((r: any, i: number) => {
-        const hotel = validHotels.find((h: any) => h.id === r.hotelId);
-        const floor = Number(r.floorPrice) || 0;
-        // Light variance so the wall isn't a single uniform discount
-        const discountPct = 12 + ((i * 7) % 14);                  // 12% – 25%
-        const dealPrice = Math.max(500, Math.round(floor * (100 - discountPct) / 100));
-        return {
-          id:            `auto-${r.id}`,
-          hotelId:       r.hotelId,
-          roomId:        r.id,
-          city:          hotel?.city || "",
-          dealPrice,
-          aiPrice:       dealPrice,
-          originalPrice: floor,
-          discountPct,
-          validUntil,
-          isActive:      true,
-          hotel:         hotel || null,
-          room:          r,
-          _synthetic:    true,
-        };
-      });
-
-    return NextResponse.json({ deals: synthesized, synthesized: true });
+  const realByHotel = new Map<string, Candidate[]>();
+  for (const d of liveDeals) {
+    const hotelId = d.hotelId || d.hotel_id;
+    const roomId  = d.roomId || d.room_id;
+    if (!hotelId || !roomId) continue;
+    const room    = rooms.find((r: any) => r.id === roomId);
+    const hotel   = hotels.find((h: any) => h.id === hotelId);
+    if (!hotel || !room) continue;
+    const floor   = Number(room.floorPrice) || Number(d.floorPrice) || 0;
+    const ai      = Number(d.aiPrice ?? d.dealPrice ?? d.price) || 0;
+    const disc    = Number(d.discount) || (floor > 0 ? Math.round(((floor - ai) / floor) * 100) : 0);
+    const c: Candidate = {
+      id:           String(d.id),
+      hotelId, roomId,
+      city:         hotel.city || d.city || "",
+      aiPrice:      ai,
+      floorPrice:   floor,
+      discount:     disc,
+      validUntil:   d.validUntil || d.valid_until || d.expiresAt || "",
+      maxBookings:  d.maxBookings || d.max_bookings,
+      bookingCount: d.bookingCount || d.booking_count,
+      raw:          d,
+    };
+    (realByHotel.get(hotelId) || realByHotel.set(hotelId, []).get(hotelId)!).push(c);
   }
 
-  return NextResponse.json({ deals: dealsEnriched });
+  // Synthesize for hotels that have none. One pseudo-deal per room.
+  const syntheticByHotel = new Map<string, Candidate[]>();
+  const wantCity = city.trim().toLowerCase();
+  const validHotelIds = new Set(
+    hotels.filter((h: any) => !wantCity || (h.city || "").toLowerCase().includes(wantCity)).map((h: any) => h.id)
+  );
+  const validUntilDefault = new Date(Date.now() + 7 * 86400000).toISOString();
+  let synthIdx = 0;
+  for (const r of rooms) {
+    if (!validHotelIds.has(r.hotelId)) continue;
+    if (realByHotel.has(r.hotelId)) continue;
+    const hotel = hotels.find((h: any) => h.id === r.hotelId);
+    if (!hotel) continue;
+    const floor = Number(r.floorPrice) || 0;
+    if (floor <= 0) continue;
+    const disc  = 12 + ((synthIdx++ * 7) % 14); // 12% – 25%
+    const ai    = Math.max(500, Math.round(floor * (100 - disc) / 100));
+    const c: Candidate = {
+      id:         `auto-${r.id}`,
+      hotelId:    r.hotelId,
+      roomId:     r.id,
+      city:       hotel.city || "",
+      aiPrice:    ai,
+      floorPrice: floor,
+      discount:   disc,
+      validUntil: validUntilDefault,
+      _synthetic: true,
+      raw:        { _synthetic: true },
+    };
+    (syntheticByHotel.get(r.hotelId) || syntheticByHotel.set(r.hotelId, []).get(r.hotelId)!).push(c);
+  }
+
+  // City filter for real deals
+  const filteredHotelIds = new Set<string>();
+  for (const hid of realByHotel.keys()) {
+    const h = hotels.find((x: any) => x.id === hid);
+    if (!h) continue;
+    if (!wantCity || (h.city || "").toLowerCase().includes(wantCity)) filteredHotelIds.add(hid);
+  }
+  for (const hid of syntheticByHotel.keys()) filteredHotelIds.add(hid);
+
+  // ─── 3) Live availability check — tonight (today → tomorrow) ────────────
+  // Inventory model:
+  //   • hotel_room_units = physical room units per category. If empty, treat as 1 unit.
+  //   • Occupied = ACCEPTED/COUNTER bids overlapping tonight + room_blocks overlapping tonight.
+  const today    = toISO(new Date());
+  const tomorrow = toISO(new Date(Date.now() + 86400000));
+  const hotelIds = Array.from(filteredHotelIds);
+  if (hotelIds.length === 0) {
+    return NextResponse.json({ deals: [], generatedAt: new Date().toISOString() });
+  }
+  const inFilter = `in.(${hotelIds.join(",")})`;
+
+  const [units, bids, blocks] = await Promise.all([
+    sb(`hotel_room_units?hotelId=${inFilter}&status=eq.active&select=hotelId,roomId,id`),
+    sb(`bids?hotelId=${inFilter}&status=in.(ACCEPTED,COUNTER)&select=id,hotelId,roomId,requestId,status`),
+    sb(`room_blocks?hotelId=${inFilter}&toDate=gt.${today}&fromDate=lt.${tomorrow}&select=hotelId,roomId,fromDate,toDate`),
+  ]);
+
+  // Hydrate bid_requests for the bids we care about, so we can date-filter
+  const requestIds = Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)));
+  let reqMap: Record<string, any> = {};
+  if (requestIds.length) {
+    const rqs = await sb(`bid_requests?id=in.(${requestIds.join(",")})&select=id,checkIn,checkOut`);
+    rqs.forEach((x: any) => { reqMap[x.id] = x; });
+  }
+
+  // unitsTotal[roomId] = count of physical units (fallback 1)
+  const unitsTotal: Record<string, number> = {};
+  units.forEach((u: any) => { unitsTotal[u.roomId] = (unitsTotal[u.roomId] || 0) + 1; });
+
+  // occupiedTonight[roomId] = how many units busy tonight
+  const occupiedTonight: Record<string, number> = {};
+  for (const b of bids) {
+    const r = reqMap[b.requestId];
+    const ci = r?.checkIn ? toISO(new Date(r.checkIn)) : null;
+    const co = r?.checkOut ? toISO(new Date(r.checkOut)) : null;
+    if (!ci || !co) continue;
+    if (rangesOverlap(ci, co, today, tomorrow)) {
+      occupiedTonight[b.roomId] = (occupiedTonight[b.roomId] || 0) + 1;
+    }
+  }
+  for (const bk of blocks) {
+    const ci = toISO(new Date(bk.fromDate));
+    const co = toISO(new Date(bk.toDate));
+    if (rangesOverlap(ci, co, today, tomorrow)) {
+      occupiedTonight[bk.roomId] = (occupiedTonight[bk.roomId] || 0) + 1;
+    }
+  }
+
+  const unitsFree = (roomId: string) => {
+    const total = unitsTotal[roomId] || 1;          // legacy: no unit rows = 1 unit
+    return Math.max(0, total - (occupiedTonight[roomId] || 0));
+  };
+
+  // ─── 4) Per hotel: pick ONE deal + compute upgrade ladder ───────────────
+  const out: any[] = [];
+  for (const hotelId of hotelIds) {
+    const hotel    = hotels.find((h: any) => h.id === hotelId);
+    if (!hotel) continue;
+    const allRooms = rooms.filter((r: any) => r.hotelId === hotelId);
+    // Pool of candidate deals (real preferred over synthetic) for this hotel
+    const pool: Candidate[] = realByHotel.get(hotelId) || syntheticByHotel.get(hotelId) || [];
+    if (!pool.length) continue;
+
+    // Keep only candidates whose room is available tonight
+    const available = pool.filter(c => unitsFree(c.roomId) > 0);
+    if (!available.length) continue; // hotel fully booked — skip entirely
+
+    // Headline = cheapest available
+    const headline = available.slice().sort((a, b) => a.aiPrice - b.aiPrice)[0];
+    const headlineRoom = allRooms.find((r: any) => r.id === headline.roomId);
+
+    // Upgrade ladder: every OTHER room in this hotel, with availability + delta
+    const upgrades = allRooms
+      .filter((r: any) => r.id !== headline.roomId)
+      .map((r: any) => {
+        const free  = unitsFree(r.id);
+        const floor = Number(r.floorPrice) || 0;
+        if (floor <= 0) return null;
+        // Apply the same discount % as the headline so deal feel is consistent
+        const price = Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
+        return {
+          roomId:        r.id,
+          type:          r.type || r.name || "Room",
+          capacity:      r.capacity || 2,
+          images:        r.images || [],
+          floorPrice:    floor,
+          dealPrice:     price,
+          extraPerNight: Math.max(0, price - headline.aiPrice),
+          unitsFree:     free,
+          available:     free > 0,
+          amenities:     r.amenities || [],
+        };
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => a.dealPrice - b.dealPrice);
+
+    out.push({
+      id:           headline.id,
+      hotelId:      headline.hotelId,
+      roomId:       headline.roomId,
+      city:         headline.city,
+      aiPrice:      headline.aiPrice,
+      floorPrice:   headline.floorPrice,
+      discount:     headline.discount,
+      validUntil:   headline.validUntil,
+      maxBookings:  headline.maxBookings || 5,
+      bookingCount: headline.bookingCount || 0,
+      _synthetic:   !!headline._synthetic,
+      hotel,
+      room:         headlineRoom,
+      // NEW — same payload shape as before, plus:
+      unitsFree:    unitsFree(headline.roomId),
+      unitsTotal:   unitsTotal[headline.roomId] || 1,
+      upgrades,                         // upgrade ladder
+      roomTypesAvailable: 1 + upgrades.filter((u: any) => u.available).length,
+    });
+  }
+
+  // Sort: biggest discount first, then cheapest
+  out.sort((a, b) => (b.discount - a.discount) || (a.aiPrice - b.aiPrice));
+
+  return NextResponse.json({
+    deals:       out,
+    generatedAt: new Date().toISOString(),
+  });
 }

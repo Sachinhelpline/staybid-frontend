@@ -24,6 +24,7 @@ import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
 import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack } from "@/components/discover/CreateFlow";
+import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 
@@ -1226,6 +1227,7 @@ function FilterSheet({
   cityOptions: string[];
   sourceCounts: Record<SourceType, number>;
 }) {
+  const [globeOpen, setGlobeOpen] = useState(false);
   if (!open) return null;
   const sources: SourceType[] = ["all", "hotel", "creator", "public"];
   const cities = ["all", ...cityOptions];
@@ -1294,9 +1296,61 @@ function FilterSheet({
         {/* ── Location ── */}
         <div className="px-5 pt-1 pb-2 border-t border-white/8">
           <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-2 mt-3">📍 Location</p>
+
+          {/* Premium animated globe launcher — opens the shared LocationGlobeModal.
+              Picking a city writes `sb_city` + fires `sb:city-change`, which the
+              parent feed listens to and updates `filterCity` automatically. */}
+          <button
+            onClick={() => setGlobeOpen(true)}
+            className="w-full flex items-center gap-3 mb-2 px-3 py-3 rounded-2xl text-left transition-all"
+            style={{
+              background: "linear-gradient(135deg, rgba(240,180,41,0.16), rgba(255,69,141,0.10))",
+              border: "1px solid rgba(240,180,41,0.4)",
+              boxShadow: "0 4px 14px rgba(240,180,41,0.18), inset 0 1px 0 rgba(255,255,255,0.18)",
+            }}
+          >
+            {/* Mini-globe icon — same spinning vibe as the modal */}
+            <span
+              style={{
+                position: "relative",
+                width: 36, height: 36, flexShrink: 0,
+                borderRadius: "50%",
+                background: "conic-gradient(from 0deg, #1c3a5c, #2a5a8a, #1c3a5c, #2c4a72, #1c3a5c, #244268, #1c3a5c)",
+                boxShadow: "inset -3px -3px 8px rgba(0,0,0,0.5), inset 2px 2px 6px rgba(240,180,41,0.2), 0 0 14px rgba(240,180,41,0.3)",
+                overflow: "hidden",
+                animation: "igGlobeMiniSpin 8s linear infinite",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute", inset: 0,
+                  background:
+                    "radial-gradient(ellipse 30% 18% at 30% 35%, rgba(46,204,113,0.6), transparent 70%)," +
+                    "radial-gradient(ellipse 18% 22% at 65% 60%, rgba(46,204,113,0.5), transparent 70%)",
+                }}
+              />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="block text-white text-[0.88rem] font-bold leading-tight">
+                {city === "all" ? "Anywhere in India" : city}
+              </span>
+              <span className="block text-white/55 text-[0.66rem]">
+                Tap to open the live globe · auto-detect or search
+              </span>
+            </span>
+            <span style={{ color: "rgba(240,180,41,0.85)", fontSize: "1rem", fontWeight: 700 }}>›</span>
+          </button>
+          <style jsx global>{`
+            @keyframes igGlobeMiniSpin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+
+          {/* Quick-pick pills for the cities present in the feed */}
           <div
             className="flex flex-wrap gap-1.5 overflow-y-auto pr-1"
-            style={{ maxHeight: "32vh" }}
+            style={{ maxHeight: "26vh" }}
           >
             {cities.map((c) => {
               const active = c === city;
@@ -1320,6 +1374,13 @@ function FilterSheet({
             })}
           </div>
         </div>
+
+        {globeOpen && (
+          <LocationGlobeModal
+            activeCity={city === "all" ? "" : city}
+            onClose={() => setGlobeOpen(false)}
+          />
+        )}
 
         <div className="px-5 pt-3 flex gap-2">
           <button
@@ -2762,6 +2823,18 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         if (navCity) setFilterCity(navCity);
       }
     } catch {}
+    // The premium globe picker (Navbar.tsx) writes `sb_city` and fires
+    // `sb:city-change`. Mirror that into the reel filter so the feed
+    // re-filters live without a remount.
+    const apply = () => {
+      try {
+        const navCity = localStorage.getItem("sb_city") || "";
+        setFilterCity(navCity || "all");
+        localStorage.setItem("sb_reel_filter_city", navCity || "all");
+      } catch {}
+    };
+    window.addEventListener("sb:city-change", apply);
+    return () => window.removeEventListener("sb:city-change", apply);
   }, []);
   const persistFilter = useCallback((src: SourceType, c: string) => {
     setFilterSource(src);

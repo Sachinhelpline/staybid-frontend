@@ -1,227 +1,1239 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
-import { Suspense } from "react";
+
+/* ─────────────────────────────────────────────────────────────────
+   Flash Deals · v52 — Live · Ultra-premium
+   One deal per hotel · upgrade-room picker · live availability
+   ───────────────────────────────────────────────────────────────── */
+
+type Upgrade = {
+  roomId: string;
+  type: string;
+  capacity: number;
+  floorPrice: number;
+  dealPrice: number;
+  extraPerNight: number;
+  unitsFree: number;
+  available: boolean;
+  amenities?: string[];
+  images?: string[];
+};
+
+type Deal = {
+  id: string;
+  hotelId: string;
+  roomId: string;
+  city: string;
+  aiPrice: number;
+  floorPrice: number;
+  discount: number;
+  validUntil?: string;
+  maxBookings: number;
+  bookingCount: number;
+  hotel?: any;
+  room?: any;
+  unitsFree: number;
+  unitsTotal: number;
+  upgrades: Upgrade[];
+  roomTypesAvailable: number;
+  _synthetic?: boolean;
+};
+
+/* Format helpers ----------------------------------------------------------- */
+const fmtINR = (n: number) =>
+  "₹" + Math.round(n).toLocaleString("en-IN");
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/* Animated number that counts up smoothly ----------------------------------- */
+function CountUp({ value, duration = 900 }: { value: number; duration?: number }) {
+  const [v, setV] = useState(0);
+  const startRef = useRef<number>(0);
+  const fromRef = useRef<number>(0);
+  useEffect(() => {
+    fromRef.current = v;
+    startRef.current = performance.now();
+    let raf: number;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - startRef.current) / duration);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setV(Math.round(fromRef.current + (value - fromRef.current) * ease));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, duration]);
+  return <>{v.toLocaleString("en-IN")}</>;
+}
+
+/* Circular countdown ring --------------------------------------------------- */
+function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent: boolean }) {
+  const r = 22;
+  const c = 2 * Math.PI * r;
+  const dash = (pctRemaining / 100) * c;
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
+      <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3" />
+      <circle
+        cx="26" cy="26" r={r} fill="none"
+        stroke={urgent ? "#ff3859" : "#f0b429"}
+        strokeWidth="3" strokeLinecap="round"
+        strokeDasharray={`${dash} ${c}`}
+        transform="rotate(-90 26 26)"
+        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px #ff3859)" : "drop-shadow(0 0 6px #f0b429)" }}
+      />
+    </svg>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
 
 function FlashDealsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [deals, setDeals]     = useState<any[]>([]);
+  const [deals, setDeals]     = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [city, setCity]       = useState(searchParams.get("city") || "");
   const [now, setNow]         = useState(Date.now());
+  const [openId, setOpenId]   = useState<string | null>(null);
+  const [pickedUpgrade, setPickedUpgrade] = useState<Record<string, string>>({}); // dealId → roomId
+  const [hydrated, setHydrated] = useState(false);
 
-  // Countdown tick
+  // 1-second tick (countdown)
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Fetch deals + live slot refresh
+  // Sync with global LocationChip — picker writes `sb_city` and fires
+  // `sb:city-change`. Hydrate BEFORE the first fetch to avoid a race.
   useEffect(() => {
+    if (!searchParams.get("city")) {
+      try {
+        const sb = localStorage.getItem("sb_city");
+        if (sb) setCity(sb);
+      } catch {}
+    }
+    setHydrated(true);
+    const apply = () => {
+      try { setCity(localStorage.getItem("sb_city") || ""); } catch {}
+    };
+    window.addEventListener("sb:city-change", apply);
+    return () => window.removeEventListener("sb:city-change", apply);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch + 30s live refresh
+  useEffect(() => {
+    if (!hydrated) return;
     setLoading(true);
     api.getFlashDeals(city || undefined)
       .then((d) => setDeals(d.deals || []))
       .catch(() => setDeals([]))
       .finally(() => setLoading(false));
-  }, [city]);
+  }, [city, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     const t = setInterval(() => {
       api.getFlashDeals(city || undefined)
         .then((d) => setDeals(d.deals || [])).catch(() => {});
     }, 30000);
     return () => clearInterval(t);
-  }, [city]);
+  }, [city, hydrated]);
 
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
+  /* Live stats strip ------------------------------------------------------- */
+  const stats = useMemo(() => {
+    const dealsLive = deals.length;
+    const avgDisc = deals.length
+      ? Math.round(deals.reduce((s, d) => s + d.discount, 0) / deals.length)
+      : 0;
+    const totalSaving = deals.reduce(
+      (s, d) => s + Math.max(0, (d.floorPrice || 0) - d.aiPrice),
+      0
+    );
+    const hotelsHot = new Set(deals.map(d => d.hotelId)).size;
+    return { dealsLive, avgDisc, totalSaving, hotelsHot };
+  }, [deals]);
+
+  const open = deals.find(d => d.id === openId) || null;
+
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(180deg,#0a0812 0%,#0f0d1e 60%,#13101f 100%)" }}>
-      <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-        .deal-card { animation: fadeUp 0.4s ease-out both; }
-      `}</style>
+    <div className="fd-root">
+      <FdStyles />
 
-      {/* ── Header ── */}
-      <div className="max-w-7xl mx-auto px-5 pt-14 pb-8">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold-500 opacity-70" />
-          <span className="text-gold-400 text-[0.65rem] font-semibold tracking-[0.22em] uppercase">Same Day · AI Curated</span>
-          <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold-500 opacity-70" />
+      {/* Animated mesh background */}
+      <div className="fd-bg-mesh" aria-hidden />
+
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <div className="fd-hero">
+        <div className="fd-eyebrow">
+          <span className="fd-dot-live" />
+          <span>Live · Same-Day · AI Curated</span>
+          <span className="fd-dot-live" />
         </div>
-        <div className="flex items-center gap-3 mb-2">
-          <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
-          <h1 className="font-display font-light text-white" style={{ fontSize: "clamp(2rem,5vw,3rem)" }}>
-            Flash Deals
-          </h1>
-        </div>
-        <p className="text-white/40 text-sm max-w-md">
-          Time-limited offers — expire at midnight. Bid or book before slots run out.
+
+        <h1 className="fd-title">
+          Flash <span className="fd-title-gold">Deals</span>
+        </h1>
+        <p className="fd-sub">
+          One headline price per hotel · upgrade rooms when free · midnight reset.
         </p>
-      </div>
 
-      {/* ── City filters ── */}
-      <div className="max-w-7xl mx-auto px-5 mb-8">
-        <div className="flex flex-wrap gap-2">
-          {cities.map((c) => {
-            const active = (c === "All" && !city) || c === city;
-            return (
-              <button key={c} onClick={() => setCity(c === "All" ? "" : c)}
-                className={active ? "btn-3d btn-3d-gold btn-3d-sm" : "btn-3d btn-3d-dark btn-3d-sm"}>
-                {c}
-              </button>
-            );
-          })}
+        {/* Live ticker chips */}
+        <div className="fd-ticker">
+          <div className="fd-chip">
+            <span className="fd-chip-dot live" />
+            <span className="fd-chip-val"><CountUp value={stats.dealsLive} /></span>
+            <span className="fd-chip-lbl">deals live</span>
+          </div>
+          <div className="fd-chip">
+            <span className="fd-chip-emoji">🏨</span>
+            <span className="fd-chip-val"><CountUp value={stats.hotelsHot} /></span>
+            <span className="fd-chip-lbl">hotels</span>
+          </div>
+          <div className="fd-chip">
+            <span className="fd-chip-emoji">⚡</span>
+            <span className="fd-chip-val"><CountUp value={stats.avgDisc} />%</span>
+            <span className="fd-chip-lbl">avg off</span>
+          </div>
+          <div className="fd-chip gold">
+            <span className="fd-chip-emoji">💰</span>
+            <span className="fd-chip-val">₹<CountUp value={stats.totalSaving} /></span>
+            <span className="fd-chip-lbl">savings today</span>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-5 pb-16">
+      {/* ── City filter pills ────────────────────────────────────────────── */}
+      <div className="fd-cities">
+        {cities.map((c) => {
+          const active = (c === "All" && !city) || c === city;
+          return (
+            <button
+              key={c}
+              onClick={() => setCity(c === "All" ? "" : c)}
+              className={`fd-city ${active ? "active" : ""}`}
+            >
+              {c}
+            </button>
+          );
+        })}
+      </div>
 
-        {/* ── Loading skeleton ── */}
-        {loading && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1,2,3,4,5,6].map((i) => (
-              <div key={i} className="rounded-2xl overflow-hidden border border-white/10" style={{ background:"rgba(255,255,255,0.04)" }}>
-                <div className="h-44 bg-white/10 animate-pulse" />
-                <div className="p-4 space-y-3">
-                  <div className="h-3 w-1/3 bg-white/10 animate-pulse rounded-full" />
-                  <div className="h-4 w-3/4 bg-white/10 animate-pulse rounded-full" />
-                  <div className="h-3 w-1/2 bg-white/10 animate-pulse rounded-full" />
-                </div>
-              </div>
+      {/* ── Deals grid ───────────────────────────────────────────────────── */}
+      <div className="fd-grid-wrap">
+        {loading && <SkeletonGrid />}
+
+        {!loading && deals.length === 0 && (
+          <div className="fd-empty">
+            <div className="fd-empty-icon">⚡</div>
+            <p className="fd-empty-title">All deals sold out for tonight</p>
+            <p className="fd-empty-sub">AI curates fresh deals daily. Check back near midnight.</p>
+          </div>
+        )}
+
+        {!loading && deals.length > 0 && (
+          <div className="fd-grid">
+            {deals.map((d, idx) => (
+              <DealCard
+                key={d.id}
+                deal={d}
+                idx={idx}
+                now={now}
+                onOpen={() => setOpenId(d.id)}
+                pickedRoomId={pickedUpgrade[d.id] || d.roomId}
+                onPickUpgrade={(rid) => setPickedUpgrade(p => ({ ...p, [d.id]: rid }))}
+                router={router}
+              />
             ))}
           </div>
         )}
+      </div>
 
-        {/* ── Deals grid ── */}
-        {!loading && deals.length > 0 && (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {deals.map((d: any, idx: number) => {
-              const midnight   = new Date(); midnight.setHours(23,59,59,999);
-              const diffMs     = Math.max(0, midnight.getTime() - now);
-              const hrs        = Math.floor(diffMs / 3600000);
-              const mins       = Math.floor((diffMs % 3600000) / 60000);
-              const secs       = Math.floor((diffMs % 60000) / 1000);
-              const isUrgent   = hrs < 2;
-              const totalSlots  = d.maxBookings  || 10;
-              const bookedSlots = d.bookingCount || 0;
-              const leftSlots   = Math.max(0, totalSlots - bookedSlots);
-              const fillPct     = Math.min(100, (bookedSlots / totalSlots) * 100);
-              const img         = d.hotel?.images?.[0] || d.room?.images?.[0];
-              const area        = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng);
-              const dealUrl     = `/hotels/${d.hotelId}?dealId=${d.id}&dealPrice=${d.aiPrice}&roomId=${d.roomId}&discount=${d.discount}&directBook=true`;
+      {/* ── Premium drawer with full upgrade picker ─────────────────────── */}
+      {open && (
+        <DealDrawer
+          deal={open}
+          now={now}
+          pickedRoomId={pickedUpgrade[open.id] || open.roomId}
+          onPickUpgrade={(rid) => setPickedUpgrade(p => ({ ...p, [open.id]: rid }))}
+          onClose={() => setOpenId(null)}
+          onBook={(rid) => {
+            const finalRoom =
+              rid === open.roomId
+                ? open
+                : { ...open, roomId: rid, aiPrice: open.upgrades.find(u => u.roomId === rid)?.dealPrice ?? open.aiPrice };
+            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${finalRoom.aiPrice}&roomId=${finalRoom.roomId}&discount=${open.discount}&directBook=true`;
+            router.push(url);
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
-              return (
-                <div key={d.id}
-                  className="deal-card group relative rounded-2xl overflow-hidden border border-white/10 hover:border-gold-400/50 transition-all duration-300 cursor-pointer hover:-translate-y-1"
-                  style={{ background:"rgba(255,255,255,0.05)", animationDelay:`${idx*0.07}s` }}
-                  onClick={() => router.push(dealUrl)}>
+/* ────────────────────────────────────────────────────────────────────────── */
+/* DEAL CARD                                                                  */
+/* ────────────────────────────────────────────────────────────────────────── */
 
-                  {/* Hotel image */}
-                  <div className="relative h-44 overflow-hidden">
-                    {img ? (
-                      <img src={img} alt={d.hotel?.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"
-                        style={{ background:"linear-gradient(135deg,#1a1530,#0d1a2e)" }}>
-                        <span className="text-5xl opacity-20">🏨</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router }: {
+  deal: Deal; idx: number; now: number; onOpen: () => void;
+  pickedRoomId: string; onPickUpgrade: (rid: string) => void; router: any;
+}) {
+  const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
+  const totalWindowMs = 14 * 3600000; // last 14h shown on ring
+  const diffMs = Math.max(0, midnight.getTime() - now);
+  const hrs = Math.floor(diffMs / 3600000);
+  const mins = Math.floor((diffMs % 3600000) / 60000);
+  const secs = Math.floor((diffMs % 60000) / 1000);
+  const urgent = hrs < 2;
+  const pctRemaining = Math.min(100, (diffMs / totalWindowMs) * 100);
 
-                    {/* Same-day badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm border border-red-500/40 px-2 py-1 rounded-full">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
-                      <span className="text-[0.6rem] font-bold text-red-400 uppercase">
-                        Today · {area ? `${area}, ${d.city}` : d.city}
-                      </span>
-                    </div>
+  const totalSlots  = deal.maxBookings  || 5;
+  const bookedSlots = deal.bookingCount || 0;
+  const leftSlots   = Math.max(0, totalSlots - bookedSlots);
+  const fillPct     = Math.min(100, (bookedSlots / totalSlots) * 100);
 
-                    {/* Discount badge */}
-                    <span className="absolute top-3 right-3 bg-gold-500 text-white text-[0.62rem] font-bold px-2 py-1 rounded-full shadow-gold">
-                      {d.discount}% OFF
-                    </span>
+  const area = getHotelArea(deal.city, deal.hotel?.lat, deal.hotel?.lng);
 
-                    {/* Countdown overlay */}
-                    <div className={`absolute bottom-3 left-3 flex items-center gap-1.5 ${isUrgent ? "text-red-400" : "text-white/80"}`}>
-                      {isUrgent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
-                      <div className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1">
-                        <span className="text-[0.58rem] font-semibold text-white/50 uppercase tracking-wider">Ends</span>
-                        <span className="text-[0.72rem] font-mono font-bold">
-                          {String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+  // Active room selected (base or upgrade)
+  const pickedUp = deal.upgrades.find(u => u.roomId === pickedRoomId);
+  const showAiPrice = pickedUp ? pickedUp.dealPrice : deal.aiPrice;
+  const showFloor   = pickedUp ? pickedUp.floorPrice : deal.floorPrice;
+  const showType    = pickedUp ? pickedUp.type       : (deal.room?.type || "Room");
 
-                  {/* Card body */}
-                  <div className="p-4">
-                    <h3 className="font-semibold text-white text-sm leading-snug mb-0.5 group-hover:text-gold-300 transition-colors line-clamp-1">
-                      {d.hotel?.name || "Hotel"}
-                    </h3>
-                    <p className="text-white/40 text-xs mb-3">{d.room?.type || "Room"}</p>
+  const img = deal.hotel?.images?.[0] || deal.room?.images?.[0];
 
-                    {/* Slots info + progress */}
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[0.65rem] font-semibold ${leftSlots <= 2 ? "text-red-400" : leftSlots <= 5 ? "text-amber-400" : "text-white/50"}`}>
-                          {bookedSlots}/{totalSlots} booked
-                        </span>
-                        <span className={`text-[0.65rem] font-bold ${leftSlots <= 2 ? "text-red-400" : "text-gold-400"}`}>
-                          {leftSlots === 0 ? "SOLD OUT" : `${leftSlots} left`}
-                        </span>
-                      </div>
-                      <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-700 ${leftSlots === 0 ? "bg-red-500" : leftSlots <= 2 ? "bg-red-500" : "bg-gradient-to-r from-gold-500 to-gold-300"}`}
-                          style={{ width:`${fillPct}%` }} />
-                      </div>
-                    </div>
+  const sold = leftSlots === 0;
 
-                    {/* Price + CTA */}
-                    <div className="flex items-end justify-between pt-3 border-t border-white/10">
-                      <div>
-                        <p className="text-white/30 text-xs line-through">₹{d.floorPrice?.toLocaleString()}</p>
-                        <p className="text-white font-bold text-xl leading-none">
-                          ₹{d.aiPrice?.toLocaleString()}
-                          <span className="text-white/30 text-xs font-normal ml-1">/night</span>
-                        </p>
-                      </div>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        {leftSlots === 0 ? (
-                          <span className="px-4 py-2 rounded-xl bg-white/10 text-white/30 text-xs font-semibold cursor-not-allowed">Sold Out</span>
-                        ) : (
-                          <button onClick={() => router.push(dealUrl)}
-                            className="btn-3d btn-3d-gold btn-3d-sm">
-                            ⚡ Book Now
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+  return (
+    <div
+      className="fd-card"
+      style={{ animationDelay: `${idx * 0.06}s` }}
+      onClick={onOpen}
+    >
+      {/* Image with cinematic ken-burns + gradient overlay */}
+      <div className="fd-img-wrap">
+        {img ? (
+          <img src={img} alt={deal.hotel?.name} className="fd-img" />
+        ) : (
+          <div className="fd-img-fallback">
+            <span style={{ fontSize: "3rem", opacity: 0.18 }}>🏨</span>
           </div>
         )}
+        <div className="fd-img-shade" />
+        <div className="fd-img-shimmer" />
 
-        {/* ── Empty state ── */}
-        {!loading && deals.length === 0 && (
-          <div className="text-center py-28">
-            <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-5">
-              <span className="text-3xl">⚡</span>
+        {/* LIVE badge */}
+        <div className="fd-live-pill">
+          <span className="fd-dot-live" />
+          <span>LIVE</span>
+        </div>
+
+        {/* Discount stamp (animated) */}
+        <div className={`fd-disc-stamp ${deal.discount >= 25 ? "fire" : ""}`}>
+          <span className="fd-disc-num">{deal.discount}%</span>
+          <span className="fd-disc-off">OFF</span>
+        </div>
+
+        {/* Bottom-left location */}
+        <div className="fd-img-bottom">
+          <div className="fd-loc">
+            <span className="fd-loc-dot" />
+            {area ? `${area}, ${deal.city}` : deal.city || "—"}
+          </div>
+        </div>
+
+        {/* Countdown ring (bottom-right) */}
+        <div className="fd-ring-wrap">
+          <CountdownRing pctRemaining={pctRemaining} urgent={urgent} />
+          <div className="fd-ring-time">
+            <span className={urgent ? "urgent" : ""}>
+              {pad2(hrs)}<span className="fd-ring-sep">:</span>
+              {pad2(mins)}<span className="fd-ring-sep">:</span>
+              {pad2(secs)}
+            </span>
+            <span className="fd-ring-lbl">ends</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="fd-body">
+        <div className="fd-hotel-row">
+          <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
+          {deal.hotel?.starRating ? (
+            <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+          ) : null}
+        </div>
+        <div className="fd-rt-row">
+          <span className="fd-room-type">{showType}</span>
+          <span className="fd-room-cap">· sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
+        </div>
+
+        {/* Slot meter */}
+        <div className="fd-slots">
+          <div className="fd-slots-text">
+            <span className={`fd-slots-left ${leftSlots <= 2 ? "urgent" : ""}`}>
+              {sold ? "Sold out" : `${leftSlots} left tonight`}
+            </span>
+            <span className="fd-slots-of">
+              {bookedSlots}/{totalSlots} booked
+            </span>
+          </div>
+          <div className="fd-slots-bar">
+            <div className={`fd-slots-fill ${leftSlots <= 2 ? "urgent" : ""}`} style={{ width: `${fillPct}%` }} />
+            <div className="fd-slots-shimmer" />
+          </div>
+        </div>
+
+        {/* Upgrade chips (inline) */}
+        {deal.upgrades.length > 0 && (
+          <div className="fd-up-wrap" onClick={(e) => e.stopPropagation()}>
+            <div className="fd-up-label">
+              <span>✨ Upgrade your room</span>
+              <span className="fd-up-count">{deal.roomTypesAvailable} types available</span>
             </div>
-            <p className="text-lg font-semibold text-white mb-2">No flash deals right now</p>
-            <p className="text-sm text-white/40">AI-powered offers drop daily — check back soon.</p>
+            <div className="fd-up-chips">
+              <button
+                className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
+                onClick={() => onPickUpgrade(deal.roomId)}
+              >
+                <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
+                <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
+              </button>
+              {deal.upgrades.slice(0, 3).map(u => (
+                <button
+                  key={u.roomId}
+                  className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
+                  disabled={!u.available}
+                  onClick={() => u.available && onPickUpgrade(u.roomId)}
+                >
+                  <span className="fd-up-chip-type">{u.type}</span>
+                  <span className="fd-up-chip-delta">
+                    {u.available
+                      ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
+                      : "Sold"}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Price + CTA */}
+        <div className="fd-price-row">
+          <div className="fd-price-block">
+            {showFloor > showAiPrice && (
+              <p className="fd-price-strike">{fmtINR(showFloor)}</p>
+            )}
+            <p className="fd-price-now">
+              {fmtINR(showAiPrice)}
+              <span className="fd-price-unit">/night</span>
+            </p>
+            <p className="fd-price-save">
+              You save {fmtINR(Math.max(0, showFloor - showAiPrice))}
+            </p>
+          </div>
+          <button
+            className={`fd-cta ${sold ? "sold" : ""}`}
+            disabled={sold}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (sold) return;
+              const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${showAiPrice}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
+              router.push(url);
+            }}
+          >
+            {sold ? "Sold Out" : "⚡ Grab Now"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* DRAWER                                                                     */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }: {
+  deal: Deal; now: number; pickedRoomId: string;
+  onPickUpgrade: (rid: string) => void;
+  onClose: () => void;
+  onBook: (rid: string) => void;
+}) {
+  const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
+  const diffMs = Math.max(0, midnight.getTime() - now);
+  const hrs = Math.floor(diffMs / 3600000);
+  const mins = Math.floor((diffMs % 3600000) / 60000);
+  const secs = Math.floor((diffMs % 60000) / 1000);
+
+  const pickedUp = deal.upgrades.find(u => u.roomId === pickedRoomId);
+  const showAiPrice = pickedUp ? pickedUp.dealPrice : deal.aiPrice;
+  const showFloor   = pickedUp ? pickedUp.floorPrice : deal.floorPrice;
+
+  // Lock body scroll
+  useEffect(() => {
+    const old = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = old; };
+  }, []);
+
+  const img = deal.hotel?.images?.[0] || deal.room?.images?.[0];
+
+  return (
+    <div className="fd-drawer-bg" onClick={onClose}>
+      <div className="fd-drawer" onClick={(e) => e.stopPropagation()}>
+        <button className="fd-drawer-x" onClick={onClose}>✕</button>
+
+        {/* Hero image */}
+        <div className="fd-drawer-img">
+          {img ? <img src={img} alt={deal.hotel?.name} /> : <div className="fd-drawer-img-fallback">🏨</div>}
+          <div className="fd-drawer-img-shade" />
+          <div className="fd-drawer-img-head">
+            <div className="fd-drawer-eyebrow">
+              <span className="fd-dot-live" />
+              <span>LIVE FLASH DEAL</span>
+              <span>· ends {pad2(hrs)}:{pad2(mins)}:{pad2(secs)}</span>
+            </div>
+            <h2>{deal.hotel?.name || "Hotel"}</h2>
+            <p>{deal.city} · {deal.hotel?.starRating ? "★".repeat(deal.hotel.starRating) : ""}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="fd-drawer-body">
+          <div className="fd-drawer-section-title">Choose your room</div>
+          <div className="fd-drawer-rooms">
+            {/* Base */}
+            <button
+              className={`fd-drawer-room ${pickedRoomId === deal.roomId ? "active" : ""}`}
+              onClick={() => onPickUpgrade(deal.roomId)}
+            >
+              <div className="fd-drawer-room-left">
+                <div className="fd-drawer-room-type">
+                  {deal.room?.type || "Base Room"}
+                  <span className="fd-pill">Headline price</span>
+                </div>
+                <div className="fd-drawer-room-meta">
+                  Sleeps {deal.room?.capacity || 2} · {deal.unitsFree} unit{deal.unitsFree !== 1 ? "s" : ""} free
+                </div>
+              </div>
+              <div className="fd-drawer-room-right">
+                <div className="fd-drawer-room-price">{fmtINR(deal.aiPrice)}</div>
+                <div className="fd-drawer-room-strike">{fmtINR(deal.floorPrice)}</div>
+              </div>
+            </button>
+
+            {/* Upgrades */}
+            {deal.upgrades.length === 0 && (
+              <div className="fd-drawer-empty">Only one room type at this hotel tonight.</div>
+            )}
+            {deal.upgrades.map(u => (
+              <button
+                key={u.roomId}
+                className={`fd-drawer-room ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
+                disabled={!u.available}
+                onClick={() => u.available && onPickUpgrade(u.roomId)}
+              >
+                <div className="fd-drawer-room-left">
+                  <div className="fd-drawer-room-type">
+                    {u.type}
+                    {u.extraPerNight > 0 && u.available && (
+                      <span className="fd-pill gold">+{fmtINR(u.extraPerNight)}</span>
+                    )}
+                    {!u.available && <span className="fd-pill red">Sold tonight</span>}
+                  </div>
+                  <div className="fd-drawer-room-meta">
+                    Sleeps {u.capacity} · {u.available ? `${u.unitsFree} unit${u.unitsFree !== 1 ? "s" : ""} free` : "fully booked"}
+                  </div>
+                </div>
+                <div className="fd-drawer-room-right">
+                  <div className="fd-drawer-room-price" style={{ opacity: u.available ? 1 : 0.4 }}>
+                    {fmtINR(u.dealPrice)}
+                  </div>
+                  <div className="fd-drawer-room-strike">{fmtINR(u.floorPrice)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Rules */}
+          <div className="fd-drawer-rules">
+            <div className="fd-drawer-section-title">How this deal works</div>
+            <ul>
+              <li><span>🕒</span><span>Expires at midnight tonight · auto-refreshes next day.</span></li>
+              <li><span>🛏️</span><span>One headline price per hotel — pick from available rooms above.</span></li>
+              <li><span>🚫</span><span>Sold rooms are hidden in real time. No double-booking.</span></li>
+              <li><span>💳</span><span>Instant confirmation · pay only the headline / upgrade price.</span></li>
+              <li><span>↩️</span><span>Free cancellation up to 4 hours before check-in.</span></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Sticky CTA */}
+        <div className="fd-drawer-cta-wrap">
+          <div className="fd-drawer-cta-info">
+            <div className="fd-drawer-cta-strike">{fmtINR(showFloor)}</div>
+            <div className="fd-drawer-cta-price">{fmtINR(showAiPrice)}<span>/night</span></div>
+          </div>
+          <button className="fd-drawer-cta" onClick={() => onBook(pickedRoomId)}>
+            ⚡ Grab this stay
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function SkeletonGrid() {
+  return (
+    <div className="fd-grid">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="fd-card fd-card-skel">
+          <div className="fd-skel-img" />
+          <div className="fd-body">
+            <div className="fd-skel-line w60" />
+            <div className="fd-skel-line w40" />
+            <div className="fd-skel-line w80" />
+            <div className="fd-skel-line w50" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* STYLES — inline so the dark luxury surface stays isolated                  */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+function FdStyles() {
+  return (
+    <style jsx global>{`
+      .fd-root {
+        position: relative;
+        min-height: 100vh;
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(240, 180, 41, 0.08), transparent 60%),
+                    radial-gradient(900px 500px at 90% 30%, rgba(255, 56, 89, 0.06), transparent 55%),
+                    linear-gradient(180deg, #07060e 0%, #0a0814 50%, #0d0b1a 100%);
+        color: #f0eee2;
+        overflow-x: hidden;
+      }
+      .fd-bg-mesh {
+        position: fixed; inset: 0;
+        background-image:
+          radial-gradient(circle at 25% 70%, rgba(240, 180, 41, 0.08) 0, transparent 35%),
+          radial-gradient(circle at 80% 20%, rgba(255, 56, 89, 0.05) 0, transparent 30%);
+        pointer-events: none;
+        animation: fdMesh 14s ease-in-out infinite alternate;
+      }
+      @keyframes fdMesh {
+        0%   { transform: translate3d(0, 0, 0) scale(1); }
+        100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
+      }
+
+      /* Hero */
+      .fd-hero {
+        position: relative;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 60px 20px 28px;
+        z-index: 1;
+      }
+      .fd-eyebrow {
+        display: inline-flex; align-items: center; gap: 10px;
+        color: #f0b429; font-size: 0.66rem; font-weight: 600;
+        letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 12px;
+      }
+      .fd-eyebrow > span:not(.fd-dot-live) {
+        background: linear-gradient(90deg, #f0d060, #f0b429);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .fd-dot-live {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #ff3859; box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.6);
+        animation: fdPulse 1.6s infinite;
+      }
+      @keyframes fdPulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.55); }
+        70%  { box-shadow: 0 0 0 12px rgba(255, 56, 89, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
+      }
+
+      .fd-title {
+        font-family: 'Cormorant Garamond', 'Syne', serif;
+        font-weight: 300;
+        font-size: clamp(2.2rem, 5vw, 3.4rem);
+        line-height: 1.05;
+        margin: 0 0 8px;
+        color: #fff;
+      }
+      .fd-title-gold {
+        background: linear-gradient(90deg, #f0d060, #f0b429, #d4a017, #f0b429, #f0d060);
+        background-size: 200% 100%;
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: fdShine 4s linear infinite;
+        font-style: italic; font-weight: 400;
+      }
+      @keyframes fdShine {
+        0%   { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+      }
+      .fd-sub {
+        color: rgba(255,255,255,0.45); font-size: 0.92rem;
+        max-width: 540px; margin: 0 0 22px;
+      }
+
+      .fd-ticker {
+        display: flex; flex-wrap: wrap; gap: 10px;
+      }
+      .fd-chip {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        backdrop-filter: blur(8px);
+        font-size: 0.78rem;
+      }
+      .fd-chip.gold {
+        background: linear-gradient(135deg, rgba(240,180,41,0.16), rgba(240,180,41,0.06));
+        border-color: rgba(240,180,41,0.35);
+      }
+      .fd-chip-dot {
+        width: 6px; height: 6px; border-radius: 50%; background: #2ecc71;
+        box-shadow: 0 0 8px #2ecc71;
+        animation: fdPulse 1.8s infinite;
+      }
+      .fd-chip-val { color: #fff; font-weight: 700; }
+      .fd-chip-lbl { color: rgba(255,255,255,0.45); }
+      .fd-chip-emoji { font-size: 0.85rem; }
+
+      /* Cities */
+      .fd-cities {
+        position: relative; z-index: 1;
+        max-width: 1280px; margin: 0 auto;
+        padding: 0 20px 20px;
+        display: flex; flex-wrap: wrap; gap: 8px;
+      }
+      .fd-city {
+        padding: 8px 16px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        color: rgba(255,255,255,0.72);
+        font-size: 0.78rem; font-weight: 500;
+        cursor: pointer;
+        transition: all 0.22s ease;
+      }
+      .fd-city:hover { border-color: rgba(240,180,41,0.4); color: #fff; }
+      .fd-city.active {
+        background: linear-gradient(135deg, #f0b429, #d4a017);
+        border-color: transparent; color: #0a0814; font-weight: 700;
+        box-shadow: 0 6px 18px rgba(240,180,41,0.35);
+      }
+
+      /* Grid */
+      .fd-grid-wrap {
+        position: relative; z-index: 1;
+        max-width: 1280px; margin: 0 auto;
+        padding: 0 20px 80px;
+      }
+      .fd-grid {
+        display: grid; gap: 18px;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      }
+
+      /* Card */
+      .fd-card {
+        position: relative;
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
+        animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
+      }
+      .fd-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(240,180,41,0.4);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(240,180,41,0.25);
+      }
+      @keyframes fdFadeUp {
+        from { opacity: 0; transform: translateY(22px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .fd-img-wrap {
+        position: relative; height: 200px; overflow: hidden; background: #0d0d1a;
+      }
+      .fd-img {
+        width: 100%; height: 100%; object-fit: cover;
+        transform: scale(1.05);
+        transition: transform 7s ease;
+        animation: fdKenBurns 18s ease-in-out infinite alternate;
+      }
+      .fd-card:hover .fd-img { transform: scale(1.1); }
+      @keyframes fdKenBurns {
+        0%   { transform: scale(1.05) translate(0, 0); }
+        100% { transform: scale(1.12) translate(-1%, -1%); }
+      }
+      .fd-img-fallback {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #1a1530 0%, #0d1a2e 100%);
+      }
+      .fd-img-shade {
+        position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 75%, rgba(0,0,0,0.85) 100%);
+      }
+      .fd-img-shimmer {
+        position: absolute; inset: 0;
+        background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.10) 45%, transparent 60%);
+        background-size: 250% 100%;
+        animation: fdShimmer 5s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes fdShimmer {
+        0%   { background-position: 250% 0; }
+        100% { background-position: -250% 0; }
+      }
+
+      .fd-live-pill {
+        position: absolute; top: 12px; left: 12px; z-index: 2;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 10px;
+        background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+        border: 1px solid rgba(255, 56, 89, 0.45);
+        border-radius: 999px;
+        font-size: 0.6rem; font-weight: 700;
+        letter-spacing: 0.18em; color: #ff7088;
+      }
+
+      .fd-disc-stamp {
+        position: absolute; top: 12px; right: 12px; z-index: 2;
+        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
+        border-radius: 14px;
+        padding: 8px 12px;
+        display: flex; flex-direction: column; align-items: center;
+        line-height: 1;
+        box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 0 0 1px rgba(255,255,255,0.25);
+        animation: fdStamp 2.4s ease-in-out infinite;
+      }
+      .fd-disc-stamp.fire {
+        background: linear-gradient(135deg, #ff7088, #ff3859 60%, #d12d4a);
+        box-shadow: 0 8px 22px rgba(255,56,89,0.45), inset 0 0 0 1px rgba(255,255,255,0.25);
+      }
+      @keyframes fdStamp {
+        0%, 100% { transform: rotate(-3deg) scale(1); }
+        50%      { transform: rotate(-3deg) scale(1.05); }
+      }
+      .fd-disc-num { color: #0a0814; font-weight: 900; font-size: 1.1rem; letter-spacing: -0.02em; }
+      .fd-disc-stamp.fire .fd-disc-num { color: #fff; }
+      .fd-disc-off { color: #0a0814; font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
+      .fd-disc-stamp.fire .fd-disc-off { color: #fff; opacity: 0.9; }
+
+      .fd-img-bottom {
+        position: absolute; bottom: 12px; left: 12px; z-index: 2;
+      }
+      .fd-loc {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+        padding: 5px 10px; border-radius: 999px;
+        font-size: 0.65rem; font-weight: 600;
+        color: rgba(255,255,255,0.85);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #f0b429; }
+
+      .fd-ring-wrap {
+        position: absolute; bottom: 10px; right: 12px; z-index: 2;
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+        border-radius: 999px;
+        padding: 4px 12px 4px 4px;
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .fd-ring-time {
+        display: flex; flex-direction: column; line-height: 1;
+        font-family: 'Menlo', 'Consolas', monospace;
+        color: #fff;
+      }
+      .fd-ring-time > span:first-child { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
+      .fd-ring-time > span:first-child.urgent { color: #ff7088; animation: fdBlink 1.2s infinite; }
+      .fd-ring-sep { animation: fdBlink 1s infinite; }
+      .fd-ring-lbl {
+        font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
+        color: rgba(255,255,255,0.45); text-transform: uppercase;
+        margin-top: 2px;
+      }
+      @keyframes fdBlink {
+        0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.4; }
+      }
+
+      /* Body */
+      .fd-body { padding: 14px 16px 16px; }
+      .fd-hotel-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; margin-bottom: 2px;
+      }
+      .fd-hotel-name {
+        font-size: 0.95rem; font-weight: 600; color: #fff;
+        margin: 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        max-width: 70%;
+      }
+      .fd-stars { color: #f0b429; font-size: 0.65rem; letter-spacing: 0.05em; }
+      .fd-rt-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
+      .fd-room-type { color: rgba(240,180,41,0.85); font-size: 0.7rem; font-weight: 600; }
+      .fd-room-cap { color: rgba(255,255,255,0.35); font-size: 0.65rem; }
+
+      .fd-slots { margin-bottom: 12px; }
+      .fd-slots-text {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 6px; font-size: 0.65rem; font-weight: 600;
+      }
+      .fd-slots-left { color: #f0b429; }
+      .fd-slots-left.urgent { color: #ff7088; }
+      .fd-slots-of { color: rgba(255,255,255,0.35); }
+      .fd-slots-bar {
+        position: relative; height: 5px;
+        background: rgba(255,255,255,0.07); border-radius: 999px; overflow: hidden;
+      }
+      .fd-slots-fill {
+        height: 100%; border-radius: 999px;
+        background: linear-gradient(90deg, #f0b429, #f0d060);
+        transition: width 0.8s ease;
+      }
+      .fd-slots-fill.urgent {
+        background: linear-gradient(90deg, #ff3859, #ff7088);
+      }
+      .fd-slots-shimmer {
+        position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+        background-size: 200% 100%;
+        animation: fdShimmerBar 2.4s linear infinite;
+      }
+      @keyframes fdShimmerBar {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      /* Upgrade chips */
+      .fd-up-wrap {
+        background: rgba(255,255,255,0.025);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+      }
+      .fd-up-label {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 0.66rem; font-weight: 600;
+        color: rgba(240,180,41,0.85);
+        margin-bottom: 8px;
+      }
+      .fd-up-count { color: rgba(255,255,255,0.4); font-size: 0.6rem; font-weight: 500; }
+      .fd-up-chips {
+        display: flex; gap: 6px; overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .fd-up-chips::-webkit-scrollbar { display: none; }
+      .fd-up-chip {
+        flex-shrink: 0;
+        display: flex; flex-direction: column; align-items: flex-start;
+        padding: 6px 10px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+      }
+      .fd-up-chip:hover { border-color: rgba(240,180,41,0.4); transform: translateY(-1px); }
+      .fd-up-chip.active {
+        background: linear-gradient(135deg, rgba(240,180,41,0.2), rgba(240,180,41,0.08));
+        border-color: rgba(240,180,41,0.7);
+        box-shadow: inset 0 0 0 1px rgba(240,180,41,0.2);
+      }
+      .fd-up-chip.soldout { opacity: 0.4; cursor: not-allowed; }
+      .fd-up-chip-type { font-size: 0.66rem; font-weight: 600; color: #fff; line-height: 1.1; }
+      .fd-up-chip-delta {
+        font-size: 0.6rem; font-weight: 700;
+        color: rgba(240,180,41,0.85); margin-top: 2px;
+      }
+      .fd-up-chip.soldout .fd-up-chip-delta { color: #ff7088; }
+
+      /* Price + CTA */
+      .fd-price-row {
+        display: flex; align-items: flex-end; justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid rgba(255,255,255,0.07);
+      }
+      .fd-price-strike {
+        color: rgba(255,255,255,0.3); font-size: 0.7rem;
+        text-decoration: line-through; margin: 0 0 1px;
+      }
+      .fd-price-now {
+        color: #fff; font-size: 1.4rem; font-weight: 800; line-height: 1;
+        margin: 0;
+      }
+      .fd-price-unit { color: rgba(255,255,255,0.35); font-size: 0.65rem; font-weight: 500; margin-left: 4px; }
+      .fd-price-save {
+        margin: 4px 0 0; color: rgba(46,204,113,0.85);
+        font-size: 0.6rem; font-weight: 600;
+      }
+      .fd-cta {
+        padding: 10px 18px;
+        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
+        color: #0a0814; font-size: 0.78rem; font-weight: 800;
+        border: none; border-radius: 12px;
+        cursor: pointer;
+        box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+        transition: all 0.2s ease;
+        letter-spacing: 0.02em;
+      }
+      .fd-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
+      .fd-cta.sold {
+        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);
+        cursor: not-allowed; box-shadow: none;
+      }
+
+      /* Skeleton */
+      .fd-card-skel { cursor: default; pointer-events: none; }
+      .fd-card-skel:hover { transform: none; }
+      .fd-skel-img {
+        height: 200px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+        background-size: 200% 100%;
+        animation: fdSkel 1.6s linear infinite;
+      }
+      .fd-skel-line {
+        height: 10px; border-radius: 4px; margin: 8px 0;
+        background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+        background-size: 200% 100%;
+        animation: fdSkel 1.6s linear infinite;
+      }
+      .w40 { width: 40%; } .w50 { width: 50%; } .w60 { width: 60%; } .w80 { width: 80%; }
+      @keyframes fdSkel {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      /* Empty */
+      .fd-empty { text-align: center; padding: 80px 20px; }
+      .fd-empty-icon {
+        width: 72px; height: 72px; border-radius: 50%;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 18px;
+        font-size: 1.6rem;
+      }
+      .fd-empty-title { color: #fff; font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
+      .fd-empty-sub { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin: 0; }
+
+      /* Drawer */
+      .fd-drawer-bg {
+        position: fixed; inset: 0; z-index: 100;
+        background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+        display: flex; align-items: stretch; justify-content: center;
+        padding: 0;
+        animation: fdFadeIn 0.25s ease both;
+      }
+      @keyframes fdFadeIn {
+        from { opacity: 0; } to { opacity: 1; }
+      }
+      .fd-drawer {
+        position: relative;
+        margin: auto;
+        width: 100%; max-width: 540px;
+        max-height: 92vh;
+        background: linear-gradient(180deg, #0e0c19 0%, #0a0814 100%);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        overflow: hidden;
+        display: flex; flex-direction: column;
+        animation: fdDrawer 0.4s cubic-bezier(.2,.7,.2,1) both;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+      }
+      @media (max-width: 540px) {
+        .fd-drawer-bg { align-items: flex-end; }
+        .fd-drawer {
+          max-width: none; max-height: 94vh;
+          border-radius: 24px 24px 0 0;
+          animation: fdDrawerMobile 0.45s cubic-bezier(.2,.7,.2,1) both;
+        }
+      }
+      @keyframes fdDrawer {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes fdDrawerMobile {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
+      }
+      .fd-drawer-x {
+        position: absolute; top: 14px; right: 14px; z-index: 3;
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #fff; font-size: 1rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .fd-drawer-x:hover { background: rgba(255,255,255,0.15); transform: rotate(90deg); }
+      .fd-drawer-img {
+        position: relative; height: 220px;
+      }
+      .fd-drawer-img img { width: 100%; height: 100%; object-fit: cover; }
+      .fd-drawer-img-fallback {
+        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #1a1530, #0d1a2e); font-size: 3rem; opacity: 0.2;
+      }
+      .fd-drawer-img-shade {
+        position: absolute; inset: 0;
+        background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,0.92) 100%);
+      }
+      .fd-drawer-img-head {
+        position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 22px;
+      }
+      .fd-drawer-eyebrow {
+        display: inline-flex; align-items: center; gap: 6px;
+        color: #ff7088; font-size: 0.6rem; font-weight: 700;
+        letter-spacing: 0.18em; margin-bottom: 6px;
+      }
+      .fd-drawer-img-head h2 {
+        font-family: 'Cormorant Garamond', 'Syne', serif;
+        font-weight: 400; font-size: 1.6rem; margin: 0;
+        color: #fff;
+      }
+      .fd-drawer-img-head p {
+        color: rgba(255,255,255,0.6); font-size: 0.78rem;
+        margin: 4px 0 0;
+      }
+
+      .fd-drawer-body {
+        flex: 1; overflow-y: auto;
+        padding: 22px 22px 100px;
+      }
+      .fd-drawer-section-title {
+        font-size: 0.65rem; font-weight: 700;
+        color: rgba(240,180,41,0.85);
+        letter-spacing: 0.18em; text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+      .fd-drawer-rooms { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+      .fd-drawer-room {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px;
+        background: rgba(255,255,255,0.025);
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 14px;
+        cursor: pointer; text-align: left;
+        transition: all 0.22s ease;
+      }
+      .fd-drawer-room:hover { border-color: rgba(240,180,41,0.4); transform: translateY(-1px); }
+      .fd-drawer-room.active {
+        background: linear-gradient(135deg, rgba(240,180,41,0.16), rgba(240,180,41,0.06));
+        border-color: rgba(240,180,41,0.7);
+        box-shadow: 0 0 0 1px rgba(240,180,41,0.25), 0 8px 20px rgba(240,180,41,0.18);
+      }
+      .fd-drawer-room.soldout { opacity: 0.5; cursor: not-allowed; }
+      .fd-drawer-room-left { flex: 1; min-width: 0; }
+      .fd-drawer-room-type {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        color: #fff; font-size: 0.86rem; font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .fd-drawer-room-meta { color: rgba(255,255,255,0.42); font-size: 0.7rem; }
+      .fd-drawer-room-right { text-align: right; flex-shrink: 0; padding-left: 12px; }
+      .fd-drawer-room-price { color: #fff; font-size: 1rem; font-weight: 800; }
+      .fd-drawer-room-strike {
+        color: rgba(255,255,255,0.3); font-size: 0.68rem;
+        text-decoration: line-through;
+      }
+      .fd-pill {
+        font-size: 0.55rem; font-weight: 700;
+        padding: 2px 8px; border-radius: 999px;
+        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+        letter-spacing: 0.06em;
+      }
+      .fd-pill.gold {
+        background: linear-gradient(135deg, #f0d060, #f0b429);
+        color: #0a0814;
+      }
+      .fd-pill.red {
+        background: rgba(255,56,89,0.15); color: #ff7088;
+      }
+      .fd-drawer-empty {
+        padding: 14px; text-align: center;
+        color: rgba(255,255,255,0.4); font-size: 0.78rem;
+        background: rgba(255,255,255,0.025);
+        border: 1px dashed rgba(255,255,255,0.08);
+        border-radius: 14px;
+      }
+
+      .fd-drawer-rules ul {
+        list-style: none; padding: 0; margin: 0;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .fd-drawer-rules li {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.025);
+        border-radius: 12px;
+        color: rgba(255,255,255,0.7); font-size: 0.78rem; line-height: 1.4;
+      }
+      .fd-drawer-rules li > span:first-child {
+        font-size: 1rem; line-height: 1.1; flex-shrink: 0;
+      }
+
+      .fd-drawer-cta-wrap {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        padding: 14px 22px;
+        background: linear-gradient(180deg, rgba(10,8,20,0) 0%, rgba(10,8,20,0.85) 25%, rgba(10,8,20,1) 100%);
+        border-top: 1px solid rgba(255,255,255,0.08);
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      }
+      .fd-drawer-cta-info { flex-shrink: 0; }
+      .fd-drawer-cta-strike {
+        color: rgba(255,255,255,0.3); font-size: 0.7rem;
+        text-decoration: line-through; line-height: 1;
+      }
+      .fd-drawer-cta-price {
+        color: #fff; font-size: 1.3rem; font-weight: 800; line-height: 1.1;
+      }
+      .fd-drawer-cta-price span { color: rgba(255,255,255,0.4); font-size: 0.68rem; font-weight: 500; margin-left: 4px; }
+      .fd-drawer-cta {
+        flex: 1;
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
+        color: #0a0814; font-size: 0.92rem; font-weight: 800;
+        border: none; border-radius: 14px;
+        cursor: pointer;
+        box-shadow: 0 10px 26px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
+        transition: all 0.2s ease;
+        letter-spacing: 0.02em;
+      }
+      .fd-drawer-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(240,180,41,0.5); }
+    `}</style>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 
 export default function FlashDealsPage() {
   return (

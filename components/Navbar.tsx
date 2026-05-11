@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/components/ModeToggle";
+import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -70,11 +71,10 @@ function BrandText({ className = "", dark = false }: { className?: string; dark?
   );
 }
 
-/* ── Live Location Chip (in header) ──────────────────────────────── */
+/* ── Premium Location Chip — opens the shared globe modal ──────────── */
 function LocationChip({ compact = false }: { compact?: boolean }) {
-  const [city, setCity]       = useState("");
-  const [loading, setLoading] = useState(false);
-  const [picker, setPicker]   = useState(false);
+  const [city, setCity]     = useState("");
+  const [picker, setPicker] = useState(false);
 
   useEffect(() => {
     try { setCity(localStorage.getItem("sb_city") || ""); } catch {}
@@ -83,42 +83,10 @@ function LocationChip({ compact = false }: { compact?: boolean }) {
     return () => window.removeEventListener("sb:city-change", apply);
   }, []);
 
-  const setAndBroadcast = (c: string) => {
-    try { localStorage.setItem("sb_city", c); } catch {}
-    setCity(c);
-    window.dispatchEvent(new Event("sb:city-change"));
-  };
-
-  const detect = () => {
-    if (!navigator.geolocation) { setPicker(true); return; }
-    setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json&zoom=10`,
-            { headers: { "Accept-Language": "en" } }
-          );
-          const data = await res.json();
-          const detected =
-            data.address?.city || data.address?.town || data.address?.village ||
-            data.address?.county || data.address?.state_district || data.address?.state || "";
-          const match = CITIES.find(c => detected.toLowerCase().includes(c.toLowerCase()));
-          if (match) setAndBroadcast(match);
-          else { setAndBroadcast(detected || ""); setPicker(true); }
-        } catch { setPicker(true); }
-        finally { setLoading(false); }
-      },
-      () => { setLoading(false); setPicker(true); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    );
-  };
-
   return (
     <div className="relative">
       <button
-        onClick={() => city ? setPicker(true) : detect()}
-        disabled={loading}
+        onClick={() => setPicker(true)}
         className="group relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.72rem] font-semibold transition-all duration-300 overflow-hidden"
         style={{
           background: "linear-gradient(135deg, rgba(240,180,41,0.18), rgba(255,255,255,0.04))",
@@ -127,41 +95,17 @@ function LocationChip({ compact = false }: { compact?: boolean }) {
           boxShadow: "0 2px 8px rgba(201,145,26,0.15), inset 0 1px 0 rgba(255,255,255,0.2)",
         }}
       >
-        <span className={`w-2 h-2 rounded-full ${loading ? "bg-gold-400 animate-ping" : "bg-emerald-400 animate-pulse"}`} />
-        {loading ? "Detecting…" : city ? (<><span>📍</span><span className="truncate max-w-[90px]">{city}</span></>) : (<><span>🎯</span>{!compact && <span>Detect</span>}</>)}
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        {city ? (<><span>📍</span><span className="truncate max-w-[90px]">{city}</span></>) : (<><span>🎯</span>{!compact && <span>Anywhere</span>}</>)}
       </button>
 
       {picker && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" onClick={() => setPicker(false)} />
-          <div className="fixed inset-x-4 top-20 md:absolute md:inset-x-auto md:top-full md:right-0 md:mt-2 md:w-72 z-[70] rounded-2xl overflow-hidden"
-            style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", border: "1px solid rgba(240,180,41,0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-              <p className="text-xs font-bold text-gold-400 tracking-widest uppercase">Choose City</p>
-              <button onClick={() => setPicker(false)} className="text-white/50 hover:text-white text-sm">✕</button>
-            </div>
-            <button onClick={() => { setPicker(false); detect(); }}
-              className="w-full px-4 py-3 flex items-center gap-2 text-sm text-white hover:bg-white/5 transition-colors border-b border-white/5">
-              <span>🎯</span><span>Detect my location</span>
-            </button>
-            <div className="p-2 max-h-64 overflow-y-auto">
-              <button onClick={() => { setAndBroadcast(""); setPicker(false); }}
-                className={`w-full px-3 py-2 rounded-lg text-left text-sm transition-colors ${!city ? "bg-gold-500/20 text-gold-300" : "text-white/70 hover:bg-white/5"}`}>
-                All Cities
-              </button>
-              {CITIES.map(c => (
-                <button key={c} onClick={() => { setAndBroadcast(c); setPicker(false); }}
-                  className={`w-full px-3 py-2 rounded-lg text-left text-sm transition-colors ${city === c ? "bg-gold-500/20 text-gold-300" : "text-white/70 hover:bg-white/5"}`}>
-                  📍 {c}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
+        <LocationGlobeModal activeCity={city} onClose={() => setPicker(false)} />
       )}
     </div>
   );
 }
+
 
 export function Navbar() {
   const { user, logout } = useAuth();
