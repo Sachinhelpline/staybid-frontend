@@ -27,6 +27,7 @@ import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack } from "@/
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
+import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -342,51 +343,9 @@ function entityFromHotel(h: any): Creator & { _isSelf?: boolean } {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Anti-bypass communication guard
-// ───────────────────────────────────────────────────────────────────────
-// Rule: hotels, creators and customers MUST NOT use the public comment
-// stream as a private messaging back-channel. If they could exchange phone
-// numbers, emails, WhatsApp/Telegram/Instagram handles or off-platform
-// links, off-platform bookings would happen and StayBid's reverse-auction
-// commission would be bypassed.
-// Every public comment posted in the reel feed is run through this
-// sanitizer. Matched personal-contact substrings are replaced with `•••••`
-// and the user is shown a warning toast. The masked comment still posts so
-// genuine sentiment ("looks lovely!") survives, but the contact channel is
-// dead.
-//
-// ⚠️ This is the public layer ONLY. After a booking is CONFIRMED, the user
-// can chat with that specific property through the booking page (separate
-// feature, /bookings → already gated to booking owner ↔ booked hotel).
+// Anti-bypass communication guard — see top-of-file import.
+// Same sanitizer is used by booking-flow chat post-booking (Phase 7).
 // ─────────────────────────────────────────────────────────────────────────
-const CONTACT_PATTERNS: RegExp[] = [
-  // Phone — international and Indian formats (8–14 digits with separators)
-  /\+?\d[\d\s\-().]{7,16}\d/g,
-  // Email
-  /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/gi,
-  // URLs
-  /(https?:\/\/|www\.)\S+/gi,
-  // Bare domains (.com, .in, etc.)
-  /\b[a-z0-9-]+\.(com|in|co\.in|net|org|io|me|app|xyz|live|shop)(\/\S*)?\b/gi,
-  // WhatsApp / Telegram / Signal / Skype / Zoom — any reference is a flag
-  /\b(whats[\s.]?app|wa\.?me|telegram|t\.?me|signal|skype|google\s*meet|zoom\s*meeting)\b/gi,
-  // "DM me", "call me", "ping me", "reach out", "drop your number"
-  /\b(d\.?m\.?\s*(me|@)?|inbox\s*me|message\s*me|call\s*me|ping\s*me|reach\s*out\s*to\s*me|drop\s*(your\s*)?(number|contact|whatsapp))\b/gi,
-  // Social handles outside @hotel/creator chips: "insta: x", "fb: y"
-  /\b(insta(gram)?|fb|facebook|snap(chat)?|twitter|x\.com)\s*[:\-@]\s*\S+/gi,
-  // "Off-platform", "outside the app", "directly with hotel"
-  /\b(off[-\s]?platform|outside\s*(the\s*)?(app|platform)|book\s*direct(ly)?|side\s*deal)\b/gi,
-];
-
-function sanitizeComment(text: string): { clean: string; blocked: boolean } {
-  let clean = text;
-  let blocked = false;
-  for (const p of CONTACT_PATTERNS) {
-    if (p.test(clean)) blocked = true;
-    clean = clean.replace(p, "•••••");
-  }
-  return { clean, blocked };
-}
 
 const SAMPLE_COMMENTS = [
   { user: "priya_m", text: "Looks like a dream 😍 saving for our anniversary trip", time: "2h", likes: 14 },

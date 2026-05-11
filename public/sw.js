@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v71-2026-05-12-booking-chat-auto-accept-email';
-const HTML_CACHE = 'staybid-html-v71';
+const CACHE_NAME = 'staybid-v72-2026-05-12-analytics-moderation';
+const HTML_CACHE = 'staybid-html-v72';
 
 const PRECACHE_URLS = [
   '/manifest.json',

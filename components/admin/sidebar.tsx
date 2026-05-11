@@ -14,6 +14,8 @@ const NAV = [
   { href: "/admin/pricing", label: "Pricing & Deals", icon: "💰" },
   { href: "/admin/hold-config", label: "Hold Config", icon: "🔒" },
   { href: "/admin/holds", label: "Active Holds", icon: "⏱" },
+  { href: "/admin/analytics", label: "Bid Analytics", icon: "📊" },
+  { href: "/admin/messages", label: "Chat Moderation", icon: "💬" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
   { href: "/admin/revenue", label: "Revenue", icon: "💹" },
