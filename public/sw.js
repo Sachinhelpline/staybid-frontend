@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v59-2026-05-11-dialer-wheel';
-const HTML_CACHE = 'staybid-html-v59';
+const CACHE_NAME = 'staybid-v60-2026-05-11-crown-dialer';
+const HTML_CACHE = 'staybid-html-v60';
 
 const PRECACHE_URLS = [
   '/manifest.json',

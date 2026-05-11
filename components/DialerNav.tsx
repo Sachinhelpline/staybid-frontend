@@ -1,39 +1,35 @@
 "use client";
 /* ─────────────────────────────────────────────────────────────────────
-   DialerNav — left-edge rotating wheel navigation (iPod click-wheel UX).
+   DialerNav — Apple-Watch-crown style rotating wheel on the LEFT edge.
 
-   Closed state (default):
-     ─ A compact 56-wide vertical capsule hugging the LEFT edge of the
-       screen, centred vertically. Shows the active page as a single 3D
-       button + a row of tiny dots indicating other items.
-     ─ A subtle pulse animates so users notice it.
+   Design rules (per user request, v60):
+     ─ NO container border / background. The wheel chrome is invisible;
+       only the round buttons themselves are visible elements.
+     ─ Wheel is mostly OFF-SCREEN. Only ~30px of its right rim peeks out
+       from the left edge of the screen. Items at the back of the wheel
+       are hidden naturally.
+     ─ NO close (✕) button. Touch wakes the wheel up; 1s after release
+       it auto-snaps + dims back to idle.
+     ─ Whole wheel does NOT zoom on tap. Only the button at the 3-o'clock
+       "selection slot" grows — and even that growth is a side-effect of
+       items rotating IN AND OUT of the slot, not a tap response.
+     ─ Drag vertically to rotate; the wheel wraps around like a Rolodex.
+     ─ Tap the centred item → navigate.
 
-   Open state (after tap):
-     ─ Capsule expands to a rotatable wheel — items wrap on an arc that
-       bulges into the screen.
-     ─ User drags vertically (or scroll-wheels) to rotate items past
-       the centre "selection" zone.
-     ─ Centre item is the biggest, glows gold, has a permanent indicator
-       chevron pointing into the screen.
-     ─ Tapping the centre item navigates to that route.
-     ─ Tapping anywhere outside → wheel collapses back to closed state.
+   Math:
+     Wheel center is anchored at x = -(R - PROTRUSION), y = 50% of viewport.
+     Items at angle 0° (3-o'clock) sit at x = +PROTRUSION (visible).
+     Items at ±90° sit on the screen edge, half hidden.
+     Items past ±90° are behind the wheel — culled.
+     Per-item scale + opacity are driven by cos(angle), creating the
+     natural "growing in" feel as a button arrives at centre.
 
-   3D feel:
-     ─ Each item rendered with rotateX based on distance from centre
-       (perspective creates the illusion of a wheel rotating in space).
-     ─ Active centre item: scale 1.18 + drop-shadow gold glow.
-     ─ Items further from centre: progressively scaled down + faded.
-
-   Why a wheel (not a dock):
-     ─ Floating dock at bottom occupied 84px of vertical space — bad on
-       phones with bottom gesture bars and small viewports.
-     ─ Wheel on the edge keeps the screen surface clear; users invoke nav
-       only when they need it.
-     ─ Modern, distinctive, mirrors curved-screen Samsung Edge / iPhone
-       Reachability gestures.
+   Inertia / snap:
+     onTouchEnd → smooth-snap to nearest integer rotation (300ms ease).
+     1s after onTouchEnd with no further touch → `active` flips to false,
+     wheel dims, growth amplitude reduces. Touch again to wake.
    ───────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef, useState, useCallback } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 type Item = {
@@ -52,14 +48,20 @@ const ITEMS: Item[] = [
   { href: "/profile",     label: "Profile", icon: "👤" },
 ];
 
-const ITEM_HEIGHT = 64;     // px between items on the wheel
-const SNAP_THRESHOLD = 0.5; // fraction of item height to snap on release
+const N = ITEMS.length;
+const ANGLE_STEP = 360 / N;       // 60°
+const WHEEL_R = 110;              // wheel radius
+const PROTRUSION = 32;            // px of the rim that pokes out from the screen edge
+const WHEEL_CX = -(WHEEL_R - PROTRUSION);  // wheel centre X relative to screen left (-78)
+const IDLE_MS = 1000;             // auto-dim after this long with no touch
+const SNAP_MS = 320;              // snap-to-nearest animation duration
+const DRAG_PX_PER_ITEM = 40;      // dial sensitivity — drag this many px to advance 1 item
 
 export function DialerNav() {
   const pathname = usePathname() || "/";
   const router = useRouter();
 
-  // Compute which item index corresponds to the current pathname
+  // Which ITEMS index corresponds to the current pathname
   const activeIdx = (() => {
     if (pathname === "/") return 0;
     const i = ITEMS.findIndex(it =>
@@ -68,79 +70,107 @@ export function DialerNav() {
     return i >= 0 ? i : 0;
   })();
 
-  // Wheel rotation in items (fractional during drag). 0 = ITEMS[0] centred.
+  // Rotation in fractional items. 0 = ITEMS[0] at 3-o'clock.
   const [rotation, setRotation] = useState(activeIdx);
-  const [open, setOpen] = useState(false);
-  const dragRef = useRef<{ startY: number; startRotation: number } | null>(null);
-  const wheelRef = useRef<HTMLDivElement>(null);
+  // "active" = user touched within the last IDLE_MS milliseconds
+  const [active, setActive] = useState(false);
+  // "snapping" = a smooth rotation animation is in flight (post-release)
+  const [snapping, setSnapping] = useState(false);
 
-  // Sync wheel position when route changes
+  const dragRef = useRef<{ startY: number; startRot: number; moved: boolean } | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // When user navigates to a new route, rotate so that route is at centre
   useEffect(() => {
+    if (dragRef.current) return; // don't fight an in-progress drag
+    setSnapping(true);
     setRotation(activeIdx);
+    if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+    snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
   }, [activeIdx]);
 
-  // Close wheel on route change
-  useEffect(() => { setOpen(false); }, [pathname]);
-
-  // ESC / outside click → close
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  // Drag handlers
-  const onTouchStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
-    if (!open) return;
-    const y = "touches" in e ? e.touches[0].clientY : e.clientY;
-    dragRef.current = { startY: y, startRotation: rotation };
-  }, [open, rotation]);
-
-  const onTouchMove = useCallback((e: React.TouchEvent | MouseEvent) => {
-    if (!open || !dragRef.current) return;
-    const y = "touches" in e ? (e as React.TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-    const dy = y - dragRef.current.startY;
-    // negative dy → finger moved up → rotate toward later items
-    const next = dragRef.current.startRotation - dy / ITEM_HEIGHT;
-    // Clamp to valid range
-    const clamped = Math.max(0, Math.min(ITEMS.length - 1, next));
-    setRotation(clamped);
-  }, [open]);
-
-  const onTouchEnd = useCallback(() => {
-    if (!dragRef.current) return;
-    dragRef.current = null;
-    // Snap to nearest integer
-    setRotation(r => Math.round(r));
+  // Schedule the auto-dim
+  const scheduleIdle = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setActive(false), IDLE_MS);
   }, []);
 
-  // Wheel-scroll support (desktop trackpad / mouse wheel)
-  const onWheel = useCallback((e: WheelEvent) => {
-    if (!open) return;
-    e.preventDefault();
-    setRotation(r => {
-      const next = r + Math.sign(e.deltaY) * 0.5;
-      return Math.max(0, Math.min(ITEMS.length - 1, next));
-    });
-  }, [open]);
+  // Wake the wheel (called whenever the user touches it)
+  const wake = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setActive(true);
+  }, []);
 
+  const onStart = useCallback((clientY: number) => {
+    wake();
+    setSnapping(false);
+    dragRef.current = { startY: clientY, startRot: rotation, moved: false };
+  }, [rotation, wake]);
+
+  const onMove = useCallback((clientY: number) => {
+    if (!dragRef.current) return;
+    const dy = clientY - dragRef.current.startY;
+    if (Math.abs(dy) > 3) dragRef.current.moved = true;
+    // Downward drag → items rotate forward (toward higher index)
+    const next = dragRef.current.startRot + dy / DRAG_PX_PER_ITEM;
+    setRotation(((next % N) + N) % N);
+  }, []);
+
+  const onEnd = useCallback(() => {
+    if (!dragRef.current) return;
+    const wasDrag = dragRef.current.moved;
+    const startRot = dragRef.current.startRot;
+    dragRef.current = null;
+
+    // Snap to nearest integer
+    setSnapping(true);
+    setRotation(r => ((Math.round(r) % N) + N) % N);
+    if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+    snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
+
+    // Pure tap (no drag) → navigate to centre item
+    if (!wasDrag) {
+      const centreIdx = ((Math.round(startRot) % N) + N) % N;
+      const target = ITEMS[centreIdx];
+      if (target && target.href !== pathname) {
+        router.push(target.href);
+      }
+    }
+
+    scheduleIdle();
+  }, [pathname, router, scheduleIdle]);
+
+  // Wheel scroll (desktop trackpad / mouse wheel)
   useEffect(() => {
-    if (!open) return;
-    const el = wheelRef.current;
-    if (!el) return;
-    el.addEventListener("wheel", onWheel, { passive: false });
-    document.addEventListener("mousemove", onTouchMove as any);
-    document.addEventListener("mouseup", onTouchEnd);
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      document.removeEventListener("mousemove", onTouchMove as any);
-      document.removeEventListener("mouseup", onTouchEnd);
+    const root = document.querySelector(".dialer-root") as HTMLElement | null;
+    if (!root) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      wake();
+      setSnapping(false);
+      setRotation(r => {
+        const next = r + Math.sign(e.deltaY) * 0.6;
+        return ((next % N) + N) % N;
+      });
+      // Treat wheel scroll like a drag — snap to nearest after a beat, then idle
+      if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = setTimeout(() => {
+        setSnapping(true);
+        setRotation(r => ((Math.round(r) % N) + N) % N);
+        setTimeout(() => setSnapping(false), SNAP_MS);
+        scheduleIdle();
+      }, 180);
     };
-  }, [open, onWheel, onTouchMove, onTouchEnd]);
+    root.addEventListener("wheel", onWheel, { passive: false });
+    return () => root.removeEventListener("wheel", onWheel);
+  }, [wake, scheduleIdle]);
 
-  const centreIdx = Math.round(rotation);
-  const centreItem = ITEMS[centreIdx];
+  // Cleanup timers on unmount
+  useEffect(() => () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+  }, []);
 
   // Hide on admin / partner / onboard routes
   if (pathname.startsWith("/admin") ||
@@ -149,316 +179,190 @@ export function DialerNav() {
     return null;
   }
 
-  const handleCentreTap = () => {
-    if (!open) {
-      setOpen(true);
-      return;
-    }
-    // If wheel was rotated to a different item, navigate there
-    if (centreItem && pathname !== centreItem.href) {
-      router.push(centreItem.href);
-    }
-    setOpen(false);
-  };
-
   return (
     <>
       <style jsx global>{`
-        @keyframes dialerPopIn {
-          0%   { transform: translateY(-50%) translateX(-50%); opacity: 0; }
-          100% { transform: translateY(-50%) translateX(0); opacity: 1; }
+        @keyframes dialerSheen {
+          0%, 100% { background-position: 0% 50%; }
+          50%      { background-position: 100% 50%; }
         }
-        @keyframes dialerPulse {
-          0%, 100% { box-shadow: 0 8px 22px rgba(0,0,0,0.45), 0 0 0 0 rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.32); }
-          50%      { box-shadow: 0 8px 26px rgba(0,0,0,0.5), 0 0 0 6px rgba(240,180,41,0), inset 0 1px 0 rgba(255,255,255,0.32); }
-        }
-        @keyframes dialerGlow {
-          0%, 100% { filter: drop-shadow(0 4px 8px rgba(240,180,41,0.55)); }
-          50%      { filter: drop-shadow(0 6px 14px rgba(240,180,41,0.85)); }
-        }
-        @keyframes dialerHint {
+        @keyframes dialerHintNudge {
           0%, 100% { transform: translateX(0); }
-          50%      { transform: translateX(3px); }
+          50%      { transform: translateX(2px); }
         }
 
         .dialer-root {
           position: fixed;
           left: 0;
           top: 50%;
+          /* Tall enough to contain the entire visible arc (+ R either side). */
+          height: 320px;
+          width: ${PROTRUSION + 16}px;
           transform: translateY(-50%);
           z-index: 50;
-          pointer-events: none; /* children re-enable */
-          /* Hidden on desktop — top navbar handles primary nav there */
+          touch-action: none;
+          /* No background, no border — just a container for the floating
+             buttons. The user should NOT see this rect. */
         }
         @media (min-width: 768px) { .dialer-root { display: none; } }
 
-        .dialer-backdrop {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.55);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          opacity: 0; pointer-events: none;
-          transition: opacity 0.3s ease;
-          z-index: 49;
-        }
-        .dialer-backdrop.open {
-          opacity: 1;
-          pointer-events: auto;
-        }
-
-        /* Closed capsule — slim pill hugging the left edge */
-        .dialer-pill {
-          pointer-events: auto;
-          display: flex; flex-direction: column; align-items: center;
-          padding: 8px 6px 8px 4px;
-          border-radius: 0 24px 24px 0;
-          background: linear-gradient(135deg, rgba(20,18,30,0.85), rgba(10,8,16,0.92));
-          backdrop-filter: blur(22px) saturate(180%);
-          -webkit-backdrop-filter: blur(22px) saturate(180%);
-          border: 1px solid rgba(240,180,41,0.35);
-          border-left: none;
-          box-shadow:
-            6px 8px 26px rgba(0,0,0,0.55),
-            2px 4px 10px rgba(0,0,0,0.35),
-            inset 0 1px 0 rgba(255,255,255,0.1);
-          transition: all 0.4s cubic-bezier(.34,1.5,.64,1);
-          animation: dialerPopIn 0.6s cubic-bezier(.34,1.5,.64,1) both;
-          gap: 6px;
-          will-change: transform, width, height;
-        }
-        .dialer-pill.is-open {
-          padding: 14px 10px 14px 8px;
-          /* width / height grow via inline style based on items rendered */
-        }
-
-        /* Closed-state active button — the only "real" button visible */
-        .dialer-active-btn {
-          position: relative;
-          width: 52px; height: 52px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
-          color: #1a1208;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.4rem; font-weight: 800;
-          border: none; cursor: pointer;
-          box-shadow:
-            0 8px 22px rgba(0,0,0,0.45),
-            inset 0 2px 0 rgba(255,255,255,0.5),
-            inset 0 -2px 0 rgba(120,80,0,0.3);
-          animation: dialerPulse 2.8s ease-in-out infinite;
-          transition: transform 0.2s cubic-bezier(.34,1.5,.64,1);
-        }
-        .dialer-active-btn:active { transform: scale(0.92); }
-
-        /* Indicator dots — show position among siblings (only visible when closed) */
-        .dialer-dots {
-          display: flex; flex-direction: column; gap: 4px;
-          padding: 4px 0 2px;
-        }
-        .dialer-dot {
-          width: 4px; height: 4px; border-radius: 50%;
-          background: rgba(255,255,255,0.25);
-          transition: all 0.3s ease;
-        }
-        .dialer-dot.is-active {
-          background: #f0b429;
-          box-shadow: 0 0 4px #f0b429;
-          width: 4px; height: 4px;
-        }
-
-        /* Hint arrow — peeks from the right edge of the closed capsule */
-        .dialer-hint {
-          font-size: 0.65rem; color: rgba(240,180,41,0.7);
-          animation: dialerHint 1.8s ease-in-out infinite;
-          margin-top: 2px;
-        }
-
-        /* OPEN-state wheel */
         .dialer-wheel {
           position: relative;
-          width: 92px;
-          /* height set inline based on ITEM_HEIGHT * visible count */
-          display: flex; flex-direction: column; align-items: center;
-          touch-action: none;
+          width: 100%; height: 100%;
+          /* Subtle scale-up while the user is actively interacting so the
+             whole wheel "wakes up" — but only the items grow visibly; the
+             wheel itself has no chrome. */
+          transition: transform 0.4s cubic-bezier(.34,1.4,.64,1);
         }
-        .dialer-wheel-track {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          /* Items absolutely positioned along this column */
-        }
+        .dialer-wheel.is-active { transform: scale(1.05); }
 
         .dialer-item {
           position: absolute;
-          left: 50%;
+          left: 0;
           top: 50%;
-          width: 60px; height: 60px;
-          margin: -30px 0 0 -30px;
+          width: 38px; height: 38px;
+          margin: -19px 0 0 -19px;
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-          border: 1px solid rgba(255,255,255,0.1);
-          color: rgba(255,255,255,0.7);
+          background: linear-gradient(180deg, rgba(30,26,42,0.95), rgba(10,8,16,0.95));
+          color: rgba(255,255,255,0.78);
+          font-size: 1.05rem;
+          border: none;
+          padding: 0;
           cursor: pointer;
-          font-size: 1.4rem;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          /* Depth — these are the only visible UI in the navbar */
+          box-shadow:
+            0 6px 16px rgba(0,0,0,0.55),
+            0 2px 5px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(255,255,255,0.10),
+            inset 0 -1px 0 rgba(0,0,0,0.4);
           will-change: transform, opacity;
-          /* No CSS transition during drag — JS sets transform every frame.
-             Snap-on-release uses the .snapping class for a one-shot transition. */
-          transition: background 0.25s, border-color 0.25s, color 0.25s;
+          /* No transition on transform during drag — JS sets it every frame. */
+          transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+          /* Drop the focus ring outline (only show on keyboard nav) */
+          outline: none;
         }
-        .dialer-item.snapping { transition: transform 0.32s cubic-bezier(.34,1.4,.64,1), opacity 0.32s, background 0.25s, border-color 0.25s, color 0.25s; }
+        .dialer-item.snapping {
+          transition:
+            transform ${SNAP_MS}ms cubic-bezier(.34,1.4,.64,1),
+            opacity   ${SNAP_MS}ms ease,
+            background 0.3s ease,
+            color 0.3s ease,
+            box-shadow 0.3s ease;
+        }
+        .dialer-item:focus-visible {
+          box-shadow:
+            0 0 0 2px rgba(240,180,41,0.65),
+            0 6px 16px rgba(0,0,0,0.55);
+        }
+
+        /* The centred (3-o'clock) item — gold, glowing, bigger feel.
+           The scale is set inline (driven by cosine of angle to centre)
+           so it's already big; this class just colorizes it. */
         .dialer-item.is-centre {
-          background: linear-gradient(135deg, #f0d060, #f0b429 55%, #c9911a);
-          border-color: rgba(255,231,140,0.85);
+          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
           color: #1a1208;
           box-shadow:
-            0 10px 26px rgba(240,180,41,0.45),
+            0 8px 22px rgba(240,180,41,0.45),
+            0 2px 6px rgba(0,0,0,0.35),
             inset 0 2px 0 rgba(255,255,255,0.55),
             inset 0 -2px 0 rgba(120,80,0,0.3);
-          animation: dialerGlow 2.4s ease-in-out infinite;
+        }
+        .dialer-wheel.is-active .dialer-item.is-centre {
+          /* While actively engaged, the centre glows brighter + has a soft halo */
+          box-shadow:
+            0 10px 30px rgba(240,180,41,0.75),
+            0 0 0 5px rgba(240,180,41,0.18),
+            inset 0 2px 0 rgba(255,255,255,0.6),
+            inset 0 -2px 0 rgba(120,80,0,0.3);
         }
 
         .dialer-item-pulse {
           position: absolute;
-          top: 8px; right: 10px;
-          width: 7px; height: 7px;
+          top: 6px; right: 7px;
+          width: 6px; height: 6px;
           border-radius: 50%;
           background: #ff3859;
-          box-shadow: 0 0 8px #ff3859;
+          box-shadow: 0 0 6px #ff3859;
         }
 
-        .dialer-item-label {
+        /* Idle-state subtle hint chevron — peeks out at the centred item's
+           right edge when wheel is dim. Disappears on touch (.is-active). */
+        .dialer-hint {
           position: absolute;
-          left: calc(100% + 8px);
+          left: ${PROTRUSION + 6}px;
           top: 50%;
           transform: translateY(-50%);
-          padding: 4px 10px;
-          background: rgba(0,0,0,0.7);
-          border: 1px solid rgba(240,180,41,0.35);
-          border-radius: 999px;
-          font-size: 0.66rem;
+          font-size: 0.55rem;
+          color: rgba(240,180,41,0.55);
           font-weight: 800;
-          color: #fbd26a;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          white-space: nowrap;
+          letter-spacing: 0.1em;
+          animation: dialerHintNudge 1.8s ease-in-out infinite;
           pointer-events: none;
+          transition: opacity 0.3s ease;
+          opacity: 1;
+        }
+        .dialer-wheel.is-active ~ .dialer-hint,
+        .dialer-wheel.is-active .dialer-hint {
           opacity: 0;
-          transition: opacity 0.25s ease;
-        }
-        .dialer-item.is-centre .dialer-item-label { opacity: 1; }
-
-        /* Centre selection guide — chevron pointing right from outside the wheel */
-        .dialer-guide {
-          position: absolute;
-          left: 100%;
-          top: 50%;
-          transform: translate(-2px, -50%);
-          width: 0; height: 0;
-          border-top: 8px solid transparent;
-          border-bottom: 8px solid transparent;
-          border-left: 10px solid rgba(240,180,41,0.7);
-          filter: drop-shadow(0 0 6px rgba(240,180,41,0.5));
-          pointer-events: none;
-        }
-
-        /* Close handle — small "x" button on the open wheel */
-        .dialer-close {
-          position: absolute;
-          top: -10px;
-          right: -10px;
-          width: 26px; height: 26px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.2);
-          color: #fff;
-          font-size: 0.75rem;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          backdrop-filter: blur(8px);
-          z-index: 2;
         }
       `}</style>
 
-      {/* Backdrop — taps outside the wheel close it */}
-      <div className={`dialer-backdrop ${open ? "open" : ""}`} onClick={() => setOpen(false)} />
+      <div
+        className="dialer-root"
+        onTouchStart={(e) => onStart(e.touches[0].clientY)}
+        onTouchMove={(e) => onMove(e.touches[0].clientY)}
+        onTouchEnd={onEnd}
+        onTouchCancel={onEnd}
+        onMouseDown={(e) => { onStart(e.clientY); }}
+        onMouseMove={(e) => { if (dragRef.current) onMove(e.clientY); }}
+        onMouseUp={onEnd}
+        onMouseLeave={() => { if (dragRef.current) onEnd(); }}
+      >
+        <div className={`dialer-wheel ${active ? "is-active" : ""}`}>
+          {ITEMS.map((item, i) => {
+            // Angle (degrees) from 3-o'clock position. Positive = below.
+            let angle = (i - rotation) * ANGLE_STEP;
+            // Normalize to [-180, 180]
+            angle = ((angle % 360) + 540) % 360 - 180;
 
-      <div className="dialer-root">
-        <div className={`dialer-pill ${open ? "is-open" : ""}`}>
-          {open ? (
-            /* ── OPEN WHEEL ── */
-            <div
-              ref={wheelRef}
-              className="dialer-wheel"
-              style={{ height: `${ITEM_HEIGHT * Math.min(5, ITEMS.length)}px` }}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove as any}
-              onTouchEnd={onTouchEnd}
-              onMouseDown={onTouchStart as any}
-            >
-              <div className="dialer-wheel-track">
-                {ITEMS.map((item, i) => {
-                  const distance = i - rotation;
-                  const absD = Math.abs(distance);
-                  // Hide items more than 2.5 slots away
-                  if (absD > 2.5) return null;
-                  const isCentre = Math.round(rotation) === i;
-                  const scale = Math.max(0.45, 1 - absD * 0.22);
-                  const opacity = Math.max(0.18, 1 - absD * 0.32);
-                  // Arc bulge — items further from centre push slightly LEFT (away
-                  // from the screen edge) for a 3D dial illusion.
-                  const arcX = -Math.pow(absD, 2) * 3;
-                  // Perspective rotation around X axis (degrees)
-                  const rotX = distance * 22;
-                  const isSnap = !dragRef.current; // smooth animate on release
-                  return (
-                    <button
-                      key={item.href}
-                      className={`dialer-item ${isCentre ? "is-centre" : ""} ${isSnap ? "snapping" : ""}`}
-                      style={{
-                        transform: `translate(${arcX}px, ${distance * ITEM_HEIGHT}px) scale(${scale}) rotateX(${rotX}deg)`,
-                        opacity,
-                        zIndex: 10 - Math.round(absD),
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (isCentre) {
-                          handleCentreTap();
-                        } else {
-                          setRotation(i);
-                        }
-                      }}
-                    >
-                      <span>{item.icon}</span>
-                      {item.pulse && !isCentre && <span className="dialer-item-pulse" />}
-                      <span className="dialer-item-label">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <span className="dialer-guide" aria-hidden />
-              <button className="dialer-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
-            </div>
-          ) : (
-            /* ── CLOSED CAPSULE ── */
-            <>
+            // Cull items behind the wheel (rendered, but not on the visible side).
+            // cos(±90°) = 0 ; allow a small overshoot so they fade smoothly.
+            if (Math.cos(angle * Math.PI / 180) < -0.15) return null;
+
+            const rad = angle * Math.PI / 180;
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+            const x = WHEEL_CX + cosA * WHEEL_R;
+            const y = sinA * WHEEL_R;
+
+            // Scale: centre = big, edges = small. Active state amplifies.
+            const baseScale = active ? 0.55 : 0.45;
+            const scaleVar  = active ? 0.75 : 0.55;
+            const scale = baseScale + Math.max(0, cosA) * scaleVar;
+
+            // Opacity fades as the item rotates toward 90°+
+            const opacity = Math.max(0.15, cosA * 1.1);
+            const isCentre = Math.abs(angle) < ANGLE_STEP / 2;
+
+            return (
               <button
-                className="dialer-active-btn"
-                onClick={() => setOpen(true)}
-                aria-label={`Open menu (${ITEMS[activeIdx].label})`}
+                key={item.href}
+                className={`dialer-item ${isCentre ? "is-centre" : ""} ${snapping ? "snapping" : ""}`}
+                aria-label={item.label}
+                style={{
+                  transform: `translate(${x}px, ${y}px) scale(${scale.toFixed(3)})`,
+                  opacity: opacity.toFixed(3),
+                  zIndex: 10 + Math.round(cosA * 10),
+                }}
+                tabIndex={isCentre ? 0 : -1}
               >
-                <span>{ITEMS[activeIdx].icon}</span>
+                <span>{item.icon}</span>
+                {item.pulse && !isCentre && <span className="dialer-item-pulse" />}
               </button>
-              <div className="dialer-dots" aria-hidden>
-                {ITEMS.map((_, i) => (
-                  <span key={i} className={`dialer-dot ${i === activeIdx ? "is-active" : ""}`} />
-                ))}
-              </div>
-              <span className="dialer-hint" aria-hidden>›</span>
-            </>
-          )}
+            );
+          })}
+          <span className="dialer-hint" aria-hidden>›</span>
         </div>
       </div>
     </>
