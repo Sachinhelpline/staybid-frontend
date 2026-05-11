@@ -811,8 +811,8 @@ claude "Read CLAUDE.md fully, then ask me what to work on next for StayBid front
 ```
 
 ### Key context to mention if starting fresh
-- Branch: `claude/sleepy-elgamal-1dfbc1` (worktree, also pushed to `main`)
-- Current production version: **v29** (commit `da91f1e`)
+- Branch: `claude/reverent-gates-39aab8` (worktree, pushed to `main` on every commit)
+- Current production version: **v49** (commit `5f7e59d` on main)
 - Supabase project: `uxxhbdqedazpmvbvaosh` — use `lib/sb.ts` helpers for any new Next.js API route
 - Live site: `https://www.staybids.in` served from Vercel project `staybid-customer-frontend` (NOT `staybid-frontend`)
 - All 12+ Supabase tables live, ALL triggers + RPCs live (no backend Railway changes needed)
@@ -991,3 +991,123 @@ components/Navbar.tsx # already hides on /discover and /reels (line 178/179)
 components/ServerStatus.tsx # hides on /discover, /reels, /admin, /partner, /onboard (added v23)
 public/sw.js          # CACHE_NAME bumped per release
 ```
+
+---
+
+## Stories + Highlights + Account Upgrade Era (v30 → v49, May 2026)
+
+This batch covered three big themes: making the reel feed feel like a complete profile (stories, highlights, tagged hotels, profile photos), unifying the Public → Creator / Hotel upgrade flow, and locking the reels viewport to fullscreen on every device.
+
+**Current production version: v49** (commit `5f7e59d` on main).
+
+### v30 → v44: Reels social UX (profile photo, tag hotel, dedup uploads)
+- **v44** — self-follow fix: `_isSelf: true` flag added to PostsStore items so the user's own reels swap the Follow button for a "✦ You" badge. Profile sheet shows "✏️ Edit profile" CTA instead of useless Follow.
+- **ProfilePhotoEditor** in `components/discover/CreateFlow.tsx` — picks a JPEG, scales to ≤256 px, stores as data-URL on `useFollow().myAvatarUrl` (LS key `sb_user_avatar_url`).
+- **HotelPicker** in `CreateFlow.tsx` — debounced search hits `/api/hotels`, sets `taggedHotel` on the post. Feed renders "🏨 At {Hotel} · Explore ›" pill + routes the Book/Bid CTAs to `/hotels/[id]` so viewers convert from a user reel straight into a booking.
+- **Reel double-upload fix** — Composer guards with `postedRef` (immediate ref, not React state) to kill synchronous double-fire from the two Post buttons. PostsStore.addPost also dedups by content fingerprint (kind + mediaMime + posterUrl prefix + caption) within a 5 s window as a belt-and-braces guard.
+
+### v45: Stories + Highlights + Edit profile + grid dedup
+- **Stories (24h auto-expire)** — Composer Story kind gets a "💾 Also save as a post" toggle. `storyExpiresAt = createdAt + 24h` set in PostsStore. The userItems mapper filters expired stories on every render (no background timer). When `keepAsPost: true`, the story is ALSO surfaced in the regular feed and survives past 24h.
+- **StoryViewer** — fullscreen modal in `InstagramHotelFeed.tsx`, IG-style with progress bars at top, prev/next tap zones (30 % each side), centre tap to pause, 5 s per image, video onEnded auto-advance, sanitized caption.
+- **Story ring** — `.ig-avatar.has-story` class adds a rotating colourful conic-gradient ring (`@keyframes igStoryRingSpin`). Self avatar gets the ring whenever `activeStories.length > 0`; tapping the avatar opens the StoryViewer directly (bypasses the avatar popover menu).
+- **Highlights** — `HighlightPicker` in CreateFlow lets the user pick built-in (Mountains / Beaches / Foodie / Suites / Top picks / Solo) OR create a custom highlight (label + emoji). Stored on `useFollow().myCustomHighlights` (LS key `sb_user_custom_highlights_v1`).
+- **Profile-sheet highlights row** — merges built-ins + custom. Tapping a highlight on YOUR own profile filters the personal reel grid to posts tagged with that key. "↺ All reels" chip clears.
+- **Expanded profile editor** — `ProfilePhotoEditor` now also edits Bio (`myBio`), Location (`myLocation`), Website (`myWebsite`), plus inline highlight management. Phone number is NOT editable (anti-bypass + auth identity).
+- **Profile grid: dedup by id + "YOU" pill removed from grid tiles** (still on main feed cards for mixed-source disambiguation).
+
+### v46: /upgrade flow + tier banner + dedup uploads
+- **`/upgrade`** new page — single entry for Public users to apply to Creator (inline form) or Hotel partner (links to external Vercel deploy). Probes account state via `api.getMyInfluencer()` + `sb_partner_token` → `/api/partner/hotel`. Shows the right status banner for PUBLIC / PENDING_CREATOR / CREATOR / HOTEL / BLOCKED.
+- **`SelfTierBanner`** in `InstagramHotelFeed.tsx` — surfaces account-tier state on the user's own profile sheet. Public sees an "Explore upgrade options →" CTA; active creators see a 3-stat strip (Earned / Bookings / Followers); active hotel partners see the open-dashboard link; blocked accounts see an appeal notice.
+
+### v47: True fullscreen reels + real partner panel link
+- **Body lock** for reel pages — new `body.is-reel-page` class in `globals.css` pins html+body to `100dvh`, kills overscroll, removes the URL-bar gap that caused "kabhi fullscreen kabhi nahi" on Android. `/discover` and `/reels` both apply the class via useEffect.
+- **Demo `/hotel-partner` removed** — that route was a stub. The real Hotel Partner panel lives at `https://staybid-hotel-panel.vercel.app` (repo `Sachinhelpline/staybid-hotel-panel`). All navbar entries + SelfTierBanner + `/upgrade` now link to that external URL (target=_blank, ↗ glyph).
+
+### v48: Inline creator application + admin approval queue
+- **Creator application inlined on `/upgrade`** — no more detour through `/influencer/register`. Tap "Apply as a Creator" → form expands right there. Mobile number + display name from auth context are shown read-only at the top so user and admin both see who's applying.
+- **`/influencer/register` retired** — file is now just a redirect to `/upgrade` so cached links keep working. `/influencer/*` layout redirects unregistered users to `/upgrade` instead of `/influencer/register`.
+- **Admin Creator Applications page** — new `/admin/creators` (sidebar entry "✨ Creators" between Users and Hotels). Status filter (pending / active / blocked / all), search by name + phone + bio, Review modal with bio / KYC / bank details + 1-tap **Approve · Pending · Block** + Aadhaar / PAN verified toggles.
+- **`/api/admin/creators`** — GET joins `users.phone / name / email` on the `influencers` row so admin doesn't need a second lookup. PATCH updates `influencers.status / aadhaar_verified / pan_verified` via Supabase REST.
+
+### v49: Upgrade merged into /profile + "Discover" rename + account button
+- **Bug fix: creator application form silent-failed for non-PUBLIC tiers** — gate was `tier === "PUBLIC"`. Hotel partners couldn't open the form. Now opens for any tier that isn't already a creator (or blocked) — Hotel partners can also apply as creators (paths aren't mutually-exclusive).
+- **`<UpgradeSection />`** new shared component at `components/upgrade/UpgradeSection.tsx`. Holds the tier probe (`useAccountTier`), status banner, two-path cards, and inline creator application form. Two variants — `full` (used by `/upgrade`) and `compact` (used by `/profile`).
+- **`/profile` gets the upgrade flow** — new "Upgrade your account" card right after Personal Details. Users see their tier + Apply CTAs + can submit the creator application without leaving `/profile`. `/upgrade` standalone still works as a deep-link target.
+- **Navbar rename**:
+  - Bottom-bar right-most "More" → user's first name + gold avatar initials (or "Account" / "Sign in" by auth state). Same sheet opens on tap — sharper affordance.
+  - Top NAV_LINKS + bottom BOTTOM_PRIMARY "Reels" → "Discover" (describes what the user *does* with it, not just the content type).
+
+### Files added during this era
+```
+app/upgrade/page.tsx                       # /upgrade landing — Creator + Hotel cards, uses UpgradeSection
+app/admin/creators/page.tsx                # Admin queue for creator applications (status filter, review modal)
+app/api/admin/creators/route.ts            # GET creators with users join · PATCH status / KYC flags
+
+components/upgrade/UpgradeSection.tsx      # shared upgrade UI (full / compact variants) — used by /upgrade + /profile
+```
+
+### Files modified (this era)
+```
+app/layout.tsx                             # SB_BUILD + badge bumped each release (v44 → v49)
+app/profile/page.tsx                       # mounts <UpgradeSection variant="compact" />
+app/discover/page.tsx                      # applies body.is-reel-page; inline 100dvh + 100vw
+app/reels/page.tsx                         # same fullscreen body-lock as /discover
+app/influencer/layout.tsx                  # unregistered users → /upgrade (was /influencer/register)
+app/influencer/register/page.tsx           # now a redirect stub to /upgrade
+
+components/Navbar.tsx                      # "More" → account name + initials · "Reels" → "Discover" · "Partner" external to staybid-hotel-panel.vercel.app
+components/discover/InstagramHotelFeed.tsx # StoryViewer, story ring, _isSelf flag, SelfTierBanner, highlights row, dedup grid, account-tier probe
+components/discover/CreateFlow.tsx         # ProfilePhotoEditor, HotelPicker, HighlightPicker, story save-as-post toggle, postedRef double-fire guard
+
+lib/follow-store.tsx                       # +myAvatarUrl, myBio, myLocation, myWebsite, myCustomHighlights (with add/remove)
+lib/posts-store.tsx                        # +taggedHotel, +highlight, +storyExpiresAt, +keepAsPost · content-fingerprint dedup in addPost
+
+app/globals.css                            # `.is-reel-page` html+body fullscreen lock
+public/sw.js                               # CACHE_NAME v44 → v49
+components/admin/sidebar.tsx               # +Creators tab entry
+```
+
+### Hotel Partner panel — external deployment
+- Real partner panel lives at **`https://staybid-hotel-panel.vercel.app`** (repo `Sachinhelpline/staybid-hotel-panel`).
+- The customer-frontend repo has NO local `/hotel-partner` route — that was a demo, removed in v47.
+- All "List your Hotel" / "Open Hotel Dashboard" CTAs (`/upgrade`, profile sheet, navbar Partner chip) use `target="_blank" rel="noopener noreferrer"` to that external URL.
+
+### Account states (single source of truth)
+```
+PUBLIC            ← default for any signed-in user
+PENDING_CREATOR   ← influencers row exists with status="pending"
+CREATOR           ← influencers row with status="active"
+HOTEL             ← partner-token resolves a hotel via /api/partner/hotel
+BLOCKED           ← influencers row with status="blocked"
+UNKNOWN           ← tier probe still in flight
+```
+Tiers detected by `useAccountTier()` in `components/upgrade/UpgradeSection.tsx`. The probe runs once per consumer mount; consumers call `refresh()` after the user submits a creator application so the banner flips PUBLIC → PENDING_CREATOR without a manual reload.
+
+### localStorage Keys added in this era
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `sb_user_avatar_url` | data-URL JPEG | User's profile photo (≤256 px, ~30 KB) |
+| `sb_user_bio` | string | Profile bio (sanitized at render) |
+| `sb_user_location` | string | Profile location |
+| `sb_user_website` | string | Profile website |
+| `sb_user_custom_highlights_v1` | JSON array | User-created highlights `[{key, label, emoji, custom: true}]` |
+
+### Service-worker version map (continued)
+- v30 → social-foundation
+- v31–v43 → see git log
+- v44 → self-follow-fix-profile-photo-hotel-tag
+- v45 → stories-highlights-edit-profile
+- v46 → upgrade-flow-dedup-fix
+- v47 → fullscreen-reels-real-partner-panel
+- v48 → inline-creator-application-admin-approve
+- **v49 → upgrade-in-profile-discover-account-nav (current)**
+
+### Things to Avoid (Stories + Upgrade Era)
+- **Never** gate the inline creator application form to a single tier — Hotel partners and Public users both need to be able to open it. The condition is "not already a creator and not blocked".
+- **Never** add the `/hotel-partner` route back to this repo — the real panel is a separate deployment. Any "List your Hotel" surface should link out via `https://staybid-hotel-panel.vercel.app`.
+- **Never** call `requestFullscreen()` synchronously inside React render — must be inside a user gesture handler (`onTouchStartCapture` / `onClickCapture`). iOS Safari also ignores it for non-video elements; rely on `body.is-reel-page` instead.
+- **Never** strip the `_isSelf` flag from user post items — drives "✦ You" badge, story ring, status banner, SelfTierBanner, profile-edit avatar route.
+- **Never** persist data-URLs larger than ~80 KB to localStorage — that's why ProfilePhotoEditor scales to 256 px @ 0.8 JPEG quality. For full-resolution avatars, use Supabase Storage.
+- **Never** show the user's phone number on any public surface — it's only allowed in the read-only identity strip on `/upgrade` (visible only to the signed-in user themselves) and in the admin creator-review modal.
+
+---
