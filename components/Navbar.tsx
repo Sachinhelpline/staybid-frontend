@@ -128,6 +128,10 @@ export function Navbar() {
   if (pathname?.startsWith("/onboard")) return null;   // onboarding panel has its own header
   if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
   if (pathname?.startsWith("/reels")) return null;     // Instagram-style video feed
+  // `/` now renders DiscoverPage directly (v57). Hide the navbar there too —
+  // the reel feed has its own minimal top chrome (StayBid label + Compare),
+  // and the floating dock at the bottom handles primary nav.
+  if (pathname === "/") return null;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -370,10 +374,8 @@ export function Navbar() {
         @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .sheet-in { animation: sheetIn 0.28s cubic-bezier(0.34,1.2,0.64,1) both; }
         .bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
-        /* Floating dock floats over content but content still needs breathing
-           room so the last item isn't hidden under it. 84px = 56 dock height
-           + 12 bottom gap + ~16 safe-area inset. */
-        @media (max-width: 767px) { body { padding-bottom: 84px; } }
+        /* v59 — body padding-bottom dropped because the left-edge DialerNav
+           does NOT consume vertical space. Pages now flow edge-to-edge. */
       `}</style>
 
       {/* ── TOP NAV (3D reflective) ────────────────────────────────── */}
@@ -480,73 +482,16 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* ── MOBILE FLOATING DOCK (v58 — iOS-style magnification + 3D) ───
-          Compact capsule floating above content, doesn't span full width.
-          Active route grows + gets a permanent gold glow + animated dot.
-          Hovering/touching a button magnifies it; siblings shrink. The
-          centre Discover slot is upsized into a glowing gold FAB to
-          anchor the brand. */}
-      <div className="dock md:hidden">
-        {BOTTOM_PRIMARY.map((item, i) => {
-          const active = isActive(item.href);
-          // Centre slot (Reels/Discover) is the upsized brand FAB
-          const isFab = item.href === "/discover" || item.href === "/reels";
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-label={item.label}
-              prefetch
-              className={`dock-btn ${isFab ? "dock-fab" : ""} ${active ? "is-active" : ""}`}
-            >
-              <span className="dock-btn-icon">{item.icon}</span>
-              <span className="dock-btn-label">{item.label}</span>
-              {item.pulse && !active && <span className="dock-btn-pulse" />}
-            </Link>
-          );
-        })}
-        {/* Account button — initials avatar OR sign-in. Opens the More sheet. */}
-        <button
-          onClick={() => setMoreOpen(!moreOpen)}
-          aria-label={user ? (user.name || "Account") : "Sign in"}
-          className={`dock-btn ${moreOpen ? "is-active" : ""}`}
-        >
-          {user ? (
-            <span
-              className="dock-btn-icon"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 24,
-                height: 24,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg,#c9911a,#f0b429)",
-                color: "#fff",
-                fontSize: "0.62rem",
-                fontWeight: 800,
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(240,180,41,0.4)",
-              }}
-            >
-              {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
-            </span>
-          ) : (
-            <span className="dock-btn-icon">{moreOpen ? "✕" : "👤"}</span>
-          )}
-          <span className="dock-btn-label">
-            {user
-              ? (user.name ? user.name.split(" ")[0].slice(0, 8) : "Me")
-              : "Sign In"}
-          </span>
-        </button>
-      </div>
+      {/* v59 — Bottom dock removed. The new <DialerNav /> on the left edge
+          (mounted globally in app/layout.tsx) handles all mobile nav now.
+          See components/DialerNav.tsx for the rotating-wheel interaction. */}
 
       {/* ── MOBILE MORE SHEET ─────────────────────────────────── */}
       {moreOpen && (
         <>
           <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)} />
-          <div className="md:hidden fixed bottom-[84px] left-0 right-0 z-50 sheet-in"
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 sheet-in"
             style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 50px rgba(0,0,0,0.7)", border: "1px solid rgba(240,180,41,0.25)" }}>
 
             <div className="flex justify-center pt-3 pb-1">

@@ -5,6 +5,7 @@ import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
 import { PostsProvider } from "@/lib/posts-store";
 import { Navbar } from "@/components/Navbar";
+import { DialerNav } from "@/components/DialerNav";
 import { ServerStatus } from "@/components/ServerStatus";
 export const viewport: Viewport = {
   // Black theme color so the OS status-bar / app-switcher chrome blends
@@ -112,8 +113,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PostsProvider>
             <ServerStatus />
             <Navbar />
+            {/* Left-edge rotating wheel nav — replaces the old bottom dock on
+                mobile. Renders globally so it's reachable from /discover and
+                /reels too where the top Navbar is hidden. */}
+            <DialerNav />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v58</div>
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v59</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -124,7 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v58-floating-dock-2026-05-11";
+var SB_BUILD="v59-dialer-wheel-2026-05-11";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){
