@@ -129,13 +129,14 @@ export async function GET(req: NextRequest) {
   }
 
   // City filter for real deals
+  // (avoid `for..of` on Map.keys() — Vercel's tsconfig lacks downlevelIteration)
   const filteredHotelIds = new Set<string>();
-  for (const hid of realByHotel.keys()) {
+  Array.from(realByHotel.keys()).forEach((hid) => {
     const h = hotels.find((x: any) => x.id === hid);
-    if (!h) continue;
+    if (!h) return;
     if (!wantCity || (h.city || "").toLowerCase().includes(wantCity)) filteredHotelIds.add(hid);
-  }
-  for (const hid of syntheticByHotel.keys()) filteredHotelIds.add(hid);
+  });
+  Array.from(syntheticByHotel.keys()).forEach((hid) => filteredHotelIds.add(hid));
 
   // ─── 3) Live availability check — tonight (today → tomorrow) ────────────
   // Inventory model:
