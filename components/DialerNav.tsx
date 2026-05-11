@@ -51,15 +51,26 @@ type Item = {
   useCase: string;
   icon: string;
   pulse?: boolean;
+  external?: boolean;
 };
 
+// Full nav — every section reachable from the dialer (no button missed).
+// Order chosen for navigation frequency: most-used first, account/external last.
 const ITEMS: Item[] = [
-  { href: "/",            label: "Home",    useCase: "your stays",         icon: "🏠" },
-  { href: "/hotels",      label: "Hotels",  useCase: "browse stays",       icon: "🏨" },
-  { href: "/discover",    label: "Reels",   useCase: "watch hotel reels",  icon: "🎬" },
-  { href: "/flash-deals", label: "Deals",   useCase: "live flash sales",   icon: "⚡", pulse: true },
-  { href: "/bid",         label: "Bid",     useCase: "name your price",    icon: "🎯" },
-  { href: "/profile",     label: "Profile", useCase: "your account",       icon: "👤" },
+  { href: "/",                                  label: "Home",         useCase: "home feed",          icon: "🏠" },
+  { href: "/hotels",                            label: "Hotels",       useCase: "browse stays",       icon: "🏨" },
+  { href: "/discover",                          label: "Reels",        useCase: "watch hotel reels",  icon: "🎬" },
+  { href: "/flash-deals",                       label: "Deals",        useCase: "live flash sales",   icon: "⚡", pulse: true },
+  { href: "/bid",                               label: "Bid",          useCase: "name your price",    icon: "🎯" },
+  { href: "/my-bids",                           label: "My Bids",      useCase: "your active bids",   icon: "📋" },
+  { href: "/bookings",                          label: "Bookings",     useCase: "your trips",         icon: "🎫" },
+  { href: "/saved",                             label: "Saved",        useCase: "saved places",       icon: "🔖" },
+  { href: "/verification",                      label: "Verify",       useCase: "stay verification",  icon: "✅" },
+  { href: "/wallet",                            label: "Wallet",       useCase: "balance & history",  icon: "💰" },
+  { href: "/points",                            label: "Points",       useCase: "loyalty rewards",    icon: "⭐" },
+  { href: "/influencer",                        label: "Creator",      useCase: "creator hub",        icon: "✨" },
+  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",  useCase: "hotel dashboard",    icon: "🏢", external: true },
+  { href: "/profile",                           label: "Profile",      useCase: "your account",       icon: "👤" },
 ];
 
 const N = ITEMS.length;
@@ -81,10 +92,11 @@ export function DialerNav() {
   const router = useRouter();
 
   // Which ITEMS index corresponds to the current pathname
+  // External links (e.g., Partner panel) never match — they live off-app.
   const activeIdx = (() => {
     if (pathname === "/") return 0;
     const i = ITEMS.findIndex(it =>
-      it.href !== "/" && (pathname === it.href || pathname.startsWith(it.href + "/"))
+      !it.external && it.href !== "/" && (pathname === it.href || pathname.startsWith(it.href + "/"))
     );
     return i >= 0 ? i : 0;
   })();
@@ -236,11 +248,15 @@ export function DialerNav() {
     snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
 
     if (!wasDrag) {
-      // Tap on centre → navigate
+      // Tap on centre → navigate (or open external link in new tab)
       const centreIdx = ((Math.round(startRot) % N) + N) % N;
       const target = ITEMS[centreIdx];
       if (target && target.href !== pathname) {
-        router.push(target.href);
+        if (target.external) {
+          window.open(target.href, "_blank", "noopener,noreferrer");
+        } else {
+          router.push(target.href);
+        }
       }
       setOpen(false);
       return;
@@ -370,10 +386,11 @@ export function DialerNav() {
           z-index: 59;
           padding: 18px 0;
           border-radius: 28px;
-          background: linear-gradient(180deg, rgba(22,18,32,0.75), rgba(10,8,16,0.92));
+          background: linear-gradient(180deg, rgba(22,18,32,0.78), rgba(10,8,16,0.94));
           backdrop-filter: blur(28px) saturate(200%);
           -webkit-backdrop-filter: blur(28px) saturate(200%);
-          border: 1px solid rgba(255,255,255,0.10);
+          /* Borderless picker container — just glass + shadow for depth */
+          border: none;
           box-shadow:
             0 18px 60px rgba(0,0,0,0.6),
             0 4px 14px rgba(0,0,0,0.4),
@@ -423,20 +440,20 @@ export function DialerNav() {
           margin: -24px 0 0 -24px;
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          font-size: 1.2rem;
-          color: rgba(255,255,255,0.85);
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
-          backdrop-filter: blur(8px) saturate(140%);
-          -webkit-backdrop-filter: blur(8px) saturate(140%);
-          border: 1px solid rgba(255,255,255,0.12);
-          box-shadow:
-            0 4px 10px rgba(0,0,0,0.4),
-            inset 0 1px 0 rgba(255,255,255,0.15);
+          font-size: 1.4rem;
+          color: rgba(255,255,255,0.92);
+          /* BORDERLESS — no outline ring; just the icon sitting on
+             the picker background. Centre item gets its own gold pill
+             via .is-centre. */
+          background: transparent;
+          border: none;
+          box-shadow: none;
           padding: 0; cursor: pointer; outline: none;
           will-change: transform, opacity;
-          /* Transform set inline; CSS handles other props. */
-          transition: background 0.3s ease, color 0.3s ease, box-shadow 0.4s ease, border-color 0.3s ease;
+          /* Subtle text shadow keeps the emoji readable against the
+             translucent picker bg without needing a button background. */
+          text-shadow: 0 2px 4px rgba(0,0,0,0.55);
+          transition: background 0.3s ease, color 0.3s ease, box-shadow 0.4s ease;
         }
         .picker-item.snapping {
           transition:
@@ -448,9 +465,12 @@ export function DialerNav() {
             border-color 0.3s ease;
         }
         .picker-item.is-centre {
+          /* Centre item keeps the gold pill so user knows it's selected.
+             Still borderless — depth comes from gradient + glow halo,
+             not from an outline ring. */
           background: linear-gradient(135deg, rgba(255,225,140,0.98) 0%, rgba(240,180,41,0.98) 55%, rgba(201,145,26,0.98) 100%);
           color: #1a1208;
-          border-color: rgba(255,231,140,0.85);
+          text-shadow: none;
           box-shadow:
             0 10px 28px rgba(240,180,41,0.55),
             0 0 0 4px rgba(240,180,41,0.18),
@@ -578,7 +598,13 @@ export function DialerNav() {
                       e.preventDefault();
                       if (pickerDragRef.current?.moved) return;
                       if (isCentre) {
-                        if (item.href !== pathname) router.push(item.href);
+                        if (item.href !== pathname) {
+                          if (item.external) {
+                            window.open(item.href, "_blank", "noopener,noreferrer");
+                          } else {
+                            router.push(item.href);
+                          }
+                        }
                         setOpen(false);
                       } else {
                         // Tapping a non-centre item snaps it to centre

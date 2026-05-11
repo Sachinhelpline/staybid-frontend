@@ -118,7 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 /reels too where the top Navbar is hidden. */}
             <DialerNav />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v62</div>
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v63</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -129,7 +129,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v62-iphone-picker-2026-05-11";
+var SB_BUILD="v63-borderless-full-nav-2026-05-11";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){
