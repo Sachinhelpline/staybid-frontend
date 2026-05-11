@@ -40,32 +40,41 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
   }, [hotelId, windowMin]);
   const effectiveWindow = Math.max(1, windowMin || hotelWindow || ACCEPTANCE_WINDOW_MIN);
 
-  // On mount: ensure we have a window. If localStorage has none + we got
-  // an acceptedAt prop, seed it now.
+  // On mount: ensure we have an ACTIVE countdown window.
   //
-  // v73 fix: bids ACCEPTED before this device knew about timers (e.g.
-  // pre-v69 bids, or accepted on another device) would have a stale
-  // `acceptedAt` time. Seeding `acceptedAt + 15min` immediately renders
-  // as "expired" — confusing UX with no real countdown.
+  // v74 fix: v73 only handled the no-localStorage case. But customers
+  // who visited /my-bids with v72 already got a stale already-expired
+  // window seeded in localStorage. v73's `readWindow → setW(existing)`
+  // path re-rendered that stale state instead of resetting.
   //
-  // Solution: if the bid was accepted longer ago than the window length,
-  // start a FRESH window from NOW. Customer gets a real 15-min countdown
-  // beginning when they first see the accept on this device.
+  // Rule:
+  //   1. If `acceptedAt` prop is older than the window length, this is
+  //      a STALE/LEGACY bid → ALWAYS reset to a fresh window from NOW,
+  //      overriding any expired localStorage entry. The customer gets
+  //      a real countdown starting from when they opened the page.
+  //   2. Otherwise (recent accept): respect existing window if present,
+  //      else seed fresh.
   useEffect(() => {
+    const STALE_MS = effectiveWindow * 60_000;
+    const isStaleAccept = acceptedAt
+      ? (Date.now() - new Date(acceptedAt).getTime()) > STALE_MS
+      : false;
+
+    if (isStaleAccept) {
+      // Legacy/stale accept: clear any stale localStorage + seed fresh NOW
+      clearWindow(bidId);
+      const seeded = startAcceptanceWindow(bidId, new Date(), effectiveWindow, { hotelId });
+      setW(seeded);
+      return;
+    }
+
+    // Recent accept path
     const existing = readWindow(bidId);
     if (existing) {
       setW(existing);
       return;
     }
-    let acc: Date;
-    if (acceptedAt) {
-      const ageMs = Date.now() - new Date(acceptedAt).getTime();
-      // If accepted within the window time, use the real timestamp.
-      // Otherwise start a fresh window NOW (legacy/cross-device case).
-      acc = ageMs > effectiveWindow * 60_000 ? new Date() : new Date(acceptedAt);
-    } else {
-      acc = new Date();
-    }
+    const acc = acceptedAt ? new Date(acceptedAt) : new Date();
     const seeded = startAcceptanceWindow(bidId, acc, effectiveWindow, { hotelId });
     setW(seeded);
   }, [bidId, acceptedAt, effectiveWindow, hotelId]);
