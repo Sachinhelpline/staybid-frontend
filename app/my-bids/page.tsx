@@ -8,6 +8,10 @@ import { openRazorpayCheckout } from "@/lib/razorpay";
 import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
+import AcceptedBidTimer from "@/components/AcceptedBidTimer";
+import { notify } from "@/lib/notifications";
+import { isSeen, markSeen } from "@/lib/notifications";
+import { clearWindow as clearAcceptWindow } from "@/lib/auto-cancel";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -110,12 +114,49 @@ export default function MyBidsPage() {
           }
         } catch {}
         setBids((prev) => {
-          // Detect new ACCEPTED + unpaid → trigger celebration once
+          // Detect new ACCEPTED + unpaid → trigger celebration + notif
           const prevMap = new Map(prev.map((b: any) => [b.id, b.status]));
           for (const b of list) {
-            if (b.status === "ACCEPTED" && !isPaid(b) && prevMap.get(b.id) && prevMap.get(b.id) !== "ACCEPTED") {
+            const was = prevMap.get(b.id);
+            // Only fire when status actually transitions on this device
+            if (!was) continue;
+            const notifId = `bid-${b.id}-${b.status}`;
+            if (b.status === "ACCEPTED" && was !== "ACCEPTED" && !isPaid(b)) {
               triggerCelebration(b.id);
-              break;
+              if (!isSeen(notifId)) {
+                markSeen(notifId);
+                notify({
+                  id: notifId,
+                  kind: "bid_accepted",
+                  title: "🎉 Bid accepted!",
+                  body: `${b.hotel?.name || "The hotel"} accepted your bid. Pay within 15 min to lock the booking.`,
+                  actions: [
+                    { label: "Pay Now", href: "#", onClick: () => handlePayNow(b), primary: true },
+                    { label: "View", href: "/my-bids" },
+                  ],
+                });
+              }
+            } else if (b.status === "COUNTER" && was !== "COUNTER") {
+              if (!isSeen(notifId)) {
+                markSeen(notifId);
+                notify({
+                  id: notifId,
+                  kind: "bid_countered",
+                  title: "🤝 Hotel countered your bid",
+                  body: `New offer: ₹${(b.counterAmount || 0).toLocaleString()}/night. Review and accept or decline.`,
+                  actions: [{ label: "Review", href: "/my-bids", primary: true }],
+                });
+              }
+            } else if (b.status === "REJECTED" && was !== "REJECTED") {
+              if (!isSeen(notifId)) {
+                markSeen(notifId);
+                notify({
+                  id: notifId,
+                  kind: "bid_rejected",
+                  title: "Bid declined",
+                  body: `${b.hotel?.name || "The hotel"} couldn't accept your bid. Try another offer or hotel.`,
+                });
+              }
             }
           }
           return list;
@@ -593,10 +634,18 @@ export default function MyBidsPage() {
                         <p className="text-[0.7rem] text-white/60">Total ₹{total.toLocaleString("en-IN")} · {nights} night{nights>1?"s":""}</p>
                       </div>
                     </div>
+                    {/* Auto-cancel countdown — 15 min window after accept,
+                        5-min warning popup, expiry banner. */}
+                    <AcceptedBidTimer
+                      bidId={b.id}
+                      acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                      onPayNow={() => handlePayNow(b)}
+                      onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
+                    />
                     <button
                       onClick={() => handlePayNow(b)}
                       disabled={actionLoading === b.id}
-                      className="w-full py-3.5 gold-btn rounded-xl text-sm disabled:opacity-40"
+                      className="w-full py-3.5 gold-btn rounded-xl text-sm disabled:opacity-40 mt-3"
                       style={{ animation: "pulseGlow 2s infinite" }}
                     >
                       {actionLoading === b.id ? "Opening Payment…" : `Pay ₹${total.toLocaleString("en-IN")} & Confirm Booking →`}

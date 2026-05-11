@@ -10,6 +10,8 @@ import { io } from "socket.io-client";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
+import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
+import { notify } from "@/lib/notifications";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -86,6 +88,11 @@ export default function HotelDetail() {
   // review screen shows complete trip details + lets user choose
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
+
+  // Customer's bidder tier — derived from past bid history. Drives the
+  // confidence chip shown in the Negotiate modal + informs backend on
+  // expected auto-accept latency (premium = instant, lowball = manual).
+  const [bidderScore, setBidderScore] = useState<BidderScore | null>(null);
 
   // Inline phone verify (for Google/social login users who have Firebase token)
   const [verifyOpen, setVerifyOpen]         = useState(false);
@@ -181,8 +188,11 @@ export default function HotelDetail() {
     if (!user) return;
     api.getMyBids?.()
       .then((d) => {
-        const hotelBids = (d.bids || []).filter((b: any) => b.hotelId === id);
+        const all = d.bids || [];
+        const hotelBids = all.filter((b: any) => b.hotelId === id);
         setMyBids(hotelBids);
+        // Bidder score is computed from ALL bids across hotels — full history
+        try { setBidderScore(computeBidderScore(all)); } catch {}
       })
       .catch(() => {});
   };
@@ -2478,6 +2488,28 @@ export default function HotelDetail() {
                   </p>
                   <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-gold-400/90 border border-gold-400/25">Locked</span>
                 </div>
+
+                {/* Bidder tier chip — shows customer's historical bid quality
+                    + expected auto-accept window. Premium bidders see "~30s
+                    instant", lowballers see "manual hotel review only". */}
+                {bidderScore && (
+                  <div className="flex items-center gap-3 rounded-2xl p-3 border"
+                    style={{ background: bidderScore.bg, borderColor: bidderScore.color + "55" }}>
+                    <span className="text-xl shrink-0">{bidderScore.badge.split(" ")[0]}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[0.72rem] font-bold" style={{ color: bidderScore.color }}>
+                          {bidderScore.label}
+                        </p>
+                        <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                          style={{ background: bidderScore.color + "22", color: bidderScore.color, border: `1px solid ${bidderScore.color}55` }}>
+                          ⏱ {bidderScore.responseTime}
+                        </span>
+                      </div>
+                      <p className="text-[0.62rem] text-white/60 mt-1 leading-relaxed">{bidderScore.tip}</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* MAIN ARENA: Probability ring + Slot-machine number */}
                 <div className="relative rounded-3xl p-5 overflow-hidden"

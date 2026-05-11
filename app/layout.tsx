@@ -7,6 +7,7 @@ import { PostsProvider } from "@/lib/posts-store";
 import { Navbar } from "@/components/Navbar";
 import { DialerNav } from "@/components/DialerNav";
 import { ServerStatus } from "@/components/ServerStatus";
+import NotificationToast from "@/components/NotificationToast";
 export const viewport: Viewport = {
   // Black theme color so the OS status-bar / app-switcher chrome blends
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
@@ -118,7 +119,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 /reels too where the top Navbar is hidden. */}
             <DialerNav />
             <main className="min-h-screen">{children}</main>
-            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v66</div>
+            {/* Global in-app toaster — subscribes to "sb:notify" events
+                dispatched via lib/notifications.ts notify(). Used by
+                AcceptedBidTimer + bid-status polling in My Bids. */}
+            <NotificationToast />
+            <div style={{position:"fixed",bottom:"4px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v67</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -129,7 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v66-booking-review-hold-payment-2026-05-12";
+var SB_BUILD="v67-smart-timing-notifications-2026-05-12";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){
