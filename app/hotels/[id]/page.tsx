@@ -94,6 +94,23 @@ export default function HotelDetail() {
   // expected auto-accept latency (premium = instant, lowball = manual).
   const [bidderScore, setBidderScore] = useState<BidderScore | null>(null);
 
+  // Per-hotel hold-config (Phase 4) — drives whether the Hold / Pay-at-hotel
+  // buttons render on the Booking Review screen. Fetched once when the
+  // hotel loads; falls back to platform defaults if the API is offline.
+  const [holdConfig, setHoldConfig] = useState<{
+    hold_enabled: boolean;
+    pay_at_hotel_enabled: boolean;
+    tier_overrides: { upTo: number; amount: number }[] | null;
+    acceptance_window_min: number;
+  } | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/hotel-hold-config?hotelId=${encodeURIComponent(String(id))}`)
+      .then((r) => r.json())
+      .then((d) => { if (d?.resolved) setHoldConfig(d.resolved); })
+      .catch(() => {});
+  }, [id]);
+
   // Inline phone verify (for Google/social login users who have Firebase token)
   const [verifyOpen, setVerifyOpen]         = useState(false);
   const [verifyPhone, setVerifyPhone]       = useState("");
@@ -423,8 +440,9 @@ export default function HotelDetail() {
       onPayFull: () => executeFlashBook("full", 0),
       onHold:    (h) => executeFlashBook("hold", h),
       onPayAtHotel: (h) => executeFlashBook("payhotel", h),
-      holdEnabled: true,
-      payAtHotelEnabled: true,
+      holdEnabled: holdConfig?.hold_enabled ?? true,
+      payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
+      holdTiers: holdConfig?.tier_overrides || undefined,
     });
   };
 
@@ -686,8 +704,9 @@ export default function HotelDetail() {
       onPayFull: () => executeBookNow("full", 0, { nights, total }),
       onHold:    (h) => executeBookNow("hold", h, { nights, total }),
       onPayAtHotel: (h) => executeBookNow("payhotel", h, { nights, total }),
-      holdEnabled: true,
-      payAtHotelEnabled: true,
+      holdEnabled: holdConfig?.hold_enabled ?? true,
+      payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
+      holdTiers: holdConfig?.tier_overrides || undefined,
     });
   };
 
@@ -797,8 +816,9 @@ export default function HotelDetail() {
         onPayFull: () => executeNegotiate("full", 0, { nights, total }),
         onHold:    (h) => executeNegotiate("hold", h, { nights, total }),
         onPayAtHotel: (h) => executeNegotiate("payhotel", h, { nights, total }),
-        holdEnabled: true,
-        payAtHotelEnabled: true,
+        holdEnabled: holdConfig?.hold_enabled ?? true,
+        payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
+        holdTiers: holdConfig?.tier_overrides || undefined,
       });
       return;
     }
@@ -942,8 +962,9 @@ export default function HotelDetail() {
       onPayFull: () => executeCounterAccept(bid, "full", 0, { nights, total }),
       onHold:    (h) => executeCounterAccept(bid, "hold", h, { nights, total }),
       onPayAtHotel: (h) => executeCounterAccept(bid, "payhotel", h, { nights, total }),
-      holdEnabled: true,
-      payAtHotelEnabled: true,
+      holdEnabled: holdConfig?.hold_enabled ?? true,
+      payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
+      holdTiers: holdConfig?.tier_overrides || undefined,
     });
   };
 

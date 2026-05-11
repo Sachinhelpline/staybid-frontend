@@ -11,7 +11,7 @@
 // owns the actions and passes them as callbacks.
 
 import { useEffect, useState } from "react";
-import { computeHoldAmount } from "@/lib/hold-amount";
+import { computeHoldAmount, type HoldTier } from "@/lib/hold-amount";
 
 export type RateLine = { label: string; value: string; subtle?: boolean };
 
@@ -40,6 +40,9 @@ export type BookingReviewProps = {
   // Hotel config (per-hotel toggles — fallback to defaults)
   holdEnabled?: boolean;
   payAtHotelEnabled?: boolean;
+  // Per-hotel custom hold tiers (from /api/hotel-hold-config). When omitted,
+  // platform defaults from DEFAULT_HOLD_TIERS apply.
+  holdTiers?: HoldTier[];
 };
 
 export default function BookingReview(p: BookingReviewProps) {
@@ -55,7 +58,7 @@ export default function BookingReview(p: BookingReviewProps) {
 
   if (!p.open) return null;
 
-  const holdAmount = computeHoldAmount(p.totalAmount);
+  const holdAmount = computeHoldAmount(p.totalAmount, p.holdTiers);
   const balanceDue = p.totalAmount - holdAmount;
   const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
   const fmtDate = (s: string) =>

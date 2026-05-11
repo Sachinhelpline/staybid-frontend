@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { resolvePaidAmount, fetchServerPaid } from "@/lib/paid-amount";
 import {
   readHoldState, removeHoldState, formatHoldCountdown, isHoldExpired,
+  hydrateHoldsFromServer,
   type HoldState,
 } from "@/lib/hold-amount";
 import { openRazorpayCheckout } from "@/lib/razorpay";
@@ -68,7 +69,7 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
         hotelName: state.hotelName,
         description: `Balance for ${state.hotelName} · ${state.roomType || "Room"}`,
       });
-      // Record balance payment server-side
+      // Record balance payment server-side (paid amount log)
       try {
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -80,7 +81,16 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
           }),
         });
       } catch {}
-      // Update hold state to completed (kept for audit, can be deleted)
+      // Mark hold completed server-side so admin sees it cleared
+      try {
+        const token = localStorage.getItem("sb_token");
+        await fetch(`/api/holds/${state.bidId}/balance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ balancePaymentId: result.razorpay_payment_id }),
+        });
+      } catch {}
+      // Update local hold state (kept for audit on this device)
       const updated: HoldState = { ...state, balancePaymentId: result.razorpay_payment_id, status: "completed" };
       try { localStorage.setItem("hold_state_" + state.bidId, JSON.stringify(updated)); } catch {}
       setState(updated);
@@ -418,6 +428,10 @@ export default function BookingsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
+
+    // Phase 4: hydrate cross-device holds from /api/holds (fires once on mount,
+    // merges into localStorage so HoldBanner renders even on a fresh browser).
+    hydrateHoldsFromServer().catch(() => {});
 
     Promise.all([
       api.getMyBookings().catch(() => ({ bookings: [] })),

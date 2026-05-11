@@ -85,11 +85,83 @@ export type HoldState = {
 
 const KEY_PREFIX = "hold_state_";
 
+// Saves hold state to BOTH localStorage (offline cache + instant reads)
+// and the backend (cross-device + admin visibility). Backend errors are
+// non-fatal — localStorage still has the truth on this device.
 export function saveHoldState(s: HoldState) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(KEY_PREFIX + s.bidId, JSON.stringify(s));
   } catch {}
+  // Fire-and-forget POST to /api/holds — non-blocking
+  const token = (() => { try { return localStorage.getItem("sb_token"); } catch { return null; } })();
+  if (token) {
+    fetch("/api/holds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        bidId: s.bidId,
+        hotelId: s.hotelId,
+        holdAmount: s.holdAmount,
+        balanceDue: s.balanceDue,
+        totalAmount: s.totalAmount,
+        holdPaymentId: s.holdPaymentId,
+        expiresAt: s.expiresAt,
+        flow: s.flow,
+        payAtHotel: !!s.payAtHotel,
+        checkIn: s.checkIn,
+        checkOut: s.checkOut,
+        roomType: s.roomType,
+        hotelName: s.hotelName,
+      }),
+    }).catch(() => { /* offline / 401 — localStorage still works */ });
+  }
+}
+
+// Backend-aware hydration — fetches a customer's holds from the server
+// and merges into localStorage so cross-device state shows up on a fresh
+// browser. Safe to call repeatedly; localStorage entries that are newer
+// than the server row are preserved.
+export async function hydrateHoldsFromServer(): Promise<HoldState[]> {
+  if (typeof window === "undefined") return [];
+  const token = (() => { try { return localStorage.getItem("sb_token"); } catch { return null; } })();
+  if (!token) return readAllHoldStates();
+  try {
+    const r = await fetch("/api/holds", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return readAllHoldStates();
+    const j = await r.json();
+    const remote: any[] = j.holds || [];
+    for (const h of remote) {
+      const mapped: HoldState = {
+        bidId:           h.bid_id,
+        hotelId:         h.hotel_id,
+        hotelName:       h.hotel_name || "",
+        roomType:        h.room_type || undefined,
+        holdAmount:      Number(h.hold_amount),
+        balanceDue:      Number(h.balance_due),
+        totalAmount:     Number(h.total_amount),
+        holdPaymentId:   h.hold_payment_id || undefined,
+        balancePaymentId:h.balance_payment_id || undefined,
+        expiresAt:       h.expires_at,
+        createdAt:       h.created_at,
+        status:          h.status,
+        flow:            (h.flow as any) || "book-now",
+        checkIn:         h.check_in || undefined,
+        checkOut:        h.check_out || undefined,
+        payAtHotel:      !!h.pay_at_hotel,
+      };
+      // Only override localStorage if remote is newer or local doesn't exist
+      const local = readHoldState(mapped.bidId);
+      if (!local || new Date(local.createdAt).getTime() <= new Date(mapped.createdAt).getTime()) {
+        try { localStorage.setItem(KEY_PREFIX + mapped.bidId, JSON.stringify(mapped)); } catch {}
+      }
+    }
+    return readAllHoldStates();
+  } catch {
+    return readAllHoldStates();
+  }
 }
 
 export function readHoldState(bidId: string): HoldState | null {
