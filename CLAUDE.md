@@ -812,15 +812,26 @@ claude "Read CLAUDE.md fully, then ask me what to work on next for StayBid front
 
 ### Key context to mention if starting fresh
 - Branch: `claude/heuristic-knuth-23cf5e` (worktree, pushed to `main` on every commit)
-- Current production version: **v56** (commit `34eb650` on main — last green Vercel deploy was v55; v56 perf changes uncommitted in worktree)
+- Current production version: **v61** (commit `b0f1ea8` on main, Vercel `dpl_CpVxFnBVu27ALYxN3Peq2HWQcVq6` READY)
 - Supabase project: `uxxhbdqedazpmvbvaosh` — use `lib/sb.ts` helpers for any new Next.js API route
 - Live site: `https://www.staybids.in` served from Vercel project `staybid-customer-frontend` (NOT `staybid-frontend`)
 - All 12+ Supabase tables live, ALL triggers + RPCs live (no backend Railway changes needed)
 - Pattern: additive migrations only, TEXT IDs (CUIDs), Bearer token via `userFromReq()`, push to branch then `branch:main`
 - Always bump `public/sw.js` CACHE_NAME + `app/layout.tsx` SB_BUILD + badge together when shipping UI changes
-- City filter pipeline: globe picker writes `sb_city` + fires `sb:city-change` → /hotels, /flash-deals, /discover all subscribe and re-filter live. New consumer pages should subscribe to the same event.
-- Reel-page fullscreen: use `useReelFullscreen()` from `lib/useReelFullscreen.ts` — never reinvent the body-class lock inline. The hook drives `--reel-vh` from `visualViewport.height` and that's what `globals.css .is-reel-page` reads.
-- Vercel build gotchas (CLAUDE.md "Things to Avoid"): no `for..of` on `Map.keys()` (use `Array.from(...).forEach()`), and verify `@types/react-dom` is in `package.json` whenever importing from `react-dom`.
+
+### Architecture (post-v61)
+- **`/` route renders DiscoverPage directly** (no redirect). Navbar hidden there. Mobile users land in the reel feed in one HTTP round-trip.
+- **Mobile primary nav**: `<DialerNav />` left-edge crown wheel (`components/DialerNav.tsx`). Mounted globally in `app/layout.tsx`. NO bottom dock anymore.
+- **Top Navbar** (`components/Navbar.tsx`): visible on traditional pages (`/hotels`, `/flash-deals`, `/bookings`, `/profile`, etc.) — hidden on `/`, `/discover`, `/reels`, `/admin/*`, `/partner/*`, `/onboard/*`.
+- **City filter pipeline**: globe picker (`components/LocationGlobePicker.tsx`) writes `sb_city` + fires `sb:city-change`. /hotels, /flash-deals, /discover all subscribe.
+- **Reel-page fullscreen**: `useReelFullscreen()` from `lib/useReelFullscreen.ts` writes `--reel-vh` from `visualViewport.height`. Globals.css `.is-reel-page` reads it. Combined with manifest `display: fullscreen` + URL-bar collapse trick (`window.scrollTo(0, 1)` in layout.tsx), works on every device.
+- **SW strategy** (`public/sw.js`): network-only `/api/`, cache-first `/_next/static/`, **stale-while-revalidate HTML** (Instagram-fast warm visits), SWR for images/fonts.
+
+### Vercel build gotchas (CLAUDE.md "Things to Avoid")
+- No `for..of` on `Map.keys()` / `Set.values()` — `tsconfig` doesn't enable `downlevelIteration`. Use `Array.from(...).forEach()`.
+- Verify `@types/react-dom` is in `package.json` whenever importing from `react-dom`.
+- Use `<style jsx global>` (not just `<style jsx>`) for component CSS that affects elements outside the component's render tree.
+- Critical CSS goes in `app/layout.tsx <head>` `<style dangerouslySetInnerHTML={...}>` so it ships before JS hydrates.
 
 ---
 
@@ -1214,5 +1225,110 @@ package.json                                    # +@types/react-dom devDep
 - **Never** import from `react-dom` without verifying `@types/react-dom` is in `package.json` — Vercel's strict TS check will fail the build (we hit this on v55).
 - **Never** strip the `sb:city-change` event listener from `/hotels`, `/flash-deals`, or `InstagramHotelFeed` — they're the live filter pipeline. Without them, the globe picker writes `sb_city` but nothing visibly changes.
 - **Never** mount `LocationGlobeModal` inside a `position: fixed` ancestor that has `backdrop-filter` or `transform` — it'll be trapped inside that ancestor's stacking context. Always portal to `document.body` (the shared component already does this).
+
+---
+
+## Instagram-Fast + Crown Dialer Era (v57 → v61, May 2026)
+
+Five rapid iterations turning the app from "slow open + flaky fullscreen + busy bottom dock" into "tap-icon → reel feed in <500ms + bulletproof mobile fullscreen + Apple-Watch-crown nav".
+
+### v57 — Instagram-fast app open
+- **SW HTML stale-while-revalidate** — repeat visits hit cache in ~30ms; network refresh happens in background. Was network-first w/ 2.5s timeout (always blocked). This is THE big win: app feels native.
+- **Killed `/` → `/discover` 307 redirect** — `app/page.tsx` now renders DiscoverPage directly. Single HTTP round-trip instead of two.
+- **Inline critical CSS in `<head>`** ([app/layout.tsx](app/layout.tsx)) — dark `#07060e` bg + spinner ship before JS hydrates. Zero FOUC.
+- **Theme color matched to feed** — was `#0a0f23` navy (clashed); now `#07060e`. OS status-bar / app-switcher chrome blends seamlessly.
+- **PWA manifest `display: "fullscreen"`** (was `"standalone"`) + `display_override: ["fullscreen", "standalone", "minimal-ui"]` fallback chain. Installed PWA gets true edge-to-edge fullscreen.
+- **URL-bar collapse trick** — `window.scrollTo(0, 1)` on DOMContentLoaded + load forces Android Chrome / Samsung Internet to collapse the URL bar before `useReelFullscreen()`'s body-lock kicks in.
+- **`<html class="sb-pwa">`** added when `matchMedia('(display-mode: fullscreen | standalone)')` matches — so future code can target installed PWAs.
+
+### v58 — Floating dock (interim)
+Bottom-bar redesign with iOS-dock magnification + gold FAB centre + active glow halo. **Replaced in v59** by the left-edge dialer, but the v58 CSS techniques (backdrop-filter glass, animated pulse rings) carried forward.
+
+### v59 — Left-edge dialer wheel (first iteration)
+- **`components/DialerNav.tsx`** — iPod click-wheel UX on left screen edge.
+- Closed pill (active icon + dots) → tap → expanded wheel with rotateX-perspective arc.
+- Drag vertical / mouse wheel → rotates items past 3-o'clock selection.
+- Tap centre → navigate. Tap outside / ✕ → close.
+- Bottom dock removed entirely; `body padding-bottom: 84px` dropped. Mobile content flows edge-to-edge.
+
+### v60 — Apple-Watch-crown rewrite (no chrome)
+- **NO container background, NO border** — wheel chrome is invisible; only round buttons are visible UI.
+- **Wheel mostly off-screen** — centre at `x: -78px`, radius 110, only **32 px protrudes**. Items past ±90° are literally behind the wheel.
+- **NO close (✕) button** — after 1s of no touch, `active` flips false, wheel auto-dims.
+- **Whole wheel never zooms on tap** — only individual items grow via `cos(angle)`-driven scale as they rotate IN AND OUT of the 3-o'clock slot. Tap is purely for navigation.
+- Drag-anywhere on the wake-zone strip works (no need to grab a specific button).
+- Wheel scroll on desktop trackpad supported with auto-snap-after-pause.
+
+### v61 — Smooth glass dialer with use-case labels
+- **Slower drag**: `DRAG_PX_PER_ITEM` 40 → 80 — more deliberate, smoother.
+- **Smoother snap**: `SNAP_MS` 320 → 480 with softer `cubic-bezier(.32, 1.2, .36, 1)`.
+- **Glassmorphism buttons** — `backdrop-filter: blur(12px) saturate(140%)` + translucent gradient + inset highlight. Live floating-glass depth, not flat solid circles.
+- **`useCase` field on every nav item**:
+  - Home → "your stays"
+  - Hotels → "browse stays"
+  - Reels → "watch hotel reels"
+  - Deals → "live flash sales"
+  - Bid → "name your price"
+  - Profile → "your account"
+- **Floating label chip** (`.dialer-label`) beside the centred button — bold gold name + light grey use-case. Fades in on active, fades out on idle. First-time users instantly understand the dial.
+- **True auto-hide** — whole dialer drops to `opacity: 0.42` when idle (was 1.0). Smooth 0.55s fade. Centre-item breathing-glow animation only runs while active.
+- **Anti-overlap fix** — `.dialer-root` has `pointer-events: none`. Only the invisible `.dialer-wake-zone` (48px-wide rim strip) + the round buttons themselves catch touches. Content elsewhere on the screen edge flows through cleanly.
+- **`aria-label="Home — your stays"`** for screen-reader users.
+
+### Files added (this era)
+```
+lib/useReelFullscreen.ts            # visualViewport-driven height var
+components/DialerNav.tsx            # left-edge crown wheel (v59 → v60 → v61)
+```
+
+### Files modified (this era)
+```
+app/layout.tsx                      # critical CSS, URL-bar collapse, SB_BUILD,
+                                     # SW reg deferred to requestIdleCallback,
+                                     # mounts <DialerNav /> globally
+app/page.tsx                        # killed redirect — now renders DiscoverPage directly
+app/discover/page.tsx               # useReelFullscreen hook, dynamic-import feed,
+                                     # /hotels prefetch
+app/reels/page.tsx                  # useReelFullscreen hook
+app/globals.css                     # `.is-reel-page` uses var(--reel-vh)
+app/hotels/page.tsx                 # hydrated guard, sb:city-change listener, prefetch
+app/flash-deals/page.tsx            # hydrated guard, sb:city-change listener
+components/Navbar.tsx               # hide on `/` too (renders DiscoverPage), bottom dock removed
+components/ModeToggle.tsx           # router.prefetch on mount + <Link prefetch>
+components/discover/InstagramHotelFeed.tsx  # sb:city-change subscribe, globe in FilterSheet
+components/LocationGlobePicker.tsx  # removed autoFocus (no auto-keyboard)
+public/sw.js                        # network-first HTML → SWR HTML (v57)
+public/manifest.json                # display: fullscreen + display_override
+package.json                        # +@types/react-dom
+```
+
+### Service-worker version map (continued)
+- v53 → flash-deals-live-premium
+- v54 → globe-location-picker
+- v55 → globe-in-reels-filter
+- v56 → perf-fullscreen
+- v57 → instagram-fast (SWR HTML, killed redirect, critical CSS)
+- v58 → floating-dock (interim bottom-dock redesign)
+- v59 → dialer-wheel (left-edge click-wheel, removed bottom dock)
+- v60 → crown-dialer (no chrome, no close X, auto-dim)
+- **v61 → smooth-glass-dialer (current)** — slower drag, glass buttons, use-case labels, true auto-hide
+
+### Architecture summary (current production)
+- **Bottom dock**: gone. Mobile nav lives on the left edge as `<DialerNav />`, mounted in `app/layout.tsx`.
+- **Top Navbar**: hidden on `/` (DiscoverPage), `/discover`, `/reels`, `/partner/*`, `/admin/*`, `/onboard/*`. Visible elsewhere.
+- **DialerNav hidden on**: `/admin/*`, `/partner/*`, `/onboard/*`. Visible everywhere else (including `/`, `/discover`, `/reels`).
+- **City filter pipeline (v54)**: globe picker writes `sb_city` + fires `sb:city-change` → /hotels, /flash-deals, /discover all subscribe and re-filter live.
+- **Reel-page fullscreen (v56-v57)**: `useReelFullscreen()` writes `--reel-vh` from `visualViewport.height` + manifest fullscreen + URL-bar collapse trick. Bulletproof across iOS Safari, Android Chrome, Samsung Internet, installed PWA.
+- **SW (v57)**: network-only `/api/`, cache-first hashed chunks, **SWR HTML**, SWR images/fonts. Repeat visits open instantly.
+
+### Things to Avoid (Crown Dialer Era)
+- **Never** put `pointer-events: auto` on `.dialer-root` again — content beneath the 48px-wide left-edge strip needs to flow through. Touches are intentionally limited to `.dialer-wake-zone` + the round buttons themselves.
+- **Never** mount the bottom dock back. The user explicitly rejected it — DialerNav replaces all primary nav on mobile.
+- **Never** put a close (✕) button on the dialer wheel — the `active` flag auto-dims after `IDLE_MS` and that's the closing UX. Adding a close button violates the "auto-hide type" feedback (v60 user note).
+- **Never** zoom the entire wheel on tap. Only individual items scale via `cos(angle)`-driven CSS — that's what creates the "button grows as it rotates to centre" feel without any container animation.
+- **Never** rotate items with high sensitivity (`DRAG_PX_PER_ITEM < 60`) — that re-introduces the "too fast" feedback from v59-v60. 80 is the calibrated minimum for the slow, smooth feel.
+- **Never** drop the use-case sublabels from the items — they're the entire UX for "what does each button do". Without them, first-time users have to memorize emoji meanings.
+- **Never** redirect `/` to `/discover` — both should serve the same `DiscoverPage` component directly. The redirect adds a wasted HTTP round-trip and a navbar-hide check race.
+- **Never** revert SW to network-first HTML — warm visits would slow back to ~400ms instead of ~30ms.
 
 ---
