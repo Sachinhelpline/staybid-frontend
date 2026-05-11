@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import LuxuryCalendar from "@/components/LuxuryCalendar";
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -141,6 +142,12 @@ export default function BidPage() {
   });
 
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Luxury calendar
+  const [calCfg, setCalCfg] = useState<{
+    open: boolean;
+    mode: "checkIn" | "checkOut";
+  }>({ open: false, mode: "checkIn" });
 
   const city     = CITY_DATA[form.city];
   const nights   = numNights(form.checkIn, form.checkOut);
@@ -424,15 +431,33 @@ export default function BidPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-white/60 font-medium mb-1.5">Check-in</p>
-                    <input type="date" value={form.checkIn} min={today}
-                      onChange={(e) => { upd("checkIn", e.target.value); if (form.checkOut && e.target.value >= form.checkOut) upd("checkOut", ""); }}
-                      className="input-luxury text-sm w-full" />
+                    <button
+                      type="button"
+                      onClick={() => setCalCfg({ open: true, mode: "checkIn" })}
+                      className="input-luxury text-sm w-full text-left flex items-center justify-between"
+                    >
+                      <span className={form.checkIn ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
+                        {form.checkIn
+                          ? new Date(form.checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                          : "Pick date"}
+                      </span>
+                      <span className="text-gold-500 text-base">📅</span>
+                    </button>
                   </div>
                   <div>
                     <p className="text-xs text-white/60 font-medium mb-1.5">Check-out</p>
-                    <input type="date" value={form.checkOut} min={form.checkIn || today}
-                      onChange={(e) => upd("checkOut", e.target.value)}
-                      className="input-luxury text-sm w-full" />
+                    <button
+                      type="button"
+                      onClick={() => setCalCfg({ open: true, mode: "checkOut" })}
+                      className="input-luxury text-sm w-full text-left flex items-center justify-between"
+                    >
+                      <span className={form.checkOut ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
+                        {form.checkOut
+                          ? new Date(form.checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                          : "Pick date"}
+                      </span>
+                      <span className="text-gold-500 text-base">📅</span>
+                    </button>
                   </div>
                 </div>
                 {nights > 0 && (
@@ -858,6 +883,21 @@ export default function BidPage() {
           Step {step} of {STEPS.length} · {STEPS[step - 1]}
         </p>
       </div>
+
+      {/* Luxury Calendar — synthesizes a city-baseline room for the per-day price overlay */}
+      <LuxuryCalendar
+        open={calCfg.open}
+        mode={calCfg.mode}
+        checkIn={form.checkIn}
+        checkOut={form.checkOut}
+        rooms={[{ floorPrice: city?.avg || 3000 }]}
+        city={form.city || "Mussoorie"}
+        onClose={() => setCalCfg(c => ({ ...c, open: false }))}
+        onApply={({ checkIn: ci, checkOut: co }) => {
+          upd("checkIn", ci);
+          upd("checkOut", co);
+        }}
+      />
     </div>
   );
 }

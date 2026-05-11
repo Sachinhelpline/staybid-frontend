@@ -610,6 +610,7 @@ body.is-reel-page {
   cursor: pointer; transition: all 0.2s ease;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
 }
+.lux-cal-leg.is-locked { opacity: 0.78; cursor: not-allowed; }
 .lux-cal-leg.is-active {
   border-color: #f0b429;
   background: linear-gradient(180deg, #fff8e0 0%, #fff2c8 100%);

@@ -12,6 +12,8 @@ interface Props {
   checkOut: string;
   rooms: Array<{ floorPrice?: number | null }>;
   city: string;
+  /** If set, check-in cannot be changed below this ISO date (e.g. "today" for flash deals). */
+  minCheckIn?: string;
   onClose: () => void;
   onApply: (range: { checkIn: string; checkOut: string }) => void;
 }
@@ -50,7 +52,7 @@ function formatPrice(n: number) {
 }
 
 export default function LuxuryCalendar({
-  open, mode, checkIn, checkOut, rooms, city, onClose, onApply,
+  open, mode, checkIn, checkOut, rooms, city, minCheckIn, onClose, onApply,
 }: Props) {
   // Local draft so user can change both legs without committing until "Apply"
   const [draftIn,  setDraftIn]  = useState<string>(checkIn  || "");
@@ -137,10 +139,20 @@ export default function LuxuryCalendar({
     return d > bounds.start && d < bounds.end;
   }
 
+  const minCheckInDate = useMemo(() => {
+    if (!minCheckIn) return null;
+    const d = fromIso(minCheckIn);
+    if (!d) return null;
+    d.setHours(0,0,0,0);
+    return d;
+  }, [minCheckIn]);
+
   function handleDayTap(iso: string, dateObj: Date) {
     if (dateObj < todayDate) return;
 
     if (picking === "checkIn") {
+      // Lock check-in if minCheckIn is enforced and this tap would change it below the lock
+      if (minCheckInDate && dateObj < minCheckInDate) return;
       setDraftIn(iso);
       // If new checkIn >= existing checkOut, clear checkOut
       if (draftOut && fromIso(draftOut)! <= dateObj) {
@@ -150,7 +162,8 @@ export default function LuxuryCalendar({
     } else {
       // checkOut must be > checkIn
       if (!draftIn || dateObj <= fromIso(draftIn)!) {
-        // treat tap as new checkIn instead
+        // treat tap as new checkIn instead — unless check-in is locked
+        if (minCheckInDate && dateObj < minCheckInDate) return;
         setDraftIn(iso);
         setDraftOut("");
         setPicking("checkOut");
@@ -212,10 +225,12 @@ export default function LuxuryCalendar({
           <div className="lux-cal-legs">
             <button
               type="button"
-              onClick={() => setPicking("checkIn")}
-              className={`lux-cal-leg ${picking === "checkIn" ? "is-active" : ""}`}
+              onClick={() => { if (!minCheckIn) setPicking("checkIn"); }}
+              disabled={!!minCheckIn}
+              className={`lux-cal-leg ${picking === "checkIn" ? "is-active" : ""} ${minCheckIn ? "is-locked" : ""}`}
+              aria-disabled={!!minCheckIn}
             >
-              <span className="lux-cal-leg-label">Check-in</span>
+              <span className="lux-cal-leg-label">Check-in{minCheckIn ? " · Locked" : ""}</span>
               <span className="lux-cal-leg-value">
                 {draftIn
                   ? new Date(draftIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })

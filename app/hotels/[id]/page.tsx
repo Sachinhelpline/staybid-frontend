@@ -107,9 +107,18 @@ export default function HotelDetail() {
   // Global availability selector (above room cards — single source of truth)
   const [globalCheckIn, setGlobalCheckIn]       = useState("");
   const [globalCheckOut, setGlobalCheckOut]     = useState("");
-  // Luxury calendar modal state
-  const [calOpen, setCalOpen]                   = useState(false);
-  const [calMode, setCalMode]                   = useState<"checkIn" | "checkOut">("checkIn");
+  // Luxury calendar modal — single instance, configured per-opener
+  const [calCfg, setCalCfg] = useState<{
+    open: boolean;
+    mode: "checkIn" | "checkOut";
+    checkIn: string;
+    checkOut: string;
+    minCheckIn?: string;  // if set, prevents picking checkIn before this date (e.g. "today" for flash deals)
+    onApply: (r: { checkIn: string; checkOut: string }) => void;
+  }>({ open: false, mode: "checkIn", checkIn: "", checkOut: "", onApply: () => {} });
+
+  const openCalendar = (cfg: Omit<typeof calCfg, "open">) => setCalCfg({ ...cfg, open: true });
+  const closeCalendar = () => setCalCfg(c => ({ ...c, open: false }));
   const [globalAdults, setGlobalAdults]         = useState(2);
   const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
   const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
@@ -1220,7 +1229,12 @@ export default function HotelDetail() {
           <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
             <button
               type="button"
-              onClick={() => { setCalMode("checkIn"); setCalOpen(true); }}
+              onClick={() => openCalendar({
+                mode: "checkIn",
+                checkIn: globalCheckIn,
+                checkOut: globalCheckOut,
+                onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+              })}
               className="picker-tile block text-left"
             >
               <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
@@ -1232,7 +1246,12 @@ export default function HotelDetail() {
             </button>
             <button
               type="button"
-              onClick={() => { setCalMode("checkOut"); setCalOpen(true); }}
+              onClick={() => openCalendar({
+                mode: "checkOut",
+                checkIn: globalCheckIn,
+                checkOut: globalCheckOut,
+                onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+              })}
               className="picker-tile block text-left"
             >
               <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
@@ -1836,13 +1855,24 @@ export default function HotelDetail() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
-                  <input
-                    type="date"
-                    value={flashCheckOut}
-                    onChange={(e) => setFlashCheckOut(e.target.value)}
-                    min={tomorrow}
-                    className="input-luxury text-sm"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => openCalendar({
+                      mode: "checkOut",
+                      checkIn: today,
+                      checkOut: flashCheckOut,
+                      minCheckIn: today,
+                      onApply: ({ checkOut: co }) => { if (co) setFlashCheckOut(co); },
+                    })}
+                    className="input-luxury text-sm w-full text-left flex items-center justify-between"
+                  >
+                    <span className={flashCheckOut ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
+                      {flashCheckOut
+                        ? new Date(flashCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                        : "Pick date"}
+                    </span>
+                    <span className="text-gold-500 text-base">📅</span>
+                  </button>
                 </div>
               </div>
 
@@ -2267,13 +2297,41 @@ export default function HotelDetail() {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-in</label>
-                <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
-                  min={today} className="input-luxury text-sm" />
+                <button
+                  type="button"
+                  onClick={() => openCalendar({
+                    mode: "checkIn",
+                    checkIn, checkOut,
+                    onApply: ({ checkIn: ci, checkOut: co }) => { setCheckIn(ci); setCheckOut(co); },
+                  })}
+                  className="input-luxury text-sm w-full text-left flex items-center justify-between"
+                >
+                  <span className={checkIn ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
+                    {checkIn
+                      ? new Date(checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : "Pick date"}
+                  </span>
+                  <span className="text-gold-500 text-base">📅</span>
+                </button>
               </div>
               <div>
                 <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
-                <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)}
-                  min={checkIn || today} className="input-luxury text-sm" />
+                <button
+                  type="button"
+                  onClick={() => openCalendar({
+                    mode: "checkOut",
+                    checkIn, checkOut,
+                    onApply: ({ checkIn: ci, checkOut: co }) => { setCheckIn(ci); setCheckOut(co); },
+                  })}
+                  className="input-luxury text-sm w-full text-left flex items-center justify-between"
+                >
+                  <span className={checkOut ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
+                    {checkOut
+                      ? new Date(checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : "Pick date"}
+                  </span>
+                  <span className="text-gold-500 text-base">📅</span>
+                </button>
               </div>
             </div>
             <div className="mb-4">
@@ -2336,18 +2394,38 @@ export default function HotelDetail() {
 
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
-                <label className="picker-tile block cursor-pointer">
+                <button
+                  type="button"
+                  onClick={() => openCalendar({
+                    mode: "checkIn",
+                    checkIn: globalCheckIn, checkOut: globalCheckOut,
+                    onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                  })}
+                  className="picker-tile block text-left"
+                >
                   <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
-                  <input type="date" value={globalCheckIn} min={today}
-                    onChange={e => setGlobalCheckIn(e.target.value)}
-                    className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
-                </label>
-                <label className="picker-tile block cursor-pointer">
+                  <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
+                    {globalCheckIn
+                      ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : "Add date"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openCalendar({
+                    mode: "checkOut",
+                    checkIn: globalCheckIn, checkOut: globalCheckOut,
+                    onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                  })}
+                  className="picker-tile block text-left"
+                >
                   <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
-                  <input type="date" value={globalCheckOut} min={globalCheckIn || today}
-                    onChange={e => setGlobalCheckOut(e.target.value)}
-                    className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
-                </label>
+                  <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
+                    {globalCheckOut
+                      ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                      : "Add date"}
+                  </span>
+                </button>
               </div>
 
               {/* Guests */}
@@ -2397,19 +2475,17 @@ export default function HotelDetail() {
         </div>
       )}
 
-      {/* ── Luxury Calendar (per-day live pricing) ── */}
+      {/* ── Luxury Calendar (per-day live pricing) — shared by every date trigger on this page ── */}
       <LuxuryCalendar
-        open={calOpen}
-        mode={calMode}
-        checkIn={globalCheckIn}
-        checkOut={globalCheckOut}
+        open={calCfg.open}
+        mode={calCfg.mode}
+        checkIn={calCfg.checkIn}
+        checkOut={calCfg.checkOut}
+        minCheckIn={calCfg.minCheckIn}
         rooms={hotel?.rooms || []}
         city={hotel?.city || "Mussoorie"}
-        onClose={() => setCalOpen(false)}
-        onApply={({ checkIn: ci, checkOut: co }) => {
-          setGlobalCheckIn(ci);
-          setGlobalCheckOut(co);
-        }}
+        onClose={closeCalendar}
+        onApply={(r) => calCfg.onApply(r)}
       />
 
       {bidSuccess && (
