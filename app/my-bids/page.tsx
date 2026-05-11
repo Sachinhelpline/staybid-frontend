@@ -131,40 +131,54 @@ export default function MyBidsPage() {
           }
         } catch {}
         setBids((prev) => {
-          // Detect new ACCEPTED + unpaid → trigger celebration + notif
+          // v73 fix: also fire reminders on first load (when prev is empty)
+          // so user gets a heads-up about ACCEPTED-but-unpaid bids that
+          // happened before they opened this tab. `isSeen()` dedup keeps
+          // each notif to once-per-device-per-bid.
           const prevMap = new Map(prev.map((b: any) => [b.id, b.status]));
+          const isFirstLoad = prev.length === 0;
+
           for (const b of list) {
             const was = prevMap.get(b.id);
-            // Only fire when status actually transitions on this device
-            if (!was) continue;
             const notifId = `bid-${b.id}-${b.status}`;
-            if (b.status === "ACCEPTED" && was !== "ACCEPTED" && !isPaid(b)) {
+
+            // Status transition during polling: real-time notif
+            const isTransition = was && was !== b.status;
+            // First-load reminder: bid is in a state worth surfacing,
+            // and we've never notified for it on this device
+            const isFirstLoadReminder = isFirstLoad && !isSeen(notifId);
+
+            if (b.status === "ACCEPTED" && !isPaid(b) && (isTransition || isFirstLoadReminder)) {
               triggerCelebration(b.id);
               if (!isSeen(notifId)) {
                 markSeen(notifId);
                 notify({
                   id: notifId,
                   kind: "bid_accepted",
-                  title: "🎉 Bid accepted!",
-                  body: `${b.hotel?.name || "The hotel"} accepted your bid. Pay within 15 min to lock the booking.`,
+                  title: isTransition ? "🎉 Bid accepted!" : "💰 Unpaid accepted bid",
+                  body: isTransition
+                    ? `${b.hotel?.name || "The hotel"} accepted your bid. Pay within 15 min to lock the booking.`
+                    : `${b.hotel?.name || "The hotel"} accepted your bid — pay now to confirm booking.`,
                   actions: [
                     { label: "Pay Now", href: "#", onClick: () => handlePayNow(b), primary: true },
                     { label: "View", href: "/my-bids" },
                   ],
                 });
               }
-            } else if (b.status === "COUNTER" && was !== "COUNTER") {
+            } else if (b.status === "COUNTER" && (isTransition || isFirstLoadReminder)) {
               if (!isSeen(notifId)) {
                 markSeen(notifId);
                 notify({
                   id: notifId,
                   kind: "bid_countered",
-                  title: "🤝 Hotel countered your bid",
+                  title: isTransition ? "🤝 Hotel countered your bid" : "🤝 Counter offer pending",
                   body: `New offer: ₹${(b.counterAmount || 0).toLocaleString()}/night. Review and accept or decline.`,
                   actions: [{ label: "Review", href: "/my-bids", primary: true }],
                 });
               }
-            } else if (b.status === "REJECTED" && was !== "REJECTED") {
+            } else if (b.status === "REJECTED" && isTransition) {
+              // Rejection only fires on transition (no first-load reminder —
+              // already-rejected bids don't need re-surfacing)
               if (!isSeen(notifId)) {
                 markSeen(notifId);
                 notify({

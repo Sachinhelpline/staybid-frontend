@@ -41,15 +41,31 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
   const effectiveWindow = Math.max(1, windowMin || hotelWindow || ACCEPTANCE_WINDOW_MIN);
 
   // On mount: ensure we have a window. If localStorage has none + we got
-  // an acceptedAt prop, seed it now. (Bids that were ACCEPTED before this
-  // build will still be tracked as long as a single visit triggers seeding.)
+  // an acceptedAt prop, seed it now.
+  //
+  // v73 fix: bids ACCEPTED before this device knew about timers (e.g.
+  // pre-v69 bids, or accepted on another device) would have a stale
+  // `acceptedAt` time. Seeding `acceptedAt + 15min` immediately renders
+  // as "expired" — confusing UX with no real countdown.
+  //
+  // Solution: if the bid was accepted longer ago than the window length,
+  // start a FRESH window from NOW. Customer gets a real 15-min countdown
+  // beginning when they first see the accept on this device.
   useEffect(() => {
     const existing = readWindow(bidId);
     if (existing) {
       setW(existing);
       return;
     }
-    const acc = acceptedAt ? new Date(acceptedAt) : new Date();
+    let acc: Date;
+    if (acceptedAt) {
+      const ageMs = Date.now() - new Date(acceptedAt).getTime();
+      // If accepted within the window time, use the real timestamp.
+      // Otherwise start a fresh window NOW (legacy/cross-device case).
+      acc = ageMs > effectiveWindow * 60_000 ? new Date() : new Date(acceptedAt);
+    } else {
+      acc = new Date();
+    }
     const seeded = startAcceptanceWindow(bidId, acc, effectiveWindow, { hotelId });
     setW(seeded);
   }, [bidId, acceptedAt, effectiveWindow, hotelId]);
