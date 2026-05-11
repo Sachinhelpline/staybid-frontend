@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
 import { io } from "socket.io-client";
+import LuxuryCalendar from "@/components/LuxuryCalendar";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -106,6 +107,9 @@ export default function HotelDetail() {
   // Global availability selector (above room cards — single source of truth)
   const [globalCheckIn, setGlobalCheckIn]       = useState("");
   const [globalCheckOut, setGlobalCheckOut]     = useState("");
+  // Luxury calendar modal state
+  const [calOpen, setCalOpen]                   = useState(false);
+  const [calMode, setCalMode]                   = useState<"checkIn" | "checkOut">("checkIn");
   const [globalAdults, setGlobalAdults]         = useState(2);
   const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
   const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
@@ -1212,20 +1216,32 @@ export default function HotelDetail() {
             </div>
           </div>
 
-          {/* Dates row */}
+          {/* Dates row — opens LuxuryCalendar with per-day live pricing */}
           <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
-            <label className="picker-tile block cursor-pointer">
+            <button
+              type="button"
+              onClick={() => { setCalMode("checkIn"); setCalOpen(true); }}
+              className="picker-tile block text-left"
+            >
               <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
-              <input type="date" value={globalCheckIn} min={today}
-                onChange={e => setGlobalCheckIn(e.target.value)}
-                className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
-            </label>
-            <label className="picker-tile block cursor-pointer">
+              <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
+                {globalCheckIn
+                  ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                  : "Add date"}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCalMode("checkOut"); setCalOpen(true); }}
+              className="picker-tile block text-left"
+            >
               <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
-              <input type="date" value={globalCheckOut} min={globalCheckIn || today}
-                onChange={e => setGlobalCheckOut(e.target.value)}
-                className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-luxury-900 p-0" />
-            </label>
+              <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
+                {globalCheckOut
+                  ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                  : "Add date"}
+              </span>
+            </button>
           </div>
 
           {/* Guests row */}
@@ -2380,6 +2396,21 @@ export default function HotelDetail() {
           </div>
         </div>
       )}
+
+      {/* ── Luxury Calendar (per-day live pricing) ── */}
+      <LuxuryCalendar
+        open={calOpen}
+        mode={calMode}
+        checkIn={globalCheckIn}
+        checkOut={globalCheckOut}
+        rooms={hotel?.rooms || []}
+        city={hotel?.city || "Mussoorie"}
+        onClose={() => setCalOpen(false)}
+        onApply={({ checkIn: ci, checkOut: co }) => {
+          setGlobalCheckIn(ci);
+          setGlobalCheckOut(co);
+        }}
+      />
 
       {bidSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
