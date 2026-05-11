@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
 
 const LEVELS = [
   {
@@ -255,6 +256,20 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* ── Account upgrade (Creator / Hotel partner) ── */}
+        {/* Merged into /profile per user feedback — the public profile
+            is now the single discoverable entry for upgrading. The
+            same flow still works at /upgrade for deep links. */}
+        <div className="fade-up bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-4" style={{ animationDelay: "0.12s" }}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-luxury-900 text-base tracking-tight">
+              ✨ Upgrade your account
+            </h3>
+            <a href="/upgrade" className="text-xs font-semibold text-gold-700 hover:underline">Full upgrade page →</a>
+          </div>
+          <UpgradeSection variant="compact" />
         </div>
 
         {/* ── Membership perks ── */}

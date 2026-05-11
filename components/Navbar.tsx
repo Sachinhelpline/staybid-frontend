@@ -10,7 +10,9 @@ const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehr
 const NAV_LINKS = [
   { href: "/hotels",      label: "Hotels",      icon: "🏨" },
   { href: "/flash-deals", label: "Flash Deals", icon: "⚡", pulse: true },
-  { href: "/reels",       label: "Reels",       icon: "🎬" },
+  // "Reels" is just the content type — rename to "Discover" so the chip
+  // describes what the user *does* with it (browse hotel reels).
+  { href: "/reels",       label: "Discover",    icon: "🎬" },
   { href: "/bid",         label: "Place Bid",   icon: "🎯" },
 ];
 
@@ -31,7 +33,7 @@ const USER_LINKS = [
 const BOTTOM_PRIMARY = [
   { href: "/",            label: "Home",      icon: "🏠" },
   { href: "/hotels",      label: "Hotels",    icon: "🏨" },
-  { href: "/reels",       label: "Reels",     icon: "🎬" },
+  { href: "/reels",       label: "Discover",  icon: "🎬" },
   { href: "/flash-deals", label: "Deals",     icon: "⚡", pulse: true },
   { href: "/bid",         label: "Place Bid", icon: "🎯" },
 ];
@@ -410,12 +412,31 @@ export function Navbar() {
               </Link>
             );
           })}
+          {/* The right-most slot used to say "More" but the user pointed
+              out their account is right there — rename to the account
+              first-name (falls back to "Account" / "Sign in" by state)
+              and use the user's initials as the icon so it matches the
+              avatar elsewhere. Behaves identically — tap opens the same
+              sheet. */}
           <button onClick={() => setMoreOpen(!moreOpen)}
             className={`bottom3d-btn flex-1 flex flex-col items-center justify-center gap-1 ${moreOpen ? "is-active" : ""}`}>
             <div className="bottom3d-icon">
-              <span className="text-[1.15rem]">{moreOpen ? "✕" : "☰"}</span>
+              {user ? (
+                <span
+                  className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-full text-[0.66rem] font-bold text-white"
+                  style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}
+                >
+                  {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
+                </span>
+              ) : (
+                <span className="text-[1.15rem]">{moreOpen ? "✕" : "👤"}</span>
+              )}
             </div>
-            <span className="bottom3d-label">More</span>
+            <span className="bottom3d-label">
+              {user
+                ? (user.name ? user.name.split(" ")[0].slice(0, 12) : "Account")
+                : "Sign in"}
+            </span>
           </button>
         </div>
       </div>
