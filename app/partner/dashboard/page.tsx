@@ -3,6 +3,24 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 import { ImageUpload } from "@/components/ImageUpload";
+import BookingChat from "@/components/BookingChat";
+
+// Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
+// shared BookingChat component agnostic of which session keys we use.
+function PartnerBookingChat({ bidId, hotelId, guestName }: { bidId: string; hotelId: string; guestName?: string }) {
+  const [tok, setTok] = useState<string>("");
+  useEffect(() => { setTok(getToken()); }, []);
+  if (!tok || !hotelId) return null;
+  return (
+    <BookingChat
+      bidId={bidId}
+      mode="hotel"
+      hotelId={hotelId}
+      partnerToken={tok}
+      customerName={guestName}
+    />
+  );
+}
 
 const today     = new Date().toISOString().split("T")[0];
 const tomorrow  = new Date(Date.now() + 86400000).toISOString().split("T")[0];
@@ -2055,6 +2073,11 @@ export default function PartnerDashboard() {
                     </a>
                   )}
                 </div>
+
+                {/* Phase 7: in-platform trip chat — gated to confirmed bids.
+                    Anti-bypass sanitizer applied server-side; safe to use for
+                    coordinating early check-in, dietary needs, etc. */}
+                <PartnerBookingChat bidId={b.id} hotelId={hotel?.id || ""} guestName={b.guestName || b.user?.name || "Guest"} />
               </div>
             </div>
           </div>

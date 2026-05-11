@@ -35,15 +35,70 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Flip to ACCEPTED
     const r = await fetch(
-      `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&status=eq.PENDING`,
+      `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&status=eq.PENDING&select=*`,
       { method: "PATCH", headers: SB_H, body: JSON.stringify({ status: "ACCEPTED" }) }
     );
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       return NextResponse.json({ error: d?.message || "Update failed" }, { status: 500 });
     }
-    const data = await r.json().catch(() => []);
-    return NextResponse.json({ ok: true, bid: (data as any[])[0] || null });
+    const updated = ((await r.json().catch(() => [])) as any[])[0];
+
+    // Phase 7: fire confirmation email asynchronously. Best-effort —
+    // failure doesn't block the accept.
+    (async () => {
+      try {
+        const rUser = await fetch(
+          `${SB_URL}/rest/v1/users?id=eq.${encodeURIComponent(user.id)}&select=email,name,phone`,
+          { headers: SB_READ }
+        );
+        const userRow = ((await rUser.json().catch(() => [])) as any[])[0];
+        if (!userRow?.email || !updated) return;
+
+        const rHotel = await fetch(
+          `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(updated.hotelId)}&select=name,city`,
+          { headers: SB_READ }
+        );
+        const hotel = ((await rHotel.json().catch(() => [])) as any[])[0];
+
+        const rRoom = await fetch(
+          `${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(updated.roomId)}&select=type,name`,
+          { headers: SB_READ }
+        );
+        const room = ((await rRoom.json().catch(() => [])) as any[])[0];
+
+        const rReq = await fetch(
+          `${SB_URL}/rest/v1/bid_requests?id=eq.${encodeURIComponent(updated.requestId || "")}&select=checkIn,checkOut,guests`,
+          { headers: SB_READ }
+        );
+        const reqRow = ((await rReq.json().catch(() => [])) as any[])[0];
+
+        const checkIn  = reqRow?.checkIn  || new Date().toISOString();
+        const checkOut = reqRow?.checkOut || new Date(Date.now() + 86400000).toISOString();
+        const nights   = Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+
+        const origin = req.nextUrl?.origin || "https://www.staybids.in";
+        await fetch(`${origin}/api/email/confirm`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: userRow.email,
+            bookingDetails: {
+              bookingId: updated.id,
+              hotelName: hotel?.name || "Your hotel",
+              roomType:  room?.name || room?.type || "Room",
+              checkIn, checkOut,
+              guests: reqRow?.guests || 2,
+              nights,
+              amount: Number(updated.amount || 0) * nights,
+              city: hotel?.city,
+            },
+          }),
+        });
+      } catch { /* fire-and-forget */ }
+    })();
+
+    return NextResponse.json({ ok: true, bid: updated || null });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

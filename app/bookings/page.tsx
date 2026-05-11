@@ -10,6 +10,7 @@ import {
   type HoldState,
 } from "@/lib/hold-amount";
 import { openRazorpayCheckout } from "@/lib/razorpay";
+import BookingChat from "@/components/BookingChat";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -304,6 +305,17 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             <span className="text-white font-bold text-lg">{nights}N</span>
           </div>
         </div>
+
+        {/* Phase 7: trip chat — only on confirmed bookings (status ACCEPTED/
+            CONFIRMED/CHECKED_IN/CHECKED_OUT). Anti-bypass sanitizer applied
+            server-side to every message. */}
+        {isConfirmed && (
+          <BookingChat
+            bidId={b.id}
+            mode="customer"
+            hotelName={hotel.name || "Hotel"}
+          />
+        )}
 
         {/* Expand toggle */}
         <button
