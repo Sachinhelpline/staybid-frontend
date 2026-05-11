@@ -1,29 +1,46 @@
 "use client";
 /* ─────────────────────────────────────────────────────────────────────
-   DialerNav — Apple-Watch-crown style rotating wheel (v61).
+   DialerNav — Floating draggable FAB + iPhone UIPickerView (v62).
 
-   v61 changes per user feedback:
-     1) Slower scroll → 80 px / item (was 40). More deliberate, smoother.
-     2) Smoother snap → 480 ms with even softer easing.
-     3) Translucent glass buttons (backdrop-filter blur).
-     4) Each item carries a "use-case" sublabel (e.g. Home → "your stays").
-     5) Floating label chip fades in next to the centred item with both
-        the item name AND its purpose so any user knows what's there.
-     6) Idle state: WHOLE dialer drops to opacity 0.35 — barely visible
-        silhouette on the screen edge. Content behind stays readable.
-     7) Root has pointer-events: none. Only the items + an invisible
-        "wake-zone" strip on the rim are tappable, so content elsewhere
-        on the screen edge isn't blocked.
-     8) Touch wake-zone OR any item to wake the wheel. Drag-anywhere on
-        the rim works because the wake-zone owns the drag handlers too.
+   v62 design (final, per user feedback):
+   ───────────────────────────────────────
+   The old crown-wheel UX confused users — items past 90° were culled so
+   often only one icon was visible, and the dial column on the left
+   edge overlapped content. Replaced with the iPhone-native pattern:
 
-   Behaviour reminders (unchanged from v60):
-     • Wheel mostly off-screen — only ~32 px of rim peeks out.
-     • Drag vertically to rotate. Wraps mod N.
-     • Tap a centred item → navigate.
-     • 1 s after release → idle (opacity drops, glow softens).
-     • Whole wheel never zooms on tap; only individual items grow as
-       they arrive at the 3-o'clock slot via cos(angle) scale.
+     1) FLOATING FAB (closed state)
+        ─ Single round button, draggable anywhere on the screen.
+        ─ Defaults to left-middle of viewport.
+        ─ User can drag with one finger — on release it snaps to the
+          nearest left/right edge so it never floats over content
+          permanently. Position persists in localStorage.
+        ─ Single tap (no drag) → opens the picker.
+        ─ When idle ≥ 2 s: opacity dips to 0.35 so it's barely visible
+          (still tappable). Touch wakes it.
+
+     2) iPHONE PICKER (open state)
+        ─ A vertical translucent column appears beside the FAB.
+        ─ 5 items rendered SIMULTANEOUSLY:
+              ─2 ─1  0  +1  +2   (positions relative to centre)
+              tiny  med  BIG  med  tiny
+        ─ Smooth continuous scaling/opacity driven by signed distance,
+          not cos(angle). No 90° cliff = no items "disappearing".
+        ─ Drag vertically → wheel rolls smoothly. All visible items
+          move together; the one passing through the centre band grows
+          to full size. Wraps around (mod N).
+        ─ Centre item carries gold "selection band" + label chip
+          (name + use-case).
+        ─ Tap centre → navigate.
+        ─ Backdrop blur dims rest of screen.
+        ─ Tap backdrop OR 1.2 s idle after release → closes back to FAB.
+
+   FAB drag mechanics:
+   ───────────────────
+     onTouchStart records start point + start FAB pos + start time.
+     onTouchMove: if movement > 8 px → drag mode (FAB follows finger).
+     onTouchEnd:
+       ─ if moved → snap FAB to nearest screen edge, persist
+       ─ if didn't move AND elapsed < 500 ms → open picker
    ───────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -37,28 +54,33 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
-  { href: "/",            label: "Home",    useCase: "your stays",      icon: "🏠" },
-  { href: "/hotels",      label: "Hotels",  useCase: "browse stays",    icon: "🏨" },
-  { href: "/discover",    label: "Reels",   useCase: "watch hotel reels", icon: "🎬" },
-  { href: "/flash-deals", label: "Deals",   useCase: "live flash sales",  icon: "⚡", pulse: true },
-  { href: "/bid",         label: "Bid",     useCase: "name your price",   icon: "🎯" },
-  { href: "/profile",     label: "Profile", useCase: "your account",      icon: "👤" },
+  { href: "/",            label: "Home",    useCase: "your stays",         icon: "🏠" },
+  { href: "/hotels",      label: "Hotels",  useCase: "browse stays",       icon: "🏨" },
+  { href: "/discover",    label: "Reels",   useCase: "watch hotel reels",  icon: "🎬" },
+  { href: "/flash-deals", label: "Deals",   useCase: "live flash sales",   icon: "⚡", pulse: true },
+  { href: "/bid",         label: "Bid",     useCase: "name your price",    icon: "🎯" },
+  { href: "/profile",     label: "Profile", useCase: "your account",       icon: "👤" },
 ];
 
 const N = ITEMS.length;
-const ANGLE_STEP = 360 / N;           // 60°
-const WHEEL_R = 110;                  // wheel radius
-const PROTRUSION = 36;                // visible rim width
-const WHEEL_CX = -(WHEEL_R - PROTRUSION);  // -74
-const IDLE_MS = 1000;                 // auto-dim delay
-const SNAP_MS = 480;                  // snap-to-nearest duration (v61: was 320)
-const DRAG_PX_PER_ITEM = 80;          // v61: was 40 — slower, smoother
+const FAB_SIZE = 52;                  // diameter of the floating button
+const FAB_MARGIN = 12;                // distance from screen edges
+const ITEM_SPACING = 60;              // px between items in the picker
+const PICKER_WIDTH = 108;
+const PICKER_HEIGHT = ITEM_SPACING * 5 + 40;  // 5 items + padding
+const DRAG_PX_PER_ITEM = 60;          // picker scroll sensitivity
+const FAB_DRAG_THRESHOLD = 8;         // px before we treat it as a drag (not tap)
+const FAB_TAP_MAX_MS = 500;           // longer hold = treated as drag intent
+const IDLE_CLOSE_MS = 1200;           // picker auto-closes after this long w/o touch
+const FAB_IDLE_DIM_MS = 2000;         // FAB dims to 0.35 after this long w/o touch
+const SNAP_MS = 380;
+const LS_KEY = "sb_dialer_fab_pos";
 
 export function DialerNav() {
   const pathname = usePathname() || "/";
   const router = useRouter();
 
-  // Which ITEMS index corresponds to current pathname
+  // Which ITEMS index corresponds to the current pathname
   const activeIdx = (() => {
     if (pathname === "/") return 0;
     const i = ITEMS.findIndex(it =>
@@ -67,76 +89,173 @@ export function DialerNav() {
     return i >= 0 ? i : 0;
   })();
 
+  // FAB position (relative to viewport)
+  const [fabPos, setFabPos] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === "undefined") return { x: 0, y: 0 };
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p?.x === "number" && typeof p?.y === "number") return p;
+      }
+    } catch {}
+    // Default: left edge, mid-vertical
+    return { x: FAB_MARGIN, y: Math.max(120, Math.round(window.innerHeight / 2 - FAB_SIZE / 2)) };
+  });
+  const [fabDim, setFabDim] = useState(false);   // idle-dim state
+  const [open, setOpen] = useState(false);
   const [rotation, setRotation] = useState(activeIdx);
-  const [active, setActive] = useState(false);
   const [snapping, setSnapping] = useState(false);
 
-  const dragRef = useRef<{ startY: number; startRot: number; moved: boolean } | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fabDragRef = useRef<{ sx: number; sy: number; fx: number; fy: number; moved: boolean; t: number } | null>(null);
+  const pickerDragRef = useRef<{ sy: number; sr: number; moved: boolean } | null>(null);
+  const fabIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pickerIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const snapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync wheel to active route on navigation
+  // ─── FAB idle dim cycle ─────────────────────────────────────
+  const scheduleFabIdle = useCallback(() => {
+    if (fabIdleTimerRef.current) clearTimeout(fabIdleTimerRef.current);
+    fabIdleTimerRef.current = setTimeout(() => setFabDim(true), FAB_IDLE_DIM_MS);
+  }, []);
+  const wakeFab = useCallback(() => {
+    if (fabIdleTimerRef.current) clearTimeout(fabIdleTimerRef.current);
+    setFabDim(false);
+  }, []);
+  useEffect(() => { scheduleFabIdle(); }, [scheduleFabIdle, fabPos.x, fabPos.y]);
+
+  // ─── Picker idle close cycle ────────────────────────────────
+  const schedulePickerClose = useCallback(() => {
+    if (pickerIdleTimerRef.current) clearTimeout(pickerIdleTimerRef.current);
+    pickerIdleTimerRef.current = setTimeout(() => setOpen(false), IDLE_CLOSE_MS);
+  }, []);
+  const wakePicker = useCallback(() => {
+    if (pickerIdleTimerRef.current) clearTimeout(pickerIdleTimerRef.current);
+  }, []);
+
+  // Sync picker rotation when route changes (only if open or first mount)
   useEffect(() => {
-    if (dragRef.current) return;
+    if (pickerDragRef.current) return;
     setSnapping(true);
     setRotation(activeIdx);
     if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
     snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
   }, [activeIdx]);
 
-  const scheduleIdle = useCallback(() => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => setActive(false), IDLE_MS);
+  // Close picker on route change
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  // Re-snap FAB position to nearest edge on viewport resize (so it doesn't fly off-screen)
+  useEffect(() => {
+    const onResize = () => {
+      setFabPos(p => {
+        const maxX = window.innerWidth - FAB_SIZE - FAB_MARGIN;
+        const maxY = window.innerHeight - FAB_SIZE - FAB_MARGIN - 24;
+        return {
+          x: Math.max(FAB_MARGIN, Math.min(maxX, p.x)),
+          y: Math.max(60, Math.min(maxY, p.y)),
+        };
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const wake = useCallback(() => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    setActive(true);
+  // ─── FAB drag/tap handlers ──────────────────────────────────
+  const onFabStart = useCallback((cx: number, cy: number) => {
+    wakeFab();
+    fabDragRef.current = { sx: cx, sy: cy, fx: fabPos.x, fy: fabPos.y, moved: false, t: Date.now() };
+  }, [fabPos.x, fabPos.y, wakeFab]);
+
+  const onFabMove = useCallback((cx: number, cy: number) => {
+    if (!fabDragRef.current) return;
+    const dx = cx - fabDragRef.current.sx;
+    const dy = cy - fabDragRef.current.sy;
+    if (Math.abs(dx) + Math.abs(dy) > FAB_DRAG_THRESHOLD) fabDragRef.current.moved = true;
+    if (!fabDragRef.current.moved) return;
+    const maxX = window.innerWidth - FAB_SIZE - FAB_MARGIN;
+    const maxY = window.innerHeight - FAB_SIZE - FAB_MARGIN - 24;
+    setFabPos({
+      x: Math.max(FAB_MARGIN, Math.min(maxX, fabDragRef.current.fx + dx)),
+      y: Math.max(60, Math.min(maxY, fabDragRef.current.fy + dy)),
+    });
   }, []);
 
-  const onStart = useCallback((clientY: number) => {
-    wake();
+  const onFabEnd = useCallback(() => {
+    if (!fabDragRef.current) return;
+    const wasDrag = fabDragRef.current.moved;
+    const elapsed = Date.now() - fabDragRef.current.t;
+    fabDragRef.current = null;
+
+    if (!wasDrag && elapsed < FAB_TAP_MAX_MS) {
+      // Pure tap → open picker
+      setOpen(true);
+      wakePicker();
+      schedulePickerClose();
+      return;
+    }
+    // Drag ended → snap FAB to nearest left/right edge so it never sits
+    // permanently over content.
+    setFabPos(p => {
+      const w = window.innerWidth;
+      const snapped = {
+        x: p.x + FAB_SIZE / 2 < w / 2 ? FAB_MARGIN : w - FAB_SIZE - FAB_MARGIN,
+        y: p.y,
+      };
+      try { localStorage.setItem(LS_KEY, JSON.stringify(snapped)); } catch {}
+      return snapped;
+    });
+    scheduleFabIdle();
+  }, [scheduleFabIdle, schedulePickerClose, wakePicker]);
+
+  // ─── Picker drag handlers ───────────────────────────────────
+  const onPickerStart = useCallback((cy: number) => {
+    wakePicker();
     setSnapping(false);
-    dragRef.current = { startY: clientY, startRot: rotation, moved: false };
-  }, [rotation, wake]);
+    pickerDragRef.current = { sy: cy, sr: rotation, moved: false };
+  }, [rotation, wakePicker]);
 
-  const onMove = useCallback((clientY: number) => {
-    if (!dragRef.current) return;
-    const dy = clientY - dragRef.current.startY;
-    if (Math.abs(dy) > 4) dragRef.current.moved = true;
-    const next = dragRef.current.startRot + dy / DRAG_PX_PER_ITEM;
+  const onPickerMove = useCallback((cy: number) => {
+    if (!pickerDragRef.current) return;
+    const dy = cy - pickerDragRef.current.sy;
+    if (Math.abs(dy) > 4) pickerDragRef.current.moved = true;
+    // Downward drag → items move down, so rotation decreases (earlier items come into view)
+    const next = pickerDragRef.current.sr - dy / DRAG_PX_PER_ITEM;
     setRotation(((next % N) + N) % N);
   }, []);
 
-  const onEnd = useCallback(() => {
-    if (!dragRef.current) return;
-    const wasDrag = dragRef.current.moved;
-    const startRot = dragRef.current.startRot;
-    dragRef.current = null;
+  const onPickerEnd = useCallback(() => {
+    if (!pickerDragRef.current) return;
+    const wasDrag = pickerDragRef.current.moved;
+    const startRot = pickerDragRef.current.sr;
+    pickerDragRef.current = null;
 
     setSnapping(true);
     setRotation(r => ((Math.round(r) % N) + N) % N);
     if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
     snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
 
-    // Pure tap → navigate
     if (!wasDrag) {
+      // Tap on centre → navigate
       const centreIdx = ((Math.round(startRot) % N) + N) % N;
       const target = ITEMS[centreIdx];
       if (target && target.href !== pathname) {
         router.push(target.href);
       }
+      setOpen(false);
+      return;
     }
-    scheduleIdle();
-  }, [pathname, router, scheduleIdle]);
+    schedulePickerClose();
+  }, [pathname, router, schedulePickerClose]);
 
-  // Desktop wheel-scroll
+  // Desktop wheel-scroll on the picker
   useEffect(() => {
-    const zone = document.querySelector(".dialer-wake-zone") as HTMLElement | null;
-    if (!zone) return;
+    if (!open) return;
+    const el = document.querySelector(".dialer-picker") as HTMLElement | null;
+    if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      wake();
+      wakePicker();
       setSnapping(false);
       setRotation(r => {
         const next = r + Math.sign(e.deltaY) * 0.5;
@@ -147,16 +266,17 @@ export function DialerNav() {
         setSnapping(true);
         setRotation(r => ((Math.round(r) % N) + N) % N);
         setTimeout(() => setSnapping(false), SNAP_MS);
-        scheduleIdle();
+        schedulePickerClose();
       }, 220);
     };
-    zone.addEventListener("wheel", onWheel, { passive: false });
-    return () => zone.removeEventListener("wheel", onWheel);
-  }, [wake, scheduleIdle]);
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [open, wakePicker, schedulePickerClose]);
 
   // Cleanup
   useEffect(() => () => {
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (fabIdleTimerRef.current) clearTimeout(fabIdleTimerRef.current);
+    if (pickerIdleTimerRef.current) clearTimeout(pickerIdleTimerRef.current);
     if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
   }, []);
 
@@ -167,100 +287,158 @@ export function DialerNav() {
     return null;
   }
 
-  // Currently centred item (for the floating label)
   const centreIdx = ((Math.round(rotation) % N) + N) % N;
   const centreItem = ITEMS[centreIdx];
+  const activeItem = ITEMS[activeIdx];
+
+  // Picker appears on the SAME side as the FAB so the FAB feels like the
+  // "handle" of the picker — close to it.
+  const fabOnLeft = typeof window !== "undefined" && fabPos.x + FAB_SIZE / 2 < window.innerWidth / 2;
+  const pickerLeft = fabOnLeft
+    ? fabPos.x + FAB_SIZE + 12
+    : fabPos.x - PICKER_WIDTH - 12;
+  const pickerTop = typeof window !== "undefined"
+    ? Math.max(40, Math.min(window.innerHeight - PICKER_HEIGHT - 40, fabPos.y + FAB_SIZE / 2 - PICKER_HEIGHT / 2))
+    : 100;
 
   return (
     <>
       <style jsx global>{`
-        @keyframes dialerLabelIn {
-          0%   { opacity: 0; transform: translate(8px, -50%); }
-          100% { opacity: 1; transform: translate(0, -50%); }
+        @keyframes dialerFabBreath {
+          0%, 100% { box-shadow: 0 8px 22px rgba(240,180,41,0.4), 0 0 0 0 rgba(240,180,41,0.5), inset 0 2px 0 rgba(255,255,255,0.5); }
+          50%      { box-shadow: 0 10px 28px rgba(240,180,41,0.55), 0 0 0 8px rgba(240,180,41,0), inset 0 2px 0 rgba(255,255,255,0.5); }
         }
-        @keyframes dialerBreath {
-          0%, 100% { box-shadow: 0 6px 18px rgba(240,180,41,0.4), 0 0 0 0 rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
-          50%      { box-shadow: 0 6px 22px rgba(240,180,41,0.5), 0 0 0 6px rgba(240,180,41,0), inset 0 1px 0 rgba(255,255,255,0.5); }
+        @keyframes dialerFabPopIn {
+          0%   { transform: scale(0.6); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
         }
-        @keyframes dialerHintNudge {
-          0%, 100% { transform: translateY(-50%) translateX(0); }
-          50%      { transform: translateY(-50%) translateX(3px); }
+        @keyframes dialerBackdropIn {
+          from { opacity: 0; backdrop-filter: blur(0px); }
+          to   { opacity: 1; backdrop-filter: blur(8px); }
+        }
+        @keyframes dialerPickerIn {
+          from { opacity: 0; transform: scale(0.85); }
+          to   { opacity: 1; transform: scale(1); }
         }
 
-        .dialer-root {
+        /* ── Floating FAB ─────────────────────────────────────── */
+        .dialer-fab {
           position: fixed;
-          left: 0;
-          top: 50%;
-          width: 64px;
-          height: 320px;
-          transform: translateY(-50%);
-          z-index: 50;
-          /* The container itself is INVISIBLE — only the wake-zone strip
-             and the round items inside it are tappable. Content elsewhere
-             on the screen flows through unobstructed. */
-          pointer-events: none;
-          /* Smooth idle ↔ active opacity transition. The user always sees
-             SOMETHING — when idle, it's a faint silhouette so they know
-             the dial exists; when active, it's full strength. */
-          transition: opacity 0.55s ease;
-          opacity: 0.42;
-        }
-        .dialer-root.is-active { opacity: 1; }
-        @media (min-width: 768px) { .dialer-root { display: none; } }
-
-        /* Invisible touch strip along the visible rim. The user can drag
-           anywhere along this zone — not just on a specific button —
-           which matches the Apple-Watch-crown feel where you can spin
-           it from any contact point. */
-        .dialer-wake-zone {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: ${PROTRUSION + 12}px;
-          height: 100%;
-          pointer-events: auto;
+          width: ${FAB_SIZE}px; height: ${FAB_SIZE}px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f0d060 0%, #f0b429 55%, #c9911a 100%);
+          color: #1a1208;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.4rem; font-weight: 800;
+          border: 1px solid rgba(255,231,140,0.7);
+          padding: 0; cursor: grab;
+          outline: none;
+          z-index: 60;
           touch-action: none;
-          cursor: grab;
+          user-select: none;
+          -webkit-user-select: none;
+          will-change: transform, left, top, opacity;
+          animation:
+            dialerFabPopIn 0.4s cubic-bezier(.34,1.5,.64,1) both,
+            dialerFabBreath 2.6s ease-in-out infinite;
+          transition: opacity 0.55s ease, left 0.32s cubic-bezier(.34,1.4,.64,1), top 0.32s cubic-bezier(.34,1.4,.64,1);
         }
-        .dialer-wake-zone:active { cursor: grabbing; }
+        .dialer-fab:active { cursor: grabbing; }
+        .dialer-fab.is-dim { opacity: 0.42; }
+        .dialer-fab.is-dragging {
+          /* Skip the position transition while finger-tracking so it
+             feels instant under the finger. */
+          transition: opacity 0.4s ease;
+        }
+        @media (min-width: 768px) { .dialer-fab { display: none; } }
 
-        .dialer-wheel {
+        /* ── Backdrop (picker open) ───────────────────────────── */
+        .dialer-backdrop {
+          position: fixed; inset: 0;
+          background: rgba(0,0,0,0.55);
+          backdrop-filter: blur(10px) saturate(140%);
+          -webkit-backdrop-filter: blur(10px) saturate(140%);
+          z-index: 58;
+          animation: dialerBackdropIn 0.25s ease both;
+        }
+
+        /* ── iPhone-style picker ──────────────────────────────── */
+        .dialer-picker {
+          position: fixed;
+          width: ${PICKER_WIDTH}px;
+          height: ${PICKER_HEIGHT}px;
+          z-index: 59;
+          padding: 18px 0;
+          border-radius: 28px;
+          background: linear-gradient(180deg, rgba(22,18,32,0.75), rgba(10,8,16,0.92));
+          backdrop-filter: blur(28px) saturate(200%);
+          -webkit-backdrop-filter: blur(28px) saturate(200%);
+          border: 1px solid rgba(255,255,255,0.10);
+          box-shadow:
+            0 18px 60px rgba(0,0,0,0.6),
+            0 4px 14px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(255,255,255,0.12);
+          touch-action: none;
+          animation: dialerPickerIn 0.32s cubic-bezier(.34,1.4,.64,1) both;
+          transform-origin: center center;
+        }
+        /* Gold selection band marking the centre slot */
+        .dialer-picker::before {
+          content: "";
+          position: absolute;
+          left: 10px; right: 10px;
+          top: 50%;
+          height: 56px;
+          margin-top: -28px;
+          border-radius: 18px;
+          background: linear-gradient(180deg, rgba(240,180,41,0.06), rgba(240,180,41,0.02));
+          border-top: 1px solid rgba(240,180,41,0.45);
+          border-bottom: 1px solid rgba(240,180,41,0.45);
+          pointer-events: none;
+        }
+        /* Top/bottom fade — items at extremes ease out into the void */
+        .dialer-picker::after {
+          content: "";
+          position: absolute; inset: 0;
+          border-radius: 28px;
+          background:
+            linear-gradient(180deg,
+              rgba(10,8,16,0.85) 0%,
+              transparent 18%,
+              transparent 82%,
+              rgba(10,8,16,0.85) 100%);
+          pointer-events: none;
+        }
+
+        /* Wheel track inside the picker — items absolutely positioned. */
+        .dialer-picker-track {
           position: relative;
           width: 100%; height: 100%;
-          transition: transform 0.45s cubic-bezier(.34,1.3,.64,1);
-          pointer-events: none;
-        }
-        .dialer-root.is-active .dialer-wheel {
-          transform: scale(1.06);
         }
 
-        .dialer-item {
+        .picker-item {
           position: absolute;
-          left: 0;
-          top: 50%;
-          width: 42px; height: 42px;
-          margin: -21px 0 0 -21px;
+          left: 50%; top: 50%;
+          width: 48px; height: 48px;
+          margin: -24px 0 0 -24px;
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
-          font-size: 1.15rem;
+          font-size: 1.2rem;
           color: rgba(255,255,255,0.85);
-          /* Glassmorphism — translucent + blur instead of solid */
           background:
             linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
-          backdrop-filter: blur(12px) saturate(140%);
-          -webkit-backdrop-filter: blur(12px) saturate(140%);
-          border: 1px solid rgba(255,255,255,0.14);
+          backdrop-filter: blur(8px) saturate(140%);
+          -webkit-backdrop-filter: blur(8px) saturate(140%);
+          border: 1px solid rgba(255,255,255,0.12);
           box-shadow:
-            0 6px 16px rgba(0,0,0,0.5),
-            0 2px 5px rgba(0,0,0,0.3),
-            inset 0 1px 0 rgba(255,255,255,0.18),
-            inset 0 -1px 0 rgba(0,0,0,0.3);
+            0 4px 10px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(255,255,255,0.15);
           padding: 0; cursor: pointer; outline: none;
-          pointer-events: auto;
           will-change: transform, opacity;
+          /* Transform set inline; CSS handles other props. */
           transition: background 0.3s ease, color 0.3s ease, box-shadow 0.4s ease, border-color 0.3s ease;
         }
-        .dialer-item.snapping {
+        .picker-item.snapping {
           transition:
             transform ${SNAP_MS}ms cubic-bezier(.32,1.2,.36,1),
             opacity   ${SNAP_MS}ms cubic-bezier(.32,1.2,.36,1),
@@ -269,27 +447,20 @@ export function DialerNav() {
             box-shadow 0.4s ease,
             border-color 0.3s ease;
         }
-
-        /* Centred (3-o'clock) item */
-        .dialer-item.is-centre {
-          background:
-            linear-gradient(135deg, rgba(255,225,140,0.95) 0%, rgba(240,180,41,0.95) 55%, rgba(201,145,26,0.95) 100%);
+        .picker-item.is-centre {
+          background: linear-gradient(135deg, rgba(255,225,140,0.98) 0%, rgba(240,180,41,0.98) 55%, rgba(201,145,26,0.98) 100%);
           color: #1a1208;
-          border-color: rgba(255,231,140,0.7);
+          border-color: rgba(255,231,140,0.85);
           box-shadow:
-            0 8px 22px rgba(240,180,41,0.45),
-            0 2px 6px rgba(0,0,0,0.35),
+            0 10px 28px rgba(240,180,41,0.55),
+            0 0 0 4px rgba(240,180,41,0.18),
             inset 0 2px 0 rgba(255,255,255,0.55),
             inset 0 -2px 0 rgba(120,80,0,0.3);
         }
-        .dialer-root.is-active .dialer-item.is-centre {
-          /* Breathing glow halo while wheel is actively engaged */
-          animation: dialerBreath 2.2s ease-in-out infinite;
-        }
 
-        .dialer-item-pulse {
+        .picker-item-pulse {
           position: absolute;
-          top: 6px; right: 8px;
+          top: 5px; right: 7px;
           width: 7px; height: 7px;
           border-radius: 50%;
           background: #ff3859;
@@ -297,147 +468,152 @@ export function DialerNav() {
           pointer-events: none;
         }
 
-        /* Floating label chip — fades in next to the centred item.
-           Shows the item NAME (bold) + its USE-CASE (light). Tells any
-           first-time user what each slot is for. */
-        .dialer-label {
-          position: absolute;
-          left: ${PROTRUSION + 22}px;
-          top: 50%;
-          padding: 7px 12px 7px 14px;
-          background: linear-gradient(135deg, rgba(20,18,30,0.92), rgba(10,8,16,0.95));
-          backdrop-filter: blur(14px) saturate(180%);
-          -webkit-backdrop-filter: blur(14px) saturate(180%);
-          border: 1px solid rgba(240,180,41,0.45);
+        /* Floating label chip next to the picker */
+        .dialer-picker-label {
+          position: fixed;
+          z-index: 60;
+          padding: 9px 14px;
+          background: linear-gradient(135deg, rgba(20,18,30,0.95), rgba(10,8,16,0.97));
+          backdrop-filter: blur(16px) saturate(180%);
+          -webkit-backdrop-filter: blur(16px) saturate(180%);
+          border: 1px solid rgba(240,180,41,0.5);
           border-radius: 999px;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
           display: flex; flex-direction: column; align-items: flex-start;
-          gap: 1px;
+          gap: 2px;
           pointer-events: none;
           white-space: nowrap;
-          animation: dialerLabelIn 0.4s cubic-bezier(.34,1.4,.64,1) both;
-          /* Show only when wheel is active. While idle, the label hides so
-             the screen is clean. */
-          opacity: 0;
-          transition: opacity 0.4s ease, transform 0.4s ease;
-          transform: translateY(-50%) translateX(-6px);
+          animation: dialerPickerIn 0.32s cubic-bezier(.34,1.4,.64,1) both;
         }
-        .dialer-root.is-active .dialer-label {
-          opacity: 1;
-          transform: translateY(-50%) translateX(0);
-        }
-        .dialer-label-name {
-          font-size: 0.72rem;
+        .dialer-picker-label-name {
+          font-size: 0.78rem;
           font-weight: 800;
           letter-spacing: 0.04em;
           color: #fbd26a;
           line-height: 1;
         }
-        .dialer-label-use {
-          font-size: 0.56rem;
-          color: rgba(255,255,255,0.55);
+        .dialer-picker-label-use {
+          font-size: 0.6rem;
+          color: rgba(255,255,255,0.6);
           letter-spacing: 0.02em;
           line-height: 1;
         }
 
-        /* Idle hint chevron — peeks at the centred-item position when
-           the wheel is dim, hinting "swipe me". Fades on active. */
-        .dialer-hint {
+        /* Subtle hint dot on FAB indicating active route */
+        .dialer-fab-dot {
           position: absolute;
-          left: ${PROTRUSION + 4}px;
-          top: 50%;
-          font-size: 0.58rem;
-          font-weight: 800;
-          color: rgba(240,180,41,0.7);
-          letter-spacing: 0.1em;
-          animation: dialerHintNudge 1.8s ease-in-out infinite;
+          top: 4px; right: 4px;
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          background: #ff3859;
+          box-shadow: 0 0 6px #ff3859;
           pointer-events: none;
-          transition: opacity 0.4s ease;
-          opacity: 1;
         }
-        .dialer-root.is-active .dialer-hint { opacity: 0; }
       `}</style>
 
-      <div className={`dialer-root ${active ? "is-active" : ""}`}>
-        {/* Invisible drag/wake zone — covers the visible rim so the user
-            can grab the wheel anywhere along it, not just one button. */}
-        <div
-          className="dialer-wake-zone"
-          onTouchStart={(e) => onStart(e.touches[0].clientY)}
-          onTouchMove={(e) => onMove(e.touches[0].clientY)}
-          onTouchEnd={onEnd}
-          onTouchCancel={onEnd}
-          onMouseDown={(e) => onStart(e.clientY)}
-          onMouseMove={(e) => { if (dragRef.current) onMove(e.clientY); }}
-          onMouseUp={onEnd}
-          onMouseLeave={() => { if (dragRef.current) onEnd(); }}
-        />
-
-        <div className="dialer-wheel">
-          {ITEMS.map((item, i) => {
-            let angle = (i - rotation) * ANGLE_STEP;
-            angle = ((angle % 360) + 540) % 360 - 180;
-
-            const rad = angle * Math.PI / 180;
-            const cosA = Math.cos(rad);
-            const sinA = Math.sin(rad);
-            if (cosA < -0.15) return null;
-
-            const x = WHEEL_CX + cosA * WHEEL_R;
-            const y = sinA * WHEEL_R;
-
-            const baseScale = active ? 0.6 : 0.5;
-            const scaleVar  = active ? 0.7 : 0.5;
-            const scale = baseScale + Math.max(0, cosA) * scaleVar;
-            const opacity = Math.max(0.15, cosA * 1.1);
-            const isCentre = Math.abs(angle) < ANGLE_STEP / 2;
-
-            return (
-              <button
-                key={item.href}
-                className={`dialer-item ${isCentre ? "is-centre" : ""} ${snapping ? "snapping" : ""}`}
-                aria-label={`${item.label} — ${item.useCase}`}
-                style={{
-                  transform: `translate(${x}px, ${y}px) scale(${scale.toFixed(3)})`,
-                  opacity: opacity.toFixed(3),
-                  zIndex: 10 + Math.round(cosA * 10),
-                }}
-                tabIndex={isCentre ? 0 : -1}
-                onClick={(e) => {
-                  e.preventDefault();
-                  // If this is a fresh click (no drag), navigate; otherwise
-                  // the wake-zone drag handlers manage it.
-                  if (!dragRef.current) {
-                    wake();
-                    if (isCentre && item.href !== pathname) {
-                      router.push(item.href);
-                    } else if (!isCentre) {
-                      setSnapping(true);
-                      setRotation(i);
-                      setTimeout(() => setSnapping(false), SNAP_MS);
-                    }
-                    scheduleIdle();
-                  }
-                }}
-              >
-                <span>{item.icon}</span>
-                {item.pulse && !isCentre && <span className="dialer-item-pulse" />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Floating "what is this" label — only visible when wheel is active.
-            Shows name + use-case for the currently-centred item. */}
-        {centreItem && (
-          <div key={centreItem.href} className="dialer-label">
-            <span className="dialer-label-name">{centreItem.label}</span>
-            <span className="dialer-label-use">{centreItem.useCase}</span>
-          </div>
+      {/* ── FAB (always rendered, draggable, shows current route icon) ── */}
+      <button
+        className={`dialer-fab ${fabDim && !open ? "is-dim" : ""} ${fabDragRef.current?.moved ? "is-dragging" : ""}`}
+        style={{ left: `${fabPos.x}px`, top: `${fabPos.y}px` }}
+        aria-label={`Navigation menu (current: ${activeItem.label})`}
+        onTouchStart={(e) => onFabStart(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchMove={(e) => onFabMove(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchEnd={onFabEnd}
+        onTouchCancel={onFabEnd}
+        onMouseDown={(e) => onFabStart(e.clientX, e.clientY)}
+        onMouseMove={(e) => { if (fabDragRef.current) onFabMove(e.clientX, e.clientY); }}
+        onMouseUp={onFabEnd}
+        onMouseLeave={() => { if (fabDragRef.current) onFabEnd(); }}
+      >
+        <span>{activeItem.icon}</span>
+        {ITEMS.some(it => it.pulse && it.href !== activeItem.href) && (
+          <span className="dialer-fab-dot" />
         )}
+      </button>
 
-        <span className="dialer-hint" aria-hidden>›</span>
-      </div>
+      {/* ── Backdrop + Picker (open state) ─────────────────────── */}
+      {open && (
+        <>
+          <div className="dialer-backdrop" onClick={() => setOpen(false)} />
+          <div
+            className="dialer-picker"
+            style={{ left: `${pickerLeft}px`, top: `${pickerTop}px` }}
+            onTouchStart={(e) => onPickerStart(e.touches[0].clientY)}
+            onTouchMove={(e) => onPickerMove(e.touches[0].clientY)}
+            onTouchEnd={onPickerEnd}
+            onTouchCancel={onPickerEnd}
+            onMouseDown={(e) => onPickerStart(e.clientY)}
+            onMouseMove={(e) => { if (pickerDragRef.current) onPickerMove(e.clientY); }}
+            onMouseUp={onPickerEnd}
+            onMouseLeave={() => { if (pickerDragRef.current) onPickerEnd(); }}
+          >
+            <div className="dialer-picker-track">
+              {ITEMS.map((item, i) => {
+                // Signed wrapped distance from centre. Range: (-N/2, N/2]
+                let d = i - rotation;
+                d = ((d + N / 2) % N + N) % N - N / 2;
+                const absD = Math.abs(d);
+                // Render 5 items max (2 above + centre + 2 below)
+                if (absD > 2.5) return null;
+
+                const y = d * ITEM_SPACING;
+                // Smooth scaling: 1 at centre, 0.78, 0.55 at ±2
+                const scale = Math.max(0.5, 1 - absD * 0.22);
+                // Smooth opacity: 1 at centre, 0.65, 0.3 at ±2
+                const opacity = Math.max(0.18, 1 - absD * 0.32);
+                const isCentre = absD < 0.5;
+
+                return (
+                  <button
+                    key={item.href}
+                    className={`picker-item ${isCentre ? "is-centre" : ""} ${snapping ? "snapping" : ""}`}
+                    style={{
+                      transform: `translateY(${y.toFixed(2)}px) scale(${scale.toFixed(3)})`,
+                      opacity: opacity.toFixed(3),
+                      zIndex: 10 + Math.round((1 - absD) * 10),
+                    }}
+                    aria-label={`${item.label} — ${item.useCase}`}
+                    tabIndex={isCentre ? 0 : -1}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (pickerDragRef.current?.moved) return;
+                      if (isCentre) {
+                        if (item.href !== pathname) router.push(item.href);
+                        setOpen(false);
+                      } else {
+                        // Tapping a non-centre item snaps it to centre
+                        setSnapping(true);
+                        setRotation(i);
+                        if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
+                        snapTimerRef.current = setTimeout(() => setSnapping(false), SNAP_MS);
+                        schedulePickerClose();
+                      }
+                    }}
+                  >
+                    <span>{item.icon}</span>
+                    {item.pulse && !isCentre && <span className="picker-item-pulse" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Floating label chip next to the picker centre */}
+          {centreItem && (
+            <div
+              className="dialer-picker-label"
+              key={centreItem.href}
+              style={{
+                left: `${fabOnLeft ? pickerLeft + PICKER_WIDTH + 10 : pickerLeft - 140}px`,
+                top: `${pickerTop + PICKER_HEIGHT / 2 - 18}px`,
+              }}
+            >
+              <span className="dialer-picker-label-name">{centreItem.label}</span>
+              <span className="dialer-picker-label-use">{centreItem.useCase}</span>
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }
