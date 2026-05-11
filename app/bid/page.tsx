@@ -884,14 +884,32 @@ export default function BidPage() {
         </p>
       </div>
 
-      {/* Luxury Calendar — synthesizes a city-baseline room for the per-day price overlay */}
+      {/* Luxury Calendar — no specific hotel yet, so we show DEMAND levels (not invented prices). */}
       <LuxuryCalendar
         open={calCfg.open}
         mode={calCfg.mode}
         checkIn={form.checkIn}
         checkOut={form.checkOut}
-        rooms={[{ floorPrice: city?.avg || 3000 }]}
+        rooms={[]}
         city={form.city || "Mussoorie"}
+        pricingMode="demand"
+        headerBanner={
+          form.city ? (
+            <>
+              📊 Showing <strong>demand in {form.city}</strong>. Typical {city?.demand?.toLowerCase() || "moderate"} demand here — average <strong>₹{(city?.avg || 3000).toLocaleString()}/night</strong> across hotels.
+              <span className="lux-cal-banner-sub">
+                Pick dates with lower demand for higher acceptance — your bid wins more often.
+              </span>
+            </>
+          ) : (
+            <>
+              📊 <strong>Pick a city first</strong> to see demand for these dates.
+              <span className="lux-cal-banner-sub">
+                Demand colors show how likely hotels are to accept your bid on each date.
+              </span>
+            </>
+          )
+        }
         onClose={() => setCalCfg(c => ({ ...c, open: false }))}
         onApply={({ checkIn: ci, checkOut: co }) => {
           upd("checkIn", ci);

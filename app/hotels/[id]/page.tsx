@@ -114,6 +114,9 @@ export default function HotelDetail() {
     checkIn: string;
     checkOut: string;
     minCheckIn?: string;  // if set, prevents picking checkIn before this date (e.g. "today" for flash deals)
+    rooms?: Array<{ floorPrice?: number | null }>;  // override which rooms drive the per-day price overlay
+    pricingMode?: "hotel" | "demand" | "none";
+    headerBanner?: React.ReactNode;
     onApply: (r: { checkIn: string; checkOut: string }) => void;
   }>({ open: false, mode: "checkIn", checkIn: "", checkOut: "", onApply: () => {} });
 
@@ -1857,13 +1860,29 @@ export default function HotelDetail() {
                   <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-1.5">Check-out</label>
                   <button
                     type="button"
-                    onClick={() => openCalendar({
-                      mode: "checkOut",
-                      checkIn: today,
-                      checkOut: flashCheckOut,
-                      minCheckIn: today,
-                      onApply: ({ checkOut: co }) => { if (co) setFlashCheckOut(co); },
-                    })}
+                    onClick={() => {
+                      const dp = parseFloat(dealPrice || "0");
+                      const disc = parseFloat(dealDiscount || "0");
+                      const roomFloor = flashRoom?.floorPrice || 0;
+                      openCalendar({
+                        mode: "checkOut",
+                        checkIn: today,
+                        checkOut: flashCheckOut,
+                        minCheckIn: today,
+                        rooms: flashRoom ? [flashRoom] : (hotel?.rooms || []),
+                        pricingMode: "hotel",
+                        headerBanner: (
+                          <>
+                            🔥 <strong>Flash deal valid today only</strong> at <span className="lux-cal-banner-hi">₹{dp.toLocaleString()}/night</span>
+                            {disc > 0 && <> ({disc}% off)</>}.
+                            <span className="lux-cal-banner-sub">
+                              Extending the stay? Future nights are billed at the regular rate shown on each date.
+                            </span>
+                          </>
+                        ),
+                        onApply: ({ checkOut: co }) => { if (co) setFlashCheckOut(co); },
+                      });
+                    }}
                     className="input-luxury text-sm w-full text-left flex items-center justify-between"
                   >
                     <span className={flashCheckOut ? "text-luxury-900 font-semibold" : "text-luxury-400"}>
@@ -2482,7 +2501,9 @@ export default function HotelDetail() {
         checkIn={calCfg.checkIn}
         checkOut={calCfg.checkOut}
         minCheckIn={calCfg.minCheckIn}
-        rooms={hotel?.rooms || []}
+        rooms={calCfg.rooms ?? hotel?.rooms ?? []}
+        pricingMode={calCfg.pricingMode}
+        headerBanner={calCfg.headerBanner}
         city={hotel?.city || "Mussoorie"}
         onClose={closeCalendar}
         onApply={(r) => calCfg.onApply(r)}

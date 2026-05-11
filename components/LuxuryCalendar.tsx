@@ -5,6 +5,15 @@ import { calculateDynamicPrice } from "@/lib/ai-pricing";
 
 type Mode = "checkIn" | "checkOut";
 
+/**
+ * Pricing mode — controls what each day cell displays:
+ *   "hotel"  — per-day price for the supplied room(s) [default]
+ *   "demand" — no price text; only the demand-tier color dot + an explanatory banner.
+ *              Use when no specific hotel is selected yet (e.g. /bid request page).
+ *   "none"   — no overlay at all, just the calendar.
+ */
+export type PricingMode = "hotel" | "demand" | "none";
+
 interface Props {
   open: boolean;
   mode: Mode;
@@ -14,6 +23,9 @@ interface Props {
   city: string;
   /** If set, check-in cannot be changed below this ISO date (e.g. "today" for flash deals). */
   minCheckIn?: string;
+  pricingMode?: PricingMode;
+  /** Optional banner rendered above the day grid (use for flash-deal context, demand explainer, etc.) */
+  headerBanner?: React.ReactNode;
   onClose: () => void;
   onApply: (range: { checkIn: string; checkOut: string }) => void;
 }
@@ -52,7 +64,9 @@ function formatPrice(n: number) {
 }
 
 export default function LuxuryCalendar({
-  open, mode, checkIn, checkOut, rooms, city, minCheckIn, onClose, onApply,
+  open, mode, checkIn, checkOut, rooms, city, minCheckIn,
+  pricingMode = "hotel", headerBanner,
+  onClose, onApply,
 }: Props) {
   // Local draft so user can change both legs without committing until "Apply"
   const [draftIn,  setDraftIn]  = useState<string>(checkIn  || "");
@@ -103,21 +117,26 @@ export default function LuxuryCalendar({
     return cells;
   }, [cursor]);
 
-  // Precompute prices for the month (deterministic — calculateDynamicPrice is hour-stable)
+  // Precompute prices/tiers for the month (deterministic — calculateDynamicPrice is hour-stable)
+  // For "demand" mode we still compute the tier (so color dots render) but never expose price.
+  // For "none" mode we skip the computation entirely.
   const priceMap = useMemo(() => {
     const out: Record<string, { price: number; tier: "green" | "orange" | "red"; score: number }> = {};
-    if (!floorAnchor) return out;
+    if (pricingMode === "none") return out;
+    // Demand mode falls back to a synthetic anchor (1000) since we never render the price anyway.
+    const anchor = floorAnchor || (pricingMode === "demand" ? 1000 : 0);
+    if (!anchor) return out;
     for (const d of monthCells) {
       if (!d) continue;
       if (d < todayDate) continue;
       const iso = toIso(d);
       try {
-        const res = calculateDynamicPrice(floorAnchor, iso, city || "Mussoorie");
+        const res = calculateDynamicPrice(anchor, iso, city || "Mussoorie");
         out[iso] = { price: res.price, tier: demandTier(res.demandScore), score: res.demandScore };
       } catch {}
     }
     return out;
-  }, [monthCells, floorAnchor, city, todayDate]);
+  }, [monthCells, floorAnchor, city, todayDate, pricingMode]);
 
   // Range helpers (using draft + hover preview)
   const inDate  = fromIso(draftIn);
@@ -252,15 +271,28 @@ export default function LuxuryCalendar({
             </button>
           </div>
 
-          {/* Legend */}
-          {floorAnchor > 0 && (
+          {/* Legend — adapts to the active pricing mode */}
+          {pricingMode !== "none" && (
             <div className="lux-cal-legend">
-              <span className="lux-cal-legend-item"><i className="d-green" /> Best Deal</span>
-              <span className="lux-cal-legend-item"><i className="d-orange" /> High Demand</span>
-              <span className="lux-cal-legend-item"><i className="d-red" /> Peak / Surge</span>
+              {pricingMode === "demand" ? (
+                <>
+                  <span className="lux-cal-legend-item"><i className="d-green" /> Low demand</span>
+                  <span className="lux-cal-legend-item"><i className="d-orange" /> Moderate</span>
+                  <span className="lux-cal-legend-item"><i className="d-red" /> Peak / Holiday</span>
+                </>
+              ) : (
+                <>
+                  <span className="lux-cal-legend-item"><i className="d-green" /> Best Deal</span>
+                  <span className="lux-cal-legend-item"><i className="d-orange" /> High Demand</span>
+                  <span className="lux-cal-legend-item"><i className="d-red" /> Peak / Surge</span>
+                </>
+              )}
             </div>
           )}
         </div>
+
+        {/* Optional context banner (flash-deal explainer, etc.) */}
+        {headerBanner && <div className="lux-cal-banner">{headerBanner}</div>}
 
         {/* Month nav */}
         <div className="lux-cal-monthnav">
@@ -322,10 +354,15 @@ export default function LuxuryCalendar({
                 className={classes}
               >
                 <span className="lux-cal-daynum">{d.getDate()}</span>
-                {!past && pData && (
+                {!past && pData && pricingMode === "hotel" && (
                   <span className="lux-cal-dayprice">{formatPrice(pData.price)}</span>
                 )}
-                {!past && !pData && floorAnchor === 0 && (
+                {!past && pricingMode === "demand" && pData && (
+                  <span className="lux-cal-daylabel">
+                    {pData.tier === "green" ? "Low" : pData.tier === "orange" ? "Med" : "High"}
+                  </span>
+                )}
+                {!past && !pData && floorAnchor === 0 && pricingMode === "hotel" && (
                   <span className="lux-cal-daydot" />
                 )}
                 {isToday && <span className="lux-cal-todaymark">Today</span>}
@@ -340,7 +377,13 @@ export default function LuxuryCalendar({
             {nights > 0 ? (
               <>
                 <span className="lux-cal-nights">{nights} night{nights > 1 ? "s" : ""}</span>
-                <span className="lux-cal-footer-sub">Prices update hourly · AI Live Engine</span>
+                <span className="lux-cal-footer-sub">
+                  {pricingMode === "demand"
+                    ? "Demand level shown · Hotels bid based on you"
+                    : pricingMode === "none"
+                      ? "Pick your stay"
+                      : "Prices update hourly · AI Live Engine"}
+                </span>
               </>
             ) : (
               <>
