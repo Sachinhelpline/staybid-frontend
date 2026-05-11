@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/complaints", label: "Complaints", icon: "🚨" },
   { href: "/admin/pricing", label: "Pricing & Deals", icon: "💰" },
   { href: "/admin/hold-config", label: "Hold Config", icon: "🔒" },
+  { href: "/admin/holds", label: "Active Holds", icon: "⏱" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
   { href: "/admin/revenue", label: "Revenue", icon: "💹" },

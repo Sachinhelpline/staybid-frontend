@@ -15,14 +15,30 @@ import { notify } from "@/lib/notifications";
 
 type Props = {
   bidId: string;
-  acceptedAt?: string | Date; // ISO or Date — backend bid.acceptedAt (if available)
+  hotelId?: string;             // for backend persistence + per-hotel windows
+  acceptedAt?: string | Date;   // ISO or Date — backend bid.acceptedAt (if available)
+  windowMin?: number;           // per-hotel override (from hotel_hold_config)
   onPayNow: () => void;
   onExpired?: () => void;
 };
 
-export default function AcceptedBidTimer({ bidId, acceptedAt, onPayNow, onExpired }: Props) {
+export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin, onPayNow, onExpired }: Props) {
   const [w, setW] = useState<AcceptedBidWindow | null>(null);
   const [tick, setTick] = useState(0);
+  const [hotelWindow, setHotelWindow] = useState<number | undefined>(undefined);
+  // Self-fetch the hotel's per-hotel window if not passed in explicitly.
+  // One-shot per (hotelId) — cached for 2 min via the API route header.
+  useEffect(() => {
+    if (windowMin || !hotelId) return;
+    fetch(`/api/hotel-hold-config?hotelId=${encodeURIComponent(hotelId)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        const min = d?.resolved?.acceptance_window_min;
+        if (typeof min === "number" && min > 0) setHotelWindow(min);
+      })
+      .catch(() => {});
+  }, [hotelId, windowMin]);
+  const effectiveWindow = Math.max(1, windowMin || hotelWindow || ACCEPTANCE_WINDOW_MIN);
 
   // On mount: ensure we have a window. If localStorage has none + we got
   // an acceptedAt prop, seed it now. (Bids that were ACCEPTED before this
@@ -34,9 +50,9 @@ export default function AcceptedBidTimer({ bidId, acceptedAt, onPayNow, onExpire
       return;
     }
     const acc = acceptedAt ? new Date(acceptedAt) : new Date();
-    const seeded = startAcceptanceWindow(bidId, acc);
+    const seeded = startAcceptanceWindow(bidId, acc, effectiveWindow, { hotelId });
     setW(seeded);
-  }, [bidId, acceptedAt]);
+  }, [bidId, acceptedAt, effectiveWindow, hotelId]);
 
   // Tick every 1s for countdown + 5-min warning trigger
   useEffect(() => {
@@ -79,14 +95,14 @@ export default function AcceptedBidTimer({ bidId, acceptedAt, onPayNow, onExpire
 
   const expired = isExpired(w);
   const ms = timeLeftMs(w);
-  const pct = Math.max(0, Math.min(100, (ms / (ACCEPTANCE_WINDOW_MIN * 60_000)) * 100));
+  const pct = Math.max(0, Math.min(100, (ms / (effectiveWindow * 60_000)) * 100));
   const warning = ms <= WARNING_THRESHOLD_MIN * 60_000 && !expired;
 
   if (expired || w.cancelledAt) {
     return (
       <div className="mt-3 p-3 rounded-2xl border" style={{ background: "rgba(75,85,99,0.12)", borderColor: "rgba(209,213,219,0.25)" }}>
         <p className="text-xs font-bold text-white/80">⏰ Acceptance window expired</p>
-        <p className="text-[0.65rem] text-white/50 mt-0.5">This bid auto-cancelled after {ACCEPTANCE_WINDOW_MIN} minutes without payment.</p>
+        <p className="text-[0.65rem] text-white/50 mt-0.5">This bid auto-cancelled after {effectiveWindow} minutes without payment.</p>
         <button onClick={() => { clearWindow(bidId); onExpired?.(); }}
           className="text-[0.65rem] font-semibold underline text-white/60 mt-1.5">Dismiss</button>
       </div>

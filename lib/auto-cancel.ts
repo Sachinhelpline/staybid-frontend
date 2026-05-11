@@ -23,16 +23,64 @@ export type AcceptedBidWindow = {
 
 const KEY_PREFIX = "accept_window_";
 
-export function startAcceptanceWindow(bidId: string, acceptedAt: Date | number = Date.now()): AcceptedBidWindow {
+export function startAcceptanceWindow(
+  bidId: string,
+  acceptedAt: Date | number = Date.now(),
+  windowMin: number = ACCEPTANCE_WINDOW_MIN,
+  opts?: { hotelId?: string }
+): AcceptedBidWindow {
   const acc = new Date(typeof acceptedAt === "number" ? acceptedAt : acceptedAt.getTime());
-  const exp = new Date(acc.getTime() + ACCEPTANCE_WINDOW_MIN * 60_000);
+  const exp = new Date(acc.getTime() + Math.max(1, windowMin) * 60_000);
   const w: AcceptedBidWindow = {
     bidId,
     acceptedAt: acc.toISOString(),
     expiresAt: exp.toISOString(),
   };
   saveWindow(w);
+  // Phase 5: mirror to backend so timer survives device changes + admin
+  // dashboard sees active windows. Idempotent — backend POST is a no-op
+  // when row already exists.
+  if (typeof window !== "undefined" && opts?.hotelId) {
+    const token = (() => { try { return localStorage.getItem("sb_token"); } catch { return null; } })();
+    if (token) {
+      fetch("/api/acceptance-windows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bidId, hotelId: opts.hotelId, expiresAt: w.expiresAt, windowMin }),
+      }).catch(() => { /* offline / 401 — localStorage still has it */ });
+    }
+  }
   return w;
+}
+
+// Hydrate acceptance windows from backend on first mount. Mirrors holds
+// hydration pattern from Phase 4.
+export async function hydrateAcceptanceWindowsFromServer(): Promise<AcceptedBidWindow[]> {
+  if (typeof window === "undefined") return [];
+  const token = (() => { try { return localStorage.getItem("sb_token"); } catch { return null; } })();
+  if (!token) return readAllWindows();
+  try {
+    const r = await fetch("/api/acceptance-windows", { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return readAllWindows();
+    const j = await r.json();
+    const remote: any[] = j.windows || [];
+    for (const w of remote) {
+      const mapped: AcceptedBidWindow = {
+        bidId:      w.bid_id,
+        acceptedAt: w.accepted_at,
+        expiresAt:  w.expires_at,
+        warnedAt:   w.warned_at || undefined,
+        cancelledAt: w.status === "cancelled" || w.status === "expired" ? new Date().toISOString() : undefined,
+      };
+      const local = readWindow(mapped.bidId);
+      if (!local || new Date(local.acceptedAt).getTime() <= new Date(mapped.acceptedAt).getTime()) {
+        saveWindow(mapped);
+      }
+    }
+    return readAllWindows();
+  } catch {
+    return readAllWindows();
+  }
 }
 
 export function saveWindow(w: AcceptedBidWindow) {
@@ -85,16 +133,37 @@ export function shouldWarn(w: AcceptedBidWindow): boolean {
   return timeLeftMs(w) <= WARNING_THRESHOLD_MIN * 60_000;
 }
 
+function patchBackend(bidId: string, action: "warned" | "paid" | "cancelled") {
+  if (typeof window === "undefined") return;
+  const token = (() => { try { return localStorage.getItem("sb_token"); } catch { return null; } })();
+  if (!token) return;
+  fetch("/api/acceptance-windows", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ bidId, action }),
+  }).catch(() => { /* fire-and-forget */ });
+}
+
 export function markWarned(bidId: string) {
   const w = readWindow(bidId);
   if (!w) return;
   saveWindow({ ...w, warnedAt: new Date().toISOString() });
+  patchBackend(bidId, "warned");
 }
 
 export function markCancelled(bidId: string) {
   const w = readWindow(bidId);
   if (!w) return;
   saveWindow({ ...w, cancelledAt: new Date().toISOString() });
+  patchBackend(bidId, "cancelled");
+}
+
+export function markPaid(bidId: string) {
+  const w = readWindow(bidId);
+  if (!w) return;
+  // Remove local — booking flow handles UI state from here
+  clearWindow(bidId);
+  patchBackend(bidId, "paid");
 }
 
 export function formatCountdown(w: AcceptedBidWindow): string {

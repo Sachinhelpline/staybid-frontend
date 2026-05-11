@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v68-2026-05-12-admin-hold-config-supabase';
-const HTML_CACHE = 'staybid-html-v68';
+const CACHE_NAME = 'staybid-v69-2026-05-12-hold-lifecycle-admin-dashboard';
+const HTML_CACHE = 'staybid-html-v69';
 
 const PRECACHE_URLS = [
   '/manifest.json',

@@ -11,7 +11,7 @@ import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
-import { clearWindow as clearAcceptWindow } from "@/lib/auto-cancel";
+import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -169,6 +169,8 @@ export default function MyBidsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
+    // Phase 5: hydrate cross-device acceptance windows once on mount.
+    hydrateAcceptanceWindowsFromServer().catch(() => {});
     fetchBids();
     const t = setInterval(() => fetchBids(true), 15_000);
     return () => clearInterval(t);
@@ -638,6 +640,7 @@ export default function MyBidsPage() {
                         5-min warning popup, expiry banner. */}
                     <AcceptedBidTimer
                       bidId={b.id}
+                      hotelId={b.hotelId || b.hotel?.id}
                       acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
                       onPayNow={() => handlePayNow(b)}
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
