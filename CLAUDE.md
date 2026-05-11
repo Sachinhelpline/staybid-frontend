@@ -1332,3 +1332,342 @@ package.json                        # +@types/react-dom
 - **Never** revert SW to network-first HTML — warm visits would slow back to ~400ms instead of ~30ms.
 
 ---
+
+## Bidding Lifecycle Era (v65 → v72, May 2026)
+
+Eight phases shipped back-to-back addressing the user's original 8-paragraph spec covering bid pricing correctness, premium UX, Hold payments, smart auto-accept, in-app notifications, server-side persistence, admin controls, and post-booking chat. Every customer flow from "tap Negotiate" to "checkout day" is now wired end-to-end with cross-device persistence + admin observability.
+
+### v65 — Bid price correctness + premium Negotiate UI
+**Commit:** `89f708d` — `feat(bid): correct customer-bid display + premium Negotiate UI`
+
+**The bug fix.** Below-floor bids are forcibly submitted at `floorPrice` (backend rejects below-floor), so `bid.amount` in DB never matched what the customer actually bid. The customer's real intent is preserved in the message token `"Guest's preferred price: ₹X/night..."`. New helpers in [lib/paid-amount.ts:21](lib/paid-amount.ts:21):
+- `extractCustomerBidFromMessage(msg)` — parses preferred price from the token
+- `resolveBidDisplayAmount(bid)` — priority: counterAmount → message preferred → server paidPerNight → bid.amount
+
+My Bids "Your Bid" tile, Pay-Now total, and Bookings display now show what the customer **actually bid**, not floor.
+
+**The premium UI rebuild.** Negotiate modal in [app/hotels/[id]/page.tsx:2126](app/hotels/[id]/page.tsx:2126) — full casino-grade rebuild:
+- 🔴 LIVE pulsing pill + ⚡ AI BIDDING ARENA header
+- Animated SVG **probability ring** (smooth fill, color shifts red → green by match %)
+- **Slot-machine number** with gold-shimmer reveal on every change
+- **Glowing rainbow slider** (red → amber → green gradient) with gold-halo thumb
+- **🤖 LIVE AI ticker** — rotates 4 tips every 12s (recent accepts, viewer count, demand)
+- **📊 Recent Accepts sparkline** (14d demand bars, peak-day highlighting from a stable per-hotel seed)
+- **💎 StayPoints win-teaser**, floating particles in instant-confirm zone
+- CTA flips to green "⚡ Instant Confirm" gradient when bid ≥ floor
+
+### v66 — Booking Review screen + 24h Hold payment
+**Commit:** `936e71e` — `feat(booking): Booking Review screen + 24h Hold payment system`
+
+Every booking flow (Book Now / Flash Deal / Negotiate above-floor / Counter Accept / My Bids Pay-Now) now lands on a **unified Booking Review screen** before Razorpay charges. Customer sees full trip details + 3 payment paths:
+
+- ✨ **Pay Full** — instant confirm
+- 🔒 **Hold for 24h** — pay tiered hold amount, lock the price for a day
+- 🏨 **Pay Hold + Settle at Hotel** — pay hold online, balance at desk
+
+**Hold tier defaults** (by total booking amount):
+| ≤ ₹2K | ₹2K-5K | ₹5K-10K | ₹10K-15K | ₹15K+ |
+|-------|--------|---------|----------|-------|
+| ₹99 | ₹199 | ₹299 | ₹399 | ₹499 |
+
+**New files:**
+- [lib/hold-amount.ts](lib/hold-amount.ts) — `computeHoldAmount`, `holdExpiresAt`, `saveHoldState`, localStorage persistence
+- [components/BookingReview.tsx](components/BookingReview.tsx) — shared review modal with `onPayFull` / `onHold` / `onPayAtHotel` callbacks
+
+**Hold banner** in /bookings with live HH:MM:SS countdown + "Pay Balance" CTA. 3 states: active (countdown + Pay Balance green CTA), expired (red dismissable), pay-at-hotel (gold info banner).
+
+### v67 — Smart timing + Auto-cancel + Notifications
+**Commit:** `b44f2a6` — `feat(bid): smart timing + auto-cancel countdown + in-app notifications`
+
+Three systems landing together:
+
+**1. Bidder Tier** — Negotiate modal shows customer's historical bid quality + expected auto-accept window. Score = avg(bid/floor) across last 10 bids. [lib/bidder-score.ts](lib/bidder-score.ts):
+
+| Tier | Threshold | Auto-accept ETA |
+|------|-----------|-----------------|
+| 👑 PREMIUM | ≥ 0.95 | ~30s instant |
+| ⭐ STRONG | 0.90-0.95 | ~1-3 min |
+| ✨ SMART | 0.85-0.90 | ~3-5 min |
+| 🎯 CAUTIOUS | 0.78-0.85 | ~5-12 min (doubled per spec) |
+| ⚠ LOWBALL | < 0.78 | Manual hotel review only |
+
+**2. Accepted-bid auto-cancel timer** — 15 min countdown after hotel accepts. At 5 min remaining → sticky warning toast fires. At 0 → marked cancelled locally + toast. [lib/auto-cancel.ts](lib/auto-cancel.ts), [components/AcceptedBidTimer.tsx](components/AcceptedBidTimer.tsx).
+
+**3. Global notification toaster** — `window.dispatchEvent(new CustomEvent("sb:notify", {detail}))` pattern. [lib/notifications.ts](lib/notifications.ts) + [components/NotificationToast.tsx](components/NotificationToast.tsx) (mounted in layout). 5 lifecycle kinds: `bid_accepted` / `bid_countered` / `bid_rejected` / `bid_auto_cancelled` / `bid_expiring_soon`. Bridges to browser Notification API when tab is hidden. My Bids polling diffs status transitions and auto-fires the right toast.
+
+### v68 — Admin Hold Config + Supabase persistence
+**Commit:** `047aa39` — `feat(hold): admin Hold Config page + Supabase persistence`
+
+Moves Hold-payment from localStorage MVP to fully configurable + cross-device-persistent.
+
+**DB tables added:**
+- `hotel_hold_config(hotel_id PK, hold_enabled, pay_at_hotel_enabled, tier_overrides JSONB, acceptance_window_min)` — special row `hotel_id="_global_defaults"` holds platform defaults
+- `bid_holds(bid_id PK, hotel_id, customer_id, hold_amount, balance_due, total_amount, hold_payment_id, balance_payment_id, expires_at, status, flow, pay_at_hotel, check_in/out, room_type, hotel_name)`
+
+**API routes added:**
+- `GET/POST/DELETE /api/admin/hold-config` — admin CRUD
+- `GET /api/hotel-hold-config?hotelId` — public read, cached 2 min
+- `GET/POST /api/holds` + `POST /api/holds/[bidId]/balance`
+
+**Admin page:** `/admin/hold-config` with global defaults pinned + per-hotel override cards. Edit modal has toggle switches, inline tier editor (Add/Remove/Reset to defaults), acceptance-window input. Search-by-name overlay for adding new hotel overrides.
+
+**Frontend wiring:**
+- `saveHoldState` now mirrors to `/api/holds` (non-blocking)
+- `hydrateHoldsFromServer()` on /bookings mount merges remote into localStorage
+- `BookingReview` accepts `holdTiers` prop — per-hotel tiers actually used
+- Hotel page fetches `/api/hotel-hold-config?hotelId=...` once on load, passes resolved config to all 5 `setReview()` call sites
+
+### v69 — Server-side lifecycle + admin Holds dashboard + cron
+**Commit:** `cb63bee` — `feat(hold): server-side lifecycle + admin Holds dashboard + cron`
+
+**DB additions:**
+- `bid_acceptance_windows(bid_id PK, hotel_id, customer_id, accepted_at, expires_at, warned_at, status, acceptance_window_min)`
+- RPC `mark_expired_holds()` (SECURITY DEFINER) — sweeps both `bid_holds` + `bid_acceptance_windows`, marks expired rows
+
+**API routes added:**
+- `/api/acceptance-windows` GET/POST/PATCH (warned|paid|cancelled)
+- `/api/admin/holds` GET (filters + KPIs) / PATCH (force_expire/complete/cancel)
+- `/api/cron/expire-holds` GET/POST — calls the RPC. Auth via `?token=` (matches existing crons), Vercel Bearer secret, OR `x-admin-token` from admin page.
+
+**Vercel cron (`vercel.json`):** `/api/cron/expire-holds?token=staybid-cron-dev` every 5 min (`*/5 * * * *`).
+
+**Frontend wiring:**
+- `startAcceptanceWindow(bidId, acceptedAt, windowMin, {hotelId})` mirrors to backend
+- `hydrateAcceptanceWindowsFromServer()` on My Bids mount
+- `markWarned`/`markCancelled`/`markPaid` PATCH backend non-blocking
+- `AcceptedBidTimer` accepts `hotelId` + `windowMin` props; self-fetches hotel's `acceptance_window_min` from `/api/hotel-hold-config` when not passed
+- Hotel with 10/15/30 min acceptance window shows correctly-sized countdown ring
+
+**Admin dashboard `/admin/holds`:** 6 KPI cards (Active / ₹ Locked / ₹ Booking Total / Expiring 24h / Completed / Expired) + status filter pills + search + table with force actions (✓ complete · ⏰ expire · ✕ cancel) + "⚡ Run cron now" button + Active acceptance windows summary panel.
+
+### v70 — Smart auto-accept lifecycle
+**Commit:** `c03e8ef` — `feat(bid): smart auto-accept lifecycle with tier-based delays`
+
+**The big behavioral change.** Before v70: above-floor bids → Razorpay paid → **instant accept** (no hotel window). After v70: above-floor bids → Razorpay paid → bid scheduled with tier-based `auto_accept_at`. Hotel has the window to counter/reject before cron auto-flips to ACCEPTED.
+
+**DB changes:**
+- `bids.auto_accept_at TIMESTAMPTZ` (nullable; only set on above-floor bids)
+- `bids.bidder_tier TEXT` (cached customer tier at bid time)
+- Index `bids_auto_accept_pending_idx` on (auto_accept_at) WHERE status='PENDING'
+- RPC `auto_accept_eligible_bids()` flips PENDING → ACCEPTED past `auto_accept_at`. LOWBALL bids have NULL → never auto-accept.
+- `mark_expired_holds()` extended to ALSO run the auto-accept sweep — one cron does holds + windows + bids.
+
+**API routes added:**
+- `/api/bids/[id]/schedule-accept` POST — records `auto_accept_at` + `bidder_tier` after Razorpay
+- `/api/bids/[id]/trigger-accept` POST — client-side flip when countdown hits 0 (idempotent, validates window reached)
+- `/api/bids/auto-accept-info?ids=` GET — side-channel fetch since Railway/Prisma `/api/bids/my` doesn't include new columns
+
+**Why side-channel?** `bids` table is shared between Supabase + Railway/Prisma. New columns exist in DB but Railway's typed select doesn't include them until Prisma is regenerated. Workaround: My Bids enriches the regular bids list with this Supabase-side fetch. Zero Railway changes required.
+
+**Frontend:**
+- `executeNegotiate` (above-floor path) no longer calls `api.acceptBid` instantly — POSTs `schedule-accept` with tier + autoAcceptMs from bidder-score
+- Success modal: "Bid Submitted" instead of "Booking Confirmed" for non-PREMIUM
+- [components/AutoAcceptCountdown.tsx](components/AutoAcceptCountdown.tsx) — live MM:SS chip + tier badge (👑/⭐/✨/🎯). Fires `trigger-accept` exactly once when timer hits 0.
+
+**Admin holds dashboard:** new "⚡ Pending auto-accepts" panel — live countdowns + tier badges + amounts + "running cron…" indicator for overdue rows.
+
+**Booking flows unaffected:** Book Now / Flash Deal / Counter Accept still instant-accept (no negotiation lifecycle).
+
+### v71 — Booking-flow chat + auto-accept email
+**Commit:** `b4cfc01` — `feat(chat): booking-flow chat + auto-accept email`
+
+**1. Auto-accept confirmation email** — `/api/bids/[id]/trigger-accept` fires email asynchronously after flipping ACCEPTED. Reads user email + hotel + room + dates from Supabase and POSTs to existing `/api/email/confirm`.
+
+**2. Booking-flow chat** — customer ↔ hotel coordination for confirmed bookings (anti-bypass v25 rule allowed post-confirmation chat).
+
+**DB:** `booking_messages(id, bid_id, hotel_id, customer_id, sender, sender_id, body, read_at, hidden_at, created_at)` with indexes on (bid_id, created_at) + unread filter.
+
+**Shared lib:** [lib/sanitize-text.ts](lib/sanitize-text.ts) extracted from InstagramHotelFeed.tsx (v25 anti-bypass guard). Same rule applies on every chat message — phone/email/URL/WhatsApp/"DM me" etc. masked to `•••••`. Trip-coordination messages ("early check-in?") pass cleanly.
+
+**API:** `/api/booking-messages` GET (list) / POST (send) / PATCH (markRead). Customer auth via `sb_token` Bearer; hotel auth via `x-partner-token` + `x-partner-hotel-id` headers. Gated to status ∈ {ACCEPTED, CONFIRMED, CHECKED_IN, CHECKED_OUT}.
+
+**Component:** [components/BookingChat.tsx](components/BookingChat.tsx) — single component for both sides. `mode="customer"` vs `mode="hotel"` props control auth + bubble alignment. Customer bubbles right (gold gradient), hotel bubbles left (white). 1000-char limit, 15s polling, optimistic send, anti-bypass warning toast.
+
+**Wiring:**
+- Customer side: `/bookings` renders `<BookingChat>` inside every confirmed card. "💬 Message {Hotel}" collapsible.
+- Hotel side: `/partner/dashboard` selectedBooking modal renders `PartnerBookingChat` (wrapper that pulls `sb_partner_token` from localStorage). Lives under Call/WhatsApp buttons.
+
+### v72 — Bidding Analytics + Chat Moderation + cron emails
+**Commit:** `d44ef76` — `feat(admin): bidding analytics + chat moderation + cron emails`
+
+**1. Bid Analytics dashboard** `/admin/analytics`:
+- Range picker 7d / 30d / 90d
+- **6 hero KPIs**: bids placed · accept rate · auto-accept hit · hold conversion · revenue · avg time-to-accept
+- Daily bid trend chart (recharts line, 30-day buckets)
+- Bidder tier distribution bars (PREMIUM..LOWBALL + NEW + UNKNOWN)
+- Hold lifecycle 6-grid (total/active/completed/expired/pay-at-hotel/conversion)
+- Acceptance window 5-grid (total/active/paid/expired/payRate)
+- Revenue by booking flow breakdown
+- Top 10 hotels by acceptance rate (min 3 bids to qualify)
+- Single endpoint `/api/admin/analytics/bidding?days=30` parallel-fetches bids + holds + windows + paid_amounts + hotels; derives all metrics in memory.
+
+**2. Chat moderation** `/admin/messages`:
+- Lists every conversation in `booking_messages` grouped by bid_id
+- Hotel ↔ customer + last message preview + counters
+- 🚩 **Flagged only** toggle filters conversations with `•••••` placeholders
+- Search by body / bid id
+- Side drawer expands full conversation (incl. hidden ones) with Hide/Unhide per message
+- Hidden messages stay in DB (audit trail) but disappear from customer/hotel views (public GET filters them out)
+- `/api/admin/messages` GET (list / single) + PATCH (hide/unhide)
+
+**3. Cron-side confirmation emails** — `/api/cron/expire-holds` now also sweeps bids accepted in the last 6 min and POSTs to `/api/email/confirm` for each. Closes the gap from v71 where only the customer-visible trigger-accept fired email. Response includes `emails_sent` count.
+
+**4. Sanitizer cleanup** — `components/discover/InstagramHotelFeed.tsx` now imports `sanitizeText` from `lib/sanitize-text.ts` instead of its inline copy. Single source.
+
+**Sidebar v68→v72 additions:**
+```
+🔒 Hold Config       (v68)
+⏱  Active Holds      (v69)
+📊 Bid Analytics     (v72)
+💬 Chat Moderation   (v72)
+```
+
+### New Supabase tables (this era — all live in production DB)
+
+| Table | Era | Purpose |
+|-------|-----|---------|
+| `hotel_hold_config` | v68 | Global defaults + per-hotel hold overrides (tier_overrides JSONB, acceptance_window_min). `_global_defaults` row seeded with 99/199/299/399/499 tiers. |
+| `bid_holds` | v68 | Persistent hold state per bid. status: active/completed/expired/cancelled. Cross-device. |
+| `bid_acceptance_windows` | v69 | 15-min-to-pay timer state per accepted bid. Replaces localStorage. |
+| `booking_messages` | v71 | Customer ↔ hotel chat. `hidden_at` for admin moderation. |
+| `bids` (existing) | v70 | New cols: `auto_accept_at`, `bidder_tier` |
+
+### New Supabase RPCs
+
+- `mark_expired_holds()` — single sweep: expires holds + windows + auto-accepts eligible bids. Returns `{ holds_expired, windows_expired, bids_accepted, ran_at }`. Cron + manual admin trigger.
+- `auto_accept_eligible_bids()` — standalone variant (kept for granular calls).
+
+### New API routes (this era)
+```
+/api/admin/analytics/bidding          (v72) — full lifecycle aggregation
+/api/admin/hold-config                (v68) — GET list / POST upsert / DELETE override
+/api/admin/holds                      (v69) — GET filtered + KPIs / PATCH force actions
+/api/admin/messages                   (v72) — GET conversations / single / PATCH hide-unhide
+/api/acceptance-windows               (v69) — GET/POST/PATCH
+/api/bids/[id]/schedule-accept        (v70) — POST tier + autoAcceptMs
+/api/bids/[id]/trigger-accept         (v70) — POST client-side flip + email
+/api/bids/auto-accept-info?ids=       (v70) — GET side-channel for new bid cols
+/api/booking-messages                 (v71) — GET/POST/PATCH chat
+/api/cron/expire-holds                (v69+) — POST RPC + cron emails (v72)
+/api/holds                            (v68) — GET user holds / POST create
+/api/holds/[bidId]/balance            (v68) — POST balance settled marker
+/api/hotel-hold-config?hotelId=       (v68) — GET resolved config (cached 2 min)
+```
+
+### New components (this era)
+```
+components/AcceptedBidTimer.tsx       (v67) — 15-min countdown ring + warning popup
+components/AutoAcceptCountdown.tsx    (v70) — pre-accept tier-based countdown chip
+components/BookingChat.tsx            (v71) — customer + hotel chat (mode prop)
+components/BookingReview.tsx          (v66) — shared review modal with 3 payment paths
+components/NotificationToast.tsx      (v67) — global stacked toaster
+```
+
+### New libs (this era)
+```
+lib/auto-cancel.ts        (v67/v69) — acceptance window state + backend mirroring + countdown helpers
+lib/bidder-score.ts       (v67) — 5-tier history scoring + autoAcceptMs
+lib/hold-amount.ts        (v66/v68) — tier helper + saveHoldState + hydrateHoldsFromServer
+lib/notifications.ts      (v67) — notify() + onNotify() + browser Notification permission
+lib/sanitize-text.ts      (v71) — shared anti-bypass sanitizer (CONTACT_PATTERNS)
+```
+
+### New admin pages (this era)
+```
+/admin/hold-config        (v68) — global defaults + per-hotel override editor
+/admin/holds              (v69) — active holds dashboard + force actions
+/admin/analytics          (v72) — bid lifecycle KPIs + charts + top hotels
+/admin/messages           (v72) — chat moderation with hide/unhide
+```
+
+### New localStorage keys (this era)
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `hold_state_{bidId}` | JSON `HoldState` | 24h hold record (mirrored to /api/holds in v68+) |
+| `accept_window_{bidId}` | JSON `AcceptedBidWindow` | 15-min countdown state (mirrored to backend v69+) |
+| `sb_seen_notifications_v1` | JSON `{id: ts}` | Dedup map for notification triggers; pruned at 7 days |
+
+### Service-worker version history (continued)
+- v62-v64 → nav/dialer iterations
+- **v65** → bid-fix-premium-negotiate
+- **v66** → booking-review-hold-payment
+- **v67** → smart-timing-notifications
+- **v68** → admin-hold-config-supabase
+- **v69** → hold-lifecycle-admin-dashboard
+- **v70** → smart-auto-accept
+- **v71** → booking-chat-auto-accept-email
+- **v72** → analytics-moderation **(current)**
+
+### Vercel cron (`vercel.json`) — current state
+```json
+{
+  "crons": [
+    { "path": "/api/cron/pricing?token=staybid-cron-dev",       "schedule": "0 4 * * *"   },
+    { "path": "/api/cron/lifecycle?token=staybid-cron-dev",     "schedule": "5 4 * * *"   },
+    { "path": "/api/cron/expire-holds?token=staybid-cron-dev",  "schedule": "*/5 * * * *" }
+  ]
+}
+```
+Free Vercel plan caps at 2 crons — if hitting that limit drop `lifecycle` (it's a once-a-day report task; admin can run manually) or upgrade to Hobby/Pro.
+
+### Architecture summary (post-v72)
+
+**Bid lifecycle (above-floor):**
+1. Customer places bid via Negotiate modal → Booking Review opens
+2. Customer picks Pay-Full / Hold-24h / Pay-at-Hotel
+3. Razorpay charges → bid saved + `auto_accept_at` scheduled via `/api/bids/[id]/schedule-accept` (using tier from `bidderScore`)
+4. Customer redirected to My Bids → sees `AutoAcceptCountdown` chip
+5. Two paths to acceptance:
+   - **Watching tab**: Timer hits 0 → `/api/bids/[id]/trigger-accept` fires → bid flips ACCEPTED + email sent → notification toast
+   - **Tab closed**: Vercel cron runs every 5 min → RPC `mark_expired_holds()` flips all eligible bids ACCEPTED → cron endpoint follow-up sweep sends confirmation emails
+6. ACCEPTED bid → 15-min acceptance window starts → customer pays Razorpay full/balance → booking confirmed
+7. Confirmed booking → `<BookingChat>` opens on /bookings card for trip coordination
+
+**Hold lifecycle (24h):**
+1. Customer picks Hold at Booking Review → Razorpay charges tiered hold amount only
+2. `bid_holds` row written via `/api/holds` with `expires_at = now() + 24h`
+3. `/bookings` shows live countdown banner with "Pay Balance" CTA
+4. Two outcomes:
+   - Customer pays balance → `/api/holds/[bidId]/balance` flips status=completed
+   - 24h passes unpaid → cron RPC flips status=expired (admin can also force from `/admin/holds`)
+
+**Admin observability:**
+- `/admin/analytics` → all KPIs in one view
+- `/admin/holds` → real-time active hold + window state with force-action overrides
+- `/admin/hold-config` → tune tier defaults + per-hotel toggles
+- `/admin/messages` → chat moderation with hide/unhide
+
+### Things to Avoid (Bidding Lifecycle Era)
+- **Never** restore the instant `api.acceptBid` call in `executeNegotiate` above-floor path. The whole v70 system depends on bids being PENDING with `auto_accept_at` scheduled — instant accept skips the hotel-intervention window entirely.
+- **Never** edit `bid.amount` directly in DB to "fix" a below-floor mismatch. The customer's actual bid lives in the message token; `bid.amount` is the floor on purpose (backend rejects below-floor without dealId). Use `resolveBidDisplayAmount` everywhere.
+- **Never** show a Hold option on a booking flow that doesn't accept it — always pass `holdEnabled` / `payAtHotelEnabled` / `holdTiers` from the per-hotel config to `BookingReview`.
+- **Never** call `markWarned` more than once per bid — it's idempotent in localStorage but the 5-min warning notification will fire repeatedly otherwise. The `warnedAt` field gates the trigger.
+- **Never** strip the `•••••` placeholder check from chat moderation — that's how "🚩 Flagged" surfaces work. The sanitizer puts those exact 5 chars in the body.
+- **Never** add chat to PENDING bids. The whole anti-bypass v25 rule depends on gating chat behind ACCEPTED status. If you need pre-acceptance contact, route through Counter offer (which IS visible to both sides in /my-bids and /partner/dashboard).
+- **Never** remove the `auto_accept_at IS NOT NULL` guard from `auto_accept_eligible_bids()` — that's what makes LOWBALL bids require manual hotel review (NULL value = skip).
+- **Never** assume Railway/Prisma `/api/bids/my` returns new columns added via Supabase migration. Side-channel via `/api/bids/auto-accept-info` is the workaround until Prisma client is regenerated on Railway.
+- **Never** drop the `bid.customerId` ownership check in `/api/holds` or `/api/acceptance-windows` PATCH routes — these endpoints use `userFromReq` for auth.
+- **Never** schedule a hold for `pay_at_hotel: true` longer than 24h — the partner panel expects to see the customer arrive within that window. The HoldBanner UI handles the special pay-at-hotel state already.
+- **Never** add a third user-facing chat surface. The pattern is: pre-booking → anti-bypass blocked (reels), post-booking → `<BookingChat>` only. Adding a "DM" or "Inbox" anywhere else reopens the off-platform bypass risk.
+
+### MSG91 SMS OTP — paste-ready but not deployed
+[docs/MSG91_BACKEND_PASTE.md](docs/MSG91_BACKEND_PASTE.md) — full step-by-step doc for wiring MSG91 SMS OTP into the Railway backend (`apps/api/src/index.ts`). Has:
+- Dashboard walkthrough (Create Authkey button location, DLT template registration text, Railway env vars)
+- Paste-ready code: `/auth/send-otp` + `/auth/verify-otp` with Redis 10-min TTL, 30s resend cooldown, 5-attempt lockout, JWT issuance
+- ioredis + jsonwebtoken dependency install
+- Test curl commands + common-error troubleshooting table
+
+**Status as of v72:** code ready, Authkey generated by user, but **DLT template approval pending** (Indian carrier regulation, 2-5 day approval window). Sender ID dropdown was empty in user's MSG91 account because no DLT-registered header yet. Once DLT approves + Template ID arrives → paste code in Railway repo (separate from this frontend repo) + add 3 env vars → done.
+
+Firebase Mobile OTP is **already working** for customer-side login (v44 era) — MSG91 is only needed for partner panel + admin panel OTP flows (which currently use Railway's `/api/auth/send-otp`).
+
+---
+
+## Updated production state (v72, 2026-05-12)
+- **Current version:** v72 · commit `d44ef76` on `main` · branch `claude/bold-cohen-1c4580`
+- All 8 phases of user's original spec delivered
+- Hold + auto-accept + chat fully live and cross-device persistent
+- Admin observability complete via 4 new admin pages
+- Bidder-tier autoAcceptMs values in [lib/bidder-score.ts](lib/bidder-score.ts) are the single source of truth — both frontend countdown UI and Supabase RPC `auto_accept_eligible_bids()` read from the same scheduled `auto_accept_at` field, so frontend + backend never drift.
+
+---
