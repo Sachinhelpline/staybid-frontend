@@ -908,20 +908,29 @@ export default function HotelDetail() {
         });
       } catch {}
 
-      let accepted = false;
-      try { await api.acceptBid(bidRes.bid.id); accepted = true; } catch {}
-      setNegAuto(accepted);
-
-      if (accepted && mode === "full") {
-        await sendBookingEmail({
-          bookingId: bidRes.bid.id,
-          hotelName: hotel.name,
-          roomType: negRoom.name || negRoom.type,
-          checkIn: negIn, checkOut: negOut,
-          guests: globalTotalGuests || negRoom.capacity || 2,
-          nights, amount: total, paymentId, city: hotel.city,
+      // Phase 6: stop instant-accepting above-floor bids. Schedule them
+      // for tier-based auto-accept so the hotel has a window to counter/
+      // reject. lib/bidder-score.ts maps tier -> autoAcceptMs (PREMIUM 30s,
+      // STRONG 2min, NORMAL 5min, CAUTIOUS 10min, LOWBALL = manual review).
+      const tier = bidderScore?.tier || "NEW";
+      const autoAcceptMs = bidderScore?.autoAcceptMs ?? 300_000; // default 5 min
+      try {
+        const token = localStorage.getItem("sb_token");
+        await fetch(`/api/bids/${bidRes.bid.id}/schedule-accept`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ tier, autoAcceptMs }),
         });
-      }
+      } catch {}
+      // For UI: "Auto-confirms!" message shown only for PREMIUM (effectively instant).
+      // Other tiers show "Bid Submitted — confirms in X" via the success modal.
+      const isPremiumInstant = tier === "PREMIUM" && autoAcceptMs <= 60_000;
+      setNegAuto(isPremiumInstant);
+
+      // Confirmation email only fires after actual acceptance (cron/trigger).
+      // For now we skip email at submission — the trigger-accept endpoint or
+      // cron picks it up. If we already auto-accepted instantly (PREMIUM <30s),
+      // the email-on-trigger can be added in Phase 7.
       setReview(null);
       setNegSuccess(true);
       fetchMyBids();

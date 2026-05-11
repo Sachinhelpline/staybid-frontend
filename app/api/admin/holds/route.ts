@@ -71,7 +71,12 @@ export async function GET(req: NextRequest) {
     // Active acceptance windows (smaller list)
     const windows = (await sbGet(`bid_acceptance_windows?status=eq.active&order=accepted_at.desc&limit=50`)) as any[];
 
-    return NextResponse.json({ holds, windows, stats });
+    // Phase 6: pending bids scheduled for auto-accept
+    const pendingAutoAccepts = (await sbGet(
+      `bids?status=eq.PENDING&auto_accept_at=not.is.null&order=auto_accept_at.asc&limit=50&select=id,hotelId,amount,auto_accept_at,bidder_tier,customerId,createdAt`
+    )) as any[];
+
+    return NextResponse.json({ holds, windows, pendingAutoAccepts, stats });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

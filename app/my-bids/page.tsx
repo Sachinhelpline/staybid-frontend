@@ -9,6 +9,7 @@ import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/pa
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
+import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
@@ -44,6 +45,9 @@ export default function MyBidsPage() {
   const [celebrateId, setCelebrateId] = useState<string>("");
   const [confettiBurst, setConfettiBurst] = useState(0);
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
+  // Phase 6: auto-accept info per bid — fetched from Supabase side-channel
+  // since Railway's /api/bids/my doesn't include the new columns.
+  const [autoAcceptInfo, setAutoAcceptInfo] = useState<Record<string, { auto_accept_at: string | null; bidder_tier: string | null }>>({});
 
   // Celebration sound — synthesized with WebAudio so it ships without any asset file.
   const playCelebrateSound = () => {
@@ -111,6 +115,19 @@ export default function MyBidsPage() {
             });
             const j = await r.json();
             if (j?.assignments) setUnits(j.assignments);
+          }
+        } catch {}
+
+        // Phase 6: fetch auto_accept_at + bidder_tier for PENDING bids
+        try {
+          const token = localStorage.getItem("sb_token");
+          const pendingIds = list.filter((b: any) => b.status === "PENDING").map((b: any) => b.id);
+          if (pendingIds.length) {
+            const r = await fetch(`/api/bids/auto-accept-info?ids=${encodeURIComponent(pendingIds.join(","))}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const j = await r.json();
+            if (j?.info) setAutoAcceptInfo(j.info);
           }
         } catch {}
         setBids((prev) => {
@@ -600,6 +617,16 @@ export default function MyBidsPage() {
                     <p className="text-sm text-white/80">{fmtDate(b.checkOut)}</p>
                   </div>
                 </div>
+
+                {/* Auto-accept countdown (PENDING above-floor bids) */}
+                {b.status === "PENDING" && autoAcceptInfo[b.id]?.auto_accept_at && (
+                  <AutoAcceptCountdown
+                    bidId={b.id}
+                    autoAcceptAt={autoAcceptInfo[b.id].auto_accept_at!}
+                    bidderTier={autoAcceptInfo[b.id].bidder_tier}
+                    onAccepted={() => fetchBids(true)}
+                  />
+                )}
 
                 {/* Counter */}
                 {b.status === "COUNTER" && (

@@ -33,6 +33,7 @@ type Stats = {
 export default function AdminHolds() {
   const [holds, setHolds]       = useState<Hold[]>([]);
   const [windows, setWindows]   = useState<any[]>([]);
+  const [pendingAutoAccepts, setPendingAutoAccepts] = useState<any[]>([]);
   const [stats, setStats]       = useState<Stats | null>(null);
   const [loading, setLoading]   = useState(true);
   const [statusFilter, setStatusFilter] = useState("active");
@@ -50,6 +51,7 @@ export default function AdminHolds() {
         if (d?.error) setErr(String(d.error));
         setHolds(d?.holds || []);
         setWindows(d?.windows || []);
+        setPendingAutoAccepts(d?.pendingAutoAccepts || []);
         setStats(d?.stats || null);
       })
       .catch((e) => setErr(e?.message || "Failed"))
@@ -163,6 +165,39 @@ export default function AdminHolds() {
                 <div key={w.bid_id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 8, fontSize: 12 }}>
                   <span style={{ fontFamily: "monospace", color: "#8A8FA8" }}>{w.bid_id.slice(0, 10)}</span>
                   <span style={{ color: m < 5 ? "#F59E0B" : "#E8EAF0" }}>{m} min left</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Phase 6: bids scheduled for auto-accept */}
+      {pendingAutoAccepts.length > 0 && (
+        <div style={{ background: "#151820", border: "1px solid rgba(212,175,55,0.18)", borderRadius: 12, padding: 14, marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <p style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, margin: 0 }}>
+              ⚡ Pending auto-accepts ({pendingAutoAccepts.length})
+            </p>
+            <span style={{ color: "#8A8FA8", fontSize: 11 }}>Above-floor bids · paid · waiting tier window before flipping ACCEPTED</span>
+          </div>
+          <div style={{ display: "grid", gap: 6 }}>
+            {pendingAutoAccepts.slice(0, 10).map((b: any) => {
+              const ms = new Date(b.auto_accept_at).getTime() - Date.now();
+              const m = Math.max(0, Math.floor(ms / 60_000));
+              const s = Math.max(0, Math.floor((ms % 60_000) / 1000));
+              const urgent = ms < 60_000 && ms > 0;
+              const overdue = ms <= 0;
+              return (
+                <div key={b.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "rgba(0,0,0,0.25)", borderRadius: 8, fontSize: 12, gap: 12 }}>
+                  <span style={{ fontFamily: "monospace", color: "#8A8FA8", flexShrink: 0 }}>{b.id.slice(0, 10)}</span>
+                  <span style={{ color: "#D4AF37", flex: 1 }}>₹{Number(b.amount).toLocaleString("en-IN")}</span>
+                  {b.bidder_tier && (
+                    <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 999, background: "rgba(255,255,255,0.05)", color: "#8A8FA8" }}>{b.bidder_tier}</span>
+                  )}
+                  <span style={{ color: overdue ? "#EF4444" : urgent ? "#F59E0B" : "#10b981", fontFamily: "monospace" }}>
+                    {overdue ? "running cron…" : `${m}:${String(s).padStart(2, "0")}`}
+                  </span>
                 </div>
               );
             })}
