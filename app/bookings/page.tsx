@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { resolvePaidAmount, fetchServerPaid } from "@/lib/paid-amount";
+import {
+  readHoldState, removeHoldState, formatHoldCountdown, isHoldExpired,
+  type HoldState,
+} from "@/lib/hold-amount";
+import { openRazorpayCheckout } from "@/lib/razorpay";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -13,6 +18,122 @@ const statusStyle: Record<string, { bg: string; text: string; border: string; la
   CHECKED_OUT:{ bg: "bg-luxury-50",  text: "text-luxury-600",  border: "border-luxury-200",  label: "Checked Out",dot: "bg-luxury-400"  },
   CANCELLED:  { bg: "bg-red-50",     text: "text-red-600",     border: "border-red-200",     label: "Cancelled",  dot: "bg-red-400"     },
 };
+
+// ── Hold banner ────────────────────────────────────────────────────────
+// Surfaces a 24h countdown + Pay Balance button for held bookings.
+function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
+  const [state, setState] = useState<HoldState | null>(() => readHoldState(bidId));
+  const [tick, setTick] = useState(0);
+  const [paying, setPaying] = useState(false);
+
+  // 1-second tick to keep the countdown fresh
+  useEffect(() => {
+    if (!state || state.status !== "active") return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [state]);
+
+  // Hide if no hold, completed, or unrelated
+  if (!state || state.status !== "active") return null;
+  if (state.payAtHotel) {
+    // Pay-at-hotel: no countdown, just info banner — balance settled at desk
+    return (
+      <div className="mb-4 rounded-2xl p-4 border bg-gradient-to-br from-amber-50 to-gold-50"
+        style={{ borderColor: "rgba(240,180,41,0.45)" }}>
+        <div className="flex items-start gap-3">
+          <span className="text-xl">🏨</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-luxury-900">Pay at Hotel · Balance ₹{state.balanceDue.toLocaleString()}</p>
+            <p className="text-[0.7rem] text-luxury-600 leading-relaxed mt-0.5">
+              You've paid <span className="font-bold">₹{state.holdAmount.toLocaleString()}</span> to lock this booking.
+              Settle the remaining <span className="font-bold">₹{state.balanceDue.toLocaleString()}</span> at the hotel desk.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const expired = isHoldExpired(state.expiresAt);
+  const countdown = formatHoldCountdown(state.expiresAt);
+  // Re-suppress the unused-var warning around tick
+  void tick;
+
+  const payBalance = async () => {
+    if (paying) return;
+    setPaying(true);
+    try {
+      const result = await openRazorpayCheckout({
+        amount: state.balanceDue,
+        hotelName: state.hotelName,
+        description: `Balance for ${state.hotelName} · ${state.roomType || "Room"}`,
+      });
+      // Record balance payment server-side
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: state.bidId, hotelId: state.hotelId,
+            paidTotal: state.totalAmount, // full total now settled
+            flow: "hold-balance",
+            razorpayPaymentId: result.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+      // Update hold state to completed (kept for audit, can be deleted)
+      const updated: HoldState = { ...state, balancePaymentId: result.razorpay_payment_id, status: "completed" };
+      try { localStorage.setItem("hold_state_" + state.bidId, JSON.stringify(updated)); } catch {}
+      setState(updated);
+      onPaid();
+    } catch (e: any) {
+      if (e?.message !== "__CANCELLED__") alert(e.message || "Payment failed");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  if (expired) {
+    return (
+      <div className="mb-4 rounded-2xl p-4 border bg-red-50 border-red-200">
+        <p className="text-sm font-bold text-red-700">⏰ Hold expired</p>
+        <p className="text-[0.7rem] text-red-600 mt-0.5">
+          Your ₹{state.holdAmount.toLocaleString()} hold for ₹{state.totalAmount.toLocaleString()} has expired.
+          Contact the hotel to re-confirm at current rates.
+        </p>
+        <button onClick={() => { removeHoldState(state.bidId); onPaid(); }}
+          className="mt-2 text-[0.7rem] font-semibold text-red-600 underline">Dismiss</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 rounded-2xl p-4 border-2 bg-gradient-to-br from-emerald-50 to-gold-50"
+      style={{ borderColor: "rgba(16,185,129,0.4)" }}>
+      <div className="flex items-start gap-3 mb-3">
+        <span className="text-2xl">🔒</span>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-sm font-bold text-emerald-700">Price locked — pay balance to confirm</p>
+            <span className="text-[0.55rem] font-bold tracking-wider uppercase bg-emerald-500 text-white px-2 py-0.5 rounded-full">{countdown}</span>
+          </div>
+          <p className="text-[0.7rem] text-luxury-600 leading-relaxed">
+            You've paid <span className="font-bold">₹{state.holdAmount.toLocaleString()}</span>.
+            Balance <span className="font-bold text-luxury-900">₹{state.balanceDue.toLocaleString()}</span> due before lock expires.
+          </p>
+        </div>
+      </div>
+      <button onClick={payBalance} disabled={paying}
+        className="w-full py-3 rounded-xl font-bold text-sm tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
+        style={{
+          background: "linear-gradient(135deg,#10b981 0%,#34d399 50%,#10b981 100%)",
+          color: "#022c22",
+          boxShadow: "0 6px 18px rgba(16,185,129,0.35)",
+        }}>
+        {paying ? "⏳ Opening Razorpay…" : `✅ Pay Balance ₹${state.balanceDue.toLocaleString()} & Confirm`}
+      </button>
+    </div>
+  );
+}
 
 function Barcode({ id }: { id: string }) {
   const seed = (id || "STAYBID").toUpperCase();
@@ -34,7 +155,7 @@ function Barcode({ id }: { id: string }) {
   );
 }
 
-function BookingCard({ b, unitNumber }: { b: any; unitNumber?: string }) {
+function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const st = statusStyle[b.status] || { bg: "bg-luxury-50", text: "text-luxury-600", border: "border-luxury-100", label: b.status, dot: "bg-luxury-400" };
 
@@ -107,6 +228,9 @@ function BookingCard({ b, unitNumber }: { b: any; unitNumber?: string }) {
             🔑 Room number will be allocated at check-in
           </div>
         )}
+
+        {/* Hold banner — pay balance / pay-at-hotel banner / expired warning */}
+        <HoldBanner bidId={b.id} onPaid={onRefresh} />
 
         {/* Barcode + Booking ID */}
         <div className="bg-luxury-50 border border-luxury-100 rounded-2xl px-4 pt-3 pb-3 mb-4">
@@ -408,7 +532,14 @@ export default function BookingsPage() {
         )}
 
         <div className="space-y-5">
-          {bookings.map((b) => <BookingCard key={b.id} b={b} unitNumber={units[b.id]?.unitNumber} />)}
+          {bookings.map((b) => (
+            <BookingCard
+              key={b.id}
+              b={b}
+              unitNumber={units[b.id]?.unitNumber}
+              onRefresh={() => {/* hold state read from localStorage; refresh forces re-render via state pun */}}
+            />
+          ))}
         </div>
       </div>
     </div>

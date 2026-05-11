@@ -6,6 +6,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
+import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
+import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -37,6 +39,7 @@ export default function MyBidsPage() {
   const [filter, setFilter] = useState<"ALL"|"PENDING"|"COUNTER"|"ACCEPTED"|"REJECTED">("ALL");
   const [celebrateId, setCelebrateId] = useState<string>("");
   const [confettiBurst, setConfettiBurst] = useState(0);
+  const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
 
   // Celebration sound — synthesized with WebAudio so it ships without any asset file.
   const playCelebrateSound = () => {
@@ -130,9 +133,55 @@ export default function MyBidsPage() {
     return () => clearInterval(t);
   }, [user, authLoading, router]);
 
-  const handleCounterAccept = async (bidId: string) => {
+  // Counter accept routes through BookingReview so customer can pick
+  // Pay-Full / Hold / Pay-At-Hotel before charging.
+  const handleCounterAccept = (b: any) => {
+    const counterAmt = Number(b.counterAmount || b.amount || 0);
+    const nights = nightsBetween(b.checkIn, b.checkOut);
+    const total = counterAmt * nights;
+    if (!total) { alert("Invalid amount"); return; }
+    const rateLines = [
+      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: "Hotel countered at this rate", value: "Accepted", subtle: true },
+    ];
+    setReview({
+      hotelName: b.hotel?.name || "Hotel",
+      hotelCity: b.hotel?.city,
+      roomType: b.room?.type,
+      checkIn: b.checkIn || "", checkOut: b.checkOut || "", nights,
+      adults: b.request?.guests || 2,
+      rateLines, totalAmount: total,
+      flowLabel: "🤝 Accept Counter",
+      onUpdate: () => setReview(null),
+      onPayFull: () => executeCounterAccept(b, "full", 0, { nights, total }),
+      onHold:    (h) => executeCounterAccept(b, "hold", h, { nights, total }),
+      onPayAtHotel: (h) => executeCounterAccept(b, "payhotel", h, { nights, total }),
+      holdEnabled: true,
+      payAtHotelEnabled: true,
+    });
+  };
+
+  const executeCounterAccept = async (
+    b: any,
+    mode: "full" | "hold" | "payhotel",
+    holdAmount: number,
+    ctx: { nights: number; total: number }
+  ) => {
+    const bidId = b.id;
+    const counterAmt = Number(b.counterAmount || b.amount || 0);
     setActionLoading(bidId);
     try {
+      const { nights, total } = ctx;
+      const charge = mode === "full" ? total : holdAmount;
+      const payResult = await openRazorpayCheckout({
+        amount: charge,
+        hotelName: b.hotel?.name || "StayBid Booking",
+        description: mode === "full"
+          ? `Counter accept — ${nights} night${nights > 1 ? "s" : ""}`
+          : `🔒 Hold counter · Lock ₹${total.toLocaleString()} for 24h`,
+        userName: user?.name || "",
+        userPhone: user?.phone || "",
+      });
       const token = localStorage.getItem("sb_token");
       const res = await fetch(`/api/bids/${bidId}/counter-accept`, {
         method: "POST",
@@ -140,9 +189,39 @@ export default function MyBidsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not accept counter offer");
+
+      if (mode !== "full") {
+        saveHoldState({
+          bidId,
+          hotelId: b.hotelId || b.hotel?.id, hotelName: b.hotel?.name || "Hotel",
+          roomType: b.room?.type,
+          holdAmount, balanceDue: total - holdAmount, totalAmount: total,
+          holdPaymentId: payResult.razorpay_payment_id,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "counter-accept",
+          checkIn: b.checkIn, checkOut: b.checkOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
+
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId, hotelId: b.hotelId || b.hotel?.id, roomId: b.roomId || b.room?.id,
+            customerId: user?.id,
+            paidTotal: charge, paidPerNight: counterAmt, nights,
+            flow: mode === "full" ? "counter-accept" : `counter-accept-${mode}`,
+            razorpayPaymentId: payResult.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+
+      setReview(null);
       triggerCelebration(bidId);
       fetchBids(true);
     } catch (e: any) {
+      if (e?.message === "__CANCELLED__") { return; }
       alert(e.message);
     } finally {
       setActionLoading("");
@@ -167,27 +246,54 @@ export default function MyBidsPage() {
     }
   };
 
-  const handlePayNow = async (b: any) => {
+  // Pay-Now opens BookingReview first; charges happen in executePayNow.
+  const handlePayNow = (b: any) => {
+    const customerBid = extractCustomerBidFromMessage(b.message);
+    const perNight = Number(
+      b.counterAmount
+        ?? (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : (customerBid ?? b.amount))
+        ?? 0
+    );
+    const nights = nightsBetween(b.checkIn, b.checkOut);
+    const total = perNight * nights;
+    if (!total) { alert("Invalid amount"); return; }
+    const rateLines = [
+      { label: `₹${perNight.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: "Bid accepted by hotel", value: "Confirm to lock", subtle: true },
+    ];
+    setReview({
+      hotelName: b.hotel?.name || "Hotel",
+      hotelCity: b.hotel?.city,
+      roomType: b.room?.type,
+      checkIn: b.checkIn || "", checkOut: b.checkOut || "", nights,
+      adults: b.request?.guests || 2,
+      rateLines, totalAmount: total,
+      flowLabel: "🎉 Accepted Bid",
+      onUpdate: () => setReview(null),
+      onPayFull: () => executePayNow(b, "full", 0, { nights, total, perNight }),
+      onHold:    (h) => executePayNow(b, "hold", h, { nights, total, perNight }),
+      onPayAtHotel: (h) => executePayNow(b, "payhotel", h, { nights, total, perNight }),
+      holdEnabled: true,
+      payAtHotelEnabled: true,
+    });
+  };
+
+  const executePayNow = async (
+    b: any,
+    mode: "full" | "hold" | "payhotel",
+    holdAmount: number,
+    ctx: { nights: number; total: number; perNight: number }
+  ) => {
     setActionLoading(b.id);
     try {
-      // Active price the customer accepts at:
-      //   COUNTER → hotel's counter
-      //   ACCEPTED at customer's preferred (below-floor) → customer's bid (from message)
-      //   else → bid.amount
-      const customerBid = extractCustomerBidFromMessage(b.message);
-      const perNight = Number(
-        b.counterAmount
-          ?? (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : (customerBid ?? b.amount))
-          ?? 0
-      );
-      const nights = nightsBetween(b.checkIn, b.checkOut);
-      const total = perNight * nights;
-      if (!total) throw new Error("Invalid amount");
-
+      const { nights, total, perNight } = ctx;
+      const charge = mode === "full" ? total : holdAmount;
       const result = await openRazorpayCheckout({
-        amount: total,
+        amount: charge,
         hotelName: b.hotel?.name || "StayBid Booking",
-        description: `Confirmation payment — ${nights} night${nights > 1 ? "s" : ""}`,
+        description: mode === "full"
+          ? `Confirmation payment — ${nights} night${nights > 1 ? "s" : ""}`
+          : `🔒 Hold accepted bid · Lock ₹${total.toLocaleString()} for 24h`,
         userName: user?.name || "",
         userPhone: user?.phone || "",
       });
@@ -201,6 +307,34 @@ export default function MyBidsPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Could not confirm payment");
 
+      if (mode !== "full") {
+        saveHoldState({
+          bidId: b.id,
+          hotelId: b.hotelId || b.hotel?.id, hotelName: b.hotel?.name || "Hotel",
+          roomType: b.room?.type,
+          holdAmount, balanceDue: total - holdAmount, totalAmount: total,
+          holdPaymentId: result.razorpay_payment_id,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "pay-now",
+          checkIn: b.checkIn, checkOut: b.checkOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
+
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: b.id, hotelId: b.hotelId || b.hotel?.id, roomId: b.roomId || b.room?.id,
+            customerId: user?.id,
+            paidTotal: charge, paidPerNight: perNight, nights,
+            flow: mode === "full" ? "pay-now" : `pay-now-${mode}`,
+            razorpayPaymentId: result.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+
+      setReview(null);
       triggerCelebration(b.id);
       setTimeout(() => router.push("/bookings"), 1800);
     } catch (e: any) {
@@ -432,7 +566,7 @@ export default function MyBidsPage() {
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleCounterAccept(b.id)}
+                        onClick={() => handleCounterAccept(b)}
                         disabled={actionLoading === b.id}
                         className="flex-1 py-2.5 gold-btn rounded-xl text-sm disabled:opacity-40"
                       >
@@ -497,6 +631,9 @@ export default function MyBidsPage() {
           })}
         </div>
       </div>
+
+      {/* Booking Review modal (Phase 2) — sits between accept-counter / pay-now and Razorpay */}
+      {review && <BookingReview {...review} open onClose={() => setReview(null)} />}
     </div>
   );
 }

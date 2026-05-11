@@ -8,6 +8,8 @@ import { openRazorpayCheckout } from "@/lib/razorpay";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
 import { io } from "socket.io-client";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
+import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -78,6 +80,12 @@ export default function HotelDetail() {
   const [negLoading, setNegLoading] = useState(false);
   const [negSuccess, setNegSuccess] = useState(false);
   const [negAuto, setNegAuto]     = useState(false);
+
+  // Booking Review modal — sits between user-confirm and Razorpay
+  // payment. Used by Book Now, Flash Deal, Negotiate-above-floor. The
+  // review screen shows complete trip details + lets user choose
+  // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
+  const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
 
   // Inline phone verify (for Google/social login users who have Firebase token)
   const [verifyOpen, setVerifyOpen]         = useState(false);
@@ -383,18 +391,47 @@ export default function HotelDetail() {
     } catch { /* email failure should not block booking flow */ }
   };
 
-  const handleFlashBook = async () => {
+  // Flash deal booking — routes through BookingReview first.
+  const handleFlashBook = () => {
     if (!user) return router.push("/auth");
+    const dealAmt = parseFloat(dealPrice || "0");
+    const rateLines = [
+      { label: `₹${dealAmt.toLocaleString()} × ${flashNights} night${flashNights>1?"s":""}${flashRoomQty>1?` × ${flashRoomQty} rooms`:""}`, value: `₹${flashBaseTotal.toLocaleString()}` },
+      ...(flashExtraTotal>0 ? [{ label: `${extraAdults} extra adult${extraAdults>1?"s":""} × ₹${extraAdultRate} × ${flashNights}n`, value: `₹${flashExtraTotal.toLocaleString()}` }] : []),
+      ...(flashChildTotal>0 ? [{ label: `${flashChildren} child${flashChildren>1?"ren":""} × ₹${childRate} × ${flashNights}n`, value: `₹${flashChildTotal.toLocaleString()}` }] : []),
+      { label: `🔥 Flash deal · ${dealDiscount || 0}% off`, value: "Locked", subtle: true },
+    ];
+    setReview({
+      hotelName: hotel.name,
+      hotelCity: hotel.city,
+      roomType: flashRoom?.name || flashRoom?.type || "Flash Deal Room",
+      checkIn: today, checkOut: flashCheckOut, nights: flashNights,
+      adults: flashAdults, children: flashChildren, kids: 0,
+      rateLines, totalAmount: flashGrandTotal,
+      flowLabel: "🔥 Flash Deal",
+      onUpdate: () => setReview(null),
+      onPayFull: () => executeFlashBook("full", 0),
+      onHold:    (h) => executeFlashBook("hold", h),
+      onPayAtHotel: (h) => executeFlashBook("payhotel", h),
+      holdEnabled: true,
+      payAtHotelEnabled: true,
+    });
+  };
+
+  const executeFlashBook = async (mode: "full"|"hold"|"payhotel", holdAmount: number) => {
     setBookLoading(true);
     try {
+      const charge = mode === "full" ? flashGrandTotal : holdAmount;
       // Step 1: Razorpay payment
       const payResult = await openRazorpayCheckout({
-        amount: flashGrandTotal,
+        amount: charge,
         hotelName: hotel.name,
-        description: `Flash Deal — ${flashRoom?.name || "Room"} — ${flashNights} night${flashNights > 1 ? "s" : ""}`,
-        userName: user.name || user.phone || "",
-        userPhone: user.phone,
-        userEmail: user.email,
+        description: mode === "full"
+          ? `Flash Deal — ${flashRoom?.name || "Room"} — ${flashNights} night${flashNights > 1 ? "s" : ""}`
+          : `🔒 Hold flash deal · Lock ₹${flashGrandTotal.toLocaleString()} for 24h`,
+        userName: user!.name || user!.phone || "",
+        userPhone: user!.phone,
+        userEmail: user!.email,
       });
 
       // Step 2: Confirm booking in backend
@@ -414,9 +451,11 @@ export default function HotelDetail() {
       // which is what the hotel was seeing as ₹1899 even though the customer
       // paid ₹20. Both customer + partner views now parse this token first,
       // then fall back to bid.amount only if it's missing.
-      const paidTotal = flashGrandTotal;
+      // For Hold mode, paid = holdAmount; balance is settled later.
+      const paidTotal = mode === "full" ? flashGrandTotal : charge;
       const paidPerNight = dealAmt;
-      const baseMsg = `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""}`;
+      const holdTag = mode === "full" ? "" : ` | hold:${charge} | total:${flashGrandTotal}${mode === "payhotel" ? " | pay-at-hotel" : ""}`;
+      const baseMsg = `Flash Deal | ${flashNights} nights | ${flashAdults} adults${flashChildren ? ` | ${flashChildren} children` : ""}${holdTag}`;
       const paidTokens = `paid:${paidTotal} | rate:${paidPerNight} | Razorpay: ${payResult.razorpay_payment_id}`;
 
       let bidRes: any;
@@ -443,6 +482,20 @@ export default function HotelDetail() {
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
       localStorage.setItem(`paid_amount_${bidRes.bid.id}`, String(paidTotal));
 
+      // Hold state (only when not paying full upfront)
+      if (mode !== "full") {
+        saveHoldState({
+          bidId: bidRes.bid.id,
+          hotelId: hotel.id, hotelName: hotel.name, roomType: flashRoom?.name || flashRoom?.type,
+          holdAmount: charge, balanceDue: flashGrandTotal - charge, totalAmount: flashGrandTotal,
+          holdPaymentId: payResult.razorpay_payment_id,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "flash",
+          checkIn: today, checkOut: flashCheckOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
+
       // BULLETPROOF: record paid amount server-side so partner panel + every
       // surface reads the truth (bid.amount may have been corrupted to floor).
       try {
@@ -450,9 +503,9 @@ export default function HotelDetail() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bidId: bidRes.bid.id, hotelId: hotel.id, roomId: dealRoomId,
-            customerId: user.id,
+            customerId: user!.id,
             paidTotal, paidPerNight: paidPerNight, nights: flashNights,
-            flow: "flash", dealId,
+            flow: mode === "full" ? "flash" : `flash-${mode}`, dealId,
             razorpayPaymentId: payResult.razorpay_payment_id,
           }),
         });
@@ -477,9 +530,9 @@ export default function HotelDetail() {
                 toDate: flashCheckOut,
                 qty: extraQty > 0 ? extraQty : 1,
                 pricePerNight: dealAmt,
-                guestName: user.name || user.phone,
-                guestPhone: user.phone,
-                note: `Flash deal booking #${bidRes.bid.id.slice(0, 8)} · ${flashRoomQty} room(s) × ${flashNights} night(s)`,
+                guestName: user!.name || user!.phone,
+                guestPhone: user!.phone,
+                note: `Flash deal booking #${bidRes.bid.id.slice(0, 8)} · ${flashRoomQty} room(s) × ${flashNights} night(s)${mode !== "full" ? ` · HOLD (${mode})` : ""}`,
                 razorpayPaymentId: payResult.razorpay_payment_id,
               }),
             });
@@ -487,26 +540,29 @@ export default function HotelDetail() {
         } catch { /* upgrade record is best-effort; primary booking already succeeded */ }
       }
 
-      // Step 3: Send confirmation email
-      await sendBookingEmail({
-        bookingId: bidRes.bid.id,
-        hotelName: hotel.name,
-        roomType: flashRoom?.name || flashRoom?.type || "Room",
-        checkIn: today,
-        checkOut: flashCheckOut,
-        guests: flashAdults + flashChildren,
-        nights: flashNights,
-        amount: flashGrandTotal,
-        paymentId: payResult.razorpay_payment_id,
-        city: hotel.city,
-      });
+      // Step 3: Send confirmation email (only for full pay — hold flows email on balance settle)
+      if (mode === "full") {
+        await sendBookingEmail({
+          bookingId: bidRes.bid.id,
+          hotelName: hotel.name,
+          roomType: flashRoom?.name || flashRoom?.type || "Room",
+          checkIn: today,
+          checkOut: flashCheckOut,
+          guests: flashAdults + flashChildren,
+          nights: flashNights,
+          amount: flashGrandTotal,
+          paymentId: payResult.razorpay_payment_id,
+          city: hotel.city,
+        });
+      }
 
+      setReview(null);
       setFlashBookOpen(false);
       setFlashBookSuccess(true);
     } catch (e: any) {
       if (e.message === "__CANCELLED__") { /* user dismissed Razorpay */ return; }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
-        setFlashBookOpen(false);
+        setFlashBookOpen(false); setReview(null);
         openVerifyAndRetry(() => handleFlashBook());
       } else {
         alert(e.message || "Booking failed. Please try again.");
@@ -591,23 +647,59 @@ export default function HotelDetail() {
     }, 140);
   };
 
-  const handleBookNow = async () => {
+  // Book Now — opens BookingReview first; actual Razorpay charge happens
+  // in executeBookNow(mode) once user picks Pay-Full / Hold / Pay-At-Hotel.
+  const handleBookNow = () => {
     if (!user) return router.push("/auth");
-    if (!bnIn || !bnOut) return alert("Select dates");
+    if (!bnIn || !bnOut || !bnRoom) return alert("Select dates");
+    const nights  = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
+    const extra   = Math.max(0, bnAdults-(bnRoom.capacity||2));
+    const baseTot = bnRoom.floorPrice*nights;
+    const extraT  = extra*500*nights;
+    const childT  = bnChildren*200*nights;
+    const total   = baseTot + extraT + childT;
+    const rateLines = [
+      { label: `₹${bnRoom.floorPrice.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${baseTot.toLocaleString()}` },
+      ...(extra>0      ? [{ label: `${extra} extra adult${extra>1?"s":""} × ₹500 × ${nights}n`,    value: `₹${extraT.toLocaleString()}` }] : []),
+      ...(bnChildren>0 ? [{ label: `${bnChildren} child${bnChildren>1?"ren":""} × ₹200 × ${nights}n`, value: `₹${childT.toLocaleString()}` }] : []),
+      ...(globalKids>0 ? [{ label: `${globalKids} kid${globalKids>1?"s":""} (under 5)`, value: "FREE", subtle: true }] : []),
+    ];
+    setReview({
+      hotelName: hotel.name,
+      hotelCity: hotel.city,
+      roomType: bnRoom.name || bnRoom.type,
+      checkIn: bnIn, checkOut: bnOut, nights,
+      adults: bnAdults, children: bnChildren, kids: globalKids,
+      rateLines, totalAmount: total,
+      flowLabel: "Book Now",
+      onUpdate: () => { setReview(null); },   // keeps Book Now modal open underneath
+      onPayFull: () => executeBookNow("full", 0, { nights, total }),
+      onHold:    (h) => executeBookNow("hold", h, { nights, total }),
+      onPayAtHotel: (h) => executeBookNow("payhotel", h, { nights, total }),
+      holdEnabled: true,
+      payAtHotelEnabled: true,
+    });
+  };
+
+  const executeBookNow = async (
+    mode: "full" | "hold" | "payhotel",
+    holdAmount: number,
+    ctx: { nights: number; total: number }
+  ) => {
     setBnLoading(true);
     try {
-      const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
-      const extra = Math.max(0, bnAdults-(bnRoom.capacity||2));
-      const total = bnRoom.floorPrice*nights + extra*500*nights + bnChildren*200*nights;
-
+      const { nights, total } = ctx;
+      const charge = mode === "full" ? total : holdAmount;
       // Step 1: Razorpay payment
       const payResult = await openRazorpayCheckout({
-        amount: total,
+        amount: charge,
         hotelName: hotel.name,
-        description: `Book Now — ${bnRoom.name || bnRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`,
-        userName: user.name || user.phone || "",
-        userPhone: user.phone,
-        userEmail: user.email,
+        description: mode === "full"
+          ? `Book Now — ${bnRoom.name || bnRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`
+          : `Hold ${nights}n at ${hotel.name} · Lock ₹${total.toLocaleString()}`,
+        userName: user!.name || user!.phone || "",
+        userPhone: user!.phone,
+        userEmail: user!.email,
       });
 
       // Step 2: Confirm booking in backend
@@ -616,39 +708,53 @@ export default function HotelDetail() {
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
 
+      // Hold state — recorded only when not paying full upfront
+      if (mode !== "full") {
+        saveHoldState({
+          bidId: bidRes.bid.id,
+          hotelId: hotel.id, hotelName: hotel.name, roomType: bnRoom.name || bnRoom.type,
+          holdAmount, balanceDue: total - holdAmount, totalAmount: total,
+          holdPaymentId: payResult.razorpay_payment_id,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "book-now",
+          checkIn: bnIn, checkOut: bnOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
+
       // BULLETPROOF paid-amount record (Book Now)
       try {
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bidId: bidRes.bid.id, hotelId: hotel.id, roomId: bnRoom.id,
-            customerId: user.id,
-            paidTotal: total, paidPerNight: total / nights, nights,
-            flow: "book-now",
+            customerId: user!.id,
+            paidTotal: charge, paidPerNight: charge / nights, nights,
+            flow: mode === "full" ? "book-now" : `book-now-${mode}`,
             razorpayPaymentId: payResult.razorpay_payment_id,
           }),
         });
       } catch {}
 
-      // Step 3: Send confirmation email
-      await sendBookingEmail({
-        bookingId: bidRes.bid.id,
-        hotelName: hotel.name,
-        roomType: bnRoom.name || bnRoom.type,
-        checkIn: bnIn,
-        checkOut: bnOut,
-        guests: bnAdults + bnChildren,
-        nights,
-        amount: total,
-        paymentId: payResult.razorpay_payment_id,
-        city: hotel.city,
-      });
-
+      // Step 3: Send confirmation email (full-pay only — hold flows email at balance settle)
+      if (mode === "full") {
+        await sendBookingEmail({
+          bookingId: bidRes.bid.id,
+          hotelName: hotel.name,
+          roomType: bnRoom.name || bnRoom.type,
+          checkIn: bnIn, checkOut: bnOut,
+          guests: bnAdults + bnChildren, nights,
+          amount: total,
+          paymentId: payResult.razorpay_payment_id,
+          city: hotel.city,
+        });
+      }
+      setReview(null);
       setBnSuccess(true);
     } catch(e:any) {
       if (e.message === "__CANCELLED__") { return; }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
-        setBnRoom(null);
+        setBnRoom(null); setReview(null);
         openVerifyAndRetry(() => openBookNow(bnRoom));
       } else { alert(e.message || "Booking failed. Please try again."); }
     }
@@ -658,76 +764,57 @@ export default function HotelDetail() {
   const handleNegotiate = async () => {
     if (!user) return router.push("/auth");
     if (!negIn || !negOut) return alert("Select dates");
+    const isAboveFloor = negAmt >= negRoom.floorPrice;
+    const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
+    const total = negAmt * nights;
+
+    // Above-floor (instant-confirm) bids route through BookingReview so the
+    // customer can choose Pay-Full / Hold / Pay-At-Hotel before charging.
+    if (isAboveFloor) {
+      const rateLines = [
+        { label: `₹${negAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+        { label: "⚡ Instant confirm bid", value: "Auto-accept", subtle: true },
+      ];
+      setReview({
+        hotelName: hotel.name,
+        hotelCity: hotel.city,
+        roomType: negRoom.name || negRoom.type,
+        checkIn: negIn, checkOut: negOut, nights,
+        adults: globalAdults, children: globalChildren, kids: globalKids,
+        rateLines, totalAmount: total,
+        flowLabel: "⚡ Instant Bid",
+        onUpdate: () => setReview(null),
+        onPayFull: () => executeNegotiate("full", 0, { nights, total }),
+        onHold:    (h) => executeNegotiate("hold", h, { nights, total }),
+        onPayAtHotel: (h) => executeNegotiate("payhotel", h, { nights, total }),
+        holdEnabled: true,
+        payAtHotelEnabled: true,
+      });
+      return;
+    }
+
+    // Below-floor: no payment yet, bid is forwarded to hotel for counter/accept.
     setNegLoading(true);
     try {
-      const isAboveFloor = negAmt >= negRoom.floorPrice;
-      const submitAmt = isAboveFloor ? negAmt : negRoom.floorPrice;
-      const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
-
-      let paymentId: string | undefined;
-
-      // Razorpay only for instant-confirm bids (above floor)
-      if (isAboveFloor) {
-        const payResult = await openRazorpayCheckout({
-          amount: negAmt * nights,
-          hotelName: hotel.name,
-          description: `Bid — ${negRoom.name || negRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`,
-          userName: user.name || user.phone || "",
-          userPhone: user.phone,
-          userEmail: user.email,
-        });
-        paymentId = payResult.razorpay_payment_id;
-      }
-
-      const message = !isAboveFloor
-        ? `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`
-        : paymentId ? `Paid via Razorpay: ${paymentId}` : undefined;
-
+      const submitAmt = negRoom.floorPrice;
+      const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
-      // BULLETPROOF paid-amount record. For instant-confirm (above-floor) bids
-      // we know the customer paid `negAmt * nights`. For below-floor bids no
-      // payment was taken yet — partner side will see negAmt as the *intent*.
+      // Record customer intent (no payment for below-floor)
       try {
-        const paidTotal = isAboveFloor ? negAmt * nights : negAmt * nights;
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             bidId: bidRes.bid.id, hotelId: hotel.id, roomId: negRoom.id,
             customerId: user.id,
-            paidTotal, paidPerNight: negAmt, nights,
-            flow: "negotiate",
-            razorpayPaymentId: paymentId,
+            paidTotal: total, paidPerNight: negAmt, nights,
+            flow: "negotiate-below-floor",
           }),
         });
       } catch {}
-
-      if (isAboveFloor) {
-        let accepted = false;
-        try { await api.acceptBid(bidRes.bid.id); accepted = true; } catch {}
-        const aRes = { ok: accepted };
-        setNegAuto(accepted);
-
-        // Send confirmation email for instant-confirm bookings
-        if (aRes.ok) {
-          await sendBookingEmail({
-            bookingId: bidRes.bid.id,
-            hotelName: hotel.name,
-            roomType: negRoom.name || negRoom.type,
-            checkIn: negIn,
-            checkOut: negOut,
-            guests: globalTotalGuests || negRoom.capacity || 2,
-            nights,
-            amount: negAmt * nights,
-            paymentId,
-            city: hotel.city,
-          });
-        }
-      } else {
-        setNegAuto(false);
-      }
+      setNegAuto(false);
       setNegSuccess(true);
       fetchMyBids();
     } catch(e:any) {
@@ -740,21 +827,136 @@ export default function HotelDetail() {
     finally { setNegLoading(false); }
   };
 
+  const executeNegotiate = async (
+    mode: "full" | "hold" | "payhotel",
+    holdAmount: number,
+    ctx: { nights: number; total: number }
+  ) => {
+    setNegLoading(true);
+    try {
+      const { nights, total } = ctx;
+      const charge = mode === "full" ? total : holdAmount;
+      const payResult = await openRazorpayCheckout({
+        amount: charge,
+        hotelName: hotel.name,
+        description: mode === "full"
+          ? `Bid — ${negRoom.name || negRoom.type} — ${nights} night${nights > 1 ? "s" : ""}`
+          : `🔒 Hold bid · Lock ₹${total.toLocaleString()} for 24h`,
+        userName: user!.name || user!.phone || "",
+        userPhone: user!.phone,
+        userEmail: user!.email,
+      });
+      const paymentId = payResult.razorpay_payment_id;
+      const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id });
+      localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
+
+      if (mode !== "full") {
+        saveHoldState({
+          bidId: bidRes.bid.id,
+          hotelId: hotel.id, hotelName: hotel.name, roomType: negRoom.name || negRoom.type,
+          holdAmount, balanceDue: total - holdAmount, totalAmount: total,
+          holdPaymentId: paymentId,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "negotiate",
+          checkIn: negIn, checkOut: negOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
+
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: negRoom.id,
+            customerId: user!.id,
+            paidTotal: charge, paidPerNight: negAmt, nights,
+            flow: mode === "full" ? "negotiate" : `negotiate-${mode}`,
+            razorpayPaymentId: paymentId,
+          }),
+        });
+      } catch {}
+
+      let accepted = false;
+      try { await api.acceptBid(bidRes.bid.id); accepted = true; } catch {}
+      setNegAuto(accepted);
+
+      if (accepted && mode === "full") {
+        await sendBookingEmail({
+          bookingId: bidRes.bid.id,
+          hotelName: hotel.name,
+          roomType: negRoom.name || negRoom.type,
+          checkIn: negIn, checkOut: negOut,
+          guests: globalTotalGuests || negRoom.capacity || 2,
+          nights, amount: total, paymentId, city: hotel.city,
+        });
+      }
+      setReview(null);
+      setNegSuccess(true);
+      fetchMyBids();
+    } catch(e:any) {
+      if (e.message === "__CANCELLED__") { return; }
+      if (jwtRedirect(e.message) || isFirebaseToken()) {
+        setNegRoom(null); setReview(null);
+        openVerifyAndRetry(() => openNegotiate(negRoom));
+      } else { alert(e.message || "Bid failed. Please try again."); }
+    }
+    finally { setNegLoading(false); }
+  };
+
   const handleCounterAccept = async (bid: any) => {
+    const bidId = bid.id;
+    const counterAmt = bid.counterAmount || bid.amount;
+    // Open BookingReview so customer can pick Pay-Full / Hold / Pay-At-Hotel
+    const stored = JSON.parse(localStorage.getItem(`bid_dates_${bidId}`) || "null");
+    const nights = stored?.checkIn && stored?.checkOut
+      ? Math.max(1, Math.ceil((new Date(stored.checkOut).getTime()-new Date(stored.checkIn).getTime())/86400000))
+      : 1;
+    const total = counterAmt * nights;
+    const rateLines = [
+      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: "Hotel countered at this rate", value: "Accepted", subtle: true },
+    ];
+    setReview({
+      hotelName: hotel.name,
+      hotelCity: hotel.city,
+      roomType: bid.room?.type || "Room",
+      checkIn: stored?.checkIn || today,
+      checkOut: stored?.checkOut || tomorrow,
+      nights,
+      adults: bid.request?.guests || 2,
+      rateLines, totalAmount: total,
+      flowLabel: "🤝 Accept Counter",
+      onUpdate: () => setReview(null),
+      onPayFull: () => executeCounterAccept(bid, "full", 0, { nights, total }),
+      onHold:    (h) => executeCounterAccept(bid, "hold", h, { nights, total }),
+      onPayAtHotel: (h) => executeCounterAccept(bid, "payhotel", h, { nights, total }),
+      holdEnabled: true,
+      payAtHotelEnabled: true,
+    });
+  };
+
+  const executeCounterAccept = async (
+    bid: any,
+    mode: "full" | "hold" | "payhotel",
+    holdAmount: number,
+    ctx: { nights: number; total: number }
+  ) => {
     const bidId = bid.id;
     const counterAmt = bid.counterAmount || bid.amount;
     setActionLoading(bidId);
     try {
-      // Razorpay payment before accepting counter offer
+      const { nights, total } = ctx;
+      const charge = mode === "full" ? total : holdAmount;
       const stored = JSON.parse(localStorage.getItem(`bid_dates_${bidId}`) || "null");
-      const nights = stored?.checkIn && stored?.checkOut
-        ? Math.max(1, Math.ceil((new Date(stored.checkOut).getTime()-new Date(stored.checkIn).getTime())/86400000))
-        : 1;
 
       const payResult = await openRazorpayCheckout({
-        amount: counterAmt * nights,
+        amount: charge,
         hotelName: hotel.name,
-        description: `Counter Offer Accept — ${bid.room?.type || "Room"} — ${nights} night${nights > 1 ? "s" : ""}`,
+        description: mode === "full"
+          ? `Counter Offer Accept — ${bid.room?.type || "Room"} — ${nights} night${nights > 1 ? "s" : ""}`
+          : `🔒 Hold counter offer · Lock ₹${total.toLocaleString()} for 24h`,
         userName: user?.name || user?.phone || "",
         userPhone: user?.phone,
         userEmail: user?.email,
@@ -768,21 +970,47 @@ export default function HotelDetail() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Send confirmation email
-      await sendBookingEmail({
-        bookingId: bidId,
-        hotelName: hotel.name,
-        roomType: bid.room?.type || "Room",
-        checkIn: stored?.checkIn || "",
-        checkOut: stored?.checkOut || "",
-        guests: bid.request?.guests || 2,
-        nights,
-        amount: counterAmt * nights,
-        paymentId: payResult.razorpay_payment_id,
-        city: hotel.city,
-      });
+      if (mode !== "full") {
+        saveHoldState({
+          bidId,
+          hotelId: hotel.id, hotelName: hotel.name, roomType: bid.room?.type,
+          holdAmount, balanceDue: total - holdAmount, totalAmount: total,
+          holdPaymentId: payResult.razorpay_payment_id,
+          expiresAt: holdExpiresAt().toISOString(), createdAt: new Date().toISOString(),
+          status: "active", flow: "counter-accept",
+          checkIn: stored?.checkIn, checkOut: stored?.checkOut,
+          payAtHotel: mode === "payhotel",
+        });
+      }
 
-      alert("Booking confirmed! 🎉");
+      try {
+        await fetch("/api/bid/paid", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bidId, hotelId: hotel.id, roomId: bid.roomId || bid.room?.id,
+            customerId: user?.id,
+            paidTotal: charge, paidPerNight: counterAmt, nights,
+            flow: mode === "full" ? "counter-accept" : `counter-accept-${mode}`,
+            razorpayPaymentId: payResult.razorpay_payment_id,
+          }),
+        });
+      } catch {}
+
+      if (mode === "full") {
+        await sendBookingEmail({
+          bookingId: bidId,
+          hotelName: hotel.name,
+          roomType: bid.room?.type || "Room",
+          checkIn: stored?.checkIn || "",
+          checkOut: stored?.checkOut || "",
+          guests: bid.request?.guests || 2,
+          nights, amount: total,
+          paymentId: payResult.razorpay_payment_id,
+          city: hotel.city,
+        });
+      }
+      setReview(null);
+      alert(mode === "full" ? "Booking confirmed! 🎉" : `🔒 Price locked for 24h! Balance ₹${(total-holdAmount).toLocaleString()} due ${mode==="payhotel"?"at hotel":"online"}.`);
       fetchMyBids();
     } catch (e: any) {
       if (e.message === "__CANCELLED__") { return; }
@@ -2558,6 +2786,14 @@ export default function HotelDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          BOOKING REVIEW (Phase 2) — sits between user confirm and Razorpay.
+          Lets customer Pay-Full / Hold for 24h / Pay-Hold + Settle-At-Hotel.
+      ══════════════════════════════════════════ */}
+      {review && (
+        <BookingReview {...review} open onClose={() => setReview(null)} />
       )}
 
       {/* ── Floating picker modal — opens when user taps Book Now/Negotiate without dates ── */}
