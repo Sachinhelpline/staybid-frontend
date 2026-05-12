@@ -28,6 +28,12 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
+import {
+  FlashDealStoryRail,
+  FlashDealStoryViewer,
+  useFlashDealStories,
+  type FlashDealStory,
+} from "@/components/discover/FlashDealStories";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -1500,12 +1506,17 @@ function Toast({ msg }: { msg: string | null }) {
 // HotelCard — one Reels card per hotel
 // ─────────────────────────────────────────────────────────────────────────
 const HotelCard = memo(function HotelCard({
-  item, active, muted, hasInteracted, onMuteToggle,
+  item, active, adjacent, muted, hasInteracted, onMuteToggle,
   onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenEntity, onWatchEntity,
   hasOwnStories, onOpenStories,
 }: {
   item: Item;
   active: boolean;
+  /** True when this card is one slot above or below the active card.
+      Non-active, non-adjacent cards downgrade <video preload> from "auto"
+      → "metadata" so we don't fetch 8 reels of MP4 data on initial load.
+      Big perf win on slower networks. */
+  adjacent: boolean;
   muted: boolean;
   hasInteracted: boolean;                  // gate the "Tap to unmute" coach mark
   onMuteToggle: () => void;
@@ -1734,7 +1745,12 @@ const HotelCard = memo(function HotelCard({
           autoPlay
           muted={muted}
           playsInline
-          preload="auto"
+          // Perf: only the active card eagerly fetches the full video. The
+          // two adjacent cards fetch only metadata so the user gets an
+          // instant-play feel when they swipe. Off-screen cards skip the
+          // network entirely — preventing N parallel MP4 downloads on cold
+          // start of the feed.
+          preload={active ? "auto" : (adjacent ? "metadata" : "none")}
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -1863,10 +1879,12 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-      {/* Top-LEFT: hotel profile chip (pushed below brand chrome to avoid overlap).
+      {/* Top-LEFT: hotel profile chip (pushed below brand chrome + flash-deal
+          rail to avoid overlap). Rail bottom is ~152px; chip sits at 168px
+          for a clean 16px breathing gap. Measured live, not eyeballed.
           Avatar tap → popover (View Profile / Watch Reels).
           Name tap   → opens hotel profile sheet directly. */}
-      <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "60px" }}>
+      <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "168px" }}>
         <button
           type="button"
           onClick={(e) => {
@@ -2682,6 +2700,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // and feed the StoryViewer on tap.
   const activeStories = userPosts.filter((p: any) => p.kind === "story");
   const [storyOpen, setStoryOpen] = useState(false);
+  const [flashStoryIdx, setFlashStoryIdx] = useState<number | null>(null);
 
   const items: Item[] = (() => {
     // Stories that are NOT also saved-as-post should NOT appear in the
@@ -2820,6 +2839,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     items.forEach((it) => { c[sourceFor(it.hotel)]++; });
     return c;
   })();
+
+  // ─── Flash-deal stories rail ──────────────────────────────────────────
+  // Daily auto-generated hotel flash deals surfaced as IG-style stories at
+  // the top of the reel feed. Tap an avatar → fullscreen viewer with a
+  // Book Now CTA that routes into the existing direct-book URL on the
+  // hotel detail page. City-aware via the existing `filterCity` state
+  // (kept in sync with `sb_city` + `sb:city-change`).
+  const { deals: flashDeals } = useFlashDealStories(filterCity);
 
   // Apply filter
   let filteredItems = items.filter((it) => {
@@ -3031,7 +3058,17 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           -ms-overflow-style: none;
         }
         .ig-feed::-webkit-scrollbar { display: none; width: 0; height: 0; }
-        .ig-card { scroll-snap-align: start; scroll-snap-stop: always; }
+        .ig-card {
+          scroll-snap-align: start;
+          scroll-snap-stop: always;
+          /* Perf: each card paints into its own layer + isolates layout
+             work from neighbours. Cuts main-thread scroll cost on long
+             feeds — browser can skip painting cards entirely outside the
+             viewport. */
+          contain: layout paint style;
+          content-visibility: auto;
+          contain-intrinsic-size: 100dvh;
+        }
 
         /* Filter chip — slim, top-LEFT, doesn't collide with the brand
            label (top-center) or Compare (top-right). */
@@ -3588,12 +3625,24 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         </div>
       )}
 
+      {/* Flash-deal story rail — auto-generated, lives at the top of the
+          reel feed in place of the old user-story tray. Each item is a hotel
+          with an active flash deal; tap → fullscreen viewer with Book Now. */}
+      <FlashDealStoryRail
+        deals={flashDeals}
+        onOpen={(i) => {
+          setFlashStoryIdx(i);
+          onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
+        }}
+      />
+
       <div ref={containerRef} className="ig-feed">
         {filteredItems.map((it, i) => (
           <HotelCard
             key={it.hotel.id || i}
             item={it}
             active={i === activeIdx}
+            adjacent={Math.abs(i - activeIdx) === 1}
             muted={muted}
             hasInteracted={hasInteracted}
             onMuteToggle={toggleMute}
@@ -3809,6 +3858,28 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         ownerName={ownerName}
         ownerAvatar={ownerAvatar}
         onClose={() => setStoryOpen(false)}
+      />
+
+      {/* Flash-deal story viewer — same lifecycle pattern as StoryViewer
+          but pulls from auto-generated /api/flash/near + opens with the
+          existing direct-book URL on tap of "Book Now". */}
+      <FlashDealStoryViewer
+        open={flashStoryIdx !== null}
+        deals={flashDeals}
+        startIdx={flashStoryIdx ?? 0}
+        onClose={() => setFlashStoryIdx(null)}
+        onTrackEvent={onTrackEvent}
+        onBook={(d: FlashDealStory) => {
+          const url =
+            `/hotels/${d.hotelId}` +
+            `?dealId=${encodeURIComponent(d.id)}` +
+            `&dealPrice=${encodeURIComponent(String(d.dealPrice))}` +
+            `&roomId=${encodeURIComponent(d.roomId)}` +
+            `&discount=${encodeURIComponent(String(d.discount))}` +
+            `&directBook=true`;
+          setFlashStoryIdx(null);
+          router.push(url);
+        }}
       />
     </>
   );

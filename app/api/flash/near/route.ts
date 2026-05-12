@@ -17,7 +17,14 @@ function toISO(d: Date) { return d.toISOString().slice(0, 10); }
 function rangesOverlap(a1: string, a2: string, b1: string, b2: string) { return a1 < b2 && b1 < a2; }
 
 export async function GET(req: NextRequest) {
-  const city = req.nextUrl.searchParams.get("city") || "";
+  const city   = req.nextUrl.searchParams.get("city") || "";
+  // viewed=id1,id2,…  → de-prioritized in the result (same hotels won't
+  // sit at the top of the rail on every visit). Capped at 60 by the
+  // client. Same idea as the personalization layer on /api/discover/feed.
+  const viewedRaw = req.nextUrl.searchParams.get("viewed") || "";
+  const viewedIds = new Set(
+    viewedRaw.split(",").map(s => s.trim()).filter(Boolean).slice(0, 60)
+  );
 
   // ─── 1) Pull raw deals + parallel side-load ───────────────────────────
   const baseSelect = `select=*${city ? `&city=ilike.${encodeURIComponent(city)}` : ""}`;
@@ -257,11 +264,45 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Sort: biggest discount first, then cheapest
-  out.sort((a, b) => (b.discount - a.discount) || (a.aiPrice - b.aiPrice));
+  // ─── Personalize the order ──────────────────────────────────────────
+  // Old behaviour: deterministic sort (discount DESC, price ASC). Same
+  // hotels at the top forever — felt stale on repeat visits.
+  // New behaviour:
+  //   1. Bucket by discount band (5% wide). Band order preserved so a 30%
+  //      deal never sits below a 15% one.
+  //   2. Fisher-Yates shuffle inside each band so siblings rotate.
+  //   3. Push deals the user has already viewed in this browser to the
+  //      bottom of THEIR band (still visible — just not occupying the
+  //      coveted top slots).
+  //   4. Tiny price jitter (±50) only used as the final tiebreak inside a
+  //      band so the same two-deal-in-a-band visits feel non-identical.
+  const banded = new Map<number, any[]>();
+  for (const d of out) {
+    const k = Math.floor(d.discount / 5);
+    if (!banded.has(k)) banded.set(k, []);
+    banded.get(k)!.push(d);
+  }
+  const bandKeys = Array.from(banded.keys()).sort((a, b) => b - a);
+  const personalized: any[] = [];
+  bandKeys.forEach((k) => {
+    const arr = banded.get(k)!.slice();
+    // Fisher-Yates inside band
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    // Within band, push viewed to the back so fresh deals lead
+    const fresh = arr.filter((d) => !viewedIds.has(String(d.id)));
+    const seen  = arr.filter((d) =>  viewedIds.has(String(d.id)));
+    personalized.push(...fresh, ...seen);
+  });
 
-  return NextResponse.json({
-    deals:       out,
+  const res = NextResponse.json({
+    deals:       personalized,
     generatedAt: new Date().toISOString(),
   });
+  // No-store: every rail fetch reshuffles. Eliminates the "same order again"
+  // feel on quick refreshes / city changes.
+  res.headers.set("Cache-Control", "no-store, must-revalidate");
+  return res;
 }

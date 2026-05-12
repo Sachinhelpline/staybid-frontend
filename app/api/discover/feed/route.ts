@@ -148,18 +148,47 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  // 4) Sort desc by score, then inject ε-greedy exploration every 5th slot
-  scored.sort((a, b) => b.score - a.score);
-  const mainPool = scored.filter(s => !skipped.has(s.hotel.id));
+  // 4) Sort desc by score, with a small per-request jitter so ties don't
+  //    always resolve in the same order. The goal: "feed feels different
+  //    on every refresh" without breaking strong personal signals. Jitter
+  //    magnitude (±2.5) is smaller than any meaningful score delta, so
+  //    truly-strong matches still float to the top.
+  const jittered = scored.map(s => ({ ...s, _r: s.score + (Math.random() - 0.5) * 5 }));
+  jittered.sort((a, b) => b._r - a._r);
+
+  // Bucket by score band (each band is 8 points wide). Shuffling inside a
+  // band gives IG-style "fresh order every time" without disrespecting the
+  // ranker — band order is preserved, only siblings inside a band rotate.
+  const buckets: Map<number, typeof jittered> = new Map();
+  jittered.forEach(s => {
+    const k = Math.floor(s._r / 8);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k)!.push(s);
+  });
+  const bandKeys = Array.from(buckets.keys()).sort((a, b) => b - a);
+  const reshuffled: typeof jittered = [];
+  bandKeys.forEach(k => {
+    const arr = buckets.get(k)!.slice();
+    // Fisher-Yates inside the band
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    reshuffled.push(...arr);
+  });
+
+  const mainPool = reshuffled.filter(s => !skipped.has(s.hotel.id));
   const unseenPool = mainPool.filter(s => !viewed.has(s.hotel.id));
 
   const out: any[] = [];
   const usedIds = new Set<string>();
   let mainIdx = 0;
   for (let i = 0; i < limit; i++) {
-    const exploreSlot = (i + 1) % 5 === 0 && unseenPool.length > 0;
+    // Bump exploration: every 4th slot (was 5th) → roughly 25% exploratory.
+    // Keeps the bubble breaking aggressively while keeping the top of the
+    // feed personalized.
+    const exploreSlot = (i + 1) % 4 === 0 && unseenPool.length > 0;
     if (exploreSlot) {
-      // Random pick from unseen pool (avoid bubble)
       const randIdx = Math.floor(Math.random() * unseenPool.length);
       const pick = unseenPool.splice(randIdx, 1)[0];
       if (pick && !usedIds.has(pick.hotel.id)) {
@@ -168,7 +197,6 @@ export async function POST(req: NextRequest) {
         continue;
       }
     }
-    // Otherwise next highest-score that's not already used
     while (mainIdx < mainPool.length) {
       const cand = mainPool[mainIdx++];
       if (!usedIds.has(cand.hotel.id)) {
@@ -181,6 +209,9 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ items: out, nextCursor: null });
-  res.headers.set("Cache-Control", "private, max-age=20");
+  // Was max-age=20 — that made every refresh inside 20s return identical
+  // ordering, which directly contradicts the "different feed each time"
+  // goal. no-store forces a fresh shuffle on every pull.
+  res.headers.set("Cache-Control", "no-store, must-revalidate");
   return res;
 }
