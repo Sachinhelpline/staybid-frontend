@@ -16,7 +16,7 @@
 //     tints), shimmer sweep, depress on press.
 //   • Mute toggle (top-right corner of each card).
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useRef, useState, useCallback, memo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSoundStore } from "@/lib/sound-store";
@@ -2852,6 +2852,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   const [storyOpen, setStoryOpen] = useState(false);
   const [flashStoryIdx, setFlashStoryIdx] = useState<number | null>(null);
 
+  // v91 — Stable per-session seed so the merge order is consistent within
+  // one app session (no jitter mid-scroll) but different between sessions.
+  // Using a ref-like effect-once would re-shuffle on every render — bad.
+  const sessionSeed = useMemo(() => Math.random(), []);
+
   const items: Item[] = (() => {
     // Stories that are NOT also saved-as-post should NOT appear in the
     // main feed — they live on the story ring and the StoryViewer only.
@@ -2916,7 +2921,46 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         reasons: ["Your upload"],
       } as Item;
     });
-    return [...userItems, ...propItems];
+
+    // v91 — Two-part fix:
+    //   1) DEDUPE: when the Composer posts publicly, the same content
+    //      lands in BOTH PostsStore (local-first) and Supabase
+    //      social_posts (returned in propItems with _isSelf=true). Strip
+    //      _isSelf items from propItems whose content fingerprint matches
+    //      any local user post, so the user never sees their own reel
+    //      twice.
+    //   2) SHUFFLE: rather than always prepending userItems (which made
+    //      the most-recent upload always the FIRST card on app open),
+    //      interleave them into propItems at deterministic-per-session
+    //      positions. Same session → same order; next session → fresh
+    //      mix because sessionSeed is re-rolled on remount.
+    const fpUser = new Set(
+      userItems.map((u) =>
+        `${(u.hotel as any)._userPostKind}|${String(u.hotel.description).slice(0, 60)}`
+      )
+    );
+    const dedupedProp = propItems.filter((p) => {
+      if (!(p.hotel as any)?._isSelf) return true;
+      const fp = `${(p.hotel as any)?._userPostKind || "reel"}|${String(p.hotel.description).slice(0, 60)}`;
+      return !fpUser.has(fp);
+    });
+
+    if (userItems.length === 0) return dedupedProp;
+    if (dedupedProp.length === 0) return userItems;
+
+    // Interleave: place each userItem at a deterministic offset based on
+    // sessionSeed so order is stable within a session but different
+    // across sessions. Multiple userItems get spread across the propItems
+    // rather than clumping at the top.
+    const result: Item[] = [...dedupedProp];
+    userItems.forEach((u, i) => {
+      // Spread positions across the prop list, biased away from index 0
+      // so the user's own reel never auto-opens first.
+      const offset = Math.floor((sessionSeed * 997 + i * 313) % result.length);
+      const insertAt = Math.max(1, Math.min(result.length, offset));
+      result.splice(insertAt, 0, u);
+    });
+    return result;
   })();
   // ── GLOBAL mute / gain state — same source for every reel + the rail button.
   const { isMuted, hasInteracted, toggleMute, gain, setGain } = useSoundStore();

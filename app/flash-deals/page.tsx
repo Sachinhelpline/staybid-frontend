@@ -766,21 +766,24 @@ function FdStyles() {
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       }
 
-      /* Card */
+      /* v91 — Card uses theme tokens: cream surface in light mode, warm
+         cocoa in dark. Champagne accent on hover stays brand-consistent. */
       .fd-card {
         position: relative;
-        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-        border: 1px solid rgba(255,255,255,0.08);
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
         border-radius: 20px;
         overflow: hidden;
         cursor: pointer;
+        color: var(--text-base);
         transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
         animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
+        box-shadow: var(--shadow-soft);
       }
       .fd-card:hover {
         transform: translateY(-4px);
-        border-color: rgba(240,180,41,0.4);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(240,180,41,0.25);
+        border-color: var(--accent);
+        box-shadow: var(--shadow-card), 0 0 0 1px var(--accent-soft);
       }
       @keyframes fdFadeUp {
         from { opacity: 0; transform: translateY(22px); }
@@ -851,9 +854,9 @@ function FdStyles() {
         50%      { transform: rotate(-3deg) scale(1.05); }
       }
       .fd-disc-num { color: #0a0814; font-weight: 900; font-size: 1.1rem; letter-spacing: -0.02em; }
-      .fd-disc-stamp.fire .fd-disc-num { color: #fff; }
+      .fd-disc-stamp.fire .fd-disc-num { color: var(--text-base); }
       .fd-disc-off { color: #0a0814; font-weight: 800; font-size: 0.55rem; letter-spacing: 0.18em; }
-      .fd-disc-stamp.fire .fd-disc-off { color: #fff; opacity: 0.9; }
+      .fd-disc-stamp.fire .fd-disc-off { color: var(--text-base); opacity: 0.9; }
 
       .fd-img-bottom {
         position: absolute; bottom: 12px; left: 12px; z-index: 2;
@@ -863,7 +866,7 @@ function FdStyles() {
         background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
         padding: 5px 10px; border-radius: 999px;
         font-size: 0.65rem; font-weight: 600;
-        color: rgba(255,255,255,0.85);
+        color: var(--text-soft);
         border: 1px solid rgba(255,255,255,0.08);
       }
       .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #f0b429; }
@@ -879,14 +882,14 @@ function FdStyles() {
       .fd-ring-time {
         display: flex; flex-direction: column; line-height: 1;
         font-family: 'Menlo', 'Consolas', monospace;
-        color: #fff;
+        color: var(--text-base);
       }
       .fd-ring-time > span:first-child { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
       .fd-ring-time > span:first-child.urgent { color: #ff7088; animation: fdBlink 1.2s infinite; }
       .fd-ring-sep { animation: fdBlink 1s infinite; }
       .fd-ring-lbl {
         font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
-        color: rgba(255,255,255,0.45); text-transform: uppercase;
+        color: var(--text-muted); text-transform: uppercase;
         margin-top: 2px;
       }
       @keyframes fdBlink {
@@ -900,7 +903,7 @@ function FdStyles() {
         gap: 8px; margin-bottom: 2px;
       }
       .fd-hotel-name {
-        font-size: 0.95rem; font-weight: 600; color: #fff;
+        font-size: 0.95rem; font-weight: 600; color: var(--text-base);
         margin: 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         max-width: 70%;
@@ -908,7 +911,7 @@ function FdStyles() {
       .fd-stars { color: #f0b429; font-size: 0.65rem; letter-spacing: 0.05em; }
       .fd-rt-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
       .fd-room-type { color: rgba(240,180,41,0.85); font-size: 0.7rem; font-weight: 600; }
-      .fd-room-cap { color: rgba(255,255,255,0.35); font-size: 0.65rem; }
+      .fd-room-cap { color: var(--text-muted); font-size: 0.65rem; }
 
       .fd-slots { margin-bottom: 12px; }
       .fd-slots-text {
@@ -917,7 +920,7 @@ function FdStyles() {
       }
       .fd-slots-left { color: #f0b429; }
       .fd-slots-left.urgent { color: #ff7088; }
-      .fd-slots-of { color: rgba(255,255,255,0.35); }
+      .fd-slots-of { color: var(--text-muted); }
       .fd-slots-bar {
         position: relative; height: 5px;
         background: rgba(255,255,255,0.07); border-radius: 999px; overflow: hidden;
@@ -955,7 +958,7 @@ function FdStyles() {
         color: rgba(240,180,41,0.85);
         margin-bottom: 8px;
       }
-      .fd-up-count { color: rgba(255,255,255,0.4); font-size: 0.6rem; font-weight: 500; }
+      .fd-up-count { color: var(--text-muted); font-size: 0.6rem; font-weight: 500; }
       .fd-up-chips {
         display: flex; gap: 6px; overflow-x: auto;
         scrollbar-width: none;
@@ -979,7 +982,7 @@ function FdStyles() {
         box-shadow: inset 0 0 0 1px rgba(240,180,41,0.2);
       }
       .fd-up-chip.soldout { opacity: 0.4; cursor: not-allowed; }
-      .fd-up-chip-type { font-size: 0.66rem; font-weight: 600; color: #fff; line-height: 1.1; }
+      .fd-up-chip-type { font-size: 0.66rem; font-weight: 600; color: var(--text-base); line-height: 1.1; }
       .fd-up-chip-delta {
         font-size: 0.6rem; font-weight: 700;
         color: rgba(240,180,41,0.85); margin-top: 2px;
@@ -993,14 +996,14 @@ function FdStyles() {
         border-top: 1px solid rgba(255,255,255,0.07);
       }
       .fd-price-strike {
-        color: rgba(255,255,255,0.3); font-size: 0.7rem;
+        color: var(--text-muted); font-size: 0.7rem;
         text-decoration: line-through; margin: 0 0 1px;
       }
       .fd-price-now {
-        color: #fff; font-size: 1.4rem; font-weight: 800; line-height: 1;
+        color: var(--text-base); font-size: 1.4rem; font-weight: 800; line-height: 1;
         margin: 0;
       }
-      .fd-price-unit { color: rgba(255,255,255,0.35); font-size: 0.65rem; font-weight: 500; margin-left: 4px; }
+      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; margin-left: 4px; }
       .fd-price-save {
         margin: 4px 0 0; color: rgba(46,204,113,0.85);
         font-size: 0.6rem; font-weight: 600;
@@ -1017,7 +1020,7 @@ function FdStyles() {
       }
       .fd-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
       .fd-cta.sold {
-        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);
+        background: var(--accent-soft); color: var(--text-muted);
         cursor: not-allowed; box-shadow: none;
       }
 
@@ -1052,8 +1055,8 @@ function FdStyles() {
         margin: 0 auto 18px;
         font-size: 1.6rem;
       }
-      .fd-empty-title { color: #fff; font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
-      .fd-empty-sub { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin: 0; }
+      .fd-empty-title { color: var(--text-base); font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
+      .fd-empty-sub { color: var(--text-muted); font-size: 0.82rem; margin: 0; }
 
       /* Drawer */
       .fd-drawer-bg {
@@ -1066,18 +1069,20 @@ function FdStyles() {
       @keyframes fdFadeIn {
         from { opacity: 0; } to { opacity: 1; }
       }
+      /* v91 — Drawer reads theme tokens. */
       .fd-drawer {
         position: relative;
         margin: auto;
         width: 100%; max-width: 540px;
         max-height: 92vh;
-        background: linear-gradient(180deg, #0e0c19 0%, #0a0814 100%);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
         border-radius: 24px;
         overflow: hidden;
         display: flex; flex-direction: column;
+        color: var(--text-base);
         animation: fdDrawer 0.4s cubic-bezier(.2,.7,.2,1) both;
-        box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        box-shadow: var(--shadow-card);
       }
       @media (max-width: 540px) {
         .fd-drawer-bg { align-items: flex-end; }
@@ -1100,7 +1105,7 @@ function FdStyles() {
         width: 36px; height: 36px; border-radius: 50%;
         background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
         border: 1px solid rgba(255,255,255,0.1);
-        color: #fff; font-size: 1rem; cursor: pointer;
+        color: var(--text-base); font-size: 1rem; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: all 0.2s ease;
       }
@@ -1128,10 +1133,10 @@ function FdStyles() {
       .fd-drawer-img-head h2 {
         font-family: 'Cormorant Garamond', 'Syne', serif;
         font-weight: 400; font-size: 1.6rem; margin: 0;
-        color: #fff;
+        color: var(--text-base);
       }
       .fd-drawer-img-head p {
-        color: rgba(255,255,255,0.6); font-size: 0.78rem;
+        color: var(--text-soft); font-size: 0.78rem;
         margin: 4px 0 0;
       }
 
@@ -1165,20 +1170,20 @@ function FdStyles() {
       .fd-drawer-room-left { flex: 1; min-width: 0; }
       .fd-drawer-room-type {
         display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-        color: #fff; font-size: 0.86rem; font-weight: 600;
+        color: var(--text-base); font-size: 0.86rem; font-weight: 600;
         margin-bottom: 4px;
       }
-      .fd-drawer-room-meta { color: rgba(255,255,255,0.42); font-size: 0.7rem; }
+      .fd-drawer-room-meta { color: var(--text-muted); font-size: 0.7rem; }
       .fd-drawer-room-right { text-align: right; flex-shrink: 0; padding-left: 12px; }
-      .fd-drawer-room-price { color: #fff; font-size: 1rem; font-weight: 800; }
+      .fd-drawer-room-price { color: var(--text-base); font-size: 1rem; font-weight: 800; }
       .fd-drawer-room-strike {
-        color: rgba(255,255,255,0.3); font-size: 0.68rem;
+        color: var(--text-muted); font-size: 0.68rem;
         text-decoration: line-through;
       }
       .fd-pill {
         font-size: 0.55rem; font-weight: 700;
         padding: 2px 8px; border-radius: 999px;
-        background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+        background: var(--accent-soft); color: var(--text-soft);
         letter-spacing: 0.06em;
       }
       .fd-pill.gold {
@@ -1190,7 +1195,7 @@ function FdStyles() {
       }
       .fd-drawer-empty {
         padding: 14px; text-align: center;
-        color: rgba(255,255,255,0.4); font-size: 0.78rem;
+        color: var(--text-muted); font-size: 0.78rem;
         background: rgba(255,255,255,0.025);
         border: 1px dashed rgba(255,255,255,0.08);
         border-radius: 14px;
@@ -1205,7 +1210,7 @@ function FdStyles() {
         padding: 10px 14px;
         background: rgba(255,255,255,0.025);
         border-radius: 12px;
-        color: rgba(255,255,255,0.7); font-size: 0.78rem; line-height: 1.4;
+        color: var(--text-soft); font-size: 0.78rem; line-height: 1.4;
       }
       .fd-drawer-rules li > span:first-child {
         font-size: 1rem; line-height: 1.1; flex-shrink: 0;
@@ -1220,13 +1225,13 @@ function FdStyles() {
       }
       .fd-drawer-cta-info { flex-shrink: 0; }
       .fd-drawer-cta-strike {
-        color: rgba(255,255,255,0.3); font-size: 0.7rem;
+        color: var(--text-muted); font-size: 0.7rem;
         text-decoration: line-through; line-height: 1;
       }
       .fd-drawer-cta-price {
-        color: #fff; font-size: 1.3rem; font-weight: 800; line-height: 1.1;
+        color: var(--text-base); font-size: 1.3rem; font-weight: 800; line-height: 1.1;
       }
-      .fd-drawer-cta-price span { color: rgba(255,255,255,0.4); font-size: 0.68rem; font-weight: 500; margin-left: 4px; }
+      .fd-drawer-cta-price span { color: var(--text-muted); font-size: 0.68rem; font-weight: 500; margin-left: 4px; }
       .fd-drawer-cta {
         flex: 1;
         padding: 14px 20px;

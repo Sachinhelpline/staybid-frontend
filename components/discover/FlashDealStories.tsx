@@ -193,14 +193,18 @@ export function FlashDealStoryRail({
   return (
     <>
       <div className="fdeal-rail-wrap pointer-events-auto">
+        {/* v91 — Compound label: brand wordmark + separator + "Flash Deals"
+            stay TOGETHER on the LEFT. v89 put them on opposite sides
+            (justify-between), but the filter chip (fixed top-right) covered
+            the brand on the right. Now they're a single Cormorant pair that
+            never sits under any fixed top-right chrome. */}
         <div className="fdeal-rail-header">
-          <span className="fdeal-rail-title">Flash Deals</span>
-          {/* v89 — Brand wordmark restored on `/` home but inside the rail
-              header on the RIGHT (Flash Deals title is on the left).
-              No more overlap with the page-level brand (which we now
-              hide on `/`). Same Cormorant italic + cocoa+champagne. */}
-          <span className="fdeal-rail-brand" aria-label="StayBid">
-            stay<span className="fdeal-rail-brand-dot">·</span>bid
+          <span className="fdeal-rail-brandwrap" aria-label="StayBid">
+            <span className="fdeal-rail-brand">
+              stay<span className="fdeal-rail-brand-dot">·</span>bid
+            </span>
+            <span className="fdeal-rail-brand-sep">·</span>
+            <span className="fdeal-rail-title">Flash Deals</span>
           </span>
         </div>
         <div className="fdeal-rail-scroll" role="list">
@@ -253,8 +257,23 @@ export function FlashDealStoryRail({
         .fdeal-rail-header {
           display: flex;
           align-items: baseline;
-          justify-content: space-between;
+          /* v91 — flex-start so brand+title compound label stays on LEFT,
+             away from the fixed top-right filter chip. Right side of the
+             rail header is now empty (reserved for chrome). */
+          justify-content: flex-start;
           padding: 0 4px 8px;
+          padding-right: 110px;  /* clear the filter chip top-right */
+        }
+        .fdeal-rail-brandwrap {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+        .fdeal-rail-brand-sep {
+          color: var(--cozy-champagne, #C9A66B);
+          font-style: italic;
+          font-size: 0.92rem;
+          opacity: 0.7;
         }
         .fdeal-rail-title {
           font-family: "Cormorant Garamond", "Georgia", serif;
