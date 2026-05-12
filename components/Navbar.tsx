@@ -128,6 +128,7 @@ export function Navbar() {
   if (pathname?.startsWith("/onboard")) return null;   // onboarding panel has its own header
   if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
   if (pathname?.startsWith("/reels")) return null;     // Instagram-style video feed
+  if (pathname?.startsWith("/me")) return null;        // IG-style "You" profile has its own top bar
   // `/` now renders DiscoverPage directly (v57). Hide the navbar there too —
   // the reel feed has its own minimal top chrome (StayBid label + Compare),
   // and the floating dock at the bottom handles primary nav.

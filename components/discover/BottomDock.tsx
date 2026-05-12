@@ -33,18 +33,20 @@ const ITEMS: Item[] = [
   { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
   { href: "/bid",         label: "Bid",     icon: "◎",  iconActive: "●" },
   { href: "/hotels",      label: "Hotels",  icon: "⌕",  iconActive: "⌕" },
-  { href: "/profile",     label: "You",     icon: "○",  iconActive: "●" },
+  { href: "/me",          label: "You",     icon: "○",  iconActive: "●" },
 ];
 
 export function BottomDock() {
   const pathname = usePathname() || "/";
 
-  // Only show on the reel-feed surfaces. Outside of these, DialerNav owns
-  // navigation. Keeps the two systems mutually exclusive.
+  // Only show on the reel-feed surfaces + the "You" IG-style profile page.
+  // Outside of these, DialerNav owns navigation. Keeps the two systems
+  // mutually exclusive.
   const visible =
     pathname === "/" ||
     pathname.startsWith("/discover") ||
-    pathname.startsWith("/reels");
+    pathname.startsWith("/reels") ||
+    pathname.startsWith("/me");
   if (!visible) return null;
 
   const isActive = (href: string) => {
@@ -52,6 +54,10 @@ export function BottomDock() {
     // /discover and /reels both light up the Reels slot
     if (href === "/discover") {
       return pathname.startsWith("/discover") || pathname.startsWith("/reels");
+    }
+    // /me — the "You" tab — lights up across the whole profile surface
+    if (href === "/me") {
+      return pathname.startsWith("/me");
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
