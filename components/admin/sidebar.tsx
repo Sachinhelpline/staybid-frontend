@@ -18,6 +18,7 @@ const NAV = [
   { href: "/admin/messages", label: "Chat Moderation", icon: "💬" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
+  { href: "/admin/commission-rules", label: "Commission Rules", icon: "💰" },
   { href: "/admin/revenue", label: "Revenue", icon: "💹" },
   { href: "/admin/feedback", label: "Feedback", icon: "⭐" },
   { href: "/admin/settings", label: "Settings", icon: "⚙️" },

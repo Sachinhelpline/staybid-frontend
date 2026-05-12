@@ -2576,7 +2576,123 @@ Without the migration applied, every code path still works (POST returns 200 wit
 - **Current version:** v94 · branch `claude/blissful-shannon-635ec1` (worktree)
 - **End-to-end booking-source attribution live across 4 surfaces:** customer reel feed, creator hub, hotel partner panel, admin panel.
 - **Migration pending:** apply `migrations/2026-05-13-bid-attributions.sql` once. Codebase is non-blocking — works gracefully when table is missing.
-- **Auto-commission:** creator-attributed bookings whose creator user has an `active` `influencers` row automatically get a pending row in `influencer_commissions` (12% standard, 15% Elite). Existing `/influencer/earnings` page picks them up with zero changes.
+- **Auto-commission:** creator-attributed bookings whose creator user has an `active` `influencers` row automatically get a pending row in `influencer_commissions` (12% standard, 15% Elite — superseded by v95). Existing `/influencer/earnings` page picks them up with zero changes.
 - **Synthetic-creator safety:** the mock `CREATOR_POOL` in `InstagramHotelFeed.tsx` deliberately produces NO attribution params — only real user-uploaded posts (Supabase `social_posts`) drive trackable attribution. Prevents phantom commission rows for fake handles.
+
+---
+
+## Tiered Commission Rules Era (v95, 2026-05-13)
+
+Replaces the v94 flat 12% / 15% Elite commission with an admin-editable slab system + loyalty bonus. Per-creator overrides take precedence over the global default — supports city-/region-specific deals (e.g. Mumbai pilot at 20%, Goa creators on the standard slab).
+
+### How it works
+- **Slabs** match by THIS calendar month's attributed booking count:
+  - 1–25 → 5%, 26–50 → 7%, 51–100 → 10%, 101–300 → 12% (seeded defaults)
+  - Above the top slab's max: top rate continues (no further increase)
+  - Below the lowest slab's min: no commission yet (creator hasn't reached threshold)
+- **Loyalty bonus** stacks on top of the slab %:
+  - 3 consecutive months at the same slab OR higher → +1%
+  - 6 consecutive months → +2% (replaces the +1%, not additive)
+  - "Higher slab counts as staying" — a creator who climbs from 1–25 to 26–50 keeps their streak; one who drops back into a lower slab resets it
+- **Per-creator override**: admin can write a completely different rate card for any one creator at any time. The override flips `active=true` in `commission_rules` — deactivating it instantly reverts that creator to the global default.
+
+### Database (`migrations/2026-05-13-commission-rules.sql`)
+- **`commission_rules`** — single source of truth
+  - `scope` ∈ {`global`, `creator`}, `creator_id` nullable
+  - `slabs JSONB` — `[{minBookings, maxBookings, pct}]`
+  - `loyalty_bonuses JSONB` — `[{months, bonusPct}]`
+  - `active BOOLEAN` — soft-delete by flipping to false
+  - Unique partial index: at most one active global row + at most one active row per creator
+  - `note` + `updated_by` for audit
+- **`creator_commission_history`** — monthly snapshot
+  - PK `(creator_id, year, month)`
+  - `bookings_count`, `slab_min`, `slab_max`, `slab_pct`, `loyalty_pct`, `total_pct`, `gmv`, `commission_total`
+  - Written by `/api/attribution/record` on every creator-attributed booking — drives the consecutive-months loyalty check on the next booking
+- **Seed**: the global row with default slabs is inserted if-not-exists at migration time.
+
+### Compute path (`lib/commission.ts`)
+Pure functions only — no Supabase calls:
+- `DEFAULT_RULE` — final fallback if both creator + global rows are missing
+- `pickSlab(slabs, monthlyBookings)` — returns the matching slab or `null`
+- `pickLoyalty(bonuses, consecutiveMonths)` — returns the highest qualifying bonus pct
+- `computeCommission({ rule, monthlyBookings, consecutiveMonths, bookingAmount })` → `{ slab, basePct, loyaltyPct, totalPct, commissionAmount }`
+- `validateRule(rule)` — rejects overlapping slabs, out-of-range %, negative numbers (mirror of the admin UI's client-side validation)
+
+### `/api/attribution/record` (v94 → v95)
+- Hardcoded `verification_tier >= 3 ? 0.15 : 0.12` is gone.
+- New `resolveRule(creatorId)` — checks creator override → falls back to global default → falls back to `DEFAULT_RULE`.
+- New `monthlyBookingsFor(creatorId, creatorUserId)` — counts `bid_attributions` since the first of the current calendar month (UTC).
+- New `consecutiveMonthsAtSlab(creatorId, currentSlabMin)` — walks `creator_commission_history` backward from last month, breaks the streak on first gap OR first month where `slab_min < currentSlabMin`.
+- After successful compute, `upsertMonthSnapshot(...)` writes / updates the current month's row in `creator_commission_history`.
+- **Audit trail**: `bid_attributions.metadata.commission` captures the slab + rate + monthly + consec-months at write time. Future rule edits do NOT rewrite past commissions.
+
+### Admin API (`/api/admin/commission-rules`)
+- `GET` — `{ global: <rule>, overrides: [<rule>], creators: [{id, userId, displayName, phone}] }`. Side-loads `influencers.display_name` joined with `users.name + phone` for the override picker.
+- `PATCH` — only `scope='global'`. Upserts the single active global rule.
+- `POST` — `scope='creator'` + `creatorId`. Deactivates any older active override (the unique index would reject a duplicate active row), then inserts the new one.
+- `DELETE ?creatorId=<id>` — flips active=false (soft delete). Falls back to global default.
+- All write paths run `validateRule()` first — rejects overlapping slabs, out-of-range %, etc.
+
+### Admin UI (`/admin/commission-rules`)
+- Sidebar: 💰 Commission Rules (between Finance and Revenue).
+- **Platform default card**: shows current slabs + bonuses as pills + Edit button.
+- **Overrides list**: one card per active creator override with Edit / Deactivate.
+- **Add override**: search creators by name/phone in a picker modal.
+- **Editor modal**:
+  - Slab rows: From / To / % (add/remove)
+  - Loyalty rows: Months / +% (add/remove)
+  - Note field (free text for audit context — e.g. "Mumbai pilot")
+  - **Live preview**: walks synthetic booking counts (1, 10, 25, 26, 50, 51, 75, 100, 101, 200, 300, 500) and shows which slab + base % each would land in + the bonus % at 3- and 6-month tenure.
+- Server-side validation surface: overlap error shows red banner, save button stays disabled until valid.
+
+### Verified end-to-end (preview server)
+- ✅ GET seeds the default (5/7/10/12 + 3-mo/6-mo bonuses) on first load.
+- ✅ PATCH updates global default (12 → 13% top slab + added 12-mo loyalty tier, restored after).
+- ✅ Validation rejects overlapping slabs with `400 { error: "Slabs overlap: [1–50] vs [40–100]." }`.
+- ✅ 3 sequential bookings → slab 1 (5%) used → commission ₹50, ₹100, ₹150 → `creator_commission_history` row with `bookings_count: 3, gmv: 6000, commission_total: 300`.
+- ✅ Per-creator override (20% on 1-10) hits compute path with `ruleScope: 'creator'`: ₹5000 × 20% = ₹1000 (vs ₹250 at global 5%).
+- ✅ DELETE deactivates override; subsequent compute reverts to global default.
+
+### Files added (this era)
+```
+migrations/2026-05-13-commission-rules.sql      # commission_rules + creator_commission_history + seed
+lib/commission.ts                                # pure compute functions + types + DEFAULT_RULE
+app/api/admin/commission-rules/route.ts          # GET / PATCH / POST / DELETE
+app/admin/commission-rules/page.tsx              # full editor UI
+```
+
+### Files modified (this era)
+```
+app/api/attribution/record/route.ts              # replaced hardcoded 12% with slab+loyalty compute + snapshot upsert
+app/layout.tsx                                   # SB_BUILD v95 + badge v95
+components/admin/sidebar.tsx                     # +Commission Rules entry
+```
+
+### Things to Avoid (v95)
+- **Never** mutate `bid_attributions.metadata.commission` after the row was written. That field is the immutable audit trail of HOW a particular commission was computed (slab + rate + monthly count + consec-months at write time). Recompute = lose the audit history.
+- **Never** add a `2nd_priority` fallback between the creator override and the global default. The resolver is intentionally 2-tier (creator → global → DEFAULT_RULE). Adding a region or tier-based middle layer creates ambiguity about which rule "won" — keep the override flat.
+- **Never** set `active=true` on a `commission_rules` row via direct SQL without first deactivating the prior active row for that scope/creator. The unique partial index will reject the insert, but the API path doesn't error — it silently leaves the old rule active. POST/PATCH endpoints already handle this; manual SQL fix-ups need to flip the old row first.
+- **Never** count `consecutiveMonths` against the CURRENT calendar month. The streak is measured against the past 12 months only — the current month is what's being computed RIGHT NOW. Counting it would create a self-referential loop where loyalty bonus changes the slab, which changes the loyalty eligibility, etc.
+- **Never** widen the slab match to be exclusive on the high end (`< maxBookings`). It's inclusive on both ends (`>=min AND <=max`). The seed slabs are designed for inclusive matching: 25 lands in 1–25, 26 lands in 26–50. Switching the comparison would create boundary holes (booking #25 falls into no slab) or overlaps.
+- **Never** introduce a non-additive loyalty bonus (e.g. "+1% if 3 months, ELSE -1%"). The system is strictly additive. Penalties belong in the slab structure itself, not the loyalty layer.
+- **Never** ship a slab where `maxBookings < minBookings`. `validateRule` catches it at write time, but a manual SQL update can still introduce it. Test compute always with `pickSlab` first.
+- **Never** rewrite the `influencer_commissions` row for past bookings when an admin changes the rule. The whole point of the metadata audit trail is that past commissions stay frozen at the rate they were computed with — only NEW bookings hit the new rule.
+- **Never** delete the `creator_commission_history` row for past months. It's the only source of truth for the consecutive-months loyalty check. Deleting a month creates a gap → breaks the streak silently.
+
+### Migration apply
+1. Open Supabase SQL editor for project `uxxhbdqedazpmvbvaosh`.
+2. Paste contents of `migrations/2026-05-13-commission-rules.sql` and run.
+3. Verify with `SELECT scope, slabs, loyalty_bonuses FROM commission_rules WHERE active=true;` → should return one global row with the 4 default slabs.
+
+(Already applied to production via Supabase MCP at v95 ship time — round-trip verified live.)
+
+---
+
+## Updated production state (v95, 2026-05-13)
+- **Current version:** v95 · branch `claude/blissful-shannon-635ec1` (worktree)
+- **Tiered commission live**: 5/7/10/12% slabs + 1%/2% loyalty bonus at 3/6 months, all admin-editable.
+- **Per-creator overrides work**: validated live with a 20% override on a test creator — beat the global 5% as expected.
+- **Audit trail preserved**: every `bid_attributions` row carries the rule snapshot used at write time. Future admin edits don't rewrite past commissions.
+- **Default seeded**: platform-default row written by migration. If migration not yet applied, the compute path falls back to `DEFAULT_RULE` from `lib/commission.ts` (same values).
 
 ---
