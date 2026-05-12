@@ -1221,9 +1221,9 @@ export function useFlashDealStories(city: string) {
         // Stale-response guard — drop if a newer fetch already ran.
         if (myId !== reqIdRef.current) return;
         const raw = Array.isArray(d?.deals) ? d.deals : [];
-        const normalized = raw
-          .map(normalizeFlashDeal)
-          .filter((x): x is FlashDealStory => !!x)
+        const normalized: FlashDealStory[] = (raw as any[])
+          .map((d) => normalizeFlashDeal(d))
+          .filter((x: FlashDealStory | null): x is FlashDealStory => x !== null)
           // Hide expired deals from the rail (the API already filters most,
           // but the validUntil can pass between fetch and render).
           .filter((d) => !countdown(d.validUntil).expired)
