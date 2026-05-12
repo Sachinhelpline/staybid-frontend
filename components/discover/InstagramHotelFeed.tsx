@@ -42,6 +42,11 @@ type Props = {
   onIndexChange?: (idx: number) => void;
   onLoadMore?: () => void;
   onTrackEvent?: (name: string, payload: any) => void;
+  /** Whether to render the flash-deal stories rail at the top. /
+      (home) defaults to true so users see live inventory; /discover
+      and /reels pass false because those routes are reel-only by user
+      design (v84). */
+  showFlashDealRail?: boolean;
 };
 
 // Dummy hotel reel videos — stable Google CDN test videos, looping. Replace
@@ -2111,24 +2116,61 @@ const HotelCard = memo(function HotelCard({
           aria-label="Save"
           onClick={(e) => {
             e.stopPropagation();
-            // v82 wired save → /api/discover/save so the bookmark actually
-            // surfaces on the /saved page. Target type:
-            //   • user-uploaded reels  → "video"  (file appears under Reels tab)
-            //   • hotel reel cards     → "hotel"  (appears under Hotels tab)
+            // v84 bulletproof save: ALWAYS persist a rich snapshot to
+            // localStorage under `sb_local_saves`. Backend POST is best-
+            // effort. /saved page reads from BOTH so saves survive even
+            // when the user is anon OR the API is down OR the backend
+            // user_saves row doesn't make it.
             const willSave = !saved;
             setSaved(willSave);   // optimistic
             onTrackEvent?.("ig_save", { hotelId: h.id, save: willSave });
             const targetType = h._userPost ? "video" : "hotel";
+            const targetId = String(h.id);
+            // Local-first
+            try {
+              const raw = localStorage.getItem("sb_local_saves");
+              const arr: any[] = raw ? JSON.parse(raw) : [];
+              const key = `${targetType}:${targetId}`;
+              const next = arr.filter((s: any) => `${s.target_type}:${s.target_id}` !== key);
+              if (willSave) {
+                // Snapshot in the shape SaveCard expects (s.target.*) so
+                // /saved renders correctly without any extra plumbing.
+                const target: any =
+                  targetType === "video"
+                    ? {
+                        id: targetId,
+                        title: h.name || "Reel",
+                        s3_url: h.videoUrl || "",
+                        thumbnail_url: (Array.isArray(h.images) && h.images[0]) || "",
+                        views_count: h.viewCount || 0,
+                      }
+                    : {
+                        id: targetId,
+                        name: h.name || "",
+                        city: h.city || "",
+                        star_rating: h.starRating || 0,
+                        images: Array.isArray(h.images) ? h.images : [],
+                      };
+                next.unshift({
+                  id: `local-${Date.now()}`,
+                  target_type: targetType,
+                  target_id: targetId,
+                  saved_at: new Date().toISOString(),
+                  target,
+                });
+              }
+              localStorage.setItem("sb_local_saves", JSON.stringify(next.slice(0, 200)));
+            } catch {}
+            // Best-effort backend
             const tok = (typeof window !== "undefined") ? localStorage.getItem("sb_token") || "" : "";
-            if (!tok) return; // anon — skip backend, local UI still flips
+            if (!tok) return;
             const method = willSave ? "POST" : "DELETE";
             fetch("/api/discover/save", {
               method,
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
-              body: JSON.stringify({ targetType, targetId: String(h.id) }),
+              body: JSON.stringify({ targetType, targetId }),
             }).catch(() => {
-              // Revert on failure
-              setSaved(!willSave);
+              // Local already persisted — don't revert UI
             });
           }}
           className="ig-rail-btn"
@@ -2727,7 +2769,7 @@ function StoryViewer({
 // ─────────────────────────────────────────────────────────────────────────
 // Feed
 // ─────────────────────────────────────────────────────────────────────────
-export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent }: Props) {
+export default function InstagramHotelFeed({ items: propItems, onIndexChange, onLoadMore, onTrackEvent, showFlashDealRail = true }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -2741,8 +2783,20 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Hydrate from LOCAL first — bulletproof, works even if user is anon
+    // or the backend is asleep.
+    const localKeys = new Set<string>();
+    try {
+      const raw = localStorage.getItem("sb_local_saves");
+      const arr: any[] = raw ? JSON.parse(raw) : [];
+      arr.forEach((s) => {
+        if (s.target_type && s.target_id) localKeys.add(`${s.target_type}:${s.target_id}`);
+      });
+    } catch {}
+    setSavedSet(new Set(localKeys));
+    // Then merge with backend (logged-in users only)
     const tok = localStorage.getItem("sb_token") || "";
-    if (!tok) return; // anon users have nothing to hydrate
+    if (!tok) return;
     fetch("/api/discover/saves/enriched", {
       headers: { Authorization: `Bearer ${tok}` },
       cache: "no-store",
@@ -2750,7 +2804,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d?.saves) return;
-        const next = new Set<string>();
+        const next = new Set<string>(localKeys);
         d.saves.forEach((s: any) => {
           if (s.target_type && s.target_id) next.add(`${s.target_type}:${s.target_id}`);
         });
@@ -3746,13 +3800,15 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           longer bleed under the rail. Mirrors Instagram's home-feed
           stories-rail-on-top pattern. */}
       <div className="ig-shell">
-        <FlashDealStoryRail
-          deals={flashDeals}
-          onOpen={(i) => {
-            setFlashStoryIdx(i);
-            onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
-          }}
-        />
+        {showFlashDealRail && (
+          <FlashDealStoryRail
+            deals={flashDeals}
+            onOpen={(i) => {
+              setFlashStoryIdx(i);
+              onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
+            }}
+          />
+        )}
 
         <div ref={containerRef} className="ig-feed">
         {filteredItems.map((it, i) => (

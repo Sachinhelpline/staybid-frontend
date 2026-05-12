@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v83-2026-05-12-flash-midnight-cta-me-grid';
-const HTML_CACHE = 'staybid-html-v83';
+const CACHE_NAME = 'staybid-v84-2026-05-12-bulletproof-save-me-rail-split-gold';
+const HTML_CACHE = 'staybid-html-v84';
 
 const PRECACHE_URLS = [
   '/manifest.json',

@@ -73,13 +73,42 @@ export default function MePage() {
 
   useEffect(() => {
     if (!myUserId) return;
-    // Server returns posts authored by this user from social_posts. We
-    // map them into the same shape as PostsStore so the grid render is
-    // uniform.
-    fetch(`/api/social/feed?author=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.posts) setRemotePosts(d.posts); })
-      .catch(() => {});
+    // Pull from BOTH places the user could have uploaded a reel:
+    //   • social_posts (Composer / + button flow) — has author_id
+    //   • hotel_videos (legacy /influencer/upload flow) — has uploaded_by
+    // Merge so /me reflects every post regardless of which path created it.
+    const tok = typeof window !== "undefined" ? (localStorage.getItem("sb_token") || "") : "";
+    Promise.all([
+      fetch(`/api/social/feed?author=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+      tok
+        ? fetch("/api/influencer/my-videos", {
+            headers: { Authorization: `Bearer ${tok}` },
+            cache: "no-store",
+          })
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+        : Promise.resolve(null),
+    ]).then(([social, videos]) => {
+      const out: any[] = [];
+      if (social?.posts) out.push(...social.posts);
+      if (videos?.videos) {
+        // hotel_videos rows → mapped into the same shape social_posts uses
+        // so /me's merge logic treats them uniformly.
+        videos.videos.forEach((v: any) => {
+          out.push({
+            id: v.id,
+            media_type: "REEL",
+            media_url: v.s3_url || v.url || "",
+            thumbnail_url: v.thumbnail_url || "",
+            caption: v.title || v.caption || "",
+            created_at: v.created_at,
+          });
+        });
+      }
+      setRemotePosts(out);
+    });
   }, [myUserId]);
 
   // Merge local (PostsStore) + remote (Supabase). Deduplicate by id so

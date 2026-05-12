@@ -80,13 +80,27 @@ function clearCustomAudio(dealId: string) {
 }
 
 // ─── Permission gate: who can attach custom audio? ─────────────────────────
-// Hotel owners (sb_partner_token) and admins (sb_admin_token) can upload a
-// custom mp3 from their device. Regular customers cannot — keeps the public
-// surface clean from spam audio.
-function canAttachAudio(): boolean {
+// v84 tightened: was "any logged-in partner OR admin can edit any deal's
+// audio". Now requires actual ownership:
+//   • Admins → can edit any deal (full permission)
+//   • Hotel partners → only the deal's owner. We read `sb_partner_user`
+//     from localStorage and compare `partner.hotel.id` with the deal's
+//     `hotelId`. Mismatch → button hidden (partner can't edit someone
+//     else's hotel's deal audio).
+//   • Customers → never (would spam the public surface).
+function canAttachAudio(hotelId?: string): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return !!(localStorage.getItem("sb_partner_token") || localStorage.getItem("sb_admin_token"));
+    // Admin sees the button on EVERY deal.
+    if (localStorage.getItem("sb_admin_token")) return true;
+    // Partner sees the button only on THEIR hotel's deals.
+    const tok = localStorage.getItem("sb_partner_token");
+    if (!tok || !hotelId) return false;
+    const raw = localStorage.getItem("sb_partner_user");
+    if (!raw) return false;
+    const u = JSON.parse(raw);
+    const ownedId = u?.hotel?.id || u?.hotelId || u?.hotel_id;
+    return !!ownedId && String(ownedId) === String(hotelId);
   } catch { return false; }
 }
 
@@ -394,7 +408,7 @@ export function FlashDealStoryViewer({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _audioBumpRead = audioBump; // re-evaluate audioSrc when bumped
 
-  const canEditAudio = canAttachAudio();
+  const canEditAudio = canAttachAudio(deal?.hotelId);
 
   // Mark every deal viewed once it shows up — feeds the personalization
   // signal back into the API on the next /api/flash/near call.
@@ -805,14 +819,18 @@ export function FlashDealStoryViewer({
           100% { transform: scale(1.08) translate(0,0); }
         }
         @keyframes fdealViewerStampSpin {
-          0%   { transform: rotate(-12deg) scale(1); box-shadow: 0 8px 26px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.45); }
-          40%  { transform: rotate(-10deg) scale(1.10); box-shadow: 0 10px 28px rgba(255,69,141,0.7),  0 0 0 12px rgba(255,69,141,0); }
-          70%  { transform: rotate(-14deg) scale(1.05); box-shadow: 0 10px 28px rgba(255,69,141,0.7),  0 0 0 18px rgba(255,69,141,0); }
-          100% { transform: rotate(-12deg) scale(1);    box-shadow: 0 8px 26px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.45); }
+          0%   { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(184,134,11,0.45), 0 0 0 0 rgba(255,215,107,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          40%  { transform: rotate(-10deg) scale(1.10); box-shadow: 0 14px 38px rgba(184,134,11,0.65), 0 0 0 14px rgba(255,215,107,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          70%  { transform: rotate(-14deg) scale(1.05); box-shadow: 0 14px 38px rgba(184,134,11,0.65), 0 0 0 22px rgba(255,215,107,0),     inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
+          100% { transform: rotate(-12deg) scale(1);    box-shadow: 0 10px 32px rgba(184,134,11,0.45), 0 0 0 0 rgba(255,215,107,0.55), inset 0 2px 0 rgba(255,255,255,0.55), inset 0 -3px 6px rgba(110,74,8,0.35); }
         }
         @keyframes fdealViewerStampGlow {
-          0%, 100% { filter: drop-shadow(0 0 6px rgba(255,69,141,0.35)); }
-          50%      { filter: drop-shadow(0 0 14px rgba(255,69,141,0.75)); }
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(255,215,107,0.45)); }
+          50%      { filter: drop-shadow(0 0 18px rgba(255,215,107,0.85)); }
+        }
+        @keyframes fdealViewerStampShine {
+          0%   { background-position: -120% 0; }
+          100% { background-position: 220% 0; }
         }
         @keyframes fdealViewerCtaShimmer {
           0%   { background-position: -200% 0; }
@@ -1022,6 +1040,12 @@ export function FlashDealStoryViewer({
           pointer-events: none;
         }
 
+        /* Premium 3D gold stamp (v84) — replaces the v75-v83 pink/red
+           candy look. Polished champagne metal feel: warm conic-gradient
+           background with an inset highlight on top + inset shadow on
+           bottom gives a real curvature illusion. The shine sweep adds
+           a slow specular reflection. Live pulse ring is gold instead
+           of pink. */
         .fdeal-viewer-stamp {
           position: absolute;
           top: 78px;
@@ -1031,28 +1055,58 @@ export function FlashDealStoryViewer({
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          width: 88px;
-          height: 88px;
+          width: 96px;
+          height: 96px;
           border-radius: 999px;
-          background: linear-gradient(135deg, #ff4757, #ff458d);
-          color: #fff;
-          border: 3px solid rgba(255,255,255,0.92);
-          box-shadow: 0 8px 26px rgba(255,69,141,0.55);
+          background:
+            radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 35%),
+            conic-gradient(from 210deg,
+              #f0d060 0deg,
+              #c9911a 90deg,
+              #6e4a08 180deg,
+              #c9911a 270deg,
+              #f0d060 360deg);
+          color: #2c1d04;
+          border: 3px solid #fff9ec;
+          box-shadow:
+            0 10px 32px rgba(184,134,11,0.45),
+            0 0 0 0 rgba(255,215,107,0.55),
+            inset 0 2px 0 rgba(255,255,255,0.55),
+            inset 0 -3px 6px rgba(110,74,8,0.35);
           animation:
             fdealViewerStampSpin 1.8s ease-in-out infinite,
             fdealViewerStampGlow 2.4s ease-in-out infinite;
-          font-family: ui-monospace, "SF Mono", Menlo, monospace;
+          font-family: "Cormorant Garamond", "Georgia", serif;
+          overflow: hidden;
+        }
+        /* Specular shine sweep — premium polish layer over the metal. */
+        .fdeal-viewer-stamp::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: linear-gradient(115deg, transparent 0%, transparent 35%, rgba(255,255,255,0.45) 50%, transparent 65%, transparent 100%);
+          background-size: 220% 100%;
+          background-position: -120% 0;
+          animation: fdealViewerStampShine 3.5s linear infinite;
+          pointer-events: none;
         }
         .fdeal-viewer-stamp-pct {
-          font-size: 1.3rem;
-          font-weight: 900;
+          font-size: 1.6rem;
+          font-style: italic;
+          font-weight: 700;
           line-height: 1;
+          color: #2c1d04;
+          text-shadow: 0 1px 0 rgba(255,255,255,0.45);
+          z-index: 1;
         }
         .fdeal-viewer-stamp-label {
-          font-size: 0.6rem;
+          font-size: 0.62rem;
           font-weight: 800;
-          letter-spacing: 0.18em;
-          margin-top: 2px;
+          letter-spacing: 0.22em;
+          margin-top: 4px;
+          color: #4a3208;
+          z-index: 1;
         }
 
         .fdeal-viewer-title-wrap {

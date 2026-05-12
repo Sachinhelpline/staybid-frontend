@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
 
@@ -26,6 +26,7 @@ export default function DiscoverPage() {
   const [items, setItems]       = useState<Item[]>([]);
   const [loading, setLoading]   = useState(true);
   const [hotelIdx, setHotelIdx] = useState(0);
+  const pathname = usePathname() || "/";
   const dwellStart = useRef<number>(Date.now());
 
   // Decode the current user's id once — used to flag posts as `_isSelf`
@@ -268,7 +269,12 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {/* Reels feed */}
+      {/* Reels feed — rail visibility splits by route:
+          • /          (home) → flash-deal rail visible (entry point that
+                                showcases inventory the user might miss)
+          • /discover  (Reels tab) → reel-only, no rail (matches IG Reels
+                                pattern where the dedicated Reels surface
+                                doesn't show stories) */}
       {items.length > 0 && (
         <div className="absolute inset-0 z-10">
           <InstagramHotelFeed
@@ -276,6 +282,7 @@ export default function DiscoverPage() {
             onIndexChange={setHotelIdx}
             onLoadMore={loadFeed}
             onTrackEvent={(name, payload) => track(name as any, payload)}
+            showFlashDealRail={pathname === "/"}
           />
         </div>
       )}

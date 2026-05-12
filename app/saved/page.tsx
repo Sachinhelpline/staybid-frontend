@@ -32,18 +32,53 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth?next=/saved"); return; }
     setLoading(true);
+    // Pull local saves first (works even when anon / API down). These
+    // contain a rich snapshot (hotel_name, hotel_image, etc.) written by
+    // the save button on the reel feed in v84.
+    let localSaves: any[] = [];
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("sb_local_saves") : null;
+      if (raw) localSaves = JSON.parse(raw) || [];
+    } catch {}
+    if (tab !== "all") {
+      localSaves = localSaves.filter((s) => s.target_type === tab);
+    }
+    // If anon, just show local saves
+    if (!user) {
+      setSaves(localSaves);
+      setLoading(false);
+      return;
+    }
+    // Logged in: merge local + backend. Dedup by `${type}:${id}`.
     const url = tab === "all" ? "/api/discover/saves/enriched" : `/api/discover/saves/enriched?type=${tab}`;
     fetch(url, { headers: { Authorization: `Bearer ${TOKEN()}` } })
       .then(r => r.json())
-      .then(d => setSaves(d.saves || []))
-      .catch(() => setSaves([]))
+      .then(d => {
+        const remote = d.saves || [];
+        const keyOf = (s: any) => `${s.target_type}:${s.target_id}`;
+        const seen = new Set<string>();
+        const merged: any[] = [];
+        // Local first — has the freshest snapshot
+        localSaves.forEach((s) => { const k = keyOf(s); if (!seen.has(k)) { seen.add(k); merged.push(s); } });
+        remote.forEach((s: any) => { const k = keyOf(s); if (!seen.has(k)) { seen.add(k); merged.push(s); } });
+        setSaves(merged);
+      })
+      .catch(() => setSaves(localSaves))
       .finally(() => setLoading(false));
-  }, [tab, user, authLoading, router]);
+  }, [tab, user, authLoading]);
 
   async function unsave(s: any) {
     setSaves(prev => prev.filter(x => x.id !== s.id));
+    // Clear local snapshot too — keeps /saved consistent with the reel
+    // feed's bookmark icon hydration.
+    try {
+      const raw = localStorage.getItem("sb_local_saves");
+      const arr: any[] = raw ? JSON.parse(raw) : [];
+      const key = `${s.target_type}:${s.target_id}`;
+      const next = arr.filter((x: any) => `${x.target_type}:${x.target_id}` !== key);
+      localStorage.setItem("sb_local_saves", JSON.stringify(next));
+    } catch {}
     try {
       await fetch("/api/discover/save", {
         method: "DELETE",
