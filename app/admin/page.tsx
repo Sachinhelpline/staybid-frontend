@@ -11,13 +11,23 @@ const RAILWAY = "https://staybid-live-production.up.railway.app";
 export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "offline">("connecting");
+  // v97 — dashboard liveness has 3 honest states:
+  //   • "live"     = Socket.io connected + REST polling running       (green)
+  //   • "polling"  = Socket.io disconnected (Railway cold / down) but
+  //                  REST data is still refreshing every 30 s          (amber)
+  //   • "connecting" = first 5 s after mount                            (gold)
+  // Previously a single Socket.io error flipped to a red "OFFLINE"
+  // chip that made the whole dashboard LOOK broken even though the
+  // KPI / chart data was loading fine via REST. Now we degrade
+  // gracefully + show a tooltip explaining what each state means.
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "polling">("connecting");
   const [pulse, setPulse] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState<number>(0);
 
   function load() {
     fetch("/api/admin/dashboard")
       .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
+      .then((d) => { setData(d); setLoading(false); setLastRefresh(Date.now()); })
       .catch(() => setLoading(false));
   }
 
@@ -27,13 +37,27 @@ export default function AdminDashboard() {
 
     let socket: Socket | null = null;
     try {
-      socket = io(RAILWAY, { transports: ["websocket", "polling"], timeout: 5000 });
+      // Reconnection enabled so a Railway cold-start (~30 s) doesn't
+      // permanently kill push updates — Socket.io will keep retrying
+      // every 3 s up to 10 attempts.
+      socket = io(RAILWAY, {
+        transports: ["websocket", "polling"],
+        timeout: 5000,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 8000,
+      });
       socket.on("connect", () => {
         setLiveStatus("live");
         socket?.emit("join:admin");
       });
-      socket.on("disconnect", () => setLiveStatus("offline"));
-      socket.on("connect_error", () => setLiveStatus("offline"));
+      // Both disconnect + connect_error fall back to "polling" so the
+      // user knows REST is still fresh. "OFFLINE" wording was alarming
+      // and inaccurate — the dashboard is online, only the websocket isn't.
+      socket.on("disconnect", () => setLiveStatus((s) => (s === "live" ? "polling" : s)));
+      socket.on("connect_error", () => setLiveStatus("polling"));
+      socket.on("reconnect", () => setLiveStatus("live"));
 
       const onAnyBid = (b: any) => {
         setData((prev: any) => {
@@ -48,7 +72,7 @@ export default function AdminDashboard() {
       socket.on("bid:accepted", onAnyBid);
       socket.on("bid:rejected", onAnyBid);
     } catch {
-      setLiveStatus("offline");
+      setLiveStatus("polling");
     }
 
     return () => {
@@ -131,31 +155,62 @@ export default function AdminDashboard() {
             Real-time overview of platform performance
           </p>
         </div>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 14px",
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-            background: liveStatus === "live" ? "rgba(46,204,113,0.1)" : liveStatus === "offline" ? "rgba(255,71,87,0.1)" : "rgba(212,175,55,0.1)",
-            color: liveStatus === "live" ? "#2ECC71" : liveStatus === "offline" ? "#FF4757" : "#D4AF37",
-            border: `1px solid ${liveStatus === "live" ? "rgba(46,204,113,0.3)" : liveStatus === "offline" ? "rgba(255,71,87,0.3)" : "rgba(212,175,55,0.3)"}`,
-          }}
-        >
-          <span
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <div
+            title={
+              liveStatus === "live"
+                ? "Socket.io connected — push updates active. Data also refreshes every 30 s."
+                : liveStatus === "polling"
+                ? "Socket.io disconnected (backend cold-start or temporary). Dashboard data still refreshes every 30 s via REST — everything you see is fresh."
+                : "Connecting to real-time backend…"
+            }
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: liveStatus === "live" ? "#2ECC71" : liveStatus === "offline" ? "#FF4757" : "#D4AF37",
-              boxShadow: liveStatus === "live" ? "0 0 8px #2ECC71" : "none",
-              animation: liveStatus === "live" ? "pulse 2s infinite" : "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 14px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 600,
+              background: liveStatus === "live" ? "rgba(46,204,113,0.1)" : liveStatus === "polling" ? "rgba(212,175,55,0.12)" : "rgba(212,175,55,0.1)",
+              color: liveStatus === "live" ? "#2ECC71" : liveStatus === "polling" ? "#D4AF37" : "#D4AF37",
+              border: `1px solid ${liveStatus === "live" ? "rgba(46,204,113,0.3)" : liveStatus === "polling" ? "rgba(212,175,55,0.45)" : "rgba(212,175,55,0.3)"}`,
+              cursor: "help",
             }}
-          />
-          {liveStatus === "live" ? `LIVE${pulse > 0 ? ` · ${pulse} events` : ""}` : liveStatus === "offline" ? "OFFLINE" : "CONNECTING…"}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: liveStatus === "live" ? "#2ECC71" : "#D4AF37",
+                boxShadow: liveStatus === "live" ? "0 0 8px #2ECC71" : "none",
+                animation: "pulse 2s infinite",
+              }}
+            />
+            {liveStatus === "live"
+              ? `LIVE${pulse > 0 ? ` · ${pulse} events` : ""}`
+              : liveStatus === "polling"
+              ? `POLLING · 30s${lastRefresh ? ` · refreshed ${Math.max(0, Math.floor((Date.now() - lastRefresh) / 1000))}s ago` : ""}`
+              : "CONNECTING…"}
+          </div>
+          <button
+            onClick={load}
+            title="Refresh dashboard now"
+            style={{
+              background: "rgba(212,175,55,0.1)",
+              color: "#D4AF37",
+              border: "1px solid rgba(212,175,55,0.3)",
+              borderRadius: 999,
+              padding: "8px 12px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            ↻ Refresh
+          </button>
         </div>
       </div>
       <style jsx>{`
