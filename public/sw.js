@@ -18,8 +18,8 @@
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
 
-const CACHE_NAME = 'staybid-v76-2026-05-12-flash-stories-audio-personalization';
-const HTML_CACHE = 'staybid-html-v76';
+const CACHE_NAME = 'staybid-v77-2026-05-12-fix-unmute-hint-overlap';
+const HTML_CACHE = 'staybid-html-v77';
 
 const PRECACHE_URLS = [
   '/manifest.json',

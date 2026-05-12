@@ -3208,7 +3208,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-tap-unmute {
           position: absolute;
           left: 50%;
-          top: calc(env(safe-area-inset-top, 0px) + 132px);
+          /* Was top: 132px — sat right under the brand chrome in the
+             pre-rail layout. With the flash-deal rail (32→152px) + the
+             profile chip (168→210px) now above, push the hint below the
+             chip so it doesn't pile up with three pills on top of each
+             other. 218px = chip bottom + 8px breathing room. */
+          top: calc(env(safe-area-inset-top, 0px) + 218px);
           transform: translate(-50%, 0);
           z-index: 39;
           display: inline-flex;
