@@ -202,8 +202,13 @@ function ReelCard({
       {/* Dark gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 z-10">
+      {/* Top bar — v87: pt-4 was getting clipped under the notch on iOS
+          PWA fullscreen. Now adds safe-area-inset-top so stay·bid mark
+          + mute toggle never sit under system chrome on any device. */}
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 z-10"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      >
         <Link href="/" className="text-white/80 text-sm font-bold tracking-widest" style={{ fontFamily: "monospace" }}>
           stay<span style={{ color: "#f0b429" }}>bid</span>
         </Link>

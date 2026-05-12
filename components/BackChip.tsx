@@ -26,6 +26,7 @@ export function BackChip() {
     pathname.startsWith("/discover") ||
     pathname.startsWith("/reels") ||
     pathname.startsWith("/me") ||
+    pathname.startsWith("/saved/posts") ||   // v87: IG-style "All Posts" has its own ← header
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
     pathname.startsWith("/onboard") ||

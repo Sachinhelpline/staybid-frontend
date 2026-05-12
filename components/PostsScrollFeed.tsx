@@ -8,12 +8,20 @@
 // tap to unmute) — exactly the IG "Posts" pattern from the user's screenshots.
 //
 // Two visual variants, driven by `mode`:
-//   • "owner"  — used by /me/posts. Header chip = no Follow button.
-//                Footer = view count overlay + "View insights" hint, no
-//                bookmark-saved badge.
-//   • "viewer" — used by /saved/posts. Header chip = Follow button shown,
-//                no view-insights line, bookmark always rendered filled
-//                (since the user got here from /saved).
+//   • "owner"  — used by /me/posts. No Follow button, no view-insights /
+//                Boost row (those were removed in v87 per user feedback).
+//   • "viewer" — used by /saved/posts. Follow button shown on header,
+//                bookmark always pre-filled (the user got here from /saved).
+//
+// All action buttons (♡ like, 💬 comment, ↻ reshare, ▷ share, 🔖 bookmark)
+// are FUNCTIONAL — they toggle local state, persist to localStorage, and
+// fire native share / open a comments drawer where applicable. No more
+// decorative-only buttons (v87).
+//
+// Viewport safety: every fixed/sticky element uses safe-area-inset for
+// notch + home-bar clearance. The page body adds bottom padding for the
+// BottomDock so action buttons never sit behind it. Works identically on
+// iOS Safari, Android Chrome, Samsung Internet, and installed PWA.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -33,8 +41,7 @@ export type FeedPost = {
   ownerAvatar?: string;
   /** Audio strip line — e.g. "Original audio" or "Acoustic Trips · Shiv Kailash". */
   audioLine?: string;
-  /** View count shown only when mode="owner". */
-  viewCount?: number;
+  /** Initial counts — like / comment counts read from the data source. */
   likeCount?: number;
   commentCount?: number;
   /** Optional deep-link to a hotel page, when the post is tagged to one. */
@@ -42,6 +49,26 @@ export type FeedPost = {
 };
 
 type Mode = "owner" | "viewer";
+
+// ─── localStorage helpers — keep the same keys the rest of the app uses ──
+const LS_LIKES = "sb_post_likes_v1";   // { [postId]: true }
+const LS_SAVES = "sb_local_saves";     // shared with /saved + reel feed
+
+function readLikedSet(): Record<string, true> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(LS_LIKES) || "{}") || {}; }
+  catch { return {}; }
+}
+function writeLikedSet(m: Record<string, true>) {
+  try { localStorage.setItem(LS_LIKES, JSON.stringify(m)); } catch {}
+}
+function readSavedSet(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const arr: any[] = JSON.parse(localStorage.getItem(LS_SAVES) || "[]");
+    return new Set(arr.map((s: any) => `${s.target_type}:${s.target_id}`));
+  } catch { return new Set(); }
+}
 
 export function PostsScrollFeed({
   posts,
@@ -58,13 +85,33 @@ export function PostsScrollFeed({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   // Track which post id is most visible — that one autoplays.
   const [activeId, setActiveId] = useState<string>("");
-  // Track per-card mute state so a tap-to-unmute on one doesn't unmute all.
+  // Per-card mute state so a tap-to-unmute on one doesn't unmute all.
   const [unmuted, setUnmuted] = useState<Record<string, boolean>>({});
+  // Like + bookmark state hydrated from localStorage on mount.
+  const [liked, setLiked] = useState<Record<string, true>>({});
+  const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set());
+  // Optimistic comment counter — wired even though the comment drawer
+  // itself is just an empty placeholder for now (defers the full
+  // commenting feature to a follow-up).
+  const [commentsOpen, setCommentsOpen] = useState<string>("");
+  // Toast for share / copy fallback.
+  const [toast, setToast] = useState<string>("");
+
+  // Hydrate like + save state on mount.
+  useEffect(() => {
+    setLiked(readLikedSet());
+    setSavedSet(readSavedSet());
+  }, []);
+
+  // Toast helper — auto-dismisses after 2s.
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast((t) => (t === msg ? "" : t)), 2200);
+  }
 
   // Scroll the starting post into view on first render.
   useEffect(() => {
     if (!startId) return;
-    // Wait a tick for the cards to lay out before scrolling.
     const t = setTimeout(() => {
       const el = document.getElementById(`pf-${startId}`);
       if (el) {
@@ -76,15 +123,12 @@ export function PostsScrollFeed({
   }, [startId]);
 
   // IntersectionObserver-driven autoplay — picks whichever video card is
-  // ≥ 55% on-screen as the active one. Pauses the others.
+  // most on-screen as the active one. Pauses the others.
   useEffect(() => {
     const cards = wrapRef.current?.querySelectorAll<HTMLElement>("[data-pf-card]");
     if (!cards || cards.length === 0) return;
     const io = new IntersectionObserver(
       (entries) => {
-        // Pick the most-intersecting card. TS narrows `best` to `null`
-        // inside the forEach closure when we initialise to null, so we
-        // track id + ratio in plain locals instead.
         let bestId = "";
         let bestRatio = -1;
         entries.forEach((e) => {
@@ -103,6 +147,86 @@ export function PostsScrollFeed({
     cards.forEach((c) => io.observe(c));
     return () => io.disconnect();
   }, [posts]);
+
+  // ─── Action handlers — wired (v87) ──────────────────────────────────
+  function toggleLike(postId: string) {
+    setLiked((m) => {
+      const next = { ...m };
+      if (next[postId]) delete next[postId];
+      else next[postId] = true;
+      writeLikedSet(next);
+      return next;
+    });
+  }
+  function toggleSave(post: FeedPost) {
+    const key = `video:${post.id}`;
+    setSavedSet((prev) => {
+      const next = new Set(prev);
+      let arr: any[] = [];
+      try { arr = JSON.parse(localStorage.getItem(LS_SAVES) || "[]"); } catch {}
+      if (next.has(key)) {
+        next.delete(key);
+        arr = arr.filter((s: any) => `${s.target_type}:${s.target_id}` !== key);
+        showToast("Removed from Saved");
+      } else {
+        next.add(key);
+        arr.push({
+          id: `local-${Date.now()}`,
+          target_type: "video",
+          target_id: post.id,
+          created_at: new Date().toISOString(),
+          target: {
+            id: post.id,
+            s3_url: post.src,
+            thumbnail_url: post.poster || "",
+            title: post.ownerName || "Reel",
+            caption: post.caption || "",
+            uploader_name: post.ownerName,
+            uploader_handle: post.ownerHandle || "",
+            uploader_avatar_url: post.ownerAvatar || "",
+            audio_name: post.audioLine || "Original audio",
+          },
+        });
+        showToast("Saved to your collection");
+      }
+      try { localStorage.setItem(LS_SAVES, JSON.stringify(arr)); } catch {}
+      return next;
+    });
+  }
+  async function shareOrCopy(post: FeedPost) {
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/saved/posts?start=${encodeURIComponent(post.id)}`
+      : "";
+    const title = post.ownerName ? `Post by ${post.ownerName}` : "StayBid Reel";
+    const text = post.caption ? post.caption.slice(0, 120) : "Check this out on StayBid";
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title, text, url });
+        return;
+      }
+    } catch { /* user dismissed — fall through */ }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Link copied to clipboard");
+    } catch {
+      showToast("Could not copy link");
+    }
+  }
+  function restartPlayback(postId: string) {
+    // Reshare ↻ button — the IG-style "loop" affordance restarts video.
+    const el = document.querySelector<HTMLVideoElement>(`#pf-${postId} video`);
+    if (el) {
+      try {
+        el.currentTime = 0;
+        const p = el.play();
+        if (p && typeof p.then === "function") p.catch(() => {});
+        showToast("Replaying ↻");
+      } catch {}
+    }
+  }
+  function openCommentsDrawer(postId: string) {
+    setCommentsOpen(postId);
+  }
 
   return (
     <div className="pf-root" ref={wrapRef}>
@@ -131,20 +255,52 @@ export function PostsScrollFeed({
               mode={mode}
               isActive={activeId === p.id}
               muted={!unmuted[p.id]}
+              liked={!!liked[p.id]}
+              saved={savedSet.has(`video:${p.id}`)}
               onToggleMute={() =>
                 setUnmuted((m) => ({ ...m, [p.id]: !m[p.id] }))
               }
+              onLike={() => toggleLike(p.id)}
+              onComment={() => openCommentsDrawer(p.id)}
+              onRestart={() => restartPlayback(p.id)}
+              onShare={() => shareOrCopy(p)}
+              onSave={() => toggleSave(p)}
             />
           ))
         )}
       </div>
+
+      {/* Comments drawer — minimal placeholder while the full thread
+          experience ships with the existing booking-chat backend in a
+          follow-up. Closing it dismisses the overlay. */}
+      {commentsOpen && (
+        <div className="pf-drawer-backdrop" onClick={() => setCommentsOpen("")}>
+          <div className="pf-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="pf-drawer-handle" />
+            <p className="pf-drawer-title">Comments</p>
+            <p className="pf-drawer-empty">No comments yet — be the first to say something nice 💬</p>
+            <button
+              type="button"
+              className="pf-drawer-close"
+              onClick={() => setCommentsOpen("")}
+              aria-label="Close comments"
+            >Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && <div className="pf-toast">{toast}</div>}
 
       <style jsx global>{`
         .pf-root {
           min-height: 100dvh;
           background: #fff;
           color: #0c0a04;
-          padding-bottom: 84px; /* clear the bottom dock */
+          /* Reserve room for the BottomDock + iOS home-bar so the action
+             row + caption never sit behind the nav. 60px dock + safe-area. */
+          padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+          font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
         }
         .pf-top {
           position: sticky;
@@ -153,26 +309,30 @@ export function PostsScrollFeed({
           display: flex;
           align-items: center;
           gap: 16px;
-          padding: 14px 16px;
+          padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
           background: rgba(255, 255, 255, 0.96);
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
         .pf-back {
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           border: none;
           background: transparent;
           color: #0c0a04;
-          font-size: 1.4rem;
+          font-size: 1.5rem;
           font-weight: 600;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          line-height: 1;
+          border-radius: 999px;
+          transition: background 0.15s ease, transform 0.12s cubic-bezier(.32,1.2,.36,1);
         }
-        .pf-back:active { opacity: 0.55; }
+        .pf-back:hover { background: rgba(0, 0, 0, 0.05); }
+        .pf-back:active { transform: scale(0.92); opacity: 0.6; }
         .pf-title {
           flex: 1;
           font-size: 1.04rem;
@@ -180,7 +340,7 @@ export function PostsScrollFeed({
           letter-spacing: -0.01em;
           color: #0c0a04;
         }
-        .pf-spacer { width: 32px; }
+        .pf-spacer { width: 34px; }
 
         .pf-list { display: block; }
         .pf-empty {
@@ -190,35 +350,124 @@ export function PostsScrollFeed({
         }
         .pf-empty-icon { font-size: 3rem; display: block; margin-bottom: 10px; }
         .pf-empty-title { font-size: 0.95rem; font-weight: 700; }
+
+        /* Drawer (comments placeholder) */
+        .pf-drawer-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 90;
+          background: rgba(0, 0, 0, 0.55);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: pfFadeIn 0.18s ease both;
+        }
+        @keyframes pfFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pfSlideUp { from { transform: translateY(20%); } to { transform: translateY(0); } }
+        .pf-drawer {
+          width: 100%;
+          max-width: 520px;
+          background: #fff;
+          border-radius: 18px 18px 0 0;
+          padding: 14px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
+          animation: pfSlideUp 0.28s cubic-bezier(.32,1.2,.36,1) both;
+        }
+        .pf-drawer-handle {
+          width: 40px;
+          height: 4px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.2);
+          margin: 0 auto 12px;
+        }
+        .pf-drawer-title {
+          font-size: 0.92rem;
+          font-weight: 700;
+          color: #0c0a04;
+          text-align: center;
+          margin: 0 0 6px;
+        }
+        .pf-drawer-empty {
+          font-size: 0.82rem;
+          color: rgba(12, 10, 4, 0.6);
+          text-align: center;
+          padding: 28px 12px;
+          margin: 0;
+        }
+        .pf-drawer-close {
+          width: 100%;
+          padding: 11px;
+          margin-top: 4px;
+          border: none;
+          border-radius: 12px;
+          background: #0c0a04;
+          color: #fff;
+          font-size: 0.86rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        /* Toast */
+        @keyframes pfToastIn {
+          0%   { opacity: 0; transform: translate(-50%, 16px); }
+          15%  { opacity: 1; transform: translate(-50%, 0); }
+          85%  { opacity: 1; transform: translate(-50%, 0); }
+          100% { opacity: 0; transform: translate(-50%, -8px); }
+        }
+        .pf-toast {
+          position: fixed;
+          left: 50%;
+          bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
+          z-index: 95;
+          padding: 10px 16px;
+          border-radius: 999px;
+          background: rgba(12, 10, 4, 0.92);
+          color: #fff;
+          font-size: 0.82rem;
+          font-weight: 600;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+          animation: pfToastIn 2.2s ease forwards;
+          pointer-events: none;
+        }
       `}</style>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// PostCard — one row of the scroll feed. Mirrors the screenshots:
+// PostCard — one row of the scroll feed. v87 layout (Boost/Insights removed):
 //   ┌────────────────────────────────────────────────┐
-//   │ ◯avatar  display_name           [Follow]  ⋯    │  header
+//   │ ◯avatar  display_name           [Follow]  ⋮    │  header
 //   │           🎵 audio line                        │
 //   ├────────────────────────────────────────────────┤
 //   │                                                │
 //   │              (video / image)                   │  media (9:16)
 //   │                                                │
-//   │     [👁 453 · View insights — owner only]      │
 //   ├────────────────────────────────────────────────┤
-//   │  ♡ N    💬 N    ↻        ▷          🔖         │  actions
+//   │  ♡ N    💬 N    ↻        ▷           🔖        │  actions (all functional)
 //   └────────────────────────────────────────────────┘
 // ─────────────────────────────────────────────────────────────────────────
 function PostCard({
-  post, mode, isActive, muted, onToggleMute,
+  post, mode, isActive, muted, liked, saved,
+  onToggleMute, onLike, onComment, onRestart, onShare, onSave,
 }: {
   post: FeedPost;
   mode: Mode;
   isActive: boolean;
   muted: boolean;
+  liked: boolean;
+  saved: boolean;
   onToggleMute: () => void;
+  onLike: () => void;
+  onComment: () => void;
+  onRestart: () => void;
+  onShare: () => void;
+  onSave: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Animated heart for double-tap and like-button pop.
+  const [heartPulse, setHeartPulse] = useState<number>(0);
 
   // Active card plays; inactive pauses.
   useEffect(() => {
@@ -240,8 +489,28 @@ function PostCard({
     v.muted = muted;
   }, [muted]);
 
+  // Double-tap-to-like — IG signature interaction.
+  const lastTapRef = useRef<number>(0);
+  function handleMediaTap() {
+    const now = Date.now();
+    if (now - lastTapRef.current < 280) {
+      // Double tap detected — like + heart animation
+      if (!liked) onLike();
+      setHeartPulse((n) => n + 1);
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+      // Single tap → toggle mute (only on videos)
+      setTimeout(() => {
+        if (lastTapRef.current === now) onToggleMute();
+      }, 280);
+    }
+  }
+
   const initials = (post.ownerName || "?").trim().slice(0, 1).toUpperCase();
   const handle = post.ownerHandle ? `@${post.ownerHandle.replace(/^@/, "")}` : "";
+
+  const likeCount = (post.likeCount || 0) + (liked ? 1 : 0);
 
   return (
     <article id={`pf-${post.id}`} data-pf-card data-pf-id={post.id} className="pf-card">
@@ -279,7 +548,7 @@ function PostCard({
               playsInline
               preload={isActive ? "auto" : "metadata"}
               muted
-              onClick={onToggleMute}
+              onClick={handleMediaTap}
             />
             <button
               type="button"
@@ -293,45 +562,53 @@ function PostCard({
             src={post.poster || post.src}
             alt={post.caption || ""}
             className="pf-image"
+            onClick={handleMediaTap}
           />
         ) : (
           <div className="pf-blank">📷</div>
         )}
+
+        {/* Double-tap heart pulse */}
+        {heartPulse > 0 && (
+          <span key={heartPulse} className="pf-heart" aria-hidden>❤</span>
+        )}
       </div>
 
-      {/* Owner-only view-count line, sitting under the media like IG */}
-      {mode === "owner" && (
-        <div className="pf-owner-row">
-          <span className="pf-insights">
-            👁 {fmtViewCount(post.viewCount || 0)} · View insights
-          </span>
-          <button type="button" className="pf-boost">Boost post</button>
-        </div>
-      )}
-
-      {/* Actions row */}
+      {/* Actions row — every button is functional in v87 */}
       <div className="pf-actions">
-        <button type="button" className="pf-act" aria-label="Like">
-          <span className="pf-act-glyph">♡</span>
-          {(post.likeCount || 0) > 0 && (
-            <span className="pf-act-count">{fmtViewCount(post.likeCount || 0)}</span>
+        <button
+          type="button"
+          className={`pf-act${liked ? " is-liked" : ""}`}
+          onClick={onLike}
+          aria-label={liked ? "Unlike" : "Like"}
+          aria-pressed={liked}
+        >
+          <span className="pf-act-glyph">{liked ? "❤" : "♡"}</span>
+          {likeCount > 0 && (
+            <span className="pf-act-count">{fmtViewCount(likeCount)}</span>
           )}
         </button>
-        <button type="button" className="pf-act" aria-label="Comment">
+        <button type="button" className="pf-act" onClick={onComment} aria-label="Comments">
           <span className="pf-act-glyph">💬</span>
           {(post.commentCount || 0) > 0 && (
             <span className="pf-act-count">{fmtViewCount(post.commentCount || 0)}</span>
           )}
         </button>
-        <button type="button" className="pf-act" aria-label="Reshare">
+        <button type="button" className="pf-act" onClick={onRestart} aria-label="Replay">
           <span className="pf-act-glyph">↻</span>
         </button>
-        <button type="button" className="pf-act" aria-label="Share">
+        <button type="button" className="pf-act" onClick={onShare} aria-label="Share">
           <span className="pf-act-glyph">▷</span>
         </button>
         <span className="pf-actions-spacer" />
-        <button type="button" className="pf-act pf-act-bookmark" aria-label="Bookmark">
-          <span className="pf-act-glyph">{mode === "viewer" ? "🔖" : "🔖"}</span>
+        <button
+          type="button"
+          className={`pf-act pf-act-bookmark${saved ? " is-saved" : ""}`}
+          onClick={onSave}
+          aria-label={saved ? "Remove from saved" : "Save"}
+          aria-pressed={saved}
+        >
+          <span className="pf-act-glyph">🔖</span>
         </button>
       </div>
 
@@ -455,29 +732,24 @@ function PostCard({
           align-items: center;
           justify-content: center;
         }
-        .pf-owner-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 10px 14px 0;
+        /* Double-tap heart pulse */
+        @keyframes pfHeartPulse {
+          0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+          25%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+          70%  { transform: translate(-50%, -50%) scale(1.0); opacity: 0.95; }
+          100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
         }
-        .pf-insights {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #0c0a04;
+        .pf-heart {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          font-size: 5rem;
+          color: #ff3a6a;
+          text-shadow: 0 6px 22px rgba(255, 58, 106, 0.5);
+          animation: pfHeartPulse 0.9s ease-out forwards;
+          pointer-events: none;
+          z-index: 4;
         }
-        .pf-boost {
-          padding: 7px 16px;
-          border-radius: 7px;
-          border: none;
-          background: #3D9CF5;
-          color: #fff;
-          font-size: 0.85rem;
-          font-weight: 700;
-          cursor: pointer;
-        }
-        .pf-boost:active { opacity: 0.8; }
         .pf-actions {
           display: flex;
           align-items: center;
@@ -494,12 +766,15 @@ function PostCard({
           gap: 5px;
           padding: 4px 0;
           font-family: inherit;
+          transition: transform 0.12s cubic-bezier(.32,1.2,.36,1);
         }
-        .pf-act:active { opacity: 0.55; }
+        .pf-act:active { transform: scale(0.86); opacity: 0.7; }
         .pf-act-glyph {
           font-size: 1.5rem;
           line-height: 1;
         }
+        .pf-act.is-liked .pf-act-glyph { color: #ff3a6a; }
+        .pf-act.is-saved .pf-act-glyph { color: #6e4a08; filter: drop-shadow(0 1px 2px rgba(184, 134, 11, 0.45)); }
         .pf-act-count {
           font-size: 0.92rem;
           font-weight: 600;

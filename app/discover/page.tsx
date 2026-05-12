@@ -235,22 +235,12 @@ export default function DiscoverPage() {
       // height keeps the reel feed pinned to the full visible viewport.
       style={{ WebkitUserSelect: "none", height: "var(--reel-vh, 100dvh)", width: "100vw" }}
     >
-      {/* Top branding chrome (Reels-only). Compare moved to bottom-right
-          floating button so it doesn't overlap the hotel profile chip.
-          `reel-brand-chrome` class lets the FlashDealStoryViewer hide
-          this band when a deal is open (avoids the v79 overlap report). */}
-      <div className="reel-brand-chrome absolute top-0 left-0 right-0 z-40 flex items-center justify-center px-4 pt-3 pb-3 bg-gradient-to-b from-black/55 to-transparent pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-1.5">
-          <span className="text-[0.58rem] font-bold tracking-[0.3em] uppercase text-white/70">StayBid</span>
-          <span className="text-white/30 text-xs">·</span>
-          <span
-            className="text-[0.58rem] font-bold tracking-widest uppercase"
-            style={{ background: "linear-gradient(135deg,#ff458d,#b964ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-          >
-            Reels
-          </span>
-        </div>
-      </div>
+      {/* v87 — `reel-brand-chrome` ("StayBid · Reels" pillared text) REMOVED.
+          The label was purely decorative but its center position was visually
+          colliding with the in-card profile chip's @handle on every reel
+          (screenshot 2 feedback). IG-style chrome doesn't show its own brand
+          on the feed surface — the BottomDock + URL communicate "where you
+          are" without crowding the content row. */}
 
       {/* Compare chip retired in v80 — /hotels is now in the BottomDock,
           and the chip was overlapping the flash-deal viewer on every tap. */}

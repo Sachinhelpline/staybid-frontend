@@ -1916,12 +1916,16 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-      {/* Top-LEFT: hotel profile chip. Now the flash-deal rail is in its OWN
-          band ABOVE this card (not overlaying), so the chip sits at a
-          natural top:14px — content begins right at the top of the card.
+      {/* Top-LEFT: hotel profile chip. v87 — `top` uses safe-area-inset so
+          the chip clears the iOS notch / Android camera punch-hole on every
+          device. Without this, on notched phones the avatar+name was
+          getting clipped under the system bar in PWA fullscreen mode.
           Avatar tap → popover (View Profile / Watch Reels).
           Name tap   → opens hotel profile sheet directly. */}
-      <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "14px" }}>
+      <div
+        className="absolute left-3 right-3 z-30 flex items-start gap-2.5"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+      >
         <button
           type="button"
           onClick={(e) => {
@@ -2049,11 +2053,14 @@ const HotelCard = memo(function HotelCard({
         )}
       </div>
 
-      {/* Right action rail (Instagram Reels style). v83 tightened:
-          gap-4 → gap-2.5, bottom 180 → 200 so the column doesn't
-          climb high enough to touch the Follow button on the profile
-          chip on small phones. */}
-      <div className="absolute right-2 z-30 flex flex-col items-center gap-2.5" style={{ bottom: "200px" }}>
+      {/* Right action rail (Instagram Reels style). v87 — added the
+          BottomDock reserve (64px + safe-area) so the rail's bottom edge
+          floats ABOVE the dock instead of getting clipped behind it on
+          tall-screen Android + iOS PWA. */}
+      <div
+        className="absolute right-2 z-30 flex flex-col items-center gap-2.5"
+        style={{ bottom: "calc(200px + 64px + env(safe-area-inset-bottom, 0px))" }}
+      >
         {/* Mute toggle (top of rail to avoid top-corner overlap).
             Mutates the video directly inside the click handler so the
             browser autoplay policy treats this as a real user gesture
@@ -2193,8 +2200,15 @@ const HotelCard = memo(function HotelCard({
         </div>
       </div>
 
-      {/* BOTTOM-LEFT: caption + price + equal CTAs */}
-      <div className="absolute left-3 right-20 z-30" style={{ bottom: "20px" }}>
+      {/* BOTTOM-LEFT: caption + price + equal CTAs. v87 — pushed above the
+          BottomDock (64px + safe-area) so Book Now / Bid buttons are no
+          longer clipped behind the dock. Was the root cause of screenshot 1's
+          "buttons neeche ho gaye" — they were never gone, the dock was sitting
+          on top of them. */}
+      <div
+        className="absolute left-3 right-20 z-30"
+        style={{ bottom: "calc(20px + 64px + env(safe-area-inset-bottom, 0px))" }}
+      >
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           {h._userPost && (
             <span
@@ -3239,7 +3253,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            at z-40; chip at z-41 right-edge avoids overlap entirely. */
         .ig-filter-chip {
           position: fixed;
-          top: 6px;
+          top: calc(env(safe-area-inset-top, 0px) + 6px);  /* v87: clear notch */
           right: 10px;
           left: auto;
           z-index: 41;

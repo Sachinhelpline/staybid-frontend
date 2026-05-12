@@ -119,7 +119,6 @@ function MePostsInner() {
             ownerHandle,
             ownerAvatar,
             audioLine: p.audio?.name ? p.audio.name : "Original audio",
-            viewCount: 0,
             likeCount: 0,
             commentCount: 0,
             hotelId: p.taggedHotel?.id || undefined,
@@ -138,7 +137,6 @@ function MePostsInner() {
           ownerHandle,
           ownerAvatar,
           audioLine: "Original audio",
-          viewCount: Number(rp.views_count || rp.view_count || 0),
           likeCount: Number(rp.likes_count || 0),
           commentCount: Number(rp.comments_count || 0),
         };
