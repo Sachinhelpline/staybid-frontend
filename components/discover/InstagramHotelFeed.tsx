@@ -1725,7 +1725,6 @@ const HotelCard = memo(function HotelCard({
     <section
       ref={cardRef as any}
       className="ig-card relative w-full snap-start snap-always overflow-hidden bg-black"
-      style={{ height: "100dvh" }}
       onTouchEnd={handleDoubleTap}
       onDoubleClick={handleDoubleTap}
     >
@@ -1879,12 +1878,12 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-      {/* Top-LEFT: hotel profile chip (pushed below brand chrome + flash-deal
-          rail to avoid overlap). Rail bottom is ~152px; chip sits at 168px
-          for a clean 16px breathing gap. Measured live, not eyeballed.
+      {/* Top-LEFT: hotel profile chip. Now the flash-deal rail is in its OWN
+          band ABOVE this card (not overlaying), so the chip sits at a
+          natural top:14px — content begins right at the top of the card.
           Avatar tap → popover (View Profile / Watch Reels).
           Name tap   → opens hotel profile sheet directly. */}
-      <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "168px" }}>
+      <div className="absolute left-3 right-3 z-30 flex items-start gap-2.5" style={{ top: "14px" }}>
         <button
           type="button"
           onClick={(e) => {
@@ -3044,9 +3043,22 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
 
         html, body { overscroll-behavior: none; }
+
+        /* ig-shell — flex column wrapper that holds the rail on top and
+           the reel feed below. Replaces the old absolute-floating rail
+           that overlaid the first card. Now each surface gets its OWN
+           lane in the layout — no overlap, IG-home-feed style. */
+        .ig-shell {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          background: #000;
+        }
         .ig-feed {
-          height: 100dvh;
-          width: 100vw;
+          flex: 1 1 auto;
+          min-height: 0;          /* allow flex item to shrink below content height */
+          width: 100%;
           overflow-y: auto;
           overflow-x: hidden;
           scroll-snap-type: y mandatory;
@@ -3059,6 +3071,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
         .ig-feed::-webkit-scrollbar { display: none; width: 0; height: 0; }
         .ig-card {
+          /* Card now fills the FEED area (viewport - rail height), not the
+             whole viewport. Combined with the flex shell above, this is
+             what visually separates the rail from the reels. */
+          height: 100%;
+          min-height: 100%;
           scroll-snap-align: start;
           scroll-snap-stop: always;
           /* Perf: each card paints into its own layer + isolates layout
@@ -3067,7 +3084,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
              viewport. */
           contain: layout paint style;
           content-visibility: auto;
-          contain-intrinsic-size: 100dvh;
+          contain-intrinsic-size: 100%;
         }
 
         /* Filter chip — slim, top-LEFT, doesn't collide with the brand
@@ -3208,12 +3225,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-tap-unmute {
           position: absolute;
           left: 50%;
-          /* Was top: 132px — sat right under the brand chrome in the
-             pre-rail layout. With the flash-deal rail (32→152px) + the
-             profile chip (168→210px) now above, push the hint below the
-             chip so it doesn't pile up with three pills on top of each
-             other. 218px = chip bottom + 8px breathing room. */
-          top: calc(env(safe-area-inset-top, 0px) + 218px);
+          /* Rail now lives in its own band above the card, so the hint
+             returns to a natural near-top position (chip is at 14px,
+             unmute sits below at 64px). */
+          top: calc(env(safe-area-inset-top, 0px) + 64px);
           transform: translate(-50%, 0);
           z-index: 39;
           display: inline-flex;
@@ -3630,18 +3645,21 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         </div>
       )}
 
-      {/* Flash-deal story rail — auto-generated, lives at the top of the
-          reel feed in place of the old user-story tray. Each item is a hotel
-          with an active flash deal; tap → fullscreen viewer with Book Now. */}
-      <FlashDealStoryRail
-        deals={flashDeals}
-        onOpen={(i) => {
-          setFlashStoryIdx(i);
-          onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
-        }}
-      />
+      {/* MAIN SHELL — flex column so the flash-deal rail sits in its OWN
+          band at the top (premium cream surface) and the reel feed gets
+          the REMAINING viewport height below. No more overlay: cards no
+          longer bleed under the rail. Mirrors Instagram's home-feed
+          stories-rail-on-top pattern. */}
+      <div className="ig-shell">
+        <FlashDealStoryRail
+          deals={flashDeals}
+          onOpen={(i) => {
+            setFlashStoryIdx(i);
+            onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
+          }}
+        />
 
-      <div ref={containerRef} className="ig-feed">
+        <div ref={containerRef} className="ig-feed">
         {filteredItems.map((it, i) => (
           <HotelCard
             key={it.hotel.id || i}
@@ -3683,6 +3701,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             </div>
           </section>
         )}
+        </div>
       </div>
 
       <FilterSheet

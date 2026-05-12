@@ -305,10 +305,15 @@ export function DialerNav() {
     if (snapTimerRef.current) clearTimeout(snapTimerRef.current);
   }, []);
 
-  // Hide on admin / partner / onboard routes
+  // Hide on admin / partner / onboard routes. ALSO hide on reel-feed
+  // pages (/, /discover, /reels) — those now use the Instagram-style
+  // bottom dock instead of the left-edge crown wheel, per design ask.
   if (pathname.startsWith("/admin") ||
       pathname.startsWith("/partner") ||
-      pathname.startsWith("/onboard")) {
+      pathname.startsWith("/onboard") ||
+      pathname === "/" ||
+      pathname.startsWith("/discover") ||
+      pathname.startsWith("/reels")) {
     return null;
   }
 

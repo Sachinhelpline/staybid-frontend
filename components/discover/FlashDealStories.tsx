@@ -169,11 +169,8 @@ export function FlashDealStoryRail({
     <>
       <div className="fdeal-rail-wrap pointer-events-auto">
         <div className="fdeal-rail-header">
-          <span className="fdeal-rail-live">
-            <span className="fdeal-rail-live-dot" />
-            FLASH DEALS
-          </span>
-          <span className="fdeal-rail-sub">{deals.length} live · today only</span>
+          <span className="fdeal-rail-title">Flash Deals</span>
+          <span className="fdeal-rail-sub">{deals.length} live today</span>
         </div>
         <div className="fdeal-rail-scroll" role="list">
           {deals.map((d, i) => (
@@ -183,7 +180,7 @@ export function FlashDealStoryRail({
               type="button"
               className="fdeal-rail-item"
               onClick={() => onOpen(i)}
-              aria-label={`Open flash deal at ${d.hotelName}: ${d.discount}% off, from ${fmtINR(d.dealPrice)} per night`}
+              aria-label={`Open flash deal at ${d.hotelName}`}
             >
               <span className="fdeal-rail-ring">
                 <span className="fdeal-rail-avatar">
@@ -191,7 +188,6 @@ export function FlashDealStoryRail({
                     ? <img src={d.hotelImage} alt="" loading="lazy" decoding="async" />
                     : <span className="fdeal-rail-initials">{(d.hotelName || "H").slice(0, 1).toUpperCase()}</span>}
                 </span>
-                <span className="fdeal-rail-badge">-{d.discount}%</span>
               </span>
               <span className="fdeal-rail-name">{d.hotelName}</span>
             </button>
@@ -204,68 +200,53 @@ export function FlashDealStoryRail({
           from { transform: rotate(0deg); }
           to   { transform: rotate(360deg); }
         }
-        @keyframes fdealLiveDot {
-          0%,100% { opacity: 1; transform: scale(1); }
-          50%     { opacity: 0.35; transform: scale(1.35); }
-        }
-        @keyframes fdealBadgePulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(255,69,141,0.0), 0 4px 10px rgba(0,0,0,0.45); }
-          50%     { box-shadow: 0 0 0 6px rgba(255,69,141,0.18), 0 4px 12px rgba(255,69,141,0.55); }
-        }
         @keyframes fdealRailSlideIn {
           from { transform: translateY(-12px); opacity: 0; }
           to   { transform: translateY(0);    opacity: 1; }
         }
 
+        /* Premium cream band — sits in its OWN section above the reels.
+           No transparency, no overlap with the video feed below: visually
+           a clean horizontal lane the way Instagram's home-feed stories
+           rail reads. Soft champagne + warm parchment. */
         .fdeal-rail-wrap {
-          position: absolute;
-          top: 32px;
-          left: 0;
-          right: 0;
+          position: relative;        /* part of the flex column, not floating */
           z-index: 38;
-          padding: 8px 10px 6px;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0) 100%);
-          backdrop-filter: blur(2px);
-          -webkit-backdrop-filter: blur(2px);
+          padding: 10px 12px 12px;
+          background:
+            linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
+          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
+          box-shadow: 0 2px 14px rgba(184, 134, 11, 0.10);
           animation: fdealRailSlideIn 0.5s cubic-bezier(.32,1.2,.36,1) both;
         }
         .fdeal-rail-header {
           display: flex;
-          align-items: center;
+          align-items: baseline;
           justify-content: space-between;
-          padding: 0 4px 6px;
+          padding: 0 4px 8px;
         }
-        .fdeal-rail-live {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          font-size: 0.58rem;
-          font-weight: 800;
-          letter-spacing: 0.16em;
-          color: #ffd76b;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-        }
-        .fdeal-rail-live-dot {
-          width: 6px; height: 6px;
-          border-radius: 999px;
-          background: #ff4757;
-          box-shadow: 0 0 8px rgba(255,71,87,0.85);
-          animation: fdealLiveDot 1.4s ease-in-out infinite;
+        .fdeal-rail-title {
+          font-family: "Cormorant Garamond", "Georgia", serif;
+          font-style: italic;
+          font-weight: 600;
+          font-size: 1.05rem;
+          letter-spacing: 0.005em;
+          color: #6e4a08;
         }
         .fdeal-rail-sub {
-          font-size: 0.56rem;
+          font-size: 0.62rem;
           font-weight: 600;
-          color: rgba(255,255,255,0.72);
-          letter-spacing: 0.04em;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+          color: rgba(110, 74, 8, 0.65);
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
         }
 
         .fdeal-rail-scroll {
           display: flex;
-          gap: 11px;
+          gap: 12px;
           overflow-x: auto;
           overflow-y: hidden;
-          padding: 2px 4px 6px;
+          padding: 2px 4px 4px;
           scrollbar-width: none;
           -ms-overflow-style: none;
           -webkit-overflow-scrolling: touch;
@@ -277,28 +258,38 @@ export function FlashDealStoryRail({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           width: 64px;
           flex: 0 0 auto;
           scroll-snap-align: start;
           background: none;
           border: none;
           padding: 0;
-          color: #fff;
+          color: #4a3208;
           cursor: pointer;
           transition: transform 0.18s cubic-bezier(.32,1.2,.36,1);
         }
         .fdeal-rail-item:active { transform: scale(0.92); }
 
+        /* Soft champagne ring — premium, no aggressive color, very subtle
+           rotation. No discount badge per design ask: the percentage lives
+           inside the viewer only, not on the front page. */
         .fdeal-rail-ring {
           position: relative;
           width: 60px;
           height: 60px;
           border-radius: 999px;
-          padding: 2.5px;
-          background: conic-gradient(from 0deg, #ffd76b, #ff458d, #b964ff, #ff6b3d, #ffd76b);
-          animation: fdealRingSpin 6s linear infinite;
-          box-shadow: 0 4px 14px rgba(255,69,141,0.35);
+          padding: 2px;
+          background: conic-gradient(from 0deg,
+            #c9911a 0deg,
+            #f0d060 90deg,
+            #fff4cc 180deg,
+            #f0d060 270deg,
+            #c9911a 360deg);
+          animation: fdealRingSpin 12s linear infinite;
+          box-shadow:
+            0 2px 8px rgba(184, 134, 11, 0.25),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.6);
         }
         .fdeal-rail-avatar {
           display: block;
@@ -306,10 +297,10 @@ export function FlashDealStoryRail({
           height: 100%;
           border-radius: 999px;
           overflow: hidden;
-          background: #1a1a1a;
-          border: 2px solid #07060e;
+          background: #fff9ec;
+          border: 2px solid #fff9ec;
           /* counter-rotate the inner so the image stays upright while the ring spins */
-          animation: fdealRingSpin 6s linear infinite reverse;
+          animation: fdealRingSpin 12s linear infinite reverse;
         }
         .fdeal-rail-avatar img {
           width: 100%;
@@ -325,27 +316,12 @@ export function FlashDealStoryRail({
           height: 100%;
           font-size: 1.1rem;
           font-weight: 700;
-          color: #ffd76b;
-        }
-        .fdeal-rail-badge {
-          position: absolute;
-          bottom: -3px;
-          right: -4px;
-          font-size: 0.54rem;
-          font-weight: 800;
-          color: #fff;
-          background: linear-gradient(135deg, #ff4757, #ff458d);
-          padding: 2px 5px;
-          border-radius: 999px;
-          border: 1.5px solid #07060e;
-          letter-spacing: 0.02em;
-          animation: fdealBadgePulse 2.2s ease-in-out infinite;
+          color: #6e4a08;
         }
         .fdeal-rail-name {
-          font-size: 0.6rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.92);
-          text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+          font-size: 0.62rem;
+          font-weight: 500;
+          color: rgba(74, 50, 8, 0.85);
           max-width: 64px;
           white-space: nowrap;
           overflow: hidden;
