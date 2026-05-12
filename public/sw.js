@@ -3,9 +3,10 @@
 // Strategy (tuned for "tap icon → reel feed in <500ms"):
 //   • HTML navigations          → stale-while-revalidate
 //       Cache hit returns INSTANTLY (~30ms). Network fetch happens in
-//       background; if the new HTML differs, page reloads on next visit
-//       (kill-switch in layout.tsx handles version-mismatch reload).
-//   • Next.js immutable chunks  → cache-first (content-hashed URLs)
+//       background; controllerchange in layout.tsx swaps the user onto
+//       the new build on the NEXT navigation.
+//   • Next.js immutable chunks  → cache-first (content-hashed URLs are
+//                                 globally unique → never stale)
 //   • API + RSC data            → network-only (always fresh deals/prices)
 //   • Images + fonts            → stale-while-revalidate
 //
@@ -13,13 +14,22 @@
 // speed as before). Second+ visit: cache hit instantly + refresh in bg →
 // app opens like a native app.
 //
+// v93 — cache names are now STABLE across releases. Previously each release
+// renamed both caches, so the activate handler dropped the entire warm
+// cache and every returning user paid a full cold-start. With content-
+// hashed chunk URLs, the same `static` cache is safe to reuse forever —
+// new builds simply add new entries. HTML is SWR so stale content is
+// always refreshed in the background. Bump CACHE_NAME ONLY when this
+// fetch-handler logic changes, not on every UI release.
+//
 // Future-proof against heavy traffic:
 //   • SWR cuts P50 HTML latency from ~400ms to ~30ms on repeat visits
 //   • Cache-first for hashed chunks = zero waterfall on warm visits
 //   • Network-only /api = users always see fresh pricing
+//   • Stable cache name = releases don't punish returning users
 
-const CACHE_NAME = 'staybid-v92-2026-05-13-flashdeals-image-overlay-cream-pills';
-const HTML_CACHE = 'staybid-html-v92';
+const CACHE_NAME = 'staybid-static-v1';
+const HTML_CACHE = 'staybid-html-v1';
 
 const PRECACHE_URLS = [
   '/manifest.json',

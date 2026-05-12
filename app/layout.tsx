@@ -78,6 +78,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* ── Preconnect to remote origins we'll hit on every visit. Costs
+            ~0 KB and ~0 ms but saves the DNS + TLS handshake (~100–400 ms
+            on cellular) the first time the page tries to fetch an image
+            or a placeholder video. */}
+        <link rel="preconnect" href="https://uxxhbdqedazpmvbvaosh.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://uxxhbdqedazpmvbvaosh.supabase.co" />
+        <link rel="preconnect" href="https://commondatastorage.googleapis.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://commondatastorage.googleapis.com" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+
         {/* ── Critical CSS — inlined so users see a dark background + spinner
             within ~50ms of first byte. No FOUC, no white flash. The body
             background is the same #07060e as the reel feed so the transition
@@ -150,7 +161,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v92</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v93</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -158,38 +169,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </ThemeProvider>
               <script dangerouslySetInnerHTML={{__html: `
 // ── Build version + service-worker bootstrap ──────────────────────────
-// Tuned for cold-start speed: SW registers AFTER first paint (requestIdle
-// or 1.5s timeout), version-mismatch reload happens only when actually
-// needed (not on every fresh visit). The SW itself uses network-first for
-// HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v92-flashdeals-image-overlay-cream-pills-2026-05-13";
-try{
-  var prev=localStorage.getItem("sb_build");
-  if(prev && prev!==SB_BUILD){
-    // Only force-reload when we have a STALE prev (not a first visit).
-    // First visits don't need a reload — the SW will install + take over
-    // on its own and the page is already current.
-    localStorage.setItem("sb_build",SB_BUILD);
-    if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}
-    if("serviceWorker" in navigator){
-      navigator.serviceWorker.getRegistrations().then(function(rs){
-        rs.forEach(function(r){r.unregister();});
-        setTimeout(function(){window.location.reload();},150);
-      });
-    }
-  } else if(!prev){
-    localStorage.setItem("sb_build",SB_BUILD);
-  }
-}catch(e){}
+// v93: removed the cache-nuke / SW-unregister / force-reload kill-switch.
+// Previous behaviour wiped ALL caches and forced a hard reload on EVERY
+// release bump, so every release punished returning users with a cold-
+// start experience instead of the Instagram-fast warm cache. The natural
+// SW lifecycle below (controllerchange + skipWaiting) already swaps in
+// new code without trashing the static-asset cache.
+//
+// The SW URL no longer carries SB_BUILD — that was forcing a SW re-install
+// on every release even when sw.js itself hadn't changed. Browsers check
+// /sw.js for byte-level changes on each navigation, so if the file is
+// identical the install is skipped → no reload, no cache wipe, no flicker.
+var SB_BUILD="v93-instagram-fast-perf";
+try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
   // with the main thread during initial render. Falls back to a 1.5s
   // timeout if requestIdleCallback isn't supported (Safari).
   var registerSW=function(){
-    navigator.serviceWorker.register("/sw.js?v="+SB_BUILD).then(function(reg){
-      reg.update();
+    navigator.serviceWorker.register("/sw.js").then(function(reg){
+      try{ reg.update(); }catch(e){}
       var refreshing=false;
       navigator.serviceWorker.addEventListener("controllerchange",function(){
+        // Only reload when the SW actually took control of a different
+        // build — silent updates on identical sw.js content won't fire
+        // controllerchange.
         if(refreshing)return; refreshing=true; window.location.reload();
       });
       if(reg.waiting)reg.waiting.postMessage("SKIP_WAITING");

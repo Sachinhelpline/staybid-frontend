@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sbCached } from "@/lib/sb-cache";
 
 const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
 
+// Warm-Lambda caching TTLs. Inventory side-tables (bids/blocks) get a
+// shorter window because availability flips matter more than catalog data.
+const TTL_CATALOG = 60_000;
+const TTL_INVENTORY = 15_000;
+
 async function sb(path: string) {
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_H });
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_H, cache: "no-store" });
     const t = await r.text();
     const j = JSON.parse(t);
     return Array.isArray(j) ? j : [];
   } catch { return []; }
 }
+
+// Memoised variant: each call shares one in-flight fetch across concurrent
+// requests on the same Lambda + reuses the result for `ttl` milliseconds.
+const sbCachedFetch = (path: string, ttl: number) =>
+  sbCached(`flash:${path}`, () => sb(path), ttl);
 
 function toISO(d: Date) { return d.toISOString().slice(0, 10); }
 function rangesOverlap(a1: string, a2: string, b1: string, b2: string) { return a1 < b2 && b1 < a2; }
@@ -34,14 +45,17 @@ export async function GET(req: NextRequest) {
     `${baseSelect}&active=eq.true`,
     `${baseSelect}`,
   ];
+  // flash_deals is parameterised on city so it gets keyed per city (still cached
+  // per warm Lambda for TTL_INVENTORY).
   let dealsRaw: any[] = [];
   for (const f of tries) {
-    const r = await sb(`flash_deals?${f}`);
+    const r = await sbCachedFetch(`flash_deals?${f}`, TTL_INVENTORY);
     if (Array.isArray(r) && r.length > 0) { dealsRaw = r; break; }
   }
+  // hotels + rooms are shared across every caller and rarely change → long TTL.
   const [hotels, rooms] = await Promise.all([
-    sb(`hotels?select=*`),
-    sb(`rooms?select=*`),
+    sbCachedFetch(`hotels?select=*`, TTL_CATALOG),
+    sbCachedFetch(`rooms?select=*`, TTL_CATALOG),
   ]);
 
   const now = Date.now();
@@ -170,16 +184,19 @@ export async function GET(req: NextRequest) {
   const inFilter = `in.(${hotelIds.join(",")})`;
 
   const [units, bids, blocks] = await Promise.all([
-    sb(`hotel_room_units?hotelId=${inFilter}&status=eq.active&select=hotelId,roomId,id`),
-    sb(`bids?hotelId=${inFilter}&status=in.(ACCEPTED,COUNTER)&select=id,hotelId,roomId,requestId,status`),
-    sb(`room_blocks?hotelId=${inFilter}&toDate=gt.${today}&fromDate=lt.${tomorrow}&select=hotelId,roomId,fromDate,toDate`),
+    sbCachedFetch(`hotel_room_units?hotelId=${inFilter}&status=eq.active&select=hotelId,roomId,id`, TTL_INVENTORY),
+    sbCachedFetch(`bids?hotelId=${inFilter}&status=in.(ACCEPTED,COUNTER)&select=id,hotelId,roomId,requestId,status`, TTL_INVENTORY),
+    sbCachedFetch(`room_blocks?hotelId=${inFilter}&toDate=gt.${today}&fromDate=lt.${tomorrow}&select=hotelId,roomId,fromDate,toDate`, TTL_INVENTORY),
   ]);
 
   // Hydrate bid_requests for the bids we care about, so we can date-filter
   const requestIds = Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)));
   let reqMap: Record<string, any> = {};
   if (requestIds.length) {
-    const rqs = await sb(`bid_requests?id=in.(${requestIds.join(",")})&select=id,checkIn,checkOut`);
+    const rqs = await sbCachedFetch(
+      `bid_requests?id=in.(${requestIds.join(",")})&select=id,checkIn,checkOut`,
+      TTL_INVENTORY,
+    );
     rqs.forEach((x: any) => { reqMap[x.id] = x; });
   }
 

@@ -3289,6 +3289,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           content-visibility: auto;
           contain-intrinsic-size: 100%;
         }
+        /* v93 — windowed-list placeholder. Out-of-window slots still occupy
+           the full viewport so swipe geometry + IntersectionObserver math is
+           identical to a real card, but they cost ~zero to render. */
+        .ig-card-skel {
+          background: #000;
+          width: 100%;
+        }
 
         /* Filter chip — slim, TOP-RIGHT (was top-left in v75-v80 where it
            visually clashed with the rail header). Brand chrome sits center
@@ -3875,29 +3882,46 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         )}
 
         <div ref={containerRef} className="ig-feed">
-        {filteredItems.map((it, i) => (
-          <HotelCard
-            key={it.hotel.id || i}
-            item={it}
-            active={i === activeIdx}
-            adjacent={Math.abs(i - activeIdx) === 1}
-            muted={muted}
-            hasInteracted={hasInteracted}
-            onMuteToggle={toggleMute}
-            onTrackEvent={onTrackEvent}
-            onBook={handleBook}
-            onNegotiate={handleNegotiate}
-            onShare={handleShare}
-            onCopyLink={handleCopyLink}
-            onOpenComments={(h) => setCommentsOpen({ open: true, name: h.name })}
-            onOpenMore={(h) => setMoreOpen({ open: true, id: h.id })}
-            onOpenEntity={(e) => setCreatorOpen(e)}
-            onWatchEntity={handleWatchEntity}
-            hasOwnStories={activeStories.length > 0}
-            onOpenStories={() => setStoryOpen(true)}
-            initialSaved={savedSet.has(`${it.hotel._userPost ? "video" : "hotel"}:${it.hotel.id}`)}
-          />
-        ))}
+        {/*
+          ── v93 card-windowing — render the heavy HotelCard ONLY for the
+          slots near the active index (default ±4). Out-of-window slots
+          still occupy their full viewport height + scroll-snap-align so
+          IntersectionObserver positions, swipe geometry, and total scroll
+          length are identical to before — but a tiny placeholder costs
+          ~zero React work + zero <video> element instead of ~10 useStates
+          + a media element. Drops initial mount cost from 30 cards down
+          to ~9, which is the single biggest perceived-latency win on
+          mid-tier Android.
+        */}
+        {filteredItems.map((it, i) => {
+          const distance = Math.abs(i - activeIdx);
+          if (distance > 4) {
+            return <section key={it.hotel.id || i} className="ig-card ig-card-skel" aria-hidden />;
+          }
+          return (
+            <HotelCard
+              key={it.hotel.id || i}
+              item={it}
+              active={i === activeIdx}
+              adjacent={distance === 1}
+              muted={muted}
+              hasInteracted={hasInteracted}
+              onMuteToggle={toggleMute}
+              onTrackEvent={onTrackEvent}
+              onBook={handleBook}
+              onNegotiate={handleNegotiate}
+              onShare={handleShare}
+              onCopyLink={handleCopyLink}
+              onOpenComments={(h) => setCommentsOpen({ open: true, name: h.name })}
+              onOpenMore={(h) => setMoreOpen({ open: true, id: h.id })}
+              onOpenEntity={(e) => setCreatorOpen(e)}
+              onWatchEntity={handleWatchEntity}
+              hasOwnStories={activeStories.length > 0}
+              onOpenStories={() => setStoryOpen(true)}
+              initialSaved={savedSet.has(`${it.hotel._userPost ? "video" : "hotel"}:${it.hotel.id}`)}
+            />
+          );
+        })}
         {filteredItems.length === 0 && (
           <section className="ig-card flex items-center justify-center text-center text-white/70 px-6">
             <div>

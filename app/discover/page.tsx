@@ -91,18 +91,6 @@ export default function DiscoverPage() {
     }
     const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
 
-    // ── Pull public posts (everyone's reels) from /api/social/feed.
-    // These are the user-uploaded reels / photos / stories that show up
-    // alongside hotels in the SAME unified feed at /discover.
-    let publicItems: Item[] = [];
-    try {
-      const sr = await fetch("/api/social/feed?limit=30", { cache: "no-store" });
-      if (sr.ok) {
-        const sd = await sr.json();
-        if (Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem);
-      }
-    } catch {}
-
     // Helper: Fisher-Yates shuffle so siblings reorder per request.
     const shuffle = <T,>(arr: T[]): T[] => {
       const a = arr.slice();
@@ -113,16 +101,31 @@ export default function DiscoverPage() {
       return a;
     };
 
+    // ── Fire both feeds in PARALLEL (was sequential; that doubled cold-
+    //    start wait by ~300 ms because social/feed had to finish before
+    //    discover/feed even started). Promise.all lets the browser open
+    //    both connections simultaneously and use the slower of the two as
+    //    the total wait.
+    const socialPromise = fetch("/api/social/feed?limit=30").then(
+      (r) => (r.ok ? r.json() : null),
+      () => null,
+    );
+    const discoverPromise = fetch("/api/discover/feed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+      body: JSON.stringify({ limit: 30, signals: safeSig }),
+    }).then(
+      (r) => (r.ok ? r.json() : null),
+      () => null,
+    );
+    const [sd, d] = await Promise.all([socialPromise, discoverPromise]);
+
+    let publicItems: Item[] = [];
+    if (sd && Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem);
+
     // Primary: ranked discover feed
     try {
-      const r = await fetch("/api/discover/feed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
-        body: JSON.stringify({ limit: 30, signals: safeSig }),
-        cache: "no-store",
-      });
-      if (r.ok) {
-        const d = await r.json();
+      if (d) {
         if (Array.isArray(d?.items) && d.items.length > 0) {
           // Public posts shuffled per session (was always newest-first → same
           // reel showed on every refresh). Ranked discover items keep their

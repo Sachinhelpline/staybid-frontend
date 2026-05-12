@@ -9,8 +9,15 @@
 // the linked hotel record for the bottom identity strip.
 import { NextResponse, type NextRequest } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { sbCached } from "@/lib/sb-cache";
 
 const READ = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+
+// Reels feed is read N times per second across all visitors; the underlying
+// query is the same. 15 s in-memory cache per Lambda gives Instagram-fast
+// repeat visits while still surfacing new posts within seconds.
+const TTL_POSTS   = 15_000;
+const TTL_LOOKUPS = 60_000;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -33,20 +40,36 @@ export async function GET(req: NextRequest) {
     filter += `&created_at=gt.${encodeURIComponent(cutoff)}`;
   }
 
-  // Fetch posts
-  const pr = await fetch(`${SB_URL}/rest/v1/social_posts?${filter}`, { headers: READ, cache: "no-store" });
-  if (!pr.ok) return NextResponse.json({ error: "Feed fetch failed" }, { status: 500 });
-  let posts: any[] = await pr.json().catch(() => []);
+  // Fetch posts (cached for TTL_POSTS — keyed on the full filter string so
+  // /me's `?author=…` and `?type=STORY` get their own buckets).
+  let posts: any[] = await sbCached(
+    `social:posts:${filter}`,
+    async () => {
+      const pr = await fetch(`${SB_URL}/rest/v1/social_posts?${filter}`, { headers: READ, cache: "no-store" });
+      if (!pr.ok) return [];
+      return pr.json().catch(() => []);
+    },
+    TTL_POSTS,
+  );
+  if (!Array.isArray(posts)) posts = [];
 
-  // Side-load authors
+  // Side-load authors (cached separately — profile rows rarely change).
   const authorIds = Array.from(new Set(posts.map((p) => p.author_id))).filter(Boolean);
   let authors: any[] = [];
   if (authorIds.length) {
-    const ar = await fetch(
-      `${SB_URL}/rest/v1/social_profiles?id=in.(${authorIds.map(encodeURIComponent).join(",")})&select=*`,
-      { headers: READ, cache: "no-store" }
+    const authorKey = authorIds.slice().sort().join(",");
+    authors = await sbCached(
+      `social:authors:${authorKey}`,
+      async () => {
+        const ar = await fetch(
+          `${SB_URL}/rest/v1/social_profiles?id=in.(${authorIds.map(encodeURIComponent).join(",")})&select=*`,
+          { headers: READ, cache: "no-store" }
+        );
+        if (!ar.ok) return [];
+        return ar.json().catch(() => []);
+      },
+      TTL_LOOKUPS,
     );
-    if (ar.ok) authors = await ar.json().catch(() => []);
   }
   const authorById = new Map(authors.map((a) => [a.id, a]));
 
@@ -55,15 +78,23 @@ export async function GET(req: NextRequest) {
     posts = posts.filter((p) => authorById.get(p.author_id)?.user_type === source);
   }
 
-  // Side-load hotels referenced by hotel_id
+  // Side-load hotels referenced by hotel_id (cached for TTL_LOOKUPS).
   const hotelIds = Array.from(new Set(posts.map((p) => p.hotel_id).filter(Boolean)));
   let hotels: any[] = [];
   if (hotelIds.length) {
-    const hr = await fetch(
-      `${SB_URL}/rest/v1/hotels?id=in.(${hotelIds.map(encodeURIComponent).join(",")})&select=*`,
-      { headers: READ, cache: "no-store" }
+    const hotelKey = hotelIds.slice().sort().join(",");
+    hotels = await sbCached(
+      `social:hotels:${hotelKey}`,
+      async () => {
+        const hr = await fetch(
+          `${SB_URL}/rest/v1/hotels?id=in.(${hotelIds.map(encodeURIComponent).join(",")})&select=*`,
+          { headers: READ, cache: "no-store" }
+        );
+        if (!hr.ok) return [];
+        return hr.json().catch(() => []);
+      },
+      TTL_LOOKUPS,
     );
-    if (hr.ok) hotels = await hr.json().catch(() => []);
   }
   const hotelById = new Map(hotels.map((h) => [h.id, h]));
 
