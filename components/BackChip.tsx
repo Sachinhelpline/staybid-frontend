@@ -53,39 +53,49 @@ export function BackChip() {
       </button>
 
       <style jsx global>{`
+        /* Slim, icon-only back chip. v82 shrunk from a labelled pill to a
+           compact circle so it never crowds page headers / content on any
+           route. Tappable target stays ~32px via padding+margin. */
         .sb-back-chip {
           position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 12px);
-          left: 12px;
+          top: calc(env(safe-area-inset-top, 0px) + 8px);
+          left: 8px;
           z-index: 62;
+          width: 30px;
+          height: 30px;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 6px 12px 6px 8px;
+          justify-content: center;
           border-radius: 999px;
-          background: rgba(7, 6, 14, 0.78);
-          color: #fff;
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          font-size: 0.74rem;
-          font-weight: 700;
-          letter-spacing: 0.02em;
+          background: rgba(255, 255, 255, 0.92);
+          color: #2c1d04;
+          border: 1px solid rgba(184, 134, 11, 0.22);
+          font-size: 1.1rem;
+          font-weight: 800;
           cursor: pointer;
-          backdrop-filter: blur(14px) saturate(1.3);
-          -webkit-backdrop-filter: blur(14px) saturate(1.3);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+          backdrop-filter: blur(10px) saturate(1.2);
+          -webkit-backdrop-filter: blur(10px) saturate(1.2);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
           transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), background 0.18s ease;
         }
-        .sb-back-chip:active { transform: scale(0.92); }
-        .sb-back-chip:hover { background: rgba(7, 6, 14, 0.92); }
+        .sb-back-chip:active { transform: scale(0.90); }
+        .sb-back-chip:hover { background: rgba(255, 255, 255, 1); }
         .sb-back-chip-glyph {
-          font-size: 1.05rem;
+          font-size: 1.1rem;
           line-height: 1;
           font-weight: 800;
           margin-top: -1px;
         }
-        .sb-back-chip-label {
-          line-height: 1;
-        }
+        /* Hide the label — the glyph alone is unambiguous and the chip
+           stays out of the way on every page. */
+        .sb-back-chip-label { display: none; }
+
+        /* Each non-reel page gets a small top padding so the back chip
+           never sits on top of the page's first content row.
+           The reel-app routes (/, /discover, /reels, /me) opt out via
+           body.is-reel-page (set by useReelFullscreen). */
+        body main { padding-top: calc(env(safe-area-inset-top, 0px) + 0px); }
+        body.is-reel-page main { padding-top: 0; }
       `}</style>
     </>
   );

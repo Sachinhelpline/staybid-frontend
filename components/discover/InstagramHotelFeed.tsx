@@ -538,19 +538,16 @@ function MoreMenu({
   // For user-uploaded posts the menu pivots to author actions:
   // Edit + Delete take priority, "Open hotel page" + "Report" disappear
   // (they don't apply to a post the user owns themselves).
-  // v81 trim — Volume booster removed (rarely used), Copy link removed
-  // (the front-rail Share button covers link copying via native share),
-  // Share removed from this menu since it's also on the front action rail.
-  // Keep author actions for owner posts; keep moderation + hotel link for
-  // public reels.
+  // v82 trim — Mute audio also removed (the right-rail 🔊 button already
+  // owns mute toggling). Volume booster, Copy link, Share were stripped
+  // in v81. MoreMenu now sticks to actions that DON'T duplicate the
+  // front-rail surface.
   const items = isUserPost
     ? [
         { icon: "✏️",  label: "Edit post",                                 onClick: onEditPost },
         { icon: "🗑",  label: "Delete post",                               onClick: onDeletePost, danger: true },
-        { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
       ]
     : [
-        { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
         { icon: "🏨",  label: "Open hotel page",                           href: `/hotels/${hotelId}` },
         { icon: "🚩",  label: "Report this reel",                          danger: true },
         { icon: "🚫",  label: "Not interested" },
@@ -1572,6 +1569,35 @@ const HotelCard = memo(function HotelCard({
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [viewCount, setViewCount] = useState(baseViews);
 
+  // ─── Force-pause signals (v82) ─────────────────────────────────────
+  // Declared HERE (before the audio + video effects) so both can reference
+  // forcePaused in their dep arrays. Pauses whenever:
+  //   • document.visibilityState === "hidden"  (phone lock, tab switch, app minimise)
+  //   • body.fdeal-viewer-open is set           (flash-deal viewer overlay open)
+  const [forcePaused, setForcePaused] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const compute = () => {
+      const hidden = document.visibilityState === "hidden";
+      const viewerOpen = document.body.classList.contains("fdeal-viewer-open");
+      setForcePaused(hidden || viewerOpen);
+    };
+    compute();
+    document.addEventListener("visibilitychange", compute);
+    window.addEventListener("pagehide", compute);
+    window.addEventListener("blur", compute);
+    window.addEventListener("focus", compute);
+    const mo = new MutationObserver(compute);
+    mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      document.removeEventListener("visibilitychange", compute);
+      window.removeEventListener("pagehide", compute);
+      window.removeEventListener("blur", compute);
+      window.removeEventListener("focus", compute);
+      mo.disconnect();
+    };
+  }, []);
+
   // ═══ DEDICATED audio sync — runs independently of the video useEffect.
   // Bug previously: picking custom audio on reel A then scrolling to reel B
   // didn't stop A's audio because pause was tangled inside a multi-condition
@@ -1582,7 +1608,7 @@ const HotelCard = memo(function HotelCard({
   useEffect(() => {
     const a = audioElRef.current;
     if (!a) return;
-    if (active && customAudio && !paused) {
+    if (active && customAudio && !paused && !forcePaused) {
       try {
         a.muted = false;
         a.volume = 1;
@@ -1606,15 +1632,19 @@ const HotelCard = memo(function HotelCard({
       const el = audioElRef.current;
       if (el) { try { el.pause(); el.currentTime = 0; } catch {} }
     };
-  }, [active, customAudio, paused]);
+    // forcePaused (visibility / viewer overlay) must trigger re-eval too
+  }, [active, customAudio, paused, forcePaused]);
 
-  // Video play/pause sync with active state. Three signals:
+  // Video play/pause sync with active state. Four signals:
   //   1. video.muted   — controls the native track on the <video>
   //   2. Web-Audio gain — boosts louder than 1.0 when user has bumped the
   //      volume slider (lib/audio-amplifier).
   //   3. customAudio   — when the user picks a soundtrack from the audio
   //      strip, we mute the video and play <audio src={customAudio.url}>
   //      in sync.
+  //   4. forcePaused  — system signal (tab hidden / app minimise / flash-
+  //      deal viewer overlay open). Beats all other state so we never
+  //      leak audio.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -1624,7 +1654,7 @@ const HotelCard = memo(function HotelCard({
     v.muted = useCustom ? true : muted;
     v.volume = 1;
 
-    if (active && !paused) {
+    if (active && !paused && !forcePaused) {
       resumeAudio();
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
@@ -1635,7 +1665,7 @@ const HotelCard = memo(function HotelCard({
         if (paused) setPaused(false);
       }
     }
-  }, [active, paused, muted, customAudio]);
+  }, [active, paused, muted, customAudio, forcePaused]);
 
   // Slow Ken-Burns photo cycle as a fallback (only if no video src or video errors).
   // Initialize as TRUE when there's no video source (user photo/story uploads)
@@ -2037,9 +2067,10 @@ const HotelCard = memo(function HotelCard({
           aria-label={muted ? "Unmute" : "Mute"}
         >
           <span className="ig-icon">{muted ? "🔇" : "🔊"}</span>
-          <span className="ig-rail-count">
-            {muted ? "Off" : `${gain.toFixed(1)}×`}
-          </span>
+          {/* Volume booster label removed in v82 — was showing "1.8×"
+              even when nobody used the booster, just adds noise. Now
+              shows simple On/Off state. */}
+          <span className="ig-rail-count">{muted ? "Off" : "On"}</span>
         </button>
         <button
           aria-label="Like"
@@ -2071,7 +2102,28 @@ const HotelCard = memo(function HotelCard({
         </button>
         <button
           aria-label="Save"
-          onClick={(e) => { e.stopPropagation(); setSaved((s) => !s); onTrackEvent?.("ig_save", { hotelId: h.id, save: !saved }); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            // v82 wired save → /api/discover/save so the bookmark actually
+            // surfaces on the /saved page. Target type:
+            //   • user-uploaded reels  → "video"  (file appears under Reels tab)
+            //   • hotel reel cards     → "hotel"  (appears under Hotels tab)
+            const willSave = !saved;
+            setSaved(willSave);   // optimistic
+            onTrackEvent?.("ig_save", { hotelId: h.id, save: willSave });
+            const targetType = h._userPost ? "video" : "hotel";
+            const tok = (typeof window !== "undefined") ? localStorage.getItem("sb_token") || "" : "";
+            if (!tok) return; // anon — skip backend, local UI still flips
+            const method = willSave ? "POST" : "DELETE";
+            fetch("/api/discover/save", {
+              method,
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+              body: JSON.stringify({ targetType, targetId: String(h.id) }),
+            }).catch(() => {
+              // Revert on failure
+              setSaved(!willSave);
+            });
+          }}
           className="ig-rail-btn"
         >
           <span className="ig-icon">{saved ? "🔖" : "📑"}</span>
