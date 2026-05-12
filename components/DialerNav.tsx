@@ -314,7 +314,8 @@ export function DialerNav() {
       pathname === "/" ||
       pathname.startsWith("/discover") ||
       pathname.startsWith("/reels") ||
-      pathname.startsWith("/me")) {
+      pathname.startsWith("/me") ||
+      pathname.startsWith("/saved/posts")) {
     return null;
   }
 

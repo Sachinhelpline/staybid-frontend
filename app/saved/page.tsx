@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { ReelPlayerModal, type ReelMedia } from "@/components/ReelPlayerModal";
 
 type Tab = "all" | "video" | "hotel" | "influencer" | "deal";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -30,7 +29,6 @@ export default function SavedPage() {
   const [tab, setTab]         = useState<Tab>("all");
   const [saves, setSaves]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [reelModal, setReelModal] = useState<ReelMedia | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -137,45 +135,29 @@ export default function SavedPage() {
                 key={s.id}
                 s={s}
                 onUnsave={unsave}
-                onPlayReel={(media) => setReelModal(media)}
+                onOpenReel={(videoId) => router.push(`/saved/posts?start=${encodeURIComponent(videoId)}`)}
               />
             ))}
           </div>
         )}
       </div>
-
-      {/* Inline reel player — opens when a saved video card is tapped.
-          v85 fix: previously the card linked to /reels which loaded the
-          Creator Hub feed (hotel_videos table); user-post reels live in
-          social_posts / PostsStore so they never appeared there. Now we
-          play the saved video in place. */}
-      <ReelPlayerModal
-        open={!!reelModal}
-        media={reelModal}
-        onClose={() => setReelModal(null)}
-      />
     </div>
   );
 }
 
 function SaveCard({
-  s, onUnsave, onPlayReel,
+  s, onUnsave, onOpenReel,
 }: {
-  s:           any;
-  onUnsave:    (s: any) => void;
-  onPlayReel:  (media: ReelMedia) => void;
+  s:          any;
+  onUnsave:   (s: any) => void;
+  onOpenReel: (videoId: string) => void;
 }) {
   const t = s.target;
 
   if (s.target_type === "video" && t) {
     return (
       <ClickWrap
-        onClick={() => onPlayReel({
-          src:     t.s3_url || t.media_url || "",
-          poster:  t.thumbnail_url || "",
-          caption: t.caption || "",
-          title:   t.title || "Reel",
-        })}
+        onClick={() => onOpenReel(String(s.target_id))}
         onUnsave={() => onUnsave(s)}
       >
         <div className="relative aspect-[9/16] bg-luxury-100">

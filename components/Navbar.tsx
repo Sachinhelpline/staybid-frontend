@@ -129,6 +129,7 @@ export function Navbar() {
   if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
   if (pathname?.startsWith("/reels")) return null;     // Instagram-style video feed
   if (pathname?.startsWith("/me")) return null;        // IG-style "You" profile has its own top bar
+  if (pathname?.startsWith("/saved/posts")) return null; // IG-style "All Posts" scroll view has its own header
   // `/` now renders DiscoverPage directly (v57). Hide the navbar there too —
   // the reel feed has its own minimal top chrome (StayBid label + Compare),
   // and the floating dock at the bottom handles primary nav.

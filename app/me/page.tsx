@@ -34,7 +34,6 @@ import { useFollow, BUILTIN_HIGHLIGHTS } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { useAuth } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize-text";
-import { ReelPlayerModal, type ReelMedia } from "@/components/ReelPlayerModal";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -55,7 +54,6 @@ export default function MePage() {
 
   const [tab, setTab] = useState<Tab>("posts");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [reelModal, setReelModal] = useState<ReelMedia | null>(null);
   // Remote posts from Supabase social_posts table — user-uploaded reels
   // live there too (the in-memory PostsStore is just for instant-after-
   // upload preview). v83 fetches the user's own posts so /me actually
@@ -295,12 +293,7 @@ export default function MePage() {
               key={p.id}
               type="button"
               className="me-grid-tile"
-              onClick={() => setReelModal({
-                src:     p.mediaUrl || p.posterUrl || "",
-                poster:  p.posterUrl || "",
-                caption: p.caption || "",
-                title:   myDisplayName || "Your post",
-              })}
+              onClick={() => router.push(`/me/posts?start=${encodeURIComponent(String(p.id))}`)}
               aria-label={`Open ${p.kind}`}
             >
               {p.posterUrl || p.mediaUrl ? (
@@ -319,15 +312,6 @@ export default function MePage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onLogout={() => { logout(); router.push("/"); }}
-      />
-
-      {/* Reel player — opens when the user taps a grid thumbnail. Plays
-          the actual video file (or shows the poster fallback when a
-          blob URL has expired). */}
-      <ReelPlayerModal
-        open={!!reelModal}
-        media={reelModal}
-        onClose={() => setReelModal(null)}
       />
 
       <style jsx global>{`
@@ -545,8 +529,8 @@ export default function MePage() {
           aspect-ratio: 1 / 1;
           background: rgba(184, 134, 11, 0.08);
           overflow: hidden;
-          /* Button reset — was a div in v79, now a button so the user
-             can tap to open the ReelPlayerModal. */
+          /* Button reset — was a div in v79; now navigates to /me/posts
+             on tap (IG-style scrollable Posts view, v86). */
           border: none;
           padding: 0;
           cursor: pointer;
