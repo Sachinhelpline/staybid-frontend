@@ -35,15 +35,67 @@
   --cozy-rose:            #D49583;   /* warm rose — hearts / likes */
   --cozy-sage:            #9DAD8F;   /* rare success state */
   --cozy-shadow:          rgba(31, 26, 15, 0.08);
+
+  /* ─── v90 Theme tokens — light (default) ─────────────────────
+     Every customer-facing surface should read FROM these. A single
+     localStorage toggle (sb_theme) flips the dark overrides below
+     by setting `data-theme="dark"` on <html>. */
+  --bg-page:        var(--cozy-cream-100);
+  --bg-card:        var(--cozy-cream-50);
+  --bg-elevated:    rgba(255, 252, 246, 0.94);
+  --bg-input:       var(--cozy-cream-50);
+  --bg-pill:        var(--cozy-cream-50);
+  --bg-pill-active: linear-gradient(135deg, #D9BE82, #C9A66B);
+  --text-base:      var(--cozy-warm-dark);
+  --text-soft:      var(--cozy-cocoa);
+  --text-muted:     var(--cozy-cocoa-soft);
+  --text-inverse:   var(--cozy-warm-dark);
+  --border-soft:    var(--cozy-taupe);
+  --border-strong:  rgba(110, 84, 48, 0.30);
+  --accent:         var(--cozy-champagne);
+  --accent-soft:    rgba(201, 166, 107, 0.14);
+  --link:           var(--cozy-cocoa);
+  --shadow-soft:    0 2px 10px rgba(31, 26, 15, 0.08);
+  --shadow-card:    0 6px 22px rgba(31, 26, 15, 0.10);
 }
+
+/* ─── Dark mode — warm cocoa night (NOT stark blue/black) ───────
+   Same cozy palette family, only lightness inverted. Champagne
+   accent stays identical so brand color is consistent across modes. */
+[data-theme="dark"] {
+  --bg-page:        #0F0C08;
+  --bg-card:        #1A1610;
+  --bg-elevated:    rgba(20, 16, 10, 0.92);
+  --bg-input:       #211C13;
+  --bg-pill:        #211C13;
+  --bg-pill-active: linear-gradient(135deg, #C9A66B, #9C7E48);
+  --text-base:      #F5EFE0;
+  --text-soft:      #D6C9AE;
+  --text-muted:     rgba(213, 200, 175, 0.62);
+  --text-inverse:   #0F0C08;
+  --border-soft:    rgba(217, 190, 130, 0.10);
+  --border-strong:  rgba(217, 190, 130, 0.28);
+  --accent:         var(--cozy-champagne);
+  --accent-soft:    rgba(201, 166, 107, 0.18);
+  --link:           var(--cozy-champagne-light);
+  --shadow-soft:    0 2px 12px rgba(0, 0, 0, 0.45);
+  --shadow-card:    0 6px 22px rgba(0, 0, 0, 0.55);
+}
+
+/* Smooth theme transition */
+html, body { transition: background-color 0.22s ease, color 0.22s ease; }
+
 
 /* ─── Base ──────────────────────────────────────────────────────── */
 html { scroll-behavior: smooth; }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--cream);
-  color: var(--text-primary);
+  /* v90 — base body reads theme tokens. Pages with their own
+     wrapper bg (reel surfaces) still override; this only matters
+     for pages that haven't explicitly set a background. */
+  background: var(--bg-page);
+  color: var(--text-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -233,18 +285,25 @@ body.is-reel-page {
 @keyframes lux-pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,41,0.55); } 50% { box-shadow: 0 0 0 14px rgba(240,180,41,0); } }
 @keyframes lux-goldSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
 
+/* v90 — `.lux-bg` is now theme-aware. Same warm radial halo on TOP of
+   the active theme's page surface. Light = cream parchment with champagne
+   tints, dark = warm cocoa with champagne tints. */
 .lux-bg {
   background:
-    radial-gradient(1200px 600px at 20% -10%, rgba(201,145,26,0.18), transparent 60%),
-    radial-gradient(900px 500px at 100% 10%, rgba(240,180,41,0.10), transparent 60%),
-    linear-gradient(180deg,#05060a 0%, #0b0a10 50%, #05060a 100%);
-  color: #fff;
+    radial-gradient(1200px 600px at 20% -10%, var(--accent-soft), transparent 60%),
+    radial-gradient(900px 500px at 100% 10%, var(--accent-soft), transparent 60%),
+    var(--bg-page);
+  color: var(--text-base);
 }
 .lux-glass {
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
-  border: 1px solid rgba(240,180,41,0.18);
+  /* v90 — glass surface now reads theme tokens so cards in light mode
+     show cream-tinted translucency, and in dark mode warm cocoa
+     translucency. Same blur, same accent border. */
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  color: var(--text-base);
 }
 .lux-border {
   position: relative;
@@ -281,6 +340,84 @@ body.is-reel-page {
 .lux-pulse { animation: lux-pulseGlow 2s infinite; }
 .lux-float { animation: lux-floaty 3s ease-in-out infinite; }
 .lux-fade-up { animation: lux-fadeUp 0.55s ease both; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   v90 — Theme-aware text overrides for legacy Tailwind utility classes
+   used INSIDE .lux-bg containers (which are the customer-facing pages
+   that were originally designed against a dark navy surface but now
+   render on the active theme's surface — cream in light mode, cocoa
+   in dark mode).
+
+   Rather than hand-editing 100+ class references across every page,
+   these scoped overrides remap the legacy white/gold tokens to the
+   current theme tokens, so the same JSX produces correct contrast
+   automatically in both modes.
+
+   This ONLY affects pages that wrap their content in .lux-bg — the
+   reel feed (which keeps its dark video bg) and other surfaces with
+   their own bg do NOT inherit these overrides.
+   ═══════════════════════════════════════════════════════════════════ */
+.lux-bg .text-white,
+.fd-root .text-white                    { color: var(--text-base) !important; }
+.lux-bg .text-white\/90,
+.fd-root .text-white\/90                { color: var(--text-base) !important; }
+.lux-bg .text-white\/80,
+.fd-root .text-white\/80                { color: var(--text-soft) !important; }
+.lux-bg .text-white\/70,
+.fd-root .text-white\/70                { color: var(--text-soft) !important; }
+.lux-bg .text-white\/60,
+.fd-root .text-white\/60                { color: var(--text-soft) !important; }
+.lux-bg .text-white\/55,
+.fd-root .text-white\/55                { color: var(--text-muted) !important; }
+.lux-bg .text-white\/50,
+.fd-root .text-white\/50                { color: var(--text-muted) !important; }
+.lux-bg .text-white\/45,
+.fd-root .text-white\/45                { color: var(--text-muted) !important; }
+.lux-bg .text-white\/40,
+.fd-root .text-white\/40                { color: var(--text-muted) !important; }
+.lux-bg .text-white\/30,
+.fd-root .text-white\/30                { color: var(--text-muted) !important; }
+/* Background utilities scoped the same way — bg-white/N becomes a soft
+   accent or card tint depending on the alpha. */
+.lux-bg .bg-white\/5,
+.lux-bg .bg-white\/10,
+.fd-root .bg-white\/5,
+.fd-root .bg-white\/10                  { background-color: var(--accent-soft) !important; }
+.lux-bg .bg-white\/20,
+.fd-root .bg-white\/20                  { background-color: rgba(201, 166, 107, 0.18) !important; }
+.lux-bg .bg-black\/40,
+.lux-bg .bg-black\/50,
+.lux-bg .bg-black\/60,
+.fd-root .bg-black\/40,
+.fd-root .bg-black\/50,
+.fd-root .bg-black\/60                  { background-color: var(--bg-card) !important; color: var(--text-base) !important; }
+.lux-bg .border-white\/10,
+.lux-bg .border-white\/15,
+.lux-bg .border-white\/20,
+.fd-root .border-white\/10,
+.fd-root .border-white\/15,
+.fd-root .border-white\/20              { border-color: var(--border-soft) !important; }
+/* Gold-text-on-dark loses its glow on a cream surface — switch to a
+   cocoa+champagne gradient that reads in both modes. */
+[data-theme="light"] .lux-bg .text-gold-300,
+[data-theme="light"] .lux-bg .text-gold-400,
+[data-theme="light"] .lux-bg .text-gold-500,
+[data-theme="light"] .lux-bg .text-gold-600 { color: var(--cozy-cocoa-soft) !important; }
+:root .lux-bg .text-gold-300,
+:root .lux-bg .text-gold-400,
+:root .lux-bg .text-gold-500,
+:root .lux-bg .text-gold-600 { color: var(--cozy-cocoa-soft) !important; }
+[data-theme="dark"] .lux-bg .text-gold-300,
+[data-theme="dark"] .lux-bg .text-gold-400,
+[data-theme="dark"] .lux-bg .text-gold-500,
+[data-theme="dark"] .lux-bg .text-gold-600 { color: var(--cozy-champagne-light) !important; }
+/* `.text-luxury-*` family (the original Tailwind palette token) */
+.lux-bg .text-luxury-900,
+.lux-bg .text-luxury-800                { color: var(--text-base) !important; }
+.lux-bg .text-luxury-700,
+.lux-bg .text-luxury-600                { color: var(--text-soft) !important; }
+.lux-bg .text-luxury-500,
+.lux-bg .text-luxury-400                { color: var(--text-muted) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
    3D Button system — physical "punching" feel, works everywhere.

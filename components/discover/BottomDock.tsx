@@ -88,6 +88,10 @@ export function BottomDock() {
       </nav>
 
       <style jsx global>{`
+        /* v90 — Theme-aware dock. In dark mode, warm cocoa bar (the v88
+           look). In light mode, frosted cream over whatever's beneath
+           with cocoa text + champagne active accent. Same brand colour
+           on both. */
         .ig-bottom-dock {
           position: fixed;
           left: 0;
@@ -99,14 +103,16 @@ export function BottomDock() {
           justify-content: space-around;
           gap: 2px;
           padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
-          /* v88 — warm dark (cocoa) instead of cool near-black. Matches
-             the premium cozy system. Inactive items now use cream-tinted
-             white instead of harsh stark white. */
           background: rgba(31, 26, 15, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
           border-top: 1px solid rgba(217, 190, 130, 0.12);
           box-shadow: 0 -6px 22px rgba(31, 26, 15, 0.45);
+        }
+        [data-theme="light"] .ig-bottom-dock {
+          background: rgba(255, 252, 246, 0.94);
+          border-top: 1px solid var(--border-soft);
+          box-shadow: 0 -4px 18px rgba(31, 26, 15, 0.08);
         }
         .ig-dock-item {
           flex: 1 1 0;
@@ -126,11 +132,16 @@ export function BottomDock() {
             transform 0.14s cubic-bezier(.32,1.2,.36,1),
             background 0.18s ease;
         }
+        [data-theme="light"] .ig-dock-item { color: var(--text-muted); }
         .ig-dock-item:active { transform: scale(0.94); }
         .ig-dock-item.is-active {
           /* v88 — desaturated cozy champagne instead of saturated gold */
           color: var(--cozy-champagne-light, #D9BE82);
           background: linear-gradient(180deg, rgba(217,190,130,0.10), rgba(217,190,130,0.02));
+        }
+        [data-theme="light"] .ig-dock-item.is-active {
+          color: var(--cozy-cocoa);
+          background: linear-gradient(180deg, rgba(201,166,107,0.18), rgba(201,166,107,0.04));
         }
         .ig-dock-glyph {
           font-size: 1.25rem;

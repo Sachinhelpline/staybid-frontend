@@ -97,27 +97,27 @@ function HotelList() {
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--cozy-cream-100, #FAF5EB)" }}>
-    {/* v89 — Cozy cream surface + COMPACT hero. Was dark navy + py-12 + mb-10
-        which pushed the hotel grid way below the fold. Now py-4 + mb-3,
-        eyebrow + heading + count + search + chips fit in a single tight band
-        so the user sees the first hotel row immediately on every device. */}
+    <div className="min-h-screen lux-bg">
+    {/* v90 — `.lux-bg` is now theme-aware (reads var(--bg-page)), so the
+        page surface flips with the dark/light toggle. The cozy compact
+        hero from v89 stays — eyebrow + heading + count + search + chips
+        fit in a tight band so the first hotel row is above the fold. */}
     <div className="max-w-7xl mx-auto px-4 py-4">
 
       {/* ── Compact page header ── */}
       <div className="mb-3">
-        <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--cozy-champagne)" }}>Explore</p>
-        <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--cozy-warm-dark)" }}>
+        <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--accent)" }}>Explore</p>
+        <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--text-base)" }}>
           Find Your Perfect Stay
         </h1>
-        <p className="text-[0.78rem]" style={{ color: "var(--cozy-cocoa-soft)" }}>
+        <p className="text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
           {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
         </p>
       </div>
 
       {/* ── Search (slimmer) ── */}
       <div className="relative max-w-md mb-3">
-        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--cozy-cocoa-soft)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
         <input
@@ -126,14 +126,14 @@ function HotelList() {
           placeholder="Search by hotel name…"
           className="w-full pl-10 pr-3 py-2 rounded-xl text-[0.86rem] focus:outline-none transition"
           style={{
-            border: "1px solid var(--cozy-taupe)",
-            background: "var(--cozy-cream-50)",
-            color: "var(--cozy-warm-dark)",
+            border: "1px solid var(--border-soft)",
+            background: "var(--bg-input)",
+            color: "var(--text-base)",
           }}
         />
       </div>
 
-      {/* ── City filter chips (compact) ── */}
+      {/* ── City filter chips (compact, theme-aware) ── */}
       <div className="flex flex-wrap gap-1.5 mb-4">
         {cities.map((c) => {
           const active = (c === "All" && !city) || c === city;
@@ -143,10 +143,10 @@ function HotelList() {
               onClick={() => setCity(c === "All" ? "" : c)}
               className="px-3 py-1.5 rounded-full text-[0.74rem] font-semibold transition-all"
               style={{
-                background: active ? "linear-gradient(135deg, #D9BE82, #C9A66B)" : "var(--cozy-cream-50)",
-                color: active ? "var(--cozy-warm-dark)" : "var(--cozy-cocoa)",
-                border: active ? "1px solid rgba(110, 84, 48, 0.45)" : "1px solid var(--cozy-taupe)",
-                boxShadow: active ? "0 2px 6px rgba(201, 166, 107, 0.30)" : "none",
+                background: active ? "var(--bg-pill-active)" : "var(--bg-pill)",
+                color: active ? "var(--text-inverse)" : "var(--text-soft)",
+                border: active ? "1px solid var(--border-strong)" : "1px solid var(--border-soft)",
+                boxShadow: active ? "var(--shadow-soft)" : "none",
               }}
             >
               {c}

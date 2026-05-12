@@ -57,6 +57,8 @@ export function BackChip() {
         /* Slim, icon-only back chip. v82 shrunk from a labelled pill to a
            compact circle so it never crowds page headers / content on any
            route. Tappable target stays ~32px via padding+margin. */
+        /* v90 — Theme-aware: light = cream chip, dark = warm cocoa chip.
+           Champagne border stays the brand mark across both modes. */
         .sb-back-chip {
           position: fixed;
           top: calc(env(safe-area-inset-top, 0px) + 8px);
@@ -68,19 +70,19 @@ export function BackChip() {
           align-items: center;
           justify-content: center;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.92);
-          color: #2c1d04;
-          border: 1px solid rgba(184, 134, 11, 0.22);
+          background: var(--bg-elevated);
+          color: var(--text-base);
+          border: 1px solid var(--border-strong);
           font-size: 1.1rem;
           font-weight: 800;
           cursor: pointer;
           backdrop-filter: blur(10px) saturate(1.2);
           -webkit-backdrop-filter: blur(10px) saturate(1.2);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+          box-shadow: var(--shadow-soft);
           transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), background 0.18s ease;
         }
         .sb-back-chip:active { transform: scale(0.90); }
-        .sb-back-chip:hover { background: rgba(255, 255, 255, 1); }
+        .sb-back-chip:hover { border-color: var(--accent); }
         .sb-back-chip-glyph {
           font-size: 1.1rem;
           line-height: 1;

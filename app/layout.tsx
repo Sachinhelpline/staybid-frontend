@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth";
 import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
 import { PostsProvider } from "@/lib/posts-store";
+import { ThemeProvider } from "@/lib/theme-store";
 import { Navbar } from "@/components/Navbar";
 // DialerNav (left-edge crown wheel) was retired in v80 — the BottomDock
 // now owns primary navigation on every customer-facing page.
@@ -96,6 +97,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{__html: `
           (function(){
             try{
+              // ── v90 theme bootstrap (no-FOUC) ─────────────────────────
+              // Runs BEFORE first paint. Reads sb_theme from localStorage
+              // (falls back to prefers-color-scheme on first visit) and
+              // sets data-theme on <html> so the CSS variables in
+              // globals.css are correctly resolved when the page paints.
+              var t='light';
+              try{
+                var saved=localStorage.getItem('sb_theme');
+                if(saved==='dark'||saved==='light'){t=saved;}
+                else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){t='dark';}
+              }catch(e){}
+              document.documentElement.setAttribute('data-theme',t);
+              // Theme-color meta — matches Android Chrome / iOS PWA chrome
+              // to the current theme background so there's no white flash.
+              var meta=document.querySelector('meta[name="theme-color"]');
+              if(!meta){meta=document.createElement('meta');meta.setAttribute('name','theme-color');document.head.appendChild(meta);}
+              meta.setAttribute('content',t==='dark'?'#0F0C08':'#FAF5EB');
+
               // Mark PWA mode so the reel pages can skip the body-lock dance
               if(window.matchMedia && (window.matchMedia('(display-mode:fullscreen)').matches || window.matchMedia('(display-mode:standalone)').matches)){
                 document.documentElement.classList.add('sb-pwa');
@@ -111,6 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body>
+        <ThemeProvider>
         <AuthProvider>
           <SoundProvider>
            <FollowProvider>
@@ -130,18 +150,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v89</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v90</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
         </AuthProvider>
+        </ThemeProvider>
               <script dangerouslySetInnerHTML={{__html: `
 // ── Build version + service-worker bootstrap ──────────────────────────
 // Tuned for cold-start speed: SW registers AFTER first paint (requestIdle
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v89-no-overlap-cozy-everywhere-compact-hero-2026-05-13";
+var SB_BUILD="v90-theme-system-light-dark-cozy-toggle-2026-05-13";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){

@@ -34,6 +34,7 @@ import { useFollow, BUILTIN_HIGHLIGHTS } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { useAuth } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize-text";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -630,6 +631,10 @@ function MoreDrawer({
               )}
             </li>
           ))}
+          {/* v90 — Appearance toggle (single button, flips whole UI). */}
+          <li className="me-drawer-theme">
+            <ThemeToggle variant="lg" />
+          </li>
           <li>
             <button type="button" className="me-drawer-link me-drawer-logout" onClick={onLogout}>
               <DrawerRow icon="↶" label="Log out" sub="Sign out of this device" />

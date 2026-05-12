@@ -359,17 +359,16 @@ export default function BidPage() {
 
   /* ── Main Form ── */
   return (
-    <div className="min-h-screen pb-16" style={{ background: "var(--cozy-cream-100, #FAF5EB)" }}>
+    <div className="min-h-screen pb-16 lux-bg">
       <div className="max-w-xl mx-auto px-4 pt-4">
 
-        {/* v89 — Compact header: pt-10 → pt-4, mb-8 → mb-3, eyebrow + heading +
-            sub all tighter so destination grid appears above the fold. */}
+        {/* v90 — `.lux-bg` is now theme-aware. v89's compact header stays. */}
         <div className="mb-3">
-          <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--cozy-champagne)" }}>AI Smart Booking</p>
-          <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--cozy-warm-dark)" }}>
+          <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--accent)" }}>AI Smart Booking</p>
+          <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--text-base)" }}>
             Name Your Price
           </h1>
-          <p className="text-[0.78rem] leading-snug" style={{ color: "var(--cozy-cocoa-soft)" }}>
+          <p className="text-[0.78rem] leading-snug" style={{ color: "var(--text-muted)" }}>
             Tell us what you want. Our AI finds the best hotel match and launches a reverse auction — hotels compete for your booking.
           </p>
         </div>

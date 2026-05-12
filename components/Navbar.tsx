@@ -157,35 +157,40 @@ export function Navbar() {
         /* ═══ 3D reflective nav styles ═══ */
         @keyframes navShine { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         @keyframes navPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.3); } 50% { box-shadow: 0 0 18px 2px rgba(240,180,41,0.45), inset 0 1px 0 rgba(255,255,255,0.3); } }
+        /* v90 — Navbar reads theme tokens. Light mode: cream-tinted
+           translucent bar with cocoa text + champagne accent. Dark mode:
+           warm cocoa bar with cream text. Same champagne underline. */
         .nav3d-bar {
-          background:
-            linear-gradient(180deg, rgba(12,10,22,0.85) 0%, rgba(10,8,18,0.92) 100%);
+          background: var(--bg-elevated);
           backdrop-filter: blur(22px) saturate(180%);
           -webkit-backdrop-filter: blur(22px) saturate(180%);
-          border-bottom: 1px solid rgba(240,180,41,0.22);
-          box-shadow: 0 6px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+          border-bottom: 1px solid var(--border-soft);
+          box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.04);
+          color: var(--text-base);
         }
         .nav3d-bar::after {
           content:""; position:absolute; left:0; right:0; bottom:-1px; height:1px;
-          background: linear-gradient(90deg, transparent, rgba(240,180,41,0.7), transparent);
+          background: linear-gradient(90deg, transparent, var(--accent), transparent);
+          opacity: 0.55;
         }
         .nav3d-chip {
           position: relative; overflow: hidden;
-          background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-          border: 1px solid rgba(255,255,255,0.08);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.25);
+          background: var(--bg-pill);
+          border: 1px solid var(--border-soft);
+          color: var(--text-soft);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 4px rgba(31,26,15,0.06);
           transition: transform .25s cubic-bezier(.3,1,.3,1), box-shadow .25s, border-color .25s, color .2s;
         }
         .nav3d-chip:hover {
           transform: translateY(-1px);
-          border-color: rgba(240,180,41,0.35);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 18px rgba(240,180,41,0.15);
-          color: #fff;
+          border-color: var(--accent);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px var(--accent-soft);
+          color: var(--text-base);
         }
         .nav3d-chip-active {
-          background: linear-gradient(180deg, rgba(240,180,41,0.22), rgba(201,145,26,0.08));
-          border-color: rgba(240,180,41,0.55) !important;
-          color: #fbd26a !important;
+          background: var(--bg-pill-active) !important;
+          border-color: var(--border-strong) !important;
+          color: var(--text-inverse) !important;
           animation: navPulse 2.6s ease-in-out infinite;
         }
         .nav3d-chip::before {
