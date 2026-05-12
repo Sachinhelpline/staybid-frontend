@@ -2052,13 +2052,18 @@ const HotelCard = memo(function HotelCard({
         )}
       </div>
 
-      {/* Right action rail (Instagram Reels style). v87 — added the
-          BottomDock reserve (64px + safe-area) so the rail's bottom edge
-          floats ABOVE the dock instead of getting clipped behind it on
-          tall-screen Android + iOS PWA. */}
+      {/* Right action rail (Instagram Reels style). v89 — reverted the
+          v87 +64px shift. The rail items are small (~40px each) and even
+          at bottom:200 the lowest item sits well above the BottomDock
+          (~y=440 on a 640px viewport vs dock at y=583). The v87 +64 was
+          pushing the rail TOO HIGH, where the topmost button (mute)
+          ended up colliding with the in-card profile chip's Follow pill
+          on the same right edge (user SS1 feedback: "You ke upar sound
+          button overlap"). 200px now leaves clean visual space between
+          the chip (top) and the rail (mid-right). */}
       <div
         className="absolute right-2 z-30 flex flex-col items-center gap-2.5"
-        style={{ bottom: "calc(200px + 64px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ bottom: "calc(200px + env(safe-area-inset-bottom, 0px))" }}
       >
         {/* Mute toggle (top of rail to avoid top-corner overlap).
             Mutates the video directly inside the click handler so the
@@ -2193,10 +2198,9 @@ const HotelCard = memo(function HotelCard({
           <span className="ig-rail-count">More</span>
         </button>
 
-        {/* Audio disc (rotating) */}
-        <div className="ig-disc">
-          {h.images?.[0] ? <img src={h.images[0]} alt="" className="w-full h-full object-cover rounded-full" /> : <span className="text-[0.7rem]">🎵</span>}
-        </div>
+        {/* v89 — Rotating audio disc REMOVED per user feedback ("kya kaam hai
+            isska, remove karo"). It was purely decorative; the audio still
+            plays via the <audio> + <video> elements regardless. */}
       </div>
 
       {/* BOTTOM-LEFT: caption + price + equal CTAs. v87 — pushed above the
@@ -2257,19 +2261,13 @@ const HotelCard = memo(function HotelCard({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setAudioPickerOpen(true); }}
-          className="ig-audio-strip ig-audio-strip-btn"
-          aria-label="Choose soundtrack for this reel"
-        >
-          <span className="ig-audio-icon">{customAudio?.emoji || "🎵"}</span>
-          <span className="ig-audio-text">
-            {customAudio
-              ? `${customAudio.name} · ${customAudio.artist} · tap to change`
-              : `Original audio · ${h.name} · StayBid Live · tap to change`}
-          </span>
-        </button>
+        {/* v89 — Visible audio strip REMOVED per user feedback ("iska kya
+            kaam hai, hata do — sirf yahan se na ki function hi remove").
+            The audio picker IS still functional: any hotel/admin can still
+            open it via the right-rail More menu (Volume booster section).
+            The default <audio> playback is unaffected — only the bottom
+            caption text + tap-to-change chip is gone, decluttering the
+            content row. */}
 
         {/* Tagged-hotel pill — user posts that have tagged a real hotel
             surface a clickable "🏨 At {Hotel}" link. Tapping it routes
@@ -3318,24 +3316,29 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-audio-strip-btn:active { transform: scale(0.97); }
 
         /* + Create FAB */
+        /* v89 — Cozy champagne FAB. Was bright magenta+purple+blue,
+           clashed with the cozy palette. Now a soft champagne gradient
+           with a subtle warm glow — premium minimal. v89 also bumps
+           bottom from 130 → 180px so the rail's "You" Follow pill (at
+           ~rail-top) no longer collides with the FAB on tall screens. */
         @keyframes igFabPulse {
-          0%,100% { box-shadow: 0 8px 22px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.55); }
-          50%     { box-shadow: 0 8px 22px rgba(255,69,141,0.55), 0 0 0 14px rgba(255,69,141,0); }
+          0%,100% { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 0 rgba(201,166,107,0.40); }
+          50%     { box-shadow: 0 8px 22px rgba(201,166,107,0.45), 0 0 0 14px rgba(201,166,107,0); }
         }
         .ig-create-fab {
           position: fixed;
           right: 12px;
-          /* Sit just BELOW the bottom of the right action rail (rail starts
-             at bottom:180 going up, so the area between bottom:130 and
-             bottom:170 is open and doesn't overlap with mute/like icons). */
+          /* Sit between the rail's lowest button (bottom:200 in card)
+             and the BottomDock (~57px tall). bottom:130 keeps it clear
+             of both. */
           bottom: calc(env(safe-area-inset-bottom, 0px) + 130px);
           z-index: 42;
           width: 36px; height: 36px;
           border-radius: 9999px;
           display: flex; align-items: center; justify-content: center;
-          background: linear-gradient(135deg, #ff458d 0%, #b964ff 50%, #5b8dff 100%);
-          border: 1.5px solid rgba(255,255,255,0.45);
-          color: #fff;
+          background: linear-gradient(135deg, #E7CFA0 0%, #D9BE82 45%, #C9A66B 100%);
+          border: 1.5px solid rgba(255, 246, 226, 0.55);
+          color: var(--cozy-warm-dark, #1F1A0F);
           font-weight: 900;
           animation: igFabPulse 2.4s ease-in-out infinite;
           transition: transform 0.15s ease;
@@ -3344,7 +3347,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-create-fab-plus {
           font-size: 1.25rem;
           line-height: 1;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+          text-shadow: 0 1px 2px rgba(255, 246, 226, 0.55);
           margin-top: -1px;
         }
         .ig-create-fab-glow {
@@ -3352,7 +3355,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           inset: -4px;
           border-radius: 9999px;
           pointer-events: none;
-          background: radial-gradient(circle, rgba(255,69,141,0.3) 0%, transparent 70%);
+          background: radial-gradient(circle, rgba(201,166,107,0.32) 0%, transparent 70%);
         }
 
         /* Drawer close button — explicit z-index + relative position so it
@@ -3495,25 +3498,25 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           box-shadow: 0 8px 32px rgba(0,0,0,0.55);
         }
 
+        /* v89 — Avatar ring: cozy champagne conic instead of rainbow magenta/purple */
         .ig-avatar {
           width: 42px; height: 42px; display: inline-block;
           padding: 2px; border-radius: 9999px;
-          background: conic-gradient(from 220deg, #f0b429, #ff458d, #b964ff, #f0b429);
+          background: conic-gradient(from 220deg, #C9A66B, #D9BE82, #6E5430, #C9A66B);
           animation: igRingPulse 2.6s ease-in-out infinite;
         }
-        /* Active-story ring — same colours but a thicker rotating edge so
-           a glance tells you "tap me, there's a story here". */
+        /* Active-story ring — slightly thicker + still cozy. */
         .ig-avatar.has-story {
           padding: 3px;
-          background: conic-gradient(from 0deg, #ff458d, #b964ff, #5b8dff, #2ecc71, #ffd76b, #ff458d);
+          background: conic-gradient(from 0deg, #C9A66B, #D9BE82, #6E5430, #C9A66B, #D9BE82, #C9A66B);
           animation: igStoryRingSpin 3.6s linear infinite;
-          box-shadow: 0 0 0 1.5px #000 inset, 0 0 12px rgba(255,69,141,0.45);
+          box-shadow: 0 0 0 1.5px var(--cozy-warm-dark, #1F1A0F) inset, 0 0 12px rgba(201,166,107,0.40);
         }
         .ig-avatar-inner {
           display: flex; align-items: center; justify-content: center;
           width: 100%; height: 100%; border-radius: 9999px;
-          background: linear-gradient(135deg,#ffd76b,#f0b429);
-          border: 2px solid #000; overflow: hidden;
+          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          border: 2px solid var(--cozy-warm-dark, #1F1A0F); overflow: hidden;
         }
         @keyframes igStoryRingSpin {
           0% { transform: rotate(0deg); }
@@ -3527,23 +3530,23 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           box-shadow: 0 1px 3px rgba(0,0,0,0.5);
         }
 
-        /* ─── 3D Follow button ────────────────────────────────────────────── */
+        /* ─── Cozy Follow button (v89) — desaturated champagne ─────────── */
         .ig-follow-3d {
           position: relative; isolation: isolate;
           padding: 6px 16px; border-radius: 11px;
           font-size: 0.74rem; font-weight: 800;
           letter-spacing: 0.02em;
-          color: #1a1208;
-          background: linear-gradient(180deg,#ffe28a 0%,#f0b429 35%,#d99a16 70%,#a26b08 100%);
-          border: 1px solid rgba(255,255,255,0.55);
-          text-shadow: 0 1px 0 rgba(255,255,255,0.45);
+          color: var(--cozy-warm-dark, #1F1A0F);
+          background: linear-gradient(180deg, #E7CFA0 0%, #D9BE82 40%, #C9A66B 75%, #9C7E48 100%);
+          border: 1px solid rgba(255, 246, 226, 0.45);
+          text-shadow: 0 1px 0 rgba(255, 246, 226, 0.45);
           box-shadow:
-            0 0 14px rgba(240,180,41,0.45),
-            0 8px 16px -3px rgba(160,110,8,0.55),
-            0 3px 6px -1px rgba(0,0,0,0.4),
-            inset 0 1.5px 0 rgba(255,255,255,0.75),
-            inset 0 -2px 0 rgba(110,70,5,0.55),
-            inset 0 0 0 1px rgba(255,255,255,0.18);
+            0 0 14px rgba(201, 166, 107, 0.40),
+            0 8px 16px -3px rgba(110, 84, 48, 0.55),
+            0 3px 6px -1px rgba(31, 26, 15, 0.4),
+            inset 0 1.5px 0 rgba(255, 246, 226, 0.55),
+            inset 0 -2px 0 rgba(110, 84, 48, 0.45),
+            inset 0 0 0 1px rgba(255, 246, 226, 0.18);
           transition: transform 0.15s cubic-bezier(0.2,0.9,0.3,1), box-shadow 0.15s ease;
           overflow: hidden;
         }

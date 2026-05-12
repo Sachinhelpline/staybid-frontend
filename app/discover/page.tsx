@@ -246,32 +246,33 @@ export default function DiscoverPage() {
             brand never collides with the @handle row (screenshot 2 was
             the v85 overlap; this design solves it without dropping the
             brand entirely). */}
-      {(() => {
-        const onHome = pathname === "/";
-        return (
-          <div
-            className="reel-brand-chrome absolute left-0 right-0 z-40 flex items-center justify-start px-4 pointer-events-none"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+      {/* v89 — Brand wordmark only on /discover (over dark video). On `/`
+          home the Flash Deals rail's own italic "Flash Deals" header already
+          serves as the cozy brand presence — having both at top-left was
+          colliding. Single source of brand on each surface. */}
+      {pathname !== "/" && (
+        <div
+          className="reel-brand-chrome absolute left-0 right-0 z-40 flex items-center justify-start px-4 pointer-events-none"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+        >
+          <span
+            className="pointer-events-auto select-none"
+            style={{
+              fontFamily: '"Cormorant Garamond", "Georgia", serif',
+              fontStyle: "italic",
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              letterSpacing: "0.01em",
+              lineHeight: 1,
+              color: "var(--cozy-cream-100)",
+              textShadow: "0 1px 6px rgba(0, 0, 0, 0.45)",
+            }}
+            aria-label="StayBid"
           >
-            <span
-              className="pointer-events-auto select-none"
-              style={{
-                fontFamily: '"Cormorant Garamond", "Georgia", serif',
-                fontStyle: "italic",
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                letterSpacing: "0.01em",
-                lineHeight: 1,
-                color: onHome ? "var(--cozy-cocoa)" : "var(--cozy-cream-100)",
-                textShadow: onHome ? "none" : "0 1px 6px rgba(0, 0, 0, 0.45)",
-              }}
-              aria-label="StayBid"
-            >
-              stay<span style={{ color: onHome ? "var(--cozy-champagne)" : "var(--cozy-champagne-light)" }}>·</span>bid
-            </span>
-          </div>
-        );
-      })()}
+            stay<span style={{ color: "var(--cozy-champagne-light)" }}>·</span>bid
+          </span>
+        </div>
+      )}
 
       {/* Compare chip retired in v80 — /hotels is now in the BottomDock,
           and the chip was overlapping the flash-deal viewer on every tap. */}

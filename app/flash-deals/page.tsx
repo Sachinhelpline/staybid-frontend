@@ -620,13 +620,15 @@ function SkeletonGrid() {
 function FdStyles() {
   return (
     <style jsx global>{`
+      /* v89 — Cozy cream surface instead of dark navy. Same warm mesh
+         overlay but on a parchment base. */
       .fd-root {
         position: relative;
         min-height: 100vh;
-        background: radial-gradient(1200px 600px at 20% 0%, rgba(240, 180, 41, 0.08), transparent 60%),
-                    radial-gradient(900px 500px at 90% 30%, rgba(255, 56, 89, 0.06), transparent 55%),
-                    linear-gradient(180deg, #07060e 0%, #0a0814 50%, #0d0b1a 100%);
-        color: #f0eee2;
+        background: radial-gradient(1200px 600px at 20% 0%, rgba(201, 166, 107, 0.10), transparent 60%),
+                    radial-gradient(900px 500px at 90% 30%, rgba(217, 190, 130, 0.08), transparent 55%),
+                    linear-gradient(180deg, #FAF5EB 0%, #F5EFE0 50%, #FAF5EB 100%);
+        color: var(--cozy-warm-dark, #1F1A0F);
         overflow-x: hidden;
       }
       .fd-bg-mesh {
@@ -642,21 +644,23 @@ function FdStyles() {
         100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
       }
 
-      /* Hero */
+      /* v89 — Compact hero: padding 60→14px top, 28→10px bottom, so the
+         deal cards start visible above the fold on every device. */
       .fd-hero {
         position: relative;
         max-width: 1280px;
         margin: 0 auto;
-        padding: 60px 20px 28px;
+        padding: 14px 16px 10px;
         z-index: 1;
       }
       .fd-eyebrow {
-        display: inline-flex; align-items: center; gap: 10px;
-        color: #f0b429; font-size: 0.66rem; font-weight: 600;
-        letter-spacing: 0.22em; text-transform: uppercase; margin-bottom: 12px;
+        display: inline-flex; align-items: center; gap: 8px;
+        color: var(--cozy-champagne, #C9A66B);
+        font-size: 0.58rem; font-weight: 700;
+        letter-spacing: 0.20em; text-transform: uppercase; margin-bottom: 4px;
       }
       .fd-eyebrow > span:not(.fd-dot-live) {
-        background: linear-gradient(90deg, #f0d060, #f0b429);
+        background: linear-gradient(90deg, #D9BE82, #C9A66B);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
       }
@@ -671,78 +675,84 @@ function FdStyles() {
         100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
       }
 
+      /* v89 — Compact title + cozy palette */
       .fd-title {
         font-family: 'Cormorant Garamond', 'Syne', serif;
-        font-weight: 300;
-        font-size: clamp(2.2rem, 5vw, 3.4rem);
+        font-weight: 400;
+        font-size: clamp(1.6rem, 4vw, 2.4rem);
         line-height: 1.05;
-        margin: 0 0 8px;
-        color: #fff;
+        margin: 0 0 4px;
+        color: var(--cozy-warm-dark, #1F1A0F);
       }
       .fd-title-gold {
-        background: linear-gradient(90deg, #f0d060, #f0b429, #d4a017, #f0b429, #f0d060);
+        background: linear-gradient(90deg, #D9BE82, #C9A66B, #9C7E48, #C9A66B, #D9BE82);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: fdShine 4s linear infinite;
-        font-style: italic; font-weight: 400;
+        font-style: italic; font-weight: 600;
       }
       @keyframes fdShine {
         0%   { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
       }
       .fd-sub {
-        color: rgba(255,255,255,0.45); font-size: 0.92rem;
-        max-width: 540px; margin: 0 0 22px;
+        color: var(--cozy-cocoa-soft, #6E5430);
+        font-size: 0.78rem;
+        max-width: 540px;
+        margin: 0 0 10px;
       }
 
+      /* v89 — Cozy chips + tighter ticker */
       .fd-ticker {
-        display: flex; flex-wrap: wrap; gap: 10px;
+        display: flex; flex-wrap: wrap; gap: 6px;
       }
       .fd-chip {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 8px 14px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 10px;
+        background: var(--cozy-cream-50, #FFFCF6);
+        border: 1px solid var(--cozy-taupe, #E8DCC8);
         border-radius: 999px;
         backdrop-filter: blur(8px);
-        font-size: 0.78rem;
+        font-size: 0.72rem;
       }
       .fd-chip.gold {
-        background: linear-gradient(135deg, rgba(240,180,41,0.16), rgba(240,180,41,0.06));
-        border-color: rgba(240,180,41,0.35);
+        background: linear-gradient(135deg, rgba(201,166,107,0.22), rgba(201,166,107,0.08));
+        border-color: rgba(201,166,107,0.45);
       }
       .fd-chip-dot {
-        width: 6px; height: 6px; border-radius: 50%; background: #2ecc71;
-        box-shadow: 0 0 8px #2ecc71;
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--cozy-sage, #9DAD8F);
+        box-shadow: 0 0 6px rgba(157, 173, 143, 0.6);
         animation: fdPulse 1.8s infinite;
       }
-      .fd-chip-val { color: #fff; font-weight: 700; }
-      .fd-chip-lbl { color: rgba(255,255,255,0.45); }
-      .fd-chip-emoji { font-size: 0.85rem; }
+      .fd-chip-val { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 700; }
+      .fd-chip-lbl { color: var(--cozy-cocoa-soft, #6E5430); }
+      .fd-chip-emoji { font-size: 0.78rem; }
 
-      /* Cities */
+      /* v89 — Compact cities row */
       .fd-cities {
         position: relative; z-index: 1;
         max-width: 1280px; margin: 0 auto;
-        padding: 0 20px 20px;
-        display: flex; flex-wrap: wrap; gap: 8px;
+        padding: 8px 16px 12px;
+        display: flex; flex-wrap: wrap; gap: 6px;
       }
       .fd-city {
-        padding: 8px 16px;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
+        padding: 5px 12px;
+        background: var(--cozy-cream-50, #FFFCF6);
+        border: 1px solid var(--cozy-taupe, #E8DCC8);
         border-radius: 999px;
-        color: rgba(255,255,255,0.72);
-        font-size: 0.78rem; font-weight: 500;
+        color: var(--cozy-cocoa, #4A3820);
+        font-size: 0.74rem; font-weight: 500;
         cursor: pointer;
         transition: all 0.22s ease;
       }
-      .fd-city:hover { border-color: rgba(240,180,41,0.4); color: #fff; }
+      .fd-city:hover { border-color: rgba(201,166,107,0.55); }
       .fd-city.active {
-        background: linear-gradient(135deg, #f0b429, #d4a017);
-        border-color: transparent; color: #0a0814; font-weight: 700;
-        box-shadow: 0 6px 18px rgba(240,180,41,0.35);
+        background: linear-gradient(135deg, #D9BE82, #C9A66B);
+        border-color: rgba(110, 84, 48, 0.45); color: var(--cozy-warm-dark);
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(201,166,107,0.32);
       }
 
       /* Grid */

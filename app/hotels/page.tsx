@@ -97,44 +97,57 @@ function HotelList() {
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
   return (
-    <div className="min-h-screen lux-bg">
-    <div className="max-w-7xl mx-auto px-5 py-12">
+    <div className="min-h-screen" style={{ background: "var(--cozy-cream-100, #FAF5EB)" }}>
+    {/* v89 — Cozy cream surface + COMPACT hero. Was dark navy + py-12 + mb-10
+        which pushed the hotel grid way below the fold. Now py-4 + mb-3,
+        eyebrow + heading + count + search + chips fit in a single tight band
+        so the user sees the first hotel row immediately on every device. */}
+    <div className="max-w-7xl mx-auto px-4 py-4">
 
-      {/* ── Page header ── */}
-      {/* Note: Compare/Explore toggle removed from here — the Navbar already
-          renders the ✨ Explore chip next to LocationChip on every page. */}
-      <div className="mb-10">
-        <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-3">Explore</p>
-        <h1 className="font-display font-light text-white mb-1" style={{ fontSize: "clamp(1.9rem, 4vw, 2.8rem)" }}>
+      {/* ── Compact page header ── */}
+      <div className="mb-3">
+        <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--cozy-champagne)" }}>Explore</p>
+        <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--cozy-warm-dark)" }}>
           Find Your Perfect Stay
         </h1>
-        <p className="text-white/50 text-sm">
+        <p className="text-[0.78rem]" style={{ color: "var(--cozy-cocoa-soft)" }}>
           {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
         </p>
       </div>
 
-      {/* ── Search ── */}
-      <div className="relative max-w-md mb-6">
-        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      {/* ── Search (slimmer) ── */}
+      <div className="relative max-w-md mb-3">
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--cozy-cocoa-soft)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by hotel name…"
-          className="w-full pl-11 pr-4 py-3 rounded-2xl border border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-gold-400/50 focus:border-gold-300 transition text-sm"
+          className="w-full pl-10 pr-3 py-2 rounded-xl text-[0.86rem] focus:outline-none transition"
+          style={{
+            border: "1px solid var(--cozy-taupe)",
+            background: "var(--cozy-cream-50)",
+            color: "var(--cozy-warm-dark)",
+          }}
         />
       </div>
 
-      {/* ── City filter chips ── */}
-      <div className="flex flex-wrap gap-2 mb-10">
+      {/* ── City filter chips (compact) ── */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
         {cities.map((c) => {
           const active = (c === "All" && !city) || c === city;
           return (
             <button
               key={c}
               onClick={() => setCity(c === "All" ? "" : c)}
-              className={active ? "btn-3d btn-3d-gold btn-3d-sm" : "btn-3d btn-3d-dark btn-3d-sm"}
+              className="px-3 py-1.5 rounded-full text-[0.74rem] font-semibold transition-all"
+              style={{
+                background: active ? "linear-gradient(135deg, #D9BE82, #C9A66B)" : "var(--cozy-cream-50)",
+                color: active ? "var(--cozy-warm-dark)" : "var(--cozy-cocoa)",
+                border: active ? "1px solid rgba(110, 84, 48, 0.45)" : "1px solid var(--cozy-taupe)",
+                boxShadow: active ? "0 2px 6px rgba(201, 166, 107, 0.30)" : "none",
+              }}
             >
               {c}
             </button>

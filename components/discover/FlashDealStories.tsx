@@ -195,9 +195,13 @@ export function FlashDealStoryRail({
       <div className="fdeal-rail-wrap pointer-events-auto">
         <div className="fdeal-rail-header">
           <span className="fdeal-rail-title">Flash Deals</span>
-          {/* Count chip removed in v81 — the filter chip on the right
-              edge owned the same row and was visually clashing with this
-              text. Avatar count is self-evident from the rail. */}
+          {/* v89 — Brand wordmark restored on `/` home but inside the rail
+              header on the RIGHT (Flash Deals title is on the left).
+              No more overlap with the page-level brand (which we now
+              hide on `/`). Same Cormorant italic + cocoa+champagne. */}
+          <span className="fdeal-rail-brand" aria-label="StayBid">
+            stay<span className="fdeal-rail-brand-dot">·</span>bid
+          </span>
         </div>
         <div className="fdeal-rail-scroll" role="list">
           {deals.map((d, i) => (
@@ -259,6 +263,23 @@ export function FlashDealStoryRail({
           font-size: 1.05rem;
           letter-spacing: 0.005em;
           color: #6e4a08;
+        }
+        /* v89 — Brand wordmark on the right of the rail header. Same
+           Cormorant italic as the "Flash Deals" title — they read as a
+           premium cozy pair. */
+        .fdeal-rail-brand {
+          font-family: "Cormorant Garamond", "Georgia", serif;
+          font-style: italic;
+          font-weight: 600;
+          font-size: 0.95rem;
+          line-height: 1;
+          color: var(--cozy-cocoa, #4A3820);
+          letter-spacing: 0.01em;
+          user-select: none;
+        }
+        .fdeal-rail-brand-dot {
+          color: var(--cozy-champagne, #C9A66B);
+          margin: 0 1px;
         }
         .fdeal-rail-sub {
           font-size: 0.62rem;
