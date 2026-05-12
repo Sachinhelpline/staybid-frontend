@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { ReelPlayerModal, type ReelMedia } from "@/components/ReelPlayerModal";
 
 type Tab = "all" | "video" | "hotel" | "influencer" | "deal";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -29,6 +30,7 @@ export default function SavedPage() {
   const [tab, setTab]         = useState<Tab>("all");
   const [saves, setSaves]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reelModal, setReelModal] = useState<ReelMedia | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -130,31 +132,65 @@ export default function SavedPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {saves.map(s => <SaveCard key={s.id} s={s} onUnsave={unsave} />)}
+            {saves.map(s => (
+              <SaveCard
+                key={s.id}
+                s={s}
+                onUnsave={unsave}
+                onPlayReel={(media) => setReelModal(media)}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      {/* Inline reel player — opens when a saved video card is tapped.
+          v85 fix: previously the card linked to /reels which loaded the
+          Creator Hub feed (hotel_videos table); user-post reels live in
+          social_posts / PostsStore so they never appeared there. Now we
+          play the saved video in place. */}
+      <ReelPlayerModal
+        open={!!reelModal}
+        media={reelModal}
+        onClose={() => setReelModal(null)}
+      />
     </div>
   );
 }
 
-function SaveCard({ s, onUnsave }: { s: any; onUnsave: (s: any) => void }) {
+function SaveCard({
+  s, onUnsave, onPlayReel,
+}: {
+  s:           any;
+  onUnsave:    (s: any) => void;
+  onPlayReel:  (media: ReelMedia) => void;
+}) {
   const t = s.target;
 
   if (s.target_type === "video" && t) {
     return (
-      <Wrap href={`/reels`} onUnsave={() => onUnsave(s)}>
+      <ClickWrap
+        onClick={() => onPlayReel({
+          src:     t.s3_url || t.media_url || "",
+          poster:  t.thumbnail_url || "",
+          caption: t.caption || "",
+          title:   t.title || "Reel",
+        })}
+        onUnsave={() => onUnsave(s)}
+      >
         <div className="relative aspect-[9/16] bg-luxury-100">
           {t.thumbnail_url
             ? <img src={t.thumbnail_url} alt={t.title || ""} className="w-full h-full object-cover" />
-            : <video src={t.s3_url} className="w-full h-full object-cover" muted playsInline />}
+            : t.s3_url
+              ? <video src={t.s3_url} className="w-full h-full object-cover" muted playsInline />
+              : <div className="w-full h-full flex items-center justify-center text-4xl">🎬</div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white text-[0.7rem] font-bold drop-shadow line-clamp-2">
             {t.title || "Reel"}
           </div>
           <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow">▶ {fmtNum(t.views_count || 0)}</div>
         </div>
-      </Wrap>
+      </ClickWrap>
     );
   }
 
@@ -211,6 +247,22 @@ function SaveCard({ s, onUnsave }: { s: any; onUnsave: (s: any) => void }) {
       <p className="text-3xl mb-1">❓</p>
       <p className="text-xs text-luxury-500">Item no longer available</p>
       <button onClick={() => onUnsave(s)} className="mt-2 text-[0.65rem] font-bold text-red-600">Remove</button>
+    </div>
+  );
+}
+
+// Tap-to-play wrapper used by the video card. Renders a button (not a Link)
+// so the parent's onPlayReel callback runs instead of routing away.
+function ClickWrap({ onClick, onUnsave, children }: { onClick: () => void; onUnsave: () => void; children: React.ReactNode }) {
+  return (
+    <div className="relative card-luxury overflow-hidden group">
+      <button onClick={onClick} className="block w-full text-left">{children}</button>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUnsave(); }}
+        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/55 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Remove from saved">
+        ✕
+      </button>
     </div>
   );
 }
