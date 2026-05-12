@@ -1671,3 +1671,234 @@ Firebase Mobile OTP is **already working** for customer-side login (v44 era) —
 - Bidder-tier autoAcceptMs values in [lib/bidder-score.ts](lib/bidder-score.ts) are the single source of truth — both frontend countdown UI and Supabase RPC `auto_accept_eligible_bids()` read from the same scheduled `auto_accept_at` field, so frontend + backend never drift.
 
 ---
+
+## IG-Style Discover Era (v73 → v79, May 2026)
+
+Seven iterations turning `/discover` from a vertical reel feed with an empty user-story tray into a full Instagram-clone surface: auto-generated flash-deal "stories" with sound, premium cream-band separation between rails and reels, a horizontal bottom dock, and an IG-style `/me` profile page with a hamburger drawer that surfaces every secondary nav item.
+
+### v73 — Real countdown + reminder notifs (pre-existing)
+**Commit:** `5477201` — real HH:MM:SS countdown for unpaid ACCEPTED bids + reminder notifications. Documented in the v72 Bidding Lifecycle Era.
+
+### v74 — Timer override stale-state fix (pre-existing)
+**Commit:** `e168c5a` — fixes a stale-state edge case in the acceptance-window timer override + summary toast when many bids are unpaid. Last commit before the discover era began.
+
+### v75 — Flash-deal stories rail + personalization + perf
+**Commit:** `4ad85a4`
+
+Replaces the empty user-uploaded story tray at the top of `/discover` with an auto-generated rail of flash-deal "stories". Every hotel with an active deal becomes one avatar; tap → fullscreen viewer with the existing direct-book URL (`?dealId=…&dealPrice=…&directBook=true`) wired into Book Now.
+
+**Files added:**
+- [components/discover/FlashDealStories.tsx](components/discover/FlashDealStories.tsx) — rail + fullscreen viewer + `useFlashDealStories(city)` hook + `markFlashDealViewed(dealId)` + helpers
+
+**Files modified:**
+- [components/discover/InstagramHotelFeed.tsx](components/discover/InstagramHotelFeed.tsx) — imports + mounts rail/viewer; `<HotelCard>` accepts `adjacent` prop; `<video preload>` tiered active="auto" / adjacent="metadata" / far="none"; `.ig-card` gets `contain: layout paint style` + `content-visibility: auto` + `contain-intrinsic-size`
+- [app/api/discover/feed/route.ts](app/api/discover/feed/route.ts) — adds `±2.5` jitter on `score`, Fisher-Yates inside 8-point score bands, exploration slot frequency `5th → 4th`, `Cache-Control: no-store, must-revalidate` (was `max-age=20`). Each refresh now feels different.
+
+### v76 — Audio on flash-deal stories + flash-deal personalization
+**Commit:** `2103b7f` (build fix) + `4ad85a4` core (was reverted/squashed into this set)
+
+Adds sound to every flash-deal story + per-viewer personalization on `/api/flash/near` so the rail order also stays fresh.
+
+**Audio system in `FlashDealStories.tsx`:**
+- 4 royalty-free peaceful SoundHelix tracks (`Piano Reflect / Open Sky / Wide Horizon / Slow Pulse`) rotated by `hashStr(hotelId) % 4` — same hotel always pairs with same track (IG-style "signature sound")
+- Plays at `volume: 0.55` (foreground-friendly), auto-resets per slide advance
+- Does NOT route through Web Audio — cross-origin SoundHelix mp3s would silence (documented gotcha)
+- Permission gate: `🎵` upload button shown only when `sb_partner_token` OR `sb_admin_token` exists (hotel owner / admin)
+- Custom audio: `<input type="file" accept="audio/*">` → `URL.createObjectURL(file)` → stored as `localStorage.sb_fdeal_audio_{dealId}`
+- Cap 8MB, MIME validation, "🎵 Audio attached" mini-toast feedback
+- Audio chip below title shows "🎵 Wide Horizon · ambient" or "🎵 Custom audio"
+
+**Backend audio passthrough:**
+- `normalizeFlashDeal` reads `d.audioUrl || d.audio_url || d.raw?.audioUrl || d.raw?.audio_url`
+- When admin/partner panels eventually add upload UI to write `flash_deals.audioUrl`, viewer picks it up automatically (no frontend changes needed)
+
+**Personalization in [app/api/flash/near/route.ts](app/api/flash/near/route.ts):**
+- Accept `?viewed=id1,id2,...` query param (capped at 60 ids)
+- Bucket deals by 5% discount bands
+- Fisher-Yates shuffle inside each band so siblings rotate
+- Within-band: push viewed deals to the bottom (fresh content leads)
+- `Cache-Control: no-store, must-revalidate`
+- Hook auto-sends `viewed` IDs from `localStorage.sb_flash_viewed_v1` (cap 30 most-recent)
+- Viewer marks every opened deal viewed → next fetch surfaces unseen deals first
+
+### v77 — Fix unmute-hint overlap with flash-deal rail
+**Commit:** `d8b2528`
+
+Real culprit of the "abhi bhi overlap" feedback after v75/v76: the per-card `.ig-tap-unmute` pill was pinned at `top: 132px` — that worked in the pre-rail layout but with the new rail (32→152px) + the v75 shifted profile chip (168→210px) it sat ON TOP of the rail. Moved to `top: 218px` then later (v78) reset to `top: 64px` once the rail moved out of the card.
+
+Verified live: rail/chip/unmute = 32-152 / 168-210 / 213-249 px, all pairwise overlap checks `false`.
+
+### v78 — Clean section separation + premium cream rail + Instagram bottom dock
+**Commit:** `3a142eb`
+
+User's screenshots referenced IG home feed (clean stories rail band, feed BELOW) + IG reels (no stories rail, bottom horizontal dock). v78 builds a hybrid:
+
+**Flex shell — true separation:**
+- `<div className="ig-shell">` wraps the rail + feed: `position:absolute inset:0 display:flex flex-direction:column`
+- Rail = first flex child (shrinks to content ~142px)
+- `.ig-feed` = `flex:1 1 auto` (fills remaining height, ~578px on mobile)
+- `.ig-card` = `height: 100%` (was `100dvh` — was bleeding behind the rail)
+- Result: rail and reels are two genuine horizontal lanes, zero overlap. Measured live.
+
+**Premium cream theme on the rail:**
+- `linear-gradient(180deg, #fff9ec → #f9efd6)` solid (no transparency)
+- Bottom border `rgba(184,134,11,0.18)`, soft shadow
+- Conic-gradient ring `#c9911a → #f0d060 → #fff4cc`, 12s slow rotation
+- Cormorant Garamond italic "Flash Deals" title
+- Hotel names in warm `#4a3208`
+- **No red, no pink** — purely parchment + gold (user explicitly asked for "lighter premium cozy")
+
+**Discount badge moved off the front page:**
+- `.fdeal-rail-badge` deleted from JSX + CSS — front-page rail shows clean rings only
+- `-X% OFF` stamp lives ONLY inside the fullscreen `.fdeal-viewer-stamp`
+
+**Instagram-style BottomDock** ([components/discover/BottomDock.tsx](components/discover/BottomDock.tsx)):
+- 5 slots: ⌂ Home / ▷ Reels / ◎ Bid / ⌕ Hotels / ○ You
+- Fixed bottom, blurred glass (`rgba(7,6,14,0.88)` + 18px blur)
+- Active slot lights up gold
+- Self-hides on every route except `/`, `/discover`, `/reels`, `/me`
+- Mounted globally in [app/layout.tsx](app/layout.tsx) alongside `<DialerNav />`
+
+**DialerNav hide gate** extended in [components/DialerNav.tsx](components/DialerNav.tsx):
+- Was: hide on `/admin`, `/partner`, `/onboard`
+- Now: also `/`, `/discover`, `/reels`, `/me` — the dock owns those routes
+- DialerNav still owns every other page (the crown-wheel left-edge nav)
+
+**Per-card positions reset** in HotelCard (rail no longer overlays):
+- Profile chip top: `168px → 14px`
+- `.ig-tap-unmute` top: `218px → 64px`
+- Both now sit naturally at the top of the card
+
+### v79 — `/me` IG-style profile + hamburger drawer for missing items
+**Commit:** `5556177`
+
+User feedback after v78:
+1. Tapping "You" went to `/profile` (legacy account settings page). They wanted the same reel-style profile experience that `CreatorProfileSheet` builds for OTHERS, but for SELF.
+2. Bottom dock has 5 slots — everything else (Deals, My Bids, Bookings, Saved, Wallet, Points, Verify, Creator, Partner) had no easy entry point.
+
+**New `/me` route** ([app/me/page.tsx](app/me/page.tsx)) — IG-style profile:
+- Sticky top bar: `@handle` left + ↑ Upgrade + ☰ Menu right
+- 88px gold-ring avatar (data-URL JPEG from `useFollow().myAvatarUrl`, else initials)
+- 3-stat row: Posts (PostsStore count) / Followers (synthesized base 800-6800) / Following (live from FollowStore)
+- Display name, sanitized bio, 📍 location, 🔗 website
+- Edit profile (gold, → /profile) + Share profile (native share) + ↑ upgrade
+- Highlights row — user's `myCustomHighlights` + 4 built-in (Mountains/Beaches/Foodie/Suites)
+- Tab switcher: ▦ Posts / ▶ Reels / 🏷 Tagged
+- 3-col grid from PostsStore, graceful empty state per tab
+- Premium parchment theme matching the v78 rail
+
+**`MoreDrawer`** inside `/me` — slide-in from right, dark backdrop, esc-to-close. 10 destinations + Log out:
+| Icon | Label | Sub | Where |
+|---|---|---|---|
+| ⚡ | Flash Deals | Live discounts today | /flash-deals |
+| 📋 | My Bids | Your active offers | /my-bids |
+| 🎫 | Bookings | Past + upcoming stays | /bookings |
+| 🔖 | Saved | Wishlist hotels & reels | /saved |
+| 💰 | Wallet | Balance & transactions | /wallet |
+| ⭐ | StayPoints | Loyalty rewards | /points |
+| ✅ | Verify Stay | Hotel verification | /verification |
+| ✨ | Creator Hub | Earnings + referrals | /influencer |
+| 🏢 | Hotel Partner | Open partner dashboard ↗ | external panel |
+| ⚙ | Account settings | Email, phone, security | /profile |
+| ↶ | Log out | Sign out of this device | — |
+
+**Routing wiring:**
+- BottomDock "You" → `/me` (was `/profile`)
+- BottomDock visibility extended to include `/me`
+- BottomDock `isActive("/me")` lights up the You slot anywhere under `/me/*`
+- DialerNav hide gate extended to `/me`
+- Navbar hide gate extended to `/me`
+- ServerStatus hide gate extended to `/me`
+
+### Files added (this era)
+```
+components/discover/FlashDealStories.tsx       # rail + viewer + audio + hook (v75/v76)
+components/discover/BottomDock.tsx             # IG-style bottom nav (v78)
+app/me/page.tsx                                # IG-style "You" profile + MoreDrawer (v79)
+```
+
+### Files modified (this era)
+```
+app/api/discover/feed/route.ts                 # jitter + bucket shuffle + no-store (v75)
+app/api/flash/near/route.ts                    # ?viewed= + band shuffle + no-store (v76)
+app/discover/page.tsx                          # (no changes after v75 wiring)
+app/layout.tsx                                 # mounts <BottomDock />; SB_BUILD + badge per release
+components/discover/InstagramHotelFeed.tsx     # flex shell + rail mount + perf tiered preload + position resets
+components/DialerNav.tsx                       # hide on /, /discover, /reels, /me
+components/Navbar.tsx                          # hide on /me (already hidden on /discover, /reels)
+components/ServerStatus.tsx                    # hide on /me
+public/sw.js                                   # CACHE_NAME bumped per release
+```
+
+### New routes (this era)
+- **`/me`** — IG-style "You" profile (v79). Owns its own top bar; Navbar + ServerStatus hidden. BottomDock visible.
+
+### New localStorage keys (this era)
+| Key | Value | Purpose |
+|---|---|---|
+| `sb_fdeal_audio_{dealId}` | Blob URL string | Per-deal custom audio override (partner/admin upload, survives nav, not hard reload) |
+| `sb_flash_viewed_v1` | JSON `string[]` | Most recent 60 viewed flash-deal IDs — sent to `/api/flash/near?viewed=` for personalization |
+
+### New API behaviors (this era)
+- `GET /api/flash/near?viewed=id1,id2,…` — viewed IDs pushed to bottom of their discount band
+- `GET /api/flash/near` returns `audioUrl` passthrough when present on the row (frontend reads it)
+- Both `/api/discover/feed` and `/api/flash/near` now ship `Cache-Control: no-store, must-revalidate` — every refresh reshuffles
+
+### Service-worker version map (continued)
+- v72 → analytics-moderation
+- v73 → real-countdown-reminder-notifs (pre-existing)
+- v74 → timer-override-summary-toast (pre-existing)
+- **v75** → flash-deal-stories-fresh-feed
+- **v76** → flash-stories-audio-personalization
+- **v77** → fix-unmute-hint-overlap
+- **v78** → clean-separation-cream-rail-bottom-dock
+- **v79** → me-profile-page-more-drawer **(current)**
+
+### Architecture summary (post-v79)
+**Reel-app routes** (`/`, `/discover`, `/reels`, `/me`):
+- DialerNav crown wheel **hidden**
+- Customer Navbar **hidden** (except `/reels` already had its own header)
+- ServerStatus banner **hidden**
+- BottomDock **shown** with 5 slots (Home / Reels / Bid / Hotels / You)
+- These four routes own the IG-clone surface
+
+**Everywhere else:**
+- DialerNav crown wheel **shown** (left-edge nav)
+- Customer Navbar **shown** (`/hotels`, `/flash-deals`, `/bookings`, `/profile`, etc.)
+- BottomDock **hidden**
+
+**Flash-deal pipeline:**
+1. `useFlashDealStories(city)` fetches `/api/flash/near?city=X&viewed=id1,…`
+2. API returns deals shuffled within 5% discount bands, viewed deals at bottom of their band
+3. Rail renders top 18 — cream band, gold rings, no badges
+4. Tap → viewer auto-plays peaceful default audio (rotated by hotel hash) OR custom audio if uploaded
+5. Book Now → `/hotels/[id]?dealId=…&dealPrice=…&directBook=true`
+6. Open is recorded to `sb_flash_viewed_v1` → next fetch surfaces a different deal at top
+
+### Things to Avoid (IG-Style Discover Era)
+- **Never** restore the discount badge on `.fdeal-rail-wrap` items — user explicitly asked for clean front-page rings, % only inside the viewer.
+- **Never** route the `.fdeal-rail-wrap`'s audio through Web Audio (`applyGain`) — cross-origin SoundHelix mp3s would silence. Native `<audio>` only.
+- **Never** make the flash-deal rail `position: absolute` again — it overlays the reel feed and brings back the "kya yeh overlap kar raha hai" feedback. Always part of the flex shell.
+- **Never** drop the `Cache-Control: no-store` on `/api/discover/feed` and `/api/flash/near` — the personalization shuffle is the entire point of "different feed har baar".
+- **Never** mount a custom-audio upload UI for non-partner/non-admin users — `canAttachAudio()` is the gate. Public spam audio breaks the premium cream feel.
+- **Never** put the bottom dock back to the legacy `/profile` route — the user wants the IG-style `/me` experience for "You". `/profile` is reachable via the drawer's "Account settings" entry.
+- **Never** show DialerNav, Navbar, or ServerStatus on `/`, `/discover`, `/reels`, `/me`. Those four routes own the IG-clone chrome — adding the customer-side nav clutters the surface.
+- **Never** expand the BottomDock past 5 slots. 5 is the IG limit; everything else lives in the hamburger drawer.
+- **Never** drop `localStorage.sb_user_avatar_url` from FollowStore — the `/me` avatar reads from it, and the rail / profile sheet on `InstagramHotelFeed` also depend on the same key.
+- **Never** strip the per-card `adjacent` prop on `HotelCard` — drives the tiered `<video preload>` (auto/metadata/none) which is the v75 perf win.
+
+### Pending / known issues
+- Vercel build queue on Hobby plan serializes builds across the 4 sister projects sharing this repo (staybid-customer-frontend / staybid-customer / staybid-frontend / staybid-frontend-vcdb). v76's fix-build commit `2103b7f` sat QUEUED 5+ minutes before its turn. If a deployment seems stuck, check `https://vercel.com/sachinhelpline-3778s-projects/staybid-customer-frontend/deployments` — usually it's queue position, not failure.
+- Hydration warnings on `/me` from `useMemo` reading `localStorage` (followers count seed) — SSR returns initial state, client hydrates with real value. Pre-existing pattern in this codebase, not introduced by v79.
+- `flash_deals.audioUrl` is not yet a column on Supabase — the frontend reads it defensively but it's `undefined` for all current rows. Admin/partner panels can add the upload UI when desired; frontend already supports.
+
+---
+
+## Updated production state (v79, 2026-05-12)
+- **Current version:** v79 · commit `5556177` on `main` · branch `claude/cool-hamilton-c78b1f`
+- IG-style discover surface complete: flash-deal stories rail, bottom dock, /me profile + hamburger drawer
+- Reel-app routes (`/`, `/discover`, `/reels`, `/me`) all hide customer-side nav and show the IG-clone chrome
+- Two personalization layers live: `/api/discover/feed` (band shuffle) and `/api/flash/near` (viewed-aware band shuffle), both `no-store`
+- Audio on flash-deal stories with hotel-deterministic default + partner/admin custom upload
+
+---

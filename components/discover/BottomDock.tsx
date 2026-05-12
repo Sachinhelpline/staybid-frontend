@@ -31,6 +31,7 @@ type Item = {
 const ITEMS: Item[] = [
   { href: "/",            label: "Home",    icon: "⌂",  iconActive: "⌂" },
   { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
+  { href: "/flash-deals", label: "Deals",   icon: "⚡", iconActive: "⚡" },
   { href: "/bid",         label: "Bid",     icon: "◎",  iconActive: "●" },
   { href: "/hotels",      label: "Hotels",  icon: "⌕",  iconActive: "⌕" },
   { href: "/me",          label: "You",     icon: "○",  iconActive: "●" },
@@ -39,15 +40,16 @@ const ITEMS: Item[] = [
 export function BottomDock() {
   const pathname = usePathname() || "/";
 
-  // Only show on the reel-feed surfaces + the "You" IG-style profile page.
-  // Outside of these, DialerNav owns navigation. Keeps the two systems
-  // mutually exclusive.
-  const visible =
-    pathname === "/" ||
-    pathname.startsWith("/discover") ||
-    pathname.startsWith("/reels") ||
-    pathname.startsWith("/me");
-  if (!visible) return null;
+  // Show on EVERY customer-facing page (v80) — was previously only the
+  // reel surfaces; user reported it disappearing when they tapped into
+  // /bid, /hotels, or any hamburger destination. Only the operator
+  // panels keep their own headers + hide the public dock.
+  const hidden =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/partner") ||
+    pathname.startsWith("/onboard") ||
+    pathname.startsWith("/auth");        // auth screens should be chrome-free
+  if (hidden) return null;
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -55,9 +57,11 @@ export function BottomDock() {
     if (href === "/discover") {
       return pathname.startsWith("/discover") || pathname.startsWith("/reels");
     }
-    // /me — the "You" tab — lights up across the whole profile surface
+    // /me — the "You" tab — lights up across the whole profile surface,
+    // also when the user is on /profile (account settings linked from the
+    // hamburger drawer) since that's logically still "You".
     if (href === "/me") {
-      return pathname.startsWith("/me");
+      return pathname.startsWith("/me") || pathname.startsWith("/profile");
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -93,9 +97,9 @@ export function BottomDock() {
           display: flex;
           align-items: center;
           justify-content: space-around;
-          gap: 4px;
-          padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 6px);
-          background: rgba(7, 6, 14, 0.88);
+          gap: 2px;
+          padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
+          background: rgba(7, 6, 14, 0.92);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
           border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -103,12 +107,13 @@ export function BottomDock() {
         }
         .ig-dock-item {
           flex: 1 1 0;
+          min-width: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 2px;
-          padding: 6px 4px;
+          padding: 6px 2px;
           color: rgba(255, 255, 255, 0.62);
           text-decoration: none;
           border-radius: 12px;
@@ -123,16 +128,21 @@ export function BottomDock() {
           background: linear-gradient(180deg, rgba(255,215,107,0.08), rgba(255,215,107,0.02));
         }
         .ig-dock-glyph {
-          font-size: 1.35rem;
+          font-size: 1.25rem;
           line-height: 1;
           font-weight: 600;
         }
         .ig-dock-label {
-          font-size: 0.56rem;
+          font-size: 0.52rem;
           font-weight: 700;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.04em;
           text-transform: uppercase;
         }
+        /* Global padding so no page content gets stuck under the dock.
+           Reel-app routes (/, /discover, /reels) opt out via their own
+           layout but everything else gets a safe ~70px bottom buffer. */
+        body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+        body.is-reel-page { padding-bottom: 0; }
 
       `}</style>
     </>

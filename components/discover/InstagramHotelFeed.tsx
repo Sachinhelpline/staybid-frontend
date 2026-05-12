@@ -3724,7 +3724,15 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         open={moreOpen.open}
         onClose={() => setMoreOpen({ open: false, id: "" })}
         hotelId={moreOpen.id}
-        isUserPost={(items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any)?._userPost}
+        isUserPost={(() => {
+          // Owner-gate: Edit / Delete only appear for the post AUTHOR.
+          // Earlier (v79 and prior) this just checked `_userPost`, which
+          // was true for ANY user post — even someone else's public reel
+          // — so the moderation actions leaked across users. Gate via
+          // `_isSelf` too.
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          return !!(h?._userPost && h?._isSelf);
+        })()}
         onEditPost={() => {
           const it = items.find((x) => x.hotel.id === moreOpen.id);
           if (it) setEditPostId(moreOpen.id);

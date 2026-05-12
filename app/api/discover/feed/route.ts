@@ -148,20 +148,19 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  // 4) Sort desc by score, with a small per-request jitter so ties don't
-  //    always resolve in the same order. The goal: "feed feels different
-  //    on every refresh" without breaking strong personal signals. Jitter
-  //    magnitude (±2.5) is smaller than any meaningful score delta, so
-  //    truly-strong matches still float to the top.
-  const jittered = scored.map(s => ({ ...s, _r: s.score + (Math.random() - 0.5) * 5 }));
+  // 4) Sort desc by score, with a per-request jitter so ties don't always
+  //    resolve in the same order. v80 bumps the magnitude (±3.5) and
+  //    shrinks the bucket width from 8 → 4 — siblings reshuffle more
+  //    aggressively, so the feed feels different on every refresh while
+  //    still respecting strong personal signals.
+  const jittered = scored.map(s => ({ ...s, _r: s.score + (Math.random() - 0.5) * 7 }));
   jittered.sort((a, b) => b._r - a._r);
 
-  // Bucket by score band (each band is 8 points wide). Shuffling inside a
-  // band gives IG-style "fresh order every time" without disrespecting the
-  // ranker — band order is preserved, only siblings inside a band rotate.
+  // Bucket by score band (4 points wide). Smaller bands = more shuffling
+  // = IG-level "fresh order every time".
   const buckets: Map<number, typeof jittered> = new Map();
   jittered.forEach(s => {
-    const k = Math.floor(s._r / 8);
+    const k = Math.floor(s._r / 4);
     if (!buckets.has(k)) buckets.set(k, []);
     buckets.get(k)!.push(s);
   });
@@ -184,10 +183,10 @@ export async function POST(req: NextRequest) {
   const usedIds = new Set<string>();
   let mainIdx = 0;
   for (let i = 0; i < limit; i++) {
-    // Bump exploration: every 4th slot (was 5th) → roughly 25% exploratory.
-    // Keeps the bubble breaking aggressively while keeping the top of the
-    // feed personalized.
-    const exploreSlot = (i + 1) % 4 === 0 && unseenPool.length > 0;
+    // Aggressive exploration: every 3rd slot (~33%) is an unseen hotel.
+    // Plus the band shuffle above guarantees siblings rotate per request,
+    // so the feed never feels like "same 10 hotels in the same order".
+    const exploreSlot = (i + 1) % 3 === 0 && unseenPool.length > 0;
     if (exploreSlot) {
       const randIdx = Math.floor(Math.random() * unseenPool.length);
       const pick = unseenPool.splice(randIdx, 1)[0];

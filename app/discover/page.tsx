@@ -201,8 +201,10 @@ export default function DiscoverPage() {
       style={{ WebkitUserSelect: "none", height: "var(--reel-vh, 100dvh)", width: "100vw" }}
     >
       {/* Top branding chrome (Reels-only). Compare moved to bottom-right
-          floating button so it doesn't overlap the hotel profile chip. */}
-      <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-center px-4 pt-3 pb-3 bg-gradient-to-b from-black/55 to-transparent pointer-events-none">
+          floating button so it doesn't overlap the hotel profile chip.
+          `reel-brand-chrome` class lets the FlashDealStoryViewer hide
+          this band when a deal is open (avoids the v79 overlap report). */}
+      <div className="reel-brand-chrome absolute top-0 left-0 right-0 z-40 flex items-center justify-center px-4 pt-3 pb-3 bg-gradient-to-b from-black/55 to-transparent pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-1.5">
           <span className="text-[0.58rem] font-bold tracking-[0.3em] uppercase text-white/70">StayBid</span>
           <span className="text-white/30 text-xs">·</span>
@@ -215,27 +217,8 @@ export default function DiscoverPage() {
         </div>
       </div>
 
-      {/* Compare floating chip — TOP-RIGHT, slim. Mirror size to the
-          filter chip on the left so the top row reads as a balanced trio
-          (filter · brand · compare). */}
-      <Link
-        href="/hotels"
-        className="absolute z-40 flex items-center gap-1 px-2 py-1 rounded-full text-[0.58rem] font-bold transition-transform active:scale-95"
-        style={{
-          right: "10px",
-          top: "8px",
-          background: "linear-gradient(135deg, rgba(240,180,41,0.28), rgba(240,180,41,0.08))",
-          border: "1px solid rgba(240,180,41,0.5)",
-          color: "#ffd76b",
-          backdropFilter: "blur(14px) saturate(1.4)",
-          WebkitBackdropFilter: "blur(14px) saturate(1.4)",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.22)",
-        }}
-        aria-label="Switch to hotel comparison view"
-      >
-        <span>☰</span>
-        <span>Compare</span>
-      </Link>
+      {/* Compare chip retired in v80 — /hotels is now in the BottomDock,
+          and the chip was overlapping the flash-deal viewer on every tap. */}
 
       {/* Loading + empty states */}
       {loading && items.length === 0 && (

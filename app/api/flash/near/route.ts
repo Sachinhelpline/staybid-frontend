@@ -276,9 +276,12 @@ export async function GET(req: NextRequest) {
   //      coveted top slots).
   //   4. Tiny price jitter (±50) only used as the final tiebreak inside a
   //      band so the same two-deal-in-a-band visits feel non-identical.
+  // v80: tighten band width 5% → 3% so siblings reshuffle more aggressively
+  // (IG-style "different deals on top every refresh"). Same band semantics:
+  // a 30% deal still never sits below a 15% one — only sibling order rotates.
   const banded = new Map<number, any[]>();
   for (const d of out) {
-    const k = Math.floor(d.discount / 5);
+    const k = Math.floor(d.discount / 3);
     if (!banded.has(k)) banded.set(k, []);
     banded.get(k)!.push(d);
   }

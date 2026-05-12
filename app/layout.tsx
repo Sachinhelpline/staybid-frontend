@@ -5,8 +5,10 @@ import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
 import { PostsProvider } from "@/lib/posts-store";
 import { Navbar } from "@/components/Navbar";
-import { DialerNav } from "@/components/DialerNav";
+// DialerNav (left-edge crown wheel) was retired in v80 — the BottomDock
+// now owns primary navigation on every customer-facing page.
 import { BottomDock } from "@/components/discover/BottomDock";
+import { BackChip } from "@/components/BackChip";
 import { ServerStatus } from "@/components/ServerStatus";
 import NotificationToast from "@/components/NotificationToast";
 export const viewport: Viewport = {
@@ -115,20 +117,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PostsProvider>
             <ServerStatus />
             <Navbar />
-            {/* Left-edge rotating wheel nav — replaces the old bottom dock on
-                mobile. Renders globally so it's reachable from /discover and
-                /reels too where the top Navbar is hidden. */}
-            <DialerNav />
-            {/* Instagram-style bottom dock — primary nav on reel pages
-                (/, /discover, /reels). Self-hides on every other route;
-                mutually exclusive with DialerNav (which hides on reels). */}
+            {/* Floating back chip — top-left, visible on every customer
+                page that ISN'T the reel-app root (so the user always has
+                an unambiguous way to return). Uses router.back(). */}
+            <BackChip />
+            {/* Instagram-style bottom dock — primary nav on every customer-
+                facing page. Self-hides only on admin / partner / onboard.
+                DialerNav (left-edge crown wheel) was retired in v80. */}
             <BottomDock />
             <main className="min-h-screen">{children}</main>
             {/* Global in-app toaster — subscribes to "sb:notify" events
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v79</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(240,180,41,0.12)",color:"rgba(240,180,41,0.7)",border:"1px solid rgba(240,180,41,0.25)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v80</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -139,7 +141,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // or 1.5s timeout), version-mismatch reload happens only when actually
 // needed (not on every fresh visit). The SW itself uses network-first for
 // HTML so users instantly see new code without a forced reload.
-var SB_BUILD="v79-me-profile-page-more-drawer-2026-05-12";
+var SB_BUILD="v80-dock-everywhere-back-chip-owner-gate-2026-05-12";
 try{
   var prev=localStorage.getItem("sb_build");
   if(prev && prev!==SB_BUILD){

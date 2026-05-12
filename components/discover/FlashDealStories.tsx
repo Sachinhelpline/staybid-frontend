@@ -117,15 +117,26 @@ function readViewedIds(): string[] {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function fmtINR(n: number) { return `₹${Math.round(n).toLocaleString("en-IN")}`; }
 
-function countdown(validUntil: string): { h: string; m: string; s: string; expired: boolean } {
+type Countdown =
+  | { mode: "hms"; h: string; m: string; s: string; expired: false }
+  | { mode: "long"; days: number; hours: number; expired: false }
+  | { mode: "expired"; expired: true };
+
+function countdown(validUntil: string): Countdown {
   const ms = new Date(validUntil).getTime() - Date.now();
-  if (!Number.isFinite(ms) || ms <= 0) return { h: "00", m: "00", s: "00", expired: true };
+  if (!Number.isFinite(ms) || ms <= 0) return { mode: "expired", expired: true };
   const totalSec = Math.floor(ms / 1000);
-  const h = Math.floor(totalSec / 3600);
+  const totalHours = Math.floor(totalSec / 3600);
+  // Over a day → IG-style "5d 12h" instead of capping at 99:XX:XX. Keeps the
+  // viewer readable for week-long deals.
+  if (totalHours >= 24) {
+    return { mode: "long", days: Math.floor(totalHours / 24), hours: totalHours % 24, expired: false };
+  }
+  const h = totalHours;
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
-  return { h: pad(Math.min(h, 99)), m: pad(m), s: pad(s), expired: false };
+  return { mode: "hms", h: pad(h), m: pad(m), s: pad(s), expired: false };
 }
 
 // Normalize a /api/flash/near payload row into the rail's compact shape.
@@ -389,6 +400,17 @@ export function FlashDealStoryViewer({
     if (!open || !deal) return;
     markFlashDealViewed(deal.id);
   }, [open, idx, deal]);
+
+  // While the viewer is open we toggle a body class. Global CSS uses it
+  // to hide every other piece of chrome (rail filter chip, brand label,
+  // bottom dock, back chip) so the viewer reads as truly fullscreen — no
+  // more "Compare overlapping the deal" feedback.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (open) document.body.classList.add("fdeal-viewer-open");
+    else      document.body.classList.remove("fdeal-viewer-open");
+    return () => { document.body.classList.remove("fdeal-viewer-open"); };
+  }, [open]);
 
   // Auto-dismiss the mini-toast
   useEffect(() => {
@@ -661,17 +683,25 @@ export function FlashDealStoryViewer({
 
         {/* Bottom content: price + countdown + slots + CTA */}
         <div className="fdeal-viewer-bottom">
-          {/* Countdown */}
+          {/* Countdown — switches between HH:MM:SS for <24h deals and
+              "Xd Yh" for week-long deals (was capped at 99h before). */}
           {!cd.expired && (
             <div className="fdeal-viewer-countdown">
               <span className="fdeal-viewer-countdown-label">DEAL ENDS IN</span>
-              <span className="fdeal-viewer-countdown-time">
-                <span className="fdeal-viewer-countdown-cell">{cd.h}</span>
-                <span className="fdeal-viewer-countdown-colon">:</span>
-                <span className="fdeal-viewer-countdown-cell">{cd.m}</span>
-                <span className="fdeal-viewer-countdown-colon">:</span>
-                <span className="fdeal-viewer-countdown-cell">{cd.s}</span>
-              </span>
+              {cd.mode === "long" ? (
+                <span className="fdeal-viewer-countdown-time">
+                  <span className="fdeal-viewer-countdown-cell">{cd.days}d</span>
+                  <span className="fdeal-viewer-countdown-cell">{cd.hours}h</span>
+                </span>
+              ) : (
+                <span className="fdeal-viewer-countdown-time">
+                  <span className="fdeal-viewer-countdown-cell">{cd.h}</span>
+                  <span className="fdeal-viewer-countdown-colon">:</span>
+                  <span className="fdeal-viewer-countdown-cell">{cd.m}</span>
+                  <span className="fdeal-viewer-countdown-colon">:</span>
+                  <span className="fdeal-viewer-countdown-cell">{cd.s}</span>
+                </span>
+              )}
             </div>
           )}
 
@@ -734,6 +764,17 @@ export function FlashDealStoryViewer({
       </div>
 
       <style jsx global>{`
+        /* When the flash-deal viewer is open, hide every other piece of
+           surrounding chrome so the viewer reads as truly fullscreen.
+           Belt-and-braces in case the z-index lottery doesn't go our way
+           in some browser. */
+        body.fdeal-viewer-open .ig-filter-chip,
+        body.fdeal-viewer-open .ig-bottom-dock,
+        body.fdeal-viewer-open .sb-back-chip,
+        body.fdeal-viewer-open .reel-brand-chrome {
+          display: none !important;
+        }
+
         @keyframes fdealViewerIn {
           from { opacity: 0; transform: scale(0.96); }
           to   { opacity: 1; transform: scale(1); }
