@@ -25,20 +25,48 @@ export async function GET(req: NextRequest) {
   const status = (searchParams.get("status") || "all").toLowerCase();
   const search = (searchParams.get("search") || "").toLowerCase();
 
-  // Fetch influencers + join the user's phone/name from `users` so admin
-  // can identify applicants without a second lookup.
+  // Fetch influencers + side-load the user's phone/name/email via a separate
+  // request. We used to use the PostgREST embedded-resource syntax
+  // (`users:user_id(...)`) but that requires a declared FK on
+  // `influencers.user_id → users.id` which doesn't exist in this schema
+  // (TEXT IDs, no FK constraint). Instead we do influencers + users in
+  // parallel and merge in JS.
   let query =
-    "influencers?select=id,user_id,bio,location,total_followers,interests,bank_name,bank_account_number,ifsc_code,aadhaar_verified,pan_verified,verification_tier,status,total_earnings,created_at,updated_at,users:user_id(phone,name,email)&order=created_at.desc&limit=300";
+    "influencers?select=id,user_id,bio,location,total_followers,interests,bank_name,bank_account_number,ifsc_code,aadhaar_verified,pan_verified,verification_tier,status,total_earnings,created_at,updated_at&order=created_at.desc&limit=300";
   if (ALLOWED_STATUSES.has(status)) {
     query += `&status=eq.${status}`;
   }
 
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/${query}`, { headers: SB_H });
-    if (!res.ok) {
-      return NextResponse.json({ error: await res.text() }, { status: res.status });
+    const infRes = await fetch(`${SB_URL}/rest/v1/${query}`, { headers: SB_H });
+    if (!infRes.ok) {
+      return NextResponse.json({ error: await infRes.text() }, { status: infRes.status });
     }
-    let data = (await res.json()) as any[];
+    const influencers = (await infRes.json()) as any[];
+
+    // Side-load the user rows so admin sees phone/name/email next to each
+    // application. Skip the lookup if there are no rows.
+    const userIds = Array.from(new Set(influencers.map((i) => i.user_id).filter(Boolean)));
+    let userById: Record<string, any> = {};
+    if (userIds.length > 0) {
+      const inList = userIds.map((id) => encodeURIComponent(id)).join(",");
+      const userRes = await fetch(
+        `${SB_URL}/rest/v1/users?id=in.(${inList})&select=id,phone,name,email`,
+        { headers: SB_H }
+      );
+      if (userRes.ok) {
+        const users = (await userRes.json()) as any[];
+        userById = Object.fromEntries(users.map((u) => [u.id, u]));
+      }
+    }
+
+    // Attach the joined user under `users` (same shape the UI was reading
+    // before, so no frontend change needed beyond the error going away).
+    let data = influencers.map((i) => ({
+      ...i,
+      users: userById[i.user_id] || null,
+    }));
+
     if (search) {
       data = data.filter((i) => {
         const phone = i.users?.phone || "";

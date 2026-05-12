@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -229,7 +229,15 @@ export default function HotelDetail() {
   // trip. After every successful bid placement we POST to
   // /api/attribution/record which writes bid_attributions + (when the
   // creator is a registered active influencer) influencer_commissions.
+  //
+  // v96 — additionally honour the `sb_ref` cookie/localStorage set by
+  // /r/[code] (referral link clicks). When a customer reaches a hotel
+  // page via a referral link (Instagram bio, WhatsApp DM, etc.) without
+  // explicit URL params, we resolve the code → fetch the creator's
+  // user_id + handle → build the same `creator` attribution payload.
+  // This is what turns a tracked CLICK into an attributed BOOKING.
   const [attribution, setAttributionState] = useState<Attribution | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   useEffect(() => {
     if (!id) return;
     const fromUrl = attributionFromParams(searchParams);
@@ -239,7 +247,8 @@ export default function HotelDetail() {
     } else {
       // Fall back to any stored attribution for this hotel (e.g. user came
       // from a reel, then refreshed the hotel page) — still counts.
-      setAttributionState(getAttribution(id as string));
+      const stored = getAttribution(id as string);
+      if (stored) setAttributionState(stored);
     }
     // Flash-deal direct-book wins source classification when no creator
     // attribution is present (a deal coming from /flash-deals or the
@@ -249,7 +258,55 @@ export default function HotelDetail() {
       setAttribution(id as string, flashAttr);
       setAttributionState(flashAttr);
     }
+
+    // v96 — read the referral cookie / localStorage and resolve it.
+    // The /r/[code] handler sets BOTH a cookie (30d) and a localStorage
+    // entry — we check both so cleared cookies / cleared storage still
+    // produce attribution as long as one survives.
+    if (!fromUrl && !dealId && typeof window !== "undefined") {
+      const fromLS = (() => { try { return localStorage.getItem("sb_ref") || ""; } catch { return ""; } })();
+      const fromCookie = (() => {
+        const m = (document.cookie || "").match(/(?:^|;\s*)sb_ref=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : "";
+      })();
+      const code = (fromLS || fromCookie || "").trim();
+      if (code) {
+        setReferralCode(code);
+        fetch(`/api/referrals/resolve/${encodeURIComponent(code)}`)
+          .then((r) => r.json())
+          .then((j) => {
+            if (!j?.code || !j?.creator) return;
+            const refAttr: Attribution = {
+              source: "creator",
+              creatorUserId: j.creator.userId || undefined,
+              creatorHandle: j.creator.handle || undefined,
+              creatorType: "CREATOR",
+              videoId: undefined,
+              capturedAt: Date.now(),
+            };
+            setAttribution(id as string, refAttr);
+            setAttributionState(refAttr);
+          })
+          .catch(() => {});
+      }
+    }
   }, [id, searchParams, dealId]);
+
+  // v96 — fire the existing `/api/referrals/attribute` endpoint after every
+  // createBidRequest so the legacy `bid_requests.influencer_id` column also
+  // gets set (some downstream reports / Phase-D triggers depend on it).
+  // Idempotent: the endpoint no-ops when the request is already attributed.
+  const attributeReferral = useCallback(async (requestId: string | undefined) => {
+    if (!requestId || !referralCode) return;
+    try {
+      const token = localStorage.getItem("sb_token");
+      await fetch("/api/referrals/attribute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ requestId, code: referralCode }),
+      });
+    } catch { /* best-effort */ }
+  }, [referralCode]);
 
   // ── Real-time availability (blocked dates across all sources) ─────────────
   const [blockedByRoom, setBlockedByRoom] = useState<Record<string, Set<string>>>({});
@@ -507,6 +564,8 @@ export default function HotelDetail() {
         checkIn: today, checkOut: flashCheckOut,
         guests: flashAdults + flashChildren,
       });
+      // v96 — referral attribution (legacy bid_requests.influencer_id column)
+      attributeReferral(reqRes?.request?.id);
 
       // BUG-FIX 1: always embed actual paid total in the bid message as a
       // structured `paid:X` token. The fallback `placeBid` writes floorPrice
@@ -661,6 +720,7 @@ export default function HotelDetail() {
         amount: parseFloat(bidAmount),
         checkIn, checkOut, guests: bidRoom.capacity || 2,
       });
+      attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({
         hotelId: hotel.id, roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
@@ -794,6 +854,7 @@ export default function HotelDetail() {
 
       // Step 2: Confirm booking in backend
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren });
+      attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
@@ -900,6 +961,7 @@ export default function HotelDetail() {
       const submitAmt = negRoom.floorPrice;
       const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
+      attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
@@ -961,6 +1023,7 @@ export default function HotelDetail() {
       const paymentId = payResult.razorpay_payment_id;
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
+      attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
