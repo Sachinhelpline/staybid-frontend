@@ -1902,3 +1902,405 @@ public/sw.js                                   # CACHE_NAME bumped per release
 - Audio on flash-deal stories with hotel-deterministic default + partner/admin custom upload
 
 ---
+
+## Posts-Feed + Bulletproof-Viewport + Premium-Cozy + Theme-System Era (v80 → v91, May 2026 – May 2026-05-13)
+
+12 versions covering a full arc from "IG-style discover polish" → "tap-to-play modal (wrong approach)" → "dedicated Posts/All-Posts scroll-feed routes" → "viewport bulletproofing (no chrome overlap, CTAs clear dock)" → "premium cozy minimal palette" → "complete light ⇄ dark theme system" → "regression fixes".
+
+**Current production version: v91** (commit `4d38148` on `main`, branch `claude/optimistic-swanson-9df741`)
+
+### v80 — BottomDock everywhere + BackChip + owner-gate
+- BottomDock now visible on EVERY customer-facing page (not just reel surfaces). Self-hides only on `/admin`, `/partner`, `/onboard`, `/auth`.
+- New `<BackChip />` floating top-left back chip on every non-reel customer page (`router.back()` with `/me` fallback).
+- Owner gate on audio-strip change: only `sb_partner_token` OR `sb_admin_token` can upload custom audio.
+
+### v81 — Per-session reel shuffle + system-wide city + cleaner More menu
+- `/api/discover/feed` and `/api/flash/near` add `Cache-Control: no-store` + bucket-shuffle so each refresh feels different.
+- Globe picker → `sb_city` + `sb:city-change` event → `/hotels`, `/flash-deals`, reel feed all subscribe.
+- BackChip shrunk to icon-only 30px circle (was labelled pill).
+
+### v82 — Auto-pause + save wiring + clean mute UI
+- Reel video auto-pauses when StoryViewer opens, document is hidden, or window minimised (uses `Page Visibility API` + `visibilitychange`).
+- Save button on reel cards now writes to `sb_local_saves` and POSTs to `/api/discover/save`.
+- Mute label cleanup — "Volume booster 1.8×" → simple "On / Off".
+
+### v83 — Midnight reset + view-hotel CTA + /me grid from social_posts + tighter rail
+- Flash-deal countdown ring resets at midnight (was full-24h on every render).
+- Tagged hotels on user reels surface a "🏨 At {Hotel} · Explore ›" pill routing to `/hotels/[id]`.
+- `/me` profile grid now pulls posts from BOTH PostsStore + `/api/social/feed?author=<myUserId>` + `/api/influencer/my-videos`, dedup by id.
+- Flash-deal rail tightened — items 60→52px, fewer padding pixels.
+
+### v84 — Bulletproof local-first persistence + premium gold badge + rail split
+- `sb_local_saves` is now the single source of truth on the client. `/saved` page merges local + remote with local taking precedence (fresh snapshots).
+- Saved button gets a premium gold conic-gradient badge when active.
+- Rail split: Reel feed cards no longer touch the flash-deal rail (clean horizontal lanes via flex-shell).
+
+### v85 — Tap-to-play ReelPlayerModal **(superseded in v86)**
+- Built `components/ReelPlayerModal.tsx` — a fullscreen video modal opened when tapping a `/me` grid tile or `/saved` video card.
+- **User feedback:** wrong pattern. IG's profile→Posts and Saved→All-Posts are dedicated SCROLLABLE feed routes, not modals.
+- v85 modal was deleted entirely in v86.
+
+### v86 — IG-style Posts / All-Posts dedicated scroll-feed routes
+- **New shared component:** `components/PostsScrollFeed.tsx`
+  - Sticky top header with `← Title` back arrow
+  - IG-style per-post card: avatar + @handle + 🎵 audio line + (Follow viewer-only) + ⋮; 9:16 media stage with mute toggle; action row (♡ 💬 ↻ ▷ 🔖); caption with bold @handle prefix; optional 🏨 hotel CTA
+  - IntersectionObserver-driven autoplay (most-visible card plays, others pause)
+  - `scrollIntoView` on mount for `?start=<id>` param
+  - Two modes: `owner` (no Follow) and `viewer` (Follow button shown)
+
+- **New routes:**
+  - `app/me/posts/page.tsx` — "Posts" header, owner mode, data from PostsStore + `/api/social/feed?author=<myUserId>` + `/api/influencer/my-videos`
+  - `app/saved/posts/page.tsx` — "All Posts" header, viewer mode, data from `sb_local_saves` + `/api/discover/saves/enriched?type=video`
+
+- **Re-wired:**
+  - `/me` grid tile tap → `router.push('/me/posts?start=<id>')`
+  - `/saved` video card tap → `router.push('/saved/posts?start=<id>')`
+
+- **Hide chrome on `/saved/posts`:** Navbar + ServerStatus + DialerNav + BackChip all hide via `pathname.startsWith("/saved/posts")` (Navbar + ServerStatus + DialerNav already hid `/me/*`).
+
+- **Deleted:** `components/ReelPlayerModal.tsx`
+
+- **v86 hotfix** (`bca0baa`): TypeScript strict mode TS2339 in `PostsScrollFeed.tsx`. The IntersectionObserver callback used `let best: { id; ratio } | null = null` and TS narrowed `best` to `null` inside the forEach closure, so `best.id` at use-site inferred as `never`. `next build` (Vercel's strict pass) caught what `next dev` missed. Fix: tracked `bestId` + `bestRatio` in plain primitive locals (no nullable object wrapper).
+
+### v87 — Bulletproof viewport: no overlap, CTAs clear dock, ALL action buttons functional
+User reported 4 distinct issues across 4 screenshots:
+
+1. **Home page reels — Book Now + Bid CTAs cut off** (clipped behind the fixed BottomDock):
+   `bottom: 20px` of the card = viewport-y-20 = INSIDE the 57px dock zone.
+   Fix: `bottom: "calc(20px + 64px + env(safe-area-inset-bottom, 0px))"` → CTAs land 26px above dock top.
+   Same +64 reserve applied to the right action rail (`bottom: 200 → 264`).
+
+2. **`/discover` reel cards — `STAYBID · REELS` brand overlapping with `@user_fb_ld6` profile chip:**
+   `.reel-brand-chrome` (center-top, z-40) and in-card profile chip (top:14px, z-30) shared the same y-band.
+   Fix: deleted `.reel-brand-chrome` entirely from `app/discover/page.tsx`.
+   In-card profile chip top → `calc(env(safe-area-inset-top, 0px) + 14px)` for notch clearance.
+   `.ig-filter-chip` top → `calc(env(safe-area-inset-top, 0px) + 6px)` for notch clearance.
+
+3. **`/saved/posts` — two back buttons** (floating BackChip + in-page ← All Posts arrow):
+   Fix: Added `pathname.startsWith("/saved/posts")` to BackChip hide list. PostsScrollFeed's in-page arrow is the only back affordance.
+
+4. **`/me/posts` — useless "0 · View insights" + "Boost post" button + dead action buttons (decorative only):**
+   - Removed `.pf-owner-row` (View insights + Boost) from PostsScrollFeed entirely
+   - **Wired ALL 5 action buttons:**
+     - ♡ Like — toggles state + persists `localStorage.sb_post_likes_v1`
+     - 💬 Comments — opens minimal drawer placeholder
+     - ↻ Replay — restarts `video.currentTime = 0`
+     - ▷ Share — `navigator.share()` with `/saved/posts?start=<id>` deep-link, clipboard fallback + toast
+     - 🔖 Save — writes to `sb_local_saves` (same shape /saved reads), `aria-pressed` flips
+   - Added double-tap-to-like with animated heart pulse on media tap
+   - Added toast component for share/save feedback
+
+**Bulletproof viewport guarantees baked in:**
+- Notch / camera punch-hole: every top-positioned absolute element uses `env(safe-area-inset-top)` — iOS Dynamic Island, Samsung punch-hole, Pixel notch all clear
+- Home indicator / gesture bar: every bottom-positioned element uses `env(safe-area-inset-bottom)` — iOS home bar, Android nav buttons
+- PWA fullscreen: `--reel-vh` (visualViewport-driven) + safe-area = bulletproof
+- BottomDock collision: 64px reserve on every reel-card absolute-bottom element; verified mathematically (`y_button + 0 < y_dock_top`)
+- Build safety: `tsc --noEmit` clean before push — no v85→v86 hotfix repeat
+
+### v88 — Premium cozy minimal palette + brand wordmark restored (no overlap)
+User: "premium cozy colors se replace karo, brand name ko dubara lagao"
+
+- **Brand wordmark restored**, premium serif, NO overlap:
+  - `app/discover/page.tsx`: brand at top-LEFT (clears the filter chip at top-RIGHT), Cormorant Garamond italic, pathname-conditional color:
+    - On `/` (over cream Flash Deals rail) → cocoa `#4A3820` (high contrast)
+    - On `/discover` (over dark video) → cream `#FAF5EB` + drop shadow
+  - In-card profile chip top: 14 → 38px so the @handle never sits behind the brand row
+  - `app/reels/page.tsx` mark: monospace stark white → Cormorant italic cream + champagne dot
+  - `components/PostsScrollFeed.tsx`: `.pf-brand` lives opposite the back arrow in the sticky header — small Cormorant italic cocoa with champagne dot
+
+- **Cozy palette CSS variables** (single source of truth) added to `app/globals.css :root`:
+  ```
+  --cozy-cream-50:        #FFFCF6   lightest cream
+  --cozy-cream-100:       #FAF5EB   default page bg
+  --cozy-cream-200:       #F2EAD8   warm card
+  --cozy-taupe:           #E8DCC8   dividers
+  --cozy-warm-dark:       #1F1A0F   text on light + bg on dark
+  --cozy-warm-soft:       #2B2415
+  --cozy-cocoa:           #4A3820   secondary text
+  --cozy-cocoa-soft:      #6E5430   tertiary text
+  --cozy-champagne:       #C9A66B   accent (desaturated)
+  --cozy-champagne-light: #D9BE82
+  --cozy-rose:            #D49583   hearts/likes
+  --cozy-sage:            #9DAD8F
+  ```
+
+- **Surfaces flipped:**
+  - PostsScrollFeed: stark white → cream-50 root + card bg, pure black text → warm-dark, taupe dividers, cocoa body text, audio-strip cocoa-on-cream
+  - InstagramHotelFeed `.ig-cta-bid`: harsh purple/magenta gradient → cozy champagne-on-cocoa-on-warm-dark
+  - InstagramHotelFeed `.ig-filter-chip`: pink+purple → cocoa+warm-dark with champagne border
+  - "YOUR REEL" pill: magenta+purple → champagne+cocoa
+  - BottomDock: cool near-black `rgba(7,6,14,.92)` → warm cocoa `rgba(31,26,15,.94)` + champagne border + champagne-light active state
+  - PostsScrollFeed like-heart: harsh red `#ff3a6a` → cozy-rose `#D49583`
+  - PostsScrollFeed save bookmark active: champagne
+
+### v89 — Cozy everywhere + compact heros + dead chrome removed
+User reported 8 distinct issues:
+
+1. **Brand "stay·bid" Flash Deals ke upar overlap** on `/`:
+   v88 had brand at page-level (top-LEFT) AND `.fdeal-rail-title` "Flash Deals" at top-LEFT of rail header — same y-band.
+   Fix: removed page-level brand on `/` entirely (`pathname !== "/"` gate in app/discover/page.tsx). Brand moved INSIDE rail header on RIGHT (next to "Flash Deals" title on left). Same Cormorant italic pair.
+
+2. **Story avatar ring still bright magenta/purple:**
+   `.ig-avatar` conic from `#f0b429 #ff458d #b964ff` → `#C9A66B #D9BE82 #6E5430` (cozy champagne). Story ring (`.ig-avatar.has-story`) also recoloured.
+
+3. **"You" Follow pill still saturated gold:**
+   `.ig-follow-3d` gradient flipped from `#ffe28a → #f0b429 → #a26b08` → `#E7CFA0 → #D9BE82 → #C9A66B → #9C7E48` (desaturated champagne).
+
+4. **➕ Create FAB rainbow magenta/purple/blue:**
+   Gradient → cozy champagne `#E7CFA0 → #D9BE82 → #C9A66B`. Pulse glow → champagne.
+
+5. **Sound button overlapping "+You" pill on right rail:**
+   v87's +64px shift was overcorrecting — pushing the rail's TOP into the profile chip's right edge.
+   Reverted: rail bottom `calc(200px + 64px + safe) → calc(200px + safe)`. Rail items still clear the dock (lowest at y=440 vs dock at y=583 on 640px viewport) AND clear the profile chip vertically.
+
+6. **Rotating audio disc below More — "kya kaam hai, remove karo":**
+   `<div className="ig-disc">…</div>` DELETED. Was purely decorative; audio still plays via the always-mounted `<audio>` element.
+
+7. **Audio strip text — "iska kya kaam hai, hata do — sirf yahan se, function nahi":**
+   `.ig-audio-strip-btn` block ("Original audio · StayBid Live · tap to change") REMOVED from the card's bottom-left. Audio picker still accessible via right-rail **More menu → Volume booster** section. Default audio playback unaffected.
+
+8. **`/hotels`, `/flash-deals`, `/bid` — dark navy + bulky hero:**
+   - `/hotels`: `lux-bg` dark → cream-100 surface. py-12 → py-4, mb-10 → mb-3, heading clamp 1.9→2.8rem → 1.4→2.0rem. Search slimmer (py-3 → py-2). City chips slimmer (px-5 py-2.5 → px-3 py-1.5).
+   - `/flash-deals`: `.fd-root` dark navy → cream gradient. Hero padding 60→14px top, 28→10px bottom. Title clamp 2.2→3.4 → 1.6→2.4rem. Sub margin 22→10px. Chips slimmer. Live dot magenta → sage green.
+   - `/bid`: `lux-bg` dark → cream. pt-10 → pt-4, mb-8 → mb-3, heading clamp shrunk, sub smaller, eyebrow color → champagne.
+
+### v90 — Complete light ⇄ dark cozy theme system (single toggle)
+User: "Complete project ki UI premium cozy minimal colors. Dark + light mode dedo. Single button se complete UI flip ho jaye. Bulletproof god-level."
+
+**Foundation — CSS variables + provider + toggle:**
+
+- `app/globals.css` — full theme token set in `:root` (light, default) and `[data-theme="dark"]`. Same cozy palette family both modes, only lightness inverted. Single accent (champagne `#C9A66B`) in BOTH for brand consistency.
+  ```
+  --bg-page / --bg-card / --bg-elevated / --bg-input / --bg-pill /
+  --bg-pill-active / --text-base / --text-soft / --text-muted /
+  --text-inverse / --border-soft / --border-strong / --accent /
+  --accent-soft / --link / --shadow-soft / --shadow-card
+  ```
+
+- `lib/theme-store.tsx` — **NEW** `ThemeProvider` + `useTheme()` hook. Persists to `localStorage.sb_theme`, sets `data-theme` attribute on `<html>`, syncs `<meta name="theme-color">` for Android Chrome / iOS PWA chrome, listens for cross-tab `storage` events.
+
+- `components/ThemeToggle.tsx` — **NEW** single button. Two variants:
+  - `pill` — 34px circle, sun/moon glyph, animated rotation (compact)
+  - `lg` — full row with label + pill switch dot animation (for drawer/settings)
+
+- `app/layout.tsx` — `<ThemeProvider>` mounted as the outermost provider. Inline **no-FOUC bootstrap `<script>`** in `<head>` runs BEFORE first paint: reads `sb_theme`, falls back to `prefers-color-scheme`, sets `data-theme` + `meta theme-color`. Zero white flash when opening in dark mode.
+
+- `app/me/page.tsx` — `<ThemeToggle variant="lg" />` row added in the drawer (above Log out).
+
+**Auto-fix for legacy Tailwind classes — god-tier hack:**
+
+Hundreds of existing references use `text-white`, `text-white/50`, `bg-white/10`, `bg-black/40`, `border-white/10`, `text-gold-*`, `text-luxury-*` against the old dark navy surface. After v89's cream switch on `/hotels` `/flash-deals` `/bid`, those references became invisible. Rather than hand-edit each one, `globals.css` now defines scoped overrides:
+
+```css
+.lux-bg .text-white,
+.fd-root .text-white                { color: var(--text-base) !important; }
+.lux-bg .text-white\/50,
+.fd-root .text-white\/50            { color: var(--text-muted) !important; }
+.lux-bg .bg-white\/10,
+.fd-root .bg-white\/10              { background: var(--accent-soft) !important; }
+.lux-bg .border-white\/10           { border-color: var(--border-soft) !important; }
+.lux-bg .text-gold-*                { color: cocoa-soft (light) | champagne-light (dark) }
+.lux-bg .text-luxury-*              { → text-base / text-soft / text-muted }
+.lux-bg .text-emerald-300           { → cozy green #4a6f4a (light) }
+.lux-bg .text-amber-300             { → var(--cozy-champagne) (light) }
+.lux-bg .text-red-300               { → cozy rose #a85b4e (light) }
+.lux-bg .group-hover\:text-gold-600:hover { → var(--accent) }
+```
+
+Now every Tailwind utility inside a `.lux-bg` or `.fd-root` container resolves to the theme's tokens. Light mode → walnut on cream; dark mode → cream on walnut. Same JSX, both modes work.
+
+**Components updated to theme tokens:**
+- `components/Navbar.tsx` — `.nav3d-bar` + `.nav3d-chip` + `.nav3d-chip-active` all read theme tokens. Light = cream-tinted translucent bar with cocoa text + champagne accent. Dark = warm cocoa bar with cream text.
+- `components/BackChip.tsx` — chip bg/color/border/shadow read theme tokens.
+- `components/discover/BottomDock.tsx` — added `[data-theme="light"]` overrides: cream-tinted translucent dock with cocoa active item. Dark mode keeps v88 warm cocoa look. Active item stays champagne in both.
+
+**Pages restored to `.lux-bg` wrapper:**
+- `app/hotels/page.tsx` — restored `.lux-bg` (v89 had stripped it for an inline style). All inline color/border references now use `var(--text-base)` etc.
+- `app/bid/page.tsx` — same.
+- `.lux-bg` + `.lux-glass` utility classes themselves now read theme tokens.
+
+### v91 — Brand-not-hidden, shuffle, dedupe, readable cards
+User reported 4 issues after v90:
+
+1. **"stay·bid brand Flash Deals ke neeche hide ho raha hai abhi bhi"** on `/`:
+   v89 used `justify-content: space-between` putting brand on RIGHT of rail header. The fixed `.ig-filter-chip` (top-right z-41 viewport-pinned) covered the right-aligned brand.
+   Fix: compound label on the LEFT:
+   ```html
+   <span class="fdeal-rail-brandwrap">
+     stay·bid · Flash Deals
+   </span>
+   ```
+   Rail header → `justify-content: flex-start`, `padding-right: 110px` reserves clean space for the filter chip. Brand never crosses x=200, filter starts at x≥260.
+
+2. **Every reel uploaded shows TWICE:**
+   Composer commits to PostsStore (local blob URL) AND async-uploads to Supabase `social_posts`. `/api/social/feed` then returns the same post with `_isSelf=true` → feed concatenated both lists.
+   Fix in `InstagramHotelFeed.tsx`: build `fpUser = Set<${kind}|${caption}>` from userItems; filter propItems to drop `_isSelf` entries matching the fingerprint. Exactly one card per upload.
+
+3. **"Last uploaded reel always first":**
+   Was `return [...userItems, ...propItems]` — userItems always prepended.
+   Fix: `sessionSeed = useMemo(() => Math.random(), [])` rolled once per mount; each userItem `result.splice(insertAt, 0, u)`'d at deterministic-per-session offset:
+   ```
+   offset = (sessionSeed * 997 + i * 313) % result.length
+   insertAt = max(1, min(result.length, offset))   // NEVER index 0
+   ```
+   Same session → stable order (no mid-scroll jitter). Next session → fresh mix.
+
+4. **Light mode invisible text on `/flash-deals` hotel name + price:**
+   v90 auto-fix overrode Tailwind classes (`.text-white`, etc.) but NOT the inline `.fd-*` styles which hardcode `color: #fff` and `color: rgba(255,255,255,*)`.
+   Fix: bulk-replaced in `app/flash-deals/page.tsx`:
+   ```
+   color: #fff                       → var(--text-base)
+   color: rgba(255,255,255,0.85)     → var(--text-soft)
+   color: rgba(255,255,255,0.7)      → var(--text-soft)
+   color: rgba(255,255,255,0.6)      → var(--text-soft)
+   color: rgba(255,255,255,0.45)     → var(--text-muted)
+   color: rgba(255,255,255,0.42/40/35/30) → var(--text-muted)
+   background: rgba(255,255,255,0.08) → var(--accent-soft)
+   ```
+   `.fd-card` + `.fd-drawer` surfaces also now read `--bg-card` + `--border-soft` + `--shadow-*` tokens.
+
+   Also extended globals.css overrides for `emerald-300` (cozy green), `amber-300` (champagne), `red-300` (cozy rose), and `group-hover:text-gold-600` (accent).
+
+### Files added (this era)
+```
+app/me/posts/page.tsx                       # v86 — IG "Posts" view for self
+app/saved/posts/page.tsx                    # v86 — IG "All Posts" view for saved
+components/PostsScrollFeed.tsx              # v86 — shared scrollable feed component
+components/ThemeToggle.tsx                  # v90 — single-button light⇄dark
+lib/theme-store.tsx                         # v90 — ThemeProvider + useTheme hook
+```
+
+### Files modified (this era — major touches)
+```
+app/discover/page.tsx                       # v87/88/89/91 — brand chrome iterations
+app/reels/page.tsx                          # v87/88 — safe-area + brand wordmark
+app/me/page.tsx                             # v86/90 — modal→route navigation, ThemeToggle row
+app/saved/page.tsx                          # v86 — ClickWrap → router.push('/saved/posts')
+app/hotels/page.tsx                         # v89/90 — cream + compact hero, lux-bg restored
+app/flash-deals/page.tsx                    # v89/91 — cream + compact + all #fff → tokens
+app/bid/page.tsx                            # v89/90 — cream + compact hero
+app/layout.tsx                              # v90 — ThemeProvider, no-FOUC script, SB_BUILD bumps
+app/globals.css                             # v88/90/91 — cozy + theme + auto-fix overrides
+
+components/discover/InstagramHotelFeed.tsx  # v87/88/89/91 — viewport, palette, dedup, shuffle
+components/discover/FlashDealStories.tsx    # v89/91 — brand wordmark in rail header
+components/discover/BottomDock.tsx          # v88/90 — cozy + theme-aware variants
+components/discover/CreateFlow.tsx          # postedRef double-fire guard (pre-existing, verified)
+components/Navbar.tsx                       # v90 — theme-aware nav chrome
+components/BackChip.tsx                     # v86/87/90 — hide gates + theme-aware
+components/ServerStatus.tsx                 # v86 — hide on /me + /me/posts + /saved/posts
+components/DialerNav.tsx                    # v86 — hide on /me + posts routes
+
+lib/posts-store.tsx                         # v85+ content fingerprint dedup (pre-existing)
+public/sw.js                                # CACHE_NAME bumped per release
+```
+
+### Files deleted (this era)
+```
+components/ReelPlayerModal.tsx              # v85 modal player — superseded by v86 routes
+```
+
+### New routes added (this era)
+- **`/me/posts?start=<id>`** — IG "Posts" scroll-feed for the current user's own posts
+- **`/saved/posts?start=<id>`** — IG "All Posts" scroll-feed for saved video items
+
+### New localStorage keys (this era)
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `sb_theme` | `"light"` \| `"dark"` | v90 — Active theme |
+| `sb_post_likes_v1` | JSON `{[postId]: true}` | v87 — Like state for PostsScrollFeed cards |
+
+### Service-worker version map (continued)
+- v79 → me-profile-page-more-drawer
+- **v80** → bottom-dock-everywhere-backchip-owner-gate
+- **v81** → per-session-shuffle-system-city-cleaner-more
+- **v82** → auto-pause-save-clean-mute
+- **v83** → midnight-reset-view-hotel-cta-me-grid-from-social-posts
+- **v84** → bulletproof-saves-persistence-premium-gold-badge-rail-split
+- **v85** → reel-player-modal-tap-to-play (interim, superseded)
+- **v86** → ig-posts-scroll-feed-me-saved (+ bca0baa TS2339 hotfix)
+- **v87** → bulletproof-viewport-no-overlap-functional-actions
+- **v88** → premium-cozy-palette-brand-restored
+- **v89** → no-overlap-cozy-everywhere-compact-hero
+- **v90** → theme-system-light-dark-cozy-toggle
+- **v91** → brand-shuffle-dedupe-flashdeals-readable **(current)**
+
+### Vercel cleanup (mid-v86)
+Identified + deleted 4 duplicate/legacy Vercel projects from the team:
+- `staybid-frontend` (legacy duplicate)
+- `staybid-customer` (legacy duplicate)
+- `staybid-frontend-vcdb` (legacy duplicate)
+- `staybid-live-suite` (~6-month-old abandoned)
+
+All 4 shared the `Sachinhelpline/staybid-frontend` repo, none had custom domains, all built on every push and ran cron jobs in parallel. **Before:** 4 sister projects × 2 git refs = 8 builds per push, crons firing 4× per schedule. **After:** only `staybid-customer-frontend` builds — 1 build per push, crons fire once.
+
+Remaining Vercel projects (all functional, all KEEP):
+- `staybid-customer-frontend` (LIVE — staybids.in)
+- `staybid-admin` (admin panel UI)
+- `staybid-hotel-panel` (hotel partner UI)
+- `staybid-agent-panel` (agent panel UI)
+
+### Architecture summary (post-v91)
+
+**Reel-app surfaces (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`):**
+- DialerNav crown wheel **hidden**
+- Customer Navbar **hidden**
+- ServerStatus banner **hidden**
+- BottomDock **shown**
+- Brand wordmark visible:
+  - `/` → inside Flash Deals rail header as compound label (`stay·bid · Flash Deals`)
+  - `/discover` + `/reels` → top-left page-level wordmark (cream over dark video)
+  - `/me/posts` + `/saved/posts` → in sticky page header opposite back arrow
+
+**Other customer pages (`/hotels`, `/flash-deals`, `/bookings`, `/my-bids`, `/wallet`, `/points`, `/profile`, `/upgrade`, `/bid`, etc.):**
+- BackChip **shown** (floating top-left)
+- Customer Navbar **shown** (sticky top)
+- BottomDock **shown** (sticky bottom)
+- Brand visible via the Navbar's `<Link>` wordmark
+
+**Theme:**
+- Single `data-theme="light"|"dark"` attribute on `<html>`
+- All surfaces read CSS variables — no per-component theme branching needed
+- Auto-fix scoped overrides for legacy Tailwind utilities inside `.lux-bg` / `.fd-root`
+- Toggle button in `/me` drawer flips entire UI in 0.22s ease transition
+- Same champagne accent `#C9A66B` in both modes — brand stays consistent
+
+**Bulletproof viewport guarantees (v87 baked in, maintained):**
+- Every absolute top element uses `env(safe-area-inset-top)`
+- Every absolute bottom element uses `env(safe-area-inset-bottom)` + 64px reserve over BottomDock
+- `--reel-vh` (visualViewport-driven) on reel pages
+- PWA `display: fullscreen` + URL-bar collapse trick
+
+**Reel feed item ordering:**
+- API posts (`/api/discover/feed` + `/api/social/feed`) shuffled per-session via `Math.random()` in `loadFeed`
+- Local PostsStore items deduped against API `_isSelf` entries by `<kind>|<caption>` fingerprint
+- Remaining local items interleaved at deterministic-per-session offsets (`sessionSeed`)
+- User's own posts NEVER auto-open first (insertAt ≥ 1 enforced)
+
+### Things to Avoid (v80-v91 Era)
+- **Never** add a separate video player MODAL for tile/card taps — IG pattern is a dedicated SCROLL-FEED route (v85→v86 was a costly relearn).
+- **Never** restore the page-level `.reel-brand-chrome` on `/` — it overlaps the Flash Deals rail title. Brand lives INSIDE the rail header on `/`, at page-level on `/discover` and `/reels`.
+- **Never** put rail header items on `justify-content: space-between` — the top-right will always collide with the fixed `.ig-filter-chip`. Use `flex-start` + `padding-right: 110px`.
+- **Never** prepend userItems to propItems without dedupe — the same post lives in BOTH PostsStore (local) and Supabase `social_posts` (server), and the user will see their reel twice.
+- **Never** put a userItem at `insertAt = 0` — newest-upload-on-top every open. Always `insertAt = max(1, …)`.
+- **Never** hard-code `color: #fff` inside a page's style block — it bypasses the v90 theme auto-fix overrides. Always use `var(--text-base)` / `var(--text-soft)` / `var(--text-muted)`.
+- **Never** ship a `.lux-bg` page without verifying its text-white references in light mode — the auto-fix overrides catch Tailwind utility classes but NOT inline `style={{ color: "#fff" }}` or custom CSS class blocks.
+- **Never** add a button to the right action rail beyond the current 6 (mute/like/comment/share/save/more) — the bottom anchor `200px + safe-area` only clears the dock when the rail height stays around 302px (6 buttons × ~42px + gaps). One more button → rail's TOP starts colliding with the profile chip again (v89 issue #5).
+- **Never** revert the v87 `bottom: 20px → calc(20px + 64px + safe-area)` push on the bottom-left CTA wrap — Book Now / Bid CTAs WILL be clipped behind the BottomDock without it.
+- **Never** route a Composer post directly to addPost twice. The Composer has `postedRef.current` (immediate ref) guard + PostsStore has 5s content-fingerprint dedup. Both layers in place since v84.
+- **Never** rename the cozy palette CSS variables — `lib/theme-store.tsx` reads `--bg-page` etc. by name, and `globals.css` `[data-theme="dark"]` overrides them with EXACT matching names. A rename would break the flip silently.
+- **Never** put a destructive deploy operation in a script without explicit user confirmation — the Vercel project cleanup (mid-v86) was done by the user manually in the dashboard because the MCP exposes only read-only project APIs.
+
+---
+
+## Updated production state (v91, 2026-05-13)
+- **Current version:** v91 · commit `4d38148` on `main` · branch `claude/optimistic-swanson-9df741`
+- **Theme system live:** single toggle in `/me` drawer flips entire UI; persists to `sb_theme`; respects `prefers-color-scheme` on first visit; cross-tab sync via `storage` events
+- **IG Posts / All-Posts routes live:** `/me/posts` (owner) + `/saved/posts` (viewer), all 5 action buttons functional (Like / Comments / Replay / Share / Save)
+- **Bulletproof viewport:** every absolute top/bottom element respects safe-area + 64px dock reserve, verified mathematically on 640px viewport
+- **Brand wordmark visible on every reel surface** without overlapping any other chrome
+- **Cozy palette consistency** — same champagne accent `#C9A66B` in both light + dark modes; warm cream parchment in light, deep walnut + cream text in dark
+- **Feed shuffle bulletproof** — deterministic per session, user's own posts never auto-open first, no duplicate cards from PostsStore↔social_posts merge
+- **Vercel:** only 1 build per push (legacy duplicates deleted)
+
+---
