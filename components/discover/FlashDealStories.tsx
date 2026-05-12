@@ -742,6 +742,24 @@ export function FlashDealStoryViewer({
             <span className="fdeal-viewer-cta-text">⚡ Book Now</span>
             <span className="fdeal-viewer-cta-sub">Instant confirm · 24×7 support</span>
           </button>
+
+          {/* Secondary CTA — opens the full hotel page (gallery, reviews,
+              amenities, room picker) without booking. Same destination as
+              the View Hotel link inside /flash-deals page so the two
+              surfaces stay consistent. */}
+          <button
+            type="button"
+            className="fdeal-viewer-cta-secondary"
+            onClick={() => {
+              onTrackEvent?.("flash_story_view_hotel", { hotelId: deal.hotelId });
+              onClose();
+              if (typeof window !== "undefined") {
+                window.location.href = `/hotels/${deal.hotelId}`;
+              }
+            }}
+          >
+            View hotel details →
+          </button>
         </div>
 
         {/* Tap zones: left 30% = prev, right 30% = next, middle = pause */}
@@ -787,9 +805,14 @@ export function FlashDealStoryViewer({
           100% { transform: scale(1.08) translate(0,0); }
         }
         @keyframes fdealViewerStampSpin {
-          0%   { transform: rotate(-12deg) scale(1); }
-          50%  { transform: rotate(-12deg) scale(1.05); }
-          100% { transform: rotate(-12deg) scale(1); }
+          0%   { transform: rotate(-12deg) scale(1); box-shadow: 0 8px 26px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.45); }
+          40%  { transform: rotate(-10deg) scale(1.10); box-shadow: 0 10px 28px rgba(255,69,141,0.7),  0 0 0 12px rgba(255,69,141,0); }
+          70%  { transform: rotate(-14deg) scale(1.05); box-shadow: 0 10px 28px rgba(255,69,141,0.7),  0 0 0 18px rgba(255,69,141,0); }
+          100% { transform: rotate(-12deg) scale(1);    box-shadow: 0 8px 26px rgba(255,69,141,0.55), 0 0 0 0 rgba(255,69,141,0.45); }
+        }
+        @keyframes fdealViewerStampGlow {
+          0%, 100% { filter: drop-shadow(0 0 6px rgba(255,69,141,0.35)); }
+          50%      { filter: drop-shadow(0 0 14px rgba(255,69,141,0.75)); }
         }
         @keyframes fdealViewerCtaShimmer {
           0%   { background-position: -200% 0; }
@@ -1015,7 +1038,9 @@ export function FlashDealStoryViewer({
           color: #fff;
           border: 3px solid rgba(255,255,255,0.92);
           box-shadow: 0 8px 26px rgba(255,69,141,0.55);
-          animation: fdealViewerStampSpin 3s ease-in-out infinite;
+          animation:
+            fdealViewerStampSpin 1.8s ease-in-out infinite,
+            fdealViewerStampGlow 2.4s ease-in-out infinite;
           font-family: ui-monospace, "SF Mono", Menlo, monospace;
         }
         .fdeal-viewer-stamp-pct {
@@ -1199,6 +1224,25 @@ export function FlashDealStoryViewer({
           color: rgba(10,10,20,0.7);
           letter-spacing: 0.04em;
         }
+        .fdeal-viewer-cta-secondary {
+          display: block;
+          width: 100%;
+          padding: 10px 14px;
+          margin-top: 6px;
+          border-radius: 14px;
+          background: rgba(255,255,255,0.10);
+          border: 1px solid rgba(255,255,255,0.22);
+          color: rgba(255,255,255,0.92);
+          font-size: 0.78rem;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          cursor: pointer;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), background 0.18s ease;
+        }
+        .fdeal-viewer-cta-secondary:active { transform: scale(0.97); }
+        .fdeal-viewer-cta-secondary:hover { background: rgba(255,255,255,0.18); }
 
         .fdeal-viewer-tap-prev,
         .fdeal-viewer-tap-next {

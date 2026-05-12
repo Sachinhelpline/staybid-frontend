@@ -54,13 +54,74 @@ export default function MePage() {
 
   const [tab, setTab] = useState<Tab>("posts");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Remote posts from Supabase social_posts table — user-uploaded reels
+  // live there too (the in-memory PostsStore is just for instant-after-
+  // upload preview). v83 fetches the user's own posts so /me actually
+  // reflects what they've shared.
+  const [remotePosts, setRemotePosts] = useState<any[]>([]);
 
-  // Filter user posts by current tab
+  // Decode current user id from the JWT
+  const myUserId = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const t = localStorage.getItem("sb_token") || "";
+      if (!t) return "";
+      const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return p.id || p.user_id || p.sub || "";
+    } catch { return ""; }
+  }, []);
+
+  useEffect(() => {
+    if (!myUserId) return;
+    // Server returns posts authored by this user from social_posts. We
+    // map them into the same shape as PostsStore so the grid render is
+    // uniform.
+    fetch(`/api/social/feed?author=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.posts) setRemotePosts(d.posts); })
+      .catch(() => {});
+  }, [myUserId]);
+
+  // Merge local (PostsStore) + remote (Supabase). Deduplicate by id so
+  // a freshly-uploaded post that's in both shows up only once.
+  const allPosts = useMemo(() => {
+    const merged: any[] = [];
+    const seen = new Set<string>();
+    // Local first (just-posted feel) — kind: reel/photo/story
+    posts.forEach((p) => {
+      const id = String(p.id);
+      if (!seen.has(id)) { seen.add(id); merged.push(p); }
+    });
+    // Remote second — normalize media_type to local kinds
+    remotePosts.forEach((rp) => {
+      const id = String(rp.id);
+      if (seen.has(id)) return;
+      const kind = String(rp.media_type || "").toLowerCase() === "reel" ? "reel"
+                 : String(rp.media_type || "").toLowerCase() === "story" ? "story"
+                 : "photo";
+      merged.push({
+        id,
+        kind,
+        mediaUrl:   rp.media_url || "",
+        mediaMime:  "",
+        posterUrl:  rp.thumbnail_url || "",
+        caption:    rp.caption || "",
+        tags:       [],
+        audio:      null,
+        createdAt:  new Date(rp.created_at || Date.now()).getTime(),
+        keepAsPost: kind !== "story",
+      });
+      seen.add(id);
+    });
+    return merged;
+  }, [posts, remotePosts]);
+
+  // Filter all posts by current tab
   const visiblePosts = useMemo(() => {
-    if (tab === "posts") return posts.filter((p) => p.kind !== "story" || p.keepAsPost);
-    if (tab === "reels") return posts.filter((p) => p.kind === "reel");
+    if (tab === "posts") return allPosts.filter((p) => p.kind !== "story" || p.keepAsPost);
+    if (tab === "reels") return allPosts.filter((p) => p.kind === "reel");
     return [];
-  }, [posts, tab]);
+  }, [allPosts, tab]);
 
   // Pseudo "followers" count based on user identity — keeps the chip from
   // looking like a fresh-zero account on day one.
@@ -117,7 +178,7 @@ export default function MePage() {
           )}
         </div>
         <div className="me-stats">
-          <Stat label="Posts" value={fmtCount(posts.length)} />
+          <Stat label="Posts" value={fmtCount(allPosts.length)} />
           <Stat label="Followers" value={fmtCount(followersN)} />
           <Stat label="Following" value={fmtCount(followingN)} />
         </div>

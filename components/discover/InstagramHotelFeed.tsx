@@ -1504,7 +1504,7 @@ function Toast({ msg }: { msg: string | null }) {
 const HotelCard = memo(function HotelCard({
   item, active, adjacent, muted, hasInteracted, onMuteToggle,
   onTrackEvent, onBook, onNegotiate, onShare, onOpenComments, onOpenMore, onCopyLink, onOpenEntity, onWatchEntity,
-  hasOwnStories, onOpenStories,
+  hasOwnStories, onOpenStories, initialSaved,
 }: {
   item: Item;
   active: boolean;
@@ -1530,6 +1530,10 @@ const HotelCard = memo(function HotelCard({
       the StoryViewer instead of the popover menu. */
   hasOwnStories?: boolean;
   onOpenStories?: () => void;
+  /** True when the parent's hydrated savedSet contains this item — drives
+      the bookmark-icon initial state so previously-saved reels show
+      bookmarked on re-mount. */
+  initialSaved?: boolean;
 }) {
   const h = item.hotel;
   const router = useRouter();
@@ -1541,7 +1545,7 @@ const HotelCard = memo(function HotelCard({
   const [photoIdx, setPhotoIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(!!initialSaved);
   const [hearts, setHearts] = useState<Heart[]>([]);
   const [showCaption, setShowCaption] = useState(false);
   const [followSparkle, setFollowSparkle] = useState(0);
@@ -2040,8 +2044,11 @@ const HotelCard = memo(function HotelCard({
         )}
       </div>
 
-      {/* Right action rail (Instagram Reels style) */}
-      <div className="absolute right-2.5 z-30 flex flex-col items-center gap-4" style={{ bottom: "180px" }}>
+      {/* Right action rail (Instagram Reels style). v83 tightened:
+          gap-4 → gap-2.5, bottom 180 → 200 so the column doesn't
+          climb high enough to touch the Follow button on the profile
+          chip on small phones. */}
+      <div className="absolute right-2 z-30 flex flex-col items-center gap-2.5" style={{ bottom: "200px" }}>
         {/* Mute toggle (top of rail to avoid top-corner overlap).
             Mutates the video directly inside the click handler so the
             browser autoplay policy treats this as a real user gesture
@@ -2724,6 +2731,33 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+
+  // ── Saved-set hydration ─────────────────────────────────────────────
+  // Fetch the user's existing saves once on mount so the bookmark icon on
+  // each reel reflects PRIOR state (was always defaulting to "not saved",
+  // making the save flow feel like nothing persisted). Stored as a Set
+  // of `${type}:${id}` strings for O(1) lookup. Passed to HotelCard via
+  // prop.
+  const [savedSet, setSavedSet] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tok = localStorage.getItem("sb_token") || "";
+    if (!tok) return; // anon users have nothing to hydrate
+    fetch("/api/discover/saves/enriched", {
+      headers: { Authorization: `Bearer ${tok}` },
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.saves) return;
+        const next = new Set<string>();
+        d.saves.forEach((s: any) => {
+          if (s.target_type && s.target_id) next.add(`${s.target_type}:${s.target_id}`);
+        });
+        setSavedSet(next);
+      })
+      .catch(() => {});
+  }, []);
 
   // ── User-uploaded posts injected at the top of the feed ─────────────────
   // Pulled live from PostsStore so a brand-new upload appears immediately.
@@ -3495,25 +3529,25 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            legibility. Compact like Instagram Reels. */
         .ig-rail-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 1px;
+          gap: 0;
           color: #fff;
-          font-size: 0.58rem; font-weight: 700;
+          font-size: 0.52rem; font-weight: 700;
           text-shadow: 0 1px 3px rgba(0,0,0,0.85);
           transition: transform 0.12s ease;
           background: transparent;
           border: 0;
-          padding: 4px;
+          padding: 2px;
           border-radius: 0;
-          min-width: 36px;
+          min-width: 34px;
           box-shadow: none;
         }
         .ig-rail-btn:active { transform: scale(0.86); }
         .ig-icon {
-          font-size: 1.45rem; line-height: 1;
+          font-size: 1.22rem; line-height: 1;
           filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
-        .ig-rail-count { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em; }
+        .ig-rail-count { font-size: 0.54rem; font-weight: 700; letter-spacing: 0.02em; }
 
         .ig-disc {
           width: 36px; height: 36px; border-radius: 9999px;
@@ -3741,6 +3775,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             onWatchEntity={handleWatchEntity}
             hasOwnStories={activeStories.length > 0}
             onOpenStories={() => setStoryOpen(true)}
+            initialSaved={savedSet.has(`${it.hotel._userPost ? "video" : "hotel"}:${it.hotel.id}`)}
           />
         ))}
         {filteredItems.length === 0 && (

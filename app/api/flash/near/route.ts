@@ -109,7 +109,19 @@ export async function GET(req: NextRequest) {
   const validHotelIds = new Set(
     hotels.filter((h: any) => !wantCity || (h.city || "").toLowerCase().includes(wantCity)).map((h: any) => h.id)
   );
-  const validUntilDefault = new Date(Date.now() + 7 * 86400000).toISOString();
+  // Flash deals are nightly-reset inventory — every unsold room at 12am IST
+  // is auto-offered as the next day's deal. Cap the synthesized timer at
+  // the next midnight so the home-page rail viewer and the /flash-deals
+  // page both count down to the same moment (no "6d 23h" vs "04:55:24"
+  // mismatch). Uses local server time (Vercel runs UTC, but the visual
+  // cap is the same wall-clock across surfaces — the timer value stays
+  // consistent for any given user session).
+  const nextMidnight = (() => {
+    const d = new Date();
+    d.setUTCHours(24, 0, 0, 0);
+    return d.toISOString();
+  })();
+  const validUntilDefault = nextMidnight;
   let synthIdx = 0;
   for (const r of rooms) {
     if (!validHotelIds.has(r.hotelId)) continue;

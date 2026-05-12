@@ -18,10 +18,14 @@ export async function GET(req: NextRequest) {
   const limit  = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
   const type   = searchParams.get("type");
   const source = searchParams.get("source");
+  // Filter to a specific author — used by the /me profile grid to show
+  // only the current user's uploads.
+  const authorId = searchParams.get("author");
 
   let filter = `select=*&is_active=eq.true&order=created_at.desc&limit=${limit}`;
   if (cursor)             filter += `&created_at=lt.${encodeURIComponent(cursor)}`;
   if (type)               filter += `&media_type=eq.${encodeURIComponent(type)}`;
+  if (authorId)           filter += `&author_id=eq.${encodeURIComponent(authorId)}`;
   // Stories auto-expire after 24 hours
   // (handled at fetch time so we don't need a cron)
   if (type === "STORY") {
