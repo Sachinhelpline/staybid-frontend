@@ -861,35 +861,39 @@ function FdStyles() {
       .fd-img-bottom {
         position: absolute; bottom: 12px; left: 12px; z-index: 2;
       }
+      /* v92 — fd-loc + fd-ring-wrap sit OVER the image (always dark bg
+         visually), so their text needs a FIXED bright color, NOT the
+         theme-token walnut. In light mode they were rendering walnut-on-
+         dark = invisible (user SS2 — "ENDS 22:18:33" hidden). */
       .fd-loc {
         display: inline-flex; align-items: center; gap: 6px;
-        background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+        background: rgba(15, 12, 8, 0.62); backdrop-filter: blur(6px);
         padding: 5px 10px; border-radius: 999px;
         font-size: 0.65rem; font-weight: 600;
-        color: var(--text-soft);
-        border: 1px solid rgba(255,255,255,0.08);
+        color: #F5EFE0;
+        border: 1px solid rgba(217, 190, 130, 0.20);
       }
-      .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: #f0b429; }
+      .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #C9A66B); }
 
       .fd-ring-wrap {
         position: absolute; bottom: 10px; right: 12px; z-index: 2;
         display: flex; align-items: center; gap: 8px;
-        background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+        background: rgba(15, 12, 8, 0.60); backdrop-filter: blur(8px);
         border-radius: 999px;
         padding: 4px 12px 4px 4px;
-        border: 1px solid rgba(255,255,255,0.08);
+        border: 1px solid rgba(217, 190, 130, 0.20);
       }
       .fd-ring-time {
         display: flex; flex-direction: column; line-height: 1;
         font-family: 'Menlo', 'Consolas', monospace;
-        color: var(--text-base);
+        color: #F5EFE0;
       }
       .fd-ring-time > span:first-child { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
-      .fd-ring-time > span:first-child.urgent { color: #ff7088; animation: fdBlink 1.2s infinite; }
+      .fd-ring-time > span:first-child.urgent { color: #ff9aaa; animation: fdBlink 1.2s infinite; }
       .fd-ring-sep { animation: fdBlink 1s infinite; }
       .fd-ring-lbl {
         font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
-        color: var(--text-muted); text-transform: uppercase;
+        color: rgba(245, 239, 224, 0.72); text-transform: uppercase;
         margin-top: 2px;
       }
       @keyframes fdBlink {
@@ -908,9 +912,12 @@ function FdStyles() {
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         max-width: 70%;
       }
-      .fd-stars { color: #f0b429; font-size: 0.65rem; letter-spacing: 0.05em; }
+      /* v92 — Star + room type + slots use theme accent (champagne) so
+         they read on both cream + cocoa surfaces. The bright #f0b429
+         original gold disappeared on cream. */
+      .fd-stars { color: var(--accent, #C9A66B); font-size: 0.65rem; letter-spacing: 0.05em; }
       .fd-rt-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 12px; }
-      .fd-room-type { color: rgba(240,180,41,0.85); font-size: 0.7rem; font-weight: 600; }
+      .fd-room-type { color: var(--accent, #C9A66B); font-size: 0.7rem; font-weight: 700; }
       .fd-room-cap { color: var(--text-muted); font-size: 0.65rem; }
 
       .fd-slots { margin-bottom: 12px; }
@@ -918,24 +925,25 @@ function FdStyles() {
         display: flex; justify-content: space-between; align-items: center;
         margin-bottom: 6px; font-size: 0.65rem; font-weight: 600;
       }
-      .fd-slots-left { color: #f0b429; }
-      .fd-slots-left.urgent { color: #ff7088; }
+      .fd-slots-left { color: var(--accent, #C9A66B); }
+      .fd-slots-left.urgent { color: #c87878; }
       .fd-slots-of { color: var(--text-muted); }
+      /* v92 — Slots bar theme-aware (was nearly invisible white-alpha on cream) */
       .fd-slots-bar {
         position: relative; height: 5px;
-        background: rgba(255,255,255,0.07); border-radius: 999px; overflow: hidden;
+        background: var(--border-soft); border-radius: 999px; overflow: hidden;
       }
       .fd-slots-fill {
         height: 100%; border-radius: 999px;
-        background: linear-gradient(90deg, #f0b429, #f0d060);
+        background: linear-gradient(90deg, var(--cozy-champagne, #C9A66B), var(--cozy-champagne-light, #D9BE82));
         transition: width 0.8s ease;
       }
       .fd-slots-fill.urgent {
-        background: linear-gradient(90deg, #ff3859, #ff7088);
+        background: linear-gradient(90deg, #c87878, #d49583);
       }
       .fd-slots-shimmer {
         position: absolute; inset: 0;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255, 246, 226, 0.35), transparent);
         background-size: 200% 100%;
         animation: fdShimmerBar 2.4s linear infinite;
       }
@@ -944,10 +952,10 @@ function FdStyles() {
         100% { background-position: -200% 0; }
       }
 
-      /* Upgrade chips */
+      /* Upgrade chips wrapper — v92 theme-aware */
       .fd-up-wrap {
-        background: rgba(255,255,255,0.025);
-        border: 1px solid rgba(255,255,255,0.06);
+        background: var(--accent-soft);
+        border: 1px solid var(--border-soft);
         border-radius: 12px;
         padding: 10px 12px;
         margin-bottom: 14px;
@@ -955,7 +963,7 @@ function FdStyles() {
       .fd-up-label {
         display: flex; justify-content: space-between; align-items: center;
         font-size: 0.66rem; font-weight: 600;
-        color: rgba(240,180,41,0.85);
+        color: var(--accent);
         margin-bottom: 8px;
       }
       .fd-up-count { color: var(--text-muted); font-size: 0.6rem; font-weight: 500; }
@@ -964,36 +972,40 @@ function FdStyles() {
         scrollbar-width: none;
       }
       .fd-up-chips::-webkit-scrollbar { display: none; }
+      /* v92 — Upgrade chips theme-aware. Was rgba(0,0,0,0.25) bg which
+         became a dark blob on the cream card surface (user SS2). Now
+         uses --bg-pill (cream in light, warm cocoa in dark) + theme
+         border + theme text. Active state stays champagne in both. */
       .fd-up-chip {
         flex-shrink: 0;
         display: flex; flex-direction: column; align-items: flex-start;
         padding: 6px 10px;
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: var(--bg-pill);
+        border: 1px solid var(--border-soft);
         border-radius: 10px;
         cursor: pointer;
         transition: all 0.2s ease;
         text-align: left;
       }
-      .fd-up-chip:hover { border-color: rgba(240,180,41,0.4); transform: translateY(-1px); }
+      .fd-up-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
       .fd-up-chip.active {
-        background: linear-gradient(135deg, rgba(240,180,41,0.2), rgba(240,180,41,0.08));
-        border-color: rgba(240,180,41,0.7);
-        box-shadow: inset 0 0 0 1px rgba(240,180,41,0.2);
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent-soft);
       }
-      .fd-up-chip.soldout { opacity: 0.4; cursor: not-allowed; }
+      .fd-up-chip.soldout { opacity: 0.45; cursor: not-allowed; }
       .fd-up-chip-type { font-size: 0.66rem; font-weight: 600; color: var(--text-base); line-height: 1.1; }
       .fd-up-chip-delta {
         font-size: 0.6rem; font-weight: 700;
-        color: rgba(240,180,41,0.85); margin-top: 2px;
+        color: var(--accent); margin-top: 2px;
       }
-      .fd-up-chip.soldout .fd-up-chip-delta { color: #ff7088; }
+      .fd-up-chip.soldout .fd-up-chip-delta { color: #c87878; }
 
-      /* Price + CTA */
+      /* Price + CTA — v92 theme-aware divider */
       .fd-price-row {
         display: flex; align-items: flex-end; justify-content: space-between;
         padding-top: 14px;
-        border-top: 1px solid rgba(255,255,255,0.07);
+        border-top: 1px solid var(--border-soft);
       }
       .fd-price-strike {
         color: var(--text-muted); font-size: 0.7rem;
@@ -1024,18 +1036,18 @@ function FdStyles() {
         cursor: not-allowed; box-shadow: none;
       }
 
-      /* Skeleton */
+      /* v92 — Skeleton uses taupe shimmer so it's visible on cream cards too */
       .fd-card-skel { cursor: default; pointer-events: none; }
       .fd-card-skel:hover { transform: none; }
       .fd-skel-img {
         height: 200px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+        background: linear-gradient(90deg, var(--border-soft), var(--accent-soft), var(--border-soft));
         background-size: 200% 100%;
         animation: fdSkel 1.6s linear infinite;
       }
       .fd-skel-line {
         height: 10px; border-radius: 4px; margin: 8px 0;
-        background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+        background: linear-gradient(90deg, var(--border-soft), var(--accent-soft), var(--border-soft));
         background-size: 200% 100%;
         animation: fdSkel 1.6s linear infinite;
       }
@@ -1049,8 +1061,8 @@ function FdStyles() {
       .fd-empty { text-align: center; padding: 80px 20px; }
       .fd-empty-icon {
         width: 72px; height: 72px; border-radius: 50%;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: var(--accent-soft);
+        border: 1px solid var(--border-soft);
         display: flex; align-items: center; justify-content: center;
         margin: 0 auto 18px;
         font-size: 1.6rem;
@@ -1100,16 +1112,17 @@ function FdStyles() {
         from { transform: translateY(100%); }
         to   { transform: translateY(0); }
       }
+      /* v92 — Drawer close sits over the dark image, so cream text + dark bg */
       .fd-drawer-x {
         position: absolute; top: 14px; right: 14px; z-index: 3;
         width: 36px; height: 36px; border-radius: 50%;
-        background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
-        border: 1px solid rgba(255,255,255,0.1);
-        color: var(--text-base); font-size: 1rem; cursor: pointer;
+        background: rgba(15, 12, 8, 0.62); backdrop-filter: blur(6px);
+        border: 1px solid rgba(217, 190, 130, 0.22);
+        color: #F5EFE0; font-size: 1rem; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: all 0.2s ease;
       }
-      .fd-drawer-x:hover { background: rgba(255,255,255,0.15); transform: rotate(90deg); }
+      .fd-drawer-x:hover { background: rgba(15, 12, 8, 0.85); transform: rotate(90deg); }
       .fd-drawer-img {
         position: relative; height: 220px;
       }
@@ -1130,13 +1143,14 @@ function FdStyles() {
         color: #ff7088; font-size: 0.6rem; font-weight: 700;
         letter-spacing: 0.18em; margin-bottom: 6px;
       }
+      /* v92 — Drawer header lies on top of the dark image — fix cream */
       .fd-drawer-img-head h2 {
         font-family: 'Cormorant Garamond', 'Syne', serif;
         font-weight: 400; font-size: 1.6rem; margin: 0;
-        color: var(--text-base);
+        color: #F5EFE0;
       }
       .fd-drawer-img-head p {
-        color: var(--text-soft); font-size: 0.78rem;
+        color: rgba(245, 239, 224, 0.78); font-size: 0.78rem;
         margin: 4px 0 0;
       }
 
@@ -1144,9 +1158,10 @@ function FdStyles() {
         flex: 1; overflow-y: auto;
         padding: 22px 22px 100px;
       }
+      /* v92 — Drawer body theme-aware (lives in card bg, not over image) */
       .fd-drawer-section-title {
         font-size: 0.65rem; font-weight: 700;
-        color: rgba(240,180,41,0.85);
+        color: var(--accent);
         letter-spacing: 0.18em; text-transform: uppercase;
         margin-bottom: 12px;
       }
@@ -1154,17 +1169,17 @@ function FdStyles() {
       .fd-drawer-room {
         display: flex; align-items: center; justify-content: space-between;
         padding: 14px 16px;
-        background: rgba(255,255,255,0.025);
-        border: 1px solid rgba(255,255,255,0.07);
+        background: var(--bg-pill);
+        border: 1px solid var(--border-soft);
         border-radius: 14px;
         cursor: pointer; text-align: left;
         transition: all 0.22s ease;
       }
-      .fd-drawer-room:hover { border-color: rgba(240,180,41,0.4); transform: translateY(-1px); }
+      .fd-drawer-room:hover { border-color: var(--accent); transform: translateY(-1px); }
       .fd-drawer-room.active {
-        background: linear-gradient(135deg, rgba(240,180,41,0.16), rgba(240,180,41,0.06));
-        border-color: rgba(240,180,41,0.7);
-        box-shadow: 0 0 0 1px rgba(240,180,41,0.25), 0 8px 20px rgba(240,180,41,0.18);
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent-soft), 0 8px 20px rgba(201, 166, 107, 0.18);
       }
       .fd-drawer-room.soldout { opacity: 0.5; cursor: not-allowed; }
       .fd-drawer-room-left { flex: 1; min-width: 0; }
@@ -1187,17 +1202,17 @@ function FdStyles() {
         letter-spacing: 0.06em;
       }
       .fd-pill.gold {
-        background: linear-gradient(135deg, #f0d060, #f0b429);
-        color: #0a0814;
+        background: linear-gradient(135deg, var(--cozy-champagne-light, #D9BE82), var(--cozy-champagne, #C9A66B));
+        color: var(--text-inverse);
       }
       .fd-pill.red {
-        background: rgba(255,56,89,0.15); color: #ff7088;
+        background: rgba(212, 149, 131, 0.18); color: #c87878;
       }
       .fd-drawer-empty {
         padding: 14px; text-align: center;
         color: var(--text-muted); font-size: 0.78rem;
-        background: rgba(255,255,255,0.025);
-        border: 1px dashed rgba(255,255,255,0.08);
+        background: var(--bg-pill);
+        border: 1px dashed var(--border-soft);
         border-radius: 14px;
       }
 
@@ -1208,7 +1223,8 @@ function FdStyles() {
       .fd-drawer-rules li {
         display: flex; align-items: flex-start; gap: 12px;
         padding: 10px 14px;
-        background: rgba(255,255,255,0.025);
+        background: var(--bg-pill);
+        border: 1px solid var(--border-soft);
         border-radius: 12px;
         color: var(--text-soft); font-size: 0.78rem; line-height: 1.4;
       }
@@ -1216,11 +1232,14 @@ function FdStyles() {
         font-size: 1rem; line-height: 1.1; flex-shrink: 0;
       }
 
+      /* v92 — CTA wrapper sits at bottom of the drawer card. Use theme
+         gradient that fades from transparent card bg into solid card bg
+         so it reads on cream AND cocoa. */
       .fd-drawer-cta-wrap {
         position: absolute; left: 0; right: 0; bottom: 0;
         padding: 14px 22px;
-        background: linear-gradient(180deg, rgba(10,8,20,0) 0%, rgba(10,8,20,0.85) 25%, rgba(10,8,20,1) 100%);
-        border-top: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(180deg, transparent 0%, var(--bg-card) 35%, var(--bg-card) 100%);
+        border-top: 1px solid var(--border-soft);
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
       }
       .fd-drawer-cta-info { flex-shrink: 0; }
