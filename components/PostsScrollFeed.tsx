@@ -82,17 +82,21 @@ export function PostsScrollFeed({
     if (!cards || cards.length === 0) return;
     const io = new IntersectionObserver(
       (entries) => {
-        // Pick the most-intersecting card.
-        let best: { id: string; ratio: number } | null = null;
+        // Pick the most-intersecting card. TS narrows `best` to `null`
+        // inside the forEach closure when we initialise to null, so we
+        // track id + ratio in plain locals instead.
+        let bestId = "";
+        let bestRatio = -1;
         entries.forEach((e) => {
           if (!e.isIntersecting) return;
           const id = (e.target as HTMLElement).dataset.pfId || "";
           if (!id) return;
-          if (!best || e.intersectionRatio > best.ratio) {
-            best = { id, ratio: e.intersectionRatio };
+          if (e.intersectionRatio > bestRatio) {
+            bestRatio = e.intersectionRatio;
+            bestId = id;
           }
         });
-        if (best) setActiveId(best.id);
+        if (bestId) setActiveId(bestId);
       },
       { threshold: [0.25, 0.55, 0.75] }
     );
