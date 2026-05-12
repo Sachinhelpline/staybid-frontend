@@ -2696,3 +2696,171 @@ components/admin/sidebar.tsx                     # +Commission Rules entry
 - **Default seeded**: platform-default row written by migration. If migration not yet applied, the compute path falls back to `DEFAULT_RULE` from `lib/commission.ts` (same values).
 
 ---
+
+## Live Referrals + Admin Status Era (v96 → v97, 2026-05-13)
+
+Two follow-up patches landing back-to-back. v96 makes the long-broken referral pipeline actually pay out (the infrastructure was there since Session 3 but nobody had wired the cookie into booking attribution). v97 calms the admin dashboard's alarming "OFFLINE" chip — the dashboard was never actually offline, only its Socket.io push channel was.
+
+### v96 — Three fixes shipped together (`commit 4d3ee68`)
+
+#### Fix 1 — Admin → Creators page crashed with PostgREST FK error
+**Symptom:** opening `/admin/creators` showed `PGRST200: Searched for a foreign key relationship between 'influencers' and 'user_id' in the schema 'public', but no matches were found.`
+
+**Root cause:** The `/api/admin/creators` GET used the PostgREST embedded-resource syntax `users:user_id(phone,name,email)` to inline-join the user record onto each influencer row. That syntax requires a declared FK on `influencers.user_id → users.id` in Postgres — but this codebase has **no FK constraints** anywhere (TEXT IDs / CUIDs, additive migrations only). So PostgREST flat-out refused the query and returned the cached schema error.
+
+**Fix:** [app/api/admin/creators/route.ts](app/api/admin/creators/route.ts) replaces the embed with two parallel REST calls:
+```ts
+const influencers = await fetch(`influencers?select=...&order=...&limit=300`).then(r => r.json());
+const userIds = Array.from(new Set(influencers.map(i => i.user_id).filter(Boolean)));
+const users = userIds.length
+  ? await fetch(`users?id=in.(${userIds.join(",")})&select=id,phone,name,email`).then(r => r.json())
+  : [];
+const userById = Object.fromEntries(users.map(u => [u.id, u]));
+const data = influencers.map(i => ({ ...i, users: userById[i.user_id] || null }));
+```
+The UI was already reading `i.users?.phone` etc. — kept the merged shape so zero frontend change was needed.
+
+#### Fix 2 — Referral cookie → booking attribution wired end-to-end
+**The dormant infrastructure:** Session 3 (April 2026) shipped `/r/[code]` redirect + `influencer_referral_codes` + `referral_events` tables + `/api/referrals/track` + `/api/referrals/attribute`. The `/r/[code]` page already set `sb_ref` cookie (30d) + localStorage. Clicks DID get tracked.
+
+**The missing link:** Nobody on the hotel page ever READ that cookie. The v94 attribution flow only captured URL params (`?src=creator&cid=...`). Result: every Instagram-bio / WhatsApp-link click incremented `clicks_count` but the eventual booking went through as `source: "direct"` — no commission, no creator credit, no top-creators leaderboard entry.
+
+**Fix:**
+
+1. **[app/api/referrals/resolve/[code]/route.ts](app/api/referrals/resolve/[code]/route.ts)** now returns `{ creator: { id, userId, handle } }` alongside `{ code, target }`. Side-loads `influencers` by id + falls back to `users.name` when `display_name` is null. This is the data the hotel page needs to build a full `Attribution` payload.
+
+2. **[app/hotels/[id]/page.tsx](app/hotels/[id]/page.tsx)** mount effect now has a fourth attribution path (after URL params, stored localStorage, and `dealId → flash`):
+   - If none of those hit, read `sb_ref` from `localStorage` OR `document.cookie`
+   - POST to `/api/referrals/resolve/<code>` → get `creator.{userId, handle}`
+   - Build `Attribution { source: "creator", creatorUserId, creatorHandle, creatorType: "CREATOR" }`
+   - Persist via `setAttribution(hotelId, attr)` and `setAttributionState(attr)`
+   - Subsequent booking handler reads `attribution` state → records via `recordAttribution()`
+
+3. **All 5 bid handlers** (`handleFlashBook`, `handleBid`, `executeBookNow`, `executeNegotiate` above-floor, below-floor branch) also fire `/api/referrals/attribute` right after `createBidRequest`. That endpoint patches `bid_requests.influencer_id` — the legacy v93 attribution column that some downstream Phase-D triggers + reports still read. Belt-and-braces.
+
+**The `attributeReferral` wrapper** lives in the same useEffect block as the attribution state and is a useCallback:
+```ts
+const attributeReferral = useCallback(async (requestId: string | undefined) => {
+  if (!requestId || !referralCode) return;
+  await fetch("/api/referrals/attribute", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ requestId, code: referralCode }),
+  });
+}, [referralCode]);
+```
+
+#### Fix 3 — Rich share row on `/influencer/referrals`
+Old version had ONE "Copy Link" button per code. Creators kept asking how to share to Instagram / WhatsApp. v96 rewrites the page with 6 share options per code:
+
+| Button | Action |
+|---|---|
+| 📲 **Share** (native) | `navigator.share()` — opens phone's share sheet (IG / WhatsApp / Mail / Messages). Hidden on desktop. |
+| 💬 **WhatsApp** | `wa.me/?text=...` — pre-filled with `"🏨 Booked an incredible stay through StayBid… Try it with my link: <url>"` |
+| 📸 **Instagram** | Copies a ready-to-paste IG caption (link + `#StayBid #travel #hotels`). IG has no outbound share API — caption-copy is the IG-approved pattern. |
+| ✈️ **Telegram** | `t.me/share/url?url=...&text=...` |
+| 𝕏 **Twitter** | `twitter.com/intent/tweet?text=...` |
+| 🔗 **Copy link** | Raw URL to clipboard |
+
+Plus a floating toast on every success ("Link copied ✓", "Caption copied — paste in your Instagram post") and a "How to share" guide below the codes list explaining each button.
+
+Native share button uses `useMemo` to only render when `navigator.share` exists — desktop browsers skip it cleanly.
+
+### v97 — Admin dashboard "OFFLINE" was misleading (`commit 2744c2e`)
+
+**User screenshot showed:** `/admin` dashboard fully rendered, KPI cards showing real numbers (13 users, 0 bookings) — but with a red 🔴 OFFLINE chip top-right that made the whole panel look broken.
+
+**Root cause:** Admin dashboard opens a Socket.io WebSocket to the Railway backend (`staybid-live-production.up.railway.app`) for real-time bid push. Railway free-tier cold-sleeps after ~30s of inactivity. First request wakes it up but the WebSocket connection still fails the initial attempt → `connect_error` fires → chip flips to red OFFLINE. The chip had NO reconnection logic, so it stayed red forever even when Railway warmed up. Meanwhile the REST polling (every 30s) was successfully refreshing all the data.
+
+**Fix in [app/admin/page.tsx](app/admin/page.tsx):**
+
+1. **3 honest states instead of 2:**
+   - 🟢 `live` — Socket.io connected (real-time push working)
+   - 🟡 `polling` — Socket.io disconnected, REST polling still refreshing data
+   - 🟡 `connecting` — first ~5s after mount
+   - **NO MORE RED `offline`** — the dashboard is never truly offline as long as REST works
+
+2. **Socket.io reconnection enabled:**
+   ```ts
+   io(RAILWAY, {
+     transports: ["websocket", "polling"],
+     timeout: 5000,
+     reconnection: true,
+     reconnectionAttempts: 10,
+     reconnectionDelay: 3000,
+     reconnectionDelayMax: 8000,
+   });
+   ```
+   Plus a `reconnect` handler that flips status back to `live` once it reconnects.
+
+3. **Hover tooltip on the chip:** Each state has a `title=` explaining exactly what's happening:
+   - `live` → "Socket.io connected — push updates active. Data also refreshes every 30s."
+   - `polling` → "Socket.io disconnected (backend cold-start or temporary). Dashboard data still refreshes every 30s via REST — everything you see is fresh."
+
+4. **Manual ↻ Refresh button** next to the chip. Admin can force-refetch without waiting for the 30s tick.
+
+5. **Last-refreshed timestamp** appended to the polling chip (`POLLING · 30s · refreshed 12s ago`) so admin always knows data freshness.
+
+### Files added (this era)
+*(none — only modifications to existing files)*
+
+### Files modified (this era)
+```
+app/api/admin/creators/route.ts            # v96: manual users-by-id side-load instead of FK embed
+app/api/referrals/resolve/[code]/route.ts  # v96: returns creator { id, userId, handle }
+app/hotels/[id]/page.tsx                   # v96: read sb_ref cookie/LS → resolve → build Attribution
+                                           #      + attributeReferral() called in all 5 bid handlers
+app/influencer/referrals/page.tsx          # v96: rich share row (6 buttons + How-to-share guide + toast)
+app/admin/page.tsx                         # v97: POLLING state + reconnection + tooltip + Refresh button
+app/layout.tsx                             # SB_BUILD v96 → v97 + badge v97
+```
+
+### Vercel deployment status (verified 2026-05-13)
+| Project | URL | Last deploy | Repo | This era's changes? |
+|---|---|---|---|---|
+| **staybid-customer-frontend** | `staybids.in` | v97 (today) | `Sachinhelpline/staybid-frontend` | ✅ ALL changes live |
+| staybid-admin | `staybid-admin.vercel.app` | April 2026 (1 deploy) | `Sachinhelpline/staybid-admin` | ❌ Legacy abandoned panel |
+| staybid-hotel-panel | `staybid-hotel-panel.vercel.app` | April 2026 (1 deploy) | `Sachinhelpline/staybid-hotel-panel` | ❌ Legacy abandoned panel |
+| staybid-agent-panel | `staybid-agent-panel.vercel.app` | April 2026 | `Sachinhelpline/staybid-agent-panel` | ❌ Separate repo |
+
+**Important architectural reality:** Despite the existence of those 3 legacy Vercel projects, the REAL admin + hotel-partner panels live INSIDE the `staybid-frontend` repo at `staybids.in/admin/*` and `staybids.in/partner/*`. All v94 → v97 changes are deployed there. The 3 legacy projects haven't been touched since April and shouldn't be confused for the active surfaces.
+
+Railway backend (`staybid-live-production.up.railway.app`, repo `Sachinhelpline/staybid-Live`) was NOT touched in v94 → v97. All attribution / commission / referral flows go through Next.js API routes that hit Supabase REST directly — no backend changes required.
+
+### Verified end-to-end (preview server)
+- ✅ `/api/admin/creators` returns 200 with manual user join (no PGRST200) — phone + name + email populated per row.
+- ✅ Click `/r/v96test` → `clicks_count` bumps from 0 to 1.
+- ✅ `/api/referrals/resolve/v96test` returns `{ creator: { id, userId: "v96-test-user", handle: "v96 ShareTest" } }`.
+- ✅ Hotel page on mount reads `sb_ref` → builds creator Attribution → records `bid_attributions` row with `source: "creator"`, `totalPct: 5%`, `commissionAmount: ₹125` on `paidTotal: ₹2500` booking (correct: 2500 × 0.05).
+- ✅ Native share button (`navigator.share`) gated on `useMemo` — hidden on desktop, shown on mobile.
+- ✅ Admin dashboard `/api/admin/dashboard` returns 200 with real KPI keys (`gmv`, `activeBookings`, `totalBookings`, `revenue`, `pendingVerif`, `fraud`).
+- ✅ Live verification on `staybids.in/admin/login` returned "StayBid Admin — God-mode control panel" with the v96/v97 badge.
+
+### Things to Avoid (v96 → v97)
+- **Never** restore the PostgREST embed `users:user_id(...)` join. There is no FK in this schema and PostgREST silently caches the failure for the schema lifetime — even after the FK is added, the cache may serve stale errors until `NOTIFY pgrst, 'reload schema'` fires. Manual `users?id=in.(...)` side-load is the canonical pattern across this codebase.
+- **Never** add a 30-day TTL on the `sb_ref` cookie shorter than the click-to-book funnel. Customers DO take 2-3 weeks to convert a creator's reel into a booking. 30 days is the floor — shorter and you'll start losing real commissions.
+- **Never** assume `display_name` exists on every influencer. Many older `influencers` rows have NULL `display_name` because they came from the Phase A/B era before display names were added. Always fall back to `users.name` via a second lookup (the v96 resolve route does this).
+- **Never** rip the legacy `/api/referrals/attribute` call out of the bid handlers because "we have `/api/attribution/record` now." Two separate write paths intentionally write to two separate columns (`bid_requests.influencer_id` vs `bid_attributions.creator_id`). Older Phase-D triggers + admin revenue reports STILL read from `bid_requests.influencer_id` — removing the parallel write breaks them silently.
+- **Never** name the Socket.io disconnected state "OFFLINE" again. The dashboard is online; only the push channel is paused. The word "OFFLINE" makes founders panic and screenshot you on WhatsApp. Use "POLLING" + a tooltip + the manual Refresh button instead.
+- **Never** drop the `reconnection: true` options on the Socket.io client. Default is `true` in Socket.io v4 but explicit > implicit — and the `reconnectionDelay`/`reconnectionDelayMax` tuning is matched to Railway's typical ~30s cold-start window.
+- **Never** call `navigator.share()` outside a user-gesture handler. iOS Safari throws `NotAllowedError` if you try to trigger it programmatically. The current code is fine (it's inside an `onClick`), but if you ever proxy through a useEffect or setTimeout, it breaks silently.
+- **Never** put the Instagram caption template in a tweet/Telegram URL — IG's algorithm penalizes posts with too many hashtags from outside its native composer. The Instagram button COPIES to clipboard; the Twitter button uses Twitter's `intent` URL. Don't cross-wire them.
+- **Never** strip the `useMemo`-gated native-share button on desktop. Desktop Chrome partially supports `navigator.share` (Windows 10+) but the UX is broken there (opens a "More options" menu with no real share targets). The capability check is intentional — fallback is the explicit WhatsApp / Telegram / X / Copy buttons.
+
+### Migration apply
+v96 + v97 don't need any new SQL migration — all changes work with the existing tables.
+
+### Vercel cleanup confirmed
+At v97 ship time we re-verified the Vercel team list and the only ACTIVE customer-facing project is `staybid-customer-frontend` (prj_xp1BlcRqfrAL1RSGD8eV81FYOMJD). The 3 legacy projects (staybid-admin / staybid-hotel-panel / staybid-agent-panel) remain on Vercel but are NOT receiving any code from this repo — they're snapshots of separate repos last touched in April 2026.
+
+---
+
+## Updated production state (v97, 2026-05-13)
+- **Current version:** v97 · branch `claude/blissful-shannon-635ec1` (worktree) · commits `4d3ee68` (v96) + `2744c2e` (v97) on `main`
+- **Referral pipeline FULLY live**: `/r/<code>` click → cookie → hotel page resolves → creator Attribution → commission row written at the creator's v95 slab rate. Verified end-to-end with a 5% slab generating ₹125 commission on a ₹2500 booking.
+- **Creator share UX**: 6 share buttons per code (Native / WhatsApp / Instagram / Telegram / X / Copy) with rich pre-filled messages. Toast feedback on success.
+- **Admin Creators page**: FK error gone — `phone + name + email` visible on every application row via manual user-id side-load.
+- **Admin dashboard**: never says OFFLINE anymore. Worst state is 🟡 POLLING with a tooltip + manual refresh button. Socket.io reconnects automatically when Railway warms up.
+- **All deployments confirmed**: staybids.in serves the full v97 build for customer + creator hub (`/influencer`) + hotel partner panel (`/partner`) + admin panel (`/admin`). Legacy `staybid-admin.vercel.app` + `staybid-hotel-panel.vercel.app` are abandoned and out of scope.
+
+---
