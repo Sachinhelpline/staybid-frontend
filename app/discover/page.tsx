@@ -102,6 +102,16 @@ export default function DiscoverPage() {
       }
     } catch {}
 
+    // Helper: Fisher-Yates shuffle so siblings reorder per request.
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
     // Primary: ranked discover feed
     try {
       const r = await fetch("/api/discover/feed", {
@@ -113,9 +123,17 @@ export default function DiscoverPage() {
       if (r.ok) {
         const d = await r.json();
         if (Array.isArray(d?.items) && d.items.length > 0) {
-          // Public user/creator/hotel posts go FIRST — newest content
-          // floats to the top so the feed feels alive.
-          setItems([...publicItems, ...d.items]);
+          // Public posts shuffled per session (was always newest-first → same
+          // reel showed on every refresh). Ranked discover items keep their
+          // server-side scoring + jitter from /api/discover/feed.
+          // Then we interleave + pick a random START so the first card the
+          // user sees is different on every open — Instagram-style "fresh
+          // feed".
+          const shuffledPublic = shuffle(publicItems);
+          const merged = [...shuffledPublic, ...d.items];
+          const startAt = merged.length > 5 ? Math.floor(Math.random() * Math.min(merged.length - 3, 8)) : 0;
+          const rotated = startAt > 0 ? [...merged.slice(startAt), ...merged.slice(0, startAt)] : merged;
+          setItems(rotated);
           setLoading(false);
           return;
         }
@@ -125,11 +143,14 @@ export default function DiscoverPage() {
     // Fallback: plain hotels list mapped into Item shape — bulletproof against
     // cold backend / stale SW / network hiccup. Pulls active flash deals so
     // /discover and /hotels never disagree on the displayed "starting from"
-    // price.
+    // price. Flash-deals fallback now respects `sb_city` so the home page
+    // surfaces only the right inventory when the user has picked a location.
+    const city = typeof window !== "undefined" ? (localStorage.getItem("sb_city") || "") : "";
+    const flashUrl = "/api/flash/near" + (city && city !== "all" ? `?city=${encodeURIComponent(city)}` : "");
     try {
       const [r2, fr] = await Promise.all([
         fetch("/api/hotels?limit=30",   { cache: "no-store" }),
-        fetch("/api/flash/near",        { cache: "no-store" }).catch(() => null),
+        fetch(flashUrl,                 { cache: "no-store" }).catch(() => null),
       ]);
       const d2 = await r2.json();
       const fd = fr ? await fr.json().catch(() => ({})) : {};
@@ -154,9 +175,15 @@ export default function DiscoverPage() {
           score: 0, reasons: [],
         };
       });
-      setItems([...publicItems, ...mapped]);
+      // Same per-session rotation as the primary path.
+      const shuffledPublic = shuffle(publicItems);
+      const shuffledMapped = shuffle(mapped);
+      const merged = [...shuffledPublic, ...shuffledMapped];
+      const startAt = merged.length > 5 ? Math.floor(Math.random() * Math.min(merged.length - 3, 8)) : 0;
+      const rotated = startAt > 0 ? [...merged.slice(startAt), ...merged.slice(0, startAt)] : merged;
+      setItems(rotated);
     } catch {
-      setItems(publicItems);  // even if hotels fetch failed, show public posts
+      setItems(shuffle(publicItems));  // even if hotels fetch failed, show public posts
     } finally {
       setLoading(false);
     }
@@ -166,6 +193,13 @@ export default function DiscoverPage() {
     initTracking();
     track("app_open", { meta: { mode: "discover_reels" } });
     loadFeed();
+    // Re-pull when the user picks a new location anywhere — globe picker
+    // in the rail filter sheet OR the navbar globe both fire this event.
+    const onCity = () => loadFeed();
+    if (typeof window !== "undefined") {
+      window.addEventListener("sb:city-change", onCity);
+      return () => window.removeEventListener("sb:city-change", onCity);
+    }
   }, [loadFeed]);
 
   // Bulletproof reel-page fullscreen: visualViewport-driven height +

@@ -538,20 +538,19 @@ function MoreMenu({
   // For user-uploaded posts the menu pivots to author actions:
   // Edit + Delete take priority, "Open hotel page" + "Report" disappear
   // (they don't apply to a post the user owns themselves).
+  // v81 trim — Volume booster removed (rarely used), Copy link removed
+  // (the front-rail Share button covers link copying via native share),
+  // Share removed from this menu since it's also on the front action rail.
+  // Keep author actions for owner posts; keep moderation + hotel link for
+  // public reels.
   const items = isUserPost
     ? [
         { icon: "✏️",  label: "Edit post",                                 onClick: onEditPost },
         { icon: "🗑",  label: "Delete post",                               onClick: onDeletePost, danger: true },
-        { icon: "📋",  label: "Copy link",                                 onClick: onCopy },
-        { icon: "↗",   label: "Share to…",                                 onClick: onShare },
         { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
-        { icon: "🎚",  label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
       ]
     : [
-        { icon: "📋",  label: "Copy link",                                 onClick: onCopy },
-        { icon: "↗",   label: "Share to…",                                 onClick: onShare },
         { icon: muted ? "🔊" : "🔇", label: muted ? "Unmute audio" : "Mute audio", onClick: onToggleMute },
-        { icon: "🎚",  label: `Volume booster (${gain.toFixed(1)}× — tap to change)`, onClick: onCycleGain, keepOpen: true },
         { icon: "🏨",  label: "Open hotel page",                           href: `/hotels/${hotelId}` },
         { icon: "🚩",  label: "Report this reel",                          danger: true },
         { icon: "🚫",  label: "Not interested" },
@@ -2819,6 +2818,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     try {
       localStorage.setItem("sb_reel_filter_source", src);
       localStorage.setItem("sb_reel_filter_city", c);
+      // ALSO write the system-wide `sb_city` key + fire `sb:city-change` so
+      // every other surface (/hotels, /flash-deals, /me, flash-deal rail
+      // hook) re-pulls with the new location. Was missing — the reel
+      // filter sheet used to ONLY change the reel feed, leaving the rest
+      // of the app on the old city. v81 wires the trigger.
+      if (c && c !== "all") localStorage.setItem("sb_city", c);
+      else                  localStorage.removeItem("sb_city");
+      window.dispatchEvent(new Event("sb:city-change"));
     } catch {}
     onTrackEvent?.("ig_filter_change", { source: src, city: c });
   }, [onTrackEvent]);
@@ -3087,12 +3094,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           contain-intrinsic-size: 100%;
         }
 
-        /* Filter chip — slim, top-LEFT, doesn't collide with the brand
-           label (top-center) or Compare (top-right). */
+        /* Filter chip — slim, TOP-RIGHT (was top-left in v75-v80 where it
+           visually clashed with the rail header). Brand chrome sits center
+           at z-40; chip at z-41 right-edge avoids overlap entirely. */
         .ig-filter-chip {
           position: fixed;
-          top: 8px;
-          left: 10px;
+          top: 6px;
+          right: 10px;
+          left: auto;
           z-index: 41;
           display: inline-flex;
           align-items: center;

@@ -181,7 +181,9 @@ export function FlashDealStoryRail({
       <div className="fdeal-rail-wrap pointer-events-auto">
         <div className="fdeal-rail-header">
           <span className="fdeal-rail-title">Flash Deals</span>
-          <span className="fdeal-rail-sub">{deals.length} live today</span>
+          {/* Count chip removed in v81 — the filter chip on the right
+              edge owned the same row and was visually clashing with this
+              text. Avatar count is self-evident from the rail. */}
         </div>
         <div className="fdeal-rail-scroll" role="list">
           {deals.map((d, i) => (
