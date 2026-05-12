@@ -2466,3 +2466,117 @@ filteredItems.map((it, i) => {
 - **Verified perf:** `/api/social/feed` 294 ms cold → 141 ms warm; no functional regressions; v93 badge rendering correctly.
 
 ---
+
+## Booking-Source Attribution Era (v94, 2026-05-13)
+
+Single-shot release. Customer journey "reel → hotel page → bid" now carries a source channel end-to-end. Creators see the bookings they drove (with commission), hotels see where each booking came from in both the Bid Inbox and Bookings tabs, admin sees a global source breakdown + top-creator leaderboard.
+
+### Channels tracked
+| Source | When | UX surface |
+|---|---|---|
+| `direct` | URL typed / SEO / direct link — no `src` param | Default |
+| `creator` | Tap Book/Bid from a user-uploaded reel (PUBLIC or CREATOR user_type) | Attribution + commission |
+| `hotel-feed` | Tap Book/Bid from a reel uploaded by a HOTEL user_type | Attribution only |
+| `flash` | Tap a flash-deal rail story → `?dealId=...&directBook=true` | Attribution (no commission) |
+
+### Database (`migrations/2026-05-13-bid-attributions.sql`)
+- **New table `bid_attributions`** — 1:1 with `bids` table by `bid_id` PK.
+  - `source`, `creator_id`, `creator_user_id`, `creator_handle`, `creator_type`, `video_id`, `flow`, `deal_id`, `paid_total`, `commission_pct`, `commission_amount`, `metadata` (JSONB), `created_at`.
+  - Indexed on every dimension the panels need: creator, hotel, source, video, created_at.
+- **Auto-commission row** — when `source="creator"` AND the `creator_user_id` resolves to an `active` row in `influencers`, the `/api/attribution/record` endpoint also inserts an `influencer_commissions` row (12% standard, 15% for tier ≥ 3 Elite) so the existing Creator Earnings page picks it up without any new wiring.
+
+### URL params flow (reel → hotel page)
+Reel-feed Book/Bid CTAs now build:
+```
+/hotels/<hotelId>?intent=book&src=creator&cid=<users.id>&via=<username>&ctype=CREATOR&vid=<social_posts.id>#availability-picker
+```
+`buildAttrSuffix(h)` in [components/discover/InstagramHotelFeed.tsx](components/discover/InstagramHotelFeed.tsx) is the single source of truth — used by both `handleBook`/`handleNegotiate` AND the inline tagged-hotel buttons. It returns `""` for synthetic discover items (the mock creator pool gets no attribution — we don't pay commission to a fake handle).
+
+### Hotel page (`app/hotels/[id]/page.tsx`)
+- New useEffect after the `fetchMyBids` one. Reads URL params via `attributionFromParams(searchParams)`, persists via `setAttribution(hotelId, attr)` (localStorage key `sb_attribution_<hotelId>`, 24h TTL). Survives the Razorpay round-trip.
+- Falls back to `dealId`-presence → `{ source: "flash" }` so flash bookings get tagged too.
+- Every successful bid handler (`handleFlashBook`, `executeBookNow`, `executeNegotiate`, below-floor branch, simple `handleBid`) now calls `recordAttribution({ bidId, hotelId, paidTotal, flow, attribution })` after writing `/api/bid/paid`. Fire-and-forget, never throws.
+
+### Creator Hub — `/influencer/bookings` (NEW)
+- Tab added to `app/influencer/layout.tsx` between Upload and Referrals.
+- 4 KPI cards: bookings driven, GMV, commission, paid-out.
+- Status filter pills (All / Accepted / Pending / Counter).
+- Table with: bid id + date, hotel + dates, Source badge, status, booking amount, commission + status.
+- Backed by `/api/influencer/[id]/bookings` which resolves EITHER `influencers.id` OR the underlying `users.id`, joins attribution + bids + hotels + bid_paid_amounts + influencer_commissions + bid_requests.
+
+### Partner Panel — Source badge
+- `/api/partner/bids` now bulk-fetches `bid_attributions` for every returned bid and surfaces `source`, `creatorHandle`, `creatorType`, `videoId`.
+- New `<SourceBadge>` component in `app/partner/dashboard/page.tsx` renders the channel pill (gold = hotel-own, purple = creator @handle, sky = direct, red = flash).
+- Visible in BOTH the Bid Inbox tab and the Bookings tab. Hotels instantly know "this booking came from your own reel" vs "this came from @riya_traveller's reel".
+
+### Admin — Source column + filter + analytics
+- `/api/admin/bookings` joins `bid_attributions` and exposes source on every row. The table gets a new Source column AND a top-of-page filter pill bar (All / Direct / Creator / Hotel reel / Flash) with live count chips.
+- `/api/admin/analytics/bidding` now also reads attributions:
+  - `kpis.bookingsBySource`, `kpis.revenueBySource`, `kpis.totalCommission`, `kpis.attributedCount`
+  - `topCreators[]` — top 10 by attributed GMV (handle / bookings / gmv / commission)
+- New "Bookings by source" panel (2-col: bar chart by count + revenue list by source).
+- New "Top creators by attributed GMV" panel — only renders when at least one creator-attributed booking exists.
+
+### API routes added (this era)
+```
+POST /api/attribution/record          # write/upsert bid_attributions; auto-commission
+GET  /api/attribution/record?ids=...  # bulk read for partner/admin tables
+GET  /api/influencer/[id]/bookings    # accepts influencer.id OR users.id
+```
+
+### Files added (this era)
+```
+migrations/2026-05-13-bid-attributions.sql   # new bid_attributions table
+lib/attribution.ts                            # client-side helpers + SOURCE_* maps
+app/api/attribution/record/route.ts           # POST + GET
+app/api/influencer/[id]/bookings/route.ts     # creator hub bookings endpoint
+app/influencer/bookings/page.tsx              # creator hub bookings UI
+```
+
+### Files modified (this era)
+```
+app/layout.tsx                                  # SB_BUILD v94 + badge v94
+app/hotels/[id]/page.tsx                        # capture + record attribution in 5 handlers
+app/influencer/layout.tsx                       # +Bookings tab
+app/api/admin/bookings/route.ts                 # join bid_attributions
+app/api/admin/analytics/bidding/route.ts        # source aggregations + topCreators
+app/api/partner/bids/route.ts                   # join bid_attributions
+app/admin/bookings/page.tsx                     # Source column + filter pills
+app/admin/analytics/page.tsx                    # Bookings by source + Top creators panels
+app/partner/dashboard/page.tsx                  # SourceBadge in Bid Inbox + Bookings
+components/discover/InstagramHotelFeed.tsx      # buildAttrSuffix() on all reel CTAs
+```
+
+### New localStorage keys (this era)
+| Key | Value | Purpose |
+|---|---|---|
+| `sb_attribution_<hotelId>` | JSON `Attribution` (TTL 24h) | Survives Razorpay round-trip; cleared per-hotel after 24h |
+
+### Things to Avoid (v94)
+- **Never** rewrite `buildAttrSuffix` to return non-empty for synthetic discover items. The `CREATOR_POOL` is hard-coded mock data — paying commission to "@trail.diaries" with no users row would orphan attributions in the DB.
+- **Never** drop the `attr.creator_user_id` resolver in `/api/attribution/record`. The trigger that mints the `influencer_commissions` row depends on looking up `influencers.user_id` (NOT `influencers.id`) because the URL only carries `users.id`.
+- **Never** call `recordAttribution` BEFORE the bid is in the database. Use `bidRes.bid.id` AFTER `placeBid` resolves — otherwise the upsert writes against a non-existent bid id.
+- **Never** strip the `direct` fallback. If `attribution` is null on a hotel page (user typed URL directly), the record call writes `source: "direct"` so the partner panel still has SOMETHING to display instead of an empty column.
+- **Never** raise the attribution TTL above 24h. After a day, the captured source is stale — if a customer came from a reel yesterday and books today, that's a direct booking now. Influencer attribution shouldn't trail forever.
+- **Never** add a 6th channel without updating `SOURCE_STYLE` in BOTH `lib/attribution.ts` AND the partner/admin local maps. The customer-side lib intentionally doesn't get imported from admin (separate inline-style universe) — keep them in sync manually.
+- **Never** put the SourceBadge inside a `<button>` already showing the status pill on the same row — wrap differently or it inherits the button colour and the source colour gets lost. The partner panel uses a stacked layout (badge below name) for this reason.
+- **Never** count `unknown` as a real channel in the analytics totals. Only `direct`/`creator`/`hotel-feed`/`flash` are valid attributions; unknown means a write succeeded with garbage data and should be investigated.
+- **Never** ship a database migration in this codebase via auto-apply. The user manually applies SQL in the Supabase SQL editor — the file in `/migrations` is the source of truth + the apply log. Run `migrations/2026-05-13-bid-attributions.sql` once before the first reel-driven booking lands.
+
+### Migration apply
+1. Open Supabase SQL editor: https://supabase.com/dashboard/project/uxxhbdqedazpmvbvaosh/sql
+2. Paste contents of `migrations/2026-05-13-bid-attributions.sql`
+3. Run. Verify with `SELECT * FROM public.bid_attributions LIMIT 1;` (returns empty set the first time).
+
+Without the migration applied, every code path still works (POST returns 200 with table missing, panels show "No data yet"). Once applied, attribution starts flowing for every NEW reel-driven booking automatically.
+
+---
+
+## Updated production state (v94, 2026-05-13)
+- **Current version:** v94 · branch `claude/blissful-shannon-635ec1` (worktree)
+- **End-to-end booking-source attribution live across 4 surfaces:** customer reel feed, creator hub, hotel partner panel, admin panel.
+- **Migration pending:** apply `migrations/2026-05-13-bid-attributions.sql` once. Codebase is non-blocking — works gracefully when table is missing.
+- **Auto-commission:** creator-attributed bookings whose creator user has an `active` `influencers` row automatically get a pending row in `influencer_commissions` (12% standard, 15% Elite). Existing `/influencer/earnings` page picks them up with zero changes.
+- **Synthetic-creator safety:** the mock `CREATOR_POOL` in `InstagramHotelFeed.tsx` deliberately produces NO attribution params — only real user-uploaded posts (Supabase `social_posts`) drive trackable attribution. Prevents phantom commission rows for fake handles.
+
+---

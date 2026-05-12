@@ -18,6 +18,20 @@ type Kpis = {
   revenueTotal: number;
   revenueByFlow: Record<string, number>;
   avgTimeToAcceptMs: number;
+  // v94 — source attribution
+  bookingsBySource?: Record<string, number>;
+  revenueBySource?: Record<string, number>;
+  totalCommission?: number;
+  attributedCount?: number;
+};
+
+// v94 — source style for the admin breakdown panel
+const SOURCE_STYLE_ADMIN: Record<string, { icon: string; label: string; color: string }> = {
+  direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
+  creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
+  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#D4AF37" },
+  flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
+  unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
 };
 
 const TIER_COLORS: Record<string, string> = {
@@ -50,6 +64,8 @@ export default function AdminAnalytics() {
   const tierCounts: Record<string, number> = data?.tierCounts || {};
   const dailyTrend: { date: string; placed: number; accepted: number; countered: number }[] = data?.dailyTrend || [];
   const topHotels: { hotelId: string; name: string; city?: string; placed: number; accepted: number; rate: number }[] = data?.topHotels || [];
+  // v94 — top creators by attributed GMV
+  const topCreators: { handle: string; bookings: number; gmv: number; commission: number }[] = data?.topCreators || [];
 
   const fmtMs = (ms: number) => {
     if (!ms) return "—";
@@ -199,6 +215,75 @@ export default function AdminAnalytics() {
               )}
             </div>
           </Panel>
+
+          {/* v94 — Source attribution breakdown */}
+          <Panel title="Bookings by source" subtitle={`${k.attributedCount || 0} of ${k.totalBids} bids attributed · commission ₹${(k.totalCommission || 0).toLocaleString("en-IN")}`}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }} className="analytics-grid">
+              <div>
+                <p style={{ color: "#8A8FA8", fontSize: 11, fontWeight: 600, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>By count</p>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {Object.entries(k.bookingsBySource || {})
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([src, count]) => {
+                      const meta = SOURCE_STYLE_ADMIN[src] || SOURCE_STYLE_ADMIN.unknown;
+                      const max  = Math.max(...Object.values(k.bookingsBySource || { x: 1 }), 1);
+                      const pct  = (count / max) * 100;
+                      return (
+                        <div key={src}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                            <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{meta.icon} {meta.label}</span>
+                            <span style={{ color: "#8A8FA8" }}>{count}</span>
+                          </div>
+                          <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", background: meta.color, transition: "width 0.5s ease" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {Object.keys(k.bookingsBySource || {}).length === 0 && (
+                    <p style={{ color: "#8A8FA8", fontSize: 12, padding: 18, textAlign: "center" }}>No attribution data yet.</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p style={{ color: "#8A8FA8", fontSize: 11, fontWeight: 600, margin: "0 0 8px", textTransform: "uppercase", letterSpacing: 0.5 }}>By revenue</p>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {Object.entries(k.revenueBySource || {})
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([src, amt]) => {
+                      const meta = SOURCE_STYLE_ADMIN[src] || SOURCE_STYLE_ADMIN.unknown;
+                      return (
+                        <div key={src} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${meta.color}33`, borderRadius: 8, padding: "8px 10px", display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600 }}>{meta.icon} {meta.label}</span>
+                          <span style={{ color: meta.color, fontSize: 13, fontWeight: 700 }}>₹{(amt || 0).toLocaleString("en-IN")}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          {/* v94 — Top creators by attributed GMV */}
+          {topCreators.length > 0 && (
+            <Panel title="Top creators by attributed GMV" subtitle="Bookings driven by creator reels">
+              <div style={{ display: "grid", gap: 6 }}>
+                {topCreators.map((c, i) => (
+                  <div key={c.handle} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 8, fontSize: 12 }}>
+                    <span style={{ color: "#8A8FA8", fontWeight: 700, minWidth: 22 }}>#{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ color: "#E8EAF0", margin: 0, fontWeight: 600 }}>✨ @{c.handle}</p>
+                      <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>{c.bookings} booking{c.bookings === 1 ? "" : "s"}</p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ color: "#A855F7", margin: 0, fontWeight: 700 }}>₹{Math.round(c.gmv).toLocaleString("en-IN")}</p>
+                      <p style={{ color: "#8A8FA8", margin: 0, fontSize: 11 }}>Comm ₹{Math.round(c.commission).toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
 
           {/* Top hotels */}
           <Panel title="Top hotels by acceptance rate" subtitle="minimum 3 bids placed">

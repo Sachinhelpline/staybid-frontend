@@ -69,6 +69,36 @@ function hashStr(s: string): number {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
+// ── v94 attribution params builder ─────────────────────────────────────
+// Reel-feed Book/Bid CTAs carry `src` + (when from a real user post) the
+// uploader's user_id/handle/type + the social_posts.id of the reel. The
+// hotel detail page reads these params, persists them in localStorage so
+// the attribution survives the Razorpay round-trip, then writes the final
+// record to /api/attribution/record once the bid is in.
+//
+// Source classification:
+//   • Real user post (Supabase social_posts row) → creator OR hotel-feed
+//     depending on the uploader's user_type. PUBLIC accounts also map to
+//     `creator` so the booking is trackable (they earn 0% but the panel
+//     surfaces the attribution).
+//   • Synthetic discover items → no params (defaults to `direct` on the
+//     hotel page, because the creator pool is mock data — we don't pay
+//     commission to a synthetic handle).
+export function buildAttrSuffix(h: any): string {
+  const isReal = !!h?._userPost && !!h?._publicAuthor?.user_id;
+  if (!isReal) return "";
+  const author = h._publicAuthor;
+  const isHotelAccount = (author.user_type || "").toUpperCase() === "HOTEL";
+  const src = isHotelAccount ? "hotel-feed" : "creator";
+  const params = new URLSearchParams();
+  params.set("src", src);
+  if (author.user_id)   params.set("cid", String(author.user_id));
+  if (author.username)  params.set("via", String(author.username));
+  if (author.user_type) params.set("ctype", String(author.user_type));
+  if (h.id)             params.set("vid", String(h.id));
+  return "&" + params.toString();
+}
+
 function videoForHotel(h: any): string {
   const v = h?.videoUrl;
   // Accept both remote http(s) URLs and local blob: URLs (user uploads).
@@ -2352,7 +2382,7 @@ const HotelCard = memo(function HotelCard({
               onClick={(e) => {
                 e.stopPropagation();
                 if (h._userPostTaggedHotel?.id) {
-                  router.push(`/hotels/${h._userPostTaggedHotel.id}`);
+                  router.push(`/hotels/${h._userPostTaggedHotel.id}?intent=book${buildAttrSuffix(h)}#availability-picker`);
                   onTrackEvent?.("ig_tagged_hotel_book", { hotelId: h._userPostTaggedHotel.id });
                 } else {
                   onBook(h);
@@ -2367,7 +2397,7 @@ const HotelCard = memo(function HotelCard({
               onClick={(e) => {
                 e.stopPropagation();
                 if (h._userPostTaggedHotel?.id) {
-                  router.push(`/hotels/${h._userPostTaggedHotel.id}`);
+                  router.push(`/hotels/${h._userPostTaggedHotel.id}?intent=negotiate${buildAttrSuffix(h)}#availability-picker`);
                   onTrackEvent?.("ig_tagged_hotel_bid", { hotelId: h._userPostTaggedHotel.id });
                 } else {
                   onNegotiate(h);
@@ -3145,11 +3175,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
   const handleBook = useCallback((h: any) => {
     onTrackEvent?.("ig_click_book", { hotelId: h.id });
-    router.push(`/hotels/${h.id}?intent=book#availability-picker`);
+    router.push(`/hotels/${h.id}?intent=book${buildAttrSuffix(h)}#availability-picker`);
   }, [router, onTrackEvent]);
   const handleNegotiate = useCallback((h: any) => {
     onTrackEvent?.("ig_click_bid", { hotelId: h.id });
-    router.push(`/hotels/${h.id}?intent=negotiate#availability-picker`);
+    router.push(`/hotels/${h.id}?intent=negotiate${buildAttrSuffix(h)}#availability-picker`);
   }, [router, onTrackEvent]);
   const handleShare = useCallback(async (h: any) => {
     onTrackEvent?.("ig_share", { hotelId: h.id });

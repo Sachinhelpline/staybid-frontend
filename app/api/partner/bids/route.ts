@@ -21,8 +21,9 @@ async function enrichBids(bids: any[]): Promise<any[]> {
   const customerIds = Array.from(new Set(bids.map((b: any) => b.customerId).filter(Boolean)));
   const requestIds  = Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)));
   const roomIds     = Array.from(new Set(bids.map((b: any) => b.roomId).filter(Boolean)));
+  const bidIds      = Array.from(new Set(bids.map((b: any) => b.id).filter(Boolean)));
 
-  const [users, requests, rooms] = await Promise.all([
+  const [users, requests, rooms, attrs] = await Promise.all([
     customerIds.length
       ? fetch(`${SB_URL}/rest/v1/users?id=in.(${customerIds.join(",")})&select=id,name,phone`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
       : Promise.resolve([]),
@@ -32,16 +33,24 @@ async function enrichBids(bids: any[]): Promise<any[]> {
     roomIds.length
       ? fetch(`${SB_URL}/rest/v1/rooms?id=in.(${roomIds.join(",")})&select=*`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
       : Promise.resolve([]),
+    // v94 — booking-source attribution (bulk read for the whole bid list)
+    bidIds.length
+      ? fetch(`${SB_URL}/rest/v1/bid_attributions?bid_id=in.(${bidIds.join(",")})&select=*`, { headers: SB_HEADERS }).then(r => r.json()).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const uArr = Array.isArray(users) ? users : [];
   const rqArr = Array.isArray(requests) ? requests : [];
   const rmArr = Array.isArray(rooms) ? rooms : [];
+  const aArr  = Array.isArray(attrs) ? attrs : [];
+  const attrByBid: Record<string, any> = {};
+  for (const a of aArr) attrByBid[a.bid_id] = a;
 
   return bids.map((b: any) => {
     const u = uArr.find((x: any) => x.id === b.customerId);
     const rq = rqArr.find((x: any) => x.id === b.requestId);
     const rm = rmArr.find((x: any) => x.id === b.roomId);
+    const a  = attrByBid[b.id];
     return {
       ...b,
       guestName: u?.name || b.guestName || null,
@@ -53,6 +62,13 @@ async function enrichBids(bids: any[]): Promise<any[]> {
       guests: rq?.guests || b.guests || null,
       room: rm || null,
       roomType: rm?.type || rm?.name || null,
+      // v94 — pass-through attribution fields. Defaults to "direct" when
+      // no row exists (legacy bookings + bookings placed before this rolled
+      // out).
+      source:         a?.source        || "direct",
+      creatorHandle:  a?.creator_handle || null,
+      creatorType:    a?.creator_type  || null,
+      videoId:        a?.video_id      || null,
     };
   });
 }

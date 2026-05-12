@@ -20,12 +20,14 @@ export async function GET(req: NextRequest) {
 
   try {
     // Parallel reads — keep query budget tight
-    const [bids, holds, windows, paidAmounts, hotels] = await Promise.all([
+    const [bids, holds, windows, paidAmounts, hotels, attributions] = await Promise.all([
       sbGet(`bids?createdAt=gte.${encodeURIComponent(sinceIso)}&select=id,status,amount,counterAmount,hotelId,customerId,createdAt,auto_accept_at,bidder_tier&limit=5000`),
       sbGet(`bid_holds?created_at=gte.${encodeURIComponent(sinceIso)}&select=bid_id,hotel_id,status,hold_amount,total_amount,created_at,pay_at_hotel&limit=5000`),
       sbGet(`bid_acceptance_windows?accepted_at=gte.${encodeURIComponent(sinceIso)}&select=bid_id,status,accepted_at&limit=5000`),
-      sbGet(`bid_paid_amounts?createdAt=gte.${encodeURIComponent(sinceIso)}&select=bidId,paidTotal,flow,createdAt&limit=5000`),
+      sbGet(`bid_paid_amounts?createdAt=gte.${encodeURIComponent(sinceIso)}&select=bid_id,paid_total,flow,createdAt&limit=5000`),
       sbGet(`hotels?select=id,name,city,starRating&limit=500`),
+      // v94 — source attribution rows in the window
+      sbGet(`bid_attributions?created_at=gte.${encodeURIComponent(sinceIso)}&select=bid_id,source,creator_id,creator_handle,paid_total,commission_amount,created_at&limit=5000`),
     ]) as any[][];
 
     const hotelById: Record<string, any> = {};
@@ -89,12 +91,41 @@ export async function GET(req: NextRequest) {
     // ── Revenue (sum of paid_amounts.paidTotal by flow) ──────
     const revenueByFlow: Record<string, number> = {};
     let revenueTotal = 0;
+    const paidByBid: Record<string, number> = {};
     for (const p of paidAmounts) {
-      const amt = Number(p.paidTotal || 0);
+      const amt = Number(p.paid_total || 0);
+      paidByBid[p.bid_id] = amt;
       revenueTotal += amt;
       const flow = String(p.flow || "unknown");
       revenueByFlow[flow] = (revenueByFlow[flow] || 0) + amt;
     }
+
+    // ── v94 Source attribution breakdown ─────────────────────
+    // For each bid we know its channel (direct / creator / hotel-feed /
+    // flash). Counts + revenue per source surface in the admin analytics
+    // panel so the team sees which channels drive bookings.
+    const bookingsBySource: Record<string, number> = {};
+    const revenueBySource: Record<string, number> = {};
+    const creatorBookings: Record<string, { handle: string; bookings: number; gmv: number; commission: number }> = {};
+    let totalCommission = 0;
+    for (const a of attributions) {
+      const src = a.source || "direct";
+      bookingsBySource[src] = (bookingsBySource[src] || 0) + 1;
+      const paid = Number(paidByBid[a.bid_id] || a.paid_total || 0);
+      revenueBySource[src] = (revenueBySource[src] || 0) + paid;
+      if (src === "creator" && a.creator_handle) {
+        if (!creatorBookings[a.creator_handle]) {
+          creatorBookings[a.creator_handle] = { handle: a.creator_handle, bookings: 0, gmv: 0, commission: 0 };
+        }
+        creatorBookings[a.creator_handle].bookings += 1;
+        creatorBookings[a.creator_handle].gmv += paid;
+        creatorBookings[a.creator_handle].commission += Number(a.commission_amount || 0);
+      }
+      totalCommission += Number(a.commission_amount || 0);
+    }
+    const topCreators = Object.values(creatorBookings)
+      .sort((a, b) => b.gmv - a.gmv)
+      .slice(0, 10);
 
     // ── Top hotels by acceptance rate (min 5 bids to qualify) ─
     const hotelStats: Record<string, { hotelId: string; name: string; city?: string; placed: number; accepted: number }> = {};
@@ -135,7 +166,13 @@ export async function GET(req: NextRequest) {
         revenueTotal,
         revenueByFlow,
         avgTimeToAcceptMs,
+        // v94 — source attribution KPIs
+        bookingsBySource,
+        revenueBySource,
+        totalCommission,
+        attributedCount: attributions.length,
       },
+      topCreators,
       tierCounts,
       dailyTrend,
       topHotels,

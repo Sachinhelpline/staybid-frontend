@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 const TABS = [
   { href: "/influencer/dashboard", label: "Dashboard", icon: "📊" },
   { href: "/influencer/upload",    label: "Upload",    icon: "🎬" },
+  { href: "/influencer/bookings",  label: "Bookings",  icon: "📋" },
   { href: "/influencer/referrals", label: "Referrals", icon: "🔗" },
   { href: "/influencer/earnings",  label: "Earnings",  icon: "💸" },
   { href: "/influencer/profile",   label: "Profile",   icon: "👤" },

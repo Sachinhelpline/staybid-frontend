@@ -12,6 +12,13 @@ import BookingReview, { type BookingReviewProps } from "@/components/BookingRevi
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
+import {
+  attributionFromParams,
+  setAttribution,
+  getAttribution,
+  recordAttribution,
+  type Attribution,
+} from "@/lib/attribution";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -215,6 +222,34 @@ export default function HotelDetail() {
   };
 
   useEffect(() => { fetchMyBids(); }, [user, id]);
+
+  // ── v94 booking-source attribution ──────────────────────────────────────
+  // Capture src/cid/via/vid/ctype from the URL on first mount and persist
+  // them in localStorage so the attribution survives the Razorpay round-
+  // trip. After every successful bid placement we POST to
+  // /api/attribution/record which writes bid_attributions + (when the
+  // creator is a registered active influencer) influencer_commissions.
+  const [attribution, setAttributionState] = useState<Attribution | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    const fromUrl = attributionFromParams(searchParams);
+    if (fromUrl) {
+      setAttribution(id as string, fromUrl);
+      setAttributionState(fromUrl);
+    } else {
+      // Fall back to any stored attribution for this hotel (e.g. user came
+      // from a reel, then refreshed the hotel page) — still counts.
+      setAttributionState(getAttribution(id as string));
+    }
+    // Flash-deal direct-book wins source classification when no creator
+    // attribution is present (a deal coming from /flash-deals or the
+    // home-page rail isn't a creator-driven booking).
+    if (!fromUrl && dealId) {
+      const flashAttr: Attribution = { source: "flash", capturedAt: Date.now() };
+      setAttribution(id as string, flashAttr);
+      setAttributionState(flashAttr);
+    }
+  }, [id, searchParams, dealId]);
 
   // ── Real-time availability (blocked dates across all sources) ─────────────
   const [blockedByRoom, setBlockedByRoom] = useState<Record<string, Set<string>>>({});
@@ -539,6 +574,21 @@ export default function HotelDetail() {
         });
       } catch {}
 
+      // v94 — record booking-source attribution. Flash bookings default to
+      // `flash` source unless the customer originally came from a creator
+      // reel (preserves creator credit even when the user pivots into a deal).
+      recordAttribution({
+        bidId: bidRes.bid.id,
+        hotelId: hotel.id,
+        customerId: user!.id,
+        paidTotal,
+        flow: mode === "full" ? "flash" : `flash-${mode}`,
+        dealId,
+        attribution: attribution && attribution.source !== "direct"
+          ? attribution
+          : { source: "flash", capturedAt: Date.now() },
+      });
+
       // Step 2.5: If customer extended qty (>1 room) or nights (>1), post upgrade request.
       // The endpoint auto-approves when units are free, else creates a pending block that
       // shows up in the hotel owner's dashboard for approval.
@@ -611,12 +661,23 @@ export default function HotelDetail() {
         amount: parseFloat(bidAmount),
         checkIn, checkOut, guests: bidRoom.capacity || 2,
       });
-      await api.placeBid({
+      const bidRes = await api.placeBid({
         hotelId: hotel.id, roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
         message: bidMsg || undefined,
         requestId: reqRes?.request?.id,
       });
+      // v94 — record source for legacy/simple bid flow
+      if (bidRes?.bid?.id) {
+        recordAttribution({
+          bidId: bidRes.bid.id,
+          hotelId: hotel.id,
+          customerId: user!.id,
+          paidTotal: 0,
+          flow: "bid",
+          attribution: attribution || { source: "direct", capturedAt: Date.now() },
+        });
+      }
       setBidSuccess(true);
       setBidRoom(null);
       fetchMyBids();
@@ -765,6 +826,16 @@ export default function HotelDetail() {
         });
       } catch {}
 
+      // v94 — record booking-source attribution
+      recordAttribution({
+        bidId: bidRes.bid.id,
+        hotelId: hotel.id,
+        customerId: user!.id,
+        paidTotal: charge,
+        flow: mode === "full" ? "book-now" : `book-now-${mode}`,
+        attribution: attribution || { source: "direct", capturedAt: Date.now() },
+      });
+
       // Step 3: Send confirmation email (full-pay only — hold flows email at balance settle)
       if (mode === "full") {
         await sendBookingEmail({
@@ -844,6 +915,17 @@ export default function HotelDetail() {
           }),
         });
       } catch {}
+      // v94 — below-floor bid (no payment yet, but the source channel is
+      // captured anyway so the partner panel still sees where this lead
+      // came from).
+      recordAttribution({
+        bidId: bidRes.bid.id,
+        hotelId: hotel.id,
+        customerId: user.id,
+        paidTotal: 0,
+        flow: "negotiate-below-floor",
+        attribution: attribution || { source: "direct", capturedAt: Date.now() },
+      });
       setNegAuto(false);
       setNegSuccess(true);
       fetchMyBids();
@@ -907,6 +989,16 @@ export default function HotelDetail() {
           }),
         });
       } catch {}
+
+      // v94 — record booking-source attribution
+      recordAttribution({
+        bidId: bidRes.bid.id,
+        hotelId: hotel.id,
+        customerId: user!.id,
+        paidTotal: charge,
+        flow: mode === "full" ? "negotiate" : `negotiate-${mode}`,
+        attribution: attribution || { source: "direct", capturedAt: Date.now() },
+      });
 
       // Phase 6: stop instant-accepting above-floor bids. Schedule them
       // for tier-based auto-accept so the hotel has a window to counter/

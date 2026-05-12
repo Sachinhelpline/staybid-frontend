@@ -54,6 +54,26 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; l
   REJECTED: { bg:"bg-red-50",     text:"text-red-600",     border:"border-red-200",     label:"Declined" },
 };
 
+// v94 — Source badge (Direct / Creator / Hotel-feed / Flash). Maps the
+// bid.source field surfaced by the new /api/partner/bids attribution join.
+const SOURCE_STYLE: Record<string, { icon: string; label: string; bg: string; text: string }> = {
+  "direct":      { icon: "🔗", label: "Direct",      bg: "bg-sky-50",     text: "text-sky-700"     },
+  "creator":     { icon: "✨", label: "Creator",     bg: "bg-purple-50",  text: "text-purple-700"  },
+  "hotel-feed":  { icon: "🏨", label: "Your reel",   bg: "bg-amber-50",   text: "text-amber-700"   },
+  "flash":       { icon: "⚡", label: "Flash deal",  bg: "bg-red-50",     text: "text-red-700"     },
+  "unknown":     { icon: "•",  label: "Unknown",     bg: "bg-luxury-50",  text: "text-luxury-600"  },
+};
+function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle?: string | null }) {
+  const s = SOURCE_STYLE[source || "direct"] || SOURCE_STYLE.direct;
+  const label = source === "creator" && creatorHandle ? `via @${creatorHandle}` : s.label;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.62rem] font-bold ${s.bg} ${s.text}`} title={`Booking source: ${s.label}`}>
+      <span>{s.icon}</span>
+      <span className="truncate max-w-[100px]">{label}</span>
+    </span>
+  );
+}
+
 // ── main component ─────────────────────────────────────────────────────────
 export default function PartnerDashboard() {
   const router = useRouter();
@@ -907,6 +927,9 @@ export default function PartnerDashboard() {
                           <div>
                             <p className="font-semibold text-luxury-900">{b.guestName || `Guest …${String(b.customerId||"").slice(-4)}`}</p>
                             <p className="text-xs text-luxury-400">{b.room?.type || "Room"} · {b.guests || 2} guests · {nights} night{nights>1?"s":""}</p>
+                            <div className="mt-1">
+                              <SourceBadge source={b.source} creatorHandle={b.creatorHandle} />
+                            </div>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
@@ -1302,6 +1325,9 @@ export default function PartnerDashboard() {
                             {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)} · {nights} night{nights>1?"s":""}
                           </p>
                           <p className="text-xs text-luxury-400">{b.guests || 2} guests · Booked {fmtDate(b.createdAt)}</p>
+                          <div className="mt-1">
+                            <SourceBadge source={b.source} creatorHandle={b.creatorHandle} />
+                          </div>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">

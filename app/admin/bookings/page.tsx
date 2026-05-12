@@ -2,11 +2,22 @@
 import { useEffect, useState } from "react";
 import DataTable from "@/components/admin/data-table";
 
+// v94 — source style map (mirror of lib/attribution SOURCE_*) — kept local
+// because the admin panel doesn't import from the customer-side lib.
+const SOURCE_STYLE: Record<string, { icon: string; label: string; color: string }> = {
+  direct:        { icon: "🔗", label: "Direct",      color: "#3D9CF5" },
+  creator:       { icon: "✨", label: "Creator",     color: "#A855F7" },
+  "hotel-feed":  { icon: "🏨", label: "Hotel reel",  color: "#D4AF37" },
+  flash:         { icon: "⚡", label: "Flash deal",  color: "#FF4757" },
+  unknown:       { icon: "•",  label: "Unknown",     color: "#8A8FA8" },
+};
+
 export default function AdminBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("all");
   const [hotel, setHotel] = useState("");
+  const [source, setSource] = useState<"all" | "direct" | "creator" | "hotel-feed" | "flash">("all");
   const [selected, setSelected] = useState<any | null>(null);
 
   function load() {
@@ -18,6 +29,15 @@ export default function AdminBookings() {
       .catch(() => setLoading(false));
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
+
+  // v94 — source filter is applied client-side over the loaded set so
+  // admins can switch channels without re-hitting the API.
+  const filteredBookings = source === "all" ? bookings : bookings.filter((b) => (b.source || "direct") === source);
+
+  // Live source-breakdown chip strip for the current dataset.
+  const sourceCounts = bookings.reduce<Record<string, number>>((acc, b) => {
+    const s = b.source || "direct"; acc[s] = (acc[s] || 0) + 1; return acc;
+  }, {});
 
   const columns = [
     { key: "id", label: "Bid ID", render: (b: any) => <code style={{ color: "#8A8FA8", fontSize: 12 }}>BID-{b.id?.slice(0, 8)}</code> },
@@ -41,6 +61,27 @@ export default function AdminBookings() {
       key: "flowType",
       label: "Flow",
       render: (b: any) => b.flowType ? <span style={{ background: "rgba(168,85,247,0.15)", color: "#A855F7", padding: "2px 8px", borderRadius: 6, fontSize: 11 }}>{b.flowType}</span> : "—",
+    },
+    {
+      // v94 — booking-source attribution column
+      key: "source",
+      label: "Source",
+      render: (b: any) => {
+        const meta = SOURCE_STYLE[b.source || "direct"] || SOURCE_STYLE.direct;
+        const label = b.source === "creator" && b.creatorHandle ? `@${b.creatorHandle}` : meta.label;
+        return (
+          <span
+            title={`Channel: ${meta.label}`}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              background: meta.color + "22", color: meta.color,
+              padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+            }}
+          >
+            <span>{meta.icon}</span><span style={{ maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+          </span>
+        );
+      },
     },
     {
       key: "status",
@@ -115,11 +156,37 @@ export default function AdminBookings() {
         </select>
         <button onClick={load} style={btnStyle}>Search</button>
         <span style={{ marginLeft: "auto", color: "#8A8FA8", alignSelf: "center", fontSize: 13 }}>
-          {bookings.length} bids
+          {filteredBookings.length} of {bookings.length} bids
         </span>
       </div>
 
-      <DataTable columns={columns} data={bookings} loading={loading} pageSize={15} />
+      {/* v94 — Source filter pill row */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ color: "#8A8FA8", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Source:
+        </span>
+        {(["all", "direct", "creator", "hotel-feed", "flash"] as const).map((s) => {
+          const meta = s === "all" ? { icon: "🌐", label: "All", color: "#D4AF37" } : SOURCE_STYLE[s];
+          const isActive = source === s;
+          const count = s === "all" ? bookings.length : (sourceCounts[s] || 0);
+          return (
+            <button key={s} onClick={() => setSource(s)}
+              style={{
+                background: isActive ? meta.color + "33" : "rgba(255,255,255,0.04)",
+                color: isActive ? meta.color : "#8A8FA8",
+                border: `1px solid ${isActive ? meta.color + "55" : "rgba(255,255,255,0.07)"}`,
+                padding: "6px 12px", borderRadius: 999,
+                fontSize: 12, fontWeight: 600, cursor: "pointer",
+                display: "inline-flex", gap: 6, alignItems: "center",
+              }}>
+              <span>{meta.icon}</span><span>{meta.label}</span>
+              <span style={{ color: isActive ? meta.color : "#666876", fontSize: 11 }}>· {count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <DataTable columns={columns} data={filteredBookings} loading={loading} pageSize={15} />
 
       {selected && <BidTimelineModal bid={selected} onClose={() => setSelected(null)} />}
     </div>
