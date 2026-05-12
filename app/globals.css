@@ -16,6 +16,25 @@
   --text-primary:  #1a1510;
   --text-secondary:#6b6458;
   --border:        rgba(232, 228, 217, 0.8);
+
+  /* ─── Premium Cozy palette (v88) ─────────────────────────────
+     A single warm cream → cocoa → champagne system that replaces
+     the v85-era stark blacks + bright magenta/purple accents with
+     minimal, ultra-premium cozy tones. Used by reel surfaces,
+     PostsScrollFeed, BottomDock, action buttons, etc. */
+  --cozy-cream-50:        #FFFCF6;   /* lightest cream surface */
+  --cozy-cream-100:       #FAF5EB;   /* default page bg on light surfaces */
+  --cozy-cream-200:       #F2EAD8;   /* warm card surface */
+  --cozy-taupe:           #E8DCC8;   /* dividers + soft borders */
+  --cozy-warm-dark:       #1F1A0F;   /* primary text on light + dark surface bg */
+  --cozy-warm-soft:       #2B2415;   /* less-harsh dark for nested chrome */
+  --cozy-cocoa:           #4A3820;   /* secondary text */
+  --cozy-cocoa-soft:      #6E5430;   /* tertiary text + soft icons */
+  --cozy-champagne:       #C9A66B;   /* warm gold accent — desaturated */
+  --cozy-champagne-light: #D9BE82;   /* highlight gold */
+  --cozy-rose:            #D49583;   /* warm rose — hearts / likes */
+  --cozy-sage:            #9DAD8F;   /* rare success state */
+  --cozy-shadow:          rgba(31, 26, 15, 0.08);
 }
 
 /* ─── Base ──────────────────────────────────────────────────────── */

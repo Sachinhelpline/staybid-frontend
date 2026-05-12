@@ -235,12 +235,43 @@ export default function DiscoverPage() {
       // height keeps the reel feed pinned to the full visible viewport.
       style={{ WebkitUserSelect: "none", height: "var(--reel-vh, 100dvh)", width: "100vw" }}
     >
-      {/* v87 — `reel-brand-chrome` ("StayBid · Reels" pillared text) REMOVED.
-          The label was purely decorative but its center position was visually
-          colliding with the in-card profile chip's @handle on every reel
-          (screenshot 2 feedback). IG-style chrome doesn't show its own brand
-          on the feed surface — the BottomDock + URL communicate "where you
-          are" without crowding the content row. */}
+      {/* v88 — Premium cozy brand wordmark, restored after v87 removal.
+          • Position: top-LEFT (clears the filter chip at top-RIGHT)
+          • Style: Cormorant Garamond italic — matches the rest of the
+            cozy luxury system (Flash Deals rail title, /me drawer)
+          • Color: cocoa on `/` (sits over the cream Flash Deals rail —
+            needs dark text for contrast). Cream on `/discover` (sits
+            over dark video — needs light text + shadow).
+          • Profile chip below now starts at top:38 (was 14) so the
+            brand never collides with the @handle row (screenshot 2 was
+            the v85 overlap; this design solves it without dropping the
+            brand entirely). */}
+      {(() => {
+        const onHome = pathname === "/";
+        return (
+          <div
+            className="reel-brand-chrome absolute left-0 right-0 z-40 flex items-center justify-start px-4 pointer-events-none"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+          >
+            <span
+              className="pointer-events-auto select-none"
+              style={{
+                fontFamily: '"Cormorant Garamond", "Georgia", serif',
+                fontStyle: "italic",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                letterSpacing: "0.01em",
+                lineHeight: 1,
+                color: onHome ? "var(--cozy-cocoa)" : "var(--cozy-cream-100)",
+                textShadow: onHome ? "none" : "0 1px 6px rgba(0, 0, 0, 0.45)",
+              }}
+              aria-label="StayBid"
+            >
+              stay<span style={{ color: onHome ? "var(--cozy-champagne)" : "var(--cozy-champagne-light)" }}>·</span>bid
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Compare chip retired in v80 — /hotels is now in the BottomDock,
           and the chip was overlapping the flash-deal viewer on every tap. */}

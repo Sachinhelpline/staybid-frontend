@@ -238,7 +238,12 @@ export function PostsScrollFeed({
           aria-label="Back"
         >←</button>
         <span className="pf-title">{headerTitle}</span>
-        <span className="pf-spacer" />
+        {/* v88 — premium cozy brand wordmark, restored after v87 removal.
+            Lives on the right side of the title bar so the user always
+            sees what app they're in without crowding the back arrow. */}
+        <span className="pf-brand" aria-label="StayBid">
+          stay<span className="pf-brand-dot">·</span>bid
+        </span>
       </header>
 
       <div className="pf-list">
@@ -293,12 +298,12 @@ export function PostsScrollFeed({
       {toast && <div className="pf-toast">{toast}</div>}
 
       <style jsx global>{`
+        /* v88 — Premium cozy palette: warm cream surface, cocoa text,
+           champagne accents. Replaces the v87 stark white + pure black. */
         .pf-root {
           min-height: 100dvh;
-          background: #fff;
-          color: #0c0a04;
-          /* Reserve room for the BottomDock + iOS home-bar so the action
-             row + caption never sit behind the nav. 60px dock + safe-area. */
+          background: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-warm-dark, #1F1A0F);
           padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
           font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
         }
@@ -308,19 +313,19 @@ export function PostsScrollFeed({
           z-index: 30;
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 14px;
           padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
-          background: rgba(255, 255, 255, 0.96);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+          background: rgba(255, 252, 246, 0.94);
+          backdrop-filter: blur(12px) saturate(1.15);
+          -webkit-backdrop-filter: blur(12px) saturate(1.15);
+          border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
         }
         .pf-back {
           width: 34px;
           height: 34px;
           border: none;
           background: transparent;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
           font-size: 1.5rem;
           font-weight: 600;
           cursor: pointer;
@@ -331,15 +336,29 @@ export function PostsScrollFeed({
           border-radius: 999px;
           transition: background 0.15s ease, transform 0.12s cubic-bezier(.32,1.2,.36,1);
         }
-        .pf-back:hover { background: rgba(0, 0, 0, 0.05); }
+        .pf-back:hover { background: rgba(74, 56, 32, 0.06); }
         .pf-back:active { transform: scale(0.92); opacity: 0.6; }
         .pf-title {
           flex: 1;
           font-size: 1.04rem;
           font-weight: 700;
           letter-spacing: -0.01em;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
         }
+        /* Brand wordmark — Cormorant italic, sits opposite the back arrow.
+           Tiny + premium so it doesn't compete with the page title. */
+        .pf-brand {
+          font-family: "Cormorant Garamond", "Georgia", serif;
+          font-style: italic;
+          font-weight: 600;
+          font-size: 0.92rem;
+          line-height: 1;
+          color: var(--cozy-cocoa, #4A3820);
+          letter-spacing: 0.01em;
+          padding-right: 4px;
+          user-select: none;
+        }
+        .pf-brand-dot { color: var(--cozy-champagne, #C9A66B); margin: 0 1px; }
         .pf-spacer { width: 34px; }
 
         .pf-list { display: block; }
@@ -351,12 +370,12 @@ export function PostsScrollFeed({
         .pf-empty-icon { font-size: 3rem; display: block; margin-bottom: 10px; }
         .pf-empty-title { font-size: 0.95rem; font-weight: 700; }
 
-        /* Drawer (comments placeholder) */
+        /* v88 — Drawer + Toast also follow the cozy palette */
         .pf-drawer-backdrop {
           position: fixed;
           inset: 0;
           z-index: 90;
-          background: rgba(0, 0, 0, 0.55);
+          background: rgba(31, 26, 15, 0.55);
           display: flex;
           align-items: flex-end;
           justify-content: center;
@@ -367,7 +386,7 @@ export function PostsScrollFeed({
         .pf-drawer {
           width: 100%;
           max-width: 520px;
-          background: #fff;
+          background: var(--cozy-cream-50, #FFFCF6);
           border-radius: 18px 18px 0 0;
           padding: 14px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
           animation: pfSlideUp 0.28s cubic-bezier(.32,1.2,.36,1) both;
@@ -376,19 +395,19 @@ export function PostsScrollFeed({
           width: 40px;
           height: 4px;
           border-radius: 999px;
-          background: rgba(0, 0, 0, 0.2);
+          background: var(--cozy-taupe, #E8DCC8);
           margin: 0 auto 12px;
         }
         .pf-drawer-title {
           font-size: 0.92rem;
           font-weight: 700;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
           text-align: center;
           margin: 0 0 6px;
         }
         .pf-drawer-empty {
           font-size: 0.82rem;
-          color: rgba(12, 10, 4, 0.6);
+          color: var(--cozy-cocoa, #4A3820);
           text-align: center;
           padding: 28px 12px;
           margin: 0;
@@ -399,8 +418,8 @@ export function PostsScrollFeed({
           margin-top: 4px;
           border: none;
           border-radius: 12px;
-          background: #0c0a04;
-          color: #fff;
+          background: var(--cozy-warm-dark, #1F1A0F);
+          color: var(--cozy-cream-50, #FFFCF6);
           font-size: 0.86rem;
           font-weight: 700;
           cursor: pointer;
@@ -420,13 +439,14 @@ export function PostsScrollFeed({
           z-index: 95;
           padding: 10px 16px;
           border-radius: 999px;
-          background: rgba(12, 10, 4, 0.92);
-          color: #fff;
+          background: rgba(31, 26, 15, 0.94);
+          color: var(--cozy-cream-50, #FFFCF6);
+          border: 1px solid rgba(217, 190, 130, 0.20);
           font-size: 0.82rem;
           font-weight: 600;
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+          box-shadow: 0 8px 22px rgba(31, 26, 15, 0.35);
           animation: pfToastIn 2.2s ease forwards;
           pointer-events: none;
         }
@@ -627,9 +647,11 @@ function PostCard({
       )}
 
       <style jsx global>{`
+        /* v88 — Card surfaces in premium cozy palette: cream bg, cocoa
+           text, taupe dividers, champagne accents for highlighted state. */
         .pf-card {
-          background: #fff;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+          background: var(--cozy-cream-50, #FFFCF6);
+          border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
           padding: 6px 0 10px;
         }
         .pf-head {
@@ -642,7 +664,7 @@ function PostCard({
           width: 36px;
           height: 36px;
           border-radius: 999px;
-          background: #f3eee1;
+          background: var(--cozy-cream-200, #F2EAD8);
           overflow: hidden;
           flex-shrink: 0;
           display: inline-flex;
@@ -653,21 +675,21 @@ function PostCard({
         .pf-avatar-fallback {
           font-size: 0.95rem;
           font-weight: 800;
-          color: #6e4a08;
+          color: var(--cozy-cocoa-soft, #6E5430);
         }
         .pf-head-text { flex: 1; min-width: 0; }
         .pf-name {
           font-size: 0.92rem;
           font-weight: 700;
           margin: 0;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .pf-audio {
           font-size: 0.78rem;
-          color: rgba(12, 10, 4, 0.78);
+          color: var(--cozy-cocoa, #4A3820);
           margin: 1px 0 0;
           white-space: nowrap;
           overflow: hidden;
@@ -675,19 +697,21 @@ function PostCard({
         }
         .pf-follow {
           padding: 6px 16px;
-          border-radius: 8px;
-          border: 1.5px solid rgba(0, 0, 0, 0.85);
+          border-radius: 999px;
+          border: 1.5px solid var(--cozy-cocoa, #4A3820);
           background: transparent;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
           font-size: 0.82rem;
           font-weight: 700;
           cursor: pointer;
+          transition: background 0.15s ease;
         }
+        .pf-follow:hover { background: rgba(74, 56, 32, 0.06); }
         .pf-follow:active { opacity: 0.6; }
         .pf-more {
           background: transparent;
           border: none;
-          color: #0c0a04;
+          color: var(--cozy-cocoa, #4A3820);
           font-size: 1.4rem;
           font-weight: 700;
           padding: 4px 6px;
@@ -698,7 +722,8 @@ function PostCard({
           width: 100%;
           aspect-ratio: 9 / 16;
           max-height: 78vh;
-          background: #1a1b20;
+          /* warmer than stark black — feels luxurious against cream */
+          background: var(--cozy-warm-dark, #1F1A0F);
           overflow: hidden;
         }
         .pf-video, .pf-image {
@@ -707,7 +732,7 @@ function PostCard({
           object-fit: cover;
           display: block;
         }
-        .pf-image { background: #0c0a04; }
+        .pf-image { background: var(--cozy-warm-dark, #1F1A0F); }
         .pf-blank {
           display: flex;
           align-items: center;
@@ -723,16 +748,17 @@ function PostCard({
           width: 30px;
           height: 30px;
           border-radius: 999px;
-          background: rgba(0, 0, 0, 0.55);
-          border: none;
-          color: #fff;
+          /* v88 — warm cocoa instead of cool near-black */
+          background: rgba(31, 26, 15, 0.55);
+          border: 1px solid rgba(217, 190, 130, 0.18);
+          color: var(--cozy-cream-50, #FFFCF6);
           font-size: 0.85rem;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
         }
-        /* Double-tap heart pulse */
+        /* Double-tap heart pulse — v88 warm rose instead of harsh red */
         @keyframes pfHeartPulse {
           0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
           25%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
@@ -744,8 +770,8 @@ function PostCard({
           top: 50%;
           left: 50%;
           font-size: 5rem;
-          color: #ff3a6a;
-          text-shadow: 0 6px 22px rgba(255, 58, 106, 0.5);
+          color: var(--cozy-rose, #D49583);
+          text-shadow: 0 6px 22px rgba(212, 149, 131, 0.5);
           animation: pfHeartPulse 0.9s ease-out forwards;
           pointer-events: none;
           z-index: 4;
@@ -753,13 +779,13 @@ function PostCard({
         .pf-actions {
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 10px 14px 4px;
+          gap: 18px;
+          padding: 11px 14px 4px;
         }
         .pf-act {
           background: transparent;
           border: none;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
@@ -773,18 +799,23 @@ function PostCard({
           font-size: 1.5rem;
           line-height: 1;
         }
-        .pf-act.is-liked .pf-act-glyph { color: #ff3a6a; }
-        .pf-act.is-saved .pf-act-glyph { color: #6e4a08; filter: drop-shadow(0 1px 2px rgba(184, 134, 11, 0.45)); }
+        /* v88 — warm rose for liked, cozy champagne for saved */
+        .pf-act.is-liked .pf-act-glyph { color: var(--cozy-rose, #D49583); }
+        .pf-act.is-saved .pf-act-glyph {
+          color: var(--cozy-champagne, #C9A66B);
+          filter: drop-shadow(0 1px 2px rgba(201, 166, 107, 0.35));
+        }
         .pf-act-count {
           font-size: 0.92rem;
           font-weight: 600;
+          color: var(--cozy-cocoa, #4A3820);
         }
         .pf-actions-spacer { flex: 1; }
         .pf-caption {
           padding: 6px 14px 0;
           font-size: 0.88rem;
           line-height: 1.35;
-          color: #0c0a04;
+          color: var(--cozy-warm-dark, #1F1A0F);
         }
         .pf-caption strong { font-weight: 700; margin-right: 4px; }
         .pf-hotel-cta {
@@ -792,12 +823,14 @@ function PostCard({
           margin: 8px 14px 0;
           padding: 7px 12px;
           border-radius: 999px;
-          background: rgba(184, 134, 11, 0.10);
-          color: #6e4a08;
+          background: rgba(201, 166, 107, 0.14);
+          border: 1px solid rgba(201, 166, 107, 0.30);
+          color: var(--cozy-cocoa, #4A3820);
           font-size: 0.78rem;
           font-weight: 700;
           text-decoration: none;
         }
+        .pf-hotel-cta:hover { background: rgba(201, 166, 107, 0.22); }
       `}</style>
     </article>
   );

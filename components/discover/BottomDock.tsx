@@ -99,11 +99,14 @@ export function BottomDock() {
           justify-content: space-around;
           gap: 2px;
           padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
-          background: rgba(7, 6, 14, 0.92);
+          /* v88 — warm dark (cocoa) instead of cool near-black. Matches
+             the premium cozy system. Inactive items now use cream-tinted
+             white instead of harsh stark white. */
+          background: rgba(31, 26, 15, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
+          border-top: 1px solid rgba(217, 190, 130, 0.12);
+          box-shadow: 0 -6px 22px rgba(31, 26, 15, 0.45);
         }
         .ig-dock-item {
           flex: 1 1 0;
@@ -114,7 +117,8 @@ export function BottomDock() {
           justify-content: center;
           gap: 2px;
           padding: 6px 2px;
-          color: rgba(255, 255, 255, 0.62);
+          /* v88 — cream-tinted instead of harsh white */
+          color: rgba(250, 245, 235, 0.62);
           text-decoration: none;
           border-radius: 12px;
           transition:
@@ -124,8 +128,9 @@ export function BottomDock() {
         }
         .ig-dock-item:active { transform: scale(0.94); }
         .ig-dock-item.is-active {
-          color: #ffd76b;
-          background: linear-gradient(180deg, rgba(255,215,107,0.08), rgba(255,215,107,0.02));
+          /* v88 — desaturated cozy champagne instead of saturated gold */
+          color: var(--cozy-champagne-light, #D9BE82);
+          background: linear-gradient(180deg, rgba(217,190,130,0.10), rgba(217,190,130,0.02));
         }
         .ig-dock-glyph {
           font-size: 1.25rem;

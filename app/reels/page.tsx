@@ -209,12 +209,29 @@ function ReelCard({
         className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 z-10"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       >
-        <Link href="/" className="text-white/80 text-sm font-bold tracking-widest" style={{ fontFamily: "monospace" }}>
-          stay<span style={{ color: "#f0b429" }}>bid</span>
+        {/* v88 — Premium cozy brand wordmark. Cormorant italic + cocoa-on-cream
+            instead of stark monospace white-on-black. Matches /discover. */}
+        <Link
+          href="/"
+          className="select-none"
+          style={{
+            fontFamily: '"Cormorant Garamond", "Georgia", serif',
+            fontStyle: "italic",
+            fontWeight: 600,
+            fontSize: "1.05rem",
+            letterSpacing: "0.01em",
+            color: "var(--cozy-cream-50, #FFFCF6)",
+            textShadow: "0 1px 6px rgba(0, 0, 0, 0.45)",
+            textDecoration: "none",
+          }}
+        >
+          stay<span style={{ color: "var(--cozy-champagne-light, #D9BE82)" }}>·</span>bid
         </Link>
         <button
           onClick={() => setMuted(m => !m)}
-          className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center text-lg backdrop-blur-sm">
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+          style={{ background: "rgba(31, 26, 15, 0.45)", border: "1px solid rgba(217, 190, 130, 0.18)" }}
+        >
           {muted ? "🔇" : "🔊"}
         </button>
       </div>

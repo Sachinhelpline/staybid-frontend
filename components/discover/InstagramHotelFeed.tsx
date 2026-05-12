@@ -1916,15 +1916,14 @@ const HotelCard = memo(function HotelCard({
       <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
-      {/* Top-LEFT: hotel profile chip. v87 — `top` uses safe-area-inset so
-          the chip clears the iOS notch / Android camera punch-hole on every
-          device. Without this, on notched phones the avatar+name was
-          getting clipped under the system bar in PWA fullscreen mode.
-          Avatar tap → popover (View Profile / Watch Reels).
-          Name tap   → opens hotel profile sheet directly. */}
+      {/* Top-LEFT: hotel profile chip. v88 — pushed down to `top: 38` so
+          the brand wordmark restored on /discover + / sits ABOVE the chip
+          and never collides with the @handle row. Combined with the
+          safe-area-inset-top (v87) the chip clears every device's notch +
+          the brand wordmark on the same surface. */}
       <div
         className="absolute left-3 right-3 z-30 flex items-start gap-2.5"
-        style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 38px)" }}
       >
         <button
           type="button"
@@ -2214,9 +2213,10 @@ const HotelCard = memo(function HotelCard({
             <span
               className="ig-pill"
               style={{
-                background: "linear-gradient(135deg, rgba(255,69,141,0.40), rgba(185,100,255,0.25))",
-                border: "1px solid rgba(255,69,141,0.6)",
-                color: "#ffe1ee",
+                /* v88 — cozy champagne+cocoa instead of magenta/purple */
+                background: "linear-gradient(135deg, rgba(217,190,130,0.30), rgba(110,84,48,0.25))",
+                border: "1px solid rgba(217,190,130,0.55)",
+                color: "var(--cozy-cream-50)",
               }}
             >
               ✨ YOUR {String(h._userPostKind || "POST").toUpperCase()}
@@ -3263,12 +3263,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           padding: 4px 8px;
           max-width: 42vw;
           border-radius: 9999px;
-          color: #fff;
-          background: linear-gradient(135deg, rgba(255,69,141,0.30), rgba(185,100,255,0.18));
-          border: 1px solid rgba(255,255,255,0.22);
+          color: var(--cozy-cream-50, #FFFCF6);
+          /* v88 — cozy cocoa+champagne instead of magenta/purple */
+          background: linear-gradient(135deg, rgba(74,56,32,0.55), rgba(31,26,15,0.40));
+          border: 1px solid rgba(217,190,130,0.30);
           backdrop-filter: blur(14px) saturate(1.4);
           -webkit-backdrop-filter: blur(14px) saturate(1.4);
-          box-shadow: 0 3px 10px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.18);
+          box-shadow: 0 3px 10px rgba(31,26,15,0.32), inset 0 1px 0 rgba(217,190,130,0.18);
           transition: transform 0.12s ease;
           font-size: 0.6rem;
           line-height: 1.05;
@@ -3728,19 +3729,21 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             inset 0 1.5px 0 rgba(255,255,255,0.7),
             inset 0 -1px 0 rgba(110,70,5,0.5);
         }
+        /* v88 — Bid CTA softened from harsh purple/magenta to cozy
+           champagne-on-cocoa. Same 3D depth, premium minimal palette. */
         .ig-cta-bid {
-          color: #f3e6ff;
+          color: #FFF6E2;
           background:
-            radial-gradient(120% 120% at 30% 0%, rgba(199,140,255,0.45), rgba(199,140,255,0) 45%),
-            linear-gradient(180deg, rgba(155,109,255,0.40) 0%, rgba(94,52,184,0.35) 60%, rgba(40,16,95,0.45) 100%);
-          border: 1px solid rgba(199,140,255,0.55);
-          text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            radial-gradient(120% 120% at 30% 0%, rgba(217,190,130,0.42), rgba(217,190,130,0) 45%),
+            linear-gradient(180deg, rgba(110,84,48,0.55) 0%, rgba(74,56,32,0.50) 60%, rgba(31,26,15,0.60) 100%);
+          border: 1px solid rgba(217,190,130,0.55);
+          text-shadow: 0 1px 4px rgba(0,0,0,0.55);
           box-shadow:
-            0 0 18px rgba(155,109,255,0.35),
-            0 10px 24px -5px rgba(60,28,140,0.55),
-            0 3px 8px rgba(0,0,0,0.4),
-            inset 0 1.5px 0 rgba(255,255,255,0.30),
-            inset 0 -1px 0 rgba(20,8,55,0.45);
+            0 0 18px rgba(201,166,107,0.28),
+            0 10px 24px -5px rgba(31,26,15,0.55),
+            0 3px 8px rgba(0,0,0,0.40),
+            inset 0 1.5px 0 rgba(255,246,226,0.25),
+            inset 0 -1px 0 rgba(20,16,8,0.45);
         }
 
         /* ─── Hearts (love bomb on like/double-tap) ──────────────────────── */
