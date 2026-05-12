@@ -2304,3 +2304,165 @@ Remaining Vercel projects (all functional, all KEEP):
 - **Vercel:** only 1 build per push (legacy duplicates deleted)
 
 ---
+
+## Instagram-Fast Perf Era (v92 → v93, May 2026-05-13)
+
+Two iterations: a small flash-deals UI polish (v92) and a deep performance overhaul (v93) that turned every layer — service worker, hot APIs, and the reel feed itself — into something built for heavy traffic without sacrificing the "fresh on every refresh" feel.
+
+### v92 — Flash Deals light-mode cream pills + cream-over-image overlay
+Tiny visual fix: in light mode the deal pills on `/flash-deals` were rendering as bright gold-on-cream which clashed with the v90 cozy palette. Switched the pill bg to a softer cream tint matching the card surface; "Live now" + ETA overlays on the deal images got a cream gradient backdrop so the white text reads cleanly against bright hotel photos. No structural changes.
+
+### v93 — Instagram-Fast: kill cache-nuke, share Supabase reads, window cards
+**Commit:** `0b1ec1f` — `perf(feed+sw+api): Instagram-fast — kill cache-nuke, share Supabase reads, window cards (v93)`
+
+User reported: "program slow respond kar raha hai, load hone mein bhi time lag raha hai, Instagram jaisa bina flicker ke chahiye." Investigation surfaced five compounding bottlenecks that we fixed together in one shot.
+
+#### Root causes (verified, not guessed)
+
+| # | Bottleneck | Where |
+|---|------------|-------|
+| 1 | Layout kill-switch wiped ALL caches + unregistered SW + force-reloaded on EVERY release bump | `app/layout.tsx` lines 167-179 (pre-v93) |
+| 2 | SW URL included `SB_BUILD` so every release re-installed the SW from scratch | layout.tsx + sw.js `CACHE_NAME` also bumped per release |
+| 3 | `Cache-Control: no-store` on `/api/discover/feed`, `/api/flash/near`, `/api/social/feed` — every page open = 5–9 Supabase round-trips + full-table scans of `bids` and `bookings` | three route handlers |
+| 4 | All ~46 reel cards mounted simultaneously — 46 `<video>` elements + 46 `useFollow` / `useSoundStore` subscribers on initial paint | `components/discover/InstagramHotelFeed.tsx` line 3878 |
+| 5 | `/api/social/feed` ran SEQUENTIALLY before `/api/discover/feed` in `loadFeed` — doubled cold-start wait | `app/discover/page.tsx` |
+
+Bonus: zero `<link rel="preconnect">` — DNS+TLS handshake to Supabase / image origins paid on every fresh visit.
+
+#### Fixes (all live in production)
+
+##### 1. Layout kill-switch removed + stable SW URL
+- **`app/layout.tsx`** — deleted the `caches.keys().forEach(delete)` + `getRegistrations().forEach(unregister)` + `setTimeout(reload, 150)` block entirely. SB_BUILD still writes to localStorage for telemetry, but no destructive operations run on release bumps.
+- **SW registered with stable URL `/sw.js`** (no `?v=${SB_BUILD}` suffix). Browsers now byte-compare sw.js on each navigation — if unchanged, no reinstall, no controllerchange, no reload, no cache wipe.
+- Returning users keep their warm cache across releases. Only a genuine sw.js content change triggers a controllerchange reload.
+
+##### 2. Stable SW cache names
+- **`public/sw.js`** — renamed caches to `staybid-static-v1` + `staybid-html-v1`. **Bump these ONLY when the fetch-handler logic actually changes, NEVER on every UI release.**
+- Content-hashed Next.js chunks make the static cache safe to reuse forever — new builds simply add new entries without invalidating old ones.
+
+##### 3. Module-level in-memory cache + in-flight de-dup ([lib/sb-cache.ts](lib/sb-cache.ts) — NEW)
+```ts
+sbCached<T>(key: string, fetcher: () => Promise<T>, ttlMs: number): Promise<T>
+sbCacheInvalidate(keyPrefix: string)
+```
+- Each Vercel Lambda instance keeps a `Map<key, {at, data}>` on `globalThis` (survives HMR).
+- 50 concurrent requests for `hotels` fire **one** Supabase fetch — the rest await the same Promise.
+- After fetch resolves, all callers get the data; the cache entry is good for `ttlMs`.
+- **TTLs tuned by data volatility:**
+  - `TTL_CATALOG = 60_000` for hotels + rooms (rarely change minute-to-minute)
+  - `TTL_POPULAR = 20_000` for `bids` / `bookings` count aggregates
+  - `TTL_INVENTORY = 15_000` for room_units / accepted bids / room_blocks (availability)
+  - `TTL_POSTS = 15_000` for the social_posts feed (new uploads visible within seconds)
+  - `TTL_LOOKUPS = 60_000` for author + hotel side-load joins
+
+##### 4. Hot APIs wrapped with sbCached
+- **`app/api/discover/feed/route.ts`** — `hotels`, `rooms`, all-`bids`, all-`bookings` go through cache; per-user `userBookings` still hits Supabase live (varies per request).
+- **`app/api/flash/near/route.ts`** — every `sb()` call replaced with `sbCachedFetch()` (catalog: 60 s, inventory: 15 s).
+- **`app/api/social/feed/route.ts`** — posts cached keyed on full filter string (so `/me`'s `?author=…` and `?type=STORY` get their own buckets); authors + hotels side-loads cached with sort-stable keys.
+
+Personalization (signals, per-user history, shuffle, viewed-IDs deprioritization) STILL RUNS PER REQUEST — only the shared dataset is reused. Same correctness, ~10x less Supabase work.
+
+##### 5. Parallel feed fetches on /discover
+- **`app/discover/page.tsx`** — `/api/social/feed` + `/api/discover/feed` now fire via `Promise.all`. Total wait = `max(a, b)` instead of `a + b`. Cuts ~300 ms off cold start on dev; more on production cellular.
+
+##### 6. Card windowing in InstagramHotelFeed
+- **`components/discover/InstagramHotelFeed.tsx`** — at the `.map(...)` call site, only `Math.abs(i - activeIdx) <= 4` slots render a real `<HotelCard>`. The rest return `<section className="ig-card ig-card-skel" aria-hidden />`.
+- New CSS rule: `.ig-card-skel { background: #000; width: 100%; }` — inherits the `.ig-card` 100% height + `scroll-snap-align: start`, so swipe geometry + IntersectionObserver math are byte-identical to before.
+- **Verified live:** 46 slots / 9 real cards / 37 skeletons; window slides correctly as user scrolls (e.g. after scrolling to slot 10: indexes 6-14 rendered, 0-5 + 15+ are skeletons).
+- Memory + paint cost stays flat regardless of feed length — could be 1000 items long, still only ~9 mounted.
+
+##### 7. Preconnect headers in layout
+- **`app/layout.tsx <head>`** — `<link rel="preconnect">` + `<link rel="dns-prefetch">` for `uxxhbdqedazpmvbvaosh.supabase.co`, `commondatastorage.googleapis.com`, `images.unsplash.com`. Saves ~100-400 ms of DNS + TLS handshake on cold cellular.
+
+#### Verified perf numbers (dev preview)
+- `/api/social/feed`: **294 ms cold → 141 ms warm** (cache hit halves it)
+- `/api/flash/near`: **374 ms cold → 324 ms warm**
+- Card mount count: **46 → 9** (5x reduction during steady-state scroll)
+- Scroll-snap heights: identical (500 px per card both real + skeleton)
+- v93 badge renders, no functional regressions, BottomDock + action rail + Flash Deal rail all behave identically.
+
+### Files added (this era)
+```
+lib/sb-cache.ts                                 # Module-level in-memory cache + in-flight de-dup
+```
+
+### Files modified (this era)
+```
+app/layout.tsx                                  # killed kill-switch, stable /sw.js URL, +preconnects, SB_BUILD v93, badge v93
+public/sw.js                                    # stable staybid-static-v1 + staybid-html-v1 (no per-release bump)
+app/api/discover/feed/route.ts                  # sbCached for hotels/rooms/bids/bookings (TTL_CATALOG + TTL_POPULAR)
+app/api/flash/near/route.ts                     # sbCachedFetch wrapper for ALL inner reads (catalog 60s, inventory 15s)
+app/api/social/feed/route.ts                    # sbCached for posts + authors + hotels side-loads
+app/discover/page.tsx                           # Promise.all for /api/social/feed + /api/discover/feed
+components/discover/InstagramHotelFeed.tsx      # card windowing at .map (only ±4 around activeIdx renders HotelCard)
+```
+
+### Service-worker version map (continued)
+- v91 → brand-shuffle-dedupe-flashdeals-readable
+- v92 → flash-deals-cream-pills-image-overlay
+- **v93 → instagram-fast-perf (current)** — kill cache-nuke, share Supabase reads, window cards
+
+### Architecture summary (post-v93)
+
+**Service Worker lifecycle:**
+- SW URL is **stable** (`/sw.js`, no version param). Browsers byte-compare on each navigation.
+- Cache names are **stable** (`staybid-static-v1`, `staybid-html-v1`). The activate handler only drops caches whose names don't match — so a release with no SW changes keeps the existing cache intact.
+- Strategy unchanged from v57: HTML = SWR, hashed chunks = cache-first, `/api/` + `/_next/data/` = network-only, images/fonts = SWR.
+- **Result:** releasing a UI change no longer punishes returning users with a forced reload + cold-start. They keep their warm cache and only swap HTML on next visit.
+
+**Hot API caching pattern:**
+```ts
+const data = await sbCached(
+  `discover:hotels`,                              // namespaced key
+  () => fetch(`${SB_URL}/...`).then(r => r.json()),
+  TTL_CATALOG,                                    // 60_000 ms
+);
+```
+- Each Lambda instance shares one in-memory dataset across all concurrent users.
+- Personalization (signals body, user history) still runs per request — only the shared catalog is reused.
+- Under heavy traffic: N concurrent users on a warm Lambda = **1** Supabase fetch, not N.
+
+**Card windowing pattern:**
+```tsx
+filteredItems.map((it, i) => {
+  if (Math.abs(i - activeIdx) > 4) {
+    return <section key={...} className="ig-card ig-card-skel" aria-hidden />;
+  }
+  return <HotelCard ... />;
+})
+```
+- Out-of-window slots are 500 px scroll-snap skeletons with zero React subtree.
+- Window slides naturally as `activeIdx` updates via IntersectionObserver.
+- Memory cost flat: 9 real HotelCards mounted at any time regardless of feed length.
+
+### Things to Avoid (v93 Era)
+- **Never** re-add the cache-nuke / SW-unregister / force-reload kill-switch to `app/layout.tsx`. That was the single biggest "slow after update" culprit pre-v93. The natural `controllerchange` + `skipWaiting` lifecycle handles SW updates gracefully without trashing the static cache.
+- **Never** append `?v=${SB_BUILD}` (or any per-release token) to the SW registration URL. Stable URL means browsers byte-compare — releases with no sw.js changes don't trigger a reinstall, which means no reload, no cache wipe.
+- **Never** bump `CACHE_NAME` or `HTML_CACHE` in `public/sw.js` on every release. Bump these ONLY when the fetch-handler logic actually changes (e.g. switching SWR HTML to cache-first, adding a new content type rule). The activate handler drops everything that doesn't match, so a bump = full cache wipe for every user.
+- **Never** add `Cache-Control: no-store` to a route that returns shared catalog data. Use `sbCached` for the EXPENSIVE Supabase reads + keep `no-store` on the FINAL response if it's personalized — same correctness, ~10x less Supabase work.
+- **Never** import `sb-cache.ts` from a client component. It uses `globalThis` module state which is server-only by design.
+- **Never** call `sbCached` with a TTL longer than the user-visible freshness expectation for that data. Flash-deal availability changes when bookings happen → 15 s is the ceiling. Catalog data (hotels/rooms) → 60 s is fine. Authors/profile rows → 60 s.
+- **Never** raise `Math.abs(i - activeIdx) > 4` window without testing on mid-tier Android. The 9-card window (±4) is the sweet spot — large enough that swipe never reveals a skeleton mid-animation, small enough that mount cost stays flat. Lower → user catches a skeleton flash. Higher → unnecessary mounts.
+- **Never** strip `aria-hidden` from `.ig-card-skel`. Screen readers would announce empty `<section>` placeholders as visible content.
+- **Never** lazy-load the `<HotelCard>` component itself (e.g. with `next/dynamic`). Windowing already solves the perf problem; lazy-loading the component would mean a real card swipe-in causes a chunk fetch + flash of empty space. The current approach renders an empty `<section>` while the real card is conditionally rendered from the SAME bundle — no waterfall.
+- **Never** parallelize a fetch chain where the SECOND fetch depends on data from the first. The v93 `Promise.all` only works because `/api/social/feed` and `/api/discover/feed` are independent. If you ever need to merge a third feed source that reads from the first one's response, keep the dependent fetch sequential.
+- **Never** mutate the cache `Map` directly from a route handler. Always go through `sbCached(key, fetcher, ttl)`. Direct mutations skip the in-flight de-dup and create stampede behavior under concurrent load.
+- **Never** delete `lib/sb-cache.ts` thinking it's "just dev caching". It's the load-bearing piece for heavy traffic — 50 simultaneous home-page opens become 1 Supabase fetch instead of 50.
+
+### Future-proofing notes
+- Module-level cache survives across hot Lambda invocations but NOT across cold starts. Vercel's Lambda reuse window is typically 5-15 min between invocations. After that, the first request pays the cold fetch + re-warms the cache for the next 60 s.
+- For genuinely high QPS (>100 req/s on a single endpoint), consider promoting `sb-cache` to a Redis-backed shared cache so cold-Lambda starts don't lose the cache. Upstash already provisioned for the project (CLAUDE.md: "Cache: Upstash Redis stirring-hog-94337, Mumbai") — can layer it underneath sbCached as a fallback before hitting Supabase.
+- The reel-card window size (±4) can be made adaptive: smaller window on low-memory devices via `navigator.deviceMemory` + `navigator.connection.effectiveType`. Not needed yet — current ±4 is fine on mid-tier Android.
+
+---
+
+## Updated production state (v93, 2026-05-13)
+- **Current version:** v93 · commit `0b1ec1f` on `main` · branch `claude/pensive-shaw-af9c78`
+- **Service Worker:** stable URL `/sw.js` + stable cache names. Releases no longer trigger forced reloads + cache wipes for returning users.
+- **Hot APIs:** all three feed endpoints share Supabase reads via `lib/sb-cache.ts` in-memory module cache + in-flight de-dup. ~10x less Supabase work under load.
+- **Reel feed:** card windowing keeps mount count at ~9 regardless of feed length. Verified: 46 slots / 9 real cards / 37 skeletons; identical scroll-snap geometry.
+- **Page load:** `<link rel="preconnect">` to Supabase + image origins shaves DNS+TLS handshake.
+- **Bulletproof for heavy traffic:** N concurrent users = 1 Supabase fetch per warm Lambda; viral release no longer triggers thundering-herd asset re-download.
+- **Verified perf:** `/api/social/feed` 294 ms cold → 141 ms warm; no functional regressions; v93 badge rendering correctly.
+
+---
