@@ -40,9 +40,49 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    if (body.bookingId) row.bookingId = String(body.bookingId);
+    // v106.1 — defensive id routing. The customer-side composer collapses
+    // bookings + accepted bids into one dropdown (because /api/bookings/my
+    // returns bids-as-bookings in this codebase — public.bookings has 0
+    // rows in prod, every "booking" the customer sees is actually a row
+    // from public.bids). So `body.bookingId` may actually be a bid id
+    // (prefix "bid_"). complaints.bookingId has a strict FK to
+    // public.bookings(id) — inserting "bid_xxx" there returns 23503 and
+    // produces the visible "Failed to save complaint" error.
+    //
+    // Fix: classify by id prefix server-side AND verify presence in the
+    // bookings table before keeping it as bookingId. Mis-routed ids fall
+    // back to bidId which has no FK in this schema (soft reference only).
+    const rawBookingId = body.bookingId ? String(body.bookingId).trim() : "";
+    const rawBidId     = body.bidId     ? String(body.bidId).trim()     : "";
+
+    if (rawBookingId) {
+      const looksLikeBid = /^bid[_-]/i.test(rawBookingId);
+      if (looksLikeBid) {
+        // Route to bidId, skip bookings FK entirely.
+        if (!rawBidId) row.bidId = rawBookingId;
+      } else {
+        // Validate against bookings table before trusting the FK.
+        try {
+          const check = await fetch(
+            `${SB_URL}/rest/v1/bookings?id=eq.${encodeURIComponent(rawBookingId)}&select=id&limit=1`,
+            { headers: SB_H },
+          );
+          const found = await check.json().catch(() => []);
+          if (Array.isArray(found) && found.length > 0) {
+            row.bookingId = rawBookingId;
+          } else {
+            // Booking id doesn't exist in bookings table — store as bid
+            // reference (most likely scenario in this codebase) so the
+            // complaint isn't lost just because the FK target was wrong.
+            if (!rawBidId) row.bidId = rawBookingId;
+          }
+        } catch {
+          if (!rawBidId) row.bidId = rawBookingId;
+        }
+      }
+    }
+    if (rawBidId) row.bidId = rawBidId;
     if (body.hotelId)   row.hotelId   = String(body.hotelId);
-    if (body.bidId)     row.bidId     = String(body.bidId);
     if (body.paymentId) row.paymentId = String(body.paymentId);
 
     // v105.1 — complaints.customerId has a FK constraint pointing at
