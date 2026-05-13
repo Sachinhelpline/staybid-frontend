@@ -56,8 +56,18 @@ export default function AdminRLS() {
   }
 
   const adminHeaders = useCallback((): Record<string, string> => {
-    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
-    return t ? { Authorization: `Bearer ${t}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+    if (typeof window === "undefined") return { "Content-Type": "application/json" };
+    const t = localStorage.getItem("sb_admin_token");
+    // v104.2 — also send x-admin-* identity headers so opaque adm_* tokens
+    // (master-PIN login flow) still surface admin identity in audit_action_logs.
+    let user: any = null;
+    try { user = JSON.parse(localStorage.getItem("sb_admin_user") || "null"); } catch {}
+    const h: Record<string, string> = { "Content-Type": "application/json" };
+    if (t) h["Authorization"] = `Bearer ${t}`;
+    if (user?.id)    h["x-admin-id"]    = String(user.id);
+    if (user?.phone) h["x-admin-phone"] = String(user.phone);
+    if (user?.name)  h["x-admin-name"]  = String(user.name);
+    return h;
   }, []);
 
   const load = useCallback(async () => {

@@ -32,9 +32,26 @@ export function adminFromReq(req: Request): AdminIdentity {
     const auth = req.headers.get("authorization") || "";
     const t = auth.replace(/^Bearer\s+/i, "").trim();
     if (t) {
+      // 1. JWT path — Railway-issued admin JWTs (OTP login flow) decode to
+      //    a claim payload with { id, phone, name }.
       const p = decodeJwt(t);
       if (p?.id) return { id: p.id, phone: p.phone || null, name: p.name || null };
+
+      // v104.2 — opaque admin token path. The master-PIN login flow in
+      // /api/admin/check-role issues `adm_<48hex>` opaque tokens (not
+      // JWTs). The check-role endpoint already verified admin role
+      // before issuing, so the token's presence alone is sufficient
+      // proof of admin. We can't extract user identity from an opaque
+      // token, so the caller MUST send their identity via x-admin-*
+      // headers (the layout sets these from localStorage.sb_admin_user).
+      if (/^adm_[a-f0-9]{8,}$/i.test(t)) {
+        const id    = req.headers.get("x-admin-id")    || "master-pin-admin";
+        const phone = req.headers.get("x-admin-phone") || null;
+        const name  = req.headers.get("x-admin-name")  || null;
+        return { id, phone, name };
+      }
     }
+    // Fallback: explicit x-admin-* headers without a Bearer token.
     const id = req.headers.get("x-admin-id");
     const phone = req.headers.get("x-admin-phone");
     const name = req.headers.get("x-admin-name");
