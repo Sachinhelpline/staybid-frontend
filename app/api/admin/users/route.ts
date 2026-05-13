@@ -12,18 +12,47 @@ async function sb(path: string) {
   return res.json();
 }
 
+// v104.5 — fix /admin/users showing 0 users.
+// Route was selecting `totalSpend` + `status` columns that don't exist on
+// the actual users table (real columns: id, email, name, phone, role,
+// avatarUrl, createdAt, isBlocked, updatedAt, password, tier,
+// tier_updated_at). PostgREST returned 400 + 42703 for the whole SELECT
+// → sb() helper returned [] → page showed 0 users. Pre-existing bug
+// surfaced only now because nobody opened /admin/users in production.
+//
+// Fix: select only real columns; map `isBlocked` → virtual `status`
+// pill in the response so the existing UI continues to work.
+//   isBlocked = true  → status = "banned"
+//   isBlocked = false → status = "active"
+// `totalSpend` is derived from bookings — for now we ship 0 and a
+// future pass can compute it from public.bookings or wallets.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const tier = searchParams.get("tier");
   const status = searchParams.get("status");
   const search = searchParams.get("search");
 
-  let query = "users?select=id,phone,name,email,tier,totalSpend,role,status,createdAt&order=createdAt.desc&limit=200";
+  let query = `users?select=id,phone,name,email,tier,role,"isBlocked","createdAt"&order=%22createdAt%22.desc&limit=200`;
   if (tier && tier !== "all") query += `&tier=eq.${tier}`;
-  if (status && status !== "all") query += `&status=eq.${status}`;
+  if (status && status !== "all") {
+    if (status === "banned")        query += `&"isBlocked"=eq.true`;
+    else if (status === "active")   query += `&"isBlocked"=eq.false`;
+    // "suspended" has no equivalent column → ignore filter
+  }
 
   try {
-    let users = (await sb(query)) as any[];
+    const raw = (await sb(query)) as any[];
+    let users = raw.map((u) => ({
+      id:         u.id,
+      phone:      u.phone,
+      name:       u.name,
+      email:      u.email,
+      tier:       u.tier || "silver",
+      role:       u.role || "customer",
+      status:     u.isBlocked ? "banned" : "active",   // virtual status
+      totalSpend: 0,                                   // TODO: derive from bookings/wallets
+      createdAt:  u.createdAt,
+    }));
     if (search) {
       const s = search.toLowerCase();
       users = users.filter(
@@ -45,9 +74,17 @@ export async function PATCH(req: NextRequest) {
 
   try {
     let update: Record<string, unknown> = {};
-    if (action === "tier") update = { tier: value };
-    else if (action === "status") update = { status: value };
-    else return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    if (action === "tier") {
+      update = { tier: value };
+    } else if (action === "status") {
+      // v104.5 — map virtual status → real isBlocked column
+      if (value === "banned")        update = { isBlocked: true };
+      else if (value === "active")   update = { isBlocked: false };
+      else if (value === "suspended") update = { isBlocked: true };  // best-effort: treat as banned
+      else return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    } else {
+      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    }
 
     const res = await fetch(`${SB_URL}/rest/v1/users?id=eq.${userId}`, {
       method: "PATCH",
