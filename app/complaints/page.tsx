@@ -10,7 +10,7 @@
 // (b) a "New complaint" composer with type/priority + optional booking
 // context, and (c) a status timeline per item.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -59,7 +59,18 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
   escalate:    { bg: "bg-purple-50",  color: "text-purple-800",  label: "Escalated" },
 };
 
+// v103.1 — wrap useSearchParams() consumer in Suspense per Next.js 14
+// requirement. Without this the static-page build fails with
+// "useSearchParams should be wrapped in a suspense boundary".
 export default function ComplaintsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-luxury-500">Loading…</div>}>
+      <ComplaintsInner />
+    </Suspense>
+  );
+}
+
+function ComplaintsInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { user, loading: authLoading } = useAuth();
