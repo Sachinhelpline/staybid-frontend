@@ -486,14 +486,18 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
           <RateStayBanner bidId={b.id} hotelName={hotel.name || "this hotel"} stayPoints={stayPoints} />
         )}
 
-        {/* v98: Compact action row — report issue / help link */}
+        {/* v105 — Report-an-issue link with proper spacing + visual separator.
+            Was stacking too tightly under <BookingChat> with -mt-1 negative
+            margin, looked like an overlap on Android phones. Now sits on
+            its own row with a clear top border + sensible padding. */}
         {(isConfirmed || isCompleted) && (
-          <div className="flex items-center gap-2 mb-3 -mt-1">
+          <div className="mt-3 pt-3 border-t border-luxury-100 flex items-center gap-2">
             <a
               href={`/complaints?bookingId=${encodeURIComponent(b.id)}&hotelId=${encodeURIComponent(hotel.id || "")}`}
-              className="text-[0.7rem] font-semibold text-luxury-500 hover:text-red-600 transition-colors"
+              className="text-[0.75rem] font-semibold text-rose-600/80 hover:text-rose-700 transition-colors inline-flex items-center gap-1.5"
             >
-              🚩 Report an issue with this booking
+              <span className="text-red-500">🚩</span>
+              <span>Report an issue with this booking</span>
             </a>
           </div>
         )}

@@ -229,25 +229,63 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <div>
-              <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Phone</label>
-              <div className="flex items-center gap-2 py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
-                <span className="text-luxury-900 font-medium text-sm">{user.phone}</span>
-                <span className="ml-auto text-[0.6rem] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">Verified</span>
-              </div>
-            </div>
+            {/* v105 — smart phone/email split:
+                Auth flow uses `phone` as a single identifier field that
+                can hold either a real phone (Railway WhatsApp / Firebase
+                Phone OTP login) OR an email (Firebase Google sign-in
+                fallback that stores email in the phone slot to keep the
+                identifier unique). Profile UI now detects what kind of
+                value sits in `user.phone` and labels it correctly:
+                  - "@" in value → treat as email, show in Email row
+                  - "unknown_" prefix → Firebase user with no real phone,
+                    show "Not set" in both rows until user adds them
+                  - otherwise → real phone number */}
+            {(() => {
+              const raw = user.phone || "";
+              const looksLikeEmail = raw.includes("@");
+              const isFirebasePlaceholder = raw.startsWith("unknown_") || raw.startsWith("firebase_");
+              const realPhone = looksLikeEmail || isFirebasePlaceholder ? "" : raw;
+              const emailFromIdentifier = looksLikeEmail ? raw : "";
+              const displayEmail = email || emailFromIdentifier || (user as any).email || "";
+              return (
+                <>
+                  <div>
+                    <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Phone</label>
+                    <div className="flex items-center gap-2 py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+                      {realPhone ? (
+                        <>
+                          <span className="text-luxury-900 font-medium text-sm">{realPhone}</span>
+                          <span className="ml-auto text-[0.6rem] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">Verified</span>
+                        </>
+                      ) : (
+                        <span className="text-luxury-300 italic text-sm">Not set</span>
+                      )}
+                    </div>
+                  </div>
 
-            <div>
-              <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Email</label>
-              {editMode ? (
-                <input value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" type="email"
-                  className="input-luxury text-sm w-full" />
-              ) : (
-                <p className="text-luxury-900 font-medium text-sm py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
-                  {email || <span className="text-luxury-300 italic">Not set</span>}
-                </p>
-              )}
-            </div>
+                  <div>
+                    <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Email</label>
+                    {editMode ? (
+                      <input value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" type="email"
+                        className="input-luxury text-sm w-full" />
+                    ) : (
+                      <div className="flex items-center gap-2 py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+                        {displayEmail ? (
+                          <>
+                            <span className="text-luxury-900 font-medium text-sm">{displayEmail}</span>
+                            {emailFromIdentifier && (
+                              <span className="ml-auto text-[0.6rem] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">Verified</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-luxury-300 italic text-sm">Not set</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
 
             <div>
               <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Member Since</label>

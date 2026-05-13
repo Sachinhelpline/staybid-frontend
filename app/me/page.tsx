@@ -589,13 +589,16 @@ function Stat({ label, value }: { label: string; value: string }) {
 // ─── Hamburger drawer ──────────────────────────────────────────────────
 type DrawerLink = { href: string; label: string; sub?: string; icon: string; external?: boolean };
 
+// v105 — drawer cleanup:
+//   - Removed "Flash Deals" — already in bottom nav as DEALS tab; duplicate.
+//   - Removed "StayPoints" — Wallet card now shows points + tap opens /points history.
+//   - Added "Complaints & Help" — was reachable only via booking deep-link; now top-level.
 const DRAWER_LINKS: DrawerLink[] = [
-  { href: "/flash-deals",  label: "Flash Deals",      sub: "Live discounts today",          icon: "⚡" },
   { href: "/my-bids",      label: "My Bids",          sub: "Your active offers",            icon: "📋" },
   { href: "/bookings",     label: "Bookings",         sub: "Past + upcoming stays",         icon: "🎫" },
   { href: "/saved",        label: "Saved",            sub: "Wishlist hotels & reels",       icon: "🔖" },
-  { href: "/wallet",       label: "Wallet",           sub: "Balance & transactions",        icon: "💰" },
-  { href: "/points",       label: "StayPoints",       sub: "Loyalty rewards",               icon: "⭐" },
+  { href: "/wallet",       label: "Wallet",           sub: "Balance + StayPoints",          icon: "💰" },
+  { href: "/complaints",   label: "Complaints & Help",sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
   { href: "/verification", label: "Verify Stay",      sub: "Hotel verification",            icon: "✅" },
   { href: "/influencer",   label: "Creator Hub",      sub: "Earnings + referrals",          icon: "✨" },
   { href: "https://staybid-hotel-panel.vercel.app", label: "Hotel Partner", sub: "Open partner dashboard", icon: "🏢", external: true },

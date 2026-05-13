@@ -84,7 +84,12 @@
       "Bash(cat \".v99-claude-md-append.txt\" >> \"/c/Users/Prudence Chhaprauli/Desktop/CLAUDE.md\" && rm \".v99-claude-md-append.txt\" && echo \"appended\" && tail -3 \"/c/Users/Prudence Chhaprauli/Desktop/CLAUDE.md\")",
       "Bash(node .scripts/centralize-sb-key.cjs)",
       "Bash(git config *)",
-      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__list_migrations"
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__list_migrations",
+      "Bash(curl -s \"https://staybids.in/api/admin/users\")",
+      "Bash(curl -sL \"https://staybids.in/api/admin/users\")",
+      "Bash(curl -s 'https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/users?select=id,phone,name&limit=2' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60')",
+      "Bash(curl -s 'https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/users?select=id,phone,name,email,tier,totalSpend,role,status,createdAt&order=createdAt.desc&limit=200' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60')",
+      "Bash(curl -s 'https://uxxhbdqedazpmvbvaosh.supabase.co/rest/v1/users?select=id,phone,totalSpend&limit=2' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60')"
     ]
   }
 }

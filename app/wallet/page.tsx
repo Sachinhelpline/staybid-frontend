@@ -189,10 +189,20 @@ export default function WalletPage() {
                   <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Total Spent</p>
                   <p className="text-red-400 font-semibold text-sm">₹{totalSpend.toLocaleString("en-IN")}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">StayPoints</p>
+                {/* v105 — StayPoints column is now tappable. Drawer's
+                    StayPoints entry was removed (redundant with this), so
+                    this is the canonical entry point for the points
+                    history. /points page has the full ledger. */}
+                <Link
+                  href="/points"
+                  className="text-right block group relative -mr-1 px-1 rounded-lg transition-colors hover:bg-white/5"
+                  title="Open StayPoints history"
+                >
+                  <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">
+                    StayPoints <span className="text-gold-400 normal-case ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                  </p>
                   <p className="text-gold-400 font-semibold text-sm">{totalPoints.toLocaleString()}</p>
-                </div>
+                </Link>
               </div>
             </div>
 

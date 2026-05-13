@@ -10,6 +10,39 @@ export default function PartnerLogin() {
   const [step, setStep]         = useState<"phone"|"otp">("phone");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  // v105 — Gmail sign-in (Firebase Google OAuth) as Railway-OTP fallback.
+  // Activates the same hotel-ownership flow but proves identity via Google
+  // instead of phone OTP. Useful until MSG91/Gupshup plans are bought.
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const signInWithGoogle = async () => {
+    setGoogleLoading(true); setError("");
+    try {
+      const fb = await import("firebase/auth");
+      const { firebaseAuth } = await import("@/lib/firebase");
+      const provider = new fb.GoogleAuthProvider();
+      const result = await fb.signInWithPopup(firebaseAuth, provider);
+      const email = result.user?.email || "";
+      const name  = result.user?.displayName || "";
+      if (!email) throw new Error("Google did not return an email. Try again.");
+
+      const res = await fetch("/api/partner/google-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Login failed");
+
+      localStorage.setItem("sb_partner_token", d.token);
+      localStorage.setItem("sb_partner_user",  JSON.stringify({ ...d.user, hotel: d.user.hotel }));
+      router.replace("/partner/dashboard");
+    } catch (e: any) {
+      setError(e?.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Already logged in as partner?
@@ -155,6 +188,37 @@ export default function PartnerLogin() {
             <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-300 leading-relaxed">
               ⚠️ {error}
             </div>
+          )}
+
+          {/* v105 — Google sign-in fallback. Mobile OTP via Railway is the
+              canonical flow but WhatsApp/SMS provider plans are not active
+              yet — so the OTP never reaches partners. Gmail sign-in works
+              as long as the partner's registered email matches a hotel
+              owner in the database. */}
+          {step === "phone" && (
+            <>
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-[0.65rem] uppercase tracking-widest text-white/30 font-semibold">or</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              <button
+                onClick={signInWithGoogle}
+                disabled={googleLoading || loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-luxury-900 font-semibold text-sm hover:bg-luxury-50 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+                  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.71H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                  <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
+                  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+                </svg>
+                {googleLoading ? "Verifying…" : "Continue with Google"}
+              </button>
+              <p className="text-[0.65rem] text-white/30 text-center mt-2 leading-relaxed">
+                Use the Gmail registered against your hotel. WhatsApp OTP coming soon once provider plan activates.
+              </p>
+            </>
           )}
         </div>
 
