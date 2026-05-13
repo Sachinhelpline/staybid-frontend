@@ -245,6 +245,26 @@ export function PostsScrollFeed({
   }
 
   // v111 — owner-only kebab menu handlers.
+  // v112.1 — bulletproof delete: post ids on /me/posts can be EITHER
+  //   • local PostsStore id (`post-<ts>-<rand>`) — for a post still
+  //     uploading / failed to upload (no server row exists), OR
+  //   • UUID (server row id from social_posts table)
+  // The previous v111 cut hit DELETE /api/social/posts/<local-id> and
+  // got 404, surfacing as "Couldn't delete" most of the time. The fix:
+  // detect local-only ids and just nuke the local entry, only call
+  // the server for UUID ids. Also treats 404 as a success (the row
+  // is already gone — same end-state the user wants).
+  function removeFromLocalStorage(id: string) {
+    try {
+      const raw = localStorage.getItem("sb_user_posts");
+      if (!raw) return;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return;
+      const next = arr.filter((x: any) => x?.id !== id);
+      localStorage.setItem("sb_user_posts", JSON.stringify(next));
+    } catch { /* localStorage write failure is non-fatal */ }
+  }
+
   async function deletePost(post: FeedPost) {
     // Two-step confirm so the user can't tap-trigger this by accident.
     if (typeof window !== "undefined") {
@@ -252,14 +272,33 @@ export function PostsScrollFeed({
       if (!ok) return;
     }
     setMenuFor("");
+
+    // Local-only post (still uploading OR upload failed) — there's no
+    // server row to delete. Just remove the local entry and surface
+    // success. Without this branch, /me/posts shows "Couldn't delete"
+    // every time the user tries to remove a just-posted reel that
+    // hasn't finished its async server upload yet.
+    const isLocalOnlyId = post.id.startsWith("post-");
+    if (isLocalOnlyId) {
+      removeFromLocalStorage(post.id);
+      try { onPostDeleted?.(post.id); } catch {}
+      showToast("Post deleted");
+      return;
+    }
+
     try {
       const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
       const r = await fetch(`/api/social/posts/${encodeURIComponent(post.id)}`, {
         method: "DELETE",
         headers: tok ? { Authorization: `Bearer ${tok}` } : {},
       });
-      if (!r.ok) {
-        showToast("Couldn't delete — try again");
+      // 404 = the row is already gone (e.g. deleted on another device
+      // since /me/posts loaded). Treat as success so the user sees the
+      // UI update they expect. Any other non-OK is a real error.
+      if (!r.ok && r.status !== 404) {
+        let detail = "";
+        try { const j = await r.json(); detail = j?.error || ""; } catch {}
+        showToast(detail || "Couldn't delete — try again");
         return;
       }
       // Caller hides the entry from its data source.
@@ -269,19 +308,10 @@ export function PostsScrollFeed({
       // calling it twice is a safe no-op (PostsStore.removePost just
       // filters by id). We're being defensive across the local + remote
       // dual-source merge that /me/posts does.
-      try {
-        const raw = localStorage.getItem("sb_user_posts");
-        if (raw) {
-          const arr = JSON.parse(raw);
-          if (Array.isArray(arr)) {
-            const next = arr.filter((x: any) => x?.id !== post.id);
-            localStorage.setItem("sb_user_posts", JSON.stringify(next));
-          }
-        }
-      } catch {}
+      removeFromLocalStorage(post.id);
       showToast("Post deleted");
     } catch {
-      showToast("Couldn't delete — try again");
+      showToast("Couldn't delete — check your connection");
     }
   }
 
@@ -294,17 +324,23 @@ export function PostsScrollFeed({
   async function commitEdit() {
     if (!editFor) return;
     setEditing(true);
+    // v112.1 — local-only ids skip the server PATCH (would 404). Just
+    // update the local entry in place; the eventual server upload
+    // includes the freshest caption.
+    const isLocalOnlyId = editFor.id.startsWith("post-");
     try {
-      const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
-      const r = await fetch(`/api/social/posts/${encodeURIComponent(editFor.id)}`, {
-        method:  "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
-        },
-        body: JSON.stringify({ caption: editCaption }),
-      });
-      if (!r.ok) { showToast("Couldn't save — try again"); return; }
+      if (!isLocalOnlyId) {
+        const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+        const r = await fetch(`/api/social/posts/${encodeURIComponent(editFor.id)}`, {
+          method:  "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+          },
+          body: JSON.stringify({ caption: editCaption }),
+        });
+        if (!r.ok && r.status !== 404) { showToast("Couldn't save — try again"); return; }
+      }
       try { onPostEdited?.(editFor.id, { caption: editCaption }); } catch {}
       // Also mirror to PostsStore's localStorage row when it's a local one.
       try {

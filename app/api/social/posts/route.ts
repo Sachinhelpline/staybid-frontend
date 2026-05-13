@@ -87,6 +87,12 @@ export async function POST(req: Request) {
     location_lng:   typeof body.locationLng === "number" ? body.locationLng : null,
   };
   if (clientPostId) row.client_post_id = clientPostId;
+  // v112.1 — persist the highlight bucket the user tagged the post with
+  // at upload time. /me reads social_posts.highlight_key to filter the
+  // grid when the user taps a highlight ring.
+  if (typeof body.highlightKey === "string" && body.highlightKey.trim()) {
+    row.highlight_key = body.highlightKey.trim().slice(0, 64);
+  }
 
   const r = await fetch(`${SB_URL}/rest/v1/social_posts`, {
     method: "POST",

@@ -1724,6 +1724,10 @@ export function Composer({
             locationName:  location?.name  || undefined,
             locationLat:   typeof location?.lat === "number" ? location.lat : undefined,
             locationLng:   typeof location?.lng === "number" ? location.lng : undefined,
+            // v112.1 — persist the highlight bucket on the server row so
+            // /me's "tap a highlight" filter shows this post in that
+            // bucket on every device, not just where it was uploaded.
+            highlightKey:  highlight?.key || undefined,
           }),
         });
         if (!r.ok) {

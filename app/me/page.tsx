@@ -77,6 +77,10 @@ export default function MePage() {
   // v111 — IG-style profile editor (avatar / name / bio / location /
   // website / custom highlights). Opens on avatar tap OR Edit profile.
   const [editorOpen, setEditorOpen] = useState(false);
+  // v112.1 — selected highlight key. When set, the posts grid filters
+  // to only posts tagged with that highlight bucket. Cleared by tapping
+  // the "All" chip or the highlight tile again.
+  const [activeHighlight, setActiveHighlight] = useState<string>("");
   // Remote posts from Supabase social_posts table — user-uploaded reels
   // live there too (the in-memory PostsStore is just for instant-after-
   // upload preview). v83 fetches the user's own posts so /me actually
@@ -190,6 +194,10 @@ export default function MePage() {
       merged.push({
         id,
         kind,
+        // v112.1 — surface the highlight bucket from social_posts so the
+        // grid filter can match remote posts the same way it matches
+        // local PostsStore entries.
+        highlight: rp.highlight_key ? { key: String(rp.highlight_key), label: "", emoji: "" } : null,
         mediaUrl:   rp.media_url || "",
         mediaMime:  "",
         posterUrl:  rp.thumbnail_url || "",
@@ -205,11 +213,16 @@ export default function MePage() {
   }, [posts, remotePosts]);
 
   // Filter all posts by current tab
+  // v112.1 — also apply the active highlight filter when one is set.
+  // A post matches if its `highlight.key` equals `activeHighlight`.
   const visiblePosts = useMemo(() => {
-    if (tab === "posts") return allPosts.filter((p) => p.kind !== "story" || p.keepAsPost);
-    if (tab === "reels") return allPosts.filter((p) => p.kind === "reel");
-    return [];
-  }, [allPosts, tab]);
+    let base: any[] = [];
+    if (tab === "posts") base = allPosts.filter((p) => p.kind !== "story" || p.keepAsPost);
+    else if (tab === "reels") base = allPosts.filter((p) => p.kind === "reel");
+    else return [];
+    if (!activeHighlight) return base;
+    return base.filter((p) => p.highlight?.key === activeHighlight);
+  }, [allPosts, tab, activeHighlight]);
 
   // Pseudo "followers" count based on user identity — keeps the chip from
   // looking like a fresh-zero account on day one.
@@ -331,17 +344,45 @@ export default function MePage() {
         <Link href="/upgrade" className="me-action-btn me-action-icon" aria-label="Upgrade">↑</Link>
       </section>
 
-      {/* Highlights row */}
+      {/* Highlights row — v112.1: tappable. Each tile filters the posts
+          grid below to only posts tagged with that highlight bucket.
+          Tapping the active tile (or the "All" chip) clears the filter.
+          Mirrors what the InstagramHotelFeed CreatorProfileSheet has
+          been doing for its profile view since v45 — just wasn't on /me. */}
       {highlights.length > 0 && (
         <section className="me-highlights">
-          {highlights.map((h) => (
-            <div key={h.key} className="me-highlight">
-              <span className="me-highlight-ring">
-                <span className="me-highlight-emoji">{h.emoji}</span>
+          {/* "All" clear chip — only shown while a highlight is active. */}
+          {activeHighlight && (
+            <button
+              type="button"
+              className="me-highlight me-highlight-btn"
+              onClick={() => setActiveHighlight("")}
+              aria-label="Clear highlight filter — show all posts"
+            >
+              <span className="me-highlight-ring me-highlight-ring-all">
+                <span className="me-highlight-emoji">↺</span>
               </span>
-              <span className="me-highlight-label">{h.label}</span>
-            </div>
-          ))}
+              <span className="me-highlight-label">All</span>
+            </button>
+          )}
+          {highlights.map((h) => {
+            const active = activeHighlight === h.key;
+            return (
+              <button
+                key={h.key}
+                type="button"
+                className={`me-highlight me-highlight-btn${active ? " is-active" : ""}`}
+                onClick={() => setActiveHighlight(active ? "" : h.key)}
+                aria-label={`${active ? "Clear" : "Filter posts by"} ${h.label}`}
+                aria-pressed={active}
+              >
+                <span className="me-highlight-ring">
+                  <span className="me-highlight-emoji">{h.emoji}</span>
+                </span>
+                <span className="me-highlight-label">{h.label}</span>
+              </button>
+            );
+          })}
         </section>
       )}
 
@@ -374,9 +415,21 @@ export default function MePage() {
       <section className="me-grid">
         {visiblePosts.length === 0 ? (
           <div className="me-empty">
-            <span className="me-empty-icon">📷</span>
-            <p className="me-empty-title">{tab === "posts" ? "Share your first post" : tab === "reels" ? "No reels yet" : "Posts you're tagged in show up here"}</p>
-            <p className="me-empty-sub">{tab === "posts" ? "Use the + button on the reel feed to upload" : tab === "reels" ? "Tap + on the reel feed to share one" : "Photos you're tagged in will appear here"}</p>
+            <span className="me-empty-icon">{activeHighlight ? "✨" : "📷"}</span>
+            <p className="me-empty-title">
+              {activeHighlight
+                ? `No posts in this highlight yet`
+                : tab === "posts" ? "Share your first post"
+                : tab === "reels" ? "No reels yet"
+                : "Posts you're tagged in show up here"}
+            </p>
+            <p className="me-empty-sub">
+              {activeHighlight
+                ? "Tag a post with this highlight from the + Create flow, or pick another filter above."
+                : tab === "posts" ? "Use the + button on the reel feed to upload"
+                : tab === "reels" ? "Tap + on the reel feed to share one"
+                : "Photos you're tagged in will appear here"}
+            </p>
           </div>
         ) : (
           visiblePosts.map((p) => (
@@ -611,6 +664,28 @@ export default function MePage() {
           flex-shrink: 0;
           width: 72px;
         }
+        /* v112.1 — highlight tiles are now buttons. Reset chrome but
+           keep the original layout. Active state lights up the ring
+           in champagne so the user sees which filter is applied. */
+        .me-highlight-btn {
+          background: transparent;
+          border: none;
+          padding: 0;
+          font: inherit;
+          cursor: pointer;
+          color: inherit;
+          transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
+        }
+        .me-highlight-btn:active { transform: scale(0.94); }
+        .me-highlight-btn.is-active .me-highlight-ring {
+          background: linear-gradient(135deg, #ffd76b, #f0b429);
+          border-color: rgba(184, 134, 11, 0.62);
+          box-shadow: 0 0 0 2px rgba(255, 215, 107, 0.45);
+        }
+        .me-highlight-btn.is-active .me-highlight-label {
+          color: #2c1d04;
+          font-weight: 700;
+        }
         .me-highlight-ring {
           width: 64px; height: 64px;
           border-radius: 999px;
@@ -618,6 +693,10 @@ export default function MePage() {
           border: 1.5px solid rgba(184, 134, 11, 0.30);
           display: flex; align-items: center; justify-content: center;
           font-size: 1.5rem;
+          transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .me-highlight-ring-all {
+          background: linear-gradient(135deg, #fff9ec, #f0d060);
         }
         .me-highlight-label {
           font-size: 0.7rem;
