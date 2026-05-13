@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useNetworkTier } from "@/lib/use-network-tier";
 import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
@@ -814,7 +815,7 @@ function CreatorProfileSheet({
                 }}
               >
                 {(creator as any)._isSelf && myAvatarUrl ? (
-                  <img src={myAvatarUrl} alt="" className="w-full h-full object-cover" />
+                  <img src={myAvatarUrl} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" />
                 ) : (creator as any)._isSelf && myDisplayName && myDisplayName !== "You" ? (
                   myDisplayName.slice(0, 1).toUpperCase()
                 ) : (
@@ -1454,7 +1455,7 @@ function EditPostSheet({
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {post.posterUrl && (
             <div className="w-full max-w-[200px] mx-auto rounded-xl overflow-hidden" style={{ aspectRatio: "9/14" }}>
-              <img src={post.posterUrl} alt="" className="w-full h-full object-cover" />
+              <img src={post.posterUrl} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" />
             </div>
           )}
 
@@ -1592,6 +1593,19 @@ const HotelCard = memo(function HotelCard({
   // GLOBAL follow state — shared across cards, profile sheets, sub-chips
   const { isFollowing, toggleFollow, followerCount, myAvatarUrl, myDisplayName } = useFollow();
   const followed = isFollowing(hotelEntity.handle);
+
+  // v107 — network tier drives <video preload>. On India 3G we drop
+  // EVERY card (active included) to preload="metadata" so the first
+  // poster image paints immediately instead of waiting on MP4 bytes.
+  // On slow-2g / saveData we go further: preload="none" so the user
+  // sees the Ken-Burns poster and only spins up the video on tap.
+  const netTier = useNetworkTier();
+  const videoPreload: "auto" | "metadata" | "none" =
+    netTier === "slow"
+      ? "none"
+      : netTier === "mid"
+        ? (active ? "metadata" : "none")
+        : (active ? "auto" : (adjacent ? "metadata" : "none"));
   const followersLive = followerCount(hotelEntity.handle);
 
   // GLOBAL gain (volume booster) — read here so the gain node updates when
@@ -1816,8 +1830,9 @@ const HotelCard = memo(function HotelCard({
           // two adjacent cards fetch only metadata so the user gets an
           // instant-play feel when they swipe. Off-screen cards skip the
           // network entirely — preventing N parallel MP4 downloads on cold
-          // start of the feed.
-          preload={active ? "auto" : (adjacent ? "metadata" : "none")}
+          // start of the feed. v107 — `videoPreload` adapts further on
+          // 3G / 2G / Save-Data to "metadata" or "none" universally.
+          preload={videoPreload}
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -1875,6 +1890,8 @@ const HotelCard = memo(function HotelCard({
           src={activeImg}
           alt={h.name}
           draggable={false}
+          decoding="async"
+          loading={active ? "eager" : "lazy"}
           className="ig-kb absolute inset-0 w-full h-full object-cover"
         />
       ) : h._userPost ? (
@@ -1977,9 +1994,9 @@ const HotelCard = memo(function HotelCard({
                 otherwise fall back to the post's poster/image, otherwise
                 show display-name initials. */}
             {h._isSelf && myAvatarUrl ? (
-              <img src={myAvatarUrl} alt="" className="w-full h-full object-cover rounded-full" />
+              <img src={myAvatarUrl} alt="" decoding="async" loading={active ? "eager" : "lazy"} className="w-full h-full object-cover rounded-full" />
             ) : h.images?.[0] ? (
-              <img src={h.images[0]} alt={h.name} className="w-full h-full object-cover rounded-full" />
+              <img src={h.images[0]} alt={h.name} decoding="async" loading={active ? "eager" : "lazy"} className="w-full h-full object-cover rounded-full" />
             ) : (
               <span className="text-[0.78rem] font-bold text-black">
                 {h._isSelf ? (myDisplayName || "Y").slice(0, 1).toUpperCase() : initials}
@@ -2320,7 +2337,7 @@ const HotelCard = memo(function HotelCard({
               style={{ background: "linear-gradient(135deg,#1a1530,#0d1a2e)" }}
             >
               {h._userPostTaggedHotel.image ? (
-                <img src={h._userPostTaggedHotel.image} alt="" className="w-full h-full object-cover" />
+                <img src={h._userPostTaggedHotel.image} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" />
               ) : (
                 "🏨"
               )}
@@ -2703,7 +2720,7 @@ function StoryViewer({
               border: "1.5px solid rgba(255,255,255,0.55)",
             }}
           >
-            {ownerAvatar ? <img src={ownerAvatar} alt="" className="w-full h-full object-cover" /> : (ownerName || "Y").slice(0, 1).toUpperCase()}
+            {ownerAvatar ? <img src={ownerAvatar} alt="" decoding="async" loading="lazy" className="w-full h-full object-cover" /> : (ownerName || "Y").slice(0, 1).toUpperCase()}
           </span>
           <span className="flex-1 min-w-0">
             <span className="block text-white text-[0.84rem] font-semibold truncate">
@@ -2836,23 +2853,31 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       });
     } catch {}
     setSavedSet(new Set(localKeys));
-    // Then merge with backend (logged-in users only)
+    // Then merge with backend (logged-in users only). v107 — defer to the
+    // idle window so it never competes with the first-card paint on cold
+    // start. The local-first set above already gave the user a correct
+    // bookmark state instantly; this is just the refresh.
     const tok = localStorage.getItem("sb_token") || "";
     if (!tok) return;
-    fetch("/api/discover/saves/enriched", {
-      headers: { Authorization: `Bearer ${tok}` },
-      cache: "no-store",
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!d?.saves) return;
-        const next = new Set<string>(localKeys);
-        d.saves.forEach((s: any) => {
-          if (s.target_type && s.target_id) next.add(`${s.target_type}:${s.target_id}`);
-        });
-        setSavedSet(next);
+    const w: any = window;
+    const runRefresh = () => {
+      fetch("/api/discover/saves/enriched", {
+        headers: { Authorization: `Bearer ${tok}` },
+        cache: "no-store",
       })
-      .catch(() => {});
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d?.saves) return;
+          const next = new Set<string>(localKeys);
+          d.saves.forEach((s: any) => {
+            if (s.target_type && s.target_id) next.add(`${s.target_type}:${s.target_id}`);
+          });
+          setSavedSet(next);
+        })
+        .catch(() => {});
+    };
+    if (typeof w.requestIdleCallback === "function") w.requestIdleCallback(runRefresh, { timeout: 2500 });
+    else setTimeout(runRefresh, 600);
   }, []);
 
   // ── User-uploaded posts injected at the top of the feed ─────────────────

@@ -333,8 +333,11 @@ export async function GET(req: NextRequest) {
     deals:       personalized,
     generatedAt: new Date().toISOString(),
   });
-  // No-store: every rail fetch reshuffles. Eliminates the "same order again"
-  // feel on quick refreshes / city changes.
-  res.headers.set("Cache-Control", "no-store, must-revalidate");
+  // v107 — browser-cacheable for 10 s + SWR window of 30 s. The reshuffle
+  // still happens on the SERVER per request because `viewed` IDs (and the
+  // city filter, signals etc.) are part of the URL — so different users
+  // / different state get different cache keys. Within the same key,
+  // 10 s of identical results is fine for a flash-deal rail.
+  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
   return res;
 }

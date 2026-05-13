@@ -8,17 +8,27 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
+// v107 — switched from `next/dynamic` to a static import. The dynamic
+// version was adding a real JS-chunk waterfall on cold start: page.js
+// finished → THEN browser started fetching the feed chunk → THEN render.
+// On mid-tier Android over 3G that's ~250–400 ms of nothing. Static
+// import merges the feed into the route chunk so paint and feed mount
+// race the network for the data, not for the JS. The component is
+// gated by `items.length > 0` below so SSR boundary is unaffected.
+import InstagramHotelFeed from "@/components/discover/InstagramHotelFeed";
 
-// Heavy ~2300-line component — dynamic-import keeps the initial bundle small
-// so cold-start render of the topbar + loading spinner is faster.
-const InstagramHotelFeed = dynamic(() => import("@/components/discover/InstagramHotelFeed"), {
-  ssr: false,
-  loading: () => null, // page already shows its own loading spinner
-});
+// idle() — schedule work for after first paint without blocking it.
+// requestIdleCallback isn't on Safari; the 1-tick timeout fallback is
+// good enough for "after first paint" semantics on every browser we ship.
+const idle = (cb: () => void) => {
+  if (typeof window === "undefined") return;
+  const w: any = window;
+  if (typeof w.requestIdleCallback === "function") w.requestIdleCallback(cb, { timeout: 1500 });
+  else setTimeout(cb, 50);
+};
 
 type Item = { hotel: any; score: number; reasons: string[]; exploration?: boolean };
 
@@ -194,9 +204,14 @@ export default function DiscoverPage() {
   }, [myUserId]);
 
   useEffect(() => {
-    initTracking();
-    track("app_open", { meta: { mode: "discover_reels" } });
+    // v107 — fetch the feed FIRST. Tracking + analytics are nice-to-have
+    // and would otherwise compete with the only thing the user cares
+    // about (seeing the first card). Defer them to the idle window.
     loadFeed();
+    idle(() => {
+      initTracking();
+      track("app_open", { meta: { mode: "discover_reels" } });
+    });
     // Re-pull when the user picks a new location anywhere — globe picker
     // in the rail filter sheet OR the navbar globe both fire this event.
     const onCity = () => loadFeed();
@@ -225,9 +240,10 @@ export default function DiscoverPage() {
   // Prefetch the Compare destination (/hotels) so the cross-mode swap
   // feels instant — Link prefetches happen on hover/touch by default but
   // the floating chip is the primary path, so warm it up immediately.
+  // v107: deferred to idle so it never competes with the home-feed paint.
   const router = useRouter();
   useEffect(() => {
-    try { router.prefetch("/hotels"); } catch {}
+    idle(() => { try { router.prefetch("/hotels"); } catch {} });
   }, [router]);
 
   return (

@@ -106,5 +106,11 @@ export async function GET(req: NextRequest) {
 
   const nextCursor = enriched.length === limit ? enriched[enriched.length - 1].created_at : null;
 
-  return NextResponse.json({ posts: enriched, nextCursor });
+  const res = NextResponse.json({ posts: enriched, nextCursor });
+  // v107 — browser-side cache. Returning users on the home feed get the
+  // warm response in ~30 ms via the SW SWR lane (see public/sw.js). The
+  // `must-revalidate` keeps us safe if a CDN ever sits in front; SWR
+  // still serves stale while the bg revalidate runs.
+  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  return res;
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { sbCached } from "@/lib/sb-cache";
 
 
 const SB_H = {
@@ -7,6 +8,11 @@ const SB_H = {
   Authorization: `Bearer ${SB_KEY}`,
   "Content-Type": "application/json",
 };
+
+// v107 — hotels + rooms are catalog data; perfectly safe to share across
+// concurrent requests on a warm Lambda. 60 s TTL matches the catalog data
+// volatility (admin edits land in the next minute, which is fine).
+const TTL_CATALOG = 60_000;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -18,24 +24,32 @@ export async function GET(req: NextRequest) {
   if (city) qs.set("city", `ilike.${city}`);
   if (q)    qs.set("name", `ilike.*${q}*`);
 
-  const [hotelsRes, roomsRes] = await Promise.all([
-    fetch(`${SB_URL}/rest/v1/hotels?${qs.toString()}`, { headers: SB_H }),
-    fetch(`${SB_URL}/rest/v1/rooms?select=*&limit=500`, { headers: SB_H }),
+  const filterKey = qs.toString();
+  const [hotels, rooms] = await Promise.all([
+    sbCached<any[]>(`hotels:list:${filterKey}`, async () => {
+      const r = await fetch(`${SB_URL}/rest/v1/hotels?${filterKey}`, { headers: SB_H, cache: "no-store" });
+      const t = await r.text();
+      try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
+    }, TTL_CATALOG),
+    sbCached<any[]>(`hotels:rooms-all`, async () => {
+      const r = await fetch(`${SB_URL}/rest/v1/rooms?select=*&limit=500`, { headers: SB_H, cache: "no-store" });
+      const t = await r.text();
+      try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
+    }, TTL_CATALOG),
   ]);
 
-  const hotelsRaw = await hotelsRes.text();
-  const roomsRaw  = await roomsRes.text();
-
-  let hotels: any[] = [];
-  let rooms:  any[] = [];
-  try { hotels = JSON.parse(hotelsRaw); if (!Array.isArray(hotels)) hotels = []; } catch { hotels = []; }
-  try { rooms  = JSON.parse(roomsRaw);  if (!Array.isArray(rooms))  rooms  = []; } catch { rooms  = []; }
-
-  // Attach rooms to each hotel
+  // Attach rooms to each hotel — build an index once (was N*M scan).
+  const roomsByHotel: Record<string, any[]> = {};
+  for (const r of rooms) {
+    if (!r?.hotelId) continue;
+    (roomsByHotel[r.hotelId] ||= []).push(r);
+  }
   const hotelsWithRooms = hotels.map((h: any) => ({
     ...h,
-    rooms: rooms.filter((r: any) => r.hotelId === h.id),
+    rooms: roomsByHotel[h.id] || [],
   }));
 
-  return NextResponse.json({ hotels: hotelsWithRooms, total: hotelsWithRooms.length });
+  const res = NextResponse.json({ hotels: hotelsWithRooms, total: hotelsWithRooms.length });
+  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  return res;
 }
