@@ -20,6 +20,10 @@ import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { sanitizeText } from "@/lib/sanitize-text";
 import { PostsScrollFeed, type FeedPost } from "@/components/PostsScrollFeed";
+// v112.3 — see lib/client-auth.ts for the rationale (legacy tokens with
+// "fb_" prefix were resolving to a non-existent social_profiles row
+// after the v112.2 merge → /me/posts went empty).
+import { getClientUserId } from "@/lib/client-auth";
 
 function MePostsInner() {
   const sp = useSearchParams();
@@ -31,16 +35,9 @@ function MePostsInner() {
   const { posts, removePost } = usePosts();
   const [remotePosts, setRemotePosts] = useState<any[]>([]);
 
-  // Decode the user's id from the JWT — same logic as /me.
-  const myUserId = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      const t = localStorage.getItem("sb_token") || "";
-      if (!t) return "";
-      const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return p.id || p.user_id || p.sub || "";
-    } catch { return ""; }
-  }, []);
+  // v112.3 — central client helper (normalises legacy "fb_<uid>" tokens
+  // so the resolver finds the merged social_profiles row).
+  const myUserId = useMemo(() => getClientUserId(), []);
 
   useEffect(() => {
     if (!myUserId) return;

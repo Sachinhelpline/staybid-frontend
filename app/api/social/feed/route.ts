@@ -10,6 +10,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+// v112.3 — normalize so legacy "fb_<uid>" tokens still resolve to the
+// canonical social_profiles row (which has user_id without the prefix
+// after the v112.2 merge). Without this, /me showed 0 posts for any
+// user whose sb_token was issued under the old auth path.
+import { normalizeAuthId } from "@/lib/social/auth-helper";
 
 const READ = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
@@ -35,12 +40,19 @@ export async function GET(req: NextRequest) {
 
   // Resolve auth-user → social-profile (cached so repeated /me opens don't
   // re-hit social_profiles on every load).
+  // v112.3 — accept BOTH the raw token id AND the normalized form
+  // (without "fb_" / "firebase_" prefix), so a single in.(a,b) query
+  // matches whichever shape the canonical row uses. Bulletproof against
+  // mixed-era tokens.
   if (!authorId && authorUserId) {
+    const normalized = normalizeAuthId(authorUserId);
+    const candidates = Array.from(new Set([authorUserId, normalized])).filter(Boolean);
+    const inList = candidates.map((c) => encodeURIComponent(c)).join(",");
     const profileRows = await sbCached(
-      `social:profile-by-user:${authorUserId}`,
+      `social:profile-by-user:${candidates.join("|")}`,
       async () => {
         const r = await fetch(
-          `${SB_URL}/rest/v1/social_profiles?user_id=eq.${encodeURIComponent(authorUserId)}&select=id&limit=1`,
+          `${SB_URL}/rest/v1/social_profiles?user_id=in.(${inList})&select=id&limit=1`,
           { headers: READ, cache: "no-store" }
         );
         if (!r.ok) return [];

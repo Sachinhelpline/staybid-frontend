@@ -39,6 +39,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 // upgrade happens in any tab (storage event) or same-tab via the
 // sb:tier-refresh custom event.
 import { useTier } from "@/lib/tier-store";
+// v112.3 — shared client-side auth id reader. Keeps the same
+// "fb_<uid>" / "firebase_<uid>" prefix normalisation the server uses,
+// so /me's /api/social/feed query lines up with the canonical
+// social_profiles row even when the local sb_token was issued under
+// the legacy auth path.
+import { getClientUserId } from "@/lib/client-auth";
 // v111 — open the IG-style ProfilePhotoEditor when the user taps their
 // avatar or Edit profile button. Previously Edit profile routed to the
 // legacy /profile account-settings page, which made highlights
@@ -90,16 +96,15 @@ export default function MePage() {
   // reflects what they've shared.
   const [remotePosts, setRemotePosts] = useState<any[]>([]);
 
-  // Decode current user id from the JWT
-  const myUserId = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      const t = localStorage.getItem("sb_token") || "";
-      if (!t) return "";
-      const p = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return p.id || p.user_id || p.sub || "";
-    } catch { return ""; }
-  }, []);
+  // v112.3 — central client helper. Normalises legacy "fb_" / "firebase_"
+  // prefixed Firebase uids to the canonical form so /api/social/feed's
+  // resolver finds the merged social_profiles row.
+  const myUserId = useMemo(() => getClientUserId(), []);
+  // Server-resolved profile (set by the hydrate effect below). Used as
+  // the most reliable source for handle + display name + avatar
+  // when local state is empty / wrong (e.g. fresh device, just-
+  // logged-in, phone field was accidentally set to the email).
+  const [serverProfile, setServerProfile] = useState<any>(null);
 
   // v110 — server-side hydration of profile photo + display name + bio.
   // Without this, the avatar lives only in localStorage and disappears
@@ -119,6 +124,9 @@ export default function MePage() {
       .then((d) => {
         const p = d?.profile;
         if (!p) return;
+        // v112.3 — capture the full server profile for handle / username
+        // fallback (the legacy phone field sometimes carries the email).
+        setServerProfile(p);
         // Server "wins" when local is empty / placeholder. Do NOT clobber
         // a non-empty local value with a null server value — the user may
         // have just set something that hasn't synced yet.
@@ -238,9 +246,21 @@ export default function MePage() {
   const followingN = followingCount();
 
   const initials = (myDisplayName || "You").trim().slice(0, 1).toUpperCase();
-  const handle = (user as any)?.phone
-    ? `@${String((user as any).phone).replace(/^\+91/, "")}`
-    : "@you";
+  // v112.3 — handle priority:
+  //   1. server profile's username (e.g. "sachin_tomer") — most reliable
+  //   2. real phone digits (rejects email-looking values, which Firebase
+  //      logins sometimes plant in the phone field as a fallback)
+  //   3. literal "@you"
+  // This kills the awkward "@sachinhelpline@gmail.com" handle that
+  // showed up after the v112.2 profile merge.
+  const phoneCandidate = String((user as any)?.phone || "");
+  const looksLikePhone = /^\+?\d[\d\s-]{4,15}$/.test(phoneCandidate.replace(/\+91/, ""));
+  const handle =
+    serverProfile?.username
+      ? `@${serverProfile.username}`
+      : (looksLikePhone
+          ? `@${phoneCandidate.replace(/^\+91/, "")}`
+          : "@you");
 
   const sanitizedBio = sanitizeText(myBio || "").clean;
 
