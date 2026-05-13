@@ -9,6 +9,7 @@
 // Auth: Bearer sb_token (customer JWT)
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
+import { ensureUser } from "@/lib/sb-server";
 
 const VALID_TYPES = new Set(["bid", "booking", "payment", "service", "refund", "video", "general", "other"]);
 const VALID_PRIORITY = new Set(["low", "medium", "high"]);
@@ -44,9 +45,19 @@ export async function POST(req: Request) {
     if (body.bidId)     row.bidId     = String(body.bidId);
     if (body.paymentId) row.paymentId = String(body.paymentId);
 
-    const res = await fetch(`${SB_URL}/rest/v1/complaints`, {
+    // v105.1 — complaints.customerId has a FK constraint pointing at
+    // public.users.id. Firebase Google-sign-in customers may not have a
+    // mirrored users row (the /api/auth/social-login backend route was
+    // never deployed — see CLAUDE.md), so the FK fails for them and the
+    // insert errors out with code 23503 "Key is not present in table users".
+    // ensureUser() upserts the users row first (resolution=merge-duplicates),
+    // so subsequent customers get a placeholder row + the complaint
+    // submission succeeds. Idempotent — safe to call every time.
+    await ensureUser(u.id, u.phone, (u as any).name);
+
+    const res = await fetch(`${SB_URL}/rest/v1/complaints?select=*`, {
       method: "POST",
-      headers: SB_H,
+      headers: { ...SB_H, Prefer: "return=representation" },
       body: JSON.stringify(row),
     });
     if (!res.ok) {
