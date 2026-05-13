@@ -35,6 +35,7 @@ import { usePosts } from "@/lib/posts-store";
 import { useAuth } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize-text";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAccountTier, type Tier } from "@/components/upgrade/UpgradeSection";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -52,6 +53,11 @@ export default function MePage() {
     followingCount,
   } = useFollow();
   const { posts } = usePosts();
+  // v108 — Creator Hub + Hotel Partner items in the drawer only show
+  // up once the account is actually upgraded. Public users don't see
+  // them at all; the moment their creator app is approved (or they own
+  // a hotel) the matching entry appears.
+  const { tier } = useAccountTier();
 
   const [tab, setTab] = useState<Tab>("posts");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -311,6 +317,7 @@ export default function MePage() {
       {/* Hamburger drawer */}
       <MoreDrawer
         open={drawerOpen}
+        tier={tier}
         onClose={() => setDrawerOpen(false)}
         onLogout={() => { logout(); router.push("/"); }}
       />
@@ -593,26 +600,63 @@ type DrawerLink = { href: string; label: string; sub?: string; icon: string; ext
 //   - Removed "Flash Deals" — already in bottom nav as DEALS tab; duplicate.
 //   - Removed "StayPoints" — Wallet card now shows points + tap opens /points history.
 //   - Added "Complaints & Help" — was reachable only via booking deep-link; now top-level.
-const DRAWER_LINKS: DrawerLink[] = [
+// v108 — Creator Hub + Hotel Partner items are gated by `tier` (built below
+// in MoreDrawer): Public users don't see them at all. Path to upgrade
+// stays available via the ↑ icon on the top bar.
+const DRAWER_LINKS_BASE: DrawerLink[] = [
   { href: "/my-bids",      label: "My Bids",          sub: "Your active offers",            icon: "📋" },
   { href: "/bookings",     label: "Bookings",         sub: "Past + upcoming stays",         icon: "🎫" },
   { href: "/saved",        label: "Saved",            sub: "Wishlist hotels & reels",       icon: "🔖" },
   { href: "/wallet",       label: "Wallet",           sub: "Balance + StayPoints",          icon: "💰" },
   { href: "/complaints",   label: "Complaints & Help",sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
   { href: "/verification", label: "Verify Stay",      sub: "Hotel verification",            icon: "✅" },
-  { href: "/influencer",   label: "Creator Hub",      sub: "Earnings + referrals",          icon: "✨" },
-  { href: "https://staybid-hotel-panel.vercel.app", label: "Hotel Partner", sub: "Open partner dashboard", icon: "🏢", external: true },
-  { href: "/profile",      label: "Account settings", sub: "Email, phone, security",        icon: "⚙" },
 ];
 
+const CREATOR_LINK: DrawerLink = {
+  href: "/influencer",
+  label: "Creator Hub",
+  sub:   "Earnings + referrals",
+  icon:  "✨",
+};
+
+// v108 — actual hotel partner panel is /partner inside this app (separate
+// auth via sb_partner_token). Was an external link to an abandoned Vercel
+// deployment; the user explicitly asked us to repoint it.
+const HOTEL_LINK: DrawerLink = {
+  href: "/partner",
+  label: "Hotel Partner",
+  sub:   "Open partner dashboard",
+  icon:  "🏢",
+};
+
+const ACCOUNT_LINK: DrawerLink = {
+  href: "/profile",
+  label: "Account settings",
+  sub:   "Email, phone, security",
+  icon:  "⚙",
+};
+
 function MoreDrawer({
-  open, onClose, onLogout,
+  open, tier, onClose, onLogout,
 }: {
   open:     boolean;
+  tier:     Tier;
   onClose:  () => void;
   onLogout: () => void;
 }) {
   if (!open) return null;
+
+  // Tier-aware link list. Creator + Hotel Partner only appear once the
+  // user has earned the corresponding role. PENDING_CREATOR also gets
+  // Creator Hub so they can check application status / payout setup.
+  const showCreator = tier === "CREATOR" || tier === "PENDING_CREATOR";
+  const showHotel   = tier === "HOTEL";
+  const links: DrawerLink[] = [
+    ...DRAWER_LINKS_BASE,
+    ...(showCreator ? [CREATOR_LINK] : []),
+    ...(showHotel   ? [HOTEL_LINK]   : []),
+    ACCOUNT_LINK,
+  ];
   return (
     <div className="me-drawer-root" onClick={onClose}>
       <div className="me-drawer-panel" onClick={(e) => e.stopPropagation()}>
@@ -621,7 +665,7 @@ function MoreDrawer({
           <button type="button" onClick={onClose} className="me-drawer-close" aria-label="Close menu">✕</button>
         </div>
         <ul className="me-drawer-list">
-          {DRAWER_LINKS.map((it) => (
+          {links.map((it) => (
             <li key={it.href}>
               {it.external ? (
                 <a href={it.href} target="_blank" rel="noopener noreferrer" className="me-drawer-link" onClick={onClose}>

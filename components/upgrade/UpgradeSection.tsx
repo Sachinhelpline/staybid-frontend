@@ -11,7 +11,10 @@ import { api } from "@/lib/api";
 
 export type Tier = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN";
 
-const HOTEL_PANEL_URL = "https://staybid-hotel-panel.vercel.app";
+// v108 — actual hotel partner panel lives at /partner inside this app
+// (separate auth via sb_partner_token). Was pointing at the abandoned
+// external Vercel deployment.
+const HOTEL_PANEL_URL = "/partner";
 
 const INTEREST_OPTIONS = [
   "Luxury Stays", "Adventure", "Wellness", "Family", "Honeymoon",

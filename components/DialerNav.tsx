@@ -42,8 +42,9 @@
        ─ if moved → snap FAB to nearest screen edge, persist
        ─ if didn't move AND elapsed < 500 ms → open picker
    ───────────────────────────────────────────────────────────────────── */
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useAccountTier } from "@/components/upgrade/UpgradeSection";
 
 type Item = {
   href: string;
@@ -54,26 +55,27 @@ type Item = {
   external?: boolean;
 };
 
-// Full nav — every section reachable from the dialer (no button missed).
-// Order chosen for navigation frequency: most-used first, account/external last.
-const ITEMS: Item[] = [
-  { href: "/",                                  label: "Home",         useCase: "home feed",          icon: "🏠" },
-  { href: "/hotels",                            label: "Hotels",       useCase: "browse stays",       icon: "🏨" },
-  { href: "/discover",                          label: "Reels",        useCase: "watch hotel reels",  icon: "🎬" },
-  { href: "/flash-deals",                       label: "Deals",        useCase: "live flash sales",   icon: "⚡", pulse: true },
-  { href: "/bid",                               label: "Bid",          useCase: "name your price",    icon: "🎯" },
-  { href: "/my-bids",                           label: "My Bids",      useCase: "your active bids",   icon: "📋" },
-  { href: "/bookings",                          label: "Bookings",     useCase: "your trips",         icon: "🎫" },
-  { href: "/saved",                             label: "Saved",        useCase: "saved places",       icon: "🔖" },
-  { href: "/verification",                      label: "Verify",       useCase: "stay verification",  icon: "✅" },
-  { href: "/wallet",                            label: "Wallet",       useCase: "balance & history",  icon: "💰" },
-  { href: "/points",                            label: "Points",       useCase: "loyalty rewards",    icon: "⭐" },
-  { href: "/influencer",                        label: "Creator",      useCase: "creator hub",        icon: "✨" },
-  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",  useCase: "hotel dashboard",    icon: "🏢", external: true },
-  { href: "/profile",                           label: "Profile",      useCase: "your account",       icon: "👤" },
+// v108 — Creator + Partner picker entries are tier-gated. Base list is the
+// nav every signed-in user can use; CREATOR_ITEM and HOTEL_ITEM are
+// inserted conditionally below, just before Profile. Hotel Partner now
+// points at /partner inside this app (same Next bundle, separate
+// sb_partner_token auth) rather than the abandoned external Vercel deploy.
+const BASE_ITEMS: Item[] = [
+  { href: "/",             label: "Home",         useCase: "home feed",          icon: "🏠" },
+  { href: "/hotels",       label: "Hotels",       useCase: "browse stays",       icon: "🏨" },
+  { href: "/discover",     label: "Reels",        useCase: "watch hotel reels",  icon: "🎬" },
+  { href: "/flash-deals",  label: "Deals",        useCase: "live flash sales",   icon: "⚡", pulse: true },
+  { href: "/bid",          label: "Bid",          useCase: "name your price",    icon: "🎯" },
+  { href: "/my-bids",      label: "My Bids",      useCase: "your active bids",   icon: "📋" },
+  { href: "/bookings",     label: "Bookings",     useCase: "your trips",         icon: "🎫" },
+  { href: "/saved",        label: "Saved",        useCase: "saved places",       icon: "🔖" },
+  { href: "/verification", label: "Verify",       useCase: "stay verification",  icon: "✅" },
+  { href: "/wallet",       label: "Wallet",       useCase: "balance & history",  icon: "💰" },
+  { href: "/points",       label: "Points",       useCase: "loyalty rewards",    icon: "⭐" },
 ];
-
-const N = ITEMS.length;
+const CREATOR_ITEM: Item = { href: "/influencer", label: "Creator", useCase: "creator hub",     icon: "✨" };
+const HOTEL_ITEM: Item   = { href: "/partner",    label: "Partner", useCase: "hotel dashboard", icon: "🏢" };
+const PROFILE_ITEM: Item = { href: "/profile",    label: "Profile", useCase: "your account",    icon: "👤" };
 const FAB_SIZE = 52;                  // diameter of the floating button
 const FAB_MARGIN = 12;                // distance from screen edges
 const ITEM_SPACING = 60;              // px between items in the picker
@@ -91,11 +93,22 @@ export function DialerNav() {
   const pathname = usePathname() || "/";
   const router = useRouter();
 
-  // Which ITEMS index corresponds to the current pathname
-  // External links (e.g., Partner panel) never match — they live off-app.
+  // v108 — tier-gated nav. Public users skip Creator + Partner entries.
+  const { tier } = useAccountTier();
+  const items = useMemo<Item[]>(() => {
+    const out = [...BASE_ITEMS];
+    if (tier === "CREATOR" || tier === "PENDING_CREATOR") out.push(CREATOR_ITEM);
+    if (tier === "HOTEL") out.push(HOTEL_ITEM);
+    out.push(PROFILE_ITEM);
+    return out;
+  }, [tier]);
+  const N = items.length;
+
+  // Which item index corresponds to the current pathname
+  // External links (e.g. legacy external partner) never match — they live off-app.
   const activeIdx = (() => {
     if (pathname === "/") return 0;
-    const i = ITEMS.findIndex(it =>
+    const i = items.findIndex(it =>
       !it.external && it.href !== "/" && (pathname === it.href || pathname.startsWith(it.href + "/"))
     );
     return i >= 0 ? i : 0;
@@ -259,7 +272,7 @@ export function DialerNav() {
     if (!wasDrag) {
       // Tap on centre → navigate (or open external link in new tab)
       const centreIdx = ((Math.round(startRot) % N) + N) % N;
-      const target = ITEMS[centreIdx];
+      const target = items[centreIdx];
       if (target && target.href !== pathname) {
         if (target.external) {
           window.open(target.href, "_blank", "noopener,noreferrer");
@@ -320,8 +333,8 @@ export function DialerNav() {
   }
 
   const centreIdx = ((Math.round(rotation) % N) + N) % N;
-  const centreItem = ITEMS[centreIdx];
-  const activeItem = ITEMS[activeIdx];
+  const centreItem = items[centreIdx];
+  const activeItem = items[activeIdx];
 
   // Picker appears on the SAME side as the FAB so the FAB feels like the
   // "handle" of the picker — close to it.
@@ -591,7 +604,7 @@ export function DialerNav() {
         onMouseLeave={() => { if (fabDragRef.current) onFabEnd(); }}
       >
         <span>{activeItem.icon}</span>
-        {ITEMS.some(it => it.pulse && it.href !== activeItem.href) && (
+        {items.some(it => it.pulse && it.href !== activeItem.href) && (
           <span className="dialer-fab-dot" />
         )}
       </button>
@@ -619,7 +632,7 @@ export function DialerNav() {
             <span className="dialer-picker-arrow down" aria-hidden>▼</span>
 
             <div className="dialer-picker-track">
-              {ITEMS.map((item, i) => {
+              {items.map((item, i) => {
                 // Signed wrapped distance from centre. Range: (-N/2, N/2]
                 let d = i - rotation;
                 d = ((d + N / 2) % N + N) % N - N / 2;

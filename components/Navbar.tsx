@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/components/ModeToggle";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+import { useAccountTier } from "@/components/upgrade/UpgradeSection";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -17,19 +18,21 @@ const NAV_LINKS = [
   { href: "/bid",         label: "Place Bid",   icon: "🎯" },
 ];
 
-const USER_LINKS = [
+// v108 — Creator + Partner chips filtered per-tier inside the component.
+// Public users don't see them at all; they appear automatically once the
+// account is upgraded to that role. Hotel Partner link now points at
+// /partner inside this app (same Next.js bundle, separate sb_partner_token
+// auth) rather than the abandoned external Vercel deployment.
+const USER_LINKS_BASE = [
   { href: "/my-bids",       label: "My Bids",       icon: "📋" },
   { href: "/bookings",      label: "Bookings",      icon: "🎫" },
   { href: "/saved",         label: "Saved",         icon: "🔖" },
   { href: "/verification",  label: "Verification",  icon: "🎬" },
   { href: "/wallet",        label: "Wallet",        icon: "💰" },
   { href: "/points",        label: "Points",        icon: "⭐" },
-  { href: "/influencer",    label: "Creator",       icon: "✨" },
-  // Real hotel partner panel lives in a separate Vercel deployment +
-  // GitHub repo (Sachinhelpline/staybid-hotel-panel). External link so the
-  // user lands on the actual dashboard, not the old in-repo demo.
-  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",       icon: "🏢", external: true },
 ];
+const CREATOR_USER_LINK = { href: "/influencer", label: "Creator", icon: "✨" } as const;
+const HOTEL_USER_LINK   = { href: "/partner",    label: "Partner", icon: "🏢" } as const;
 
 const BOTTOM_PRIMARY = [
   { href: "/",            label: "Home",      icon: "🏠" },
@@ -114,6 +117,19 @@ export function Navbar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  // v108 — Creator + Partner chips are tier-gated. useAccountTier returns
+  // "UNKNOWN" → "PUBLIC" / "CREATOR" / "HOTEL" etc. once the probe finishes;
+  // we hide both chips for anything other than the relevant role so Public
+  // users don't see noise.
+  const { tier } = useAccountTier();
+  const showCreator = tier === "CREATOR" || tier === "PENDING_CREATOR";
+  const showHotel   = tier === "HOTEL";
+  const userLinks = useMemo(() => {
+    const out: any[] = [...USER_LINKS_BASE];
+    if (showCreator) out.push(CREATOR_USER_LINK);
+    if (showHotel)   out.push(HOTEL_USER_LINK);
+    return out;
+  }, [showCreator, showHotel]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -138,16 +154,15 @@ export function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
+  // v108 — same tier gate as the desktop chips above. Creator + Partner
+  // tiles in the mobile More sheet only appear for the matching role.
   const moreLinks = user ? [
     { href: "/my-bids",       label: "My Bids",       icon: "📋" },
     { href: "/bookings",      label: "Bookings",      icon: "🎫" },
     { href: "/verification",  label: "Verification",  icon: "🎬" },
     { href: "/wallet",        label: "Wallet",        icon: "💰" },
-    // Real hotel partner panel lives in a separate Vercel deployment +
-  // GitHub repo (Sachinhelpline/staybid-hotel-panel). External link so the
-  // user lands on the actual dashboard, not the old in-repo demo.
-  { href: "https://staybid-hotel-panel.vercel.app", label: "Partner",       icon: "🏢", external: true },
-    { href: "/influencer",    label: "Creator",       icon: "✨" },
+    ...(showHotel   ? [{ href: "/partner",    label: "Partner", icon: "🏢" }] : []),
+    ...(showCreator ? [{ href: "/influencer", label: "Creator", icon: "✨" }] : []),
     { href: "/profile",       label: "Profile",       icon: "👤" },
   ] : [];
 
@@ -429,19 +444,8 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-1.5">
             {user ? (
               <>
-                {USER_LINKS.map((item) => {
+                {userLinks.map((item: any) => {
                   const active = isActive(item.href);
-                  // External entries (e.g. real hotel-panel) open in a new tab.
-                  if ((item as any).external) {
-                    return (
-                      <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer"
-                        className="nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70">
-                        <span className="text-sm">{item.icon}</span>
-                        {item.label}
-                        <span className="ml-0.5 text-[0.6rem] opacity-60">↗</span>
-                      </a>
-                    );
-                  }
                   return (
                     <Link key={item.href} href={item.href}
                       className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
@@ -518,15 +522,6 @@ export function Navbar() {
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {moreLinks.map((item) => {
                     const active = isActive(item.href);
-                    if ((item as any).external) {
-                      return (
-                        <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" onClick={() => setMoreOpen(false)}
-                          className="nav3d-chip flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl text-center text-white/70">
-                          <span className="text-xl">{item.icon}</span>
-                          <span className="text-[0.6rem] font-bold tracking-wide leading-tight">{item.label} ↗</span>
-                        </a>
-                      );
-                    }
                     return (
                       <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)}
                         className={`nav3d-chip flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl text-center text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
