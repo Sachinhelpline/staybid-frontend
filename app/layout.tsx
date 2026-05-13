@@ -1,6 +1,7 @@
 ﻿import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth";
+import { TierProvider } from "@/lib/tier-store";
 import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
 import { PostsProvider } from "@/lib/posts-store";
@@ -143,6 +144,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider>
         <AuthProvider>
+         {/* v109 — single source of truth for "is this user a creator /
+             hotel owner?". Lifts tier state out of per-component
+             useAccountTier hooks into a shared context so the menu,
+             /me drawer, /upgrade banner, and DialerNav all flip
+             together the moment the user upgrades. Auto-refresh on
+             storage / focus / sb:tier-refresh events keeps it in sync
+             with logins happening in other tabs. */}
+         <TierProvider>
           <SoundProvider>
            <FollowProvider>
             <PostsProvider>
@@ -161,10 +170,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v108</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v109</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
+         </TierProvider>
         </AuthProvider>
         </ThemeProvider>
               <script dangerouslySetInnerHTML={{__html: `
@@ -180,7 +190,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v108-menu-tier-gate-partner-href";
+var SB_BUILD="v109-live-tier-auto-refresh";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

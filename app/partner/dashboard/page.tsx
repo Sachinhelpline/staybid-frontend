@@ -218,6 +218,10 @@ export default function PartnerDashboard() {
   function logout() {
     localStorage.removeItem("sb_partner_token");
     localStorage.removeItem("sb_partner_user");
+    // v109 — tell the customer-side TierProvider that hotel status
+    // is gone so the menu / /upgrade banner stop showing the Hotel
+    // Partner entry immediately.
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
     router.replace("/partner");
   }
 

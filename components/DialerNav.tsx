@@ -44,7 +44,9 @@
    ───────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAccountTier } from "@/components/upgrade/UpgradeSection";
+// v109 — shared TierProvider. See lib/tier-store.tsx for the live
+// auto-refresh wiring (storage events + custom event).
+import { useTier } from "@/lib/tier-store";
 
 type Item = {
   href: string;
@@ -93,15 +95,17 @@ export function DialerNav() {
   const pathname = usePathname() || "/";
   const router = useRouter();
 
-  // v108 — tier-gated nav. Public users skip Creator + Partner entries.
-  const { tier } = useAccountTier();
+  // v109 — shared TierProvider. isCreator + isHotelOwner are
+  // independent flags (a user can be both); each picker entry appears
+  // only when its matching role is active.
+  const { isCreator, isHotelOwner } = useTier();
   const items = useMemo<Item[]>(() => {
     const out = [...BASE_ITEMS];
-    if (tier === "CREATOR" || tier === "PENDING_CREATOR") out.push(CREATOR_ITEM);
-    if (tier === "HOTEL") out.push(HOTEL_ITEM);
+    if (isCreator)    out.push(CREATOR_ITEM);
+    if (isHotelOwner) out.push(HOTEL_ITEM);
     out.push(PROFILE_ITEM);
     return out;
-  }, [tier]);
+  }, [isCreator, isHotelOwner]);
   const N = items.length;
 
   // Which item index corresponds to the current pathname

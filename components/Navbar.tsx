@@ -5,7 +5,10 @@ import { useState, useEffect, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/components/ModeToggle";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
-import { useAccountTier } from "@/components/upgrade/UpgradeSection";
+// v109 — shared TierProvider. Was useAccountTier in v108 (per-component
+// instance); now the same context drives /me drawer, DialerNav, /upgrade
+// banner together, and an auto-refresh trigger flips everyone in sync.
+import { useTier } from "@/lib/tier-store";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -117,13 +120,14 @@ export function Navbar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
-  // v108 — Creator + Partner chips are tier-gated. useAccountTier returns
-  // "UNKNOWN" → "PUBLIC" / "CREATOR" / "HOTEL" etc. once the probe finishes;
-  // we hide both chips for anything other than the relevant role so Public
-  // users don't see noise.
-  const { tier } = useAccountTier();
-  const showCreator = tier === "CREATOR" || tier === "PENDING_CREATOR";
-  const showHotel   = tier === "HOTEL";
+  // v109 — single global tier context. isCreator + isHotelOwner are
+  // independent flags (a user can be both); the menu surfaces each
+  // entry only when that role is active. Refreshes automatically on
+  // partner login / creator-app submit / customer login via the
+  // sb:tier-refresh event wired in lib/tier-store.tsx.
+  const { isCreator, isHotelOwner } = useTier();
+  const showCreator = isCreator;
+  const showHotel   = isHotelOwner;
   const userLinks = useMemo(() => {
     const out: any[] = [...USER_LINKS_BASE];
     if (showCreator) out.push(CREATOR_USER_LINK);

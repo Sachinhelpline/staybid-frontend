@@ -1,15 +1,22 @@
 "use client";
 // Shared upgrade UI — used by both the standalone /upgrade page and the
-// inline section on /profile. Self-contained: tier detection, status
-// banner, two upgrade cards, and the inline creator application form
-// all live here, so the consumer just drops <UpgradeSection /> and gets
-// the full flow.
-import { useEffect, useState } from "react";
+// inline section on /profile. Self-contained: status banner, two upgrade
+// cards, and the inline creator application form all live here, so the
+// consumer just drops <UpgradeSection /> and gets the full flow.
+//
+// v109: tier state lifted into <TierProvider> (lib/tier-store.tsx).
+// useAccountTier is now a re-export alias of useTier so v108 callsites
+// keep working, but every consumer in the app shares ONE tier instance
+// + ONE refresh().
+import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { useTier, useAccountTier as _useAccountTier, type Tier } from "@/lib/tier-store";
 
-export type Tier = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN";
+export type { Tier };
+// Backward-compat alias for any v108 imports still around.
+export const useAccountTier = _useAccountTier;
 
 // v108 — actual hotel partner panel lives at /partner inside this app
 // (separate auth via sb_partner_token). Was pointing at the abandoned
@@ -21,60 +28,12 @@ const INTEREST_OPTIONS = [
   "Foodie", "Solo Travel", "Mountain", "Beach", "Heritage",
 ];
 
-// ─── Tier probe — one fetch, returns the resolved tier + supporting data ──
-export function useAccountTier() {
-  const { user, loading: authLoading } = useAuth();
-  const [tier, setTier] = useState<Tier>("UNKNOWN");
-  const [influencer, setInfluencer] = useState<any>(null);
-  const [hotelOwned, setHotelOwned] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setLoading(false); setTier("PUBLIC"); return; }
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      let detected: Tier = "PUBLIC";
-      try {
-        const inf = await api.getMyInfluencer();
-        if (inf?.registered && inf?.influencer) {
-          if (!cancelled) setInfluencer(inf.influencer);
-          const status = String(inf.influencer.status || "").toUpperCase();
-          if (status === "BLOCKED") detected = "BLOCKED";
-          else if (status === "PENDING") detected = "PENDING_CREATOR";
-          else detected = "CREATOR";
-        }
-      } catch {}
-      if (detected === "PUBLIC") {
-        try {
-          const tok = typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") : null;
-          if (tok) {
-            const r = await fetch("/api/partner/hotel", { headers: { Authorization: `Bearer ${tok}` } });
-            if (r.ok) {
-              const data = await r.json();
-              if (data?.hotel) {
-                if (!cancelled) setHotelOwned(data.hotel);
-                detected = "HOTEL";
-              }
-            }
-          }
-        } catch {}
-      }
-      if (!cancelled) { setTier(detected); setLoading(false); }
-    })();
-    return () => { cancelled = true; };
-  }, [user, authLoading, reloadKey]);
-
-  const refresh = () => setReloadKey((k) => k + 1);
-  return { tier, influencer, hotelOwned, loading, refresh };
-}
-
 // ─── Main composable section ──────────────────────────────────────────────
 export function UpgradeSection({ variant = "full" }: { variant?: "full" | "compact" }) {
   const { user } = useAuth();
-  const { tier, influencer, hotelOwned, loading, refresh } = useAccountTier();
+  // v109 — useTier is the global TierProvider hook. Replaces the per-
+  // component useAccountTier instance so all upgrade flows share state.
+  const { tier, isCreator, isHotelOwner, influencer, hotelOwned, loading, refresh } = useTier();
   const [creatorFormOpen, setCreatorFormOpen] = useState(false);
 
   if (!user) {
@@ -104,7 +63,18 @@ export function UpgradeSection({ variant = "full" }: { variant?: "full" | "compa
 
   return (
     <div className="space-y-4">
-      <StatusBanner tier={tier} influencer={influencer} hotelOwned={hotelOwned} />
+      {/* v109 — banner stack. Renders BOTH "active creator" AND
+          "active hotel partner" cards when the user owns both, plus a
+          public-tier hello card when they own neither. PUBLIC + BLOCKED
+          + PENDING are mutually exclusive with the active states so
+          the banner picks the right one. */}
+      <StatusBanner
+        tier={tier}
+        isCreator={isCreator}
+        isHotelOwner={isHotelOwner}
+        influencer={influencer}
+        hotelOwned={hotelOwned}
+      />
 
       {/* Two upgrade-path cards — collapsed on /profile (compact), expanded
           on /upgrade (full). Compact shows just buttons; full shows the
@@ -112,6 +82,7 @@ export function UpgradeSection({ variant = "full" }: { variant?: "full" | "compa
       <div className={`grid grid-cols-1 ${variant === "compact" ? "gap-2 sm:grid-cols-2" : "md:grid-cols-2 gap-4"}`}>
         <UpgradeCard
           kind="creator"
+          isMine={isCreator}
           tier={tier}
           variant={variant}
           onAction={() => setCreatorFormOpen((v) => !v)}
@@ -119,6 +90,7 @@ export function UpgradeSection({ variant = "full" }: { variant?: "full" | "compa
         />
         <UpgradeCard
           kind="hotel"
+          isMine={isHotelOwner}
           tier={tier}
           variant={variant}
           onAction={() => {
@@ -146,76 +118,19 @@ export function UpgradeSection({ variant = "full" }: { variant?: "full" | "compa
 }
 
 // ─── Status banner ────────────────────────────────────────────────────────
-function StatusBanner({ tier, influencer, hotelOwned }: { tier: Tier; influencer: any; hotelOwned: any }) {
-  if (tier === "PUBLIC") {
-    return (
-      <div className="card-luxury p-4 flex items-center gap-3">
-        <span className="text-2xl">👋</span>
-        <div className="flex-1">
-          <p className="font-bold text-luxury-900 text-sm">You're on the Public tier</p>
-          <p className="text-luxury-500 text-xs">Browse hotels, place bids, post reels. Pick a path below to unlock more.</p>
-        </div>
-      </div>
-    );
-  }
-  if (tier === "PENDING_CREATOR") {
-    return (
-      <div
-        className="rounded-xl p-4 flex items-center gap-3"
-        style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.12), rgba(255,69,141,0.08))", border: "1px solid rgba(240,180,41,0.45)" }}
-      >
-        <span className="text-2xl">⏳</span>
-        <div className="flex-1">
-          <p className="font-bold text-luxury-900 text-sm">Creator application under review</p>
-          <p className="text-luxury-600 text-xs">
-            Submitted on {influencer?.created_at ? new Date(influencer.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}.
-            Most reviews finish within 24 hours.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  if (tier === "CREATOR") {
-    return (
-      <div
-        className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
-        style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
-      >
-        <span className="text-2xl">✨</span>
-        <div className="flex-1 min-w-[180px]">
-          <p className="font-bold text-luxury-900 text-sm">You're an active Creator</p>
-          <p className="text-luxury-600 text-xs">
-            12% commission on every booking you bring · {influencer?.total_followers?.toLocaleString?.("en-IN") || "—"} declared followers.
-          </p>
-        </div>
-        <Link href="/influencer/dashboard" className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm">
-          Open Creator Dashboard →
-        </Link>
-      </div>
-    );
-  }
-  if (tier === "HOTEL") {
-    return (
-      <div
-        className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
-        style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
-      >
-        <span className="text-2xl">🏨</span>
-        <div className="flex-1 min-w-[180px]">
-          <p className="font-bold text-luxury-900 text-sm">You're an active Hotel partner</p>
-          <p className="text-luxury-600 text-xs">{hotelOwned?.name || "Your hotel"} · {hotelOwned?.city || ""}</p>
-        </div>
-        <a
-          href={HOTEL_PANEL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm"
-        >
-          Open Hotel Dashboard ↗
-        </a>
-      </div>
-    );
-  }
+// v109 — supports stacked active banners when the user is BOTH a creator
+// AND a hotel partner. Mutually-exclusive states (PENDING, BLOCKED, pure
+// PUBLIC) render as a single card; active roles stack below in order.
+function StatusBanner({
+  tier, isCreator, isHotelOwner, influencer, hotelOwned,
+}: {
+  tier: Tier;
+  isCreator: boolean;
+  isHotelOwner: boolean;
+  influencer: any;
+  hotelOwned: any;
+}) {
+  // BLOCKED beats everything — user can't operate either path.
   if (tier === "BLOCKED") {
     return (
       <div
@@ -232,22 +147,98 @@ function StatusBanner({ tier, influencer, hotelOwned }: { tier: Tier; influencer
       </div>
     );
   }
-  return null;
+
+  // Pure public — no creator, no hotel.
+  if (!isCreator && !isHotelOwner) {
+    return (
+      <div className="card-luxury p-4 flex items-center gap-3">
+        <span className="text-2xl">👋</span>
+        <div className="flex-1">
+          <p className="font-bold text-luxury-900 text-sm">You're on the Public tier</p>
+          <p className="text-luxury-500 text-xs">Browse hotels, place bids, post reels. Pick a path below to unlock more.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Stack active banners. Pending creator gets the amber under-review
+  // card; an active creator gets the green dashboard CTA. Hotel partner
+  // banner mirrors the creator one structure-wise.
+  return (
+    <div className="space-y-3">
+      {tier === "PENDING_CREATOR" && (
+        <div
+          className="rounded-xl p-4 flex items-center gap-3"
+          style={{ background: "linear-gradient(135deg, rgba(240,180,41,0.12), rgba(255,69,141,0.08))", border: "1px solid rgba(240,180,41,0.45)" }}
+        >
+          <span className="text-2xl">⏳</span>
+          <div className="flex-1">
+            <p className="font-bold text-luxury-900 text-sm">Creator application under review</p>
+            <p className="text-luxury-600 text-xs">
+              Submitted on {influencer?.created_at ? new Date(influencer.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}.
+              Most reviews finish within 24 hours.
+            </p>
+          </div>
+        </div>
+      )}
+      {tier === "CREATOR" && (
+        <div
+          className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
+          style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
+        >
+          <span className="text-2xl">✨</span>
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-bold text-luxury-900 text-sm">You're an active Creator</p>
+            <p className="text-luxury-600 text-xs">
+              12% commission on every booking you bring · {influencer?.total_followers?.toLocaleString?.("en-IN") || "—"} declared followers.
+            </p>
+          </div>
+          <Link href="/influencer/dashboard" className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm">
+            Open Creator Dashboard →
+          </Link>
+        </div>
+      )}
+      {isHotelOwner && (
+        <div
+          className="rounded-xl p-4 flex items-center gap-3 flex-wrap"
+          style={{ background: "linear-gradient(135deg, rgba(46,204,113,0.10), rgba(91,141,255,0.06))", border: "1px solid rgba(46,204,113,0.45)" }}
+        >
+          <span className="text-2xl">🏨</span>
+          <div className="flex-1 min-w-[180px]">
+            <p className="font-bold text-luxury-900 text-sm">You're an active Hotel partner</p>
+            <p className="text-luxury-600 text-xs">{hotelOwned?.name || "Your hotel"} · {hotelOwned?.city || ""}</p>
+          </div>
+          <a
+            href={HOTEL_PANEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-luxury px-4 py-2 rounded-xl font-bold text-sm"
+          >
+            Open Hotel Dashboard ↗
+          </a>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Upgrade path card ────────────────────────────────────────────────────
+// v109 — `isMine` is now an explicit prop (parent passes isCreator /
+// isHotelOwner). Both cards can be "Already active" simultaneously for
+// users who have upgraded both paths.
 function UpgradeCard({
-  kind, tier, onAction, ctaLabelOverride, variant,
+  kind, isMine, tier, onAction, ctaLabelOverride, variant,
 }: {
   kind: "creator" | "hotel";
+  isMine: boolean;
   tier: Tier;
   onAction: () => void;
   ctaLabelOverride?: string;
   variant: "full" | "compact";
 }) {
-  const isCreator = kind === "creator";
-  const config = isCreator ? CREATOR_COPY : HOTEL_COPY;
-  const alreadyMine = (isCreator && (tier === "CREATOR" || tier === "PENDING_CREATOR")) || (!isCreator && tier === "HOTEL");
+  const isCreatorCard = kind === "creator";
+  const config = isCreatorCard ? CREATOR_COPY : HOTEL_COPY;
+  const alreadyMine = isMine;
   const blocked = tier === "BLOCKED";
 
   return (
@@ -292,7 +283,7 @@ function UpgradeCard({
         className="btn-luxury py-2.5 rounded-xl font-bold mt-auto disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
         {alreadyMine
-          ? (tier === "PENDING_CREATOR" ? "⏳ Application submitted" : "✓ Already active")
+          ? (isCreatorCard && tier === "PENDING_CREATOR" ? "⏳ Application submitted" : "✓ Already active")
           : (ctaLabelOverride || config.cta)}
       </button>
       <p className="text-luxury-500 text-[0.65rem] text-center mt-2">{config.kyc}</p>
@@ -345,6 +336,11 @@ function CreatorApplicationForm({
         ifscCode,
         agreementAccepted,
       });
+      // v109 — broadcast so Navbar/DialerNav/me drawer flip to show the
+      // Creator Hub entry immediately. The parent's onSuccess() also
+      // calls refresh() on its own TierProvider consumer, but the
+      // global event covers all consumers.
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
       onSuccess();
     } catch (err: any) {
       setError(err?.message || "Couldn't submit your application. Please retry, or sign out and back in.");

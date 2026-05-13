@@ -36,6 +36,11 @@ export default function PartnerLogin() {
 
       localStorage.setItem("sb_partner_token", d.token);
       localStorage.setItem("sb_partner_user",  JSON.stringify({ ...d.user, hotel: d.user.hotel }));
+      // v109 — wake up the customer-side TierProvider so the menu /
+      // /upgrade banner / DialerNav all flip to "Hotel Partner" before
+      // we navigate away. Same-tab login doesn't fire `storage` events
+      // in this tab, so the custom event is the only signal.
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
       router.replace("/partner/dashboard");
     } catch (e: any) {
       setError(e?.message || "Google sign-in failed");
@@ -95,6 +100,9 @@ export default function PartnerLogin() {
       // Store partner session separately from customer session
       localStorage.setItem("sb_partner_token", token);
       localStorage.setItem("sb_partner_user",  JSON.stringify({ ...user, hotel: hotelData.hotel }));
+      // v109 — same as the Google path above. Flips the customer menu
+      // to show "Hotel Partner" entry the moment OTP login succeeds.
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
       router.replace("/partner/dashboard");
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }

@@ -35,7 +35,10 @@ import { usePosts } from "@/lib/posts-store";
 import { useAuth } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize-text";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useAccountTier, type Tier } from "@/components/upgrade/UpgradeSection";
+// v109 — shared TierProvider context. Same drawer auto-flips when
+// upgrade happens in any tab (storage event) or same-tab via the
+// sb:tier-refresh custom event.
+import { useTier } from "@/lib/tier-store";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -53,11 +56,10 @@ export default function MePage() {
     followingCount,
   } = useFollow();
   const { posts } = usePosts();
-  // v108 — Creator Hub + Hotel Partner items in the drawer only show
-  // up once the account is actually upgraded. Public users don't see
-  // them at all; the moment their creator app is approved (or they own
-  // a hotel) the matching entry appears.
-  const { tier } = useAccountTier();
+  // v109 — Creator Hub + Hotel Partner items in the drawer flip on
+  // automatically the moment the matching role activates (creator app
+  // submitted, partner login completed — even in another tab).
+  const { isCreator, isHotelOwner } = useTier();
 
   const [tab, setTab] = useState<Tab>("posts");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -317,7 +319,8 @@ export default function MePage() {
       {/* Hamburger drawer */}
       <MoreDrawer
         open={drawerOpen}
-        tier={tier}
+        isCreator={isCreator}
+        isHotelOwner={isHotelOwner}
         onClose={() => setDrawerOpen(false)}
         onLogout={() => { logout(); router.push("/"); }}
       />
@@ -637,24 +640,24 @@ const ACCOUNT_LINK: DrawerLink = {
 };
 
 function MoreDrawer({
-  open, tier, onClose, onLogout,
+  open, isCreator, isHotelOwner, onClose, onLogout,
 }: {
-  open:     boolean;
-  tier:     Tier;
-  onClose:  () => void;
-  onLogout: () => void;
+  open:         boolean;
+  isCreator:    boolean;
+  isHotelOwner: boolean;
+  onClose:      () => void;
+  onLogout:     () => void;
 }) {
   if (!open) return null;
 
-  // Tier-aware link list. Creator + Hotel Partner only appear once the
-  // user has earned the corresponding role. PENDING_CREATOR also gets
-  // Creator Hub so they can check application status / payout setup.
-  const showCreator = tier === "CREATOR" || tier === "PENDING_CREATOR";
-  const showHotel   = tier === "HOTEL";
+  // v109 — independent flags from the shared TierProvider so a user
+  // who's BOTH an active creator AND a hotel partner sees BOTH entries.
+  // Pending creators are included in isCreator so they can track app
+  // status from the drawer.
   const links: DrawerLink[] = [
     ...DRAWER_LINKS_BASE,
-    ...(showCreator ? [CREATOR_LINK] : []),
-    ...(showHotel   ? [HOTEL_LINK]   : []),
+    ...(isCreator    ? [CREATOR_LINK] : []),
+    ...(isHotelOwner ? [HOTEL_LINK]   : []),
     ACCOUNT_LINK,
   ];
   return (

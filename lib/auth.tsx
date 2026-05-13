@@ -36,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("sb_user", JSON.stringify(u));
     localStorage.setItem("sb_token_type", tt);
     setToken(t); setUser(u); setTokenType(tt);
+    // v109 — TierProvider listens for this event to re-probe creator /
+    // hotel roles immediately. Without it, the customer menu kept the
+    // pre-login (PUBLIC) state until next mount.
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
   };
 
   const logout = () => {
@@ -43,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("sb_user");
     localStorage.removeItem("sb_token_type");
     setToken(null); setUser(null); setTokenType("backend");
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
   };
 
   return (
