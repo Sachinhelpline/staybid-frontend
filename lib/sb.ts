@@ -19,18 +19,34 @@ export function hasServiceRole(): boolean {
 // Effective key for server-side calls. Service-role when set, anon otherwise.
 export const SB_ADMIN_KEY = SERVICE_ROLE_KEY || SB_KEY;
 
-// v104 — detect Supabase's new sb_secret_* / sb_publishable_* key format.
-// New format keys aren't JWTs — PostgREST looks them up against an internal
-// allowlist via the `apikey` header. Sending them as Authorization Bearer
-// triggers JWT-verify which fails and returns 401. Legacy `eyJ...` keys
-// continue to be sent in both headers for full backward compatibility.
+// v104.3 — Supabase's NEW key format (sb_secret_* / sb_publishable_*)
+// rule per their 2024+ docs:
+//   - `apikey` header MUST carry a PUBLIC key (legacy anon JWT or
+//     sb_publishable_*). PostgREST validates this against the public
+//     allowlist; sb_secret_* in this slot returns "Invalid API key".
+//   - `Authorization: Bearer` carries the role-elevation token:
+//     - legacy JWT: same as apikey (full back-compat)
+//     - sb_secret_*: PostgREST recognises it for service-role bypass
+//
+// Earlier v104 had this backwards (apikey only for new format) which
+// caused "Invalid API key" on every admin RLS request after the env
+// var landed. Fixed here: always send the legacy anon JWT in apikey
+// + send the actual SB_ADMIN_KEY (legacy OR sb_secret_*) in Bearer.
 function isLegacyJwt(k: string): boolean {
   return typeof k === "string" && k.startsWith("eyJ");
 }
 
-const ADMIN_HEADERS_BASE: Record<string, string> = isLegacyJwt(SB_ADMIN_KEY)
-  ? { apikey: SB_ADMIN_KEY, Authorization: `Bearer ${SB_ADMIN_KEY}` }
-  : { apikey: SB_ADMIN_KEY };
+const ADMIN_HEADERS_BASE: Record<string, string> = {
+  // apikey ALWAYS uses the legacy anon JWT (or any valid publishable key).
+  // sb_secret_* in this position is rejected as "Invalid API key".
+  apikey: SB_KEY,
+  // Authorization: Bearer carries the role-elevation key — could be the
+  // legacy service-role JWT, sb_secret_*, or fall back to SB_KEY itself
+  // when env var isn't set (no elevation, behaves as anon).
+  Authorization: `Bearer ${SB_ADMIN_KEY}`,
+};
+// keep isLegacyJwt export for any external callers
+void isLegacyJwt;
 
 // v101 — SB_H is now service-role-when-available. Was previously plain
 // anon. Existing imports require no change.
