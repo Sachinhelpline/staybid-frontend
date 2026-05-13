@@ -40,8 +40,19 @@
 //   • Network-only for mutations/personalised = users always see fresh
 //   • Stable cache name across UI releases = no cold-start punishment
 
+// v112.4 — one-time HTML_CACHE bump (v2 → v3). Users between v112.0
+// and v112.2 had stale HTML cached via SWR that still referenced the
+// pre-v112.2 PostsScrollFeed chunk (old single-field "Edit caption"
+// sheet) — even though v112.2 + v112.3 had shipped to main, the SW
+// kept serving the cached HTML which kept loading the old chunks.
+// On next visit the SW activate handler drops any cache not in the
+// keep-set below, the stale HTML is purged, and a fresh HTML fetch
+// loads the new chunk references → user sees the comprehensive
+// Edit Post sheet (Caption + Location + Tagged hotel + Highlight +
+// Hide likes + Disable comments). Static + API cache names left
+// alone (hashed chunks are immutable, API is network-only).
 const CACHE_NAME = 'staybid-static-v2';
-const HTML_CACHE = 'staybid-html-v2';
+const HTML_CACHE = 'staybid-html-v3';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
