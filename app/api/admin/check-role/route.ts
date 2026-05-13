@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { SB_URL, SB_KEY } from "@/lib/sb";
 
-const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-// v101 — auto-graduate to service-role when env var set, anon otherwise
-const SB_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+// v104.1 — was: const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJ...";
+// Removed inline env-var override because this route uses Authorization
+// Bearer in its inline header literal, which breaks when the env var
+// value is a new-format sb_secret_* key (PostgREST JWT-verify fails →
+// admin login can't find any user). The shared SB_KEY constant from
+// lib/sb.ts is the LEGACY anon JWT — users table has public-permissive
+// policies so this route works under anon. The graduation to service-
+// role for other tables continues to work via SB_H / SB_ADMIN_H.
 
 // Default master PIN — override by setting ADMIN_MASTER_PIN env var on Vercel.
 const DEFAULT_MASTER_PIN = "StayBidAdmin@2026";
