@@ -44,7 +44,13 @@ function MePostsInner() {
     if (!myUserId) return;
     const tok = typeof window !== "undefined" ? (localStorage.getItem("sb_token") || "") : "";
     Promise.all([
-      fetch(`/api/social/feed?author=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+      // v110 — same fix as /me page: pass authorUser (auth user id) so the
+      // route resolves to the social_profiles.id internally. Passing the
+      // bare auth id to `?author=` previously matched no rows on the
+      // social_posts table (author_id holds the profile id), which is why
+      // /me/posts showed "Nothing to show yet" even when the user had
+      // uploads on the server.
+      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
       tok

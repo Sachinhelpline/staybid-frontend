@@ -740,13 +740,86 @@ export function ProfilePhotoEditor({
     }
   };
 
+  // v110 — server-side persistence. Without this, the user's avatar +
+  // display name + bio lived only in localStorage and disappeared after
+  // re-login or device-switch. The flow:
+  //   1) Apply locally immediately (instant-feel, never blocks the user)
+  //   2) Upload avatar JPEG to Supabase Storage (avatars/<userId>/...)
+  //   3) PATCH /api/social/profiles/me with the public avatar URL +
+  //      display_name + bio (location + website stay local — those
+  //      fields don't exist on social_profiles).
+  //   4) Swap local avatar to the public URL so future re-logins
+  //      hydrate from server and see exactly what was saved.
+  // Errors surface as a quiet toast so the user isn't blocked — local
+  // edits stay applied.
   const save = () => {
-    setMyAvatarUrl(preview || "");
-    setMyDisplayName(name.trim() ? name.trim().slice(0, 32) : "You");
-    setMyBio(bio.trim().slice(0, 280));
+    const finalName    = name.trim() ? name.trim().slice(0, 32) : "You";
+    const finalBio     = bio.trim().slice(0, 280);
+    const finalAvatar  = preview || "";
+
+    // 1) Apply locally (instant-feel)
+    setMyAvatarUrl(finalAvatar);
+    setMyDisplayName(finalName);
+    setMyBio(finalBio);
     setMyLocation(location.trim().slice(0, 80));
     setMyWebsite(website.trim().slice(0, 120));
     onClose();
+
+    // 2-4) Background server sync — never blocks the close.
+    (async () => {
+      try {
+        const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+        if (!tok) return;
+        let userId = "";
+        try {
+          const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+          userId = payload.id || payload.user_id || payload.sub || "";
+        } catch { /* malformed */ }
+        if (!userId) return;
+
+        // If the avatar is a data: URL, upload it as a JPEG blob to Storage
+        // so the public URL becomes the durable source-of-truth.
+        let avatarPublicUrl = finalAvatar;
+        if (finalAvatar.startsWith("data:")) {
+          try {
+            const avatarBlob = await fetch(finalAvatar).then((r) => r.blob());
+            const owner = userId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32) || "anon";
+            const path  = `avatars/${owner}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+            const SB    = "https://uxxhbdqedazpmvbvaosh.supabase.co";
+            const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+            const upRes = await fetch(`${SB}/storage/v1/object/social-media/${path}`, {
+              method: "POST",
+              headers: {
+                Authorization:  `Bearer ${SB_ANON}`,
+                "Content-Type": "image/jpeg",
+                "x-upsert":     "true",
+              },
+              body: avatarBlob,
+            });
+            if (upRes.ok) {
+              avatarPublicUrl = `${SB}/storage/v1/object/public/social-media/${path}`;
+              // Swap the local data-URL for the public URL so subsequent
+              // re-logins hydrate from server-side and look identical.
+              setMyAvatarUrl(avatarPublicUrl);
+            }
+          } catch { /* upload failed — keep local data-URL */ }
+        }
+
+        // PATCH the profile so re-login / cross-device works.
+        await fetch("/api/social/profiles/me", {
+          method:  "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:  `Bearer ${tok}`,
+          },
+          body: JSON.stringify({
+            avatar_url:   avatarPublicUrl,
+            display_name: finalName,
+            bio:          finalBio,
+          }),
+        });
+      } catch { /* non-blocking — local edits already applied */ }
+    })();
   };
 
   const addHighlight = () => {

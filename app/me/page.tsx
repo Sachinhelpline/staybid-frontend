@@ -54,6 +54,7 @@ export default function MePage() {
   const {
     myDisplayName, myAvatarUrl, myBio, myLocation, myWebsite, myCustomHighlights,
     followingCount, follows, searchFollowers,
+    setMyAvatarUrl, setMyDisplayName, setMyBio,
   } = useFollow();
   const { posts } = usePosts();
   // v109 — Creator Hub + Hotel Partner items in the drawer flip on
@@ -82,6 +83,38 @@ export default function MePage() {
       return p.id || p.user_id || p.sub || "";
     } catch { return ""; }
   }, []);
+
+  // v110 — server-side hydration of profile photo + display name + bio.
+  // Without this, the avatar lives only in localStorage and disappears
+  // after re-login or device-switch. We fetch /api/social/profiles/me
+  // once per mount; if the server has values the local store doesn't,
+  // we adopt them (server is the source of truth across devices).
+  useEffect(() => {
+    if (!myUserId) return;
+    const tok = typeof window !== "undefined" ? (localStorage.getItem("sb_token") || "") : "";
+    if (!tok) return;
+    fetch("/api/social/profiles/me", {
+      headers: { Authorization: `Bearer ${tok}` },
+      cache:   "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d) => {
+        const p = d?.profile;
+        if (!p) return;
+        // Server "wins" when local is empty / placeholder. Do NOT clobber
+        // a non-empty local value with a null server value — the user may
+        // have just set something that hasn't synced yet.
+        if (p.avatar_url && !myAvatarUrl)               setMyAvatarUrl(String(p.avatar_url));
+        if (p.display_name && (!myDisplayName || myDisplayName === "You")) {
+          setMyDisplayName(String(p.display_name));
+        }
+        if (p.bio && !myBio)                            setMyBio(String(p.bio));
+      });
+    // Run only when the user id changes (i.e. after login). Setters from
+    // the FollowStore are stable references already.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myUserId]);
 
   useEffect(() => {
     if (!myUserId) return;
@@ -879,6 +912,8 @@ function DrawerRow({ icon, label, sub, external }: { icon: string; label: string
 // pinned at the top when relevant). Searchable via the existing
 // followStore.searchFollowers helper for the Followers tab; the Following
 // tab reads from the live follows[] array.
+// v110 — rows are now real <button>s that route to /u/[handle] so the
+// user can dig into any follower / followed profile.
 function FollowListSheet({
   kind, myDisplayName, myHandle, myAvatarUrl, follows, searchFollowers, onClose,
 }: {
@@ -890,6 +925,7 @@ function FollowListSheet({
   searchFollowers: (handle: string, q: string) => string[];
   onClose:     () => void;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
 
   // Close on Esc
@@ -968,21 +1004,40 @@ function FollowListSheet({
                 ? entry.split("|")
                 : [entry, entry];
               const isYou = handleStr === "@you (you)";
+              const goToProfile = () => {
+                if (isYou) {
+                  onClose();
+                  router.push("/me");
+                  return;
+                }
+                const h = handleStr.replace(/^@/, "").trim();
+                if (!h) return;
+                onClose();
+                router.push(`/u/${encodeURIComponent(h)}`);
+              };
               return (
-                <li key={`${handleStr}-${i}`} className="me-follow-row">
-                  <span
-                    className="me-follow-avatar"
-                    style={isYou && myAvatarUrl ? { backgroundImage: `url(${myAvatarUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                <li key={`${handleStr}-${i}`}>
+                  <button
+                    type="button"
+                    className="me-follow-row me-follow-row-btn"
+                    onClick={goToProfile}
+                    aria-label={`Open ${name}'s profile`}
                   >
-                    {!(isYou && myAvatarUrl) && (name || "?").trim().slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="me-follow-text">
-                    <p className="me-follow-name">
-                      {isYou ? myDisplayName || "You" : name}
-                      {isYou && <span className="me-follow-you"> · you</span>}
-                    </p>
-                    <p className="me-follow-handletext">{handleStr}</p>
-                  </div>
+                    <span
+                      className="me-follow-avatar"
+                      style={isYou && myAvatarUrl ? { backgroundImage: `url(${myAvatarUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    >
+                      {!(isYou && myAvatarUrl) && (name || "?").trim().slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="me-follow-text">
+                      <p className="me-follow-name">
+                        {isYou ? myDisplayName || "You" : name}
+                        {isYou && <span className="me-follow-you"> · you</span>}
+                      </p>
+                      <p className="me-follow-handletext">{handleStr}</p>
+                    </div>
+                    <span className="me-follow-chev" aria-hidden>›</span>
+                  </button>
                 </li>
               );
             })
@@ -1094,10 +1149,28 @@ function FollowListSheet({
           gap: 12px;
           padding: 9px 12px;
           border-radius: 10px;
-          transition: background 0.16s ease;
+          transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-follow-row:hover {
           background: rgba(184, 134, 11, 0.06);
+        }
+        /* v110 — row is now a button so taps route to /u/[handle]. Reset
+           button chrome but keep the row layout. */
+        .me-follow-row-btn {
+          width: 100%;
+          text-align: left;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          font: inherit;
+          color: inherit;
+        }
+        .me-follow-row-btn:active { transform: scale(0.98); }
+        .me-follow-chev {
+          color: rgba(74, 50, 8, 0.45);
+          font-size: 0.95rem;
+          font-weight: 700;
+          flex-shrink: 0;
         }
         .me-follow-avatar {
           flex-shrink: 0;
