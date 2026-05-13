@@ -48,7 +48,31 @@ export async function POST(req: Request) {
     else if (profile.user_type !== "HOTEL") hotelId = body.hotelId;
   }
 
-  const row = {
+  // v111 — bulletproof idempotency. Composer sends `clientPostId` once
+  // per post() invocation; we de-dup at the DB by (author_id,
+  // client_post_id). 1..N rapid POSTs return the same row, fixing the
+  // recurring triple-upload bug for good. Fall back to a regular insert
+  // when clientPostId is missing (legacy callers).
+  const clientPostId: string | null =
+    typeof body.clientPostId === "string" && body.clientPostId.trim()
+      ? body.clientPostId.trim().slice(0, 64)
+      : null;
+
+  if (clientPostId) {
+    // Fast path: return existing row if we've seen this client id before.
+    const dedupRes = await fetch(
+      `${SB_URL}/rest/v1/social_posts?author_id=eq.${encodeURIComponent(profile.id)}&client_post_id=eq.${encodeURIComponent(clientPostId)}&select=*&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }, cache: "no-store" }
+    );
+    if (dedupRes.ok) {
+      const existing = await dedupRes.json().catch(() => []);
+      if (Array.isArray(existing) && existing[0]) {
+        return NextResponse.json({ post: existing[0], created: false, deduped: true });
+      }
+    }
+  }
+
+  const row: Record<string, any> = {
     author_id:      profile.id,
     hotel_id:       hotelId,
     media_type:     mediaType,
@@ -62,10 +86,32 @@ export async function POST(req: Request) {
     location_lat:   typeof body.locationLat === "number" ? body.locationLat : null,
     location_lng:   typeof body.locationLng === "number" ? body.locationLng : null,
   };
+  if (clientPostId) row.client_post_id = clientPostId;
+
   const r = await fetch(`${SB_URL}/rest/v1/social_posts`, {
-    method: "POST", headers: HEADERS, body: JSON.stringify(row),
+    method: "POST",
+    headers: {
+      ...HEADERS,
+      // Honour the unique (author_id, client_post_id) index — if a race
+      // with the dedup SELECT above lost, fall back to ignore + re-fetch.
+      ...(clientPostId ? { Prefer: "return=representation,resolution=ignore-duplicates" } : {}),
+    },
+    body: JSON.stringify(row),
   });
   if (!r.ok) return NextResponse.json({ error: "Could not create post", detail: await r.text() }, { status: 500 });
   const arr = await r.json().catch(() => []);
-  return NextResponse.json({ post: Array.isArray(arr) ? arr[0] : arr, created: true });
+  let post = Array.isArray(arr) ? arr[0] : arr;
+
+  // If the insert was ignored (race-lost), re-fetch by clientPostId.
+  if (!post && clientPostId) {
+    const refetch = await fetch(
+      `${SB_URL}/rest/v1/social_posts?author_id=eq.${encodeURIComponent(profile.id)}&client_post_id=eq.${encodeURIComponent(clientPostId)}&select=*&limit=1`,
+      { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }, cache: "no-store" }
+    );
+    if (refetch.ok) {
+      const rows = await refetch.json().catch(() => []);
+      if (Array.isArray(rows) && rows[0]) post = rows[0];
+    }
+  }
+  return NextResponse.json({ post, created: !!post });
 }

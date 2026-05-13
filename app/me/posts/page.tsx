@@ -26,7 +26,9 @@ function MePostsInner() {
   const startId = sp?.get("start") || "";
   const { user } = useAuth();
   const { myDisplayName, myAvatarUrl } = useFollow();
-  const { posts } = usePosts();
+  // v111 — destructure removePost so the local entry vanishes when the
+  // owner deletes the post from the kebab menu in PostsScrollFeed.
+  const { posts, removePost } = usePosts();
   const [remotePosts, setRemotePosts] = useState<any[]>([]);
 
   // Decode the user's id from the JWT — same logic as /me.
@@ -155,6 +157,19 @@ function MePostsInner() {
       startId={startId}
       headerTitle="Posts"
       mode="owner"
+      // v111 — owner controls. Delete removes from BOTH local PostsStore
+      // AND the remotePosts state so the card vanishes instantly. Server
+      // already soft-deletes via /api/social/posts/[id] DELETE.
+      onPostDeleted={(id) => {
+        try { removePost(id); } catch {}
+        setRemotePosts((prev) => prev.filter((rp) => String(rp.id) !== String(id)));
+      }}
+      onPostEdited={(id, patch) => {
+        if (typeof patch.caption === "string") {
+          setRemotePosts((prev) => prev.map((rp) =>
+            String(rp.id) === String(id) ? { ...rp, caption: patch.caption } : rp));
+        }
+      }}
     />
   );
 }

@@ -75,11 +75,21 @@ export function PostsScrollFeed({
   startId,
   headerTitle,
   mode,
+  onPostDeleted,
+  onPostEdited,
 }: {
   posts: FeedPost[];
   startId?: string;
   headerTitle: string;
   mode: Mode;
+  /** v111 — owner-only delete callback. Caller removes the entry from
+      its data source (PostsStore / remote refetch) so the card vanishes
+      from the feed immediately after the server confirms. */
+  onPostDeleted?: (postId: string) => void;
+  /** v111 — owner-only edit callback. Caller can update the caption in
+      its data source so the card reflects the new value without a
+      round-trip refetch. */
+  onPostEdited?: (postId: string, patch: { caption?: string }) => void;
 }) {
   const router = useRouter();
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +106,12 @@ export function PostsScrollFeed({
   const [commentsOpen, setCommentsOpen] = useState<string>("");
   // Toast for share / copy fallback.
   const [toast, setToast] = useState<string>("");
+  // v111 — kebab menu state. `menuFor` is the postId whose ⋮ menu is open.
+  const [menuFor, setMenuFor] = useState<string>("");
+  // v111 — "Edit caption" inline sheet. `editFor` is the post being edited.
+  const [editFor, setEditFor] = useState<FeedPost | null>(null);
+  const [editCaption, setEditCaption] = useState<string>("");
+  const [editing, setEditing] = useState(false);
 
   // Hydrate like + save state on mount.
   useEffect(() => {
@@ -228,6 +244,90 @@ export function PostsScrollFeed({
     setCommentsOpen(postId);
   }
 
+  // v111 — owner-only kebab menu handlers.
+  async function deletePost(post: FeedPost) {
+    // Two-step confirm so the user can't tap-trigger this by accident.
+    if (typeof window !== "undefined") {
+      const ok = window.confirm("Delete this post? This can't be undone.");
+      if (!ok) return;
+    }
+    setMenuFor("");
+    try {
+      const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+      const r = await fetch(`/api/social/posts/${encodeURIComponent(post.id)}`, {
+        method: "DELETE",
+        headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+      });
+      if (!r.ok) {
+        showToast("Couldn't delete — try again");
+        return;
+      }
+      // Caller hides the entry from its data source.
+      try { onPostDeleted?.(post.id); } catch {}
+      // Also remove from PostsStore local entry IF this happens to be a
+      // user-created one — the caller will usually handle this, but
+      // calling it twice is a safe no-op (PostsStore.removePost just
+      // filters by id). We're being defensive across the local + remote
+      // dual-source merge that /me/posts does.
+      try {
+        const raw = localStorage.getItem("sb_user_posts");
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const next = arr.filter((x: any) => x?.id !== post.id);
+            localStorage.setItem("sb_user_posts", JSON.stringify(next));
+          }
+        }
+      } catch {}
+      showToast("Post deleted");
+    } catch {
+      showToast("Couldn't delete — try again");
+    }
+  }
+
+  function startEdit(post: FeedPost) {
+    setMenuFor("");
+    setEditFor(post);
+    setEditCaption(post.caption || "");
+  }
+
+  async function commitEdit() {
+    if (!editFor) return;
+    setEditing(true);
+    try {
+      const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+      const r = await fetch(`/api/social/posts/${encodeURIComponent(editFor.id)}`, {
+        method:  "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+        },
+        body: JSON.stringify({ caption: editCaption }),
+      });
+      if (!r.ok) { showToast("Couldn't save — try again"); return; }
+      try { onPostEdited?.(editFor.id, { caption: editCaption }); } catch {}
+      // Also mirror to PostsStore's localStorage row when it's a local one.
+      try {
+        const raw = localStorage.getItem("sb_user_posts");
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const next = arr.map((x: any) =>
+              x?.id === editFor.id ? { ...x, caption: editCaption } : x);
+            localStorage.setItem("sb_user_posts", JSON.stringify(next));
+          }
+        }
+      } catch {}
+      setEditFor(null);
+      setEditCaption("");
+      showToast("Updated ✓");
+    } catch {
+      showToast("Couldn't save — try again");
+    } finally {
+      setEditing(false);
+    }
+  }
+
   return (
     <div className="pf-root" ref={wrapRef}>
       <header className="pf-top">
@@ -262,6 +362,7 @@ export function PostsScrollFeed({
               muted={!unmuted[p.id]}
               liked={!!liked[p.id]}
               saved={savedSet.has(`video:${p.id}`)}
+              menuOpen={menuFor === p.id}
               onToggleMute={() =>
                 setUnmuted((m) => ({ ...m, [p.id]: !m[p.id] }))
               }
@@ -270,6 +371,10 @@ export function PostsScrollFeed({
               onRestart={() => restartPlayback(p.id)}
               onShare={() => shareOrCopy(p)}
               onSave={() => toggleSave(p)}
+              onMenuToggle={() => setMenuFor((cur) => (cur === p.id ? "" : p.id))}
+              onMenuClose={() => setMenuFor("")}
+              onDelete={() => deletePost(p)}
+              onEdit={() => startEdit(p)}
             />
           ))
         )}
@@ -290,6 +395,42 @@ export function PostsScrollFeed({
               onClick={() => setCommentsOpen("")}
               aria-label="Close comments"
             >Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* v111 — Edit caption sheet (owner only). Inline so the user
+          doesn't lose context — caption only, since changing media
+          or media_type would break the v111 idempotency contract. */}
+      {editFor && (
+        <div className="pf-drawer-backdrop" onClick={() => !editing && setEditFor(null)}>
+          <div className="pf-drawer pf-edit-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="pf-drawer-handle" />
+            <p className="pf-drawer-title">Edit caption</p>
+            <textarea
+              className="pf-edit-textarea"
+              value={editCaption}
+              onChange={(e) => setEditCaption(e.target.value)}
+              placeholder="Write a caption…"
+              maxLength={2200}
+              rows={5}
+              autoFocus
+            />
+            <p className="pf-edit-count">{editCaption.length} / 2200</p>
+            <div className="pf-edit-actions">
+              <button
+                type="button"
+                className="pf-edit-cancel"
+                onClick={() => { setEditFor(null); setEditCaption(""); }}
+                disabled={editing}
+              >Cancel</button>
+              <button
+                type="button"
+                className="pf-edit-save"
+                onClick={commitEdit}
+                disabled={editing}
+              >{editing ? "Saving…" : "Save"}</button>
+            </div>
           </div>
         </div>
       )}
@@ -432,6 +573,104 @@ export function PostsScrollFeed({
           85%  { opacity: 1; transform: translate(-50%, 0); }
           100% { opacity: 0; transform: translate(-50%, -8px); }
         }
+        /* v111 — kebab popover. Anchors to .pf-more in the card header. */
+        .pf-more-wrap { position: relative; }
+        .pf-more-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 40;
+        }
+        .pf-more-menu {
+          position: absolute;
+          right: 0;
+          top: calc(100% + 4px);
+          z-index: 50;
+          min-width: 180px;
+          background: var(--cozy-cream-50, #FFFCF6);
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          border-radius: 12px;
+          box-shadow: 0 12px 28px rgba(31, 26, 15, 0.18);
+          padding: 6px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          animation: pfMenuIn 0.16s ease both;
+        }
+        @keyframes pfMenuIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .pf-more-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 12px;
+          font-size: 0.86rem;
+          font-weight: 600;
+          font-family: inherit;
+          background: transparent;
+          color: var(--cozy-warm-dark, #1F1A0F);
+          border: none;
+          border-radius: 8px;
+          text-align: left;
+          cursor: pointer;
+          width: 100%;
+          transition: background 0.14s ease;
+        }
+        .pf-more-item:hover { background: rgba(74, 56, 32, 0.06); }
+        .pf-more-item:active { background: rgba(74, 56, 32, 0.10); }
+        .pf-more-danger { color: #b2462f; }
+        /* v111 — Edit caption sheet styling. */
+        .pf-edit-sheet { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+        .pf-edit-textarea {
+          width: 100%;
+          min-height: 110px;
+          padding: 12px 14px;
+          font-family: inherit;
+          font-size: 0.92rem;
+          line-height: 1.4;
+          color: var(--cozy-warm-dark, #1F1A0F);
+          background: rgba(255, 255, 255, 0.6);
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          border-radius: 12px;
+          outline: none;
+          resize: vertical;
+          margin-top: 10px;
+        }
+        .pf-edit-textarea:focus { border-color: var(--cozy-champagne, #C9A66B); }
+        .pf-edit-count {
+          margin: 6px 2px 12px;
+          font-size: 0.72rem;
+          color: var(--cozy-cocoa-soft, #6E5430);
+          text-align: right;
+        }
+        .pf-edit-actions {
+          display: flex;
+          gap: 10px;
+        }
+        .pf-edit-cancel, .pf-edit-save {
+          flex: 1;
+          padding: 11px 12px;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          transition: background 0.14s ease, transform 0.12s cubic-bezier(.32,1.2,.36,1);
+        }
+        .pf-edit-cancel {
+          background: rgba(255, 255, 255, 0.7);
+          color: var(--cozy-cocoa, #4A3820);
+        }
+        .pf-edit-save {
+          background: linear-gradient(135deg, #f0d060, #ffd76b);
+          color: #2c1d04;
+          border-color: rgba(184, 134, 11, 0.55);
+        }
+        .pf-edit-save:disabled, .pf-edit-cancel:disabled { opacity: 0.5; cursor: default; }
+        .pf-edit-save:not(:disabled):active,
+        .pf-edit-cancel:not(:disabled):active { transform: scale(0.97); }
         .pf-toast {
           position: fixed;
           left: 50%;
@@ -469,8 +708,9 @@ export function PostsScrollFeed({
 //   └────────────────────────────────────────────────┘
 // ─────────────────────────────────────────────────────────────────────────
 function PostCard({
-  post, mode, isActive, muted, liked, saved,
+  post, mode, isActive, muted, liked, saved, menuOpen,
   onToggleMute, onLike, onComment, onRestart, onShare, onSave,
+  onMenuToggle, onMenuClose, onDelete, onEdit,
 }: {
   post: FeedPost;
   mode: Mode;
@@ -478,12 +718,18 @@ function PostCard({
   muted: boolean;
   liked: boolean;
   saved: boolean;
+  /** v111 — whether the kebab popover is open for THIS card. */
+  menuOpen: boolean;
   onToggleMute: () => void;
   onLike: () => void;
   onComment: () => void;
   onRestart: () => void;
   onShare: () => void;
   onSave: () => void;
+  onMenuToggle: () => void;
+  onMenuClose: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   // Animated heart for double-tap and like-button pop.
@@ -552,7 +798,57 @@ function PostCard({
             Follow
           </button>
         )}
-        <button type="button" className="pf-more" aria-label="More options">⋮</button>
+        {/* v111 — wired kebab. Owner sees Edit + Delete, viewer sees
+            Copy link + Report. Tap outside (or another tap) closes. */}
+        <div className="pf-more-wrap">
+          <button
+            type="button"
+            className="pf-more"
+            aria-label="More options"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
+          >⋮</button>
+          {menuOpen && (
+            <>
+              <div className="pf-more-backdrop" onClick={onMenuClose} aria-hidden />
+              <div className="pf-more-menu" role="menu">
+                {mode === "owner" ? (
+                  <>
+                    <button type="button" role="menuitem" className="pf-more-item" onClick={onEdit}>
+                      ✎ Edit caption
+                    </button>
+                    <button type="button" role="menuitem" className="pf-more-item pf-more-danger" onClick={onDelete}>
+                      🗑 Delete post
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="pf-more-item"
+                      onClick={() => {
+                        try {
+                          navigator.clipboard?.writeText(
+                            `${window.location.origin}/saved/posts?start=${encodeURIComponent(post.id)}`
+                          );
+                        } catch {}
+                        onMenuClose();
+                      }}
+                    >🔗 Copy link</button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="pf-more-item pf-more-danger"
+                      onClick={onMenuClose}
+                    >🚩 Report</button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Media */}

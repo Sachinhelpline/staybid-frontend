@@ -1615,7 +1615,13 @@ export function Composer({
     postedRef.current = true;
     const sanitizedCaption = sanitize ? sanitize(caption).clean : caption;
     setPosting(true);
-    const tempId = `post-${Date.now()}`;
+    // v111 — `tempId` doubles as the server-side idempotency key
+    // (`client_post_id` on social_posts). Even if /api/social/posts is
+    // hit 5 times for the same logical post (Strict Mode, retry, SW
+    // dupe), the server returns the SAME row each time. Belt-and-
+    // braces: postedRef guards client-side double-fire; clientPostId
+    // guards anything that gets past it.
+    const tempId = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const userPost: UserPost = {
       id: tempId,
       kind,
@@ -1707,6 +1713,7 @@ export function Composer({
             Authorization:   `Bearer ${tok}`,
           },
           body: JSON.stringify({
+            clientPostId:  tempId,   // v111 — server-side idempotency key
             mediaType,
             mediaUrl:      uploaded.mediaUrl,
             thumbnailUrl:  uploaded.thumbnailUrl || undefined,

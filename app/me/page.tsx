@@ -39,6 +39,13 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 // upgrade happens in any tab (storage event) or same-tab via the
 // sb:tier-refresh custom event.
 import { useTier } from "@/lib/tier-store";
+// v111 — open the IG-style ProfilePhotoEditor when the user taps their
+// avatar or Edit profile button. Previously Edit profile routed to the
+// legacy /profile account-settings page, which made highlights
+// inaccessible (the editor was the only entry point to add custom
+// highlights) AND meant the avatar wasn't tappable. ProfilePhotoEditor
+// has avatar / name / bio / location / website / highlights all in one.
+import { ProfilePhotoEditor } from "@/components/discover/CreateFlow";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -67,6 +74,9 @@ export default function MePage() {
   // v110 — Followers / Following bottom-sheet. Opens when the user taps
   // either stat. `kind` controls which list renders inside.
   const [followSheet, setFollowSheet] = useState<null | "followers" | "following">(null);
+  // v111 — IG-style profile editor (avatar / name / bio / location /
+  // website / custom highlights). Opens on avatar tap OR Edit profile.
+  const [editorOpen, setEditorOpen] = useState(false);
   // Remote posts from Supabase social_posts table — user-uploaded reels
   // live there too (the in-memory PostsStore is just for instant-after-
   // upload preview). v83 fetches the user's own posts so /me actually
@@ -248,13 +258,24 @@ export default function MePage() {
 
       {/* Profile header */}
       <section className="me-header">
-        <div className="me-avatar-wrap">
+        {/* v111 — avatar is now a button that opens the IG-style profile
+            editor. Was an inert div, which the user (correctly) flagged
+            as missing the obvious affordance. */}
+        <button
+          type="button"
+          className="me-avatar-wrap me-avatar-btn"
+          aria-label="Edit profile photo + details"
+          onClick={() => setEditorOpen(true)}
+        >
           {myAvatarUrl ? (
             <img src={myAvatarUrl} alt={myDisplayName} className="me-avatar-img" />
           ) : (
             <span className="me-avatar-fallback">{initials}</span>
           )}
-        </div>
+          {/* Small camera badge bottom-right of the avatar — same hint
+              Instagram uses to signal "tap to change photo". */}
+          <span className="me-avatar-cam" aria-hidden>📷</span>
+        </button>
         <div className="me-stats">
           <Stat label="Posts" value={fmtCount(allPosts.length)} />
           {/* v110 — Followers / Following are now real buttons that open a
@@ -287,7 +308,17 @@ export default function MePage() {
 
       {/* Action buttons */}
       <section className="me-actions">
-        <Link href="/profile" className="me-action-btn me-action-primary">Edit profile</Link>
+        {/* v111 — Edit profile now opens the IG-style ProfilePhotoEditor
+            instead of the legacy /profile account-settings route. This
+            is where the user can edit avatar / name / bio / location /
+            website AND manage highlights — all in one place. The legacy
+            page is still reachable from the hamburger drawer as
+            "Account settings". */}
+        <button
+          type="button"
+          className="me-action-btn me-action-primary"
+          onClick={() => setEditorOpen(true)}
+        >Edit profile</button>
         <button
           type="button"
           className="me-action-btn"
@@ -390,6 +421,11 @@ export default function MePage() {
         onClose={() => setFollowSheet(null)}
       />
 
+      {/* v111 — Profile editor (avatar / name / bio / location / website
+          / highlights). Mounted unconditionally; renders nothing when
+          editorOpen is false. */}
+      <ProfilePhotoEditor open={editorOpen} onClose={() => setEditorOpen(false)} />
+
       <style jsx global>{`
         .me-root {
           min-height: 100dvh;
@@ -446,6 +482,29 @@ export default function MePage() {
           padding: 2.5px;
           background: conic-gradient(from 0deg, #c9911a, #f0d060, #fff4cc, #f0d060, #c9911a);
           flex-shrink: 0;
+        }
+        /* v111 — avatar is now a button. Reset native chrome but keep
+           the conic-gradient ring + identical shape. */
+        .me-avatar-btn {
+          position: relative;
+          border: none;
+          cursor: pointer;
+          padding: 2.5px;
+          transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
+        }
+        .me-avatar-btn:active { transform: scale(0.96); }
+        .me-avatar-cam {
+          position: absolute;
+          right: -2px; bottom: -2px;
+          width: 26px; height: 26px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #f0d060, #c9911a);
+          border: 2px solid #fff9ec;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.78rem;
+          box-shadow: 0 2px 6px rgba(184, 134, 11, 0.35);
         }
         .me-avatar-img {
           width: 100%; height: 100%;
