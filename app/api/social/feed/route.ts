@@ -25,9 +25,37 @@ export async function GET(req: NextRequest) {
   const limit  = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
   const type   = searchParams.get("type");
   const source = searchParams.get("source");
-  // Filter to a specific author — used by the /me profile grid to show
-  // only the current user's uploads.
-  const authorId = searchParams.get("author");
+  // Filter to a specific author. Two accepted forms:
+  //   ?author=<social_profiles.id>   — direct (legacy callers)
+  //   ?authorUser=<auth users.id>    — resolved via social_profiles.user_id
+  // /me's profile grid uses authorUser because client-side we only know
+  // the auth user id from the JWT, not the derived social-profile id.
+  let authorId       = searchParams.get("author");
+  const authorUserId = searchParams.get("authorUser");
+
+  // Resolve auth-user → social-profile (cached so repeated /me opens don't
+  // re-hit social_profiles on every load).
+  if (!authorId && authorUserId) {
+    const profileRows = await sbCached(
+      `social:profile-by-user:${authorUserId}`,
+      async () => {
+        const r = await fetch(
+          `${SB_URL}/rest/v1/social_profiles?user_id=eq.${encodeURIComponent(authorUserId)}&select=id&limit=1`,
+          { headers: READ, cache: "no-store" }
+        );
+        if (!r.ok) return [];
+        return r.json().catch(() => []);
+      },
+      TTL_LOOKUPS,
+    );
+    const resolved = Array.isArray(profileRows) && profileRows[0]?.id ? String(profileRows[0].id) : "";
+    if (!resolved) {
+      // No profile yet → no posts. Return empty quickly without a wasted
+      // social_posts scan.
+      return NextResponse.json({ posts: [], nextCursor: null });
+    }
+    authorId = resolved;
+  }
 
   let filter = `select=*&is_active=eq.true&order=created_at.desc&limit=${limit}`;
   if (cursor)             filter += `&created_at=lt.${encodeURIComponent(cursor)}`;

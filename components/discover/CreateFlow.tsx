@@ -17,6 +17,12 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 import { useFollow } from "@/lib/follow-store";
 import { api } from "@/lib/api";
+// v110 — durable post persistence. Local PostsStore commit keeps the
+// just-posted feel, but we ALSO upload to Supabase Storage + insert a
+// social_posts row so the post survives blob death (tab close, hard
+// reload, logout, device switch). See post() handler below.
+import { uploadSocialMedia } from "@/lib/social/storage-upload";
+import { notify } from "@/lib/notifications";
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
 // Tracks are SoundHelix's free demo set, every URL has been stable for
@@ -1456,7 +1462,7 @@ export function Composer({
   // commit the same upload twice. The ref flips immediately, before any
   // re-render, so the second call is a no-op.
   const postedRef = useRef(false);
-  const { addPost } = usePosts();
+  const { addPost, updatePost } = usePosts();
 
   // Reset when reopened
   useEffect(() => {
@@ -1536,8 +1542,9 @@ export function Composer({
     postedRef.current = true;
     const sanitizedCaption = sanitize ? sanitize(caption).clean : caption;
     setPosting(true);
+    const tempId = `post-${Date.now()}`;
     const userPost: UserPost = {
-      id: `post-${Date.now()}`,
+      id: tempId,
       kind,
       mediaUrl,                          // local object URL — survives session
       mediaMime: mediaFile.type,
@@ -1563,6 +1570,122 @@ export function Composer({
     // The store persists to localStorage internally, so we don't need a
     // separate localStorage write here.
     try { addPost(userPost as StoreUserPost); } catch {}
+
+    // v110 — kick off the durable persistence path in the background. The
+    // user sees the post in the feed instantly (above), and the upload
+    // continues across the close. On success, swap the local entry's
+    // blob: mediaUrl for the public Storage URL + replace the temp id with
+    // the real social_posts row id so it survives:
+    //   • tab close (blob URL dies)
+    //   • hard reload
+    //   • logout / re-login
+    //   • opening the app on a different device
+    // On failure, leave the local entry alone (still visible for the rest
+    // of the session) and surface the error via toast so the user knows
+    // they should retry from the + button.
+    (async () => {
+      try {
+        // Resolve auth user id from JWT (matches the social-auth helper's
+        // payload.id || payload.sub fallback chain). No id → can't post
+        // server-side; local entry stays.
+        const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+        if (!tok) {
+          notify({
+            kind: "warning",
+            title: "Saved locally",
+            body: "Sign in to share this to your StayBid profile so it survives logout.",
+          });
+          return;
+        }
+        let userId = "";
+        try {
+          const payload = JSON.parse(
+            atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+          );
+          userId = payload.id || payload.user_id || payload.sub || "";
+        } catch { /* malformed token — skip */ }
+        if (!userId) {
+          notify({
+            kind: "warning",
+            title: "Saved locally",
+            body: "Re-sign-in to sync this post to your StayBid profile.",
+          });
+          return;
+        }
+
+        // Step 1: upload media + poster to Supabase Storage (`social-media`
+        // bucket). Returns durable, public URLs.
+        const mediaType: "PHOTO" | "REEL" | "STORY" =
+          kind === "photo" ? "PHOTO" : kind === "story" ? "STORY" : "REEL";
+        const uploaded = await uploadSocialMedia({
+          mediaBlobUrl: mediaUrl,
+          mediaMime:    mediaFile.type,
+          kind:         mediaType,
+          posterDataUrl: posterUrl?.startsWith("data:") ? posterUrl : undefined,
+          userId,
+        });
+
+        // Step 2: create the social_posts row. The route auto-creates the
+        // user's social_profile if it doesn't exist yet (ensureForUser).
+        const r = await fetch("/api/social/posts", {
+          method: "POST",
+          headers: {
+            "Content-Type":  "application/json",
+            Authorization:   `Bearer ${tok}`,
+          },
+          body: JSON.stringify({
+            mediaType,
+            mediaUrl:      uploaded.mediaUrl,
+            thumbnailUrl:  uploaded.thumbnailUrl || undefined,
+            caption:       sanitizedCaption,
+            soundTrack:    audio?.name || undefined,
+            soundUrl:      audio?.url  || undefined,
+            hotelId:       taggedHotel?.id || undefined,
+            locationName:  location?.name  || undefined,
+            locationLat:   typeof location?.lat === "number" ? location.lat : undefined,
+            locationLng:   typeof location?.lng === "number" ? location.lng : undefined,
+          }),
+        });
+        if (!r.ok) {
+          notify({
+            kind: "error",
+            title: "Couldn't sync to your profile",
+            body: "Post is saved on this device. Try again from + on the reel feed.",
+          });
+          return;
+        }
+        const json = await r.json().catch(() => null);
+        const serverId    = json?.post?.id ? String(json.post.id) : "";
+        const serverMedia = json?.post?.media_url || uploaded.mediaUrl;
+        const serverPoster = json?.post?.thumbnail_url || uploaded.thumbnailUrl || posterUrl || "";
+
+        // Step 3: swap blob URL → public URL on the local entry. Same id
+        // bump so /me's remote-fetch dedup (by id) lines up — without it
+        // the post would appear twice when the user opens /me after a
+        // reload (once from local, once from /api/social/feed).
+        try {
+          updatePost(tempId, {
+            id:        serverId || tempId,
+            mediaUrl:  serverMedia,
+            posterUrl: serverPoster,
+          });
+        } catch { /* store update failure is non-fatal */ }
+        notify({
+          kind: "success",
+          title: "Shared to your profile",
+          body: "Your post is safe across devices and re-logins.",
+        });
+      } catch (err: any) {
+        notify({
+          kind: "error",
+          title: "Upload failed",
+          body: err?.message?.includes("Storage upload failed")
+            ? "Couldn't upload media. Saved on this device only — try again from +."
+            : "Saved on this device only. Try again from + on the reel feed.",
+        });
+      }
+    })();
+
     setTimeout(() => {
       setPosting(false);
       onPosted(userPost);

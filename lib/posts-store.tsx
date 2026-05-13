@@ -76,12 +76,21 @@ type PostsCtx = {
   posts: UserPost[];
   addPost: (p: UserPost) => void;
   removePost: (id: string) => void;
+  /**
+   * Patch an existing post in-place. Used by the Composer's async upload
+   * step to swap a blob: mediaUrl for the durable Supabase Storage public
+   * URL once the upload completes, and to replace the temporary `post-<ts>`
+   * id with the real social_posts row id so /me's dedup with the remote
+   * feed lines up. No-op if the id is unknown.
+   */
+  updatePost: (id: string, patch: Partial<UserPost>) => void;
 };
 
 const Ctx = createContext<PostsCtx>({
   posts: [],
   addPost: () => {},
   removePost: () => {},
+  updatePost: () => {},
 });
 
 export function PostsProvider({ children }: { children: ReactNode }) {
@@ -134,8 +143,22 @@ export function PostsProvider({ children }: { children: ReactNode }) {
     });
   }, [persist]);
 
+  const updatePost = useCallback((id: string, patch: Partial<UserPost>) => {
+    setPosts((prev) => {
+      let found = false;
+      const next = prev.map((x) => {
+        if (x.id !== id) return x;
+        found = true;
+        return { ...x, ...patch };
+      });
+      if (!found) return prev;
+      persist(next);
+      return next;
+    });
+  }, [persist]);
+
   return (
-    <Ctx.Provider value={{ posts, addPost, removePost }}>
+    <Ctx.Provider value={{ posts, addPost, removePost, updatePost }}>
       {children}
     </Ctx.Provider>
   );

@@ -53,7 +53,7 @@ export default function MePage() {
   const { user, logout } = useAuth();
   const {
     myDisplayName, myAvatarUrl, myBio, myLocation, myWebsite, myCustomHighlights,
-    followingCount,
+    followingCount, follows, searchFollowers,
   } = useFollow();
   const { posts } = usePosts();
   // v109 — Creator Hub + Hotel Partner items in the drawer flip on
@@ -63,6 +63,9 @@ export default function MePage() {
 
   const [tab, setTab] = useState<Tab>("posts");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // v110 — Followers / Following bottom-sheet. Opens when the user taps
+  // either stat. `kind` controls which list renders inside.
+  const [followSheet, setFollowSheet] = useState<null | "followers" | "following">(null);
   // Remote posts from Supabase social_posts table — user-uploaded reels
   // live there too (the in-memory PostsStore is just for instant-after-
   // upload preview). v83 fetches the user's own posts so /me actually
@@ -88,7 +91,11 @@ export default function MePage() {
     // Merge so /me reflects every post regardless of which path created it.
     const tok = typeof window !== "undefined" ? (localStorage.getItem("sb_token") || "") : "";
     Promise.all([
-      fetch(`/api/social/feed?author=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+      // v110 — pass authorUser (the JWT user id). /api/social/feed resolves
+      // it to the matching social_profiles.id internally. Previously we
+      // were passing user id where the route expected a profile id, so
+      // this fetch always returned [].
+      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
       tok
@@ -217,8 +224,19 @@ export default function MePage() {
         </div>
         <div className="me-stats">
           <Stat label="Posts" value={fmtCount(allPosts.length)} />
-          <Stat label="Followers" value={fmtCount(followersN)} />
-          <Stat label="Following" value={fmtCount(followingN)} />
+          {/* v110 — Followers / Following are now real buttons that open a
+              searchable list sheet. Previously they were inert divs which
+              the user (correctly) flagged as broken affordances. */}
+          <Stat
+            label="Followers"
+            value={fmtCount(followersN)}
+            onClick={() => setFollowSheet("followers")}
+          />
+          <Stat
+            label="Following"
+            value={fmtCount(followingN)}
+            onClick={() => setFollowSheet("following")}
+          />
         </div>
       </section>
 
@@ -323,6 +341,20 @@ export default function MePage() {
         isHotelOwner={isHotelOwner}
         onClose={() => setDrawerOpen(false)}
         onLogout={() => { logout(); router.push("/"); }}
+      />
+
+      {/* v110 — Followers / Following list sheet. Same source-of-truth as
+          the creator profile sheet in InstagramHotelFeed: synthesized
+          deterministic list (~80–600 fans seeded off the handle) + the
+          user themselves pinned at the top when relevant. Searchable. */}
+      <FollowListSheet
+        kind={followSheet}
+        myDisplayName={myDisplayName}
+        myHandle={handle}
+        myAvatarUrl={myAvatarUrl}
+        follows={follows}
+        searchFollowers={searchFollowers}
+        onClose={() => setFollowSheet(null)}
       />
 
       <style jsx global>{`
@@ -587,7 +619,26 @@ export default function MePage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label, value, onClick,
+}: { label: string; value: string; onClick?: () => void }) {
+  // v110 — render as a button when an onClick is provided so the
+  // affordance is real (focusable, keyboard-activatable, distinct active
+  // state). Falls back to the inert div for stats with no destination
+  // (currently "Posts" which scrolls the page automatically).
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="me-stat me-stat-btn"
+        aria-label={`${label} — open list`}
+      >
+        <span className="me-stat-value">{value}</span>
+        <span className="me-stat-label">{label}</span>
+      </button>
+    );
+  }
   return (
     <div className="me-stat">
       <span className="me-stat-value">{value}</span>
@@ -817,6 +868,294 @@ function DrawerRow({ icon, label, sub, external }: { icon: string; label: string
         {sub && <p className="me-drawer-sub">{sub}</p>}
       </div>
       <span className="me-drawer-chev">{external ? "↗" : "›"}</span>
+    </div>
+  );
+}
+
+// ─── Followers / Following sheet ───────────────────────────────────────
+// Bottom-sheet list rendered when the user taps Followers or Following
+// on /me. Matches the same source-of-truth used elsewhere for creator
+// profile views (synthesized deterministic list + the user themselves
+// pinned at the top when relevant). Searchable via the existing
+// followStore.searchFollowers helper for the Followers tab; the Following
+// tab reads from the live follows[] array.
+function FollowListSheet({
+  kind, myDisplayName, myHandle, myAvatarUrl, follows, searchFollowers, onClose,
+}: {
+  kind:        null | "followers" | "following";
+  myDisplayName: string;
+  myHandle:    string;
+  myAvatarUrl: string;
+  follows:     string[];
+  searchFollowers: (handle: string, q: string) => string[];
+  onClose:     () => void;
+}) {
+  const [query, setQuery] = useState("");
+
+  // Close on Esc
+  useEffect(() => {
+    if (!kind) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [kind, onClose]);
+
+  // Reset query when sheet opens / kind changes
+  useEffect(() => { if (kind) setQuery(""); }, [kind]);
+
+  const list = useMemo(() => {
+    if (!kind) return [];
+    if (kind === "followers") {
+      // The "Followers" list synthesizes a deterministic crowd off the
+      // user's own handle (so the count + list stay consistent for
+      // everyone — including users with zero real follower history).
+      // searchFollowers already filters when query is non-empty.
+      return searchFollowers(myHandle, query.trim());
+    }
+    // Following: real list of handles the user has followed across the
+    // app. Render as "@handle" rows; we don't store display names for
+    // followed accounts, just the handle.
+    const q = query.trim().toLowerCase();
+    const entries = follows.map((h) => `${h.replace(/^@/, "")}|${h}`);
+    return q ? entries.filter((e) => e.toLowerCase().includes(q)) : entries;
+  }, [kind, myHandle, query, follows, searchFollowers]);
+
+  if (!kind) return null;
+
+  const title = kind === "followers" ? "Followers" : "Following";
+  const empty = kind === "followers"
+    ? (query ? "No followers match that search." : "No followers yet.")
+    : (query ? "No following match that search."
+             : "You're not following anyone yet — tap Follow on any creator.");
+
+  return (
+    <div className="me-follow-root" onClick={onClose}>
+      <div
+        className="me-follow-panel"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${title} list`}
+      >
+        <div className="me-follow-head">
+          <span className="me-follow-handle">@{myHandle.replace(/^@/, "")}</span>
+          <span className="me-follow-title">{title}</span>
+          <button
+            type="button"
+            className="me-follow-close"
+            aria-label="Close"
+            onClick={onClose}
+          >✕</button>
+        </div>
+
+        <div className="me-follow-search-wrap">
+          <input
+            type="text"
+            inputMode="search"
+            placeholder={`Search ${title.toLowerCase()}`}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="me-follow-search"
+          />
+        </div>
+
+        <ul className="me-follow-list" role="list">
+          {list.length === 0 ? (
+            <li className="me-follow-empty">{empty}</li>
+          ) : (
+            list.map((entry, i) => {
+              const [name, handleStr] = entry.includes("|")
+                ? entry.split("|")
+                : [entry, entry];
+              const isYou = handleStr === "@you (you)";
+              return (
+                <li key={`${handleStr}-${i}`} className="me-follow-row">
+                  <span
+                    className="me-follow-avatar"
+                    style={isYou && myAvatarUrl ? { backgroundImage: `url(${myAvatarUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                  >
+                    {!(isYou && myAvatarUrl) && (name || "?").trim().slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="me-follow-text">
+                    <p className="me-follow-name">
+                      {isYou ? myDisplayName || "You" : name}
+                      {isYou && <span className="me-follow-you"> · you</span>}
+                    </p>
+                    <p className="me-follow-handletext">{handleStr}</p>
+                  </div>
+                </li>
+              );
+            })
+          )}
+        </ul>
+      </div>
+
+      <style jsx global>{`
+        @keyframes meFollowFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes meFollowSlide { from { transform: translateY(10%); } to { transform: translateY(0); } }
+        .me-follow-root {
+          position: fixed;
+          inset: 0;
+          z-index: 85;
+          background: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: meFollowFade 0.22s ease both;
+        }
+        .me-follow-panel {
+          width: 100%;
+          max-width: 520px;
+          max-height: 78dvh;
+          background: linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
+          border-top-left-radius: 18px;
+          border-top-right-radius: 18px;
+          box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.32);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          animation: meFollowSlide 0.26s cubic-bezier(.32,1.2,.36,1) both;
+        }
+        .me-follow-head {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 8px;
+          padding: 14px 16px 10px;
+          border-bottom: 1px solid rgba(184, 134, 11, 0.18);
+          background: rgba(255, 249, 236, 0.92);
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
+        .me-follow-handle {
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: rgba(74, 50, 8, 0.70);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .me-follow-title {
+          font-size: 1rem;
+          font-weight: 800;
+          color: #2c1d04;
+          text-align: center;
+        }
+        .me-follow-close {
+          justify-self: end;
+          width: 30px; height: 30px;
+          border-radius: 999px;
+          background: rgba(184, 134, 11, 0.10);
+          border: 1px solid rgba(184, 134, 11, 0.22);
+          color: #6e4a08;
+          font-size: 0.9rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .me-follow-search-wrap {
+          padding: 10px 14px 6px;
+        }
+        .me-follow-search {
+          width: 100%;
+          padding: 9px 12px;
+          font-size: 0.86rem;
+          font-family: inherit;
+          color: #2c1d04;
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(184, 134, 11, 0.30);
+          border-radius: 10px;
+          outline: none;
+          transition: border-color 0.18s ease, background 0.18s ease;
+        }
+        .me-follow-search::placeholder { color: rgba(74, 50, 8, 0.50); }
+        .me-follow-search:focus {
+          border-color: rgba(184, 134, 11, 0.55);
+          background: rgba(255, 255, 255, 0.9);
+        }
+        .me-follow-list {
+          list-style: none;
+          margin: 0;
+          padding: 4px 6px 18px;
+          overflow-y: auto;
+          flex: 1;
+        }
+        .me-follow-empty {
+          padding: 36px 18px;
+          text-align: center;
+          color: rgba(74, 50, 8, 0.72);
+          font-size: 0.86rem;
+        }
+        .me-follow-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 9px 12px;
+          border-radius: 10px;
+          transition: background 0.16s ease;
+        }
+        .me-follow-row:hover {
+          background: rgba(184, 134, 11, 0.06);
+        }
+        .me-follow-avatar {
+          flex-shrink: 0;
+          width: 42px; height: 42px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, #f0d060, #c9911a);
+          color: #2c1d04;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+          border: 2px solid #fff9ec;
+        }
+        .me-follow-text {
+          min-width: 0;
+          flex: 1;
+        }
+        .me-follow-name {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #2c1d04;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .me-follow-you {
+          font-size: 0.72rem;
+          color: rgba(74, 50, 8, 0.62);
+          font-weight: 500;
+        }
+        .me-follow-handletext {
+          font-size: 0.74rem;
+          color: rgba(74, 50, 8, 0.68);
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        /* Stat button styling (Followers / Following) — separate from
+           the inert div used for Posts. */
+        .me-stat-btn {
+          background: transparent;
+          border: none;
+          padding: 4px 6px;
+          margin: 0;
+          cursor: pointer;
+          border-radius: 8px;
+          transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
+        }
+        .me-stat-btn:hover { background: rgba(184, 134, 11, 0.06); }
+        .me-stat-btn:active { transform: scale(0.96); }
+        .me-stat-btn:focus-visible {
+          outline: 2px solid rgba(184, 134, 11, 0.55);
+          outline-offset: 2px;
+        }
+      `}</style>
     </div>
   );
 }
