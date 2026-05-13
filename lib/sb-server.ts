@@ -22,15 +22,28 @@ export function hasServiceRole(): boolean {
   return !!SERVICE_ROLE_KEY;
 }
 
+// v104 — detect Supabase's new sb_secret_* / sb_publishable_* key format.
+// New format keys aren't JWTs — sending them as Authorization Bearer makes
+// PostgREST JWT-verify them and return 401. Legacy `eyJ...` keys continue
+// to be sent in both headers (full backward compat).
+function isLegacyJwt(k: string): boolean {
+  return typeof k === "string" && k.startsWith("eyJ");
+}
+
 // SB_H now uses service-role when available. All helpers below (sbSelect,
 // sbInsert, sbUpdate, sbUpsertUser, ensureUser, resolveUserIds) auto-graduate
 // to service-role — no per-call-site code change needed. Falls back to anon
 // when env var missing so prod behaviour is identical until the env var lands.
-export const SB_H = {
-  apikey: EFFECTIVE_KEY,
-  Authorization: `Bearer ${EFFECTIVE_KEY}`,
-  "Content-Type": "application/json",
-};
+export const SB_H: Record<string, string> = isLegacyJwt(EFFECTIVE_KEY)
+  ? {
+      apikey: EFFECTIVE_KEY,
+      Authorization: `Bearer ${EFFECTIVE_KEY}`,
+      "Content-Type": "application/json",
+    }
+  : {
+      apikey: EFFECTIVE_KEY,
+      "Content-Type": "application/json",
+    };
 
 export const SB_H_REPRESENT = { ...SB_H, Prefer: "return=representation" };
 

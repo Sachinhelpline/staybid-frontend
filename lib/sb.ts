@@ -19,15 +19,27 @@ export function hasServiceRole(): boolean {
 // Effective key for server-side calls. Service-role when set, anon otherwise.
 export const SB_ADMIN_KEY = SERVICE_ROLE_KEY || SB_KEY;
 
+// v104 — detect Supabase's new sb_secret_* / sb_publishable_* key format.
+// New format keys aren't JWTs — PostgREST looks them up against an internal
+// allowlist via the `apikey` header. Sending them as Authorization Bearer
+// triggers JWT-verify which fails and returns 401. Legacy `eyJ...` keys
+// continue to be sent in both headers for full backward compatibility.
+function isLegacyJwt(k: string): boolean {
+  return typeof k === "string" && k.startsWith("eyJ");
+}
+
+const ADMIN_HEADERS_BASE: Record<string, string> = isLegacyJwt(SB_ADMIN_KEY)
+  ? { apikey: SB_ADMIN_KEY, Authorization: `Bearer ${SB_ADMIN_KEY}` }
+  : { apikey: SB_ADMIN_KEY };
+
 // v101 — SB_H is now service-role-when-available. Was previously plain
 // anon. Existing imports require no change.
-export const SB_H = {
-  apikey: SB_ADMIN_KEY,
-  Authorization: `Bearer ${SB_ADMIN_KEY}`,
+export const SB_H: Record<string, string> = {
+  ...ADMIN_HEADERS_BASE,
   "Content-Type": "application/json",
   Prefer: "return=representation",
 };
-export const SB_READ = { apikey: SB_ADMIN_KEY, Authorization: `Bearer ${SB_ADMIN_KEY}` };
+export const SB_READ: Record<string, string> = { ...ADMIN_HEADERS_BASE };
 
 // SB_ADMIN_H / SB_ADMIN_READ are now identical to SB_H / SB_READ. Kept for
 // backwards compatibility with v100 callers that adopted them explicitly.
@@ -36,6 +48,7 @@ export const SB_ADMIN_READ = SB_READ;
 
 // Plain anon header — use ONLY when you deliberately want anon behaviour
 // (e.g. testing RLS). Almost never the right choice; prefer SB_H above.
+// SB_KEY is always the legacy JWT anon (still kept as fallback constant).
 export const SB_H_ANON_ONLY = {
   apikey: SB_KEY,
   Authorization: `Bearer ${SB_KEY}`,
