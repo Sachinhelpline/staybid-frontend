@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { SB_URL, SB_KEY } from "@/lib/sb";
 
-const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+
 
 async function sb(path: string) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -76,6 +77,16 @@ export async function PATCH(req: NextRequest) {
       body: JSON.stringify(update),
     });
     const data = await res.json();
+
+    // v98 — audit
+    logAdminAction({
+      admin: adminFromReq(req),
+      action: `hotel.${action}`,
+      targetType: "hotel",
+      targetId: hotelId,
+      details: { value },
+    });
+
     return NextResponse.json({ ok: true, data });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

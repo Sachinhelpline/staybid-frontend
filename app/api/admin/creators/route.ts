@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SB_URL, SB_KEY } from "@/lib/sb";
 
 // Admin endpoint for creator (influencer) applications.
 // GET   — list applications, optionally filtered by status (pending/active/blocked).
@@ -8,8 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 // uses this from /admin/creators to approve / block / re-activate
 // applications submitted via /upgrade.
 
-const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+
 
 const SB_H = {
   apikey: SB_KEY,

@@ -1,60 +1,176 @@
-/* Admin panel responsive tweaks */
+/* ─────────────────────────────────────────────────────────────────────
+   Admin panel — responsive overhaul (v102)
+   Mobile-first overrides for the inline-styled admin pages.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* ── Tables: always horizontal-scrollable, hide scrollbar visually ── */
+.admin-data-table-wrap {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,0.3) transparent;
+}
+.admin-data-table-wrap::-webkit-scrollbar { height: 6px; }
+.admin-data-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.admin-data-table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(212,175,55,0.3);
+  border-radius: 3px;
+}
+
+/* ── Animations ──────────────────────────────────────────────────────── */
+@keyframes admin-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes admin-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes admin-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.admin-skel {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.5s infinite;
+  border-radius: 10px;
+}
+
+/* ── Tablet (≤ 1024px) ────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .admin-chart-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .admin-chart-row > *:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Mobile (≤ 767px) ─────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .admin-chart-row,
   .admin-queues-row {
     grid-template-columns: 1fr !important;
   }
 
-  /* Force any 2-3 col fixed grids to single column */
-  .admin-grid-3 {
+  .admin-grid-3,
+  .admin-grid-2 {
     grid-template-columns: 1fr !important;
   }
 
-  /* h1/h2 size shrink */
-  .admin-h1 {
+  /* h1/h2 shrink */
+  .admin-h1, h1[class*="h1Style"] {
     font-size: 22px !important;
+    letter-spacing: 0 !important;
   }
 
-  /* Tab bars: allow horizontal scroll if needed */
+  /* Page chrome margins */
+  main {
+    padding: 76px 12px 80px 12px !important;
+  }
+
+  /* Tab bars: horizontal scroll */
   .admin-tabs {
     overflow-x: auto;
     flex-wrap: nowrap !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    margin: 0 -12px 16px;
+    padding: 0 12px;
   }
-  .admin-tabs::-webkit-scrollbar {
-    display: none;
-  }
-  .admin-tabs button {
+  .admin-tabs::-webkit-scrollbar { display: none; }
+  .admin-tabs button,
+  .admin-tabs a {
     flex-shrink: 0;
-    padding: 10px 14px !important;
-    font-size: 13px !important;
+    padding: 9px 13px !important;
+    font-size: 12px !important;
   }
 
   /* Filter rows: stack vertically */
+  .admin-filters {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
   .admin-filters input,
   .admin-filters select,
   .admin-filters button {
     width: 100% !important;
     min-width: 0 !important;
   }
-  .admin-filters {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
   .admin-filters > span {
     margin-left: 0 !important;
     text-align: left !important;
+    font-size: 11px !important;
   }
 
-  /* Modal: full width on tiny screens */
+  /* Modal: full-width, sticky-bottom action bar */
   .admin-modal {
-    padding: 20px !important;
+    padding: 18px !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    overflow-y: auto;
+  }
+
+  /* KPI grid: smaller cards on mobile */
+  .admin-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .admin-kpi-grid > * {
+    padding: 12px 14px !important;
+  }
+
+  /* Tables — reduce cell padding */
+  .admin-data-table-wrap table {
+    font-size: 12px !important;
+  }
+  .admin-data-table-wrap th,
+  .admin-data-table-wrap td {
+    padding: 8px !important;
+  }
+
+  /* Cards — slimmer padding */
+  .admin-card {
+    padding: 14px !important;
+  }
+
+  /* Topbar shrinks */
+  .admin-topbar-search { display: none; }
+
+  /* Charts — increase height a touch since they're now full-width */
+  .admin-chart-row .recharts-responsive-container {
+    min-height: 220px;
+  }
+}
+
+/* ── Mini phone (≤ 380px) ─────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .admin-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-h1, h1[class*="h1Style"] {
+    font-size: 19px !important;
+  }
+  main {
+    padding: 72px 8px 80px 8px !important;
+  }
+}
+
+/* ── Side drawers on mobile go full-width ─────────────────────────────── */
+@media (max-width: 600px) {
+  .admin-drawer {
+    width: 100% !important;
     max-width: 100% !important;
   }
 }
 
-/* Always: tables horizontal-scrollable, hide scrollbar visually */
-.admin-data-table-wrap {
-  -webkit-overflow-scrolling: touch;
+/* ── Accessibility — reduced motion respect ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

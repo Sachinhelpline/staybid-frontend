@@ -21,6 +21,8 @@ const NAV = [
   { href: "/admin/commission-rules", label: "Commission Rules", icon: "💰" },
   { href: "/admin/revenue", label: "Revenue", icon: "💹" },
   { href: "/admin/feedback", label: "Feedback", icon: "⭐" },
+  { href: "/admin/notifications", label: "Notifications", icon: "📨" },
+  { href: "/admin/rls", label: "RLS / Security", icon: "🛡️" },
   { href: "/admin/settings", label: "Settings", icon: "⚙️" },
 ];
 

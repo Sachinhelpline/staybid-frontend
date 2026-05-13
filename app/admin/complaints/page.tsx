@@ -74,7 +74,7 @@ export default function AdminComplaints() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Complaints</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Complaints</h1>
         <button
           onClick={() => exportRows("complaints", list, columns.filter((c: any) => c.key !== "actions"))}
           style={{ ...btnGhost, marginLeft: "auto" }}

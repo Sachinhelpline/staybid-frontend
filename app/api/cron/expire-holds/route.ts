@@ -13,9 +13,9 @@
 // Returns the row counts touched so the caller can log/alert if it's stuck.
 
 import { NextRequest, NextResponse } from "next/server";
+import { SB_URL, SB_KEY } from "@/lib/sb";
 
-const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+
 
 async function authorized(req: NextRequest): Promise<boolean> {
   // Pattern 1: ?token=... query param — matches the other crons in vercel.json

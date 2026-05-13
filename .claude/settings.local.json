@@ -77,7 +77,14 @@
       "Bash(curl -sL \"https://www.staybids.in/discover\")",
       "mcp__Claude_Preview__preview_start",
       "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\\\\.claude\\\\worktrees\\\\sleepy-elgamal-1dfbc1\"; $out = & npx tsc --noEmit -p . 2>&1 | Out-String; $matches = $out -split \"`n\" | Where-Object { $_ -match 'discover|InstagramHotel|my-bids|register/route|flash/near' }; $matches[0..30])",
-      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\"; git log --oneline --all -- \"app/api/flash/near/route.ts\" 2>$null | Select-Object -First 5)"
+      "PowerShell(cd \"C:\\\\Users\\\\Prudence Chhaprauli\\\\Desktop\\\\staybid-frontend\"; git log --oneline --all -- \"app/api/flash/near/route.ts\" 2>$null | Select-Object -First 5)",
+      "Bash(tail -5 ../../../CLAUDE.md 2>&1 | head -5)",
+      "Bash(cat \".v98-claude-md-append.txt\")",
+      "Read(//c/Users/Prudence Chhaprauli/Desktop/**)",
+      "Bash(cat \".v99-claude-md-append.txt\" >> \"/c/Users/Prudence Chhaprauli/Desktop/CLAUDE.md\" && rm \".v99-claude-md-append.txt\" && echo \"appended\" && tail -3 \"/c/Users/Prudence Chhaprauli/Desktop/CLAUDE.md\")",
+      "Bash(node .scripts/centralize-sb-key.cjs)",
+      "Bash(git config *)",
+      "mcp__2adb39e6-395c-42e0-ac2c-1b597699e67b__list_migrations"
     ]
   }
 }

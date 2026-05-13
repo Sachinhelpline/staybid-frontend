@@ -1,14 +1,47 @@
 // Server-only Supabase REST helper. Never import in client components.
+//
+// v101 — Service-role aware. When SUPABASE_SERVICE_ROLE_KEY env var is
+// set, every helper here uses the service-role key (bypasses RLS).
+// Otherwise it falls back to the JWT anon key so the app keeps working
+// as it did before v101.
+//
+// The anon key is the only thing that ever leaked to client bundles in
+// older eras; this file is server-only by convention and the
+// service-role key MUST NOT be exposed anywhere reachable from the
+// browser. Server actions, route handlers, and edge-runtime-disabled
+// functions only.
 export const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
+
+// Plain anon key — kept exported for legacy callers + clear documentation.
 export const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
 
+// Effective key — service-role when configured, anon otherwise.
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+const EFFECTIVE_KEY = SERVICE_ROLE_KEY || SB_KEY;
+export function hasServiceRole(): boolean {
+  return !!SERVICE_ROLE_KEY;
+}
+
+// SB_H now uses service-role when available. All helpers below (sbSelect,
+// sbInsert, sbUpdate, sbUpsertUser, ensureUser, resolveUserIds) auto-graduate
+// to service-role — no per-call-site code change needed. Falls back to anon
+// when env var missing so prod behaviour is identical until the env var lands.
 export const SB_H = {
-  apikey: SB_KEY,
-  Authorization: `Bearer ${SB_KEY}`,
+  apikey: EFFECTIVE_KEY,
+  Authorization: `Bearer ${EFFECTIVE_KEY}`,
   "Content-Type": "application/json",
 };
 
 export const SB_H_REPRESENT = { ...SB_H, Prefer: "return=representation" };
+
+// Plain anon header — for cases where you DELIBERATELY want anon behaviour
+// (e.g. testing RLS or hitting a public endpoint as the anon role).
+// Almost never the right choice; prefer SB_H above.
+export const SB_H_ANON_ONLY = {
+  apikey: SB_KEY,
+  Authorization: `Bearer ${SB_KEY}`,
+  "Content-Type": "application/json",
+};
 
 export function decodeJwt(token: string): any {
   try {

@@ -28,8 +28,8 @@ export default function DataTable<T extends Record<string, unknown>>({
   const slice = data.slice(page * pageSize, page * pageSize + pageSize);
 
   return (
-    <div style={{ width: "100%" }}>
-      <div style={{ overflowX: "auto", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)" }}>
+    <div style={{ width: "100%" }} className="admin-card">
+      <div className="admin-data-table-wrap" style={{ overflowX: "auto", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "DM Sans, sans-serif" }}>
           <thead>
             <tr style={{ background: "#0F1117", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>

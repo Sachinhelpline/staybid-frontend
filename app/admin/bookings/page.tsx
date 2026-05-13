@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
+import KpiCard from "@/components/admin/kpi-card";
 
 // v94 — source style map (mirror of lib/attribution SOURCE_*) — kept local
 // because the admin panel doesn't import from the customer-side lib.
@@ -130,13 +131,31 @@ export default function AdminBookings() {
     },
   ];
 
+  // v103 — KPI strip computed from currently loaded bookings/bids
+  const stats = useMemo(() => {
+    const total      = bookings.length;
+    const accepted   = bookings.filter((b: any) => ["accepted","confirmed","checked_in","checked_out","ACCEPTED","CONFIRMED","CHECKED_IN","CHECKED_OUT"].includes(b.status)).length;
+    const pending    = bookings.filter((b: any) => ["open","OPEN","PENDING","pending"].includes(b.status)).length;
+    const countered  = bookings.filter((b: any) => ["counter","COUNTER","COUNTERED","countered"].includes(b.status)).length;
+    const gross      = bookings.reduce((s: number, b: any) => s + Number(b.paidTotal || 0), 0);
+    return { total, accepted, pending, countered, gross };
+  }, [bookings]);
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
+      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
         Bookings & Bids
       </h1>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#D4AF37" live />
+        <KpiCard title="Accepted+"    value={stats.accepted}  icon="✅" color="#2ECC71" live sub="confirmed → checked-out" />
+        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#F0D060" live />
+        <KpiCard title="Countered"    value={stats.countered} icon="💬" color="#FF8C42" live />
+        <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live />
+      </div>
+
+      <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <input
           placeholder="Filter by hotel name…"
           value={hotel}

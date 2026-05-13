@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import AdminLineChart from "@/components/admin/charts/line-chart";
 import AdminBarChart from "@/components/admin/charts/bar-chart";
 import AdminPieChart from "@/components/admin/charts/pie-chart";
+import KpiCardShared from "@/components/admin/kpi-card";
 
 type Kpis = {
   totalBids: number;
@@ -117,14 +118,44 @@ export default function AdminAnalytics() {
         <div style={{ color: "#8A8FA8", padding: 40 }}>Loading analytics…</div>
       ) : k ? (
         <>
-          {/* Hero KPIs */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
-            <Kpi label="Bids placed"     value={String(k.totalBids)}              sub={`${days}d`}        color="#D4AF37" />
-            <Kpi label="Accept rate"     value={`${k.acceptRate}%`}                sub={`${k.accepted} accepted`} color="#2ECC71" />
-            <Kpi label="Auto-accept hit" value={`${k.autoAcceptHit}%`}             sub={`${k.autoAccepted} of ${k.scheduledBids} scheduled`} color="#3D9CF5" />
-            <Kpi label="Hold conversion" value={`${k.holds.conversion}%`}          sub={`${k.holds.completed}/${k.holds.total} paid balance`} color="#A855F7" />
-            <Kpi label="Revenue"          value={`₹${k.revenueTotal.toLocaleString("en-IN")}`} sub="paid amounts" color="#F0D060" />
-            <Kpi label="Avg time-to-accept" value={fmtMs(k.avgTimeToAcceptMs)}     sub="placed → auto-accepted" color="#F59E0B" />
+          {/* Hero KPIs — v102: now shared <KpiCard> with CountUp + live pulse +
+              sparklines from the daily trend series. Mobile auto-shrinks to 2-col. */}
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 }}>
+            <KpiCardShared
+              title="Bids placed"
+              value={k.totalBids || 0}
+              sub={`${days}d`} icon="🎯" color="#D4AF37" live
+              sparkline={dailyTrend.map((d: any) => d.placed)}
+            />
+            <KpiCardShared
+              title="Accept rate"
+              value={k.acceptRate || 0}
+              format={(n) => `${Math.round(n)}%`}
+              sub={`${k.accepted} accepted`} icon="✅" color="#2ECC71" live
+            />
+            <KpiCardShared
+              title="Auto-accept hit"
+              value={k.autoAcceptHit || 0}
+              format={(n) => `${Math.round(n)}%`}
+              sub={`${k.autoAccepted} of ${k.scheduledBids} scheduled`} icon="⚡" color="#3D9CF5" live
+            />
+            <KpiCardShared
+              title="Hold conversion"
+              value={k.holds?.conversion || 0}
+              format={(n) => `${Math.round(n)}%`}
+              sub={`${k.holds?.completed || 0}/${k.holds?.total || 0} paid balance`} icon="🔒" color="#A855F7" live
+            />
+            <KpiCardShared
+              title="Revenue"
+              value={k.revenueTotal || 0}
+              format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
+              sub="paid amounts" icon="💰" color="#F0D060" live
+            />
+            <KpiCardShared
+              title="Avg time-to-accept"
+              value={fmtMs(k.avgTimeToAcceptMs)}
+              sub="placed → auto-accepted" icon="⏱" color="#F59E0B" live
+            />
           </div>
 
           {/* Daily trend chart */}

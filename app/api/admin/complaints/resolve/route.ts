@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
+import { SB_URL, SB_KEY } from "@/lib/sb";
 
-const SB_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+
 
 export async function POST(req: NextRequest) {
   const { complaintId, resolution, refundAmount, notes, paymentId } = await req.json();
@@ -26,7 +27,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const patchRes = await fetch(`${SB_URL}/rest/v1/complaints?id=eq.${complaintId}`, {
+  // v98 — columns now exist after the v98_complaints_and_audit migration.
+  // adminNotes (plural), refundAmount, resolvedAt + updatedAt are all real
+  // columns. Until v98 this PATCH was silently failing on the schema
+  // mismatch (admin page wrote adminNotes; DB only had adminNote).
+  const patchRes = await fetch(`${SB_URL}/rest/v1/complaints?id=eq.${encodeURIComponent(complaintId)}`, {
     method: "PATCH",
     headers: {
       apikey: SB_KEY,
@@ -37,9 +42,20 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       status: resolution,
       adminNotes: notes || null,
+      adminNote:  notes || null,                // mirror legacy column for older readers
       refundAmount: refundAmount || 0,
       resolvedAt: new Date().toISOString(),
+      updatedAt:  new Date().toISOString(),
     }),
+  });
+
+  // v98 — audit
+  logAdminAction({
+    admin: adminFromReq(req),
+    action: `complaint.${resolution}`,
+    targetType: "complaint",
+    targetId: complaintId,
+    details: { refundAmount: refundAmount || 0, paymentId: paymentId || null, refund: refundResult },
   });
 
   return NextResponse.json({ ok: patchRes.ok, refund: refundResult });

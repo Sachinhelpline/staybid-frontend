@@ -228,4 +228,24 @@ export const api = {
   getInfluencerStats:        (id: string)            => direct(`/api/influencer/${encodeURIComponent(id)}/stats`),
   getInfluencerEarnings:     (id: string, status?: string) =>
     direct(`/api/influencer/${encodeURIComponent(id)}/earnings${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+
+  // ── Complaints + feedback (v98) ─────────────────────────────────────
+  submitComplaint:  (data: {
+    type: string;
+    subject?: string;
+    description: string;
+    priority?: "low" | "medium" | "high";
+    bookingId?: string;
+    hotelId?: string;
+    bidId?: string;
+    paymentId?: string;
+  }) => direct("/api/complaints/submit", { method: "POST", body: JSON.stringify(data) }),
+
+  getMyComplaints:  () => direct("/api/complaints/my"),
+
+  submitFeedback:   (data: { bookingId: string; rating: number; comments?: string }) =>
+    direct("/api/feedback/submit", { method: "POST", body: JSON.stringify(data) }),
+
+  getFeedbackState: (bookingId: string) =>
+    fetch(`/api/feedback/submit?bookingId=${encodeURIComponent(bookingId)}`).then(r => r.json()),
 };

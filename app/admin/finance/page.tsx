@@ -109,7 +109,7 @@ export default function AdminFinance() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Commission & Finance</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Commission & Finance</h1>
         <button
           onClick={() =>
             tab === "ledger"
@@ -122,7 +122,7 @@ export default function AdminFinance() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
         <KPICard title="Total GMV" value={`₹${totalGMV.toLocaleString()}`} color={C.gold} />
         <KPICard title="Commission Earned" value={`₹${totalCommission.toLocaleString()}`} color={C.green} />
         <KPICard title="Pending Payouts" value={`₹${pendingPayouts.toLocaleString()}`} color={C.amber} />

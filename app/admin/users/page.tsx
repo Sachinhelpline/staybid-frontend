@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
+import KpiCard from "@/components/admin/kpi-card";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
@@ -121,11 +122,34 @@ export default function AdminUsers() {
     },
   ];
 
+  // v103 — KPI strip derived from the loaded users list
+  const stats = useMemo(() => {
+    const total      = users.length;
+    const platinum   = users.filter((u: any) => u.tier === "platinum").length;
+    const gold       = users.filter((u: any) => u.tier === "gold").length;
+    const silver     = users.filter((u: any) => !u.tier || u.tier === "silver").length;
+    const active     = users.filter((u: any) => !u.status || u.status === "active").length;
+    const banned     = users.filter((u: any) => u.status === "banned").length;
+    const totalSpend = users.reduce((s: number, u: any) => s + Number(u.totalSpend || 0), 0);
+    const weekAgo    = Date.now() - 7 * 86400000;
+    const newWeek    = users.filter((u: any) => u.createdAt && new Date(u.createdAt).getTime() >= weekAgo).length;
+    return { total, platinum, gold, silver, active, banned, totalSpend, newWeek };
+  }, [users]);
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
+      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
         Users Management
       </h1>
+
+      {/* v103 — premium KPI strip */}
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#D4AF37" live sub={`${stats.newWeek} new in 7d`} />
+        <KpiCard title="Platinum"       value={stats.platinum}  icon="💎" color="#A855F7" live />
+        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#F0D060" live />
+        <KpiCard title="Active"         value={stats.active}    icon="✅" color="#2ECC71" live sub={`${stats.banned} banned`} />
+        <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live />
+      </div>
 
       {/* Filters */}
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
@@ -220,6 +244,7 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="admin-modal"
         style={{
           background: "#151820",
           border: "1px solid rgba(255,255,255,0.1)",

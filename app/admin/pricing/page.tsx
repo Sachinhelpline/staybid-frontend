@@ -131,7 +131,7 @@ export default function AdminPricing() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Pricing & Deals</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Pricing & Deals</h1>
         {tab === "flash" && (
           <button onClick={() => setCreating(true)} style={{ ...btnGold, marginLeft: "auto" }}>+ New Flash Deal</button>
         )}
@@ -178,7 +178,7 @@ export default function AdminPricing() {
 
       {tab === "status" && status && (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
             <KPICard title="AI-Managed Rooms" value={status.aiManaged} color={C.blue} />
             <KPICard title="Manual Pricing" value={status.manual} color={C.amber} />
             <KPICard title="Total Rooms" value={status.totalRooms} color={C.gold} />

@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
+import KpiCard from "@/components/admin/kpi-card";
 
 export default function AdminHotels() {
   const [hotels, setHotels] = useState<any[]>([]);
@@ -95,13 +96,32 @@ export default function AdminHotels() {
     },
   ];
 
+  // v103 — KPI stats from current hotel list
+  const stats = useMemo(() => {
+    const total       = hotels.length;
+    const active      = hotels.filter((h: any) => !h.status || h.status === "active").length;
+    const suspended   = hotels.filter((h: any) => h.status === "suspended").length;
+    const totalRooms  = hotels.reduce((s: number, h: any) => s + Number(h.roomsCount || 0), 0);
+    const totalGmv    = hotels.reduce((s: number, h: any) => s + Number(h.gmv || 0), 0);
+    const mtdBookings = hotels.reduce((s: number, h: any) => s + Number(h.bookingsThisMonth || 0), 0);
+    return { total, active, suspended, totalRooms, totalGmv, mtdBookings };
+  }, [hotels]);
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
+      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
         Hotels Management
       </h1>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#D4AF37" live sub={`${stats.suspended} suspended`} />
+        <KpiCard title="Active"        value={stats.active}    icon="✅" color="#2ECC71" live />
+        <KpiCard title="Total Rooms"   value={stats.totalRooms} icon="🛏️" color="#A855F7" live />
+        <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon="📅" color="#3D9CF5" live />
+        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#F0D060" live />
+      </div>
+
+      <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <input
           placeholder="Search hotel name…"
           value={search}

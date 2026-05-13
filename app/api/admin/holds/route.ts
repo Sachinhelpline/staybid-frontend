@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
+import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
 
 async function sbGet(path: string) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_READ });
@@ -103,6 +104,16 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: d?.message || "Update failed" }, { status: 500 });
     }
     const data = await r.json().catch(() => []);
+
+    // v98 — audit
+    logAdminAction({
+      admin: adminFromReq(req),
+      action: `hold.${action}`,
+      targetType: "hold",
+      targetId: bidId,
+      details: { newStatus },
+    });
+
     return NextResponse.json({ ok: true, hold: (data as any[])[0] || null });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

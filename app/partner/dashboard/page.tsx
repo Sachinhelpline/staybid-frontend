@@ -84,7 +84,13 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"profile">("overview");
+
+  // v98 — Guest complaints raised against this hotel (general + video)
+  const [complaints, setComplaints]   = useState<any[]>([]);
+  const [vpComplaints, setVpComplaints] = useState<any[]>([]);
+  const [complaintStats, setComplaintStats] = useState<any>({ open: 0, total: 0 });
+  const [complaintsLoading, setComplaintsLoading] = useState(false);
 
   // ── Booking detail modal ─────────────────────────────────────────────────
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -450,8 +456,27 @@ export default function PartnerDashboard() {
       loadCalendar();
       loadOtaFeeds();
     }
+    if (tab === "complaints" && hotel?.id) {
+      loadComplaints();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, hotel?.id, calMonth]);
+
+  // v98 — fetch guest complaints raised against this hotel
+  async function loadComplaints() {
+    const token = getToken();
+    if (!token) return;
+    setComplaintsLoading(true);
+    try {
+      const r = await fetch("/api/partner/complaints", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      setComplaints(d.complaints || []);
+      setVpComplaints(d.vpComplaints || []);
+      setComplaintStats(d.stats || { open: 0, total: 0 });
+    } catch {} finally { setComplaintsLoading(false); }
+  }
 
   async function submitWalkIn() {
     if (!walkInOpen || !hotel?.id) return;
@@ -570,6 +595,8 @@ export default function PartnerDashboard() {
     { id:"flash",     icon:"⚡", label:"Flash Deals"},
     { id:"bookings",  icon:"📅", label:"Bookings"   },
     { id:"availability", icon:"🗓️", label:"Availability" },
+    // v98 — guest complaints feed (read-only; resolution stays admin-side).
+    { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
@@ -1781,6 +1808,124 @@ export default function PartnerDashboard() {
             </div>
           );
         })()}
+
+        {/* ══════════════ COMPLAINTS ══════════════ */}
+        {tab === "complaints" && (
+          <div className="fade-up space-y-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <h2 className="font-display text-2xl font-light text-luxury-900">Guest Complaints</h2>
+              <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50">
+                ↻ Refresh
+              </button>
+            </div>
+            <p className="text-sm text-luxury-500 -mt-3">
+              Read-only feed. Resolutions (refunds, hotel warnings) happen via the StayBid admin team.
+              Reach out to <a href="mailto:support@staybids.in" className="text-gold-700 underline">support@staybids.in</a> if you want to add context to a specific complaint.
+            </p>
+
+            {/* KPI strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Open / In Review", value: complaintStats.open, color: "amber", border: "border-amber-200", bg: "bg-amber-50", text: "text-amber-800" },
+                { label: "Total Complaints", value: complaintStats.total, color: "luxury", border: "border-luxury-200", bg: "bg-white", text: "text-luxury-800" },
+                { label: "General", value: complaintStats.general || 0, color: "blue", border: "border-blue-200", bg: "bg-blue-50", text: "text-blue-800" },
+                { label: "Video / Verification", value: complaintStats.video || 0, color: "purple", border: "border-purple-200", bg: "bg-purple-50", text: "text-purple-800" },
+              ].map((s, i) => (
+                <div key={i} className={`rounded-2xl px-4 py-3 border ${s.border} ${s.bg}`}>
+                  <div className="text-[0.6rem] font-bold uppercase tracking-widest text-luxury-400">{s.label}</div>
+                  <div className={`mt-1 text-2xl font-bold ${s.text}`}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* General complaints list */}
+            <div>
+              <h3 className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-2">General complaints</h3>
+              {complaintsLoading ? (
+                <div className="card-p text-center py-10 text-luxury-400">Loading…</div>
+              ) : complaints.length === 0 ? (
+                <div className="card-p text-center py-10 text-luxury-400">No general complaints raised against this hotel — great news.</div>
+              ) : (
+                <div className="space-y-3">
+                  {complaints.map((c: any) => {
+                    const isResolved = c.status === "resolved" || c.status === "rejected";
+                    const priorityStyle = c.priority === "high" ? "border-red-300 bg-red-50" : c.priority === "medium" ? "border-amber-300 bg-amber-50" : "border-luxury-200 bg-white";
+                    return (
+                      <article key={c.id} className={`rounded-2xl border ${priorityStyle} px-4 py-3.5`}>
+                        <div className="flex justify-between items-start gap-3 flex-wrap">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-xs font-bold text-luxury-500 uppercase tracking-wider">{c.type || "general"}</span>
+                              {c.priority === "high" && <span className="text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full bg-red-500 text-white">Urgent</span>}
+                              <span className={`text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full ${isResolved ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                                {c.status || "open"}
+                              </span>
+                            </div>
+                            <div className="font-semibold text-luxury-900 text-sm">{c.subject || (c.description || "").slice(0, 80) || "—"}</div>
+                            <div className="text-[0.7rem] text-luxury-500 mt-0.5">
+                              {c.id?.slice(0, 12)} · {c.customerPhone || c.customerId?.slice(0, 8) || "guest"} · {c.createdAt ? new Date(c.createdAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                            </div>
+                          </div>
+                          {c.bookingId && (
+                            <button
+                              onClick={() => setTab("bookings")}
+                              className="text-[0.65rem] font-bold px-2 py-1 rounded-md bg-luxury-100 text-luxury-700 hover:bg-luxury-200"
+                            >
+                              View booking
+                            </button>
+                          )}
+                        </div>
+                        {c.description && (
+                          <p className="text-xs text-luxury-700 leading-relaxed mt-2 whitespace-pre-wrap line-clamp-4">{c.description}</p>
+                        )}
+                        {(c.adminNotes || c.adminNote) && (
+                          <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <div className="text-[0.6rem] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Admin reply</div>
+                            <p className="text-xs text-emerald-900">{c.adminNotes || c.adminNote}</p>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Video evidence complaints */}
+            {vpComplaints.length > 0 && (
+              <div>
+                <h3 className="text-xs font-bold text-luxury-500 uppercase tracking-widest mb-2">Video evidence complaints</h3>
+                <p className="text-xs text-luxury-500 mb-2">These have a recorded video. Open the Verification tab to view side-by-side with your hotel video.</p>
+                <div className="space-y-3">
+                  {vpComplaints.map((c: any) => (
+                    <article key={c.id} className="rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3.5">
+                      <div className="flex justify-between items-start gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">{c.category || "evidence"}</span>
+                            <span className={`text-[0.6rem] font-bold uppercase px-2 py-0.5 rounded-full ${c.status === "resolved" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                              {c.status || "open"}
+                            </span>
+                          </div>
+                          <div className="text-[0.7rem] text-purple-700 mt-0.5">
+                            {c.id?.slice(0, 12)} · booking {c.booking_id?.slice(0, 8) || "—"} · {c.created_at ? new Date(c.created_at).toLocaleString("en-IN", { day: "numeric", month: "short" }) : "—"}
+                          </div>
+                          {c.description && <p className="text-xs text-luxury-700 mt-2 line-clamp-3">{c.description}</p>}
+                        </div>
+                        <a
+                          href="/partner/verification"
+                          className="text-[0.65rem] font-bold px-2 py-1 rounded-md bg-purple-200 text-purple-800 hover:bg-purple-300"
+                        >
+                          Open Verification →
+                        </a>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ══════════════ PROFILE ══════════════ */}
         {tab === "profile" && (

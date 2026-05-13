@@ -66,7 +66,7 @@ export default function AdminVerification() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Video Verification</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Video Verification</h1>
         <button
           onClick={() => exportRows(`verification-${tab}`, rows, columns.filter((c: any) => c.key !== "actions" && c.key !== "url"))}
           style={{ ...btnGhost, marginLeft: "auto" }}

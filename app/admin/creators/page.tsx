@@ -3,8 +3,9 @@
 // joined with users.phone/name/email so the admin can see who applied
 // without bouncing through another lookup. Approve / block / reactivate
 // actions hit /api/admin/creators (PATCH).
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
+import KpiCard from "@/components/admin/kpi-card";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#F0D060",
@@ -136,16 +137,34 @@ export default function AdminCreators() {
     },
   ];
 
+  // v103 — KPI strip from current list (mind the filter — these are scoped to current view)
+  const stats = useMemo(() => {
+    const total    = creators.length;
+    const pending  = creators.filter((c: any) => c.status === "pending").length;
+    const active   = creators.filter((c: any) => c.status === "active").length;
+    const blocked  = creators.filter((c: any) => c.status === "blocked").length;
+    const verified = creators.filter((c: any) => c.aadhaar_verified && c.pan_verified).length;
+    return { total, pending, active, blocked, verified };
+  }, [creators]);
+
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
-      <h1 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 6px" }}>
+      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 6px" }}>
         Creator Applications
       </h1>
       <p style={{ color: "#8A8FA8", fontSize: 13, margin: "0 0 20px" }}>
         Approve, block, or re-activate creator applications submitted via /upgrade.
       </p>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
+        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#D4AF37" live sub="current filter" />
+        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#F0D060" live />
+        <KpiCard title="Active"       value={stats.active}   icon="✅" color="#2ECC71" live />
+        <KpiCard title="Blocked"      value={stats.blocked}  icon="🚫" color="#FF4757" live />
+        <KpiCard title="KYC Verified" value={stats.verified} icon="🛡️" color="#A855F7" live sub="Aadhaar + PAN" />
+      </div>
+
+      <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <input
           placeholder="Search name, phone, bio…"
           value={search}

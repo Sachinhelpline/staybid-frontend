@@ -29,17 +29,50 @@ export default function AdminRevenuePage() {
         <div style={{ padding: 60, textAlign: "center", color: "#8A8FA8" }}>Loading…</div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-            <KpiCard title="Gross All-time"   value={inr(k.grossAllTime)} icon="💰" />
-            <KpiCard title="Gross This Month" value={inr(k.grossMTD)}     icon="📈" />
-            <KpiCard title="Gross Last 30d"   value={inr(k.gross30)}      icon="🗓️" />
-            <KpiCard title="Accepted Bids"    value={String(k.acceptedBids || 0)} icon="🎯" />
+          {/* v102 — KPIs now CountUp + sparkline (30-day series feeds the
+              two gross trends). Live mode pulses on refresh. */}
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
+            <KpiCard
+              title="Gross All-time"
+              value={k.grossAllTime || 0}
+              format={inr} icon="💰" color="#D4AF37" live
+              sparkline={(data?.series || []).map((s: any) => s.gross)}
+            />
+            <KpiCard
+              title="Gross This Month"
+              value={k.grossMTD || 0}
+              format={inr} icon="📈" color="#3D9CF5" live
+            />
+            <KpiCard
+              title="Gross Last 30d"
+              value={k.gross30 || 0}
+              format={inr} icon="🗓️" color="#2ECC71" live
+              sparkline={(data?.series || []).map((s: any) => s.gross)}
+            />
+            <KpiCard
+              title="Accepted Bids"
+              value={k.acceptedBids || 0}
+              icon="🎯" color="#A855F7" live
+            />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
-            <KpiCard title="Commission Paid"     value={inr(k.commissionPaid)}    icon="✅" />
-            <KpiCard title="Commission Pending"  value={inr(k.commissionPending)} icon="⏳" />
-            <KpiCard title="Points Outstanding"  value={(k.pointsOutstanding || 0).toLocaleString("en-IN")} icon="⭐" />
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
+            <KpiCard
+              title="Commission Paid"
+              value={k.commissionPaid || 0}
+              format={inr} icon="✅" color="#2ECC71" live
+            />
+            <KpiCard
+              title="Commission Pending"
+              value={k.commissionPending || 0}
+              format={inr} icon="⏳" color="#F0D060" live
+            />
+            <KpiCard
+              title="Points Outstanding"
+              value={k.pointsOutstanding || 0}
+              format={(n) => Math.round(n).toLocaleString("en-IN")}
+              icon="⭐" color="#FF8C42" live
+            />
           </div>
 
           <div style={{ background: "#151820", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: 18 }}>

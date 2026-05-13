@@ -220,8 +220,10 @@ export default function AdminDashboard() {
         }
       `}</style>
 
-      {/* KPI Grid */}
+      {/* KPI Grid — v102 admin-kpi-grid class lets admin.css mobile rules
+           tighten it to 2-col on phones + 1-col on tiny phones. */}
       <div
+        className="admin-kpi-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -229,12 +231,46 @@ export default function AdminDashboard() {
           marginBottom: 24,
         }}
       >
-        <KpiCard title="Total GMV" value={`₹${(k.gmv || 0).toLocaleString()}`} icon="💰" color="#D4AF37" sub="all time" />
-        <KpiCard title="Active Bookings" value={k.activeBookings || 0} icon="📋" color="#2ECC71" sub={`of ${k.totalBookings || 0} total`} />
-        <KpiCard title="Revenue (5%)" value={`₹${(k.revenue || 0).toLocaleString()}`} icon="📊" color="#3D9CF5" sub="commission earned" />
-        <KpiCard title="Pending Verifications" value={k.pendingVerif || 0} icon="🎥" color="#A855F7" sub="awaiting review" />
-        <KpiCard title="Fraud Flags" value={k.fraud || 0} icon="🛡️" color="#FF4757" sub="needs attention" />
-        <KpiCard title="New Users" value={k.newUsers || 0} icon="👤" color="#F0D060" sub={`of ${k.totalUsers || 0} total`} />
+        {/* v100 — KpiCards now animate value changes (CountUp) and pulse
+            the accent stripe whenever Socket.io/REST poll bumps a number.
+            7-day trend arrays from the dashboard endpoint feed inline
+            sparklines so trend is visible without leaving the KPI row. */}
+        <KpiCard
+          title="Total GMV"
+          value={k.gmv || 0}
+          format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
+          icon="💰" color="#D4AF37" sub="all time" live
+          sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
+        />
+        <KpiCard
+          title="Active Bookings"
+          value={k.activeBookings || 0}
+          icon="📋" color="#2ECC71"
+          sub={`of ${k.totalBookings || 0} total`} live
+          sparkline={(data?.bookingTrend || []).map((p: any) => p.value)}
+        />
+        <KpiCard
+          title="Revenue (5%)"
+          value={k.revenue || 0}
+          format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
+          icon="📊" color="#3D9CF5" sub="commission earned" live
+          sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
+        />
+        <KpiCard
+          title="Pending Verifications"
+          value={k.pendingVerif || 0}
+          icon="🎥" color="#A855F7" sub="awaiting review" live
+        />
+        <KpiCard
+          title="Fraud Flags"
+          value={k.fraud || 0}
+          icon="🛡️" color="#FF4757" sub="needs attention" live
+        />
+        <KpiCard
+          title="New Users"
+          value={k.newUsers || 0}
+          icon="👤" color="#F0D060" sub={`of ${k.totalUsers || 0} total`} live
+        />
       </div>
 
       {/* Platform systems row (Sessions 1, 2, 4–6 — additive overlay) */}

@@ -55,7 +55,7 @@ export default function AdminFeedback() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Feedback & Ratings</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Feedback & Ratings</h1>
         <button
           onClick={() => exportRows("feedback", filtered, cols.filter((c: any) => c.key !== "actions"))}
           style={{ ...btnGhost, marginLeft: "auto" }}
@@ -64,7 +64,7 @@ export default function AdminFeedback() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
         <KPICard title="Average Rating" value={avg.toFixed(2)} sub={`${list.length} reviews`} color={ratingColor(avg)} />
         <KPICard title="5-Star" value={distribution[4].count} color={C.green} />
         <KPICard title="≤2-Star" value={distribution[0].count + distribution[1].count} color={C.red} />

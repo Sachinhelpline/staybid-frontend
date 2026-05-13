@@ -80,7 +80,7 @@ export default function AdminFraud() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Fraud & Security</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Fraud & Security</h1>
         <button
           onClick={() =>
             exportRows("fraud-duplicates", duplicates.map((d: any) => ({ phone: d.phone, ids: d.ids.join(";"), count: d.ids.length })), [
@@ -95,7 +95,7 @@ export default function AdminFraud() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
+      <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
         <KPICard title="Duplicate Accounts" value={flags.duplicateAccounts || 0} color={C.amber} />
         <KPICard title="Banned Users" value={flags.bannedUsers || 0} color={C.red} />
         <KPICard title="High-Priority Complaints" value={flags.highPriorityComplaints || 0} color={C.purple} />

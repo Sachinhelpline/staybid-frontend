@@ -96,7 +96,7 @@ export default function AdminSettings() {
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ ...h1Style, margin: 0 }}>Settings & Config</h1>
+        <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Settings & Config</h1>
         {tab === "logs" && (
           <button onClick={() => exportRows("admin-logs", logs, logCols)} style={{ ...btnGhost, marginLeft: "auto" }}>Export CSV</button>
         )}

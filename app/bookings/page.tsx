@@ -166,6 +166,170 @@ function Barcode({ id }: { id: string }) {
   );
 }
 
+// ── Rate-your-stay banner (v98) ────────────────────────────────────────
+// Shown on CHECKED_OUT bookings. Calls /api/feedback/submit which already
+// existed since Session 5 but had NO customer UI calling it — feedback
+// table was permanently empty in prod until v98.
+function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotelName: string; stayPoints: number }) {
+  const [state, setState] = useState<{ submitted: boolean; rating?: number; comments?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [hover, setHover] = useState(0);
+  const [comments, setComments] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.getFeedbackState(bidId)
+      .then((d: any) => {
+        if (d?.feedback?.submitted) {
+          setState({ submitted: true, rating: d.feedback.rating, comments: d.feedback.comments });
+        } else {
+          setState({ submitted: false });
+        }
+      })
+      .catch(() => setState({ submitted: false }))
+      .finally(() => setLoading(false));
+  }, [bidId]);
+
+  async function submit() {
+    setErr(null);
+    if (!rating) { setErr("Please pick a rating."); return; }
+    setSubmitting(true);
+    try {
+      // The feedback table is keyed on booking_id; in this app the same
+      // identifier doubles as the bid id for entries that came in via the
+      // bid-accept flow (see /api/feedback/submit). Either way, b.id is
+      // the canonical key here.
+      await api.submitFeedback({ bookingId: bidId, rating, comments: comments.trim() || undefined });
+      setState({ submitted: true, rating, comments: comments.trim() });
+      setOpen(false);
+    } catch (e: any) {
+      setErr(e?.message || "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) return null;
+
+  if (state?.submitted) {
+    return (
+      <div className="mb-4 rounded-2xl p-3 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+        <span className="text-lg">✅</span>
+        <div className="flex-1">
+          <p className="text-xs font-bold text-emerald-800">Thanks for your feedback</p>
+          <p className="text-[0.65rem] text-emerald-700">
+            {Array.from({ length: 5 }).map((_, i) => i < (state.rating || 0) ? "★" : "☆").join("")}
+            {state.comments ? ` · "${state.comments.slice(0, 60)}${state.comments.length > 60 ? "…" : ""}"` : ""}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full mb-4 rounded-2xl p-4 bg-gradient-to-br from-gold-50 to-amber-50 border border-gold-200 hover:shadow-gold transition text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">⭐</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-luxury-900">Rate your stay at {hotelName}</p>
+            <p className="text-[0.7rem] text-luxury-600">
+              Share feedback and earn <strong>+100 StayPoints</strong> on top of your {stayPoints} cashback points
+            </p>
+          </div>
+          <span className="text-gold-600 text-sm font-bold">Rate →</span>
+        </div>
+      </button>
+
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto"
+          >
+            <div className="px-5 py-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-display text-xl text-luxury-900">How was {hotelName}?</div>
+                  <p className="text-xs text-luxury-500 mt-0.5">Your feedback helps thousands of travellers</p>
+                </div>
+                <button onClick={() => setOpen(false)} className="text-luxury-400 text-2xl leading-none px-1">✕</button>
+              </div>
+
+              {/* Star rating */}
+              <div className="flex justify-center gap-1 my-5">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const lit = (hover || rating) >= n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onMouseEnter={() => setHover(n)}
+                      onMouseLeave={() => setHover(0)}
+                      onClick={() => setRating(n)}
+                      className={`text-4xl transition-transform ${lit ? "scale-110" : "scale-100"}`}
+                      style={{ color: lit ? "#f0b429" : "#e5e0d0" }}
+                      aria-label={`${n} star${n > 1 ? "s" : ""}`}
+                    >
+                      ★
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-center text-xs text-luxury-500 -mt-3 mb-4">
+                {rating === 5 ? "Loved it" : rating === 4 ? "Great" : rating === 3 ? "It was okay" : rating === 2 ? "Below expectations" : "Disappointing"}
+              </p>
+
+              <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">
+                Comments <span className="text-luxury-400 font-normal lowercase">(optional)</span>
+              </label>
+              <textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value.slice(0, 1000))}
+                rows={4}
+                placeholder="What stood out? What could be better?"
+                className="input-luxury w-full resize-none"
+                maxLength={1000}
+              />
+              <div className="text-[10px] text-luxury-400 mt-1 text-right">{comments.length}/1000</div>
+
+              {err && (
+                <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700 mt-3">{err}</div>
+              )}
+
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => setOpen(false)}
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-luxury-200 text-luxury-700 font-semibold text-sm hover:bg-luxury-50 transition disabled:opacity-50"
+                >
+                  Later
+                </button>
+                <button
+                  onClick={submit}
+                  disabled={submitting}
+                  className="flex-[2] btn-luxury text-sm py-2.5 disabled:opacity-60"
+                >
+                  {submitting ? "Submitting…" : "Submit & earn 100 points"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const st = statusStyle[b.status] || { bg: "bg-luxury-50", text: "text-luxury-600", border: "border-luxury-100", label: b.status, dot: "bg-luxury-400" };
@@ -315,6 +479,23 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
             mode="customer"
             hotelName={hotel.name || "Hotel"}
           />
+        )}
+
+        {/* v98: Rate-your-stay card (post-checkout) */}
+        {isCompleted && (
+          <RateStayBanner bidId={b.id} hotelName={hotel.name || "this hotel"} stayPoints={stayPoints} />
+        )}
+
+        {/* v98: Compact action row — report issue / help link */}
+        {(isConfirmed || isCompleted) && (
+          <div className="flex items-center gap-2 mb-3 -mt-1">
+            <a
+              href={`/complaints?bookingId=${encodeURIComponent(b.id)}&hotelId=${encodeURIComponent(hotel.id || "")}`}
+              className="text-[0.7rem] font-semibold text-luxury-500 hover:text-red-600 transition-colors"
+            >
+              🚩 Report an issue with this booking
+            </a>
+          </div>
         )}
 
         {/* Expand toggle */}
