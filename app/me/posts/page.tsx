@@ -130,6 +130,12 @@ function MePostsInner() {
             likeCount: 0,
             commentCount: 0,
             hotelId: p.taggedHotel?.id || undefined,
+            // v112.2 — surface local edit-post fields so the Edit sheet
+            // pre-fills them correctly.
+            locationName:    p.location?.name || undefined,
+            hideLikes:       !!p.hideLikes,
+            disableComments: !!p.disableComments,
+            highlightKey:    p.highlight?.key || undefined,
           };
         }
         const rp = row.post;
@@ -147,6 +153,12 @@ function MePostsInner() {
           audioLine: "Original audio",
           likeCount: Number(rp.likes_count || 0),
           commentCount: Number(rp.comments_count || 0),
+          hotelId:         rp.hotel_id || undefined,
+          // v112.2 — surface server-side edit-post fields.
+          locationName:    rp.location_name || undefined,
+          hideLikes:       !!rp.hide_likes,
+          disableComments: !!rp.disable_comments,
+          highlightKey:    rp.highlight_key || undefined,
         };
       });
   }, [posts, remotePosts, myDisplayName, myAvatarUrl, user]);

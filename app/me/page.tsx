@@ -67,6 +67,9 @@ export default function MePage() {
   // v109 — Creator Hub + Hotel Partner items in the drawer flip on
   // automatically the moment the matching role activates (creator app
   // submitted, partner login completed — even in another tab).
+  // v112.2 — also render small Creator (✦) / Hotel (🏨) badges next to
+  // the display name so the user can see at a glance what tier their
+  // account is. Same source-of-truth as the drawer.
   const { isCreator, isHotelOwner } = useTier();
 
   const [tab, setTab] = useState<Tab>("posts");
@@ -309,7 +312,16 @@ export default function MePage() {
 
       {/* Display name + bio + meta */}
       <section className="me-bio-wrap">
-        <p className="me-display-name">{myDisplayName || "You"}</p>
+        <p className="me-display-name">
+          {myDisplayName || "You"}
+          {/* v112.2 — Creator (✦) / Hotel (🏨) tier badges. Public sees
+              the SAME badges next to the same display name (no second
+              identity) — only difference is they don't see the private
+              stats panel (Active Creator EARNED/BOOKINGS), which stays
+              self-only via SelfTierBanner. */}
+          {isCreator    && <span className="me-tier-badge me-tier-badge-creator" title="Creator">✦</span>}
+          {isHotelOwner && <span className="me-tier-badge me-tier-badge-hotel"   title="Hotel partner">🏨</span>}
+        </p>
         {sanitizedBio && <p className="me-bio">{sanitizedBio}</p>}
         {myLocation && <p className="me-meta">📍 {myLocation}</p>}
         {myWebsite && (
@@ -599,6 +611,13 @@ export default function MePage() {
           color: #2c1d04;
           margin: 0 0 2px;
         }
+        .me-tier-badge {
+          margin-left: 6px;
+          font-weight: 800;
+          font-size: 0.92rem;
+        }
+        .me-tier-badge-creator { color: #c9911a; }
+        .me-tier-badge-hotel   { font-size: 0.86rem; }
         .me-bio {
           font-size: 0.84rem;
           color: #4a3208;

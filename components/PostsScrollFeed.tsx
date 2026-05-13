@@ -46,6 +46,16 @@ export type FeedPost = {
   commentCount?: number;
   /** Optional deep-link to a hotel page, when the post is tagged to one. */
   hotelId?: string;
+  /** Optional location label shown in the header / edit sheet. */
+  locationName?: string;
+  /** v112.2 — IG-style toggles. When true, the like count + comment row
+      are hidden on this card. Server stores these on social_posts so
+      they survive across devices. Default false. */
+  hideLikes?: boolean;
+  disableComments?: boolean;
+  /** v112.2 — current highlight bucket key (so the edit sheet can show
+      the active selection). */
+  highlightKey?: string;
 };
 
 type Mode = "owner" | "viewer";
@@ -109,8 +119,17 @@ export function PostsScrollFeed({
   // v111 — kebab menu state. `menuFor` is the postId whose ⋮ menu is open.
   const [menuFor, setMenuFor] = useState<string>("");
   // v111 — "Edit caption" inline sheet. `editFor` is the post being edited.
+  // v112.2 — expanded into a full IG-style Edit Post sheet covering
+  // caption + location + tagged hotel + highlight + hide-likes +
+  // disable-comments. Each field has its own state slot so the user can
+  // change one or many before tapping Save.
   const [editFor, setEditFor] = useState<FeedPost | null>(null);
   const [editCaption, setEditCaption] = useState<string>("");
+  const [editLocation, setEditLocation] = useState<string>("");
+  const [editHotelId, setEditHotelId] = useState<string>("");
+  const [editHighlightKey, setEditHighlightKey] = useState<string>("");
+  const [editHideLikes, setEditHideLikes] = useState<boolean>(false);
+  const [editDisableComments, setEditDisableComments] = useState<boolean>(false);
   const [editing, setEditing] = useState(false);
 
   // Hydrate like + save state on mount.
@@ -126,17 +145,36 @@ export function PostsScrollFeed({
   }
 
   // Scroll the starting post into view on first render.
+  // v112.2 — the v87 implementation fired ONCE 30ms after mount, before
+  // posts had loaded from /api/social/feed (which takes ~700 ms cold).
+  // The element didn't exist yet, the scroll silently failed, and the
+  // IntersectionObserver then marked the FIRST card active — so every
+  // tile tap on /me opened the first post instead of the tapped one.
+  // The fix: re-run whenever `posts` changes (so we try again after data
+  // arrives), poll for up to ~1.6 s in case render is delayed, and lock
+  // a sentinel so we only successfully scroll once per `startId`.
+  const scrolledForRef = useRef<string>("");
   useEffect(() => {
     if (!startId) return;
-    const t = setTimeout(() => {
+    if (posts.length === 0) return;
+    if (scrolledForRef.current === startId) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
       const el = document.getElementById(`pf-${startId}`);
       if (el) {
         el.scrollIntoView({ behavior: "auto", block: "start" });
         setActiveId(startId);
+        scrolledForRef.current = startId;
+        return;
       }
-    }, 30);
-    return () => clearTimeout(t);
-  }, [startId]);
+      if (attempts++ < 20) setTimeout(tryScroll, 80);
+    };
+    tryScroll();
+    return () => { cancelled = true; };
+  }, [startId, posts]);
 
   // IntersectionObserver-driven autoplay — picks whichever video card is
   // most on-screen as the active one. Pauses the others.
@@ -319,6 +357,11 @@ export function PostsScrollFeed({
     setMenuFor("");
     setEditFor(post);
     setEditCaption(post.caption || "");
+    setEditLocation(post.locationName || "");
+    setEditHotelId(post.hotelId || "");
+    setEditHighlightKey(post.highlightKey || "");
+    setEditHideLikes(!!post.hideLikes);
+    setEditDisableComments(!!post.disableComments);
   }
 
   async function commitEdit() {
@@ -326,8 +369,18 @@ export function PostsScrollFeed({
     setEditing(true);
     // v112.1 — local-only ids skip the server PATCH (would 404). Just
     // update the local entry in place; the eventual server upload
-    // includes the freshest caption.
+    // includes the freshest fields.
     const isLocalOnlyId = editFor.id.startsWith("post-");
+    // Build the payload — only include fields the user can edit. Empty
+    // strings become explicit nulls so the server can clear them.
+    const payload: Record<string, any> = {
+      caption:          editCaption,
+      location_name:    editLocation || "",
+      hotel_id:         editHotelId || null,
+      highlight_key:    editHighlightKey || null,
+      hide_likes:       editHideLikes,
+      disable_comments: editDisableComments,
+    };
     try {
       if (!isLocalOnlyId) {
         const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
@@ -337,7 +390,7 @@ export function PostsScrollFeed({
             "Content-Type": "application/json",
             ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
           },
-          body: JSON.stringify({ caption: editCaption }),
+          body: JSON.stringify(payload),
         });
         if (!r.ok && r.status !== 404) { showToast("Couldn't save — try again"); return; }
       }
@@ -349,13 +402,23 @@ export function PostsScrollFeed({
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
             const next = arr.map((x: any) =>
-              x?.id === editFor.id ? { ...x, caption: editCaption } : x);
+              x?.id === editFor.id
+                ? {
+                    ...x,
+                    caption:          editCaption,
+                    location:         editLocation ? { name: editLocation } : null,
+                    highlight:        editHighlightKey
+                      ? { key: editHighlightKey, label: x.highlight?.label || editHighlightKey, emoji: x.highlight?.emoji || "✨" }
+                      : null,
+                    hideLikes:        editHideLikes,
+                    disableComments:  editDisableComments,
+                  }
+                : x);
             localStorage.setItem("sb_user_posts", JSON.stringify(next));
           }
         }
       } catch {}
       setEditFor(null);
-      setEditCaption("");
       showToast("Updated ✓");
     } catch {
       showToast("Couldn't save — try again");
@@ -435,29 +498,105 @@ export function PostsScrollFeed({
         </div>
       )}
 
-      {/* v111 — Edit caption sheet (owner only). Inline so the user
-          doesn't lose context — caption only, since changing media
-          or media_type would break the v111 idempotency contract. */}
+      {/* v112.2 — IG-style Edit Post sheet (owner only). Beyond caption
+          we now expose location, tagged hotel, highlight bucket, hide-
+          like-count, and disable-comments toggles. Media + media-type
+          stay immutable so the v111 idempotency contract holds. */}
       {editFor && (
         <div className="pf-drawer-backdrop" onClick={() => !editing && setEditFor(null)}>
           <div className="pf-drawer pf-edit-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="pf-drawer-handle" />
-            <p className="pf-drawer-title">Edit caption</p>
+            <p className="pf-drawer-title">Edit post</p>
+
+            <label className="pf-edit-label" htmlFor="pf-edit-caption">Caption</label>
             <textarea
+              id="pf-edit-caption"
               className="pf-edit-textarea"
               value={editCaption}
               onChange={(e) => setEditCaption(e.target.value)}
               placeholder="Write a caption…"
               maxLength={2200}
-              rows={5}
+              rows={4}
               autoFocus
             />
             <p className="pf-edit-count">{editCaption.length} / 2200</p>
+
+            <label className="pf-edit-label" htmlFor="pf-edit-location">📍 Location</label>
+            <input
+              id="pf-edit-location"
+              type="text"
+              className="pf-edit-input"
+              value={editLocation}
+              onChange={(e) => setEditLocation(e.target.value)}
+              placeholder="Add a location (e.g. Mussoorie, Uttarakhand)"
+              maxLength={120}
+            />
+
+            <label className="pf-edit-label" htmlFor="pf-edit-hotel">🏨 Tagged hotel ID</label>
+            <input
+              id="pf-edit-hotel"
+              type="text"
+              className="pf-edit-input"
+              value={editHotelId}
+              onChange={(e) => setEditHotelId(e.target.value)}
+              placeholder="Hotel ID (or leave empty to untag)"
+              maxLength={120}
+            />
+
+            <label className="pf-edit-label" htmlFor="pf-edit-highlight">✨ Highlight bucket</label>
+            <select
+              id="pf-edit-highlight"
+              className="pf-edit-input"
+              value={editHighlightKey}
+              onChange={(e) => setEditHighlightKey(e.target.value)}
+            >
+              <option value="">— None —</option>
+              <option value="mountains">🌄 Mountains</option>
+              <option value="beaches">🏖 Beaches</option>
+              <option value="foodie">🍜 Foodie</option>
+              <option value="suites">🛏 Suites</option>
+              <option value="toppicks">✨ Top picks</option>
+              <option value="solo">🎒 Solo</option>
+              {/* Preserve a custom highlight already on the post (so
+                  users don't lose a custom bucket by opening Edit). */}
+              {editHighlightKey?.startsWith("custom-") && (
+                <option value={editHighlightKey}>
+                  ✨ {editHighlightKey.replace("custom-", "").replace(/-/g, " ")}
+                </option>
+              )}
+            </select>
+
+            <label className="pf-edit-toggle-row">
+              <span className="pf-edit-toggle-text">
+                <span className="pf-edit-toggle-label">Hide like count</span>
+                <span className="pf-edit-toggle-sub">Only you'll see how many people liked this post</span>
+              </span>
+              <input
+                type="checkbox"
+                className="pf-edit-toggle"
+                checked={editHideLikes}
+                onChange={(e) => setEditHideLikes(e.target.checked)}
+              />
+            </label>
+
+            <label className="pf-edit-toggle-row">
+              <span className="pf-edit-toggle-text">
+                <span className="pf-edit-toggle-label">Turn off commenting</span>
+                <span className="pf-edit-toggle-sub">No new comments can be posted on this reel</span>
+              </span>
+              <input
+                type="checkbox"
+                className="pf-edit-toggle"
+                checked={editDisableComments}
+                onChange={(e) => setEditDisableComments(e.target.checked)}
+              />
+            </label>
+
             <div className="pf-edit-actions">
               <button
                 type="button"
                 className="pf-edit-cancel"
-                onClick={() => { setEditFor(null); setEditCaption(""); }}
+                onClick={() => setEditFor(null)}
                 disabled={editing}
               >Cancel</button>
               <button
@@ -656,8 +795,22 @@ export function PostsScrollFeed({
         .pf-more-item:hover { background: rgba(74, 56, 32, 0.06); }
         .pf-more-item:active { background: rgba(74, 56, 32, 0.10); }
         .pf-more-danger { color: #b2462f; }
-        /* v111 — Edit caption sheet styling. */
-        .pf-edit-sheet { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+        /* v112.2 — Edit Post sheet styling. Now scrollable since the IG-
+           style version has 6 sections (caption, location, hotel,
+           highlight, hide-likes, disable-comments). */
+        .pf-edit-sheet {
+          padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+          max-height: 86dvh;
+          overflow-y: auto;
+        }
+        .pf-edit-label {
+          display: block;
+          margin: 14px 2px 4px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: var(--cozy-cocoa, #4A3820);
+          letter-spacing: 0.01em;
+        }
         .pf-edit-textarea {
           width: 100%;
           min-height: 110px;
@@ -671,14 +824,62 @@ export function PostsScrollFeed({
           border-radius: 12px;
           outline: none;
           resize: vertical;
-          margin-top: 10px;
+          margin-top: 4px;
         }
         .pf-edit-textarea:focus { border-color: var(--cozy-champagne, #C9A66B); }
+        .pf-edit-input {
+          width: 100%;
+          padding: 10px 12px;
+          font-family: inherit;
+          font-size: 0.92rem;
+          color: var(--cozy-warm-dark, #1F1A0F);
+          background: rgba(255, 255, 255, 0.6);
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          border-radius: 10px;
+          outline: none;
+          margin-top: 4px;
+        }
+        .pf-edit-input:focus { border-color: var(--cozy-champagne, #C9A66B); }
+        select.pf-edit-input { cursor: pointer; }
         .pf-edit-count {
-          margin: 6px 2px 12px;
+          margin: 6px 2px 4px;
           font-size: 0.72rem;
           color: var(--cozy-cocoa-soft, #6E5430);
           text-align: right;
+        }
+        .pf-edit-toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          padding: 12px 0 6px;
+          margin-top: 8px;
+          border-top: 1px solid var(--cozy-taupe, #E8DCC8);
+          cursor: pointer;
+        }
+        .pf-edit-toggle-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+          min-width: 0;
+        }
+        .pf-edit-toggle-label {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: var(--cozy-warm-dark, #1F1A0F);
+        }
+        .pf-edit-toggle-sub {
+          font-size: 0.72rem;
+          color: var(--cozy-cocoa-soft, #6E5430);
+          line-height: 1.25;
+        }
+        .pf-edit-toggle {
+          flex-shrink: 0;
+          width: 20px;
+          height: 20px;
+          cursor: pointer;
+          accent-color: var(--cozy-champagne, #C9A66B);
         }
         .pf-edit-actions {
           display: flex;
@@ -926,7 +1127,9 @@ function PostCard({
         )}
       </div>
 
-      {/* Actions row — every button is functional in v87 */}
+      {/* Actions row — every button is functional in v87. v112.2 adds
+          respect for `hideLikes` (count is hidden, like still works) and
+          `disableComments` (comments button disabled with helper hint). */}
       <div className="pf-actions">
         <button
           type="button"
@@ -936,13 +1139,20 @@ function PostCard({
           aria-pressed={liked}
         >
           <span className="pf-act-glyph">{liked ? "❤" : "♡"}</span>
-          {likeCount > 0 && (
+          {likeCount > 0 && !post.hideLikes && (
             <span className="pf-act-count">{fmtViewCount(likeCount)}</span>
           )}
         </button>
-        <button type="button" className="pf-act" onClick={onComment} aria-label="Comments">
-          <span className="pf-act-glyph">💬</span>
-          {(post.commentCount || 0) > 0 && (
+        <button
+          type="button"
+          className="pf-act"
+          onClick={post.disableComments ? undefined : onComment}
+          disabled={!!post.disableComments}
+          aria-label={post.disableComments ? "Comments are off" : "Comments"}
+          title={post.disableComments ? "Comments are off for this post" : undefined}
+        >
+          <span className="pf-act-glyph">{post.disableComments ? "🚫" : "💬"}</span>
+          {!post.disableComments && (post.commentCount || 0) > 0 && (
             <span className="pf-act-count">{fmtViewCount(post.commentCount || 0)}</span>
           )}
         </button>

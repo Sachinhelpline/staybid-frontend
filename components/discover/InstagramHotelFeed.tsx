@@ -822,25 +822,10 @@ function CreatorProfileSheet({
                   creator.name.slice(0, 1).toUpperCase()
                 )}
               </div>
-              {(creator as any)._isSelf && (
-                <span
-                  className="absolute"
-                  style={{
-                    transform: "translate(64px, -28px)",
-                    background: "linear-gradient(135deg,#ffd76b,#f0b429)",
-                    color: "#1a1208",
-                    fontWeight: 700,
-                    fontSize: "0.62rem",
-                    padding: "3px 8px",
-                    borderRadius: 9999,
-                    border: "2px solid #000",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.4)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  ✏️ Edit
-                </span>
-              )}
+              {/* v112.2 — small "✏️ Edit" pill removed. The full "Edit
+                  profile" CTA below already does this, and the avatar
+                  itself is tappable (opens the editor). The pill was
+                  redundant + crowded the Reels count number. */}
             </button>
             <div className="flex-1 grid grid-cols-3 gap-3 text-center">
               <button onClick={() => setTab("reels")} className="text-center">
@@ -860,9 +845,22 @@ function CreatorProfileSheet({
 
           {/* Name + bio. Self profile pulls from FollowStore (myBio, myLocation,
               myWebsite). Other profiles use the synthesized creator.bio. Bio
-              text is sanitized in either case — anti-bypass guard. */}
+              text is sanitized in either case — anti-bypass guard.
+              v112.2 — public-facing badges next to the display name so
+              viewers can see at a glance that this is a verified creator
+              or hotel partner, without exposing the private stats panel
+              (which stays self-only via SelfTierBanner). */}
           <p className="text-white font-semibold text-[0.92rem] leading-tight">
             {(creator as any)._isSelf && myDisplayName && myDisplayName !== "You" ? myDisplayName : creator.name}
+            {(creator as any).sourceType === "hotel" && (
+              <span title="Hotel partner" className="ml-1.5" style={{ color: "#5b8dff", fontWeight: 800 }} aria-label="Hotel partner">🏨</span>
+            )}
+            {(creator as any).sourceType === "creator" && (
+              <span title="Creator" className="ml-1.5" style={{ color: "#f0d060", fontWeight: 800 }} aria-label="Creator">✦</span>
+            )}
+            {(creator as any).verified && (
+              <span title="Verified" className="ml-1" style={{ color: "#5b8dff", fontWeight: 800 }} aria-label="Verified">✓</span>
+            )}
           </p>
           <p className="text-white/75 text-[0.78rem] mt-1 leading-snug whitespace-pre-line">
             {sanitizeComment((creator as any)._isSelf ? (myBio || "Tap “Edit profile” to add a bio about your travels.") : creator.bio).clean}

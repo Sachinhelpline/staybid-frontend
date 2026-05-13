@@ -77,6 +77,18 @@ export async function PATCH(req: Request, { params }: { params: { postId: string
   if (typeof body.locationLng === "number")    patch.location_lng   = body.locationLng;
   if (typeof body.sound_track === "string")    patch.sound_track    = body.sound_track.slice(0, 200) || null;
   if (typeof body.sound_url === "string")      patch.sound_url      = body.sound_url.slice(0, 1000) || null;
+  // v112.2 — IG-style toggles persisted server-side so consumers (the
+  // feed, the profile grid, the post drawer) can hide the like count or
+  // disable comments accordingly.
+  if (typeof body.hide_likes === "boolean")        patch.hide_likes        = body.hide_likes;
+  if (typeof body.disable_comments === "boolean")  patch.disable_comments  = body.disable_comments;
+  // v112.2 — let the author re-categorise a post into / out of a
+  // highlight bucket via the same edit sheet.
+  if (typeof body.highlight_key === "string") {
+    patch.highlight_key = body.highlight_key.trim().slice(0, 64) || null;
+  } else if (body.highlight_key === null) {
+    patch.highlight_key = null;
+  }
   // hotel_id can be unset (null) or set to a different hotel — re-validate
   // ownership for hotel-type profiles to mirror the POST rules.
   if (body.hotel_id === null) {
