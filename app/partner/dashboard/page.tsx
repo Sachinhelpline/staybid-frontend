@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 import { ImageUpload } from "@/components/ImageUpload";
 import BookingChat from "@/components/BookingChat";
+// v113 — premium availability calendar + bulk block-dates sheet.
+import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
 
 // Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
 // shared BookingChat component agnostic of which session keys we use.
@@ -113,6 +115,8 @@ export default function PartnerDashboard() {
   const [newFeed, setNewFeed]         = useState({ roomId:"", provider:"booking", icalUrl:"", label:"" });
   const [feedSaving, setFeedSaving]   = useState(false);
   const [syncing, setSyncing]         = useState<string>("");
+  // v113 — bulk-block "📌 Block dates" sheet — opens from AvailabilityCalendar.
+  const [blockSheetOpen, setBlockSheetOpen] = useState(false);
 
   // Bid action
   const [selectedBid, setSelectedBid]   = useState<any>(null);
@@ -514,7 +518,6 @@ export default function PartnerDashboard() {
   }
 
   async function deleteBlock(refId: string) {
-    if (!confirm("Remove this booking/block?")) return;
     const token = getToken();
     try {
       await fetch(`/api/partner/walk-in?id=${refId}`, {
@@ -523,6 +526,38 @@ export default function PartnerDashboard() {
       });
       loadCalendar();
     } catch {}
+  }
+
+  // v113 — bulk block submitter. Writes one room_blocks row per picked
+  // room via the extended /api/partner/walk-in endpoint (`source` field
+  // and `roomIds[]` are accepted as of v113).
+  async function submitBulkBlock(args: {
+    roomIds: string[];
+    fromDate: string;
+    toDate: string;
+    source: "manual" | "group";
+    reason: string;
+    guestName?: string;
+    note?: string;
+  }) {
+    if (!hotel?.id) return;
+    const token = getToken();
+    const r = await fetch("/api/partner/walk-in", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hotelId: hotel.id,
+        roomIds: args.roomIds,
+        fromDate: args.fromDate,
+        toDate:   args.toDate,
+        source:   args.source,
+        guestName: args.guestName || args.reason,
+        note: args.note ? `${args.reason}: ${args.note}` : args.reason,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Block failed");
+    loadCalendar();
   }
 
   async function addFeed() {
@@ -1398,118 +1433,49 @@ export default function PartnerDashboard() {
           </div>
         )}
 
-        {/* ══════════════ AVAILABILITY / PMS ══════════════ */}
+        {/* ══════════════ AVAILABILITY / PMS ══════════════
+            v113 — replaces the cramped 22×24 HTML grid with the premium
+            <AvailabilityCalendar> component:
+              · 36×36 cells with cozy-palette gradients
+              · weekend shading + today indicator
+              · tap empty → walk-in pre-fill, tap occupied → details popover
+              · drag across cells → multi-day walk-in range
+              · 📌 Block dates → bulk maintenance / group hold sheet
+        */}
         {tab === "availability" && (
           <div className="fade-up space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-end justify-between flex-wrap gap-3">
               <div>
                 <h2 className="font-display text-2xl font-light text-luxury-900">Availability Calendar</h2>
-                <p className="text-sm text-luxury-500">Real-time occupancy across all bookings, walk-ins & OTA channels</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth()-1, 1))}
-                  className="px-3 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-100 text-sm">← Prev</button>
-                <span className="text-sm font-bold text-luxury-800 px-3">
-                  {calMonth.toLocaleDateString("en-IN", { month:"long", year:"numeric" })}
-                </span>
-                <button onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 1))}
-                  className="px-3 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-100 text-sm">Next →</button>
-                <button onClick={loadCalendar}
-                  className="px-3 py-2 rounded-lg bg-luxury-900 text-white text-sm hover:bg-luxury-800">
-                  {calLoading ? "⟳" : "↻ Refresh"}
-                </button>
+                <p className="text-sm text-luxury-500">Real-time occupancy across bookings, walk-ins, OTA channels & manual holds</p>
               </div>
             </div>
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-3 text-xs">
-              {[
-                { c:"#dcfce7", b:"#16a34a", l:"Free" },
-                { c:"#fef3c7", b:"#d97706", l:"Bid booked" },
-                { c:"#dbeafe", b:"#2563eb", l:"OTA (Booking/Airbnb)" },
-                { c:"#f3e8ff", b:"#9333ea", l:"Walk-in" },
-                { c:"#fee2e2", b:"#dc2626", l:"Blocked" },
-              ].map(x => (
-                <div key={x.l} className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded" style={{ background:x.c, border:`1.5px solid ${x.b}` }} />
-                  <span className="text-luxury-600 font-medium">{x.l}</span>
-                </div>
-              ))}
-            </div>
+            <AvailabilityCalendar
+              rooms={rooms.map(r => ({ id: r.id, type: r.type, name: r.name, capacity: r.capacity }))}
+              calendar={calendar}
+              month={calMonth}
+              onMonthChange={setCalMonth}
+              onRefresh={loadCalendar}
+              loading={calLoading}
+              onPickWalkIn={({ roomId, fromDate, toDate }) => {
+                setWalkInOpen({ roomId, date: fromDate });
+                setWalkIn({
+                  fromDate, toDate,
+                  guestName: "", guestPhone: "", amount: "", note: "",
+                  assignedUnitId: "", assignedUnitNumber: "",
+                });
+              }}
+              onDeleteBlock={deleteBlock}
+              onOpenBlockSheet={() => setBlockSheetOpen(true)}
+            />
 
-            {/* Calendar grid — one row per room */}
-            {rooms.length === 0 ? (
-              <div className="card-p text-center py-10 text-luxury-400">
-                No rooms configured yet. Add rooms in the <b>Rooms</b> tab first.
-              </div>
-            ) : (
-              <div className="card-p overflow-x-auto">
-                {(() => {
-                  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth()+1, 0).getDate();
-                  const days = Array.from({ length: daysInMonth }, (_, i) => {
-                    const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), i+1);
-                    return d.toISOString().slice(0,10);
-                  });
-                  return (
-                    <table className="w-full text-xs border-collapse" style={{ minWidth: 820 }}>
-                      <thead>
-                        <tr>
-                          <th className="sticky left-0 bg-white text-left font-bold text-luxury-700 pr-3 pb-2" style={{ minWidth: 140 }}>Room</th>
-                          {days.map(d => {
-                            const day = new Date(d).getDate();
-                            const dow = new Date(d).getDay();
-                            const isWE = dow === 0 || dow === 6;
-                            return (
-                              <th key={d} className={`font-semibold pb-2 text-[0.65rem] ${isWE ? "text-red-500" : "text-luxury-500"}`} style={{ minWidth: 22 }}>{day}</th>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rooms.map(r => (
-                          <tr key={r.id} className="border-t border-luxury-100">
-                            <td className="sticky left-0 bg-white pr-3 py-1.5 font-semibold text-luxury-800 truncate" style={{ maxWidth: 140 }}>
-                              {r.type || "Room"}
-                            </td>
-                            {days.map(d => {
-                              const occ = calendar[r.id]?.[d];
-                              let bg = "#dcfce7", border = "#bbf7d0";
-                              if (occ) {
-                                if (occ.source === "bid")      { bg="#fef3c7"; border="#fcd34d"; }
-                                else if (occ.source === "ota_ical") { bg="#dbeafe"; border="#93c5fd"; }
-                                else if (occ.source === "walk_in")  { bg="#f3e8ff"; border="#c4b5fd"; }
-                                else                                 { bg="#fee2e2"; border="#fca5a5"; }
-                              }
-                              const tooltip = occ
-                                ? `${occ.source}${occ.guestName ? " — " + occ.guestName : ""}${occ.amount ? " (₹" + occ.amount + ")" : ""}`
-                                : "Tap to add walk-in";
-                              return (
-                                <td key={d} className="p-0.5">
-                                  <button
-                                    title={tooltip}
-                                    onClick={() => {
-                                      if (occ?.refId && (occ.source === "walk_in" || occ.source === "manual")) {
-                                        deleteBlock(occ.refId);
-                                      } else if (!occ) {
-                                        const next = new Date(d); next.setDate(next.getDate()+1);
-                                        setWalkInOpen({ roomId: r.id, date: d });
-                                        setWalkIn({ fromDate: d, toDate: next.toISOString().slice(0,10), guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
-                                      }
-                                    }}
-                                    className="w-full h-6 rounded hover:ring-2 hover:ring-gold-400 transition-all cursor-pointer"
-                                    style={{ background: bg, border: `1px solid ${border}` }}
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  );
-                })()}
-              </div>
-            )}
+            <BlockDatesSheet
+              open={blockSheetOpen}
+              onClose={() => setBlockSheetOpen(false)}
+              rooms={rooms.map(r => ({ id: r.id, type: r.type, name: r.name }))}
+              onSubmit={submitBulkBlock}
+            />
 
             {/* OTA Feeds manager */}
             <div className="card-p">

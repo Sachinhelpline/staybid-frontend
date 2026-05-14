@@ -14,6 +14,7 @@
 //                 the browser; no backend storage)
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { usePosts, type UserPost as StoreUserPost } from "@/lib/posts-store";
 import { useFollow } from "@/lib/follow-store";
 import { api } from "@/lib/api";
@@ -1526,7 +1527,14 @@ export function Composer({
   const [saveAsPost, setSaveAsPost] = useState(false); // story-only toggle
   const [posting, setPosting] = useState(false);
   const [warnedSanitize, setWarnedSanitize] = useState(false);
+  // v113 — IG-style cover/fit toggle on the preview. `cover` crops to fill
+  // the target frame (default; matches what viewers will see in the feed);
+  // `contain` shows the whole frame letter-boxed (useful to verify framing).
+  const [previewFit, setPreviewFit] = useState<"cover" | "contain">("cover");
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // v113 — separate camera-capture input. Same accept but with `capture`
+  // attribute so the phone opens the camera straight away.
+  const cameraRef = useRef<HTMLInputElement | null>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   // Guard against synchronous double-fire: setPosting(true) is async, so
   // tapping the header "Post" button + the footer "Post to your profile"
@@ -1783,27 +1791,64 @@ export function Composer({
     return blocked;
   })();
 
-  return (
+  // Target aspect ratios per kind — matches IG. Reel/Story = 9:16, Photo = 4:5.
+  const targetAspect = kind === "photo" ? "4/5" : "9/16";
+  const targetLabel  = kind === "photo" ? "4:5 portrait" : "9:16 vertical";
+
+  // v113 — portal to <body> so the composer escapes any ancestor stacking
+  // context. InstagramHotelFeed wraps everything in an `absolute z-10`
+  // surface; without the portal, this fixed z-[91] sheet gets clamped to
+  // z-10 in the root stacking order and the z-60 BottomDock renders ON
+  // TOP of the composer (the actual cause of "Post button hidden").
+  const sheet = (
     <div className="fixed inset-0 z-[91] flex items-end" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(8px)" }} />
+      {/*
+        v113 — Full-viewport sheet. Was `height: 94vh` which on Android Chrome
+        got cut behind the URL bar (vh counts the FULL viewport, not the
+        visible one). Now uses `100dvh` (dynamic viewport height — reacts to
+        URL-bar collapse) so the sheet ALWAYS fills the visible area and
+        nothing hides below the browser chrome.
+        Kept `items-end` because the shared `.ig-drawer-up` keyframe slides
+        from translateY(100%) up — that animation only looks right when the
+        panel is anchored to the bottom of its flex parent.
+      */}
       <div
-        className="relative w-full ig-drawer-up"
+        className="relative w-full composer-sheet overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
-          height: "94vh",
+          // 100dvh = dynamic viewport height (URL-bar aware). Never overflows.
+          height: "100dvh",
+          maxHeight: "100dvh",
           background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
           borderTop: "1px solid rgba(255,255,255,0.12)",
           boxShadow: "0 -20px 60px rgba(0,0,0,0.75)",
-          display: "flex", flexDirection: "column",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+          // Account for status-bar notch at top — the bottom safe-area is
+          // baked into the scroll body's paddingBottom further down.
+          paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
+        {/* v113 — replaces the shared `.ig-drawer-up` slide-up animation,
+            which assumed the panel was shorter than the viewport (slid in
+            from below). With our 100dvh full-fill panel that keyframe just
+            pushes the panel offscreen permanently. Inline fade+lift gets
+            the same "drawer feeling" without that math glitch. */}
+        <style jsx>{`
+          .composer-sheet { animation: composerIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+          @keyframes composerIn {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
         <audio ref={audioPreviewRef} src={audio?.url || ""} loop />
 
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
-        <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8">
-          <button onClick={step === "edit" ? () => setStep("pick") : onClose} className="text-white/85 text-[0.84rem]">
+        {/* Sticky header — Cancel · Title · Post · always visible regardless
+            of scroll position or URL-bar state. */}
+        <div
+          className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0"
+          style={{ background: "linear-gradient(180deg, rgba(21,16,30,0.96), rgba(21,16,30,0.86))", backdropFilter: "blur(10px)" }}
+        >
+          <button onClick={step === "edit" ? () => setStep("pick") : onClose} className="text-white/85 text-[0.84rem] py-1 px-2 -mx-2">
             {step === "edit" ? "‹ Back" : "Cancel"}
           </button>
           <p className="text-white font-semibold text-[0.92rem]">
@@ -1812,36 +1857,96 @@ export function Composer({
           <button
             onClick={post}
             disabled={!mediaFile || posting}
-            className="text-gold-300 font-bold text-[0.84rem] disabled:opacity-30"
+            className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
+            style={{
+              color: !mediaFile || posting ? "rgba(255,215,107,0.35)" : "#ffd76b",
+            }}
           >
             {posting ? "Posting…" : "Post"}
           </button>
         </div>
 
-        {/* Step 1: pick a file. Profile-photo entry was removed per user
-            feedback — viewers reach it from the round avatar in their own
-            profile sheet now (a single, discoverable entry point). */}
+        {/* Step 1 — pick a file OR open the camera. v113 splits the entry
+            into two equal cards so the user has one tap to a fresh shot
+            (📷 capture) AND one tap to the gallery, matching IG/TikTok.
+            Drag-and-drop is wired on the gallery card for desktop users. */}
         {step === "pick" && (
-          <div className="flex-1 flex flex-col items-center justify-center px-5 text-center">
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="w-full max-w-xs aspect-[4/5] rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-              style={{
-                background: "linear-gradient(135deg, rgba(255,69,141,0.18), rgba(185,100,255,0.10))",
-                border: "1.5px dashed rgba(255,255,255,0.25)",
-              }}
-            >
-              <span className="text-5xl">{kind === "reel" ? "🎬" : kind === "photo" ? "📷" : "📖"}</span>
-              <p className="text-white font-semibold text-[0.92rem]">Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : "a video"}</p>
-              <p className="text-white/55 text-[0.66rem] px-6">From your camera roll or files. Stays on your device until you tap Post.</p>
+          <div
+            className="flex-1 overflow-y-auto px-5 py-6 flex flex-col items-center text-center"
+            style={{ minHeight: 0 }}
+          >
+            <div className="w-full max-w-sm space-y-3">
+              {/* Gallery / file picker — primary card. */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={(e) => {
+                  e.preventDefault(); e.stopPropagation();
+                  const f = e.dataTransfer.files?.[0];
+                  if (!f) return;
+                  // Simulate the change event so we re-use onFile's logic.
+                  const dt = new DataTransfer(); dt.items.add(f);
+                  if (fileRef.current) {
+                    fileRef.current.files = dt.files;
+                    onFile({ target: fileRef.current } as any);
+                  }
+                }}
+                className="w-full aspect-[4/5] rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                style={{
+                  background: "linear-gradient(135deg, rgba(255,69,141,0.18), rgba(185,100,255,0.10))",
+                  border: "1.5px dashed rgba(255,255,255,0.25)",
+                }}
+              >
+                <span className="text-5xl">{kind === "reel" ? "🎬" : kind === "photo" ? "📷" : "📖"}</span>
+                <p className="text-white font-semibold text-[0.92rem]">
+                  Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : "a video"}
+                </p>
+                <p className="text-white/55 text-[0.66rem] px-6">
+                  From your camera roll or files. Drag-and-drop also works on desktop.
+                </p>
+                <span
+                  className="text-[0.62rem] mt-1 px-3 py-1 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)" }}
+                >
+                  {targetLabel} · best for {kind}
+                </span>
+              </div>
+
+              {/* Camera capture — opens phone's native camera directly.
+                  `capture="environment"` (rear cam) for reels/photos;
+                  no capture attribute does nothing on desktop, so on
+                  desktop we just hide the chip. */}
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl active:scale-[0.98] transition-transform"
+                style={{
+                  background: "linear-gradient(135deg, rgba(91,141,255,0.18), rgba(46,204,113,0.10))",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  color: "#fff",
+                }}
+              >
+                <span className="text-2xl">📸</span>
+                <span className="flex-1 text-left">
+                  <span className="block font-semibold text-[0.86rem]">Take a fresh shot</span>
+                  <span className="block text-white/55 text-[0.62rem]">Opens your camera — perfect for in-the-moment reels</span>
+                </span>
+                <span className="text-white/45 text-lg">›</span>
+              </button>
             </div>
+
+            <input ref={fileRef}   type="file" accept={accept} onChange={onFile} className="hidden" />
             <input
-              ref={fileRef}
+              ref={cameraRef}
               type="file"
               accept={accept}
+              capture="environment"
               onChange={onFile}
               className="hidden"
             />
+
             <p className="text-white/45 text-[0.66rem] mt-5 max-w-xs">
               🛡️ Captions, tags & bios are auto-scrubbed of phone numbers, emails, and off-platform links to keep bookings on StayBid.
             </p>
@@ -1851,17 +1956,66 @@ export function Composer({
         {/* Step 2: edit / caption / audio / tags */}
         {step === "edit" && mediaFile && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Preview */}
-            <div className="px-4 pt-3 pb-2">
+            {/* Preview — v113. Enforces the IG-style frame (9:16 reel/story,
+                4:5 photo) so the user sees EXACTLY what viewers will see.
+                A "Cover · Fit" pill toggles between the cropped feed view
+                and a letter-boxed full-frame view so it's obvious what
+                gets cut. */}
+            <div className="px-4 pt-3 pb-2 shrink-0">
               <div
-                className="w-full rounded-2xl overflow-hidden bg-black mx-auto"
-                style={{ maxHeight: "44vh", aspectRatio: "9/14" }}
+                className="relative w-full rounded-2xl overflow-hidden bg-black mx-auto"
+                style={{
+                  // Cap the preview at ~36dvh so the rest of the form fits
+                  // even on a short Android viewport. Tall photos still
+                  // letterbox cleanly inside this frame.
+                  maxHeight: "36dvh",
+                  aspectRatio: targetAspect,
+                }}
               >
                 {isVideo ? (
-                  <video src={mediaUrl} className="w-full h-full object-cover" autoPlay loop muted={!!audio} playsInline />
+                  <video
+                    src={mediaUrl}
+                    className="w-full h-full"
+                    style={{ objectFit: previewFit }}
+                    autoPlay loop muted={!!audio} playsInline
+                  />
                 ) : (
-                  <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={mediaUrl}
+                    alt=""
+                    className="w-full h-full"
+                    style={{ objectFit: previewFit }}
+                  />
                 )}
+
+                {/* Cover · Fit toggle pill — bottom-right of the preview. */}
+                <button
+                  type="button"
+                  onClick={() => setPreviewFit((f) => f === "cover" ? "contain" : "cover")}
+                  className="absolute bottom-2 right-2 px-2.5 py-1 rounded-full text-[0.62rem] font-bold tracking-wide"
+                  style={{
+                    background: "rgba(0,0,0,0.55)",
+                    backdropFilter: "blur(8px)",
+                    color: "#fff",
+                    border: "1px solid rgba(255,255,255,0.25)",
+                  }}
+                  aria-label={previewFit === "cover" ? "Show full frame" : "Crop to frame"}
+                >
+                  {previewFit === "cover" ? "◼ COVER" : "▢ FIT"}
+                </button>
+
+                {/* Aspect-ratio hint chip — top-left. */}
+                <span
+                  className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[0.58rem] font-bold tracking-wider"
+                  style={{
+                    background: "rgba(0,0,0,0.45)",
+                    backdropFilter: "blur(8px)",
+                    color: "rgba(255,215,107,0.95)",
+                    border: "1px solid rgba(255,215,107,0.35)",
+                  }}
+                >
+                  {targetLabel.split(" ")[0].toUpperCase()}
+                </span>
               </div>
               {/* Format warning surfaces here so the user knows BEFORE
                   posting that the file probably won't play in the feed. */}
@@ -1880,7 +2034,18 @@ export function Composer({
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+            {/* v113 — scrollable body. Bottom padding reserves space for the
+                home-indicator + safe-area so the "Post to your profile"
+                button never sits behind the OS gesture bar. The header
+                already covers the top notch via paddingTop on the parent. */}
+            <div
+              className="flex-1 overflow-y-auto px-4 pt-1 space-y-4"
+              style={{
+                minHeight: 0,
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {/* Audio row */}
               <button
                 type="button"
@@ -2181,6 +2346,12 @@ export function Composer({
       />
     </div>
   );
+
+  // Portal to <body> when available. SSR (or initial render before
+  // hydration) returns the sheet inline so React doesn't blow up — the
+  // portal kicks in on the next client render.
+  if (typeof document === "undefined") return sheet;
+  return createPortal(sheet, document.body);
 }
 
 // ─── Combined controller — hosts FAB + sheets together ───────────────────
