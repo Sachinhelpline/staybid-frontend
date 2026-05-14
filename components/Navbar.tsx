@@ -143,17 +143,22 @@ export function Navbar() {
 
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
+  // Operator panels keep their own headers — always hide.
   if (pathname?.startsWith("/partner")) return null;
-  if (pathname?.startsWith("/admin")) return null;     // admin panel has its own header
-  if (pathname?.startsWith("/onboard")) return null;   // onboarding panel has its own header
-  if (pathname?.startsWith("/discover")) return null;  // full-display reel mode
-  if (pathname?.startsWith("/reels")) return null;     // Instagram-style video feed
-  if (pathname?.startsWith("/me")) return null;        // IG-style "You" profile has its own top bar
-  if (pathname?.startsWith("/saved/posts")) return null; // IG-style "All Posts" scroll view has its own header
-  // `/` now renders DiscoverPage directly (v57). Hide the navbar there too —
-  // the reel feed has its own minimal top chrome (StayBid label + Compare),
-  // and the floating dock at the bottom handles primary nav.
-  if (pathname === "/") return null;
+  if (pathname?.startsWith("/admin")) return null;
+  if (pathname?.startsWith("/onboard")) return null;
+
+  // Reel / IG-style customer routes — on MOBILE we want the in-page chrome
+  // (own top bar / dock) to own the surface. On DESKTOP (>=1024px) we
+  // re-render the Navbar so the user has the standard desktop top nav.
+  // The hide is now CSS-driven via `data-reel-route="true"` + the
+  // @media (max-width: 1023px) rule in app/desktop.css. v122.
+  const isReelRoute =
+    pathname === "/" ||
+    pathname?.startsWith("/discover") ||
+    pathname?.startsWith("/reels") ||
+    pathname?.startsWith("/me") ||
+    pathname?.startsWith("/saved/posts");
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -404,8 +409,11 @@ export function Navbar() {
            does NOT consume vertical space. Pages now flow edge-to-edge. */
       `}</style>
 
-      {/* ── TOP NAV (3D reflective) ────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 nav3d-bar relative">
+      {/* ── TOP NAV (3D reflective) ──────────────────────────────────
+          v122 — `data-reel-route` marker. On mobile, CSS hides the bar
+          on reel-style routes so the in-page top chrome owns the
+          surface; on desktop the marker is ignored and the bar shows. */}
+      <nav className="sticky top-0 z-50 nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3" style={{ height: "64px" }}>
 
           {/* Logo + Location (tight gap) */}

@@ -728,7 +728,7 @@ export default function ReelsPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black">
+      <div className="reel-page-root fixed inset-0 bg-black">
         {TopBar}
         <div className="h-full flex items-center justify-center text-center text-white">
           <div>
@@ -742,7 +742,7 @@ export default function ReelsPage() {
 
   if (!loading && videos.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black">
+      <div className="reel-page-root fixed inset-0 bg-black">
         {TopBar}
         {mode === "following" ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-white px-8">
@@ -763,7 +763,7 @@ export default function ReelsPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden" style={{ height: "100dvh", width: "100vw" }}>
+    <div className="reel-page-root fixed inset-0 bg-black overflow-hidden" style={{ height: "100dvh", width: "100vw" }}>
       {TopBar}
       {/* Scroll container */}
       <div

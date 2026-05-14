@@ -257,10 +257,16 @@ export default function DiscoverPage() {
 
   return (
     <div
-      className="fixed inset-0 bg-black overflow-hidden select-none"
+      className="reel-page-root fixed inset-0 bg-black overflow-hidden select-none"
       // Belt-and-braces: even if the body class lock is somehow stripped
       // by a third-party script, this inline fixed-inset-0 + visualViewport
       // height keeps the reel feed pinned to the full visible viewport.
+      //
+      // v122 — `.reel-page-root` className is the desktop hook. On screens
+      // >=1024px, app/desktop.css turns this fullscreen wrapper into a
+      // centered 9:16 "phone frame" so the Navbar can render above it
+      // and the user gets a real desktop layout — without changing a
+      // single mobile pixel.
       style={{ WebkitUserSelect: "none", height: "var(--reel-vh, 100dvh)", width: "100vw" }}
     >
       {/* v88 — Premium cozy brand wordmark, restored after v87 removal.

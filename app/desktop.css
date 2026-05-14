@@ -1,0 +1,544 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   v122 — Desktop / Laptop / Tablet responsive layer
+   ═══════════════════════════════════════════════════════════════════════════
+   Mobile-first ko bilkul nahi chhedta. Ye file SIRF >= 1024px par activate
+   hoti hai. 0-1023px (phones + small tablets) par har style aisa ka aisa
+   rahega jaisa v121.2 mein tha.
+
+   Strategy:
+   1. Reel feed (/, /discover, /reels) — body-lock toggle off; centered 9:16
+      "phone frame" with rich gradient backdrop; Navbar visible above.
+   2. /me, /me/posts, /saved/posts — IG.com-style centered max-width column.
+   3. Generic catalog pages (/hotels, /flash-deals, /saved, /bookings,
+      /my-bids, /wallet, /points, /verification, /complaints, /upgrade,
+      /influencer/*) — auto-applied max-width container + larger heros
+      via the .lux-bg / .fd-root / .me-root / generic `main` wrappers.
+   4. Mobile-only chrome (BottomDock + BackChip + DialerNav) hidden.
+   5. Hover affordances on cards / chips / tiles where mobile has tap-only.
+
+   Tablet zone (768-1023px) inherits MOBILE chrome on purpose — that range
+   is "big phone / small tablet" where the mobile UX is still the right
+   one. The desktop layer only kicks in once a true two-handed UI device
+   shape (>=1024 wide) is on screen.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   1. SHARED — every desktop surface gets a global theme polish.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Smooth scroll for any anchor-based jump on desktop. */
+  html { scroll-behavior: smooth; }
+
+  /* Larger, more readable body type on big screens. */
+  body { font-size: 16px; }
+
+  /* Improve focus visibility for keyboard users — most desktop users
+     keyboard-navigate to inputs / buttons. */
+  *:focus-visible {
+    outline: 2px solid var(--accent, #C9A66B);
+    outline-offset: 2px;
+  }
+
+  /* The global build-version badge is mobile-tuned (bottom:68px to clear
+     the bottom dock). On desktop the dock is hidden so the badge can sit
+     directly at the bottom-right corner. */
+  body > div[style*="z-index:9999"][style*="position:fixed"] {
+    bottom: 8px !important;
+    right: 10px !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2. HIDE mobile-only chrome on desktop
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* BottomDock (Instagram-style horizontal nav). The desktop Navbar
+     already exposes Hotels / Flash Deals / Discover / Place Bid etc.,
+     and a sidebar drawer covers everything else. */
+  .ig-bottom-dock { display: none !important; }
+
+  /* DialerNav (left-edge crown wheel). The FAB is mobile-only by design
+     (`@media (min-width: 768px) { display: none; }` in DialerNav.tsx),
+     but the wake-zone hit-rect can still be present — kill it cleanly. */
+  .dialer-root,
+  .dialer-wake-zone,
+  .dialer-wheel,
+  .dialer-fab { display: none !important; }
+
+  /* BackChip — the desktop Navbar's home link + browser back button
+     replace the chip. */
+  .sb-back-chip { display: none !important; }
+
+  /* The body has padding-bottom on mobile to clear the dock — clear that
+     too on desktop so content sits flush. */
+  body { padding-bottom: 0 !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3. REEL FEED desktop layout (/, /discover, /reels)
+   ─────────────────────────────────────────────────────────────────────────
+   On mobile: fullscreen phone-shaped reel.
+   On desktop: centered 9:16 "phone frame" with rich gradient backdrop,
+   Navbar visible at top, no body-lock.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Disable the reel-page body lock — desktop should scroll normally
+     and let the Navbar render at the top of the page. */
+  html.is-reel-page,
+  body.is-reel-page {
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: auto !important;
+    width: auto !important;
+    background: var(--bg-page, #FAF5EB) !important;
+    touch-action: auto !important;
+  }
+  html.is-reel-page { --reel-vh: auto !important; }
+  [data-theme="dark"] html.is-reel-page,
+  [data-theme="dark"] body.is-reel-page {
+    background: var(--bg-page, #0F0C08) !important;
+  }
+
+  /* Restore the main padding-top — mobile killed it for reel pages but
+     desktop needs space below the sticky Navbar. */
+  body.is-reel-page main { padding-top: 0 !important; }
+
+  /* Reel-page outer wrapper — turn it from `position:fixed inset-0` into
+     a centered, bounded card. The .reel-page-root class is added in
+     app/discover/page.tsx and app/reels/page.tsx. */
+  .reel-page-root {
+    position: relative !important;
+    inset: auto !important;
+    margin: 88px auto 32px !important;
+    height: calc(100vh - 120px) !important;
+    max-height: 900px !important;
+    min-height: 560px !important;
+    width: min(420px, 100vw) !important;
+    border-radius: 32px !important;
+    overflow: hidden !important;
+    box-shadow:
+      0 32px 96px rgba(15, 12, 8, 0.45),
+      0 8px 28px rgba(15, 12, 8, 0.25),
+      0 0 0 1px var(--border-soft, rgba(184, 134, 11, 0.18)) !important;
+    background: #07060e !important;
+  }
+
+  /* Desktop reel-page page-level backdrop — soft luxe gradient behind
+     the centered phone frame so it feels intentional, not floating in a
+     blank void. */
+  body.is-reel-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, rgba(201, 166, 107, 0.10), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 80% 70%, rgba(110, 84, 48, 0.08), transparent 60%),
+      var(--bg-page, #FAF5EB);
+    pointer-events: none;
+  }
+  [data-theme="dark"] body.is-reel-page::before {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, rgba(217, 190, 130, 0.12), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 80% 70%, rgba(74, 56, 32, 0.30), transparent 60%),
+      #0F0C08;
+  }
+
+  /* The reel CSS card uses `height: 100%` against parent.
+     With the new wrapper height that resolves to 9:16-ish (420 x ~745). */
+
+  /* Side-rail companions — small marketing panels flanking the phone frame.
+     Built via desktop-only pseudo-content using a wrapper trick. */
+  .reel-page-root::before {
+    /* No content; the centered frame is the focal point. */
+    content: none;
+  }
+
+  /* When the reel page is the only thing on screen, the right action rail
+     in the IG feed sits INSIDE the 420px frame. Keep it that way — moving
+     buttons outside the frame would visually disconnect them from the
+     content they control. */
+
+  /* Flash Deals rail header inside the reel root — keep it tucked under
+     the rounded top edge of the phone frame. */
+  .reel-page-root .fdeal-rail-wrap,
+  .reel-page-root .ig-shell { border-radius: inherit; }
+
+  /* `position: fixed` UI inside the reel feed (filter chip, create FAB,
+     unmute hint) anchors to the VIEWPORT by default — which on desktop
+     means it floats at the screen edges, completely disconnected from
+     the centered phone frame. Convert them to `absolute` so they pin
+     to the frame instead. Their `top/right/bottom/left` values resolve
+     against the frame just like they did against the viewport on
+     mobile. .reel-page-root is `position: relative` on desktop, so the
+     anchor is the frame itself. */
+  .reel-page-root .ig-filter-chip,
+  .reel-page-root .ig-create-fab,
+  .reel-page-root .ig-unmute-hint {
+    position: absolute !important;
+  }
+  /* The unmute hint uses `top: 50%; left: 50%` for centering — that's
+     viewport-center on mobile but frame-center now on desktop. Same
+     visual result because the frame is the visible "screen". */
+
+  /* The IG-style toaster (.ig-toast) is fixed bottom-center to viewport;
+     keep it viewport-fixed on desktop so it doesn't get clipped by the
+     phone-frame's overflow:hidden. We rely on its existing z-index +
+     position. */
+
+  /* /reels page progress dots — pinned `fixed right-1.5 top-1/2` on
+     mobile (viewport right edge). Reposition relative to the frame on
+     desktop so they hug the right rim of the reel frame, not the
+     monitor edge. The Tailwind utility `.fixed` already applies — we
+     just need to swap to absolute and reference the new container. */
+  .reel-page-root > div.fixed.right-1\\.5,
+  .reel-page-root .fixed[class*="right-1"] {
+    position: absolute !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   4. NAVBAR — show on reel routes on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   The Navbar component currently returns null on /, /discover, /reels,
+   /me, /saved/posts. We change those early-return paths to render but
+   mark the bar with `data-reel-route="true"` — and hide on mobile via
+   this CSS. On desktop, the marker is ignored and the bar shows.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  /* Hide the Navbar on reel routes on mobile (preserves v121 behavior). */
+  .nav3d-bar[data-reel-route="true"] { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  /* On desktop, the reel-route navbar IS visible. Give it a slight
+     translucency over the reel backdrop. */
+  .nav3d-bar[data-reel-route="true"] {
+    background: var(--bg-elevated, rgba(250, 245, 235, 0.92)) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   5. GENERIC CATALOG PAGE LAYOUT — max-width container + larger heros
+   ─────────────────────────────────────────────────────────────────────────
+   Most listing pages use `<div className="min-h-screen lux-bg">` or
+   `<div className="fd-root">` etc. We bump them to a centered max-width
+   layout on desktop and grow heros + body text.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Global content container — every page wrapping in .lux-bg, .fd-root,
+     .me-root, or top-level <main> gets a centered max-width on desktop. */
+  .lux-bg > div,
+  .lux-bg > div.max-w-7xl,
+  .fd-root > .fd-wrap,
+  .fd-root > div {
+    /* Keep their existing constraints if they have any; just ensure
+       margin auto so they center. */
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* Already-Tailwind-bounded containers (max-w-7xl etc.) keep their
+     widths but get more breathing room. */
+  .lux-bg .max-w-7xl,
+  .fd-root .fd-wrap {
+    max-width: 1280px !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+  }
+
+  /* Bigger heros on desktop — hotels / flash-deals / bid all use a
+     clamp() that tops out at ~2.0rem on mobile. Bump the desktop cap. */
+  .lux-bg h1.font-display,
+  .fd-root h1,
+  .me-root h1 {
+    font-size: clamp(2.2rem, 3vw, 3.4rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  /* CRITICAL: We deliberately do NOT cap the outer `min-h-screen` wrapper
+     on customer pages. Many pages paint a full-bleed gradient on that
+     wrapper (e.g. /wallet, /points, /upgrade); constraining it leaves
+     white bars either side on wide desktops.
+
+     Instead we cap the FIRST nested content div on common patterns.
+     `min-h-screen > .max-w-*` is the most reliable; for pages that lack
+     an explicit max-w-* wrapper we bump them individually below. */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   6. /hotels desktop polish
+   ─────────────────────────────────────────────────────────────────────────
+   The page already uses md:grid-cols-2 lg:grid-cols-3 (Tailwind), so the
+   grid works. We bump to 4 columns at xl+ and improve hero spacing.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Bigger gap + more breathing room on the hotels grid */
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    gap: 1.75rem !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  /* On wider desktops, switch hotels grid to 4 columns. */
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   7. /me — IG-style profile desktop layout
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile: full-width column.
+   Desktop: centered max-width 935px (Instagram's number). Avatar grows.
+   Stats row spreads wider. Grid bumps to 4 columns then 5.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .me-root {
+    max-width: 935px;
+    margin-inline: auto;
+    padding-top: 8px;
+    background: var(--bg-page);
+  }
+  /* Top bar — sticky pin to the page, not the small mobile drawer. */
+  .me-top {
+    padding: 12px 28px !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+  }
+  .me-top-handle { font-size: 1.25rem !important; }
+
+  /* Profile header — avatar to the left, stats + bio aligned right. */
+  .me-header {
+    padding: 36px 28px 16px !important;
+    gap: 80px !important;
+    align-items: flex-start !important;
+  }
+  .me-avatar-wrap,
+  .me-avatar-btn {
+    width: 150px !important;
+    height: 150px !important;
+    flex-shrink: 0 !important;
+  }
+  .me-avatar-cam {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 1rem !important;
+  }
+  .me-avatar-fallback { font-size: 3.6rem !important; }
+  .me-stats {
+    justify-content: flex-start !important;
+    gap: 48px !important;
+    margin-top: 6px;
+  }
+  .me-stat-value { font-size: 1.4rem !important; }
+  .me-stat-label { font-size: 0.92rem !important; }
+
+  .me-bio-wrap { padding: 0 28px 14px !important; }
+  .me-display-name { font-size: 1.05rem !important; }
+  .me-bio { font-size: 0.96rem !important; }
+  .me-meta { font-size: 0.92rem !important; }
+  .me-website { font-size: 0.92rem !important; }
+
+  .me-actions {
+    padding: 0 28px 24px !important;
+    gap: 10px !important;
+    max-width: 720px;
+  }
+  .me-action-btn { font-size: 0.94rem !important; padding: 10px 18px !important; }
+
+  /* Highlights row */
+  .me-highlights { padding: 14px 28px 24px !important; gap: 22px !important; }
+  .me-highlight { width: 88px !important; }
+  .me-highlight-ring { width: 80px !important; height: 80px !important; font-size: 1.8rem !important; }
+  .me-highlight-label { font-size: 0.84rem !important; max-width: 88px !important; }
+
+  /* Tabs row */
+  .me-tabs { border-top-width: 1px !important; }
+  .me-tab { padding: 14px 0 !important; font-size: 1.2rem !important; }
+
+  /* Posts grid — IG.com uses 3 columns, but bumps to wider gaps on web.
+     Keep 3 columns but add slightly larger gap + max grid width. */
+  .me-grid {
+    gap: 4px !important;
+    padding: 4px !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   8. /me/posts + /saved/posts — IG-style centered scroll feed on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   PostsScrollFeed renders one full-width post card per row on mobile.
+   On desktop, center the column at max-width ~600-740px so cards don't
+   stretch to monitor width. Sticky header gets matched container width.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* PostsScrollFeed structure (verified from components/PostsScrollFeed.tsx):
+       .pf-root           — outer wrapper
+       .pf-top            — sticky header w/ back arrow + title + brand
+       .pf-list           — wrapping div around post cards
+       .pf-card           — single post (avatar + media + caption + actions)
+     We center the entire root + cap card width to IG.com's ~600-740px. */
+  .pf-root {
+    max-width: 740px;
+    margin-inline: auto !important;
+    background: var(--bg-page);
+    box-shadow: 0 0 0 1px var(--border-soft);
+  }
+  .pf-top {
+    max-width: 740px;
+    margin-inline: auto !important;
+  }
+  .pf-card {
+    max-width: 740px;
+    margin-inline: auto !important;
+    border-radius: 12px;
+    margin-bottom: 28px !important;
+    box-shadow: 0 2px 12px rgba(15, 12, 8, 0.06);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   9. /bookings, /my-bids, /wallet, /points, /verification, /upgrade,
+      /complaints, /tag, /saved, /influencer/* — widen mobile-narrow
+      content columns on desktop.
+   ─────────────────────────────────────────────────────────────────────────
+   These pages use Tailwind `max-w-2xl` / `max-w-3xl` / `max-w-4xl` for
+   their content column. On a 1440px+ display that leaves huge empty
+   gutters and makes the page look like a stretched phone screen — which
+   is exactly what the user complained about.
+
+   The override widens these caps to ~1100px (`max-w-5xl`-equivalent)
+   on desktop while leaving the outer full-bleed gradient untouched.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Direct children of common page wrappers that use a narrow Tailwind
+     max-width — bump up so KPI cards / lists fill the screen properly. */
+  main .max-w-2xl,
+  main .max-w-xl {
+    max-width: 1100px !important;
+  }
+  main .max-w-3xl {
+    max-width: 1180px !important;
+  }
+  main .max-w-4xl {
+    max-width: 1240px !important;
+  }
+  /* But preserve narrow widths INSIDE modals / sheets / cards — those
+     are intentionally narrow regardless of viewport. Modals usually live
+     inside a fixed-positioned backdrop, so the descendant-of-fixed test
+     keeps them safe. */
+  main [role="dialog"] .max-w-2xl,
+  main [role="dialog"] .max-w-xl,
+  main .fixed .max-w-2xl,
+  main .fixed .max-w-xl {
+    max-width: 32rem !important;     /* original Tailwind max-w-2xl */
+  }
+}
+
+/* Even on smaller desktops (1024-1279), KPI grids can use the extra
+   horizontal room. Bump 3-col grids to 5-col on /my-bids / /bookings
+   etc. since their inline `grid-cols-3` is just for mobile rhythm. */
+@media (min-width: 1280px) {
+  main .grid.grid-cols-3:not(.lg\:grid-cols-3):not([class*="md:grid-cols-"]) {
+    /* DON'T touch grids that already have md:/lg: overrides; only the
+       plain `grid-cols-3` ones get widened. */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   10. /hotels/[id] — hero + booking sidebar
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile: single column. Desktop: hero photo gallery left, sticky booking
+   summary on the right.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Hotel detail page is the most intricate one. The page already has
+     several Tailwind responsive classes (md:flex etc.). For now, just
+     ensure the outer wrapper is centered + max-width. The detail page
+     already does this internally via max-w-7xl. */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   11. /admin and /partner — no changes; they have their own layouts
+   ─────────────────────────────────────────────────────────────────────────
+   Admin sidebar + topbar are already mostly mobile-responsive via the
+   v102 admin.css overhaul. Partner panel is mobile-first but doesn't
+   need an aggressive desktop redesign — its cards already flex naturally.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   12. /auth login page — centered card on desktop
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* The auth page already uses min-h-screen flex center. Constrain the
+     login card width on huge displays. */
+  main > div[class*="auth"],
+  main form { max-width: 480px; margin-inline: auto; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   13. Hover affordances — cards / chips on desktop only
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Add subtle hover lift to anything that looks like a card. */
+  .card-luxury:hover,
+  .lux-glass:hover,
+  .fd-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 60px rgba(15, 12, 8, 0.16), 0 6px 18px rgba(15, 12, 8, 0.10);
+  }
+  /* Hover state for IG-style grid tiles on /me. */
+  .me-grid-tile:hover { transform: scale(1.01); }
+  .me-grid-tile:hover img { filter: brightness(0.9); }
+  /* Buttons get a subtle lift. */
+  .me-action-btn:hover { background: rgba(255, 255, 255, 0.9); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   14. Mobile-only override safety net
+   ─────────────────────────────────────────────────────────────────────────
+   Catch any rogue `vh` / `dvh` reads that should NOT apply on desktop
+   (e.g. the reel page's inline `height: var(--reel-vh, 100dvh)` on its
+   outer div — we ALREADY override that via .reel-page-root, but as a
+   defensive belt the inline-styled fixed-inset reel wrapper falls back
+   if the class isn't found.
+
+   Defensive selector — if a fixed-inset-0 div exists inside <main> on
+   desktop AND it doesn't have the reel-page-root marker, neutralize it.
+   This prevents random third-party "fixed inset-0" overlays from breaking
+   the page. */
+@media (min-width: 1024px) {
+  body.is-reel-page main > div.fixed.inset-0:not(.reel-page-root) {
+    position: relative !important;
+    inset: auto !important;
+    height: auto !important;
+    width: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   15. Tablet sweet-spot (768-1023px)
+   ─────────────────────────────────────────────────────────────────────────
+   Tablets in landscape get the mobile UX, but we can still give them a
+   few visual upgrades — bigger gutter, more readable hero typography.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Increase horizontal padding on listing pages so content doesn't run
+     edge-to-edge on tablets. */
+  .lux-bg .max-w-7xl,
+  .fd-root .fd-wrap {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+  /* Slightly bigger heros than phones, slightly smaller than desktop. */
+  .lux-bg h1.font-display,
+  .fd-root h1 {
+    font-size: clamp(1.8rem, 3.6vw, 2.4rem) !important;
+  }
+}
+
+/* End v122 desktop layer */
