@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+// v122.2 — auto-scroll the next form section into view on every
+// selection so the user never has to manually scroll between fields
+// in this 4-step wizard. See lib/auto-next-scroll.ts for the helper
+// + data-autonext attribute contract.
+import { scrollToAutoNext } from "@/lib/auto-next-scroll";
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -171,7 +176,17 @@ export default function BidPage() {
 
   const goStep = (next: number) => {
     setAnimating(true);
-    setTimeout(() => { setStep(next); setAnimating(false); }, 180);
+    setTimeout(() => {
+      setStep(next);
+      setAnimating(false);
+      // v122.2 — scroll the page back to the top of the StepBar so the
+      // user sees the new step start cleanly, then auto-scrolls to its
+      // first section. Without this, they'd land mid-page on the last
+      // scroll position of the previous step.
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }, 180);
   };
 
   const submit = async () => {
@@ -381,13 +396,13 @@ export default function BidPage() {
           {step === 1 && (
             <div className="space-y-6">
               {/* Destination */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="destination">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
                   Destination <span className="text-gold-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {Object.entries(CITY_DATA).map(([name, info]) => (
-                    <button key={name} onClick={() => upd("city", name)}
+                    <button key={name} onClick={() => { upd("city", name); scrollToAutoNext("dates"); }}
                       className={`relative p-3.5 rounded-2xl border text-left transition-all duration-200 ${
                         form.city === name
                           ? "border-gold-400 bg-gold-50 shadow-gold"
@@ -424,7 +439,7 @@ export default function BidPage() {
               </div>
 
               {/* Dates */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="dates">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
                   Dates <span className="text-gold-500">*</span>
                 </label>
@@ -472,7 +487,7 @@ export default function BidPage() {
               </div>
 
               {/* Guests */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="guests">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Guests & Rooms</label>
                 <div className="space-y-4">
                   {[
@@ -503,11 +518,11 @@ export default function BidPage() {
           {step === 2 && (
             <div className="space-y-6">
               {/* Room type */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="roomType">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Room Type</label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {ROOM_TYPES.map((rt) => (
-                    <button key={rt.id} onClick={() => upd("roomType", rt.id)}
+                    <button key={rt.id} onClick={() => { upd("roomType", rt.id); scrollToAutoNext("bedType"); }}
                       className={`p-4 rounded-2xl border text-left transition-all duration-200 ${
                         form.roomType === rt.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
@@ -522,11 +537,11 @@ export default function BidPage() {
               </div>
 
               {/* Bed type */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="bedType">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Bed Preference</label>
                 <div className="flex flex-wrap gap-2">
                   {BED_TYPES.map((bt) => (
-                    <button key={bt.id} onClick={() => upd("bedType", bt.id)}
+                    <button key={bt.id} onClick={() => { upd("bedType", bt.id); scrollToAutoNext("view"); }}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                         form.bedType === bt.id
                           ? "lux-btn shadow-gold"
@@ -539,11 +554,11 @@ export default function BidPage() {
               </div>
 
               {/* View preference */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="view">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">View Preference</label>
                 <div className="flex flex-wrap gap-2">
                   {VIEW_PREFS.map((v) => (
-                    <button key={v} onClick={() => upd("view", v)}
+                    <button key={v} onClick={() => { upd("view", v); scrollToAutoNext("mealPlan"); }}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                         form.view === v
                           ? "lux-btn shadow-gold"
@@ -556,11 +571,11 @@ export default function BidPage() {
               </div>
 
               {/* Meal plan */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="mealPlan">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Meal Plan</label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {MEAL_PLANS.map((mp) => (
-                    <button key={mp.id} onClick={() => upd("mealPlan", mp.id)}
+                    <button key={mp.id} onClick={() => { upd("mealPlan", mp.id); scrollToAutoNext("occasion"); }}
                       className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
                         form.mealPlan === mp.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
@@ -575,11 +590,11 @@ export default function BidPage() {
               </div>
 
               {/* Special occasion */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="occasion">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Trip Purpose / Occasion</label>
                 <div className="grid grid-cols-3 gap-2">
                   {OCCASIONS.map((oc) => (
-                    <button key={oc.id} onClick={() => upd("occasion", oc.id)}
+                    <button key={oc.id} onClick={() => { upd("occasion", oc.id); scrollToAutoNext("addons"); }}
                       className={`p-3 rounded-2xl border text-center transition-all duration-200 ${
                         form.occasion === oc.id
                           ? "border-gold-400 bg-gold-50 shadow-gold"
@@ -593,7 +608,7 @@ export default function BidPage() {
               </div>
 
               {/* Add-ons */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="addons">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Add-ons & Preferences</label>
                 <div className="space-y-2.5">
                   {[
@@ -633,7 +648,7 @@ export default function BidPage() {
             <div className="space-y-6">
               {/* AI Smart Presets */}
               {city && (
-                <div className="lux-glass lux-border rounded-3xl p-6">
+                <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="presets">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="text-lg">🤖</span>
                     <div>
@@ -643,7 +658,7 @@ export default function BidPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2.5">
                     {presets.map((p) => (
-                      <button key={p.label} onClick={() => upd("maxBudget", String(p.amount))}
+                      <button key={p.label} onClick={() => { upd("maxBudget", String(p.amount)); scrollToAutoNext("budget-input"); }}
                         className={`relative p-3.5 rounded-2xl border text-center transition-all duration-200 ${
                           parseInt(form.maxBudget) === p.amount
                             ? "border-gold-400 bg-gold-50 shadow-gold"
@@ -665,7 +680,7 @@ export default function BidPage() {
               )}
 
               {/* Budget input */}
-              <div className="lux-glass lux-border rounded-3xl p-6">
+              <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="budget-input">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
                   Your Max Budget <span className="text-gold-500">*</span> <span className="text-white/40 font-normal normal-case tracking-normal text-[0.65rem]">per room / night</span>
                 </label>
@@ -914,6 +929,9 @@ export default function BidPage() {
         onApply={({ checkIn: ci, checkOut: co }) => {
           upd("checkIn", ci);
           upd("checkOut", co);
+          // v122.2 — once both dates land, slide the Guests card into
+          // view so the user doesn't have to manually find it.
+          if (ci && co) scrollToAutoNext("guests");
         }}
       />
     </div>

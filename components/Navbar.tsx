@@ -452,20 +452,73 @@ export function Navbar() {
             })}
           </div>
 
-          {/* Desktop user nav — user-specific actions */}
+          {/* Desktop user nav — user-specific actions.
+              v122.2 — user-links ALWAYS collapse into a "Menu ▼" dropdown
+              on desktop. The earlier "inline at >=1440px" experiment
+              still overflowed because the navbar container is capped at
+              max-w-7xl (1280px) regardless of viewport. The dropdown is
+              a clean IG.com / Twitter / LinkedIn pattern — every link is
+              one tap away and the top row never overflows horizontally. */}
           <div className="hidden md:flex items-center gap-1.5">
             {user ? (
               <>
-                {userLinks.map((item: any) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link key={item.href} href={item.href}
-                      className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${active ? "nav3d-chip-active" : ""}`}>
-                      <span className="text-sm">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                {/* Always-collapsed "Menu ▼" — desktop only (md+). The
+                    customer Navbar is hidden on mobile and on reel
+                    routes anyway, so this is the desktop path. */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen((s) => !s)}
+                    className={`nav3d-chip flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium tracking-wide text-white/70 ${moreOpen ? "nav3d-chip-active" : ""}`}
+                    aria-haspopup="menu"
+                    aria-expanded={moreOpen}
+                  >
+                    <span className="text-sm">☰</span>
+                    Menu
+                    <span className="text-[0.5rem] opacity-60">▼</span>
+                  </button>
+                  {moreOpen && (
+                    <>
+                      {/* Click-away backdrop */}
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setMoreOpen(false)}
+                        aria-hidden
+                      />
+                      <div
+                        className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl overflow-hidden"
+                        style={{
+                          background: "var(--bg-elevated, rgba(15,12,8,0.94))",
+                          backdropFilter: "blur(20px) saturate(180%)",
+                          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                          border: "1px solid var(--border-strong, rgba(240,180,41,0.28))",
+                          boxShadow: "0 18px 50px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.30)",
+                        }}
+                        role="menu"
+                      >
+                        {userLinks.map((item: any) => {
+                          const active = isActive(item.href);
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => setMoreOpen(false)}
+                              className="flex items-center gap-3 px-3.5 py-2.5 text-[0.82rem] font-medium transition-colors"
+                              style={{
+                                color: active ? "var(--accent, #f0b429)" : "var(--text-soft, rgba(255,255,255,0.78))",
+                                background: active ? "rgba(240,180,41,0.10)" : "transparent",
+                                borderLeft: active ? "2px solid var(--accent, #f0b429)" : "2px solid transparent",
+                              }}
+                            >
+                              <span className="text-base">{item.icon}</span>
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <Link href="/profile"
                   className={`nav3d-chip group relative flex items-center gap-2 pl-1 pr-3 py-1 rounded-full ml-1 ${isActive("/profile") ? "nav3d-chip-active" : ""}`}>
