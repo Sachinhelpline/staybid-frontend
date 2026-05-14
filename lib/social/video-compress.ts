@@ -29,7 +29,19 @@ import { drawOverlaysOnContext, type Overlay } from "@/lib/social/composite";
 const TARGET_MAX_DIM      = 1080;     // longest side, px
 const TARGET_BITRATE      = 2_500_000; // 2.5 Mbps — matches IG reels
 const TARGET_AUDIO_BITS   = 128_000;   // 128 kbps AAC/Opus
-const HARD_FILE_CAP_BYTES = 50 * 1024 * 1024;   // 50 MB
+// v120 — raised hard cap 50 MB → 250 MB. Modern phones shoot 4K60 clips that
+// blow past 50 MB in under 30s; the v119 cap rejected normal phone footage.
+// 250 MB is a sane upper bound (~4 minutes of 4K) that still keeps us safe
+// from runaway OOMs on the canvas pipeline. Beyond 250 MB we surface the
+// "please trim" message because the source file alone won't fit in memory.
+const HARD_FILE_CAP_BYTES = 250 * 1024 * 1024;  // 250 MB
+
+// v120 — IG-style hard duration cap inside compression. When a source clip is
+// longer than this, we stop the recorder early so the upload reflects the
+// product limit (reels ≤ 60s, stories ≤ 90s). Cleaner UX than failing on
+// the way up, and the user keeps the first 60/90s automatically. Caller
+// passes the right cap via the `maxDurationS` option below.
+const DEFAULT_MAX_DURATION_S = 60;
 
 export type CompressionResult = {
   /** Compressed Blob (or the original Blob if compression was skipped). */
@@ -43,6 +55,14 @@ export type CompressionResult = {
   /** Original / final byte counts for telemetry / UI. */
   originalBytes: number;
   finalBytes:    number;
+  /** v120 — set when we auto-trimmed the source past `maxDurationS`. */
+  trimmedFromSec?: number;
+};
+
+export type CompressOptions = {
+  /** Hard cap on the OUTPUT duration. Source longer than this is recorded
+   *  only up to this mark (auto-trim). Defaults to 60s. */
+  maxDurationS?: number;
 };
 
 /** Pick the best output mime the running browser actually supports. */
@@ -81,16 +101,18 @@ export async function compressVideo(
   file: File | Blob,
   onProgress?: (pct: number) => void,
   overlays?: Overlay[],
+  opts?: CompressOptions,
 ): Promise<CompressionResult> {
   const originalBytes = file.size;
   const hasOverlays = Array.isArray(overlays) && overlays.length > 0;
+  const maxDurationS = Math.max(5, Math.min(180, opts?.maxDurationS ?? DEFAULT_MAX_DURATION_S));
 
-  // Hard cap: refuse anything > 50 MB. The compression pipeline itself is
-  // memory-hungry on mid-tier Android — 50 MB of source video can already
-  // OOM the tab. Surface a clear error instead of crashing.
+  // Hard cap: refuse anything > 250 MB. Even with our auto-trim the source
+  // still has to fit in memory while we read frames off it — past 250 MB
+  // we'd OOM the tab on mid-tier Android.
   if (originalBytes > HARD_FILE_CAP_BYTES) {
     throw new Error(
-      `Video is ${(originalBytes / 1024 / 1024).toFixed(1)} MB — please trim it under 50 MB. Tip: shoot a shorter clip or use your phone's built-in trimmer.`
+      `Video is ${(originalBytes / 1024 / 1024).toFixed(1)} MB. Maximum 250 MB — please trim using your phone's gallery first.`
     );
   }
 
@@ -135,7 +157,10 @@ export async function compressVideo(
     // v119 — UNLESS overlays were supplied. Skipping would drop the
     // overlays on the floor; force re-encode in that case.
     const longestSrc = Math.max(srcW, srcH);
-    if (!hasOverlays && longestSrc <= TARGET_MAX_DIM && originalBytes < 12 * 1024 * 1024) {
+    // v120 — also require duration ≤ cap to skip compression. A tiny clip
+    // that's already small + low-res but 4 minutes long would slip past
+    // the IG-style auto-trim if we returned the source as-is here.
+    if (!hasOverlays && longestSrc <= TARGET_MAX_DIM && originalBytes < 12 * 1024 * 1024 && dur <= maxDurationS + 0.05) {
       return {
         blob: file, mime: (file as File).type || "video/mp4", compressed: false,
         skippedReason: "Already small + low-res — uploading original.",
@@ -180,7 +205,14 @@ export async function compressVideo(
     // requestVideoFrameCallback when available (Chrome / Edge) — it fires
     // per actual decoded frame so the timing matches the source exactly.
     // Older browsers (Firefox / Safari) fall back to requestAnimationFrame.
+    //
+    // v120 — `effectiveDur` is `min(srcDur, maxDurationS)`. The progress bar
+    // and the watchdog both honour the effective duration so a 5-minute
+    // source on a 60s cap still surfaces a real "60%" mark, not "12%".
+    const willTrim = dur > maxDurationS + 0.05;
+    const effectiveDur = willTrim ? maxDurationS : dur;
     await v.play();
+    let stopped = false;
     const drawFrame = () => {
       try {
         ctx.drawImage(v, 0, 0, tgtW, tgtH);
@@ -190,10 +222,14 @@ export async function compressVideo(
         // to the (tgtW, tgtH) output identically across resolutions.
         if (hasOverlays) drawOverlaysOnContext(ctx, overlays as Overlay[], tgtW, tgtH);
       } catch {}
-      if (onProgress && dur) onProgress(Math.min(100, (v.currentTime / dur) * 100));
+      if (onProgress && effectiveDur) onProgress(Math.min(100, (v.currentTime / effectiveDur) * 100));
+      // v120 — auto-trim. Once the playhead crosses the cap, stop drawing
+      // and pause the source so MediaRecorder seals off cleanly.
+      if (willTrim && v.currentTime >= maxDurationS && !stopped) {
+        try { v.pause(); } catch {}
+      }
     };
     const rvfc = (v as any).requestVideoFrameCallback;
-    let stopped = false;
     if (typeof rvfc === "function") {
       const tick = () => { if (stopped) return; drawFrame(); (v as any).requestVideoFrameCallback(tick); };
       (v as any).requestVideoFrameCallback(tick);
@@ -204,9 +240,15 @@ export async function compressVideo(
 
     await new Promise<void>((res) => {
       v.onended = () => res();
-      // Watchdog: never exceed 1.5x source duration. If something hangs,
-      // we still get whatever was already recorded out.
-      setTimeout(() => { try { v.pause(); } catch {} ; res(); }, Math.max(15000, dur * 1500));
+      v.onpause = () => {
+        // v120 — a pause from the auto-trim branch should resolve the
+        // outer promise too (otherwise we'd sit waiting for an `ended`
+        // that never fires past the cap).
+        if (willTrim && v.currentTime >= maxDurationS - 0.05) res();
+      };
+      // Watchdog: never exceed 1.5x the EFFECTIVE duration. If something
+      // hangs, we still get whatever was already recorded out.
+      setTimeout(() => { try { v.pause(); } catch {} ; res(); }, Math.max(15000, effectiveDur * 1500));
     });
     stopped = true;
     rec.stop();
@@ -218,7 +260,9 @@ export async function compressVideo(
     // source, ship the source — re-encoding a low-bitrate clip can balloon it.
     // v119 — EXCEPT when overlays were baked in: the source doesn't carry
     // them, so we have to keep the re-encode regardless of size.
-    if (!hasOverlays && blob.size >= originalBytes) {
+    // v120 — ALSO except when we auto-trimmed: the source carries the
+    // extra material past the cap, so we must keep the re-encode.
+    if (!hasOverlays && !willTrim && blob.size >= originalBytes) {
       return {
         blob: file, mime: (file as File).type || "video/mp4", compressed: false,
         skippedReason: "Compression result was larger than source — kept original.",
@@ -232,6 +276,7 @@ export async function compressVideo(
       compressed: true,
       originalBytes,
       finalBytes: blob.size,
+      ...(willTrim ? { trimmedFromSec: dur } : {}),
     };
   } finally {
     try { URL.revokeObjectURL(srcUrl); } catch {}

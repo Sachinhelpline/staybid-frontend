@@ -51,7 +51,50 @@ export type Overlay = {
   color?: string;
   /** Background fill behind text — null = transparent. */
   bgFill?: string | null;
+  /**
+   * v120 — IG-style text style preset. Maps to a font family / weight /
+   * tracking + an optional glow flag. Stored as an id (e.g. "classic",
+   * "neon", "typewriter") so the preview and the composite both pull
+   * from the same TEXT_STYLES table.
+   */
+  styleId?: string;
 };
+
+// ─── v120 IG-style text presets ────────────────────────────────────────
+// These run in TWO places — the preview DOM (Composer renders inline CSS)
+// and the canvas composite (drawOverlaysOnContext sets ctx.font). Keep the
+// shape in sync.
+export type TextStyle = {
+  id: string;
+  label: string;
+  fontFamily: string;
+  fontWeight: number;
+  letterSpacing: number; // px on a 1000-px reference frame
+  /** If true, draws a soft luminous glow around the text on composite + preview. */
+  glow?: boolean;
+  /** Uppercase the text for this style only — display effect; the stored body stays unchanged. */
+  uppercase?: boolean;
+};
+
+export const TEXT_STYLES: TextStyle[] = [
+  { id: "classic",    label: "Classic",    fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif', fontWeight: 700, letterSpacing: 0 },
+  { id: "modern",     label: "Modern",     fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif', fontWeight: 600, letterSpacing: 0.6, uppercase: true },
+  { id: "neon",       label: "Neon",       fontFamily: '"Segoe UI", system-ui, sans-serif',          fontWeight: 800, letterSpacing: 0.4, glow: true },
+  { id: "typewriter", label: "Typewriter", fontFamily: '"Courier New", "Menlo", monospace',          fontWeight: 700, letterSpacing: 0 },
+  { id: "serif",      label: "Serif",      fontFamily: '"Cormorant Garamond", Georgia, serif',       fontWeight: 700, letterSpacing: 0 },
+  { id: "bold",       label: "Bold",       fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif', fontWeight: 900, letterSpacing: -0.2 },
+];
+
+export function getTextStyle(id?: string | null): TextStyle {
+  if (!id) return TEXT_STYLES[0];
+  return TEXT_STYLES.find((s) => s.id === id) || TEXT_STYLES[0];
+}
+
+// v120 — IG-style text colour palette. Kept short + high-contrast.
+export const TEXT_COLORS: string[] = [
+  "#FFFFFF", "#000000", "#FFD76B", "#FF458D", "#FF6B6B",
+  "#5B8DFF", "#2ECC71", "#B964FF", "#FF8A65", "#1ABC9C",
+];
 
 // ─── Base sizes — tuned to feel like IG (W ≈ 1000-px reference frame) ──
 const TEXT_BASE_PX  = 56;   // px @ scale 1.0 on a 1000-px-wide canvas
@@ -83,31 +126,53 @@ export function drawOverlaysOnContext(
     ctx.translate(cx, cy);
     if (o.rotation) ctx.rotate((o.rotation * Math.PI) / 180);
     if (o.kind === "text") {
+      // v120 — honour styleId (font family / weight / tracking / glow / uppercase).
+      const style = getTextStyle(o.styleId);
       const fontPx = Math.max(14, TEXT_BASE_PX * o.scale * sizeRef);
-      // Match the Composer's text style — bold sans, slight glow.
-      ctx.font = `700 ${Math.round(fontPx)}px Inter, "Helvetica Neue", Arial, sans-serif`;
+      // Canvas 2D doesn't expose letter-spacing as a font property; we
+      // emulate it by drawing letters in a single pass with offset.
+      ctx.font = `${style.fontWeight} ${Math.round(fontPx)}px ${style.fontFamily}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const text = (o.text || "").slice(0, 200);
-      const metrics = ctx.measureText(text);
-      const textW = metrics.width;
+      const rawText = (o.text || "").slice(0, 200);
+      const text = style.uppercase ? rawText.toUpperCase() : rawText;
+      // Per-letter spacing: build the run width by summing each glyph's
+      // measured width plus the configured tracking.
+      const trackingPx = style.letterSpacing * o.scale * sizeRef;
+      let runW = 0;
+      const glyphs: { ch: string; w: number }[] = [];
+      for (const ch of text) {
+        const m = ctx.measureText(ch);
+        glyphs.push({ ch, w: m.width });
+        runW += m.width + trackingPx;
+      }
+      runW = Math.max(0, runW - trackingPx);
       const textH = fontPx * 1.16;
       if (o.bgFill) {
         const padX = TEXT_PADDING_X * o.scale * sizeRef;
         const padY = TEXT_PADDING_Y * o.scale * sizeRef;
         const radius = TEXT_RADIUS * o.scale * sizeRef;
         ctx.fillStyle = o.bgFill;
-        roundedRect(ctx, -textW / 2 - padX, -textH / 2 - padY, textW + padX * 2, textH + padY * 2, radius);
+        roundedRect(ctx, -runW / 2 - padX, -textH / 2 - padY, runW + padX * 2, textH + padY * 2, radius);
         ctx.fill();
+      } else if (style.glow) {
+        // Neon-style luminous glow — colour-tinted, larger blur.
+        ctx.shadowColor = o.color || "#FFD76B";
+        ctx.shadowBlur  = SHADOW_BLUR * 3.4 * o.scale * sizeRef;
       } else {
         // Drop shadow ONLY for transparent-bg text (matches IG's white-on-image look).
         ctx.shadowColor = "rgba(0,0,0,0.55)";
         ctx.shadowBlur  = SHADOW_BLUR * o.scale * sizeRef;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
       }
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
       ctx.fillStyle = o.color || "#FFFFFF";
-      ctx.fillText(text, 0, 0);
+      // Draw each glyph at its run-relative x. Single pass; no setTransform.
+      let cursor = -runW / 2;
+      for (const g of glyphs) {
+        ctx.fillText(g.ch, cursor + g.w / 2, 0);
+        cursor += g.w + trackingPx;
+      }
       ctx.shadowBlur = 0;
     } else if (o.kind === "emoji") {
       const fontPx = Math.max(16, EMOJI_BASE_PX * o.scale * sizeRef);

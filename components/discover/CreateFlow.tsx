@@ -24,7 +24,13 @@ import { api } from "@/lib/api";
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { compressVideo } from "@/lib/social/video-compress";
-import { compositeImageWithOverlays, type Overlay } from "@/lib/social/composite";
+import {
+  compositeImageWithOverlays,
+  type Overlay,
+  TEXT_STYLES,
+  TEXT_COLORS,
+  getTextStyle,
+} from "@/lib/social/composite";
 import { notify } from "@/lib/notifications";
 
 // v119 — Mention suggestion shape (mirrors what /api/social/users/search
@@ -1633,12 +1639,17 @@ export function CoverFramePicker({
   onClose: () => void;
   onPick: (dataUrl: string, atSecond: number) => void;
 }) {
+  // v120 — IG-style continuous timeline. 16 thumbs sit in a single row;
+  // a gold marker glides over them as the user drags. Tap a thumb to
+  // snap. Tap "Set cover" to commit.
+  const TIMELINE_THUMBS = 16;
   const [duration, setDuration] = useState(0);
   const [scrub, setScrub] = useState(0);
   const [thumbs, setThumbs] = useState<{ t: number; src: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const urlRef   = useRef<string>("");
+  const timelineRef = useRef<HTMLDivElement | null>(null);
 
   // Build a single object URL for the source video for live scrubbing.
   useEffect(() => {
@@ -1648,12 +1659,13 @@ export function CoverFramePicker({
     return () => { try { URL.revokeObjectURL(u); } catch {} };
   }, [open, file]);
 
-  // Pre-extract 6 sample thumbnails so the user has a quick overview.
+  // Pre-extract a strip of evenly-spaced thumbnails so the user has a
+  // continuous timeline view (matches IG / TikTok cover selection).
   useEffect(() => {
     if (!open || !file) return;
     let cancelled = false;
     (async () => {
-      // Wait for metadata via a quick probe video first to learn the duration.
+      // Probe duration first.
       const probe = document.createElement("video");
       probe.preload = "metadata";
       probe.src = urlRef.current;
@@ -1668,8 +1680,13 @@ export function CoverFramePicker({
       if (cancelled) return;
       setDuration(dur);
       setScrub(Math.min(0.6, dur / 4));
-      // Extract 6 evenly-spaced frames (skip 0 to dodge black opening frames).
-      const slots = Array.from({ length: 6 }, (_, i) => (dur * (i + 1)) / 7);
+      // v120 — 16-thumb timeline. Skip a hair off both ends to dodge
+      // black opening / closing frames common in phone footage.
+      const inner = dur * 0.92;
+      const offset = (dur - inner) / 2;
+      const slots = Array.from({ length: TIMELINE_THUMBS }, (_, i) =>
+        offset + (inner * (i + 0.5)) / TIMELINE_THUMBS
+      );
       const out: { t: number; src: string }[] = [];
       for (const t of slots) {
         if (cancelled) return;
@@ -1691,37 +1708,58 @@ export function CoverFramePicker({
     } finally { setBusy(false); }
   }
 
+  // v120 — pointer-driven timeline scrub. Reads clientX vs the strip's
+  // bounding rect to compute the new time. Works on touch + mouse.
+  const onTimelinePointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!duration) return;
+    const el = timelineRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+    const t = ratio * duration;
+    setScrub(t);
+    const v = videoRef.current;
+    if (v) { try { v.currentTime = t; } catch {} }
+  };
+
   if (!open) return null;
+  const markerPct = duration > 0 ? Math.max(0, Math.min(100, (scrub / duration) * 100)) : 0;
   return (
     <div className="fixed inset-0 z-[97] flex items-end" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(10px)" }} />
       <div
         className="relative w-full"
         onClick={(e) => e.stopPropagation()}
         style={{
-          height: "92dvh",
-          maxHeight: "92dvh",
+          height: "100dvh",
+          maxHeight: "100dvh",
           background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
-          borderTopLeftRadius: 22, borderTopRightRadius: 22,
           borderTop: "1px solid rgba(255,255,255,0.14)",
           display: "flex", flexDirection: "column",
+          paddingTop: "env(safe-area-inset-top, 0px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
-        <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8 shrink-0">
-          <button onClick={onClose} className="text-white/85 text-[0.84rem]">Cancel</button>
-          <p className="text-white font-semibold text-[0.92rem]">🖼 Choose cover frame</p>
-          <button onClick={pickAtScrub} disabled={busy} className="text-gold-300 font-bold text-[0.84rem] disabled:opacity-30">
-            {busy ? "Saving…" : "Use frame"}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0">
+          <button onClick={onClose} className="text-white/85 text-[0.84rem] py-1 px-2 -mx-2">Cancel</button>
+          <p className="text-white font-semibold text-[0.92rem]">🖼 Cover frame</p>
+          <button
+            onClick={pickAtScrub}
+            disabled={busy}
+            className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
+            style={{ color: busy ? "rgba(255,215,107,0.35)" : "#ffd76b" }}
+          >
+            {busy ? "Saving…" : "Set cover"}
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {/* Live preview at current scrub position */}
+        {/* Big live preview. Fills the available vertical space minus the
+            bottom timeline. 9:16 letterboxed inside a centered frame so
+            the cover frame is shown at the same aspect viewers see. */}
+        <div className="flex-1 relative flex items-center justify-center px-4 py-4" style={{ minHeight: 0 }}>
           <div
-            className="relative w-full rounded-2xl overflow-hidden bg-black mx-auto mb-3"
-            style={{ aspectRatio: "9/16", maxHeight: "52dvh" }}
+            className="relative bg-black rounded-2xl overflow-hidden"
+            style={{ aspectRatio: "9/16", height: "100%", maxHeight: "100%", maxWidth: "100%" }}
           >
             <video
               ref={videoRef}
@@ -1733,53 +1771,107 @@ export function CoverFramePicker({
                 try { v.currentTime = scrub; } catch {}
               }}
             />
+            {/* Top-left chip: live time + total duration */}
             <span
-              className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[0.62rem] font-bold"
-              style={{ background: "rgba(0,0,0,0.55)", color: "#ffd76b", border: "1px solid rgba(255,215,107,0.35)", backdropFilter: "blur(6px)" }}
+              className="absolute top-2 left-2 px-2.5 py-1 rounded-full text-[0.66rem] font-bold tracking-wide"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                color: "#ffd76b",
+                border: "1px solid rgba(255,215,107,0.35)",
+                backdropFilter: "blur(8px)",
+              }}
             >
               {scrub.toFixed(1)}s / {duration ? duration.toFixed(1) : "…"}s
             </span>
-          </div>
-
-          {/* Time scrubber */}
-          {duration > 0 && (
-            <input
-              type="range"
-              min={0}
-              max={Math.max(0.01, duration - 0.05)}
-              step={0.05}
-              value={scrub}
-              onChange={(e) => {
-                const t = Number(e.target.value);
-                setScrub(t);
-                const v = videoRef.current;
-                if (v) { try { v.currentTime = t; } catch {} }
+            {/* Top-right chip: drag-to-scrub hint, fades after 1.6s */}
+            <span
+              className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[0.58rem] font-medium tracking-wide pointer-events-none"
+              style={{
+                background: "rgba(0,0,0,0.45)",
+                backdropFilter: "blur(6px)",
+                color: "rgba(255,255,255,0.78)",
+                border: "1px solid rgba(255,255,255,0.18)",
               }}
-              className="w-full"
-              style={{ accentColor: "#ffd76b" }}
-            />
-          )}
+            >
+              drag strip below ›
+            </span>
+          </div>
+        </div>
 
-          {/* Sample thumbnails */}
-          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mt-4 mb-2">Quick picks</p>
-          {thumbs.length === 0 ? (
-            <p className="text-white/45 text-[0.74rem]">Extracting frames…</p>
-          ) : (
-            <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 hide-scroll">
-              {thumbs.map((th, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { setScrub(th.t); onPick(th.src, th.t); onClose(); }}
-                  className="shrink-0 w-16 h-24 rounded-lg overflow-hidden block"
-                  style={{ border: "2px solid rgba(255,255,255,0.18)" }}
-                  aria-label={`Use frame at ${th.t.toFixed(1)} seconds`}
-                >
-                  <img src={th.src} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+        {/* v120 — Continuous timeline strip. Thumbnails fill the row; a
+            gold marker reflects the current scrub position. Drag or
+            tap anywhere on the strip to pick. */}
+        <div className="shrink-0 px-3 pb-3">
+          <div
+            ref={timelineRef}
+            className="relative rounded-xl overflow-hidden"
+            style={{
+              height: 56,
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              touchAction: "none",
+              cursor: "grab",
+            }}
+            onPointerDown={(e) => {
+              (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+              onTimelinePointer(e);
+            }}
+            onPointerMove={(e) => {
+              if (e.buttons === 0 && e.pointerType !== "touch") return;
+              onTimelinePointer(e);
+            }}
+          >
+            {thumbs.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-white/50 text-[0.72rem]">
+                Extracting frames…
+              </div>
+            ) : (
+              <div className="flex h-full">
+                {thumbs.map((th, i) => (
+                  <img
+                    key={i}
+                    src={th.src}
+                    alt=""
+                    className="h-full object-cover"
+                    style={{ flex: "1 1 0", minWidth: 0, pointerEvents: "none" }}
+                    draggable={false}
+                  />
+                ))}
+              </div>
+            )}
+            {/* Marker — gold vertical bar with a top handle dot. */}
+            {duration > 0 && (
+              <>
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none"
+                  style={{
+                    left: `${markerPct}%`,
+                    transform: "translateX(-50%)",
+                    width: 3,
+                    background: "linear-gradient(180deg,#ffe28a,#f0b429)",
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.55), 0 0 12px rgba(240,180,41,0.65)",
+                  }}
+                />
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: `${markerPct}%`,
+                    top: -4,
+                    transform: "translateX(-50%)",
+                    width: 14,
+                    height: 14,
+                    borderRadius: 999,
+                    background: "#ffd76b",
+                    border: "2px solid #0a0612",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.55), 0 0 10px rgba(240,180,41,0.6)",
+                  }}
+                />
+              </>
+            )}
+          </div>
+          <p className="text-center text-white/55 text-[0.62rem] mt-2">
+            This frame shows in your feed + profile grid until viewers tap play.
+          </p>
         </div>
       </div>
 
@@ -1807,6 +1899,10 @@ export function Composer({
   sanitize?: (s: string) => { clean: string; blocked: boolean };
 }) {
   const [step, setStep] = useState<"pick" | "edit">("pick");
+  // v120 — within "edit" we now have two screens: fullscreen media compose
+  // (filters / overlays / cover-frame / audio) → details (caption / tags /
+  // location / hotel / highlight). Matches IG/TikTok's two-step Post flow.
+  const [subStep, setSubStep] = useState<"compose" | "details">("compose");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState<string>("");
   const [posterUrl, setPosterUrl] = useState<string>("");
@@ -1920,9 +2016,18 @@ export function Composer({
   const { addPost, updatePost } = usePosts();
 
   // Reset when reopened
+  // v120 — IG-style filter bottom-sheet. The composer no longer ships a
+  // permanent filter STRIP under the preview; swipe + the floating name
+  // label already convey "filter changes on swipe". The sheet opens
+  // on-demand from the right-rail ✨ button when the user wants to pick
+  // a specific filter rather than swiping through.
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
   useEffect(() => {
     if (open) {
       setStep("pick");
+      setSubStep("compose");
+      setFilterSheetOpen(false);
       setMediaFile(null);
       setMediaUrl("");
       setCaption("");
@@ -2117,10 +2222,15 @@ export function Composer({
           // v119 — pass overlays to compressVideo so they're burned into
           // every frame. compressVideo forces re-encode when overlays are
           // present (small-source-skip is disabled in that branch).
+          // v120 — IG-style hard duration cap: 60s for reels, 90s for
+          // stories. The compressor auto-trims past this so a long phone
+          // clip lands as the first 60/90s instead of failing the upload.
+          const maxDurationS = post.kind === "story" ? 90 : 60;
           const result = await compressVideo(
             srcBlob,
             (pct) => setCompressionProgress(Math.round(pct)),
             overlaysSnapshot.length > 0 ? overlaysSnapshot : undefined,
+            { maxDurationS },
           );
           if (result.compressed && result.blob !== srcBlob) {
             const newUrl = URL.createObjectURL(result.blob);
@@ -2331,6 +2441,16 @@ export function Composer({
     return blocked;
   })();
 
+  // v120 — Precompute the currently-selected text overlay so the compose
+  // stage's context toolbar can render via a plain `{cond && <jsx/>}` form.
+  // We deliberately avoid an IIFE inside JSX (styled-jsx's SWC visitor
+  // panics at visitor.rs:597 on certain IIFE-returning-JSX patterns).
+  const selectedTextOverlay: Overlay | null = (() => {
+    if (!selectedOverlayId) return null;
+    const found = overlays.find((o) => o.id === selectedOverlayId) || null;
+    return found && found.kind === "text" ? found : null;
+  })();
+
   // v118 — IG-style swipe handlers. Reads pointerdown/move/up off the
   // preview wrapper. Why pointer events (not touch+mouse separately): one
   // event family works for finger / pen / mouse / trackpad and avoids the
@@ -2407,6 +2527,8 @@ export function Composer({
       rotation: partial.rotation ?? 0,
       color: partial.color ?? "#FFFFFF",
       bgFill: partial.bgFill ?? null,
+      // v120 — text overlays default to the "classic" preset.
+      styleId: partial.styleId ?? (partial.kind === "text" ? "classic" : undefined),
     };
     setOverlays((prev) => [...prev, next]);
     setSelectedOverlayId(id);
@@ -2686,31 +2808,79 @@ export function Composer({
             0%, 100% { transform: translate(-50%, 0); opacity: 0.72; }
             50%      { transform: translate(-50%, -3px); opacity: 0.95; }
           }
+          /* v120 — right-rail floating toolbar buttons (Aa, 😀, ✨, 🖼, Fit). */
+          .sb-rail-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            min-height: 48px;
+            padding: 6px 4px;
+            border-radius: 14px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.20);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+            transition: transform 0.12s ease;
+          }
+          .sb-rail-btn:active { transform: scale(0.93); }
+          .sb-rail-lbl {
+            font-size: 0.5rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: rgba(255,255,255,0.78);
+            margin-top: 2px;
+            text-transform: uppercase;
+          }
         `}</style>
         <audio ref={audioPreviewRef} src={audio?.url || ""} loop />
 
-        {/* Sticky header — Cancel · Title · Post · always visible regardless
-            of scroll position or URL-bar state. */}
+        {/* Sticky header — Cancel · Title · Next/Post. v120 splits the
+            edit flow into two screens (compose → details). Header chrome
+            adapts: Back returns one step at a time; the right-side action
+            is "Next" on compose, "Post" on details. */}
         <div
           className="flex items-center justify-between px-5 py-3 border-b border-white/10 shrink-0"
           style={{ background: "linear-gradient(180deg, rgba(21,16,30,0.96), rgba(21,16,30,0.86))", backdropFilter: "blur(10px)" }}
         >
-          <button onClick={step === "edit" ? () => setStep("pick") : onClose} className="text-white/85 text-[0.84rem] py-1 px-2 -mx-2">
+          <button
+            onClick={() => {
+              if (step === "edit" && subStep === "details") { setSubStep("compose"); return; }
+              if (step === "edit") { setStep("pick"); return; }
+              onClose();
+            }}
+            className="text-white/85 text-[0.84rem] py-1 px-2 -mx-2"
+          >
             {step === "edit" ? "‹ Back" : "Cancel"}
           </button>
           <p className="text-white font-semibold text-[0.92rem]">
-            {step === "pick" ? `New ${kind === "reel" ? "Reel" : kind === "photo" ? "Photo" : "Story"}` : "Edit"}
+            {step === "pick"
+              ? `New ${kind === "reel" ? "Reel" : kind === "photo" ? "Photo" : "Story"}`
+              : subStep === "compose" ? "Edit" : "Details"}
           </p>
-          <button
-            onClick={post}
-            disabled={!mediaFile || posting}
-            className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
-            style={{
-              color: !mediaFile || posting ? "rgba(255,215,107,0.35)" : "#ffd76b",
-            }}
-          >
-            {posting ? "Posting…" : "Post"}
-          </button>
+          {step === "edit" && subStep === "compose" ? (
+            <button
+              onClick={() => setSubStep("details")}
+              disabled={!mediaFile}
+              className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
+              style={{ color: !mediaFile ? "rgba(255,215,107,0.35)" : "#ffd76b" }}
+            >
+              Next ›
+            </button>
+          ) : (
+            <button
+              onClick={post}
+              disabled={!mediaFile || posting || step !== "edit"}
+              className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
+              style={{
+                color: !mediaFile || posting || step !== "edit" ? "rgba(255,215,107,0.35)" : "#ffd76b",
+              }}
+            >
+              {posting ? "Posting…" : "Post"}
+            </button>
+          )}
         </div>
 
         {/* Step 1 — pick a file OR open the camera. v113 splits the entry
@@ -2800,35 +2970,52 @@ export function Composer({
           </div>
         )}
 
-        {/* Step 2: edit / caption / audio / tags */}
-        {step === "edit" && mediaFile && (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Preview — v113. Enforces the IG-style frame (9:16 reel/story,
-                4:5 photo) so the user sees EXACTLY what viewers will see.
-                A "Cover · Fit" pill toggles between the cropped feed view
-                and a letter-boxed full-frame view so it's obvious what
-                gets cut. */}
-            <div className="px-4 pt-3 pb-2 shrink-0">
+        {/* v120 — Step 2 rewritten: two screens controlled by subStep.
+            • compose → FULLSCREEN 9:16 stage with right-rail tools, swipe
+              filters, free-position overlays, and a context toolbar that
+              appears when a text overlay is selected.
+            • details → standard scroll body with caption/audio/tags/etc
+              plus a small thumbnail recap of the chosen media.
+           Header chrome routes Back ⇄ Next ⇄ Post between screens. */}
+        {step === "edit" && mediaFile && subStep === "compose" && (
+          <div className="flex-1 flex flex-col overflow-hidden relative" style={{ background: "#000" }}>
+
+            {/* FULLSCREEN STAGE. Outer div fills all available vertical
+                space between header + (eventual) bottom toolbar; the inner
+                aspect-locked frame letterboxes inside it.
+                NOTE: previewFrameRef stays on the aspect-locked inner frame
+                so overlay coords + swipe math stay normalised to the visible
+                media rectangle (not the surrounding letterbox). */}
+            <div
+              className="flex-1 relative flex items-center justify-center"
+              style={{ overflow: "hidden", minHeight: 0 }}
+            >
               <div
                 ref={previewFrameRef}
-                className="relative w-full rounded-2xl overflow-hidden bg-black mx-auto"
+                className="relative bg-black"
                 style={{
-                  // Cap the preview at ~36dvh so the rest of the form fits
-                  // even on a short Android viewport. Tall photos still
-                  // letterbox cleanly inside this frame.
-                  maxHeight: "36dvh",
+                  // Fill available height; width derived from aspectRatio.
+                  // On a 9:16 phone this leaves no horizontal letterbox.
+                  // On a wider device we get side-bars rather than crop.
+                  height: "100%",
+                  maxHeight: "100%",
+                  maxWidth: "100%",
                   aspectRatio: targetAspect,
-                  // v118 — `touchAction: pan-y` lets the OS keep handling
-                  // vertical scrolling while we own horizontal swipes for
-                  // the filter cycle. Without this, Android Chrome would
-                  // treat every horizontal drag as ambiguous and emit a
-                  // gritty mix of scroll + pointer events.
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  // v118 — pan-y so the OS keeps vertical scroll; horizontal
+                  // swipe is ours.
                   touchAction: "pan-y",
                 }}
                 onPointerDown={onPreviewPointerDown}
                 onPointerMove={onPreviewPointerMove}
                 onPointerUp={onPreviewPointerUp}
                 onPointerCancel={() => { swipeStartRef.current = null; }}
+                onClick={(e) => {
+                  // Tap on empty stage → deselect overlay (matches IG).
+                  // Skip if the tap landed on an overlay (it stops propagation).
+                  if (selectedOverlayId) setSelectedOverlayId("");
+                }}
               >
                 {isVideo ? (
                   <video
@@ -2846,9 +3033,7 @@ export function Composer({
                   />
                 )}
 
-                {/* v118 — Floating filter label after a swipe-driven swap.
-                    Pulses in, holds, fades out. Pointer-events disabled
-                    so it never blocks the swipe gesture itself. */}
+                {/* v118 — Floating filter label after a swipe-driven swap. */}
                 {swipeHintLabel && (
                   <div
                     className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -2869,11 +3054,11 @@ export function Composer({
                   </div>
                 )}
 
-                {/* v118 — Subtle "swipe me" affordance: shows once when no
-                    filter is set, so first-time users discover the gesture. */}
-                {filter === "none" && !swipeHintLabel && (
+                {/* v120 — first-time gesture hint. Stays subtle and only
+                    when no filter has been picked yet (matches v118). */}
+                {filter === "none" && !swipeHintLabel && overlays.length === 0 && (
                   <span
-                    className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full text-[0.58rem] font-medium tracking-wide pointer-events-none"
+                    className="absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full text-[0.58rem] font-medium tracking-wide pointer-events-none"
                     style={{
                       background: "rgba(0,0,0,0.42)",
                       backdropFilter: "blur(6px)",
@@ -2886,23 +3071,7 @@ export function Composer({
                   </span>
                 )}
 
-                {/* Cover · Fit toggle pill — bottom-right of the preview. */}
-                <button
-                  type="button"
-                  onClick={() => setPreviewFit((f) => f === "cover" ? "contain" : "cover")}
-                  className="absolute bottom-2 right-2 px-2.5 py-1 rounded-full text-[0.62rem] font-bold tracking-wide"
-                  style={{
-                    background: "rgba(0,0,0,0.55)",
-                    backdropFilter: "blur(8px)",
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.25)",
-                  }}
-                  aria-label={previewFit === "cover" ? "Show full frame" : "Crop to frame"}
-                >
-                  {previewFit === "cover" ? "◼ COVER" : "▢ FIT"}
-                </button>
-
-                {/* Aspect-ratio hint chip — top-left. */}
+                {/* Aspect-ratio hint chip — top-left of the stage. */}
                 <span
                   className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[0.58rem] font-bold tracking-wider"
                   style={{
@@ -2915,38 +3084,35 @@ export function Composer({
                   {targetLabel.split(" ")[0].toUpperCase()}
                 </span>
 
-                {/* v114 — "Cover frame" button. Only for videos. Opens the
-                    scrubber sheet so the creator can pick any frame as the
-                    poster (matches IG / TikTok "Choose cover"). */}
+                {/* v120 — duration cap badge. Calls out the 60s/90s auto-trim
+                    so the user isn't surprised when a long clip lands cut.
+                    Only visible for videos. */}
                 {isVideo && (
-                  <button
-                    type="button"
-                    onClick={() => setCoverPickerOpen(true)}
-                    className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-[0.6rem] font-bold tracking-wide"
+                  <span
+                    className="absolute top-2 left-[78px] px-2 py-0.5 rounded-full text-[0.56rem] font-semibold tracking-wide"
                     style={{
-                      background: "rgba(0,0,0,0.55)",
+                      background: "rgba(0,0,0,0.45)",
                       backdropFilter: "blur(8px)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.25)",
+                      color: "rgba(255,255,255,0.78)",
+                      border: "1px solid rgba(255,255,255,0.18)",
                     }}
                   >
-                    🖼 Cover frame
-                  </button>
+                    ≤ {kind === "story" ? 90 : 60}s
+                  </span>
                 )}
 
-                {/* v119 — OVERLAY LAYER. Each overlay is an absolute-positioned
-                    DOM node anchored at its 0-1 normalised (x, y). Drag is
-                    pointer-based; pinch (two fingers) scales + rotates.
-                    Tap a different overlay or tap the empty frame to deselect.
-                    `touchAction: none` ONLY on the overlay nodes themselves —
-                    the preview frame still respects pan-y for filter swipes. */}
+                {/* v119 — overlay layer (text + emoji) */}
                 {overlays.map((o) => {
                   const isSel = selectedOverlayId === o.id;
-                  // Preview-side font sizes are tuned to a 36dvh tall frame.
-                  // The composite pipeline uses its own 1000-px ref so the
-                  // output stays consistent regardless of preview height.
                   const previewBase = o.kind === "emoji" ? 36 : 22;
                   const fontPx = previewBase * o.scale;
+                  // v120 — text overlays adopt the chosen styleId for
+                  // family/weight/tracking/glow/uppercase. Mirrors the
+                  // composite pipeline so what you see is what gets baked in.
+                  const ts = o.kind === "text" ? getTextStyle(o.styleId) : null;
+                  const textGlow = ts?.glow
+                    ? `0 0 ${Math.round(8 * o.scale)}px ${o.color || "#ffd76b"}, 0 0 ${Math.round(16 * o.scale)}px ${o.color || "#ffd76b"}`
+                    : o.bgFill ? "none" : "0 1px 4px rgba(0,0,0,0.55)";
                   return (
                     <div
                       key={o.id}
@@ -2964,8 +3130,6 @@ export function Composer({
                         touchAction: "none",
                         outline: isSel ? "2px dashed rgba(255,215,107,0.95)" : "none",
                         outlineOffset: "4px",
-                        // Lift the selected overlay so its outline doesn't get
-                        // clipped by other overlays drawn after it.
                         zIndex: isSel ? 5 : 1,
                       }}
                     >
@@ -2981,7 +3145,10 @@ export function Composer({
                             style={{
                               background: o.bgFill || "rgba(0,0,0,0.20)",
                               color: o.color || "#fff",
-                              fontWeight: 700,
+                              fontWeight: ts?.fontWeight ?? 700,
+                              fontFamily: ts?.fontFamily,
+                              letterSpacing: `${(ts?.letterSpacing || 0) * 0.6}px`,
+                              textTransform: ts?.uppercase ? "uppercase" : "none",
                               fontSize: fontPx,
                               padding: "4px 8px",
                               borderRadius: 6,
@@ -2989,7 +3156,6 @@ export function Composer({
                               outline: "none",
                               minWidth: 80,
                               textAlign: "center",
-                              fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif',
                             }}
                           />
                         ) : (
@@ -2998,12 +3164,14 @@ export function Composer({
                             style={{
                               background: o.bgFill || "transparent",
                               color: o.color || "#fff",
-                              fontWeight: 700,
+                              fontWeight: ts?.fontWeight ?? 700,
+                              fontFamily: ts?.fontFamily,
+                              letterSpacing: `${(ts?.letterSpacing || 0) * 0.6}px`,
+                              textTransform: ts?.uppercase ? "uppercase" : "none",
                               fontSize: fontPx,
                               padding: o.bgFill ? "4px 10px" : "0",
                               borderRadius: 6,
-                              textShadow: o.bgFill ? "none" : "0 1px 4px rgba(0,0,0,0.55)",
-                              fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif',
+                              textShadow: textGlow,
                               display: "inline-block",
                               whiteSpace: "nowrap",
                             }}
@@ -3041,143 +3209,297 @@ export function Composer({
                     </div>
                   );
                 })}
-
-                {/* v119 — Add-overlay toolbar. Bottom-left, opposite the
-                    Cover/Fit pill so the user has both at a glance. Adding
-                    a text overlay defaults to centre + edit-mode-on so the
-                    keyboard pops up immediately. */}
-                <div
-                  className="absolute bottom-2 left-2 flex items-center gap-1.5"
-                  style={{ zIndex: 6 }}
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); addOverlay({ kind: "text", text: "" }); }}
-                    aria-label="Add text overlay"
-                    style={{
-                      background: "rgba(0,0,0,0.55)",
-                      backdropFilter: "blur(8px)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      fontSize: "0.66rem",
-                      fontWeight: 800,
-                      letterSpacing: "0.02em",
-                    }}
-                  >Aa Text</button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); setOverlayPickerOpen("emoji"); }}
-                    aria-label="Add emoji overlay"
-                    style={{
-                      background: "rgba(0,0,0,0.55)",
-                      backdropFilter: "blur(8px)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.25)",
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      fontSize: "0.7rem",
-                    }}
-                  >😀</button>
-                  {selectedOverlayId && overlays.find((o) => o.id === selectedOverlayId)?.kind === "text" && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const cur = overlays.find((o) => o.id === selectedOverlayId);
-                        if (!cur) return;
-                        // Cycle: no bg → black bg → white bg → no bg
-                        const next = cur.bgFill === null || cur.bgFill === undefined
-                          ? "rgba(0,0,0,0.55)"
-                          : cur.bgFill.indexOf("0,0,0") !== -1
-                            ? "rgba(255,255,255,0.92)"
-                            : null;
-                        const nextColor = next && next.indexOf("255,255,255") !== -1 ? "#1a1530" : "#FFFFFF";
-                        updateOverlay(selectedOverlayId, { bgFill: next, color: nextColor });
-                      }}
-                      aria-label="Toggle text background"
-                      style={{
-                        background: "rgba(0,0,0,0.55)",
-                        backdropFilter: "blur(8px)",
-                        color: "#fff",
-                        border: "1px solid rgba(255,255,255,0.25)",
-                        padding: "4px 8px",
-                        borderRadius: 999,
-                        fontSize: "0.62rem",
-                        fontWeight: 800,
-                      }}
-                    >▣ BG</button>
-                  )}
-                </div>
               </div>
 
-              {/* v114 — IG-style filter strip. Horizontal scroll of named
-                  presets, each shown with the actual media as a tiny live
-                  thumbnail so the creator can SEE what each filter does.
-                  Selecting one applies CSS filter on the preview AND
-                  persists on the post so the feed renders the same look. */}
+              {/* RIGHT RAIL — vertical floating toolbar over the stage.
+                  IG keeps actions to the right of the video; we do the same.
+                  Buttons: Aa Text · 😀 Emoji · ✨ Filters (opens sheet) ·
+                  🖼 Cover frame (videos only) · ◼/▢ Fit toggle.
+                  pointerEvents auto so taps register; the column doesn't
+                  hijack swipes on the stage because it doesn't span the
+                  full width. */}
               <div
-                className="-mx-4 mt-2 mb-1 px-4 pb-2 overflow-x-auto flex gap-2 hide-scroll"
-                style={{ WebkitOverflowScrolling: "touch" }}
+                className="absolute right-2 top-1/2 flex flex-col gap-2 items-center"
+                style={{ transform: "translateY(-50%)", zIndex: 8, pointerEvents: "auto" }}
               >
-                {FILTER_PRESETS.map((f) => {
-                  const active = filter === f.id || (filter === null && f.id === "none");
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setFilter(f.id)}
-                      className="shrink-0 flex flex-col items-center gap-1"
-                      aria-pressed={active}
-                    >
-                      <span
-                        className="w-12 h-16 rounded-lg overflow-hidden block"
-                        style={{
-                          border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.18)",
-                          boxShadow: active ? "0 0 0 1px rgba(0,0,0,0.4), 0 4px 14px rgba(240,180,41,0.45)" : "none",
-                          transition: "all 0.18s ease",
-                        }}
-                      >
-                        {/* Use the poster if we have it (fast); fall back to mediaUrl
-                            for photos. Apply the filter so each chip previews live. */}
-                        <img
-                          src={(isVideo ? (posterUrl || "") : mediaUrl) || mediaUrl}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          style={{ filter: f.css }}
-                        />
-                      </span>
-                      <span className="text-[0.58rem] font-semibold" style={{ color: active ? "#ffd76b" : "rgba(255,255,255,0.65)" }}>
-                        {f.label}
-                      </span>
-                    </button>
-                  );
-                })}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); addOverlay({ kind: "text", text: "" }); }}
+                  aria-label="Add text"
+                  className="sb-rail-btn"
+                ><span className="text-base font-extrabold">Aa</span><span className="sb-rail-lbl">Text</span></button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setOverlayPickerOpen("emoji"); }}
+                  aria-label="Add emoji"
+                  className="sb-rail-btn"
+                ><span className="text-base">😀</span><span className="sb-rail-lbl">Emoji</span></button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setFilterSheetOpen(true); }}
+                  aria-label="Choose filter"
+                  className="sb-rail-btn"
+                ><span className="text-base">✨</span><span className="sb-rail-lbl">Filter</span></button>
+                {isVideo && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setCoverPickerOpen(true); }}
+                    aria-label="Choose cover frame"
+                    className="sb-rail-btn"
+                  ><span className="text-base">🖼</span><span className="sb-rail-lbl">Cover</span></button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setPreviewFit((f) => f === "cover" ? "contain" : "cover"); }}
+                  aria-label={previewFit === "cover" ? "Show full frame" : "Crop to frame"}
+                  className="sb-rail-btn"
+                ><span className="text-base">{previewFit === "cover" ? "◼" : "▢"}</span><span className="sb-rail-lbl">{previewFit === "cover" ? "Crop" : "Fit"}</span></button>
               </div>
-              {/* Format warning surfaces here so the user knows BEFORE
-                  posting that the file probably won't play in the feed. */}
-              {formatWarning && (
-                <p
-                  className="mt-2 text-amber-300 text-[0.7rem] leading-snug px-2"
-                  style={{
-                    background: "rgba(245,158,11,0.10)",
-                    border: "1px solid rgba(245,158,11,0.35)",
-                    borderRadius: 10,
-                    padding: "8px 10px",
-                  }}
-                >
-                  ⚠️ {formatWarning}
-                </p>
+
+              {/* BOTTOM CONTEXT TOOLBAR — appears ONLY when a text overlay
+                  is selected. Surface for styling: style chips, color dots,
+                  size slider, background toggle. Anchored above the bottom
+                  edge of the stage. */}
+              {selectedTextOverlay && (
+                  <div
+                    className="absolute left-0 right-0 px-3 pointer-events-none"
+                    style={{ bottom: 8, zIndex: 9 }}
+                  >
+                    <div
+                      className="rounded-2xl px-3 py-2.5 space-y-2 pointer-events-auto"
+                      style={{
+                        background: "rgba(13,9,25,0.78)",
+                        backdropFilter: "blur(14px)",
+                        border: "1px solid rgba(255,215,107,0.28)",
+                        boxShadow: "0 10px 24px rgba(0,0,0,0.55)",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Style chips */}
+                      <div className="flex gap-1.5 overflow-x-auto hide-scroll">
+                        {TEXT_STYLES.map((s) => {
+                          const active = (selectedTextOverlay.styleId || "classic") === s.id;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => updateOverlay(selectedTextOverlay.id, { styleId: s.id })}
+                              className="shrink-0 px-2.5 py-1 rounded-full text-[0.66rem] font-bold transition-all"
+                              style={{
+                                background: active ? "linear-gradient(135deg,#ffd76b,#f0b429)" : "rgba(255,255,255,0.08)",
+                                color: active ? "#1a1208" : "rgba(255,255,255,0.85)",
+                                border: active ? "1px solid rgba(255,255,255,0.45)" : "1px solid rgba(255,255,255,0.16)",
+                                fontFamily: s.fontFamily,
+                                letterSpacing: `${s.letterSpacing * 0.5}px`,
+                                textTransform: s.uppercase ? "uppercase" : "none",
+                              }}
+                            >
+                              {s.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Color dots */}
+                      <div className="flex gap-1.5 overflow-x-auto hide-scroll items-center">
+                        {TEXT_COLORS.map((c) => {
+                          const active = (selectedTextOverlay.color || "#FFFFFF").toUpperCase() === c.toUpperCase();
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => updateOverlay(selectedTextOverlay.id, { color: c })}
+                              aria-label={`Color ${c}`}
+                              className="shrink-0 rounded-full"
+                              style={{
+                                width: 24, height: 24,
+                                background: c,
+                                border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.22)",
+                                boxShadow: active ? "0 0 0 2px rgba(255,215,107,0.35)" : "none",
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      {/* Size slider + BG toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-white/55 text-[0.6rem]">Size</span>
+                        <input
+                          type="range"
+                          min={0.5}
+                          max={3}
+                          step={0.05}
+                          value={selectedTextOverlay.scale}
+                          onChange={(e) => updateOverlay(selectedTextOverlay.id, { scale: Number(e.target.value) })}
+                          style={{ flex: 1, accentColor: "#ffd76b" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = selectedTextOverlay;
+                            const next = cur.bgFill === null || cur.bgFill === undefined
+                              ? "rgba(0,0,0,0.55)"
+                              : cur.bgFill.indexOf("0,0,0") !== -1
+                                ? "rgba(255,255,255,0.92)"
+                                : null;
+                            const nextColor = next && next.indexOf("255,255,255") !== -1 ? "#1a1530" : (cur.color === "#1a1530" ? "#FFFFFF" : cur.color);
+                            updateOverlay(cur.id, { bgFill: next, color: nextColor });
+                          }}
+                          className="shrink-0 px-2.5 py-1 rounded-full text-[0.62rem] font-bold"
+                          style={{
+                            background: selectedTextOverlay.bgFill ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.08)",
+                            color: selectedTextOverlay.bgFill ? "#1a1530" : "rgba(255,255,255,0.85)",
+                            border: "1px solid rgba(255,255,255,0.22)",
+                          }}
+                          aria-label="Toggle text background"
+                        >▣ BG</button>
+                      </div>
+                    </div>
+                  </div>
               )}
             </div>
 
-            {/* v113 — scrollable body. Bottom padding reserves space for the
-                home-indicator + safe-area so the "Post to your profile"
-                button never sits behind the OS gesture bar. The header
-                already covers the top notch via paddingTop on the parent. */}
+            {/* Format warning surface — kept compact + below the stage. */}
+            {formatWarning && (
+              <p
+                className="text-amber-300 text-[0.66rem] leading-snug px-3 mx-3 mb-2 rounded-md"
+                style={{
+                  background: "rgba(245,158,11,0.10)",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                  padding: "6px 8px",
+                }}
+              >
+                ⚠️ {formatWarning}
+              </p>
+            )}
+
+            {/* v120 — Filter bottom sheet (replaces the always-visible strip).
+                Opens on demand from the right-rail ✨ button. Tap a thumbnail
+                to apply + close. Swipe gesture on the stage still works for
+                quick A↔B switches. */}
+            {filterSheetOpen && (
+              <div
+                className="absolute inset-0 flex items-end"
+                style={{ zIndex: 30 }}
+                onClick={() => setFilterSheetOpen(false)}
+              >
+                <div
+                  className="absolute inset-0"
+                  style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+                />
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="relative w-full"
+                  style={{
+                    background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+                    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+                    borderTop: "1px solid rgba(255,255,255,0.14)",
+                    padding: "10px 14px 16px",
+                    paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
+                    animation: "composerIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both",
+                  }}
+                >
+                  <div className="flex justify-center pt-1 pb-2">
+                    <div className="w-10 h-[3px] rounded-full bg-white/30" />
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-white font-semibold text-[0.86rem]">✨ Filters</p>
+                    <button onClick={() => setFilterSheetOpen(false)} className="text-white/70 text-[0.78rem] font-medium">Done</button>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                    {FILTER_PRESETS.map((f) => {
+                      const active = filter === f.id || (filter === null && f.id === "none");
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setFilter(f.id);
+                            setSwipeHintLabel(f.label);
+                            if (swipeHintTimerRef.current) window.clearTimeout(swipeHintTimerRef.current);
+                            swipeHintTimerRef.current = window.setTimeout(() => setSwipeHintLabel(""), 900);
+                          }}
+                          className="shrink-0 flex flex-col items-center gap-1"
+                          aria-pressed={active}
+                        >
+                          <span
+                            className="w-14 h-20 rounded-lg overflow-hidden block"
+                            style={{
+                              border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.18)",
+                              boxShadow: active ? "0 0 0 1px rgba(0,0,0,0.4), 0 4px 14px rgba(240,180,41,0.45)" : "none",
+                              transition: "all 0.18s ease",
+                            }}
+                          >
+                            <img
+                              src={(isVideo ? (posterUrl || "") : mediaUrl) || mediaUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              style={{ filter: f.css }}
+                            />
+                          </span>
+                          <span className="text-[0.6rem] font-semibold" style={{ color: active ? "#ffd76b" : "rgba(255,255,255,0.65)" }}>
+                            {f.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* v120 — Details screen: caption / audio / location / hotel /
+            highlight / tags / progress / Post. Reached via the header
+            "Next ›" button on the compose screen. */}
+        {step === "edit" && mediaFile && subStep === "details" && (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Small recap thumbnail so the user always sees what they're
+                about to post. Tapping it returns to the compose screen
+                for any last-minute edits. */}
+            <button
+              type="button"
+              onClick={() => setSubStep("compose")}
+              className="flex items-center gap-3 px-4 py-3 border-b border-white/10 active:bg-white/5"
+              style={{ background: "rgba(255,255,255,0.02)" }}
+            >
+              <span
+                className="rounded-lg overflow-hidden shrink-0 bg-black"
+                style={{
+                  width: 48,
+                  height: kind === "photo" ? 60 : 64,
+                  aspectRatio: targetAspect,
+                  border: "1px solid rgba(255,255,255,0.10)",
+                }}
+              >
+                <img
+                  src={(isVideo ? (posterUrl || "") : mediaUrl) || mediaUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ filter: filterCssFor(filter) }}
+                />
+              </span>
+              <span className="flex-1 min-w-0 text-left">
+                <span className="block text-white text-[0.78rem] font-semibold truncate">
+                  {kind === "reel" ? "Reel" : kind === "photo" ? "Photo" : "Story"} · {targetLabel.split(" ")[0]}
+                  {filter !== "none" && (
+                    <span className="ml-1 text-amber-300 font-medium">· {FILTER_PRESETS.find(f => f.id === filter)?.label || filter}</span>
+                  )}
+                  {overlays.length > 0 && (
+                    <span className="ml-1 text-white/60 font-medium">· {overlays.length} overlay{overlays.length !== 1 ? "s" : ""}</span>
+                  )}
+                </span>
+                <span className="block text-white/55 text-[0.62rem] truncate">Tap to keep editing</span>
+              </span>
+              <span className="text-white/45 text-base">›</span>
+            </button>
+
+            {/* Scrollable details body. Bottom padding reserves space for
+                the home-indicator + safe-area so the "Post to your profile"
+                button never sits behind the OS gesture bar. */}
             <div
-              className="flex-1 overflow-y-auto px-4 pt-1 space-y-4"
+              className="flex-1 overflow-y-auto px-4 pt-3 space-y-3"
               style={{
                 minHeight: 0,
                 paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",

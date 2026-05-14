@@ -2864,3 +2864,79 @@ At v97 ship time we re-verified the Vercel team list and the only ACTIVE custome
 - **All deployments confirmed**: staybids.in serves the full v97 build for customer + creator hub (`/influencer`) + hotel partner panel (`/partner`) + admin panel (`/admin`). Legacy `staybid-admin.vercel.app` + `staybid-hotel-panel.vercel.app` are abandoned and out of scope.
 
 ---
+
+## IG-Level Composer Rebuild Era (v120, 2026-05-15)
+
+Single-shot rebuild of the Reel/Photo/Story composer to actual Instagram parity. User report: the "Edit" screen showed a tiny preview while add-on chrome filled the rest of the screen, the 50 MB cap rejected normal phone videos, the text tool couldn't be resized or recoloured, the cover-frame picker was an afterthought, and the filter strip below the preview was redundant given the existing swipe gesture.
+
+### The five complaints addressed
+| User complaint | Fix in v120 |
+|---|---|
+| "50 MB error aa raha hai, normal phone videos toh isse bade hote hain" | Hard cap raised 50 → 250 MB; clips longer than the kind's IG limit (60 s reels, 90 s stories) are auto-trimmed during compression instead of failing the upload |
+| "Video chhoti si show ho rahi hai, niche ke add-on function se puri screen bhari hui hai" | Edit screen flattened from "small preview + scrollable form" to a two-step flow: fullscreen 9:16 stage with a floating right-rail toolbar → swipe to Details (caption / audio / tags / location / hotel / Post) |
+| "Test mode chhota bada nahi kar sakte, colour change nahi kar sakte" | Text overlay gets a 3-row context toolbar when selected: 6 style chips (Classic / Modern / Neon / Typewriter / Serif / Bold) + 10-colour palette + size slider 0.5×–3× + BG toggle. Neon style ships a luminous colour-tinted glow; Modern uppercases with letter-tracking |
+| "Frame wala feature itna lack kar raha hai ki use hi nahi karega koi" | CoverFramePicker rebuilt: full-bleed 9:16 preview + a single continuous 16-thumb timeline strip with a draggable gold marker. Drag or tap the strip — frame snaps live. No more "scrubber + quick picks" hybrid |
+| "Filter scroll se change hota hai toh niche sabhi filter dikhne ka kya kaam" | Filter strip below the preview deleted. Filters live in an on-demand bottom sheet opened from the right-rail ✨ button. The swipe gesture (with floating name pulse) is now the only persistent affordance |
+
+### Files modified
+```
+lib/social/video-compress.ts            # +CompressOptions {maxDurationS}; HARD_FILE_CAP 50 → 250 MB; auto-trim past cap; trimmedFromSec in result
+lib/social/composite.ts                 # Overlay +styleId; TEXT_STYLES (6 presets) + TEXT_COLORS (10) exported; drawOverlaysOnContext honours fontFamily/weight/tracking/glow/uppercase; per-glyph kerning so letter-spacing matches the preview
+components/discover/CreateFlow.tsx      # New subStep "compose"|"details"; fullscreen 9:16 stage; right-rail vertical toolbar (.sb-rail-btn); selectedTextOverlay context toolbar (style/color/size/BG); FilterSheet bottom-sheet replaces the permanent strip; CoverFramePicker rewritten with 16-thumb continuous timeline + draggable marker; compressVideo now passed {maxDurationS: 60|90} based on kind; addOverlay defaults styleId="classic" for text
+app/layout.tsx                          # SB_BUILD v120; badge v120
+```
+
+### Key implementation notes
+- **subStep ≠ step**. We kept the top-level `step: "pick" | "edit"` so the pick-file logic is untouched. Inside `step==="edit"`, a new `subStep: "compose" | "details"` controls which screen renders. Header chrome maps Back ⇄ Next ⇄ Post across both screens (Back goes details→compose→pick→close in one tap each).
+- **Stage layout.** The fullscreen stage is `flex: 1` filling all height between header + (optional) format-warning. Inside it, an aspect-locked inner div (`aspectRatio: targetAspect; height: 100%; maxWidth: 100%`) letterboxes 9:16 cleanly on every device width without horizontal crop on phones.
+- **previewFrameRef stays on the aspect-locked inner frame.** Overlay normalised coords + swipe-filter math both depend on the *visible-media-rectangle* size, NOT the surrounding letterbox padding. Moving the ref to the outer flex container would break overlay drag math.
+- **styled-jsx panic at visitor.rs:597.** The first draft used `{(() => { ... })()}` to inline-compute a selected-text-overlay before rendering its context toolbar. SWC's styled-jsx visitor panics on certain IIFE-returning-JSX patterns. Fix: hoist the computation into `selectedTextOverlay` defined just above the swipe handlers, then render via plain `{selectedTextOverlay && (<jsx/>)}`. This pattern is the right answer for any future "compute then conditionally render" need in this file.
+- **Per-glyph kerning in composite.** Canvas 2D doesn't expose `letter-spacing` on font, so we measure each glyph's width and advance the cursor manually with `+ trackingPx`. Keeps the composited output identical to what the preview shows for "Modern" / "Neon" / any future tracked style.
+- **Auto-trim sealing.** When the playhead crosses `maxDurationS`, we `v.pause()` inside the draw loop, then resolve the outer promise from `v.onpause` (not `v.onended`, which never fires on a manual pause). MediaRecorder then closes cleanly with whatever frames were captured. Without this, the watchdog (1.5× effective duration) would still seal it, just less promptly.
+- **Skip-compress branch tightened.** The `!hasOverlays && longestSrc <= TARGET_MAX_DIM && originalBytes < 12 MB` short-circuit now ALSO requires `dur <= maxDurationS`. A tiny low-res 4-minute clip would have slipped past auto-trim without this.
+- **Size-comparison branch.** The "compressed result is bigger than source, ship source" guard now also bails out if we trimmed (`!willTrim`). The source carries the cut material, so we must keep the re-encode regardless of byte count.
+- **The right-rail .sb-rail-btn CSS lives in the existing top-level styled-jsx block** at the top of the Composer's JSX. A second `<style jsx>` inside the conditional compose JSX triggered the same visitor.rs:597 panic, even after the IIFE fix. Rule: in this file, never add a second `<style jsx>` block inside conditional JSX — append to the top-level block instead.
+- **Cover-frame timeline pointer math.** The 16 thumbnails are pure `<img>` with `flex: 1 1 0` so they fill the strip evenly. Pointer-down captures the pointer; pointer-move only updates if `buttons !== 0` (mouse) or pointerType is touch (touch drag without buttons). Marker position is `markerPct = (scrub / duration) * 100` translated centrally so it pins precisely to the time.
+
+### Verified live in dev preview
+- Badge: `v120` chip bottom-right ✓
+- `sb_build`: `"v120-ig-composer-fullscreen-textstyles-timeline"` in localStorage ✓
+- Composer opens; "Reel" entry card lands on the pick screen, file-input picks media, transitions to the new edit step ✓
+- Header chrome: "Edit · Next ›" on compose, "Details · Post" on details, Back walks one screen at a time ✓
+- 9:16 aspect chip + duration-cap chip both render top-left of the stage (video kind only for the cap chip) ✓
+- Right-rail: 4 buttons for photos (Aa / 😀 / ✨ / ◼), 5 for videos (+ 🖼 Cover) ✓
+- Text overlay added → context toolbar renders with 6 style chips, 10 color dots, size slider, BG toggle ✓
+- Filter sheet opens with 12 chips inside the bottom sheet; no permanent strip ✓
+- Next → Details: caption textarea, audio row, thumb-recap header "Tap to keep editing" all render ✓
+- Mobile viewport (375×812) tested ✓
+- `tsc --noEmit --skipLibCheck` clean across CreateFlow + composite + video-compress + layout ✓
+
+### Things to Avoid (v120 Era)
+- **Never** drop the `maxDurationS` parameter on `compressVideo`. The auto-trim is the entire reason 60s+ phone clips upload at all — reverting means rejecting half of incoming source clips with the "trim under 50 MB" message that v119 users hated.
+- **Never** raise `HARD_FILE_CAP_BYTES` past 250 MB. Mid-tier Android tabs OOM around that mark when MediaRecorder runs on a 4K source — the cap exists for memory safety, not bandwidth. Past 250 MB the user must trim with their phone's gallery app.
+- **Never** add a SECOND `<style jsx>` block to `CreateFlow.tsx`. The SWC styled-jsx visitor panics at visitor.rs:597 when two component-scoped styled-jsx tags coexist in this file (verified twice during v120 ship). Append rules to the existing top-level block.
+- **Never** use an IIFE inside JSX in `CreateFlow.tsx` to compute-then-render. The same visitor panics on `{(() => { ... return <jsx/>; })()}`. Hoist the computation to a `const x = (() => {...})()` above the JSX return and render via `{x && (<jsx/>)}`.
+- **Never** move `previewFrameRef` from the aspect-locked inner div to its surrounding letterbox container. Overlay normalised coords + swipe pointer math both depend on `getBoundingClientRect()` returning the visible-media rectangle — moving the ref breaks both.
+- **Never** restore the persistent filter strip below the preview. The user explicitly rejected it ("filter scroll se change hota hai toh niche sabhi filter dikhne ka kya kaam"). The bottom-sheet on demand + the swipe gesture cover the same surface area without consuming any of the stage.
+- **Never** ship a text style that uses `letter-spacing` on canvas without going through the per-glyph kerning loop. Canvas 2D's `font` shorthand ignores `letter-spacing`; calling `fillText(wholeString, 0, 0)` produces unspaced output and the preview/composite drift apart. Add a new style → add its tracking to TEXT_STYLES → the draw loop already honours it.
+- **Never** ship a new TEXT_STYLES entry whose `fontFamily` isn't bundled with the app OR a system fallback. `Cormorant Garamond` is already loaded by layout (used by the brand wordmark) so the "Serif" style is safe; future custom families need the font import + a system-stack fallback in the same string.
+- **Never** call `compressVideo` for stories without passing `{maxDurationS: 90}`. The default is 60 s; stories silently get trimmed shorter than the product spec without this. The CreateFlow runUpload branch handles this — keep it intact.
+- **Never** strip the `selectedTextOverlay && (...)` guard before the bottom context toolbar. Without it the toolbar mounts every render and the `selectedTextOverlay.styleId` reads throw on the next style change since the dependent overlay is gone.
+- **Never** remove the `≤ 60s` / `≤ 90s` duration-cap chip above the preview for videos. Users seeing the cap upfront prevents the "why did my clip get cut?" support tickets after upload.
+
+### What this era did NOT do
+- **Music library remains SoundHelix.** Real Bollywood / licensed music requires PPL/IPRS licensing; out of scope. Honest path is the "Upload from device" picker.
+- **Server-side transcode.** Compression still runs on the device. A future era could route uploads through a Cloudflare Stream / Mux transcode for true thumbnailed-poster / HLS streaming. Today the compressed WebM/MP4 lands directly in Supabase Storage and plays via `<video>`.
+- **Real-time scrubber preview thumbnails.** The cover-frame timeline shows 16 pre-extracted thumbs; while dragging, the big preview seeks via `video.currentTime` (real but visibly seek-jittery on some Android Chrome builds). Future polish: extract a 64-thumb hover-strip for smoother drag-preview.
+- **Pinch-to-zoom on the stage media.** Pinch currently scales selected overlays (existing v119 behaviour). Stage-media pinch-zoom for cropping is a separate feature.
+
+---
+
+## Updated production state (v120, 2026-05-15)
+- **Current version:** v120 · worktree branch `claude/adoring-bouman-c84ef6`
+- **Composer rebuilt to IG parity.** Pick → Edit (fullscreen 9:16 + right-rail toolbar) → Next ⇒ Details (caption + audio + tags + Post). Header chrome adapts per screen.
+- **Video pipeline:** 250 MB cap with auto-trim down to 60 s (reels) / 90 s (stories). Phone clips that previously failed at 51 MB now upload + trim cleanly.
+- **Text overlays:** 6 IG-style presets (Classic / Modern / Neon / Typewriter / Serif / Bold) × 10-colour palette × continuous 0.5–3× size slider × glow on Neon × uppercase on Modern × per-glyph canvas kerning so preview matches composite output exactly.
+- **Filter UX:** strip removed; on-demand bottom sheet from the right-rail ✨ button. Swipe gesture still active with floating name pulse.
+- **Cover-frame picker:** continuous 16-thumb timeline strip with draggable gold marker + full-height preview. "Set cover" commits.
+- **Verified end-to-end** in dev preview (mobile 375×812). Zero TypeScript errors. Existing posts/feed unaffected.
