@@ -4100,75 +4100,41 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       <CreateFlow
         sanitize={sanitizeComment}
         onPosted={(p) => {
-          showToast(`⬆ Uploading ${p.kind}…`);
+          // v121.2 — ROOT CAUSE FIX for the "one upload → two server rows"
+          // duplicate bug the user just diagnosed.
+          //
+          // History: this onPosted callback used to run a FULL second
+          // upload pipeline (uploadSocialMedia + POST /api/social/posts)
+          // after the Composer fired. That was correct in v97-v109 when
+          // CreateFlow.Composer was a local-only persistence layer. But
+          // starting v110-v111 the Composer's own runUpload() started
+          // doing the Storage push + the social_posts insert itself,
+          // making this callback REDUNDANT. Nobody removed it.
+          //
+          // Worse: this duplicate POST never carried `clientPostId`, so
+          // server-side idempotency (which dedups by client_post_id)
+          // couldn't catch it. Every upload silently created TWO rows —
+          // one from runUpload (with clientPostId, dedup-protected) and
+          // one from THIS callback (without clientPostId, free dupe).
+          //
+          // Verified live by the user 2026-05-15:
+          //   row #1: 01:26:08 AM, client_post_id="post-1778788555406-yu01cx"
+          //   row #2: 01:26:14 AM, client_post_id=NULL ← this code path
+          //
+          // Now: just fire the side-effects (toast + scroll + tracking).
+          // The Composer already committed the durable row + the durable
+          // PostsStore entry via runUpload's v120.1 contract.
+          showToast(`✓ Posted to your profile`);
           onTrackEvent?.("ig_create_post", { kind: p.kind, hasAudio: !!p.audio, tagsCount: p.tags.length });
-          // Scroll the feed to the very top so the local PostsStore
-          // copy is visible immediately for instant feedback.
+          // Scroll the feed to the top so the freshly-uploaded reel
+          // (already in PostsStore via Composer.runUpload's addPost) is
+          // visible immediately.
           setTimeout(() => {
             const root = containerRef.current;
             if (!root) return;
             root.scrollTo({ top: 0, behavior: "smooth" });
             setActiveIdx(0);
           }, 100);
-          // Background — push the binary to Supabase Storage and create
-          // the social_posts row so the post is publicly visible (every
-          // device + every browser, not just the uploader's session).
-          (async () => {
-            try {
-              const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
-              if (!tok) {
-                showToast("ℹ Sign in to share publicly");
-                return;
-              }
-              // Decode the user id from the JWT for the storage path
-              let userId = "anon";
-              try {
-                const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-                userId = payload.id || payload.user_id || payload.sub || "anon";
-              } catch {}
-              const uploaded = await uploadSocialMedia({
-                mediaBlobUrl:  p.mediaUrl,
-                mediaMime:     p.mediaMime || "",
-                kind:          p.kind.toUpperCase() as "PHOTO" | "REEL" | "STORY",
-                posterDataUrl: p.posterUrl,
-                userId,
-              });
-              const postRes = await fetch("/api/social/posts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
-                body: JSON.stringify({
-                  mediaType:    p.kind.toUpperCase(),
-                  mediaUrl:     uploaded.mediaUrl,
-                  thumbnailUrl: uploaded.thumbnailUrl || null,
-                  caption:      p.caption || "",
-                  soundTrack:   p.audio?.name || null,
-                  soundUrl:     p.audio?.url || null,
-                  locationName: (p as any).location?.name || null,
-                  locationLat:  (p as any).location?.lat,
-                  locationLng:  (p as any).location?.lng,
-                }),
-              });
-              if (postRes.ok) {
-                // Replace the local PostsStore copy's blob URL with the
-                // public Supabase URL — addPost dedupes by id, so this
-                // updates in place. Without this, after the next page
-                // reload the local post would point at a dead blob URL
-                // and render the "Media preview unavailable" fallback.
-                try {
-                  addPost({
-                    ...(p as any),
-                    mediaUrl:  uploaded.mediaUrl,
-                    posterUrl: uploaded.thumbnailUrl || (p as any).posterUrl,
-                  });
-                } catch {}
-                showToast("✓ Posted publicly to /social/feed");
-              } else {
-                showToast("⚠ Saved locally — public post failed");
-              }
-            } catch (err: any) {
-              showToast(`⚠ Public upload failed: ${err?.message?.slice(0, 50) || "try again"}`);
-            }
-          })();
         }}
       />
       {/* ── Inline Edit-post sheet — caption + tags only. Media replace
