@@ -39,7 +39,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [pathname, isLogin, router]);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    // v122.1 — bump the "mobile" cutoff from 768 → 1024. At 768-1023 the
+    // sidebar (240px) + padding (272px) was eating 512px of an 1024px
+    // viewport, leaving only ~500px of usable content area. Now 768-1023
+    // gets the off-canvas drawer treatment (full-width content, hamburger
+    // to open the sidebar). True desktop (>=1024) keeps the fixed
+    // sidebar layout it always had.
+    const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);

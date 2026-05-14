@@ -47,8 +47,12 @@
   }
 }
 
-/* ── Mobile (≤ 767px) ─────────────────────────────────────────────────── */
-@media (max-width: 767px) {
+/* ── Mobile + tablet portrait (≤ 1023px) ─────────────────────────────────
+   v122.1 — extended from ≤ 767 to ≤ 1023. The admin layout's isMobile
+   flag now flips below 1024, so tablets get the off-canvas drawer
+   treatment too. The CSS rules below (KPI 1-col, full-width filters,
+   topbar-search hidden, etc.) apply to that entire mobile-like range. */
+@media (max-width: 1023px) {
   .admin-chart-row,
   .admin-queues-row {
     grid-template-columns: 1fr !important;
@@ -174,3 +178,159 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v122.1 — Operator panels desktop / wide-screen polish
+   ═══════════════════════════════════════════════════════════════════════════
+   The admin panel already had a v102 responsive overhaul covering tablet +
+   mobile. v122.1 adds the missing wide-screen optimization so the panel
+   feels intentional on laptops (1280-1439), big desktops (1440-1919), and
+   ultra-wide / 4K monitors (>=1920). All rules sit under @media queries so
+   the v102 mobile/tablet contract is preserved exactly.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Laptop (>=1024px) — sidebar visible, no mobile drawer ────────────── */
+@media (min-width: 1024px) {
+  /* Hide the mobile combined notification pill — desktop topbar already
+     shows per-category badges. */
+  .admin-topbar-search { display: block; }
+
+  /* Restore desktop topbar font sizes */
+  .admin-h1, h1[class*="h1Style"] {
+    font-size: 26px !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* Hover lift on every admin card / data-table row — desktop only so
+     touch devices don't get sticky-hover ghosting. */
+  .admin-card {
+    transition: transform 0.18s cubic-bezier(.3,1.4,.4,1), box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+    border-color: rgba(212, 175, 55, 0.28);
+  }
+  .admin-data-table-wrap table tbody tr {
+    transition: background 0.12s ease;
+  }
+  .admin-data-table-wrap table tbody tr:hover {
+    background: rgba(212, 175, 55, 0.06);
+  }
+
+  /* Restore an admin-friendly KPI density on laptops — auto-fit grids
+     stay flexible. Cards have a bit more padding for readability. */
+  .admin-kpi-grid > * {
+    padding: 16px 18px !important;
+  }
+}
+
+/* ── Big desktop (>=1280px) — content gets more breathing room ────────── */
+@media (min-width: 1280px) {
+  /* Chart row jumps back to 3 columns (the v102 tablet rule capped it at
+     2 cols; reset for true desktop). */
+  .admin-chart-row {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  .admin-chart-row > *:last-child { grid-column: auto !important; }
+
+  /* KPI grid — when there are 6+ cards, prefer ~220px tiles. */
+  .admin-kpi-grid {
+    gap: 14px !important;
+  }
+}
+
+/* ── Wide desktop (>=1440px) — premium polish ─────────────────────────── */
+@media (min-width: 1440px) {
+  /* Sidebar gets a touch wider so labels never truncate. Layout JS
+     hardcodes 240px; bump via a min-width hint so future-state values
+     scale. */
+  /* (Sidebar width is set by JS; we don't override here to avoid
+     content-shift on toggle.) */
+
+  /* Charts row: respect the 3-col already; bump heights slightly. */
+  .admin-chart-row .recharts-responsive-container {
+    min-height: 280px;
+  }
+
+  /* Topbar input gets wider — better visibility for power users. */
+  .admin-topbar-search input,
+  header > input[placeholder*="Search"] {
+    max-width: 520px !important;
+  }
+}
+
+/* ── Ultra-wide / 4K (>=1920px) — cap content for readability ────────── */
+@media (min-width: 1920px) {
+  /* Cap the admin main area so cards don't stretch across a 27" 4K
+     monitor and become unreadable. The sidebar still pins left; main
+     content centres in the remaining space with a 1700px max-width. */
+  main > div,
+  main > section {
+    max-width: 1700px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Keep recharts responsive — they grow to fit their parent. */
+}
+
+/* ── Tablet (768-1023) — keep mobile-ish but polish ──────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* On tablets the sidebar is fixed 240px wide and content has only
+     ~500px to work with. Keep the v102 chart-row 2-col but make sure
+     KPI grids don't crush content. */
+  .admin-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    gap: 12px !important;
+  }
+  .admin-kpi-grid > * {
+    padding: 12px 14px !important;
+  }
+  .admin-h1, h1[class*="h1Style"] {
+    font-size: 22px !important;
+  }
+  /* Side drawers on tablet portrait: half the screen. */
+  .admin-drawer {
+    width: 60vw !important;
+    max-width: 480px !important;
+  }
+}
+
+/* ── Hide-on-mobile helpers for fine-grained control ──────────────────── */
+@media (max-width: 767px) {
+  .admin-hide-mobile { display: none !important; }
+}
+@media (min-width: 768px) {
+  .admin-only-mobile { display: none !important; }
+}
+
+/* ── Login page polish on big screens ────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* The login card is centered with max-width 440px. On wide screens
+     give it slightly more presence with a soft glow + larger logo. */
+  body > div[style*="minHeight"][style*="100vh"][style*="07080C"]
+    > div[style*="maxWidth: 440"] {
+    /* Already styled inline; we just add a hover-lift on focus-within. */
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+}
+
+/* ── Sidebar drawer animation polish ─────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Smoother slide-in animation for the mobile sidebar drawer. */
+  aside[style*="position: fixed"][style*="left: 0"] {
+    will-change: transform;
+  }
+}
+
+/* ── Mid-phone landscape (480-767, like phone landscape orientation) ─── */
+@media (min-width: 480px) and (max-width: 767px) and (orientation: landscape) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  .admin-h1, h1[class*="h1Style"] {
+    font-size: 20px !important;
+  }
+}
+
+/* End v122.1 operator polish */

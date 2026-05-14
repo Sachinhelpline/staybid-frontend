@@ -541,4 +541,96 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   16. PARTNER panel (/partner, /partner/dashboard, /partner/verification)
+   ─────────────────────────────────────────────────────────────────────────
+   v122.1 — Partner panel desktop / tablet polish.
+   - Login: gold-on-navy centered card. Already `max-w-sm` (384px) on
+     mobile. On wide desktops, slightly widen and add a subtle hover lift.
+   - Dashboard: outer wrapper is `min-h-screen bg-luxury-50` with sticky
+     navbar + tabs at `max-w-7xl`. Already responsive via Tailwind. Add
+     hover affordances, tab-scrollbar polish, wide-screen content cap.
+
+   Mobile chrome (Navbar, BottomDock, DialerNav, BackChip) is already
+   hidden on /partner/** via existing pathname gates — no JSX changes
+   needed for hide logic.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Partner: shared rules across breakpoints ───────────────────────── */
+/* Hide the body-level customer chrome on partner routes — defence in
+   depth in case some future component slips past the JSX hide gates.
+   The customer Navbar, BottomDock, DialerNav, and BackChip all check
+   pathname themselves, but a CSS net here guarantees no leak. */
+.partner-shell .nav3d-bar,
+.partner-shell .ig-bottom-dock,
+.partner-shell .dialer-root,
+.partner-shell .sb-back-chip { display: none !important; }
+
+/* ── Partner login (/partner) ──────────────────────────────────────── */
+/* The login page uses `from-luxury-950 via-luxury-900 to-luxury-800`
+   gradient + `max-w-sm` card. On desktop give the card a tiny bit more
+   horizontal room + subtle hover focus state. */
+@media (min-width: 1024px) {
+  /* Widen the login card a touch on big screens (was 384px). */
+  body main > div.min-h-screen.flex.items-center.justify-center > div.w-full.max-w-sm {
+    max-width: 420px !important;
+  }
+}
+
+/* ── Partner dashboard (/partner/dashboard) ─────────────────────────── */
+/* The dashboard already uses `max-w-7xl mx-auto` for both the sticky
+   nav, the tabs row, and the main content. On wide displays >=1536 we
+   bump the cap slightly so power users get more horizontal real estate
+   for tables. Hover affordances on every card. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Partner dashboard cards (the rounded-3xl blocks). */
+  body main .min-h-screen.bg-luxury-50 .rounded-3xl,
+  body main .min-h-screen.bg-luxury-50 .rounded-2xl {
+    transition: transform 0.18s cubic-bezier(.3,1.4,.4,1), box-shadow 0.18s ease;
+  }
+  body main .min-h-screen.bg-luxury-50 .rounded-3xl:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 40px rgba(15, 12, 8, 0.08);
+  }
+}
+
+@media (min-width: 1536px) {
+  /* Partner dashboard content cap bump from 1280 → 1440 on wide-XL. */
+  body main .min-h-screen.bg-luxury-50 .max-w-7xl {
+    max-width: 1440px !important;
+  }
+}
+
+/* ── Partner tabs row — horizontal scroll affordance polish ─────────── */
+/* The tab strip uses `overflow-x-auto` so it scrolls on small screens.
+   Add a subtle gold scrollbar so users see they can scroll. */
+.partner-shell .overflow-x-auto::-webkit-scrollbar,
+body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
+}
+.partner-shell .overflow-x-auto::-webkit-scrollbar-thumb,
+body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(201, 145, 26, 0.35);
+  border-radius: 2px;
+}
+
+/* (Partner login mobile is left as v121.2 — the outer px-4 wrapper
+   already provides the right edge padding. Don't double-pad.) */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   17. /onboard panel (rarely-used onboarding wizard)
+   ─────────────────────────────────────────────────────────────────────────
+   Already has its own self-contained layout in its files. CSS-side, just
+   make sure no customer chrome bleeds through on any breakpoint and the
+   content stays centered on huge displays.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1920px) {
+  /* /onboard pages usually wrap in a centered card; cap the page max
+     width on 4K so it doesn't stretch. */
+  body > main > div[class*="onboard"] {
+    max-width: 1280px;
+    margin-inline: auto;
+  }
+}
+
 /* End v122 desktop layer */
