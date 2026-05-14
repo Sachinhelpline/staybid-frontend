@@ -24,7 +24,26 @@ import { api } from "@/lib/api";
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { compressVideo } from "@/lib/social/video-compress";
+import {
+  mergeVideos,
+  isMergeSupported,
+  extractMergedPoster,
+  MergeUnsupportedError,
+  type MergeProgress,
+} from "@/lib/social/video-merge";
 import { notify } from "@/lib/notifications";
+
+// v117 — additional video clips attached after the primary file. Index 0
+// of the merge order is always the primary `mediaFile`; entries here are
+// concatenated AFTER it in the order shown. Each carries its own object URL
+// so the clip-strip thumbnails render without re-creating blobs on every
+// re-render. Caller is responsible for revoking the URLs (we revoke on
+// remove + on composer close).
+type ClipAttachment = {
+  id: string;
+  file: File;
+  url: string;
+};
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
 // Tracks are SoundHelix's free demo set, every URL has been stable for
@@ -1773,7 +1792,20 @@ export function Composer({
   const [compressing, setCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [compressedInfo, setCompressedInfo] = useState<{ before: number; after: number } | null>(null);
+  // v117 — multi-clip merge state. `extraClips` holds every video attached
+  // AFTER the primary `mediaFile`. The merge step runs ONCE at upload time
+  // (not on every "add clip" tap) so we never re-encode partial joins. The
+  // merge progress state powers the same banner as compress does.
+  const [extraClips, setExtraClips] = useState<ClipAttachment[]>([]);
+  const [merging, setMerging] = useState(false);
+  const [mergeProgress, setMergeProgress] = useState<MergeProgress | null>(null);
+  const [mergeUnsupportedNote, setMergeUnsupportedNote] = useState<string>("");
   const fileRef = useRef<HTMLInputElement | null>(null);
+  // v117 — separate input ref for the "+ Add another clip" picker. Reuses
+  // `accept` but is wired to ADD onto extraClips instead of replacing the
+  // primary file. Keeping a second ref avoids the "click() while element
+  // is mid-render" race that breaks file dialogs on Safari.
+  const moreClipsRef = useRef<HTMLInputElement | null>(null);
   // v113 — separate camera-capture input. Same accept but with `capture`
   // attribute so the phone opens the camera straight away.
   const cameraRef = useRef<HTMLInputElement | null>(null);
@@ -1817,6 +1849,15 @@ export function Composer({
       setCompressedInfo(null);
       setCoverFrames([]);
       setCoverPickerOpen(false);
+      // v117 — wipe any attached clips and revoke their object URLs so the
+      // composer never carries stale blob handles between sessions.
+      setExtraClips((prev) => {
+        for (const c of prev) { try { URL.revokeObjectURL(c.url); } catch {} }
+        return [];
+      });
+      setMerging(false);
+      setMergeProgress(null);
+      setMergeUnsupportedNote("");
     }
   }, [open, kind]);
 
@@ -1878,10 +1919,15 @@ export function Composer({
 
   const accept = kind === "photo" ? "image/*" : kind === "story" ? "image/*,video/*" : "video/*";
   const isVideo = mediaFile?.type.startsWith("video/");
+  // v117 — only reel kind supports multi-clip merge. Stories are 24h
+  // single-shots and photos can't be merged into video. The picker chip
+  // surfaces "Tap to choose multiple" only when relevant.
+  const allowMultiClips = kind === "reel";
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = Array.from(e.target.files || []);
+    if (fileList.length === 0) return;
+    const [file, ...rest] = fileList;
     const url = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaUrl(url);
@@ -1907,7 +1953,107 @@ export function Composer({
       // Photos use the source image itself as their own poster.
       setPosterUrl(url);
     }
+    // v117 — if the picker returned multiple video files at once, fold the
+    // extras into the merge queue. Non-reel kinds ignore extras; photos +
+    // stories stay single-shot.
+    if (rest.length > 0 && allowMultiClips && file.type.startsWith("video/")) {
+      if (!isMergeSupported()) {
+        setMergeUnsupportedNote(
+          "This browser can't merge clips locally — only the first clip will be posted. Try Chrome / Firefox, or upload each clip as its own reel."
+        );
+      } else {
+        const extras: ClipAttachment[] = rest
+          .filter((f) => f.type.startsWith("video/"))
+          .map((f) => ({
+            id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            file: f,
+            url: URL.createObjectURL(f),
+          }));
+        setExtraClips(extras);
+      }
+    }
     setStep("edit");
+  };
+
+  // v117 — append more clips to the merge queue from the "+ Add clip" button
+  // in the edit step. Validates the input is video-only (we already enforce
+  // accept="video/*" on the input but defensive guard against drag-drop or
+  // browsers that ignore accept).
+  const onAddClips = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = Array.from(e.target.files || []);
+    if (fileList.length === 0) return;
+    if (!isMergeSupported()) {
+      setMergeUnsupportedNote(
+        "This browser can't merge clips locally. Post each clip as a separate reel, or open in Chrome / Firefox."
+      );
+      try { (e.target as HTMLInputElement).value = ""; } catch {}
+      return;
+    }
+    const additions: ClipAttachment[] = fileList
+      .filter((f) => f.type.startsWith("video/"))
+      .map((f) => ({
+        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file: f,
+        url: URL.createObjectURL(f),
+      }));
+    if (additions.length === 0) {
+      setMergeUnsupportedNote("Only video files can be added as extra clips.");
+    } else {
+      setExtraClips((prev) => [...prev, ...additions]);
+      setMergeUnsupportedNote("");
+    }
+    // Clear input so picking the same file twice still fires onChange.
+    try { (e.target as HTMLInputElement).value = ""; } catch {}
+  };
+
+  const removeExtraClip = (id: string) => {
+    setExtraClips((prev) => {
+      const next: ClipAttachment[] = [];
+      for (const c of prev) {
+        if (c.id === id) { try { URL.revokeObjectURL(c.url); } catch {} }
+        else next.push(c);
+      }
+      return next;
+    });
+  };
+
+  const moveExtraClip = (id: string, dir: -1 | 1) => {
+    setExtraClips((prev) => {
+      const idx = prev.findIndex((c) => c.id === id);
+      if (idx < 0) return prev;
+      const next = idx + dir;
+      if (next < 0 || next >= prev.length) return prev;
+      const copy = prev.slice();
+      [copy[idx], copy[next]] = [copy[next], copy[idx]];
+      return copy;
+    });
+  };
+
+  // v117 — promote an extra clip to the primary (first frame of the merged
+  // video + driver of preview aspect). Useful when the creator picked
+  // clips in the wrong order and wants the second clip to lead.
+  const promoteExtraClip = (id: string) => {
+    setExtraClips((prev) => {
+      const idx = prev.findIndex((c) => c.id === id);
+      if (idx < 0 || !mediaFile) return prev;
+      const chosen = prev[idx];
+      const oldPrimary: ClipAttachment = {
+        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file: mediaFile,
+        url: mediaUrl || URL.createObjectURL(mediaFile),
+      };
+      const newPrimaryUrl = chosen.url;
+      // Swap state.
+      setMediaFile(chosen.file);
+      setMediaUrl(newPrimaryUrl);
+      setPosterUrl("");
+      if (chosen.file.type.startsWith("video/")) {
+        extractVideoThumbnail(chosen.file).then(setPosterUrl).catch(() => setPosterUrl(""));
+      }
+      const next = prev.slice();
+      next.splice(idx, 1, oldPrimary);
+      return next;
+    });
   };
 
   const toggleTag = (t: string) => {
@@ -1919,7 +2065,17 @@ export function Composer({
   // v114 — pulled out so the Retry button can re-run the same upload with
   // the SAME tempId (clientPostId stays stable -> server idempotency holds,
   // so multiple "Retry" taps will never duplicate posts on social_posts).
-  const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<{ ok: boolean; error?: string }> => {
+  // v117 — accepts an optional `clips` argument carrying the primary file
+  // + extras in merge order. When provided AND length > 1, the merge step
+  // runs BEFORE compression and produces a single blob already at our
+  // target bitrate, so compression is skipped on the merged output (no
+  // double re-encode).
+  const runUpload = useCallback(async (
+    tempId: string,
+    post: UserPost,
+    clips?: File[],
+  ): Promise<{ ok: boolean; error?: string }> => {
+    let mergedObjectUrl: string | null = null;
     try {
       const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
       if (!tok)    return { ok: false, error: "Not signed in. Saved on this device only." };
@@ -1941,12 +2097,49 @@ export function Composer({
       // even on India 3G. Failure falls through to the original file.
       let uploadBlobUrl = post.mediaUrl;
       let uploadMime    = post.mediaMime;
+      let posterForUpload = post.posterUrl;
+      let skipCompression = false;
       const isVideoPost = mediaType === "REEL" || mediaType === "STORY" || (post.mediaMime || "").startsWith("video/");
-      if (isVideoPost) {
+
+      // v117 — merge step. Runs ONLY when the caller supplied 2+ clips AND
+      // the post is a video. The merger throws MergeUnsupportedError on
+      // browsers without captureStream — surfaced clearly so the user can
+      // either switch browser or remove the extras and retry single-clip.
+      if (isVideoPost && clips && clips.length > 1) {
+        try {
+          setMerging(true);
+          setMergeProgress({ phase: "probe", overall: 0 });
+          const result = await mergeVideos(clips, (p) => setMergeProgress(p));
+          mergedObjectUrl  = URL.createObjectURL(result.blob);
+          uploadBlobUrl    = mergedObjectUrl;
+          uploadMime       = result.mime;
+          skipCompression  = true; // merger already encodes at compress targets
+          // Refresh the poster from the merged output so the thumbnail
+          // matches the first frame of the merged reel, not the first
+          // frame of the primary clip in isolation.
+          try {
+            const merged_poster = await extractMergedPoster(result.blob);
+            if (merged_poster && merged_poster.startsWith("data:")) {
+              posterForUpload = merged_poster;
+            }
+          } catch { /* fall through with existing poster */ }
+        } catch (e: any) {
+          setMerging(false);
+          setMergeProgress(null);
+          if (e instanceof MergeUnsupportedError) {
+            return { ok: false, error: e.message };
+          }
+          return { ok: false, error: e?.message || "Couldn't merge the clips. Tap Retry, or remove the extras." };
+        } finally {
+          setMerging(false);
+        }
+      }
+
+      if (isVideoPost && !skipCompression) {
         try {
           setCompressing(true);
           setCompressionProgress(0);
-          const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
+          const srcBlob = await fetch(uploadBlobUrl).then((r) => r.blob());
           const result = await compressVideo(srcBlob, (pct) => setCompressionProgress(Math.round(pct)));
           if (result.compressed && result.blob !== srcBlob) {
             const newUrl = URL.createObjectURL(result.blob);
@@ -1973,7 +2166,11 @@ export function Composer({
         mediaBlobUrl: uploadBlobUrl,
         mediaMime:    uploadMime,
         kind:         mediaType,
-        posterDataUrl: post.posterUrl?.startsWith("data:") ? post.posterUrl : undefined,
+        // v117 — `posterForUpload` is either the original poster captured
+        // at file-pick time OR the refreshed first-frame from the merged
+        // output. Either way it's a data URL — same shape uploadSocialMedia
+        // already expects.
+        posterDataUrl: posterForUpload?.startsWith("data:") ? posterForUpload : undefined,
         userId,
         // v115 — real bytes-uploaded progress. Replaces the v114 milestone
         // jumps (15% → 70% → 95%) which sat frozen at 15% the entire time
@@ -2046,12 +2243,21 @@ export function Composer({
         ? "Couldn't upload media (network / file format)."
         : (err?.message || "Upload failed.");
       return { ok: false, error: msg };
+    } finally {
+      // v117 — revoke the temporary merged-blob URL once we're done with it.
+      // The compressed/merged blob has already been streamed to Storage and
+      // updatePost() points the local feed at the durable public URL above.
+      if (mergedObjectUrl) {
+        try { URL.revokeObjectURL(mergedObjectUrl); } catch {}
+      }
     }
   }, [updatePost]);
 
   // Holds the most recently attempted post payload so the Retry button can
   // re-run runUpload without losing the user's selections.
-  const lastAttemptRef = useRef<{ tempId: string; post: UserPost } | null>(null);
+  // v117 — also remembers the merge-order clip list so retries replay the
+  // same multi-clip merge instead of falling back to single-clip.
+  const lastAttemptRef = useRef<{ tempId: string; post: UserPost; clips?: File[] } | null>(null);
 
   const retry = useCallback(async () => {
     if (!lastAttemptRef.current) return;
@@ -2059,8 +2265,8 @@ export function Composer({
     setRetryCount((c) => c + 1);
     setPosting(true);
     setUploadProgress(0);
-    const { tempId, post } = lastAttemptRef.current;
-    const result = await runUpload(tempId, post);
+    const { tempId, post, clips } = lastAttemptRef.current;
+    const result = await runUpload(tempId, post, clips);
     setPosting(false);
     if (result.ok) {
       notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
@@ -2114,14 +2320,22 @@ export function Composer({
     };
     // Commit to the global reactive PostsStore — feed picks it up instantly.
     try { addPost(userPost as StoreUserPost); } catch {}
-    lastAttemptRef.current = { tempId, post: userPost };
+    // v117 — when extras are queued, snapshot the merge order so retries
+    // replay the same join. The primary always sits at index 0; extras
+    // follow in display order. Caller is the only place that knows the
+    // current `extraClips` so the snapshot must happen here, not inside
+    // runUpload.
+    const mergeClips: File[] | undefined = (allowMultiClips && mediaFile && extraClips.length > 0)
+      ? [mediaFile, ...extraClips.map((c) => c.file)]
+      : undefined;
+    lastAttemptRef.current = { tempId, post: userPost, clips: mergeClips };
 
     // v114 — await the upload. On success: close + success toast. On
     // failure: KEEP the modal open and surface a retry banner so the
     // creator can Retry without losing their selections or rebuilding
     // tags / filter / cover. The tempId is the same across retries so
     // the server-side `client_post_id` deduplication still holds.
-    runUpload(tempId, userPost).then((result) => {
+    runUpload(tempId, userPost, mergeClips).then((result) => {
       setPosting(false);
       if (result.ok) {
         notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
@@ -2246,11 +2460,18 @@ export function Composer({
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={(e) => {
                   e.preventDefault(); e.stopPropagation();
-                  const f = e.dataTransfer.files?.[0];
-                  if (!f) return;
-                  // Simulate the change event so we re-use onFile's logic.
-                  const dt = new DataTransfer(); dt.items.add(f);
+                  const files = e.dataTransfer.files;
+                  if (!files || files.length === 0) return;
+                  // v117 — Drag-drop: preserve all dropped files when reels
+                  // mode (multi-clip merge), otherwise pass through the
+                  // first only (photo / story stays single-shot).
                   if (fileRef.current) {
+                    const dt = new DataTransfer();
+                    const max = allowMultiClips ? Math.min(files.length, 10) : 1;
+                    for (let i = 0; i < max; i++) {
+                      const f = files.item(i);
+                      if (f) dt.items.add(f);
+                    }
                     fileRef.current.files = dt.files;
                     onFile({ target: fileRef.current } as any);
                   }
@@ -2263,10 +2484,12 @@ export function Composer({
               >
                 <span className="text-5xl">{kind === "reel" ? "🎬" : kind === "photo" ? "📷" : "📖"}</span>
                 <p className="text-white font-semibold text-[0.92rem]">
-                  Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : "a video"}
+                  Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : allowMultiClips ? "one or more videos" : "a video"}
                 </p>
                 <p className="text-white/55 text-[0.66rem] px-6">
-                  From your camera roll or files. Drag-and-drop also works on desktop.
+                  {allowMultiClips
+                    ? "Pick multiple clips — we'll merge them into one reel. Drag-and-drop works on desktop."
+                    : "From your camera roll or files. Drag-and-drop also works on desktop."}
                 </p>
                 <span
                   className="text-[0.62rem] mt-1 px-3 py-1 rounded-full"
@@ -2299,7 +2522,14 @@ export function Composer({
               </button>
             </div>
 
-            <input ref={fileRef}   type="file" accept={accept} onChange={onFile} className="hidden" />
+            <input
+              ref={fileRef}
+              type="file"
+              accept={accept}
+              multiple={allowMultiClips}
+              onChange={onFile}
+              className="hidden"
+            />
             <input
               ref={cameraRef}
               type="file"
@@ -2397,7 +2627,196 @@ export function Composer({
                     🖼 Cover frame
                   </button>
                 )}
+
+                {/* v117 — clip-count badge. Shows "1 of N" only when extra
+                    clips are queued so single-clip uploads stay clean. */}
+                {allowMultiClips && isVideo && extraClips.length > 0 && (
+                  <span
+                    className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[0.58rem] font-bold tracking-wide"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(46,204,113,0.85), rgba(91,141,255,0.85))",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.35)",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    🎬 1 of {extraClips.length + 1} · merged
+                  </span>
+                )}
               </div>
+
+              {/* v117 — Clip strip. Only shown for reels with a video chosen.
+                  Lists the primary clip (slot 0) + every extra in order.
+                  Each tile has ⬅ / ➡ reorder + ✕ remove. Last tile is a
+                  "+ Add clip" affordance until the 10-clip cap. */}
+              {allowMultiClips && isVideo && (
+                <div
+                  className="-mx-4 mt-2 mb-1 px-4 pb-2 overflow-x-auto flex gap-2 hide-scroll items-stretch"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                  aria-label="Clip strip — drag or use the chevrons to reorder"
+                >
+                  {/* Slot 0 — the primary clip. Cannot be removed (closing
+                      the composer or hitting Back undoes the upload). */}
+                  <div
+                    className="shrink-0 flex flex-col items-center gap-1"
+                  >
+                    <span
+                      className="w-14 h-20 rounded-lg overflow-hidden block relative"
+                      style={{
+                        border: "2px solid rgba(255,215,107,0.85)",
+                        boxShadow: "0 0 0 1px rgba(0,0,0,0.4), 0 4px 12px rgba(240,180,41,0.35)",
+                      }}
+                    >
+                      {posterUrl ? (
+                        <img src={posterUrl} alt="primary clip" className="w-full h-full object-cover" />
+                      ) : (
+                        <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline />
+                      )}
+                      <span
+                        className="absolute top-0.5 left-0.5 text-[0.5rem] font-black px-1 rounded"
+                        style={{ background: "rgba(0,0,0,0.62)", color: "#ffd76b" }}
+                      >
+                        1
+                      </span>
+                    </span>
+                    <span className="text-[0.56rem] font-semibold" style={{ color: "#ffd76b" }}>
+                      Primary
+                    </span>
+                  </div>
+
+                  {/* Extra clips — each gets reorder + remove. Reorder swaps
+                      with its neighbour. Promote-to-primary is the leftmost
+                      action so an out-of-order primary is a single tap away
+                      from being swapped without losing the other clips. */}
+                  {extraClips.map((c, i) => (
+                    <div key={c.id} className="shrink-0 flex flex-col items-center gap-1">
+                      <span
+                        className="w-14 h-20 rounded-lg overflow-hidden block relative"
+                        style={{
+                          border: "2px solid rgba(255,255,255,0.22)",
+                          boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
+                        }}
+                      >
+                        <video src={c.url} className="w-full h-full object-cover" muted playsInline />
+                        <span
+                          className="absolute top-0.5 left-0.5 text-[0.5rem] font-black px-1 rounded"
+                          style={{ background: "rgba(0,0,0,0.62)", color: "#fff" }}
+                        >
+                          {i + 2}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeExtraClip(c.id)}
+                          aria-label={`Remove clip ${i + 2}`}
+                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[0.68rem] font-bold"
+                          style={{
+                            background: "rgba(255,69,89,0.95)",
+                            color: "#fff",
+                            border: "2px solid #0a0612",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.6)",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => promoteExtraClip(c.id)}
+                          aria-label={`Make clip ${i + 2} primary`}
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
+                          style={{
+                            background: "rgba(255,215,107,0.18)",
+                            border: "1px solid rgba(255,215,107,0.55)",
+                            color: "#ffd76b",
+                          }}
+                        >
+                          ★
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveExtraClip(c.id, -1)}
+                          disabled={i === 0}
+                          aria-label={`Move clip ${i + 2} left`}
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
+                          style={{
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.18)",
+                            color: i === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)",
+                          }}
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveExtraClip(c.id, 1)}
+                          disabled={i === extraClips.length - 1}
+                          aria-label={`Move clip ${i + 2} right`}
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
+                          style={{
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.18)",
+                            color: i === extraClips.length - 1 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)",
+                          }}
+                        >
+                          ›
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+
+                  {/* Add clip tile — hidden once the 10-clip cap is reached
+                      (matches the merge module's MAX_CLIPS guard). */}
+                  {extraClips.length < 9 && (
+                    <button
+                      type="button"
+                      onClick={() => moreClipsRef.current?.click()}
+                      className="shrink-0 flex flex-col items-center gap-1"
+                      aria-label="Add another clip to merge into this reel"
+                    >
+                      <span
+                        className="w-14 h-20 rounded-lg flex items-center justify-center"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1.5px dashed rgba(255,215,107,0.55)",
+                          color: "#ffd76b",
+                          fontSize: "1.4rem",
+                        }}
+                      >
+                        +
+                      </span>
+                      <span className="text-[0.56rem] font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
+                        Add clip
+                      </span>
+                    </button>
+                  )}
+                  <input
+                    ref={moreClipsRef}
+                    type="file"
+                    accept="video/*"
+                    multiple
+                    onChange={onAddClips}
+                    className="hidden"
+                  />
+                </div>
+              )}
+
+              {/* v117 — Soft warning when the browser can't merge locally.
+                  Surfaced as a non-blocking note so the creator can still
+                  post the primary clip without the merge step. */}
+              {mergeUnsupportedNote && (
+                <p
+                  className="mt-2 text-amber-300 text-[0.7rem] leading-snug px-2"
+                  style={{
+                    background: "rgba(245,158,11,0.10)",
+                    border: "1px solid rgba(245,158,11,0.35)",
+                    borderRadius: 10,
+                    padding: "8px 10px",
+                  }}
+                >
+                  ⚠️ {mergeUnsupportedNote}
+                </p>
+              )}
 
               {/* v114 — IG-style filter strip. Horizontal scroll of named
                   presets, each shown with the actual media as a tiny live
@@ -2734,7 +3153,30 @@ export function Composer({
                   the creator never closes the modal on an invisible error.
                   Same tempId on retry = server-side idempotency holds.
                   v116 — compression phase shown first ("Optimising for fast
-                  upload…") so the user knows we're not stuck at 0% upload. */}
+                  upload…") so the user knows we're not stuck at 0% upload.
+                  v117 — merge phase precedes compression when multi-clip. */}
+              {merging && (
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(185,100,255,0.10)", border: "1px solid rgba(185,100,255,0.30)" }}>
+                  <p className="text-fuchsia-200 text-[0.74rem] font-semibold mb-1.5">
+                    🎬 Stitching your clips… {mergeProgress?.overall ?? 0}%
+                    {mergeProgress?.phase === "encode" && typeof mergeProgress.clipIndex === "number" && typeof mergeProgress.clipCount === "number" && (
+                      <span className="text-fuchsia-200/70 font-normal"> · clip {mergeProgress.clipIndex + 1} of {mergeProgress.clipCount}</span>
+                    )}
+                  </p>
+                  <p className="text-fuchsia-200/70 text-[0.6rem] mb-1.5 leading-snug">
+                    Joining {extraClips.length + 1} clips into one reel — keep this tab open until it finishes.
+                  </p>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
+                    <div
+                      className="h-full transition-all"
+                      style={{
+                        width: `${mergeProgress?.overall ?? 0}%`,
+                        background: "linear-gradient(90deg, #b964ff, #ff458d)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               {compressing && (
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(91,141,255,0.10)", border: "1px solid rgba(91,141,255,0.30)" }}>
                   <p className="text-sky-200 text-[0.74rem] font-semibold mb-1.5">
