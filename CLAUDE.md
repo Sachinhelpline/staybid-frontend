@@ -2940,3 +2940,133 @@ app/layout.tsx                          # SB_BUILD v120; badge v120
 - **Filter UX:** strip removed; on-demand bottom sheet from the right-rail ✨ button. Swipe gesture still active with floating name pulse.
 - **Cover-frame picker:** continuous 16-thumb timeline strip with draggable gold marker + full-height preview. "Set cover" commits.
 - **Verified end-to-end** in dev preview (mobile 375×812). Zero TypeScript errors. Existing posts/feed unaffected.
+
+---
+
+## Post-Upload Hardening Era (v120.1 → v121.2, 2026-05-15)
+
+Five rapid patches landing across one day, each fixing a regression / latent bug exposed by the v120 ship. All five trace back to ONE structural mistake from v118 that nobody caught for ~30 release cycles.
+
+### The original sin (v118)
+v118 changed the `addPost` contract from "optimistic on submit" → "only on upload success" to kill zombie posts after failed uploads. The fix was correct, but it broke an assumption baked into the existing `updatePost(tempId, { id: serverId, mediaUrl: serverMedia, audio: { url: publicSoundUrl } })` call INSIDE `runUpload`. That call expects a local PostsStore entry to exist (so it can patch it). After v118, no entry exists yet → updatePost is a no-op → `addPost(userPost)` at success-time commits the **original userPost** with `tempId` + dead `blob:` URLs.
+
+### The three cascading bugs (fixed in v120.1)
+- **6 copies on /me/posts per upload** — local entry id=tempId, remote row id=serverId, /me's id-only dedup misses → 1 local + 1 remote × retries.
+- **Custom audio playback silent** — PostsStore `audio.url` = dead `blob:` from upload tab; feed `<audio src=…>` hits a 404.
+- **Text/emoji overlays not visible on upload** — PostsStore `mediaUrl` = original pre-compression blob; the compressed-with-overlays blob the server actually stored never made it back into PostsStore.
+
+#### v120.1 fix — refactor runUpload's return contract
+`runUpload` now returns `{ ok, serverId, serverMedia, serverPoster, serverSoundUrl }` on success. Both `post()` and `retry()` build a `finalPost` from those server values and addPost THAT — not the original userPost. The no-op `updatePost(tempId, …)` call inside runUpload is gone; `updatePost` removed from runUpload's deps. Also added a content-fingerprint dedup backstop to /me's `allPosts` merge (`kind | last 96 chars of mediaUrl | first 60 chars of caption`) so any legacy localStorage entries from before v120.1 still dedup cleanly against fresh remote rows.
+
+### /me/posts was rendering BARE video — caption + audio + filter + hotel pill all missing
+User opened a fresh upload on /me/posts after v120.1 and reported: the audio file name showed but no sound played, the IG filter wasn't applied, no hotel pill, no location pill, and the comments drawer was a literal placeholder ("No comments yet — be the first…") with no input.
+
+#### v121 fix — FeedPost type was missing the fields entirely
+The `FeedPost` shape in `components/PostsScrollFeed.tsx` literally lacked `audioUrl`, `hotelName`, `filterPreset` — the Composer was writing them but the render layer dropped them on the floor. Pre-v121 nobody on /me/posts saw the picked audio play or the filter render. Specific shipments:
+- Added `audioUrl`, `hotelName`, `filterPreset` to `FeedPost` + `/me/posts` + `/saved/posts` mappers now pass them through.
+- Hidden `<audio src={post.audioUrl}>` mounts on every video card. Plays in sync with `isActive + global mute`. Video muted when custom audio is in play so the two tracks don't double up.
+- Video + img get `style={{ filter: filterCssFor(post.filterPreset) }}` so the on-card render matches what the composer preview looked like.
+- Generic "🏨 View hotel ›" CTA replaced with a meta-pill row surfacing 📍 location + 🏨 At {hotelName}.
+- Real comments drawer: scrollable thread + sticky text input + Send. Comments persist to `localStorage.sb_post_comments_v1` keyed by post id. (Backend wire-up to `/api/social/posts/<id>/comments` is a follow-up — input works locally today.)
+- Edit-post sheet's "Hotel ID" raw-cuid input replaced with a searchable hotel picker that debounces `/api/hotels?search=&limit=8` and shows name + city for each result. Current pick shows as a removable pill above the search box.
+
+### Logout button "did nothing" on the laptop (v121.1)
+User reported tapping Log out multiple times with no visible effect, AND signing in with a different Google account on the same device was blocked.
+
+#### Root cause
+`logout()` cleared OUR localStorage (`sb_token` / `sb_user` / `sb_token_type`) but NEVER called `firebaseSignOut()`. For Google / Phone OTP accounts that flowed through Firebase, the auth state lives in IndexedDB (`firebaseLocalStorageDb`). We never touched it, so Firebase kept the original user signed in. The Google popup at /auth showed the same account pre-selected with no way to switch.
+
+Three smaller cousins of the same bug were also live:
+- Partner panel (`sb_partner_token`) and admin panel (`sb_admin_token`) keys weren't cleared on customer logout. Switching accounts on a dev device could carry partner OR admin auth across.
+- Per-user local caches (`sb_user_posts`, `sb_local_saves`, `sb_post_comments_v1`, `sb_post_likes_v1`) survived logout and mixed identities into the next account.
+- `router.push("/")` was a soft navigation — React kept showing chrome built from stale auth context. User saw nothing change, hit logout again, repeat.
+
+#### v121.1 fix — full sequence
+1. Wipe `sb_token` / `sb_user` / `sb_token_type`.
+2. Wipe `sb_partner_token` / `sb_partner_user` / `sb_admin_token` / `sb_admin_user`.
+3. Wipe `sb_user_posts` / `sb_local_saves` / `sb_post_comments_v1` / `sb_post_likes_v1`.
+4. `firebaseSignOut(firebaseAuth)` — fire-and-forget so a slow Google round-trip doesn't block the visible logout.
+5. `setToken(null)` / `setUser(null)` / `setTokenType("backend")`.
+6. Dispatch `sb:tier-refresh` so TierProvider re-probes immediately.
+7. `window.location.replace("/auth")` — HARD navigation, no back-button return to a half-logged-out screen.
+
+### The duplicate-writer smoking gun (v121.2)
+After v121 the user on the **correct account** ran the v121 diagnostic snippet and surfaced this exact pattern:
+
+```
+row #1: 01:26:08 AM · client_post_id="post-1778788555406-yu01cx"  ← Composer.runUpload (correct, dedup-protected)
+row #2: 01:26:14 AM · client_post_id=NULL                          ← rogue second writer
+```
+
+Two `social_posts` rows, six seconds apart, same caption / audio / hotel. One had `client_post_id`; one didn't.
+
+#### Root cause
+`components/discover/InstagramHotelFeed.tsx` had a legacy `onPosted` callback that ran a FULL second upload pipeline (`uploadSocialMedia` + POST `/api/social/posts`) every time the Composer finished. **Without `clientPostId`.** This was correct in v97-v109 when CreateFlow.Composer was a local-only persistence layer. Starting v110-v111, the Composer's own `runUpload()` began doing the Storage push + the social_posts insert itself — making the callback REDUNDANT. Nobody removed it. Every upload silently created two rows AND two video files in the Storage bucket.
+
+#### v121.2 fix
+Stripped the entire `(async () => { uploadSocialMedia + POST })()` block from `onPosted`. Kept only the toast + scroll-to-top + analytics event. The Composer's own pipeline does everything else with `clientPostId` for v111 idempotency.
+
+### Lazy Firebase import (also v121.2)
+v121.1's logout fix had a regression: top-level `import { firebaseAuth } from "@/lib/firebase"` + `import { signOut } from "firebase/auth"` triggered `getAuth(app)` during SSR for every page that uses auth (which is almost every customer page). When `NEXT_PUBLIC_FIREBASE_API_KEY` wasn't present (local dev, preview/build envs without env vars), SSR crashed with `auth/invalid-api-key`.
+
+Moved the Firebase imports to a lazy dynamic import INSIDE the `logout()` function body:
+```ts
+Promise.all([import("@/lib/firebase"), import("firebase/auth")]).then(([m1, m2]) => {
+  if (m1?.firebaseAuth && typeof m2?.signOut === "function") {
+    m2.signOut(m1.firebaseAuth).catch(() => {});
+  }
+}).catch(() => {});
+```
+SSR never touches firebase/auth. Runs only on the browser-side click. Verified `/me` returns 200 from SSR without env vars.
+
+### Files modified across the era
+```
+lib/auth.tsx                                # v121.1 / v121.2 — full logout sequence + lazy Firebase imports
+lib/posts-store.tsx                         # (existing, unchanged)
+
+app/me/page.tsx                             # v120.1 — content-fingerprint dedup backstop
+app/me/posts/page.tsx                       # v121 — pass audioUrl/hotelName/filterPreset/location
+app/saved/posts/page.tsx                    # v121 — same field plumbing
+
+components/discover/CreateFlow.tsx          # v120.1 — runUpload returns server metadata; post()/retry() build finalPost
+components/discover/InstagramHotelFeed.tsx  # v121.2 — onPosted no longer re-uploads / re-POSTs
+
+components/PostsScrollFeed.tsx              # v121 — FeedPost fields, CSS filter on video/img, hotel-name pill,
+                                            #         meta-pill row, real comments drawer with input, searchable
+                                            #         hotel picker in Edit-post sheet
+app/layout.tsx                              # SB_BUILD + badge bumped per release
+```
+
+### Server-side data findings (v121 diagnostic)
+- `social_posts.client_post_id` column EXISTS (migration `2026-05-14-social-posts-client-idempotency.sql` was applied).
+- 32 total rows in the DB at v121 ship time. Only 2 had `client_post_id` populated — both from after v110/v111 / from real Composer flow. The other 30 were from the rogue InstagramHotelFeed writer (no clientPostId) + legacy uploads before idempotency was wired.
+- v121.2 kills the rogue writer entirely → every NEW upload from v121.2 forward will carry a `client_post_id` and be dedup-protected on the server.
+
+### Things to Avoid (v120.1 → v121.2 Era)
+- **Never** re-add a SECOND writer to `/api/social/posts` outside of `CreateFlow.runUpload`. The InstagramHotelFeed `onPosted` callback EXPLICITLY does not do a server write any more. Any new "after-post hook" must touch only side-effects (toast, scroll, analytics, tracking events) — NOT call `uploadSocialMedia` or POST to `/api/social/posts`.
+- **Never** commit a post to PostsStore using `userPost` from BEFORE `runUpload`. The original `userPost` carries `id: tempId` + `mediaUrl: blob:...` + `audio.url: blob:...`. Build a `finalPost` from `runUpload`'s `{ serverId, serverMedia, serverPoster, serverSoundUrl }` return and addPost THAT.
+- **Never** import `@/lib/firebase` or `firebase/auth` at the top of `lib/auth.tsx`. Top-level imports trigger `getAuth(app)` during SSR, which crashes when `NEXT_PUBLIC_FIREBASE_API_KEY` isn't present (any dev environment, any preview without Firebase env vars wired). Use the dynamic-import-inside-logout pattern.
+- **Never** strip `firebaseSignOut` from the logout sequence. Firebase persists the auth state in IndexedDB — clearing our localStorage alone leaves the previous user signed in to Firebase, blocking the Google picker on /auth from offering a different account.
+- **Never** strip the per-user localStorage cache clears from logout (`sb_user_posts`, `sb_local_saves`, `sb_post_comments_v1`, `sb_post_likes_v1`). Without these, the next account inherits the previous account's local posts/saves/likes/comments — visible identity mixing.
+- **Never** drop the `clientPostId` field from `POST /api/social/posts` body. The server's `client_post_id` column + the partial unique index on `(author_id, client_post_id)` are how v111 dedup works. A body without `clientPostId` slips past the idempotency check entirely.
+- **Never** soft-navigate after logout. Use `window.location.replace("/auth")`. React closures hold stale auth context across `router.push` and the chrome doesn't visibly update; users tap Log out repeatedly thinking it didn't work.
+- **Never** revert FeedPost back to lacking `audioUrl` / `hotelName` / `filterPreset`. Those three fields are what make /me/posts and /saved/posts actually render the post the way the creator made it. Dropping them silently degrades to bare-video rendering.
+- **Never** mount the PostsScrollFeed comments drawer as a placeholder again. v87 shipped it that way (just an empty-state message + Close button) and it caused months of "comment kar nahi sakte" reports. The v121 input + persistent list is the minimum bar.
+- **Never** render the Edit-post hotel field as a raw cuid input. Users don't know hotel ids. Show NAME via the searchable `/api/hotels?search=` picker, store id under the hood.
+
+### What this era did NOT do
+- **Cleanup tool for legacy duplicate rows.** v121's diagnostic snippet + the per-post DELETE endpoint exist, but there's no UI in /me yet to bulk-delete legacy test rows. Users who built up duplicates pre-v121.2 still need to run the console cleanup script. A "Manage my posts" UI inside /me settings is the right follow-up.
+- **Backend-wired comments.** v121's comment drawer persists to localStorage only. Cross-device comment history needs `/api/social/posts/<id>/comments` POST + GET + a `social_post_comments` table. Out of scope for this hardening pass.
+- **Server-side audit of the 30 rogue rows.** They're orphan rows from before v121.2, mostly null-caption test uploads. Could be cleaned up via a Supabase SQL run (`DELETE FROM social_posts WHERE client_post_id IS NULL AND created_at < '2026-05-15'`) but no automated migration shipped here — user can run it after backing up the table.
+- **Emoji / hashtag toolbar in the Edit-post caption.** Composer already has these; for the edit sheet they're a follow-up polish. The current textarea works; just doesn't give users the same emoji bar Composer has.
+
+---
+
+## Updated production state (v121.2, 2026-05-15)
+- **Current version:** v121.2 · commit `8234db1` on `main` · branch `claude/adoring-bouman-c84ef6`
+- **One upload = one row.** The duplicate-writer in InstagramHotelFeed is gone; every upload now goes through Composer.runUpload only, which sends `clientPostId` so v111 server-side dedup catches double-fires.
+- **Logout works on first click.** Full key wipe + Firebase signOut + hard-redirect to `/auth`. Lazy dynamic Firebase imports so SSR stays clean without env vars.
+- **/me/posts renders posts properly.** Audio plays, IG filter applied, location pill + named hotel pill, real comment input that persists locally, hotel-edit by searchable name (not cuid).
+- **Local PostsStore + remote rows align by id.** v120.1's runUpload contract ensures the local entry's id matches the remote `social_posts.id` from the first commit, so /me dedup catches them as the same post.
+- **All five patches deployed live** on `staybids.in`. `SB_BUILD=v121.2-kill-duplicate-writer-lazy-firebase`. Vercel build times were all sub-90s; cache names stayed stable (no SW invalidation needed per v93 discipline).
+
