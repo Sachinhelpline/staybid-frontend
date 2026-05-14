@@ -114,8 +114,9 @@ export default function BookingReview(p: BookingReviewProps) {
           <button onClick={p.onClose} className="text-white/50 hover:text-white text-xl w-8 h-8 rounded-full hover:bg-white/5 transition">✕</button>
         </div>
 
-        {/* SCROLLABLE BODY */}
-        <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(94vh - 64px - 96px)" }}>
+        {/* SCROLLABLE BODY — v122.4: data-autonext-form makes every
+            inner section auto-scroll-to-next on tap, no per-button wiring. */}
+        <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(94vh - 64px - 96px)" }} data-autonext-form>
 
           {/* Hotel + room summary */}
           <div className="br-section flex items-start gap-3 p-3 rounded-2xl border border-luxury-100 bg-luxury-50">

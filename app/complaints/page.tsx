@@ -318,7 +318,7 @@ function Composer({
           <button onClick={onClose} className="text-luxury-400 text-2xl leading-none px-1">✕</button>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        <div className="px-5 py-5 space-y-4" data-autonext-form>
           {/* Type chips — v122.3: every click auto-scrolls to "priority" section */}
           <div data-autonext="type" data-autonext-self="priority">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">Issue type</label>

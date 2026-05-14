@@ -394,7 +394,7 @@ export default function BidPage() {
 
           {/* ═══════════ STEP 1: WHERE & WHEN ═══════════ */}
           {step === 1 && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-autonext-form>
               {/* Destination */}
               <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="destination">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">
@@ -516,7 +516,7 @@ export default function BidPage() {
 
           {/* ═══════════ STEP 2: YOUR STAY ═══════════ */}
           {step === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-autonext-form>
               {/* Room type */}
               <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="roomType">
                 <label className="text-[0.65rem] font-bold text-white/50 uppercase tracking-[0.18em] block mb-4">Room Type</label>
@@ -645,7 +645,7 @@ export default function BidPage() {
 
           {/* ═══════════ STEP 3: SMART BUDGET ═══════════ */}
           {step === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-6" data-autonext-form>
               {/* AI Smart Presets */}
               {city && (
                 <div className="lux-glass lux-border rounded-3xl p-6" data-autonext="presets">
@@ -758,7 +758,7 @@ export default function BidPage() {
 
           {/* ═══════════ STEP 4: REVIEW & LAUNCH ═══════════ */}
           {step === 4 && (
-            <div className="space-y-5">
+            <div className="space-y-5" data-autonext-form>
               {/* AI Confidence Banner */}
               {bidStr && (
                 <div className={`rounded-3xl border p-5 text-center ${

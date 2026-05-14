@@ -350,7 +350,7 @@ function CreatorApplicationForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4" data-autonext-form>
       <div className="card-luxury p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-lg font-bold text-luxury-900">Creator application</h3>

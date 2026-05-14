@@ -149,7 +149,23 @@ function cssEscape(s: string): string {
    ────────────────────────────────────────────────────────────────────── */
 
 /** Install the global delegate. Call once at app boot from a client
- *  component mounted in the root layout. Subsequent calls are no-ops. */
+ *  component mounted in the root layout. Subsequent calls are no-ops.
+ *
+ *  Two paths fire on every click:
+ *  1. EXPLICIT — element carries `data-autonext-target` (or
+ *     `-target-blur` / `-target-enter` / `-target-filled` /
+ *     `data-autonext-self` on a container). The named key is
+ *     resolved via [data-autonext="<key>"] and scrolled into view.
+ *  2. AUTOMATIC — element is inside a container marked
+ *     `data-autonext-form`. The delegate walks up to find the immediate
+ *     child section that owns the clicked element, then scrolls the
+ *     NEXT sibling section into view. No per-button wiring needed.
+ *
+ *  v122.4 — `data-autonext-form` is now the "set it and forget it"
+ *  marker for ANY multi-section form anywhere in the codebase. New
+ *  pages just wrap their form root and inherit the behaviour. The old
+ *  explicit attributes still work and take precedence so existing
+ *  wirings stay untouched. */
 export function installAutoNextDelegate() {
   if (typeof window === "undefined") return;
   const W = window as any;
@@ -170,13 +186,75 @@ export function installAutoNextDelegate() {
     return null;
   }
 
+  /** Find the immediate child section of [data-autonext-form] that
+   *  contains `el`. Returns null if not inside any form root. */
+  function findFormSection(el: Element): Element | null {
+    const formRoot = el.closest("[data-autonext-form]");
+    if (!formRoot) return null;
+    let cur: Element | null = el;
+    while (cur && cur.parentElement && cur.parentElement !== formRoot) {
+      cur = cur.parentElement;
+    }
+    return cur && cur.parentElement === formRoot ? cur : null;
+  }
+
+  /** Find the next sibling section that contains actual form content
+   *  (an input / textarea / select / button / labelled control). Skip
+   *  pure decorative wrappers. */
+  function findNextSection(section: Element): Element | null {
+    let next: Element | null = section.nextElementSibling;
+    while (next) {
+      const hasContent =
+        next.hasAttribute("data-autonext") ||
+        next.querySelector(
+          "input, textarea, select, label, button[type='button']:not([data-autonext-skip]), button[type='submit']",
+        );
+      if (hasContent) return next;
+      next = next.nextElementSibling;
+    }
+    return null;
+  }
+
+  /** Should the click on `t` trigger an auto-scroll?
+   *  • Skip links — they navigate away.
+   *  • Skip submit buttons — they submit, the form handles next step.
+   *  • Skip elements explicitly marked `data-autonext-skip`.
+   *  • Otherwise OK — any click on a chip / radio / checkbox / select. */
+  function shouldAutoScroll(t: Element): boolean {
+    if (t.closest("a[href]")) return false;
+    if (t.closest("button[type='submit'], input[type='submit']")) return false;
+    if (t.closest("[data-autonext-skip]")) return false;
+    return true;
+  }
+
+  /** Fallback auto-detect — used when no explicit attribute is set. */
+  function tryAutoDetect(target: Element) {
+    if (!shouldAutoScroll(target)) return;
+    const section = findFormSection(target);
+    if (!section) return;
+    const next = findNextSection(section);
+    if (!next) return;
+    // Defer by one rAF + small delay so React's state-driven re-render
+    // commits to the DOM before we measure (matches scrollToAutoNext).
+    requestAnimationFrame(() => {
+      setTimeout(() => scrollElementIntoView(next), DEFAULT_DELAY_MS);
+    });
+  }
+
   // ── Click delegate ────────────────────────────────────────────────
   document.addEventListener(
     "click",
     (ev) => {
-      const key = resolveKey(ev.target, ["data-autonext-target", "data-autonext-self"]);
-      if (!key) return;
-      scrollToAutoNext(key);
+      const t = ev.target as Element | null;
+      if (!t || !(t instanceof Element)) return;
+      // Path 1: explicit attribute (back-compat with v122.2/3 wirings)
+      const key = resolveKey(t, ["data-autonext-target", "data-autonext-self"]);
+      if (key) {
+        scrollToAutoNext(key);
+        return;
+      }
+      // Path 2: auto-detect inside [data-autonext-form]
+      tryAutoDetect(t);
     },
     { passive: true, capture: false },
   );
@@ -185,9 +263,25 @@ export function installAutoNextDelegate() {
   document.addEventListener(
     "focusout",
     (ev) => {
-      const key = resolveKey(ev.target, ["data-autonext-target-blur"]);
-      if (!key) return;
-      scrollToAutoNext(key);
+      const t = ev.target as Element | null;
+      if (!t || !(t instanceof Element)) return;
+      const key = resolveKey(t, ["data-autonext-target-blur"]);
+      if (key) {
+        scrollToAutoNext(key);
+        return;
+      }
+      // Auto-detect blur path: only for text inputs / textareas inside
+      // a [data-autonext-form] that actually have content. Avoids
+      // pointless scrolls when a user just opens then closes an input.
+      const isText =
+        (t instanceof HTMLInputElement &&
+          ["text", "email", "tel", "url", "search", "number", "password"].includes(t.type)) ||
+        t instanceof HTMLTextAreaElement ||
+        t instanceof HTMLSelectElement;
+      if (!isText) return;
+      const val = "value" in t ? String((t as any).value || "") : "";
+      if (!val.trim()) return;
+      tryAutoDetect(t);
     },
     { passive: true, capture: false },
   );
@@ -197,11 +291,18 @@ export function installAutoNextDelegate() {
     "keydown",
     (ev) => {
       if (ev.key !== "Enter") return;
-      const key = resolveKey(ev.target, ["data-autonext-target-enter"]);
-      if (!key) return;
-      // Don't prevent default (let forms submit, textareas insert newlines
-      // unless the consumer added their own preventDefault).
-      scrollToAutoNext(key);
+      const t = ev.target as Element | null;
+      if (!t || !(t instanceof Element)) return;
+      const key = resolveKey(t, ["data-autonext-target-enter"]);
+      if (key) {
+        scrollToAutoNext(key);
+        return;
+      }
+      // Auto-detect Enter path — only for single-line text inputs;
+      // pressing Enter inside a textarea inserts a newline, don't
+      // hijack it.
+      if (!(t instanceof HTMLInputElement)) return;
+      tryAutoDetect(t);
     },
     { passive: true, capture: false },
   );
