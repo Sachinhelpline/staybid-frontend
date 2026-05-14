@@ -22,7 +22,7 @@ import { api } from "@/lib/api";
 // just-posted feel, but we ALSO upload to Supabase Storage + insert a
 // social_posts row so the post survives blob death (tab close, hard
 // reload, logout, device switch). See post() handler below.
-import { uploadSocialMedia } from "@/lib/social/storage-upload";
+import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { notify } from "@/lib/notifications";
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
@@ -235,6 +235,18 @@ export function CreateSheet({
   onClose: () => void;
   onPick: (kind: ContentKind) => void;
 }) {
+  // v115 — flag body so the BottomDock hides while the entry sheet is open.
+  // Before v115 the Story card sat behind the dock (visible cut-off in user
+  // screenshot). The Composer already does this via `sb-composer-open`; we
+  // reuse the same class here so dock hides for BOTH the entry sheet AND
+  // the composer. (The composer already lives at a higher z, this is purely
+  // to clear the 60px-tall dock at the bottom of the viewport.)
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("sb-composer-open");
+    return () => { document.body.classList.remove("sb-composer-open"); };
+  }, [open]);
+
   if (!open) return null;
   const cards: { kind: ContentKind; emoji: string; title: string; sub: string; gradient: string }[] = [
     { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · with audio, tags & emojis",  gradient: "linear-gradient(135deg,#ff458d,#b964ff)" },
@@ -1881,7 +1893,7 @@ export function Composer({
       } catch {}
       if (!userId) return { ok: false, error: "Re-sign-in needed. Saved on this device only." };
 
-      setUploadProgress(15);
+      setUploadProgress(2);
       const mediaType: "PHOTO" | "REEL" | "STORY" =
         post.kind === "photo" ? "PHOTO" : post.kind === "story" ? "STORY" : "REEL";
       const uploaded = await uploadSocialMedia({
@@ -1890,8 +1902,29 @@ export function Composer({
         kind:         mediaType,
         posterDataUrl: post.posterUrl?.startsWith("data:") ? post.posterUrl : undefined,
         userId,
+        // v115 — real bytes-uploaded progress. Replaces the v114 milestone
+        // jumps (15% → 70% → 95%) which sat frozen at 15% the entire time
+        // the actual video was streaming up — looked like a hang to users.
+        onProgress: (pct) => setUploadProgress(Math.max(2, Math.min(95, Math.round(pct)))),
       });
-      setUploadProgress(70);
+
+      // v115 — upload device-attached audio so cross-device playback works.
+      // If the picked track is a library URL (https) or the post's own
+      // original audio (no audio attached), we ship it as-is. ONLY blob:
+      // URLs need to be re-hosted because they're tied to the upload device.
+      let soundUrl = post.audio?.url || undefined;
+      if (soundUrl && soundUrl.startsWith("blob:")) {
+        try {
+          // Best-effort MIME probe — blob URLs lose mime metadata.
+          const probe = await fetch(soundUrl).then(r => r.blob()).catch(() => null);
+          const mime = probe?.type || "audio/mpeg";
+          soundUrl = await uploadSocialAudio({ blobUrl: post.audio!.url, mime, userId });
+        } catch (e: any) {
+          // If audio upload fails, ship the post without audio rather
+          // than failing the whole upload. Caption + media still go up.
+          soundUrl = undefined;
+        }
+      }
 
       const r = await fetch("/api/social/posts", {
         method: "POST",
@@ -1903,7 +1936,7 @@ export function Composer({
           thumbnailUrl:  uploaded.thumbnailUrl || undefined,
           caption:       post.caption,
           soundTrack:    post.audio?.name || undefined,
-          soundUrl:      post.audio?.url  || undefined,
+          soundUrl,
           hotelId:       post.taggedHotel?.id || undefined,
           locationName:  post.location?.name  || undefined,
           locationLat:   typeof post.location?.lat === "number" ? post.location.lat : undefined,
@@ -1912,14 +1945,26 @@ export function Composer({
           filter:        post.filter || undefined,
         }),
       });
-      setUploadProgress(95);
+      setUploadProgress(98);
       if (!r.ok) return { ok: false, error: `Server returned ${r.status}. Tap Retry.` };
       const json = await r.json().catch(() => null);
       const serverId = json?.post?.id ? String(json.post.id) : "";
       const serverMedia = json?.post?.media_url || uploaded.mediaUrl;
       const serverPoster = json?.post?.thumbnail_url || uploaded.thumbnailUrl || post.posterUrl || "";
       try {
-        updatePost(tempId, { id: serverId || tempId, mediaUrl: serverMedia, posterUrl: serverPoster });
+        updatePost(tempId, {
+          id: serverId || tempId,
+          mediaUrl: serverMedia,
+          posterUrl: serverPoster,
+          // v115 — also swap the local entry's audio.url from the
+          // device-only blob: URL to the durable public URL so the
+          // uploader sees their post play correctly without needing
+          // to reload (otherwise their own video keeps playing the
+          // original device track until a hard refresh).
+          ...(soundUrl && post.audio
+            ? { audio: { name: post.audio.name, url: soundUrl } }
+            : {}),
+        });
       } catch {}
       setUploadProgress(100);
       return { ok: true };
