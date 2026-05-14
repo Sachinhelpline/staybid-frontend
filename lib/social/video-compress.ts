@@ -24,6 +24,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 "use client";
 
+import { drawOverlaysOnContext, type Overlay } from "@/lib/social/composite";
+
 const TARGET_MAX_DIM      = 1080;     // longest side, px
 const TARGET_BITRATE      = 2_500_000; // 2.5 Mbps — matches IG reels
 const TARGET_AUDIO_BITS   = 128_000;   // 128 kbps AAC/Opus
@@ -68,12 +70,20 @@ function pickOutputMime(): string {
  * Compress a video Blob to IG-level quality (≤1080p longest side, ≤2.5 Mbps).
  * Returns the source as-is when the browser can't run the compression
  * pipeline (older iOS Safari, certain in-app webviews, etc.).
+ *
+ * v119 — Optional `overlays` array. When supplied (and non-empty) we
+ * burn the text/emoji overlays into every frame at composite time. We
+ * also FORCE re-encode in this case (the "already small + low-res →
+ * skip" shortcut would otherwise drop the overlays on the floor for
+ * sub-720p sources).
  */
 export async function compressVideo(
   file: File | Blob,
   onProgress?: (pct: number) => void,
+  overlays?: Overlay[],
 ): Promise<CompressionResult> {
   const originalBytes = file.size;
+  const hasOverlays = Array.isArray(overlays) && overlays.length > 0;
 
   // Hard cap: refuse anything > 50 MB. The compression pipeline itself is
   // memory-hungry on mid-tier Android — 50 MB of source video can already
@@ -122,8 +132,10 @@ export async function compressVideo(
     // Stage 2: pick target dims that fit inside TARGET_MAX_DIM while keeping
     // the source aspect ratio. If the source is already <= target, skip
     // compression entirely — re-encoding a 720p clip down adds nothing.
+    // v119 — UNLESS overlays were supplied. Skipping would drop the
+    // overlays on the floor; force re-encode in that case.
     const longestSrc = Math.max(srcW, srcH);
-    if (longestSrc <= TARGET_MAX_DIM && originalBytes < 12 * 1024 * 1024) {
+    if (!hasOverlays && longestSrc <= TARGET_MAX_DIM && originalBytes < 12 * 1024 * 1024) {
       return {
         blob: file, mime: (file as File).type || "video/mp4", compressed: false,
         skippedReason: "Already small + low-res — uploading original.",
@@ -170,7 +182,14 @@ export async function compressVideo(
     // Older browsers (Firefox / Safari) fall back to requestAnimationFrame.
     await v.play();
     const drawFrame = () => {
-      try { ctx.drawImage(v, 0, 0, tgtW, tgtH); } catch {}
+      try {
+        ctx.drawImage(v, 0, 0, tgtW, tgtH);
+        // v119 — burn overlays into every frame. Pure function, no
+        // per-frame state, no DOM read — safe at 30 fps on mid-tier
+        // Android. The overlay positions are normalised so they map
+        // to the (tgtW, tgtH) output identically across resolutions.
+        if (hasOverlays) drawOverlaysOnContext(ctx, overlays as Overlay[], tgtW, tgtH);
+      } catch {}
       if (onProgress && dur) onProgress(Math.min(100, (v.currentTime / dur) * 100));
     };
     const rvfc = (v as any).requestVideoFrameCallback;
@@ -197,7 +216,9 @@ export async function compressVideo(
 
     // Sanity check: if the "compressed" output is somehow LARGER than the
     // source, ship the source — re-encoding a low-bitrate clip can balloon it.
-    if (blob.size >= originalBytes) {
+    // v119 — EXCEPT when overlays were baked in: the source doesn't carry
+    // them, so we have to keep the re-encode regardless of size.
+    if (!hasOverlays && blob.size >= originalBytes) {
       return {
         blob: file, mime: (file as File).type || "video/mp4", compressed: false,
         skippedReason: "Compression result was larger than source — kept original.",

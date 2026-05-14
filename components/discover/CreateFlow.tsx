@@ -24,7 +24,19 @@ import { api } from "@/lib/api";
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { compressVideo } from "@/lib/social/video-compress";
+import { compositeImageWithOverlays, type Overlay } from "@/lib/social/composite";
 import { notify } from "@/lib/notifications";
+
+// v119 — Mention suggestion shape (mirrors what /api/social/users/search
+// returns). Lives at module scope so the dropdown + the type-checker
+// share one source of truth.
+type MentionSuggestion = {
+  userId: string;
+  handle: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  verified?: boolean;
+};
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
 // Tracks are SoundHelix's free demo set, every URL has been stable for
@@ -1543,6 +1555,72 @@ export function AudioPicker({
 // ─── Cover-frame picker — pick any frame of the video as the poster ────
 // v114 — scrubs the source video with a draggable slider + a row of 6
 // pre-extracted thumbnails. The chosen frame is captured to a JPEG data
+// ─── v119 Overlay emoji picker ─────────────────────────────────────────
+// Lightweight bottom sheet listing the 64 most-popular emojis. Picking
+// one adds it as a fresh centred overlay (then the user can drag / pinch
+// it). Native emoji rendering — no images, no extra bundle weight.
+const OVERLAY_EMOJI_LIST: string[] = [
+  "❤️","🔥","✨","🌟","💫","🌈","☀️","🌙","🏖️","🏔️",
+  "🏨","🏰","🛏️","🍷","🍾","🥂","🍔","🍕","🍣","🥐",
+  "🍩","☕","🍹","🌴","🌊","🌅","🌄","🌃","🌆","🎉",
+  "🎊","🎁","🪩","🎵","📸","🎬","🌹","🌷","🌸","🦋",
+  "🐬","🐠","🐢","🦜","🐕","🐈","✈️","🚗","🚤","⛵",
+  "🚁","🚀","🗺️","🧳","🏝️","⛰️","🏞️","🏛️","🌋","🏯",
+  "💎","👑","💰","🤩",
+];
+
+export function OverlayEmojiPicker({
+  open, onClose, onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (emoji: string) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[1100] flex items-end"
+      onClick={onClose}
+      style={{ isolation: "isolate" }}
+    >
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)" }} />
+      <div
+        className="relative w-full ig-drawer-up"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "linear-gradient(180deg,#15101e,#0a0612)",
+          borderTop: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: "20px 20px 0 0",
+          padding: "16px 12px calc(env(safe-area-inset-bottom, 0px) + 16px)",
+          maxHeight: "60dvh",
+          overflowY: "auto",
+        }}
+      >
+        <div className="flex items-center justify-between px-2 mb-3">
+          <p className="text-white font-semibold text-[0.92rem]">Add an emoji</p>
+          <button onClick={onClose} className="text-white/65 text-[0.84rem]">Cancel</button>
+        </div>
+        <div className="grid grid-cols-8 gap-1">
+          {OVERLAY_EMOJI_LIST.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => onPick(e)}
+              className="rounded-lg active:scale-95 transition-transform"
+              style={{
+                fontSize: "1.5rem",
+                padding: "6px 0",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >{e}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // URL via extractVideoThumbnail(file, atSecond) and surfaced back to the
 // composer via onPick(dataUrl, second). Same canvas pipeline that already
 // ran on first file pick — zero new dependencies, works on every browser
@@ -1764,6 +1842,49 @@ export function Composer({
   const swipeHintTimerRef = useRef<number | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
   const swipeMovedRef = useRef<boolean>(false); // true once movement clearly looked horizontal — blocks Cover-frame tap-through
+
+  // v119 — Free-position overlays (text + emoji). Stored in normalised
+  // 0-1 coords relative to the preview frame so they map cleanly to
+  // whatever the output canvas dimensions end up being (photo: native
+  // res ≤1440px longest side; video: ≤1080px). Drag/scale/rotate
+  // happens via pointer events on individual overlay DOM nodes; the
+  // composite step at Post-time burns them into the final blob.
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string>("");
+  const [overlayEditingId, setOverlayEditingId] = useState<string>(""); // currently typing into THIS text overlay
+  const [overlayPickerOpen, setOverlayPickerOpen] = useState<"emoji" | null>(null);
+  // Tracks the active drag/scale gesture per pointer so multitouch pinch
+  // is bulletproof (two simultaneous pointers = pinch; one = drag).
+  const overlayPointersRef = useRef<Map<number, { x: number; y: number; overlayId: string }>>(new Map());
+  const overlayGestureRef = useRef<{
+    overlayId: string;
+    mode: "drag" | "pinch";
+    startX: number;
+    startY: number;
+    startOverlayX: number;
+    startOverlayY: number;
+    pinchStartDist?: number;
+    pinchStartScale?: number;
+    pinchStartAngle?: number;
+    pinchStartRot?: number;
+  } | null>(null);
+  // Preview frame ref — needed to map pointer client coords back into
+  // 0-1 normalised overlay coords.
+  const previewFrameRef = useRef<HTMLDivElement | null>(null);
+
+  // v119 — @mention suggestion dropdown. The state is split into:
+  //   • `mentionActive`     : true while user is mid-mention (typed `@`
+  //                           and hasn't typed a space/newline yet)
+  //   • `mentionQuery`      : the chars AFTER the `@` (live debounced)
+  //   • `mentionAnchorPos`  : caret offset of the `@` itself, so insertion
+  //                           can replace `@<query>` with `@<handle> `
+  //   • `mentionSuggestions`: latest top-8 result array
+  const [mentionActive, setMentionActive] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionAnchorPos, setMentionAnchorPos] = useState(0);
+  const [mentionSuggestions, setMentionSuggestions] = useState<MentionSuggestion[]>([]);
+  const mentionSearchAbortRef = useRef<AbortController | null>(null);
+  const captionRef = useRef<HTMLTextAreaElement | null>(null);
   // v114 — cover-frame picker. For videos, lets the creator scrub through
   // the timeline and pick ANY frame as the poster (matches IG / TikTok).
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
@@ -1828,6 +1949,15 @@ export function Composer({
       setCompressedInfo(null);
       setCoverFrames([]);
       setCoverPickerOpen(false);
+      // v119 — overlay + mention state. Always start clean so each new
+      // composer session is a blank canvas.
+      setOverlays([]);
+      setSelectedOverlayId("");
+      setOverlayEditingId("");
+      setOverlayPickerOpen(null);
+      setMentionActive(false);
+      setMentionQuery("");
+      setMentionSuggestions([]);
     }
   }, [open, kind]);
 
@@ -1953,12 +2083,45 @@ export function Composer({
       let uploadBlobUrl = post.mediaUrl;
       let uploadMime    = post.mediaMime;
       const isVideoPost = mediaType === "REEL" || mediaType === "STORY" || (post.mediaMime || "").startsWith("video/");
+      // v119 — overlay composite. Photos get a synchronous canvas
+      // re-render with overlays burned in; videos route their overlays
+      // through compressVideo's per-frame draw. Either way, the result
+      // blob is what we upload, and the user's selections live INSIDE
+      // the media (no client-side overlay needed at playback time).
+      const overlaysSnapshot = overlays.slice();
+
+      if (!isVideoPost && overlaysSnapshot.length > 0) {
+        try {
+          setCompressing(true);
+          setCompressionProgress(0);
+          const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
+          const result = await compositeImageWithOverlays(srcBlob, overlaysSnapshot);
+          const newUrl = URL.createObjectURL(result.blob);
+          uploadBlobUrl = newUrl;
+          uploadMime    = result.mime;
+          setCompressedInfo({ before: srcBlob.size, after: result.blob.size });
+          setCompressionProgress(100);
+        } catch (e: any) {
+          setCompressing(false);
+          return { ok: false, error: e?.message || "Couldn't draw overlays onto your photo. Tap Retry." };
+        } finally {
+          setCompressing(false);
+        }
+      }
+
       if (isVideoPost) {
         try {
           setCompressing(true);
           setCompressionProgress(0);
           const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
-          const result = await compressVideo(srcBlob, (pct) => setCompressionProgress(Math.round(pct)));
+          // v119 — pass overlays to compressVideo so they're burned into
+          // every frame. compressVideo forces re-encode when overlays are
+          // present (small-source-skip is disabled in that branch).
+          const result = await compressVideo(
+            srcBlob,
+            (pct) => setCompressionProgress(Math.round(pct)),
+            overlaysSnapshot.length > 0 ? overlaysSnapshot : undefined,
+          );
           if (result.compressed && result.blob !== srcBlob) {
             const newUrl = URL.createObjectURL(result.blob);
             uploadBlobUrl = newUrl;
@@ -2058,7 +2221,10 @@ export function Composer({
         : (err?.message || "Upload failed.");
       return { ok: false, error: msg };
     }
-  }, [updatePost]);
+    // v119 — `overlays` in deps so the callback captures the latest set
+    // every time the user adds/drags/resizes. Recreating the callback is
+    // cheap; we only INVOKE it once per Post click via post()/retry().
+  }, [updatePost, overlays]);
 
   // Holds the most recently attempted post payload so the Retry button can
   // re-run runUpload without losing the user's selections.
@@ -2227,6 +2393,227 @@ export function Composer({
   useEffect(() => () => {
     if (swipeHintTimerRef.current) window.clearTimeout(swipeHintTimerRef.current);
   }, []);
+
+  // ─── v119 Overlay helpers ────────────────────────────────────────────
+  const addOverlay = (partial: Partial<Overlay> & Pick<Overlay, "kind" | "text">) => {
+    const id = `ov-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const next: Overlay = {
+      id,
+      kind: partial.kind,
+      text: partial.text,
+      x: partial.x ?? 0.5,
+      y: partial.y ?? 0.5,
+      scale: partial.scale ?? 1,
+      rotation: partial.rotation ?? 0,
+      color: partial.color ?? "#FFFFFF",
+      bgFill: partial.bgFill ?? null,
+    };
+    setOverlays((prev) => [...prev, next]);
+    setSelectedOverlayId(id);
+    if (next.kind === "text") setOverlayEditingId(id);
+  };
+
+  const updateOverlay = (id: string, patch: Partial<Overlay>) => {
+    setOverlays((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+  };
+
+  const removeOverlay = (id: string) => {
+    setOverlays((prev) => prev.filter((o) => o.id !== id));
+    if (selectedOverlayId === id) setSelectedOverlayId("");
+    if (overlayEditingId === id) setOverlayEditingId("");
+  };
+
+  // Pointer math — converts client coords into normalised 0-1 coords
+  // inside the preview frame's content box. Bulletproof against the
+  // preview wrapper having borders / padding because we read the live
+  // bounding rect rather than trusting CSS values.
+  const clientToNorm = (clientX: number, clientY: number) => {
+    const el = previewFrameRef.current;
+    if (!el) return { x: 0.5, y: 0.5 };
+    const r = el.getBoundingClientRect();
+    return {
+      x: Math.min(1, Math.max(0, (clientX - r.left) / Math.max(1, r.width))),
+      y: Math.min(1, Math.max(0, (clientY - r.top)  / Math.max(1, r.height))),
+    };
+  };
+
+  // Pinch helpers — distance + angle between two pointers.
+  const twoPointerMetrics = () => {
+    const pts = Array.from(overlayPointersRef.current.values());
+    if (pts.length < 2) return null;
+    const [a, b] = pts;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return { dist: Math.hypot(dx, dy), angle: Math.atan2(dy, dx) * 180 / Math.PI };
+  };
+
+  const onOverlayPointerDown = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();          // do not propagate to the preview's swipe-filter handler
+    e.preventDefault();
+    setSelectedOverlayId(id);
+    overlayPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, overlayId: id });
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch {}
+    if (overlayPointersRef.current.size === 1) {
+      const ov = overlays.find((o) => o.id === id);
+      overlayGestureRef.current = {
+        overlayId: id,
+        mode: "drag",
+        startX: e.clientX,
+        startY: e.clientY,
+        startOverlayX: ov?.x ?? 0.5,
+        startOverlayY: ov?.y ?? 0.5,
+      };
+    } else if (overlayPointersRef.current.size === 2) {
+      const ov = overlays.find((o) => o.id === id);
+      const m = twoPointerMetrics();
+      if (ov && m) {
+        overlayGestureRef.current = {
+          overlayId: id,
+          mode: "pinch",
+          startX: e.clientX,
+          startY: e.clientY,
+          startOverlayX: ov.x,
+          startOverlayY: ov.y,
+          pinchStartDist: m.dist,
+          pinchStartScale: ov.scale,
+          pinchStartAngle: m.angle,
+          pinchStartRot: ov.rotation,
+        };
+      }
+    }
+  };
+
+  const onOverlayPointerMove = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!overlayPointersRef.current.has(e.pointerId)) return;
+    e.stopPropagation();
+    overlayPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY, overlayId: id });
+    const g = overlayGestureRef.current;
+    if (!g) return;
+    if (g.mode === "drag" && overlayPointersRef.current.size === 1) {
+      const cur = clientToNorm(e.clientX, e.clientY);
+      const start = clientToNorm(g.startX, g.startY);
+      const dx = cur.x - start.x;
+      const dy = cur.y - start.y;
+      updateOverlay(g.overlayId, {
+        x: Math.min(1, Math.max(0, g.startOverlayX + dx)),
+        y: Math.min(1, Math.max(0, g.startOverlayY + dy)),
+      });
+    } else if (g.mode === "pinch") {
+      const m = twoPointerMetrics();
+      if (!m || !g.pinchStartDist || g.pinchStartScale == null || g.pinchStartAngle == null || g.pinchStartRot == null) return;
+      const factor = m.dist / g.pinchStartDist;
+      const nextScale = Math.min(3, Math.max(0.3, g.pinchStartScale * factor));
+      const nextRot   = g.pinchStartRot + (m.angle - g.pinchStartAngle);
+      updateOverlay(g.overlayId, { scale: nextScale, rotation: nextRot });
+    }
+  };
+
+  const onOverlayPointerUp = () => (e: React.PointerEvent<HTMLDivElement>) => {
+    overlayPointersRef.current.delete(e.pointerId);
+    if (overlayPointersRef.current.size === 0) {
+      overlayGestureRef.current = null;
+    } else if (overlayPointersRef.current.size === 1) {
+      // Downgrading from pinch → drag: re-anchor the lone remaining pointer
+      // as the new drag start so the overlay doesn't jump.
+      const lone = Array.from(overlayPointersRef.current.values())[0];
+      const ov = overlays.find((o) => o.id === lone.overlayId);
+      if (ov) {
+        overlayGestureRef.current = {
+          overlayId: ov.id,
+          mode: "drag",
+          startX: lone.x,
+          startY: lone.y,
+          startOverlayX: ov.x,
+          startOverlayY: ov.y,
+        };
+      }
+    }
+  };
+
+  // ─── v119 Mention search ────────────────────────────────────────────
+  // Debounced fetch of /api/social/users/search whenever the active
+  // mention query changes. Aborts in-flight requests so we never race
+  // (older queries returning after newer ones).
+  useEffect(() => {
+    if (!mentionActive || mentionQuery.length === 0) {
+      setMentionSuggestions([]);
+      return;
+    }
+    if (mentionSearchAbortRef.current) {
+      try { mentionSearchAbortRef.current.abort(); } catch {}
+    }
+    const ac = new AbortController();
+    mentionSearchAbortRef.current = ac;
+    const id = window.setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/social/users/search?q=${encodeURIComponent(mentionQuery)}&limit=8`, {
+          signal: ac.signal,
+        });
+        if (!r.ok) return;
+        const json = await r.json().catch(() => null);
+        const list = Array.isArray(json?.users) ? json.users as MentionSuggestion[] : [];
+        if (!ac.signal.aborted) setMentionSuggestions(list);
+      } catch { /* abort or network — leave the prior list */ }
+    }, 180);
+    return () => {
+      window.clearTimeout(id);
+      try { ac.abort(); } catch {}
+    };
+  }, [mentionActive, mentionQuery]);
+
+  /** Inserts an @handle into the caption at the mention anchor and closes the dropdown. */
+  const pickMention = (s: MentionSuggestion) => {
+    const before = caption.slice(0, mentionAnchorPos);
+    const after  = caption.slice(mentionAnchorPos + 1 + mentionQuery.length);
+    const inserted = `@${s.handle} `;
+    const next = before + inserted + after;
+    setCaption(next);
+    setMentionActive(false);
+    setMentionQuery("");
+    setMentionSuggestions([]);
+    // Move caret to right after the inserted handle.
+    window.setTimeout(() => {
+      const el = captionRef.current;
+      if (!el) return;
+      const pos = before.length + inserted.length;
+      try { el.focus(); el.setSelectionRange(pos, pos); } catch {}
+    }, 0);
+  };
+
+  /** Caption onChange — runs the existing sanitize warn + maintains mention state. */
+  const onCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setCaption(val);
+    if (sanitize && !warnedSanitize) {
+      const { blocked } = sanitize(val);
+      if (blocked) setWarnedSanitize(true);
+    }
+    // Mention detection: look back from the caret for the most recent `@`
+    // not followed by a space/newline. That's the mention being typed.
+    const caret = e.target.selectionStart ?? val.length;
+    const before = val.slice(0, caret);
+    const atIdx  = before.lastIndexOf("@");
+    if (atIdx < 0) {
+      setMentionActive(false); setMentionQuery(""); return;
+    }
+    // The character right before `@` must be start-of-string, whitespace,
+    // newline, or punctuation — otherwise it's an email-style `@` inside
+    // a word, not a mention.
+    const prevChar = before[atIdx - 1] ?? "\n";
+    if (!/[\s\n.,!?;:(]/.test(prevChar) && atIdx !== 0) {
+      setMentionActive(false); setMentionQuery(""); return;
+    }
+    const q = before.slice(atIdx + 1);
+    if (/[\s\n]/.test(q)) {
+      setMentionActive(false); setMentionQuery(""); return;
+    }
+    if (q.length > 30) {
+      setMentionActive(false); setMentionQuery(""); return;
+    }
+    setMentionActive(true);
+    setMentionAnchorPos(atIdx);
+    setMentionQuery(q);
+  };
 
   // Target aspect ratios per kind — matches IG. Reel/Story = 9:16, Photo = 4:5.
   const targetAspect = kind === "photo" ? "4/5" : "9/16";
@@ -2423,6 +2810,7 @@ export function Composer({
                 gets cut. */}
             <div className="px-4 pt-3 pb-2 shrink-0">
               <div
+                ref={previewFrameRef}
                 className="relative w-full rounded-2xl overflow-hidden bg-black mx-auto"
                 style={{
                   // Cap the preview at ~36dvh so the rest of the form fits
@@ -2545,6 +2933,183 @@ export function Composer({
                     🖼 Cover frame
                   </button>
                 )}
+
+                {/* v119 — OVERLAY LAYER. Each overlay is an absolute-positioned
+                    DOM node anchored at its 0-1 normalised (x, y). Drag is
+                    pointer-based; pinch (two fingers) scales + rotates.
+                    Tap a different overlay or tap the empty frame to deselect.
+                    `touchAction: none` ONLY on the overlay nodes themselves —
+                    the preview frame still respects pan-y for filter swipes. */}
+                {overlays.map((o) => {
+                  const isSel = selectedOverlayId === o.id;
+                  // Preview-side font sizes are tuned to a 36dvh tall frame.
+                  // The composite pipeline uses its own 1000-px ref so the
+                  // output stays consistent regardless of preview height.
+                  const previewBase = o.kind === "emoji" ? 36 : 22;
+                  const fontPx = previewBase * o.scale;
+                  return (
+                    <div
+                      key={o.id}
+                      onPointerDown={onOverlayPointerDown(o.id)}
+                      onPointerMove={onOverlayPointerMove(o.id)}
+                      onPointerUp={onOverlayPointerUp()}
+                      onPointerCancel={onOverlayPointerUp()}
+                      style={{
+                        position: "absolute",
+                        left: `${o.x * 100}%`,
+                        top:  `${o.y * 100}%`,
+                        transform: `translate(-50%, -50%) rotate(${o.rotation}deg)`,
+                        cursor: "grab",
+                        userSelect: "none",
+                        touchAction: "none",
+                        outline: isSel ? "2px dashed rgba(255,215,107,0.95)" : "none",
+                        outlineOffset: "4px",
+                        // Lift the selected overlay so its outline doesn't get
+                        // clipped by other overlays drawn after it.
+                        zIndex: isSel ? 5 : 1,
+                      }}
+                    >
+                      {o.kind === "text" ? (
+                        overlayEditingId === o.id ? (
+                          <input
+                            autoFocus
+                            value={o.text}
+                            onChange={(e) => updateOverlay(o.id, { text: e.target.value.slice(0, 200) })}
+                            onBlur={() => setOverlayEditingId("")}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); setOverlayEditingId(""); } }}
+                            placeholder="Tap to type"
+                            style={{
+                              background: o.bgFill || "rgba(0,0,0,0.20)",
+                              color: o.color || "#fff",
+                              fontWeight: 700,
+                              fontSize: fontPx,
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,255,255,0.35)",
+                              outline: "none",
+                              minWidth: 80,
+                              textAlign: "center",
+                              fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif',
+                            }}
+                          />
+                        ) : (
+                          <span
+                            onDoubleClick={() => setOverlayEditingId(o.id)}
+                            style={{
+                              background: o.bgFill || "transparent",
+                              color: o.color || "#fff",
+                              fontWeight: 700,
+                              fontSize: fontPx,
+                              padding: o.bgFill ? "4px 10px" : "0",
+                              borderRadius: 6,
+                              textShadow: o.bgFill ? "none" : "0 1px 4px rgba(0,0,0,0.55)",
+                              fontFamily: 'Inter, "Helvetica Neue", Arial, sans-serif',
+                              display: "inline-block",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {o.text || "Tap to edit"}
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ fontSize: fontPx, lineHeight: 1, fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"' }}>
+                          {o.text}
+                        </span>
+                      )}
+                      {isSel && (
+                        <button
+                          type="button"
+                          onPointerDown={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => { e.stopPropagation(); removeOverlay(o.id); }}
+                          aria-label="Remove overlay"
+                          style={{
+                            position: "absolute",
+                            top: -10, right: -10,
+                            width: 22, height: 22,
+                            borderRadius: 999,
+                            background: "rgba(255,69,89,0.95)",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 800,
+                            border: "2px solid #0a0612",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.6)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            lineHeight: 0,
+                          }}
+                        >×</button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* v119 — Add-overlay toolbar. Bottom-left, opposite the
+                    Cover/Fit pill so the user has both at a glance. Adding
+                    a text overlay defaults to centre + edit-mode-on so the
+                    keyboard pops up immediately. */}
+                <div
+                  className="absolute bottom-2 left-2 flex items-center gap-1.5"
+                  style={{ zIndex: 6 }}
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); addOverlay({ kind: "text", text: "" }); }}
+                    aria-label="Add text overlay"
+                    style={{
+                      background: "rgba(0,0,0,0.55)",
+                      backdropFilter: "blur(8px)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: "0.66rem",
+                      fontWeight: 800,
+                      letterSpacing: "0.02em",
+                    }}
+                  >Aa Text</button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setOverlayPickerOpen("emoji"); }}
+                    aria-label="Add emoji overlay"
+                    style={{
+                      background: "rgba(0,0,0,0.55)",
+                      backdropFilter: "blur(8px)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: "0.7rem",
+                    }}
+                  >😀</button>
+                  {selectedOverlayId && overlays.find((o) => o.id === selectedOverlayId)?.kind === "text" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const cur = overlays.find((o) => o.id === selectedOverlayId);
+                        if (!cur) return;
+                        // Cycle: no bg → black bg → white bg → no bg
+                        const next = cur.bgFill === null || cur.bgFill === undefined
+                          ? "rgba(0,0,0,0.55)"
+                          : cur.bgFill.indexOf("0,0,0") !== -1
+                            ? "rgba(255,255,255,0.92)"
+                            : null;
+                        const nextColor = next && next.indexOf("255,255,255") !== -1 ? "#1a1530" : "#FFFFFF";
+                        updateOverlay(selectedOverlayId, { bgFill: next, color: nextColor });
+                      }}
+                      aria-label="Toggle text background"
+                      style={{
+                        background: "rgba(0,0,0,0.55)",
+                        backdropFilter: "blur(8px)",
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        fontSize: "0.62rem",
+                        fontWeight: 800,
+                      }}
+                    >▣ BG</button>
+                  )}
+                </div>
               </div>
 
               {/* v114 — IG-style filter strip. Horizontal scroll of named
@@ -2809,20 +3374,22 @@ export function Composer({
               </button>
 
               {/* Caption */}
-              <div>
-                <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">Caption</p>
+              <div className="relative">
+                <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mb-1.5">
+                  Caption
+                  <span className="ml-2 normal-case tracking-normal text-white/45 font-normal">
+                    · type <span className="text-amber-300 font-semibold">@</span> to mention someone
+                  </span>
+                </p>
                 <textarea
+                  ref={captionRef}
                   value={caption}
-                  onChange={(e) => {
-                    setCaption(e.target.value);
-                    if (sanitize && !warnedSanitize) {
-                      const { blocked } = sanitize(e.target.value);
-                      if (blocked) setWarnedSanitize(true);
-                    }
-                  }}
+                  onChange={onCaptionChange}
+                  onKeyUp={onCaptionChange as any}
+                  onClick={onCaptionChange as any}
                   rows={3}
                   maxLength={500}
-                  placeholder="Write a caption…"
+                  placeholder="Write a caption… use @ to tag people"
                   className="ig-comment-input w-full rounded-xl px-3 py-2 text-[0.82rem] outline-none resize-none"
                   style={{
                     color: "#fff",
@@ -2832,6 +3399,67 @@ export function Composer({
                     minHeight: 70,
                   }}
                 />
+                {/* v119 — @mention suggestion dropdown. Floats just under
+                    the textarea while mentionActive is true. Stays empty
+                    state (loading dots) if the search hasn't returned yet
+                    so the user sees that something IS happening. */}
+                {mentionActive && (
+                  <div
+                    className="absolute left-0 right-0 rounded-xl overflow-hidden"
+                    style={{
+                      // Positioned BELOW the textarea so it doesn't cover
+                      // the caret while typing. ~76px clears the textarea
+                      // (24 label + 70 textarea body — close enough that
+                      // the user's eye stays on screen).
+                      top: 88,
+                      background: "rgba(13, 9, 25, 0.96)",
+                      backdropFilter: "blur(14px)",
+                      border: "1px solid rgba(255,215,107,0.30)",
+                      boxShadow: "0 12px 30px rgba(0,0,0,0.55)",
+                      maxHeight: 240,
+                      overflowY: "auto",
+                      zIndex: 20,
+                    }}
+                  >
+                    {mentionSuggestions.length === 0 && (
+                      <p className="px-3 py-2 text-white/55 text-[0.72rem]">
+                        {mentionQuery.length === 0 ? "Start typing a username…" : "No matches yet — keep typing"}
+                      </p>
+                    )}
+                    {mentionSuggestions.map((s) => (
+                      <button
+                        type="button"
+                        key={s.userId}
+                        onClick={() => pickMention(s)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left active:bg-white/10"
+                        style={{ background: "transparent", color: "#fff" }}
+                      >
+                        <span
+                          className="w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{
+                            background: "linear-gradient(135deg,#3a2a1a,#0d1a2e)",
+                            color: "#ffd76b",
+                            fontSize: "0.78rem",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {s.avatarUrl
+                            ? <img src={s.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            : (s.displayName?.[0] || s.handle?.[0] || "?").toUpperCase()}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[0.82rem] font-semibold truncate">
+                            @{s.handle}
+                            {s.verified && <span className="ml-1 text-sky-300">✓</span>}
+                          </span>
+                          <span className="block text-white/55 text-[0.66rem] truncate">
+                            {s.displayName}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {EMOJI_BAR.map((e) => (
                     <button
@@ -3008,6 +3636,16 @@ export function Composer({
         file={mediaFile}
         onClose={() => setCoverPickerOpen(false)}
         onPick={(dataUrl) => { setPosterUrl(dataUrl); }}
+      />
+      {/* v119 — Overlay emoji picker. Picking an emoji adds it as a fresh
+          centered overlay; the user can drag/pinch from there. */}
+      <OverlayEmojiPicker
+        open={overlayPickerOpen === "emoji"}
+        onClose={() => setOverlayPickerOpen(null)}
+        onPick={(emoji) => {
+          addOverlay({ kind: "emoji", text: emoji });
+          setOverlayPickerOpen(null);
+        }}
       />
     </div>
   );
