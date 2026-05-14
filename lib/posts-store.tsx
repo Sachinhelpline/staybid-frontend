@@ -73,6 +73,20 @@ export type UserPost = {
    * `null` / undefined / "none" all mean original look.
    */
   filter?: string | null;
+  /**
+   * v118 — Upload lifecycle marker. Posts default to "uploaded" for legacy
+   * entries that have no field set; the Composer commits NEW entries
+   * directly as "uploaded" only after the durable Storage + DB write
+   * succeeds. The "uploading" / "failed" states exist for the rare path
+   * where a caller wants to surface optimistic progress before settle,
+   * but the default contract is: if a row is in this store, it succeeded.
+   *
+   * Why this matters: previously the Composer added the post BEFORE the
+   * upload finished, so a failed upload OR user-closes-mid-flow left a
+   * zombie entry in localStorage that the profile grid + feed kept
+   * rendering forever. v118 only commits on success → zero zombies.
+   */
+  uploadStatus?: "uploaded" | "uploading" | "failed";
   createdAt: number;
 };
 
@@ -102,13 +116,29 @@ const Ctx = createContext<PostsCtx>({
 export function PostsProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<UserPost[]>([]);
 
-  // Hydrate from localStorage (post-mount, SSR-safe)
+  // Hydrate from localStorage (post-mount, SSR-safe).
+  // v118 — Also purge any stale "uploading" / "failed" entries. Across a
+  // hard reload the blob: URL is dead anyway, so these rows could never
+  // render correctly even if we kept them. Cleaning at hydrate time
+  // prevents the user from ever seeing a zombie post.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) {
         const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) setPosts(arr);
+        if (Array.isArray(arr)) {
+          const clean = (arr as UserPost[]).filter((p) => {
+            const status = p.uploadStatus;
+            // Treat missing status as legacy-uploaded so existing posts
+            // stay visible. Anything explicitly NOT uploaded is dropped.
+            return !status || status === "uploaded";
+          });
+          setPosts(clean);
+          // Persist the cleaned set so we don't re-filter on every mount.
+          if (clean.length !== arr.length) {
+            try { localStorage.setItem(LS_KEY, JSON.stringify(clean.slice(0, 100))); } catch {}
+          }
+        }
       }
     } catch {}
   }, []);

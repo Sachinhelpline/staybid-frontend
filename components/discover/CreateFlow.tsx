@@ -24,26 +24,7 @@ import { api } from "@/lib/api";
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
 import { compressVideo } from "@/lib/social/video-compress";
-import {
-  mergeVideos,
-  isMergeSupported,
-  extractMergedPoster,
-  MergeUnsupportedError,
-  type MergeProgress,
-} from "@/lib/social/video-merge";
 import { notify } from "@/lib/notifications";
-
-// v117 — additional video clips attached after the primary file. Index 0
-// of the merge order is always the primary `mediaFile`; entries here are
-// concatenated AFTER it in the order shown. Each carries its own object URL
-// so the clip-strip thumbnails render without re-creating blobs on every
-// re-render. Caller is responsible for revoking the URLs (we revoke on
-// remove + on composer close).
-type ClipAttachment = {
-  id: string;
-  file: File;
-  url: string;
-};
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
 // Tracks are SoundHelix's free demo set, every URL has been stable for
@@ -1772,6 +1753,17 @@ export function Composer({
   // v114 — IG-style filter presets. Applied as CSS filter on the preview AND
   // persisted on the post payload so the feed renders the same look.
   const [filter, setFilter] = useState<string>("none");
+  // v118 — IG-style swipe-to-change-filter. Pointer-driven horizontal
+  // swipe on the preview frame cycles through FILTER_PRESETS. Right→left
+  // = next, left→right = previous. Vertical drag (page scroll) is
+  // explicitly NOT hijacked — we only commit a swipe when |Δx| > |Δy| AND
+  // |Δx| > THRESHOLD. After a successful swap the chosen filter's label
+  // floats over the preview for ~700ms so the user gets confirmation
+  // without having to look at the filter strip.
+  const [swipeHintLabel, setSwipeHintLabel] = useState<string>("");
+  const swipeHintTimerRef = useRef<number | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
+  const swipeMovedRef = useRef<boolean>(false); // true once movement clearly looked horizontal — blocks Cover-frame tap-through
   // v114 — cover-frame picker. For videos, lets the creator scrub through
   // the timeline and pick ANY frame as the poster (matches IG / TikTok).
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
@@ -1792,20 +1784,7 @@ export function Composer({
   const [compressing, setCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [compressedInfo, setCompressedInfo] = useState<{ before: number; after: number } | null>(null);
-  // v117 — multi-clip merge state. `extraClips` holds every video attached
-  // AFTER the primary `mediaFile`. The merge step runs ONCE at upload time
-  // (not on every "add clip" tap) so we never re-encode partial joins. The
-  // merge progress state powers the same banner as compress does.
-  const [extraClips, setExtraClips] = useState<ClipAttachment[]>([]);
-  const [merging, setMerging] = useState(false);
-  const [mergeProgress, setMergeProgress] = useState<MergeProgress | null>(null);
-  const [mergeUnsupportedNote, setMergeUnsupportedNote] = useState<string>("");
   const fileRef = useRef<HTMLInputElement | null>(null);
-  // v117 — separate input ref for the "+ Add another clip" picker. Reuses
-  // `accept` but is wired to ADD onto extraClips instead of replacing the
-  // primary file. Keeping a second ref avoids the "click() while element
-  // is mid-render" race that breaks file dialogs on Safari.
-  const moreClipsRef = useRef<HTMLInputElement | null>(null);
   // v113 — separate camera-capture input. Same accept but with `capture`
   // attribute so the phone opens the camera straight away.
   const cameraRef = useRef<HTMLInputElement | null>(null);
@@ -1849,15 +1828,6 @@ export function Composer({
       setCompressedInfo(null);
       setCoverFrames([]);
       setCoverPickerOpen(false);
-      // v117 — wipe any attached clips and revoke their object URLs so the
-      // composer never carries stale blob handles between sessions.
-      setExtraClips((prev) => {
-        for (const c of prev) { try { URL.revokeObjectURL(c.url); } catch {} }
-        return [];
-      });
-      setMerging(false);
-      setMergeProgress(null);
-      setMergeUnsupportedNote("");
     }
   }, [open, kind]);
 
@@ -1919,15 +1889,10 @@ export function Composer({
 
   const accept = kind === "photo" ? "image/*" : kind === "story" ? "image/*,video/*" : "video/*";
   const isVideo = mediaFile?.type.startsWith("video/");
-  // v117 — only reel kind supports multi-clip merge. Stories are 24h
-  // single-shots and photos can't be merged into video. The picker chip
-  // surfaces "Tap to choose multiple" only when relevant.
-  const allowMultiClips = kind === "reel";
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = Array.from(e.target.files || []);
-    if (fileList.length === 0) return;
-    const [file, ...rest] = fileList;
+    const file = e.target.files?.[0];
+    if (!file) return;
     const url = URL.createObjectURL(file);
     setMediaFile(file);
     setMediaUrl(url);
@@ -1953,107 +1918,7 @@ export function Composer({
       // Photos use the source image itself as their own poster.
       setPosterUrl(url);
     }
-    // v117 — if the picker returned multiple video files at once, fold the
-    // extras into the merge queue. Non-reel kinds ignore extras; photos +
-    // stories stay single-shot.
-    if (rest.length > 0 && allowMultiClips && file.type.startsWith("video/")) {
-      if (!isMergeSupported()) {
-        setMergeUnsupportedNote(
-          "This browser can't merge clips locally — only the first clip will be posted. Try Chrome / Firefox, or upload each clip as its own reel."
-        );
-      } else {
-        const extras: ClipAttachment[] = rest
-          .filter((f) => f.type.startsWith("video/"))
-          .map((f) => ({
-            id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            file: f,
-            url: URL.createObjectURL(f),
-          }));
-        setExtraClips(extras);
-      }
-    }
     setStep("edit");
-  };
-
-  // v117 — append more clips to the merge queue from the "+ Add clip" button
-  // in the edit step. Validates the input is video-only (we already enforce
-  // accept="video/*" on the input but defensive guard against drag-drop or
-  // browsers that ignore accept).
-  const onAddClips = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = Array.from(e.target.files || []);
-    if (fileList.length === 0) return;
-    if (!isMergeSupported()) {
-      setMergeUnsupportedNote(
-        "This browser can't merge clips locally. Post each clip as a separate reel, or open in Chrome / Firefox."
-      );
-      try { (e.target as HTMLInputElement).value = ""; } catch {}
-      return;
-    }
-    const additions: ClipAttachment[] = fileList
-      .filter((f) => f.type.startsWith("video/"))
-      .map((f) => ({
-        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        file: f,
-        url: URL.createObjectURL(f),
-      }));
-    if (additions.length === 0) {
-      setMergeUnsupportedNote("Only video files can be added as extra clips.");
-    } else {
-      setExtraClips((prev) => [...prev, ...additions]);
-      setMergeUnsupportedNote("");
-    }
-    // Clear input so picking the same file twice still fires onChange.
-    try { (e.target as HTMLInputElement).value = ""; } catch {}
-  };
-
-  const removeExtraClip = (id: string) => {
-    setExtraClips((prev) => {
-      const next: ClipAttachment[] = [];
-      for (const c of prev) {
-        if (c.id === id) { try { URL.revokeObjectURL(c.url); } catch {} }
-        else next.push(c);
-      }
-      return next;
-    });
-  };
-
-  const moveExtraClip = (id: string, dir: -1 | 1) => {
-    setExtraClips((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      if (idx < 0) return prev;
-      const next = idx + dir;
-      if (next < 0 || next >= prev.length) return prev;
-      const copy = prev.slice();
-      [copy[idx], copy[next]] = [copy[next], copy[idx]];
-      return copy;
-    });
-  };
-
-  // v117 — promote an extra clip to the primary (first frame of the merged
-  // video + driver of preview aspect). Useful when the creator picked
-  // clips in the wrong order and wants the second clip to lead.
-  const promoteExtraClip = (id: string) => {
-    setExtraClips((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      if (idx < 0 || !mediaFile) return prev;
-      const chosen = prev[idx];
-      const oldPrimary: ClipAttachment = {
-        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        file: mediaFile,
-        url: mediaUrl || URL.createObjectURL(mediaFile),
-      };
-      const newPrimaryUrl = chosen.url;
-      // Swap state.
-      setMediaFile(chosen.file);
-      setMediaUrl(newPrimaryUrl);
-      setPosterUrl("");
-      if (chosen.file.type.startsWith("video/")) {
-        extractVideoThumbnail(chosen.file).then(setPosterUrl).catch(() => setPosterUrl(""));
-      }
-      const next = prev.slice();
-      next.splice(idx, 1, oldPrimary);
-      return next;
-    });
   };
 
   const toggleTag = (t: string) => {
@@ -2065,17 +1930,7 @@ export function Composer({
   // v114 — pulled out so the Retry button can re-run the same upload with
   // the SAME tempId (clientPostId stays stable -> server idempotency holds,
   // so multiple "Retry" taps will never duplicate posts on social_posts).
-  // v117 — accepts an optional `clips` argument carrying the primary file
-  // + extras in merge order. When provided AND length > 1, the merge step
-  // runs BEFORE compression and produces a single blob already at our
-  // target bitrate, so compression is skipped on the merged output (no
-  // double re-encode).
-  const runUpload = useCallback(async (
-    tempId: string,
-    post: UserPost,
-    clips?: File[],
-  ): Promise<{ ok: boolean; error?: string }> => {
-    let mergedObjectUrl: string | null = null;
+  const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<{ ok: boolean; error?: string }> => {
     try {
       const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
       if (!tok)    return { ok: false, error: "Not signed in. Saved on this device only." };
@@ -2097,49 +1952,12 @@ export function Composer({
       // even on India 3G. Failure falls through to the original file.
       let uploadBlobUrl = post.mediaUrl;
       let uploadMime    = post.mediaMime;
-      let posterForUpload = post.posterUrl;
-      let skipCompression = false;
       const isVideoPost = mediaType === "REEL" || mediaType === "STORY" || (post.mediaMime || "").startsWith("video/");
-
-      // v117 — merge step. Runs ONLY when the caller supplied 2+ clips AND
-      // the post is a video. The merger throws MergeUnsupportedError on
-      // browsers without captureStream — surfaced clearly so the user can
-      // either switch browser or remove the extras and retry single-clip.
-      if (isVideoPost && clips && clips.length > 1) {
-        try {
-          setMerging(true);
-          setMergeProgress({ phase: "probe", overall: 0 });
-          const result = await mergeVideos(clips, (p) => setMergeProgress(p));
-          mergedObjectUrl  = URL.createObjectURL(result.blob);
-          uploadBlobUrl    = mergedObjectUrl;
-          uploadMime       = result.mime;
-          skipCompression  = true; // merger already encodes at compress targets
-          // Refresh the poster from the merged output so the thumbnail
-          // matches the first frame of the merged reel, not the first
-          // frame of the primary clip in isolation.
-          try {
-            const merged_poster = await extractMergedPoster(result.blob);
-            if (merged_poster && merged_poster.startsWith("data:")) {
-              posterForUpload = merged_poster;
-            }
-          } catch { /* fall through with existing poster */ }
-        } catch (e: any) {
-          setMerging(false);
-          setMergeProgress(null);
-          if (e instanceof MergeUnsupportedError) {
-            return { ok: false, error: e.message };
-          }
-          return { ok: false, error: e?.message || "Couldn't merge the clips. Tap Retry, or remove the extras." };
-        } finally {
-          setMerging(false);
-        }
-      }
-
-      if (isVideoPost && !skipCompression) {
+      if (isVideoPost) {
         try {
           setCompressing(true);
           setCompressionProgress(0);
-          const srcBlob = await fetch(uploadBlobUrl).then((r) => r.blob());
+          const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
           const result = await compressVideo(srcBlob, (pct) => setCompressionProgress(Math.round(pct)));
           if (result.compressed && result.blob !== srcBlob) {
             const newUrl = URL.createObjectURL(result.blob);
@@ -2166,11 +1984,7 @@ export function Composer({
         mediaBlobUrl: uploadBlobUrl,
         mediaMime:    uploadMime,
         kind:         mediaType,
-        // v117 — `posterForUpload` is either the original poster captured
-        // at file-pick time OR the refreshed first-frame from the merged
-        // output. Either way it's a data URL — same shape uploadSocialMedia
-        // already expects.
-        posterDataUrl: posterForUpload?.startsWith("data:") ? posterForUpload : undefined,
+        posterDataUrl: post.posterUrl?.startsWith("data:") ? post.posterUrl : undefined,
         userId,
         // v115 — real bytes-uploaded progress. Replaces the v114 milestone
         // jumps (15% → 70% → 95%) which sat frozen at 15% the entire time
@@ -2243,21 +2057,12 @@ export function Composer({
         ? "Couldn't upload media (network / file format)."
         : (err?.message || "Upload failed.");
       return { ok: false, error: msg };
-    } finally {
-      // v117 — revoke the temporary merged-blob URL once we're done with it.
-      // The compressed/merged blob has already been streamed to Storage and
-      // updatePost() points the local feed at the durable public URL above.
-      if (mergedObjectUrl) {
-        try { URL.revokeObjectURL(mergedObjectUrl); } catch {}
-      }
     }
   }, [updatePost]);
 
   // Holds the most recently attempted post payload so the Retry button can
   // re-run runUpload without losing the user's selections.
-  // v117 — also remembers the merge-order clip list so retries replay the
-  // same multi-clip merge instead of falling back to single-clip.
-  const lastAttemptRef = useRef<{ tempId: string; post: UserPost; clips?: File[] } | null>(null);
+  const lastAttemptRef = useRef<{ tempId: string; post: UserPost } | null>(null);
 
   const retry = useCallback(async () => {
     if (!lastAttemptRef.current) return;
@@ -2265,17 +2070,22 @@ export function Composer({
     setRetryCount((c) => c + 1);
     setPosting(true);
     setUploadProgress(0);
-    const { tempId, post, clips } = lastAttemptRef.current;
-    const result = await runUpload(tempId, post, clips);
+    const { tempId, post } = lastAttemptRef.current;
+    const result = await runUpload(tempId, post);
     setPosting(false);
     if (result.ok) {
+      // v118 — match post() behaviour: only commit to PostsStore here, on
+      // the success branch. Zombie-prevention contract.
+      try {
+        addPost({ ...post, uploadStatus: "uploaded" } as StoreUserPost);
+      } catch {}
       notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
       onPosted(post);
       onClose();
     } else {
       setLastError(result.error || "Upload failed. Tap Retry.");
     }
-  }, [runUpload, onPosted, onClose]);
+  }, [runUpload, onPosted, onClose, addPost]);
 
   const post = () => {
     if (!mediaFile || !mediaUrl) return;
@@ -2318,32 +2128,32 @@ export function Composer({
         : {}),
       createdAt: Date.now(),
     };
-    // Commit to the global reactive PostsStore — feed picks it up instantly.
-    try { addPost(userPost as StoreUserPost); } catch {}
-    // v117 — when extras are queued, snapshot the merge order so retries
-    // replay the same join. The primary always sits at index 0; extras
-    // follow in display order. Caller is the only place that knows the
-    // current `extraClips` so the snapshot must happen here, not inside
-    // runUpload.
-    const mergeClips: File[] | undefined = (allowMultiClips && mediaFile && extraClips.length > 0)
-      ? [mediaFile, ...extraClips.map((c) => c.file)]
-      : undefined;
-    lastAttemptRef.current = { tempId, post: userPost, clips: mergeClips };
+    // v118 — DO NOT commit to PostsStore yet. The previous behaviour added
+    // the entry optimistically before upload, which left a zombie row in
+    // localStorage if the upload failed OR the user closed the composer
+    // mid-flow. The user's "You" tab + grid then showed media that didn't
+    // exist anywhere on the server. Now we only commit on success. The
+    // retry path still has the full post payload in lastAttemptRef so the
+    // user keeps their caption + filter + tags intact across retries.
+    lastAttemptRef.current = { tempId, post: userPost };
 
-    // v114 — await the upload. On success: close + success toast. On
-    // failure: KEEP the modal open and surface a retry banner so the
-    // creator can Retry without losing their selections or rebuilding
-    // tags / filter / cover. The tempId is the same across retries so
-    // the server-side `client_post_id` deduplication still holds.
-    runUpload(tempId, userPost, mergeClips).then((result) => {
+    // v114 — await the upload. On success: commit to PostsStore + close +
+    // success toast. On failure: KEEP the modal open and surface a retry
+    // banner. The tempId is stable across retries so the server-side
+    // `client_post_id` deduplication still holds.
+    runUpload(tempId, userPost).then((result) => {
       setPosting(false);
       if (result.ok) {
+        // v118 — first chance to commit. Mark uploadStatus so any future
+        // hydrate-time cleanup (legacy entries with no status get an
+        // implicit "uploaded" — same effect).
+        try {
+          addPost({ ...userPost, uploadStatus: "uploaded" } as StoreUserPost);
+        } catch {}
         notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
         onPosted(userPost);
         onClose();
       } else {
-        // Allow retry without resetting postedRef so the user can ALSO
-        // close + try again from /me with the local copy.
         setLastError(result.error || "Upload failed. Tap Retry.");
       }
     });
@@ -2354,6 +2164,69 @@ export function Composer({
     const { blocked } = sanitize(caption);
     return blocked;
   })();
+
+  // v118 — IG-style swipe handlers. Reads pointerdown/move/up off the
+  // preview wrapper. Why pointer events (not touch+mouse separately): one
+  // event family works for finger / pen / mouse / trackpad and avoids the
+  // dual-listener double-fire bug that "touchstart + click" used to have
+  // on Android. We deliberately do NOT preventDefault inside down/move so
+  // vertical scrolling of the page is preserved. Only on `up`, if we
+  // detected a clearly horizontal swipe past the threshold, do we cycle.
+  const SWIPE_DX_MIN = 50;          // px — minimum horizontal travel to commit a swap
+  const SWIPE_RATIO  = 1.5;         // |dx| must be > SWIPE_RATIO * |dy| (so vertical scroll never triggers a filter swap)
+  const SWIPE_MAX_MS = 600;         // ms — slower drags are treated as scrolling, not swiping
+  const cycleFilterBy = useCallback((delta: number) => {
+    const list = FILTER_PRESETS;
+    if (!list.length) return;
+    const cur = list.findIndex((f) => f.id === filter);
+    const idx = cur >= 0 ? cur : 0;
+    let next = (idx + delta) % list.length;
+    if (next < 0) next += list.length;
+    const chosen = list[next];
+    setFilter(chosen.id);
+    setSwipeHintLabel(chosen.label);
+    if (swipeHintTimerRef.current) window.clearTimeout(swipeHintTimerRef.current);
+    swipeHintTimerRef.current = window.setTimeout(() => setSwipeHintLabel(""), 900);
+  }, [filter]);
+  const onPreviewPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Ignore right-click / middle-click on desktop — only primary buttons swipe.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    swipeStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+    swipeMovedRef.current = false;
+  };
+  const onPreviewPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = swipeStartRef.current;
+    if (!s || s.id !== e.pointerId) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    // Once we've seen clearly horizontal travel, mark moved so the
+    // pointer-up handler knows this gesture was a swipe (and the inner
+    // chrome buttons — Cover frame, Cover/Fit, etc. — also know to
+    // suppress their click via the same flag below).
+    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * SWIPE_RATIO) {
+      swipeMovedRef.current = true;
+    }
+  };
+  const onPreviewPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!s || s.id !== e.pointerId) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const dt = Date.now() - s.t;
+    if (dt > SWIPE_MAX_MS) return;
+    if (Math.abs(dx) < SWIPE_DX_MIN) return;
+    if (Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return;
+    // Right→left swipe (negative dx) = next filter, left→right = previous.
+    // Matches the IG convention where "swiping the next photo in" reveals
+    // a new edit state on the right edge.
+    cycleFilterBy(dx < 0 ? +1 : -1);
+  };
+
+  // Clean up the hint timer on unmount so we never call setState after close.
+  useEffect(() => () => {
+    if (swipeHintTimerRef.current) window.clearTimeout(swipeHintTimerRef.current);
+  }, []);
 
   // Target aspect ratios per kind — matches IG. Reel/Story = 9:16, Photo = 4:5.
   const targetAspect = kind === "photo" ? "4/5" : "9/16";
@@ -2415,6 +2288,17 @@ export function Composer({
             from { opacity: 0; transform: translateY(18px); }
             to   { opacity: 1; transform: translateY(0); }
           }
+          /* v118 — swipe-driven filter feedback */
+          @keyframes sbFilterPulse {
+            0%   { opacity: 0;   transform: scale(0.86); }
+            18%  { opacity: 1;   transform: scale(1.0); }
+            60%  { opacity: 1;   transform: scale(1.0); }
+            100% { opacity: 0;   transform: scale(0.94); }
+          }
+          @keyframes sbSwipeHintBob {
+            0%, 100% { transform: translate(-50%, 0); opacity: 0.72; }
+            50%      { transform: translate(-50%, -3px); opacity: 0.95; }
+          }
         `}</style>
         <audio ref={audioPreviewRef} src={audio?.url || ""} loop />
 
@@ -2460,18 +2344,11 @@ export function Composer({
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={(e) => {
                   e.preventDefault(); e.stopPropagation();
-                  const files = e.dataTransfer.files;
-                  if (!files || files.length === 0) return;
-                  // v117 — Drag-drop: preserve all dropped files when reels
-                  // mode (multi-clip merge), otherwise pass through the
-                  // first only (photo / story stays single-shot).
+                  const f = e.dataTransfer.files?.[0];
+                  if (!f) return;
+                  // Simulate the change event so we re-use onFile's logic.
+                  const dt = new DataTransfer(); dt.items.add(f);
                   if (fileRef.current) {
-                    const dt = new DataTransfer();
-                    const max = allowMultiClips ? Math.min(files.length, 10) : 1;
-                    for (let i = 0; i < max; i++) {
-                      const f = files.item(i);
-                      if (f) dt.items.add(f);
-                    }
                     fileRef.current.files = dt.files;
                     onFile({ target: fileRef.current } as any);
                   }
@@ -2484,12 +2361,10 @@ export function Composer({
               >
                 <span className="text-5xl">{kind === "reel" ? "🎬" : kind === "photo" ? "📷" : "📖"}</span>
                 <p className="text-white font-semibold text-[0.92rem]">
-                  Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : allowMultiClips ? "one or more videos" : "a video"}
+                  Tap to choose {kind === "photo" ? "a photo" : kind === "story" ? "a photo or video" : "a video"}
                 </p>
                 <p className="text-white/55 text-[0.66rem] px-6">
-                  {allowMultiClips
-                    ? "Pick multiple clips — we'll merge them into one reel. Drag-and-drop works on desktop."
-                    : "From your camera roll or files. Drag-and-drop also works on desktop."}
+                  From your camera roll or files. Drag-and-drop also works on desktop.
                 </p>
                 <span
                   className="text-[0.62rem] mt-1 px-3 py-1 rounded-full"
@@ -2522,14 +2397,7 @@ export function Composer({
               </button>
             </div>
 
-            <input
-              ref={fileRef}
-              type="file"
-              accept={accept}
-              multiple={allowMultiClips}
-              onChange={onFile}
-              className="hidden"
-            />
+            <input ref={fileRef}   type="file" accept={accept} onChange={onFile} className="hidden" />
             <input
               ref={cameraRef}
               type="file"
@@ -2562,7 +2430,17 @@ export function Composer({
                   // letterbox cleanly inside this frame.
                   maxHeight: "36dvh",
                   aspectRatio: targetAspect,
+                  // v118 — `touchAction: pan-y` lets the OS keep handling
+                  // vertical scrolling while we own horizontal swipes for
+                  // the filter cycle. Without this, Android Chrome would
+                  // treat every horizontal drag as ambiguous and emit a
+                  // gritty mix of scroll + pointer events.
+                  touchAction: "pan-y",
                 }}
+                onPointerDown={onPreviewPointerDown}
+                onPointerMove={onPreviewPointerMove}
+                onPointerUp={onPreviewPointerUp}
+                onPointerCancel={() => { swipeStartRef.current = null; }}
               >
                 {isVideo ? (
                   <video
@@ -2578,6 +2456,46 @@ export function Composer({
                     className="w-full h-full"
                     style={{ objectFit: previewFit, filter: filterCssFor(filter) }}
                   />
+                )}
+
+                {/* v118 — Floating filter label after a swipe-driven swap.
+                    Pulses in, holds, fades out. Pointer-events disabled
+                    so it never blocks the swipe gesture itself. */}
+                {swipeHintLabel && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    style={{ animation: "sbFilterPulse 900ms ease-out forwards" }}
+                  >
+                    <span
+                      className="px-4 py-2 rounded-full text-[0.92rem] font-bold tracking-wide"
+                      style={{
+                        background: "rgba(0,0,0,0.55)",
+                        backdropFilter: "blur(10px)",
+                        color: "#ffd76b",
+                        border: "1px solid rgba(255,215,107,0.45)",
+                        boxShadow: "0 6px 18px rgba(0,0,0,0.55)",
+                      }}
+                    >
+                      ✨ {swipeHintLabel}
+                    </span>
+                  </div>
+                )}
+
+                {/* v118 — Subtle "swipe me" affordance: shows once when no
+                    filter is set, so first-time users discover the gesture. */}
+                {filter === "none" && !swipeHintLabel && (
+                  <span
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full text-[0.58rem] font-medium tracking-wide pointer-events-none"
+                    style={{
+                      background: "rgba(0,0,0,0.42)",
+                      backdropFilter: "blur(6px)",
+                      color: "rgba(255,255,255,0.72)",
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      animation: "sbSwipeHintBob 2200ms ease-in-out infinite",
+                    }}
+                  >
+                    ‹ swipe to change filter ›
+                  </span>
                 )}
 
                 {/* Cover · Fit toggle pill — bottom-right of the preview. */}
@@ -2627,196 +2545,7 @@ export function Composer({
                     🖼 Cover frame
                   </button>
                 )}
-
-                {/* v117 — clip-count badge. Shows "1 of N" only when extra
-                    clips are queued so single-clip uploads stay clean. */}
-                {allowMultiClips && isVideo && extraClips.length > 0 && (
-                  <span
-                    className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[0.58rem] font-bold tracking-wide"
-                    style={{
-                      background: "linear-gradient(135deg, rgba(46,204,113,0.85), rgba(91,141,255,0.85))",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.35)",
-                      backdropFilter: "blur(6px)",
-                    }}
-                  >
-                    🎬 1 of {extraClips.length + 1} · merged
-                  </span>
-                )}
               </div>
-
-              {/* v117 — Clip strip. Only shown for reels with a video chosen.
-                  Lists the primary clip (slot 0) + every extra in order.
-                  Each tile has ⬅ / ➡ reorder + ✕ remove. Last tile is a
-                  "+ Add clip" affordance until the 10-clip cap. */}
-              {allowMultiClips && isVideo && (
-                <div
-                  className="-mx-4 mt-2 mb-1 px-4 pb-2 overflow-x-auto flex gap-2 hide-scroll items-stretch"
-                  style={{ WebkitOverflowScrolling: "touch" }}
-                  aria-label="Clip strip — drag or use the chevrons to reorder"
-                >
-                  {/* Slot 0 — the primary clip. Cannot be removed (closing
-                      the composer or hitting Back undoes the upload). */}
-                  <div
-                    className="shrink-0 flex flex-col items-center gap-1"
-                  >
-                    <span
-                      className="w-14 h-20 rounded-lg overflow-hidden block relative"
-                      style={{
-                        border: "2px solid rgba(255,215,107,0.85)",
-                        boxShadow: "0 0 0 1px rgba(0,0,0,0.4), 0 4px 12px rgba(240,180,41,0.35)",
-                      }}
-                    >
-                      {posterUrl ? (
-                        <img src={posterUrl} alt="primary clip" className="w-full h-full object-cover" />
-                      ) : (
-                        <video src={mediaUrl} className="w-full h-full object-cover" muted playsInline />
-                      )}
-                      <span
-                        className="absolute top-0.5 left-0.5 text-[0.5rem] font-black px-1 rounded"
-                        style={{ background: "rgba(0,0,0,0.62)", color: "#ffd76b" }}
-                      >
-                        1
-                      </span>
-                    </span>
-                    <span className="text-[0.56rem] font-semibold" style={{ color: "#ffd76b" }}>
-                      Primary
-                    </span>
-                  </div>
-
-                  {/* Extra clips — each gets reorder + remove. Reorder swaps
-                      with its neighbour. Promote-to-primary is the leftmost
-                      action so an out-of-order primary is a single tap away
-                      from being swapped without losing the other clips. */}
-                  {extraClips.map((c, i) => (
-                    <div key={c.id} className="shrink-0 flex flex-col items-center gap-1">
-                      <span
-                        className="w-14 h-20 rounded-lg overflow-hidden block relative"
-                        style={{
-                          border: "2px solid rgba(255,255,255,0.22)",
-                          boxShadow: "0 4px 10px rgba(0,0,0,0.45)",
-                        }}
-                      >
-                        <video src={c.url} className="w-full h-full object-cover" muted playsInline />
-                        <span
-                          className="absolute top-0.5 left-0.5 text-[0.5rem] font-black px-1 rounded"
-                          style={{ background: "rgba(0,0,0,0.62)", color: "#fff" }}
-                        >
-                          {i + 2}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeExtraClip(c.id)}
-                          aria-label={`Remove clip ${i + 2}`}
-                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[0.68rem] font-bold"
-                          style={{
-                            background: "rgba(255,69,89,0.95)",
-                            color: "#fff",
-                            border: "2px solid #0a0612",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.6)",
-                          }}
-                        >
-                          ×
-                        </button>
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => promoteExtraClip(c.id)}
-                          aria-label={`Make clip ${i + 2} primary`}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
-                          style={{
-                            background: "rgba(255,215,107,0.18)",
-                            border: "1px solid rgba(255,215,107,0.55)",
-                            color: "#ffd76b",
-                          }}
-                        >
-                          ★
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveExtraClip(c.id, -1)}
-                          disabled={i === 0}
-                          aria-label={`Move clip ${i + 2} left`}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
-                          style={{
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.18)",
-                            color: i === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)",
-                          }}
-                        >
-                          ‹
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveExtraClip(c.id, 1)}
-                          disabled={i === extraClips.length - 1}
-                          aria-label={`Move clip ${i + 2} right`}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[0.6rem]"
-                          style={{
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.18)",
-                            color: i === extraClips.length - 1 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.85)",
-                          }}
-                        >
-                          ›
-                        </button>
-                      </span>
-                    </div>
-                  ))}
-
-                  {/* Add clip tile — hidden once the 10-clip cap is reached
-                      (matches the merge module's MAX_CLIPS guard). */}
-                  {extraClips.length < 9 && (
-                    <button
-                      type="button"
-                      onClick={() => moreClipsRef.current?.click()}
-                      className="shrink-0 flex flex-col items-center gap-1"
-                      aria-label="Add another clip to merge into this reel"
-                    >
-                      <span
-                        className="w-14 h-20 rounded-lg flex items-center justify-center"
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1.5px dashed rgba(255,215,107,0.55)",
-                          color: "#ffd76b",
-                          fontSize: "1.4rem",
-                        }}
-                      >
-                        +
-                      </span>
-                      <span className="text-[0.56rem] font-semibold" style={{ color: "rgba(255,255,255,0.7)" }}>
-                        Add clip
-                      </span>
-                    </button>
-                  )}
-                  <input
-                    ref={moreClipsRef}
-                    type="file"
-                    accept="video/*"
-                    multiple
-                    onChange={onAddClips}
-                    className="hidden"
-                  />
-                </div>
-              )}
-
-              {/* v117 — Soft warning when the browser can't merge locally.
-                  Surfaced as a non-blocking note so the creator can still
-                  post the primary clip without the merge step. */}
-              {mergeUnsupportedNote && (
-                <p
-                  className="mt-2 text-amber-300 text-[0.7rem] leading-snug px-2"
-                  style={{
-                    background: "rgba(245,158,11,0.10)",
-                    border: "1px solid rgba(245,158,11,0.35)",
-                    borderRadius: 10,
-                    padding: "8px 10px",
-                  }}
-                >
-                  ⚠️ {mergeUnsupportedNote}
-                </p>
-              )}
 
               {/* v114 — IG-style filter strip. Horizontal scroll of named
                   presets, each shown with the actual media as a tiny live
@@ -3153,30 +2882,7 @@ export function Composer({
                   the creator never closes the modal on an invisible error.
                   Same tempId on retry = server-side idempotency holds.
                   v116 — compression phase shown first ("Optimising for fast
-                  upload…") so the user knows we're not stuck at 0% upload.
-                  v117 — merge phase precedes compression when multi-clip. */}
-              {merging && (
-                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(185,100,255,0.10)", border: "1px solid rgba(185,100,255,0.30)" }}>
-                  <p className="text-fuchsia-200 text-[0.74rem] font-semibold mb-1.5">
-                    🎬 Stitching your clips… {mergeProgress?.overall ?? 0}%
-                    {mergeProgress?.phase === "encode" && typeof mergeProgress.clipIndex === "number" && typeof mergeProgress.clipCount === "number" && (
-                      <span className="text-fuchsia-200/70 font-normal"> · clip {mergeProgress.clipIndex + 1} of {mergeProgress.clipCount}</span>
-                    )}
-                  </p>
-                  <p className="text-fuchsia-200/70 text-[0.6rem] mb-1.5 leading-snug">
-                    Joining {extraClips.length + 1} clips into one reel — keep this tab open until it finishes.
-                  </p>
-                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
-                    <div
-                      className="h-full transition-all"
-                      style={{
-                        width: `${mergeProgress?.overall ?? 0}%`,
-                        background: "linear-gradient(90deg, #b964ff, #ff458d)",
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
+                  upload…") so the user knows we're not stuck at 0% upload. */}
               {compressing && (
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(91,141,255,0.10)", border: "1px solid rgba(91,141,255,0.30)" }}>
                   <p className="text-sky-200 text-[0.74rem] font-semibold mb-1.5">
@@ -3219,8 +2925,11 @@ export function Composer({
               {lastError && (
                 <div className="rounded-xl px-3 py-3" style={{ background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)" }}>
                   <p className="text-red-300 text-[0.78rem] font-semibold mb-1">⚠ {lastError}</p>
+                  {/* v118 — copy reflects the new contract: nothing is saved
+                      anywhere until the upload succeeds. Retry to publish OR
+                      discard. No more "Keep local" zombie path. */}
                   <p className="text-red-200/60 text-[0.66rem] mb-2">
-                    Your post is still saved on this device{retryCount > 0 ? ` (attempt ${retryCount + 1})` : ""}.
+                    Nothing has been posted yet{retryCount > 0 ? ` (attempt ${retryCount + 1})` : ""} — tap Retry to publish, or discard to start over.
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -3232,11 +2941,21 @@ export function Composer({
                       {posting ? "Retrying…" : "↻ Retry upload"}
                     </button>
                     <button
-                      onClick={() => { setLastError(""); onPosted(lastAttemptRef.current?.post as any); onClose(); }}
+                      onClick={() => {
+                        // v118 — Discard: clean slate. lastAttemptRef holds
+                        // an in-memory copy of the unsubmitted post; tossing
+                        // it + closing the modal removes the only place it
+                        // lived. Nothing in PostsStore to clean up because
+                        // we never committed in the first place.
+                        setLastError("");
+                        lastAttemptRef.current = null;
+                        postedRef.current = false;
+                        onClose();
+                      }}
                       className="rounded-lg py-2 px-3 text-[0.74rem] font-semibold"
                       style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.18)" }}
                     >
-                      Keep local
+                      Discard
                     </button>
                   </div>
                 </div>

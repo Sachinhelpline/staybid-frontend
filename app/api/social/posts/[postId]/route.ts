@@ -1,7 +1,11 @@
-// DELETE /api/social/posts/[postId] — author or admin can soft-delete.
+// DELETE /api/social/posts/[postId] — author or admin can HARD-delete (v118).
+//   Removes the social_posts row, every owned Storage object (media,
+//   thumbnail, per-user audio), and best-effort cascades video_likes,
+//   video_comments, user_saves. Invalidates the in-memory feed cache.
 // PATCH  /api/social/posts/[postId] — author can edit caption / location.
 import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { sbCacheInvalidate } from "@/lib/sb-cache";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { getProfileByUserId, canDeletePost } from "@/lib/social/social-profile.service";
 
@@ -30,6 +34,55 @@ async function loadPostAndProfile(req: Request, postId: string) {
   return { user, post, profile } as const;
 }
 
+// ─── v118 — HARD delete ────────────────────────────────────────────────
+// Removes the social_posts row AND every Storage object it owns
+// (media + thumbnail + per-post audio if the audio sits in our own
+// bucket). Previously this was a soft-delete (`is_active: false`)
+// that left the Storage object orphaned forever — dump-data growth.
+//
+// What gets nuked:
+//   • social_posts row                                  (DELETE on the table)
+//   • Storage object at media_url                        (if /social-media/)
+//   • Storage object at thumbnail_url                    (if /social-media/)
+//   • Storage object at sound_url                        (if it's a per-user
+//                                                        upload at /audio/<userId>/)
+//   • Best-effort: video_likes / video_comments rows     (if those columns
+//                                                        reference this post by id)
+//
+// Storage URLs in this codebase look like:
+//   https://uxxhbdqedazpmvbvaosh.supabase.co/storage/v1/object/public/social-media/<key>
+// We strip the prefix and issue:
+//   DELETE https://uxxhbdqedazpmvbvaosh.supabase.co/storage/v1/object/social-media/<key>
+// using the same anon JWT (the bucket policy is anon-write/delete).
+//
+// Failures on Storage do NOT block the DB delete — DB row going away is
+// the primary correctness contract; an orphaned blob is a smaller leak
+// than a phantom post showing in feeds. We still return the per-side
+// outcome in the response so admins/observability can see what slipped.
+const STORAGE_BUCKET   = "social-media";
+const STORAGE_PUB_PREFIX = `${SB_URL}/storage/v1/object/public/${STORAGE_BUCKET}/`;
+
+function storageKeyFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  if (!url.startsWith(STORAGE_PUB_PREFIX)) return null;
+  const key = url.slice(STORAGE_PUB_PREFIX.length).split("?")[0].split("#")[0];
+  return key ? decodeURIComponent(key) : null;
+}
+
+async function deleteStorageObject(key: string): Promise<boolean> {
+  try {
+    const r = await fetch(
+      `${SB_URL}/storage/v1/object/${STORAGE_BUCKET}/${key.split("/").map(encodeURIComponent).join("/")}`,
+      { method: "DELETE", headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } }
+    );
+    // 200 = deleted, 404 = already gone (treat as success — the goal is
+    // "object no longer exists"), anything else = surface the failure.
+    return r.ok || r.status === 404;
+  } catch {
+    return false;
+  }
+}
+
 export async function DELETE(req: Request, { params }: { params: { postId: string } }) {
   const postId = decodeURIComponent(params.postId);
   if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
@@ -41,11 +94,61 @@ export async function DELETE(req: Request, { params }: { params: { postId: strin
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Soft delete — keeps stats accurate, lets admins audit
-  await fetch(`${SB_URL}/rest/v1/social_posts?id=eq.${encodeURIComponent(postId)}`, {
-    method: "PATCH", headers: HEADERS, body: JSON.stringify({ is_active: false }),
+  const post = ctx.post;
+  // Collect every Storage object the post owns. We attempt each delete in
+  // parallel — they're independent and failures don't cascade.
+  const storageKeys = [
+    storageKeyFromPublicUrl(post.media_url),
+    storageKeyFromPublicUrl(post.thumbnail_url),
+    storageKeyFromPublicUrl(post.sound_url), // may be null if track is from the library
+  ].filter((k): k is string => !!k);
+  const storageResults = await Promise.all(
+    storageKeys.map(async (k) => ({ key: k, ok: await deleteStorageObject(k) }))
+  );
+
+  // Best-effort cascade on related rows. The columns may not exist in
+  // every deployment (older social-feed schemas had separate tables);
+  // a 4xx from PostgREST is fine — we just want to nuke what's there.
+  await Promise.all([
+    fetch(`${SB_URL}/rest/v1/video_likes?video_id=eq.${encodeURIComponent(postId)}`, {
+      method: "DELETE", headers: HEADERS,
+    }).catch(() => {}),
+    fetch(`${SB_URL}/rest/v1/video_comments?video_id=eq.${encodeURIComponent(postId)}`, {
+      method: "DELETE", headers: HEADERS,
+    }).catch(() => {}),
+    fetch(`${SB_URL}/rest/v1/user_saves?target_type=eq.video&target_id=eq.${encodeURIComponent(postId)}`, {
+      method: "DELETE", headers: HEADERS,
+    }).catch(() => {}),
+  ]);
+
+  // Hard delete the post row itself. We attempt this AFTER Storage cleanup
+  // so that if the DELETE wins but Storage fails, the orphan is
+  // recoverable via a later sweep; the inverse would leave a phantom
+  // post pointing at a missing object — worst-case UX.
+  const dbResp = await fetch(
+    `${SB_URL}/rest/v1/social_posts?id=eq.${encodeURIComponent(postId)}`,
+    { method: "DELETE", headers: HEADERS }
+  );
+
+  if (!dbResp.ok) {
+    return NextResponse.json({
+      error: "Could not delete post row",
+      detail: await dbResp.text().catch(() => ""),
+      storageResults,
+    }, { status: 500 });
+  }
+
+  // v118 — invalidate the in-memory feed cache so subsequent /api/social/feed
+  // requests don't return the just-deleted row from the 15s warm-cache
+  // window. sbCacheInvalidate is prefix-based so this drops every cached
+  // feed permutation (per-author, per-type, per-filter) in one sweep.
+  try { sbCacheInvalidate("social:"); } catch {}
+
+  return NextResponse.json({
+    deleted: true,
+    hardDelete: true,
+    storage: storageResults, // [{ key, ok }] per nuked object
   });
-  return NextResponse.json({ deleted: true });
 }
 
 // v111 — edit caption / location / sound / hotel-tag on an existing post.
