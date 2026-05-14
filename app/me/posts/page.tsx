@@ -124,12 +124,21 @@ function MePostsInner() {
             ownerHandle,
             ownerAvatar,
             audioLine: p.audio?.name ? p.audio.name : "Original audio",
+            // v121 — durable audio URL so the card plays sound instead
+            // of just showing the file name.
+            audioUrl: p.audio?.url || undefined,
             likeCount: 0,
             commentCount: 0,
-            hotelId: p.taggedHotel?.id || undefined,
+            hotelId:   p.taggedHotel?.id   || undefined,
+            // v121 — human-readable hotel name so the meta pill reads
+            // "At {Hotel}" and the Edit sheet pre-fills the same.
+            hotelName: p.taggedHotel?.name || undefined,
             // v112.2 — surface local edit-post fields so the Edit sheet
             // pre-fills them correctly.
             locationName:    p.location?.name || undefined,
+            // v121 — chosen IG-style filter preset id so the card
+            // renders with the look the creator picked.
+            filterPreset:    (p as any).filter || null,
             hideLikes:       !!p.hideLikes,
             disableComments: !!p.disableComments,
             highlightKey:    p.highlight?.key || undefined,
@@ -147,12 +156,18 @@ function MePostsInner() {
           ownerName,
           ownerHandle,
           ownerAvatar,
-          audioLine: "Original audio",
-          likeCount: Number(rp.likes_count || 0),
+          // v121 — prefer the server-stored soundTrack name (set by the
+          // composer at upload time) over a generic "Original audio".
+          audioLine: rp.sound_track || rp.soundTrack || (rp.sound_url ? "Custom audio" : "Original audio"),
+          audioUrl:  rp.sound_url || rp.soundUrl || undefined,
+          likeCount:  Number(rp.likes_count || 0),
           commentCount: Number(rp.comments_count || 0),
-          hotelId:         rp.hotel_id || undefined,
+          hotelId:   rp.hotel_id   || undefined,
+          // v121 — social_posts joins hotel name when available.
+          hotelName: rp.hotel?.name || rp.hotel_name || undefined,
           // v112.2 — surface server-side edit-post fields.
           locationName:    rp.location_name || undefined,
+          filterPreset:    rp.filter || null,
           hideLikes:       !!rp.hide_likes,
           disableComments: !!rp.disable_comments,
           highlightKey:    rp.highlight_key || undefined,

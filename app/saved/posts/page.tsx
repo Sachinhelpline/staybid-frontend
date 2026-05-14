@@ -80,10 +80,16 @@ function SavedPostsInner() {
           ownerName: owner,
           ownerHandle: handle ? String(handle).replace(/^@/, "") : "",
           ownerAvatar: t.uploader_avatar_url || t.creator_avatar_url || "",
-          audioLine: t.audio_name || "Original audio",
+          // v121 — surface the soundtrack so saved reels play audio + render
+          // the chosen filter + show the actual hotel name (not "View hotel").
+          audioLine: t.sound_track || t.audio_name || (t.sound_url ? "Custom audio" : "Original audio"),
+          audioUrl:  t.sound_url   || undefined,
           likeCount: Number(t.likes_count || 0),
           commentCount: Number(t.comments_count || 0),
-          hotelId: t.hotel_id || undefined,
+          hotelId:   t.hotel_id   || undefined,
+          hotelName: t.hotel_name || t.hotel?.name || undefined,
+          locationName: t.location_name || undefined,
+          filterPreset: t.filter || null,
         };
       })
       .filter((p): p is FeedPost => !!p && !!p.src);

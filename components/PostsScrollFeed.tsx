@@ -26,6 +26,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+// v121 — share the same IG filter preset table the composer + feed use,
+// so PostsScrollFeed cards render with the exact look the creator picked.
+import { filterCssFor } from "@/components/discover/CreateFlow";
+// v121 — Comments must be sanitized at render so off-platform contact
+// info gets scrubbed per the v25 anti-bypass rule. Same helper the
+// composer + InstagramHotelFeed use, so the contract stays consistent.
+import { sanitizeText } from "@/lib/sanitize-text";
 
 export type FeedPost = {
   id: string;
@@ -41,13 +48,27 @@ export type FeedPost = {
   ownerAvatar?: string;
   /** Audio strip line — e.g. "Original audio" or "Acoustic Trips · Shiv Kailash". */
   audioLine?: string;
+  /** v121 — full audio URL so the card can mount its own <audio> and
+      play the custom soundtrack (overriding the video's source audio
+      to match the composer's preview). Without this the audio strip
+      label appears but no actual sound plays. */
+  audioUrl?: string;
   /** Initial counts — like / comment counts read from the data source. */
   likeCount?: number;
   commentCount?: number;
   /** Optional deep-link to a hotel page, when the post is tagged to one. */
   hotelId?: string;
+  /** v121 — human-readable hotel name. Without this the pill renders as
+      a generic "View hotel ›" link instead of "At {Hotel Name}" — and
+      the Edit sheet showed the raw hotel id instead of the name. */
+  hotelName?: string;
   /** Optional location label shown in the header / edit sheet. */
   locationName?: string;
+  /** v121 — chosen IG-style CSS filter preset id (e.g. "warm" / "noir").
+      Applied as `filter:` on the video/img so what you see on the post
+      card matches the look the creator picked at upload time. Was lost
+      between PostsStore → /me/posts → card render before v121. */
+  filterPreset?: string | null;
   /** v112.2 — IG-style toggles. When true, the like count + comment row
       are hidden on this card. Server stores these on social_posts so
       they survive across devices. Default false. */
@@ -114,6 +135,44 @@ export function PostsScrollFeed({
   // itself is just an empty placeholder for now (defers the full
   // commenting feature to a follow-up).
   const [commentsOpen, setCommentsOpen] = useState<string>("");
+  // v121 — REAL comment input. Comments persist to localStorage keyed by
+  // post id so the user sees their own threads come back after a reload.
+  // (A backend wire-up to /api/social/posts/<id>/comments is a follow-up;
+  // this at least makes the input WORK — taking text, posting it, and
+  // showing it back to the user — instead of the v87 placeholder text.)
+  const [commentDraft, setCommentDraft] = useState<string>("");
+  const [commentLists, setCommentLists] = useState<Record<string, Array<{ id: string; text: string; at: number; author: string }>>>({});
+  // Hydrate comment lists from localStorage once on mount.
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined"
+        ? localStorage.getItem("sb_post_comments_v1") : null;
+      if (raw) setCommentLists(JSON.parse(raw) || {});
+    } catch {}
+  }, []);
+  function persistComments(next: typeof commentLists) {
+    try { localStorage.setItem("sb_post_comments_v1", JSON.stringify(next)); } catch {}
+  }
+  function submitComment(postId: string) {
+    const text = commentDraft.trim();
+    if (!text) return;
+    // Read the signed-in display name (falls back to "you") from localStorage.
+    let author = "you";
+    try {
+      const u = JSON.parse(localStorage.getItem("sb_user") || "null");
+      if (u?.name) author = String(u.name);
+      else if (u?.phone) author = String(u.phone).replace(/^\+91/, "");
+    } catch {}
+    const entry = { id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, text, at: Date.now(), author };
+    setCommentLists((prev) => {
+      const list = prev[postId] ? prev[postId].slice() : [];
+      list.unshift(entry);
+      const next = { ...prev, [postId]: list };
+      persistComments(next);
+      return next;
+    });
+    setCommentDraft("");
+  }
   // Toast for share / copy fallback.
   const [toast, setToast] = useState<string>("");
   // v111 — kebab menu state. `menuFor` is the postId whose ⋮ menu is open.
@@ -127,6 +186,14 @@ export function PostsScrollFeed({
   const [editCaption, setEditCaption] = useState<string>("");
   const [editLocation, setEditLocation] = useState<string>("");
   const [editHotelId, setEditHotelId] = useState<string>("");
+  // v121 — searchable hotel picker. The raw "Hotel ID" input was a footgun
+  // (users had to know the cuid). Now they search by name and we resolve
+  // to id under the hood. `editHotelName` is the visible label that the
+  // picker sets when the user picks a result.
+  const [editHotelName, setEditHotelName] = useState<string>("");
+  const [editHotelQuery, setEditHotelQuery] = useState<string>("");
+  const [editHotelResults, setEditHotelResults] = useState<Array<{ id: string; name: string; city?: string }>>([]);
+  const hotelSearchAbortRef = useRef<AbortController | null>(null);
   const [editHighlightKey, setEditHighlightKey] = useState<string>("");
   const [editHideLikes, setEditHideLikes] = useState<boolean>(false);
   const [editDisableComments, setEditDisableComments] = useState<boolean>(false);
@@ -359,10 +426,46 @@ export function PostsScrollFeed({
     setEditCaption(post.caption || "");
     setEditLocation(post.locationName || "");
     setEditHotelId(post.hotelId || "");
+    // v121 — seed the hotel NAME so the searchable picker shows the
+    // human-readable label instead of the raw id. If we only know the id
+    // (legacy), the picker falls back to showing the id but still lets
+    // the user search to replace.
+    setEditHotelName(post.hotelName || "");
+    setEditHotelQuery("");
+    setEditHotelResults([]);
     setEditHighlightKey(post.highlightKey || "");
     setEditHideLikes(!!post.hideLikes);
     setEditDisableComments(!!post.disableComments);
   }
+
+  // v121 — Debounced hotel search. Hits /api/hotels?search=… and returns
+  // the top matches so the edit sheet can show NAMES (not ids). Aborts
+  // in-flight requests so a fast typer never races a stale response.
+  useEffect(() => {
+    if (!editFor) return;
+    const q = editHotelQuery.trim();
+    if (q.length < 2) { setEditHotelResults([]); return; }
+    if (hotelSearchAbortRef.current) {
+      try { hotelSearchAbortRef.current.abort(); } catch {}
+    }
+    const ac = new AbortController();
+    hotelSearchAbortRef.current = ac;
+    const id = window.setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/hotels?search=${encodeURIComponent(q)}&limit=8`, { signal: ac.signal, cache: "no-store" });
+        if (!r.ok) return;
+        const json = await r.json().catch(() => null);
+        const list = Array.isArray(json?.hotels) ? json.hotels : (Array.isArray(json) ? json : []);
+        const top = list.slice(0, 8).map((h: any) => ({
+          id: String(h.id),
+          name: String(h.name || h.title || ""),
+          city: h.city || h.location_city || "",
+        })).filter((h: { id: string; name: string }) => h.id && h.name);
+        if (!ac.signal.aborted) setEditHotelResults(top);
+      } catch {}
+    }, 220);
+    return () => { window.clearTimeout(id); try { ac.abort(); } catch {} };
+  }, [editHotelQuery, editFor]);
 
   async function commitEdit() {
     if (!editFor) return;
@@ -479,21 +582,63 @@ export function PostsScrollFeed({
         )}
       </div>
 
-      {/* Comments drawer — minimal placeholder while the full thread
-          experience ships with the existing booking-chat backend in a
-          follow-up. Closing it dismisses the overlay. */}
+      {/* v121 — Real comments drawer. Replaces the v87 placeholder.
+          - Lists previously-posted comments for THIS post (read from local
+            cache so the user sees their own threads come back on reload).
+          - Has a real text input + Send button.
+          - Sanitises the body before showing to scrub off-platform
+            contact info per the v25 anti-bypass rule.
+          - Closes on backdrop tap, ✕ tap, or after sending. */}
       {commentsOpen && (
-        <div className="pf-drawer-backdrop" onClick={() => setCommentsOpen("")}>
-          <div className="pf-drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="pf-drawer-backdrop" onClick={() => { setCommentsOpen(""); setCommentDraft(""); }}>
+          <div className="pf-drawer pf-comments-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="pf-drawer-handle" />
-            <p className="pf-drawer-title">Comments</p>
-            <p className="pf-drawer-empty">No comments yet — be the first to say something nice 💬</p>
-            <button
-              type="button"
-              className="pf-drawer-close"
-              onClick={() => setCommentsOpen("")}
-              aria-label="Close comments"
-            >Close</button>
+            <div className="pf-comments-head">
+              <p className="pf-drawer-title">Comments</p>
+              <button
+                type="button"
+                onClick={() => { setCommentsOpen(""); setCommentDraft(""); }}
+                className="pf-comments-close"
+                aria-label="Close comments"
+              >✕</button>
+            </div>
+            <div className="pf-comments-list">
+              {(commentLists[commentsOpen] && commentLists[commentsOpen].length > 0) ? (
+                commentLists[commentsOpen].map((c) => (
+                  <div key={c.id} className="pf-comment-row">
+                    <span className="pf-comment-av">{(c.author || "?")[0]?.toUpperCase()}</span>
+                    <div className="pf-comment-body">
+                      <p className="pf-comment-line">
+                        <strong>{c.author}</strong> {sanitizeText(c.text).clean}
+                      </p>
+                      <p className="pf-comment-time">{new Date(c.at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="pf-drawer-empty">No comments yet — be the first to say something nice 💬</p>
+              )}
+            </div>
+            <form
+              className="pf-comments-input-row"
+              onSubmit={(e) => { e.preventDefault(); submitComment(commentsOpen); }}
+            >
+              <input
+                type="text"
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value.slice(0, 500))}
+                placeholder="Add a comment…"
+                className="pf-comments-input"
+                aria-label="Write a comment"
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="pf-comments-send"
+                disabled={!commentDraft.trim()}
+                aria-label="Post comment"
+              >Send</button>
+            </form>
           </div>
         </div>
       )}
@@ -532,16 +677,55 @@ export function PostsScrollFeed({
               maxLength={120}
             />
 
-            <label className="pf-edit-label" htmlFor="pf-edit-hotel">🏨 Tagged hotel ID</label>
+            <label className="pf-edit-label" htmlFor="pf-edit-hotel">🏨 Tagged hotel</label>
+            {/* v121 — Search by NAME, resolve to id under the hood. The
+                current pick (if any) shows as a removable pill above the
+                input. The raw-id field is gone; users no longer need to
+                know an internal cuid to retag their post. */}
+            {editHotelId && (
+              <div className="pf-edit-hotel-pill">
+                <span className="pf-edit-hotel-pill-name">
+                  🏨 {editHotelName || `Hotel ${editHotelId}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setEditHotelId(""); setEditHotelName(""); }}
+                  aria-label="Untag hotel"
+                  className="pf-edit-hotel-pill-x"
+                >×</button>
+              </div>
+            )}
             <input
               id="pf-edit-hotel"
               type="text"
               className="pf-edit-input"
-              value={editHotelId}
-              onChange={(e) => setEditHotelId(e.target.value)}
-              placeholder="Hotel ID (or leave empty to untag)"
+              value={editHotelQuery}
+              onChange={(e) => setEditHotelQuery(e.target.value)}
+              placeholder={editHotelId ? "Search to change hotel…" : "Search hotels by name…"}
               maxLength={120}
+              autoComplete="off"
             />
+            {editHotelResults.length > 0 && (
+              <div className="pf-edit-hotel-results" role="listbox">
+                {editHotelResults.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    role="option"
+                    onClick={() => {
+                      setEditHotelId(h.id);
+                      setEditHotelName(h.name);
+                      setEditHotelQuery("");
+                      setEditHotelResults([]);
+                    }}
+                    className="pf-edit-hotel-row"
+                  >
+                    <span className="pf-edit-hotel-row-name">🏨 {h.name}</span>
+                    {h.city && <span className="pf-edit-hotel-row-city">{h.city}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <label className="pf-edit-label" htmlFor="pf-edit-highlight">✨ Highlight bucket</label>
             <select
@@ -739,6 +923,154 @@ export function PostsScrollFeed({
           font-size: 0.86rem;
           font-weight: 700;
           cursor: pointer;
+        }
+        /* v121 — Functional comment drawer styles. Header + scrollable
+           list + sticky input row at the bottom. Matches the IG comment
+           thread pattern. */
+        .pf-comments-drawer { max-height: 78dvh; display: flex; flex-direction: column; }
+        .pf-comments-head {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 0 4px 8px;
+          border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
+        }
+        .pf-comments-head .pf-drawer-title { margin: 0; flex: 1; text-align: center; }
+        .pf-comments-close {
+          width: 32px; height: 32px;
+          border: none;
+          background: transparent;
+          color: var(--cozy-cocoa, #4A3820);
+          font-size: 1.1rem;
+          cursor: pointer;
+        }
+        .pf-comments-list {
+          flex: 1 1 auto;
+          overflow-y: auto;
+          padding: 8px 4px;
+          min-height: 60px;
+          max-height: 56dvh;
+        }
+        .pf-comment-row {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 8px 6px;
+          border-radius: 10px;
+        }
+        .pf-comment-av {
+          width: 30px; height: 30px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, var(--cozy-cream-200, #F2EAD8), var(--cozy-taupe, #E8DCC8));
+          color: var(--cozy-warm-dark, #1F1A0F);
+          font-size: 0.86rem; font-weight: 800;
+          display: inline-flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .pf-comment-body { flex: 1; min-width: 0; }
+        .pf-comment-line {
+          font-size: 0.84rem;
+          color: var(--cozy-warm-dark, #1F1A0F);
+          margin: 0;
+          line-height: 1.35;
+          word-break: break-word;
+        }
+        .pf-comment-line strong { font-weight: 700; margin-right: 4px; }
+        .pf-comment-time {
+          font-size: 0.66rem;
+          color: var(--cozy-cocoa-soft, #6E5430);
+          margin: 2px 0 0;
+        }
+        .pf-comments-input-row {
+          display: flex; gap: 8px; align-items: center;
+          padding: 10px 4px 4px;
+          border-top: 1px solid var(--cozy-taupe, #E8DCC8);
+        }
+        .pf-comments-input {
+          flex: 1 1 auto;
+          padding: 10px 14px;
+          font-size: 0.86rem;
+          border-radius: 999px;
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          background: var(--cozy-cream-50, #FFFCF6);
+          color: var(--cozy-warm-dark, #1F1A0F);
+          outline: none;
+        }
+        .pf-comments-input:focus {
+          border-color: var(--cozy-champagne, #C9A66B);
+          box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.18);
+        }
+        .pf-comments-send {
+          padding: 9px 16px;
+          border: none;
+          border-radius: 999px;
+          background: var(--cozy-champagne, #C9A66B);
+          color: var(--cozy-warm-dark, #1F1A0F);
+          font-size: 0.82rem; font-weight: 800;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .pf-comments-send:disabled {
+          background: var(--cozy-taupe, #E8DCC8);
+          color: var(--cozy-cocoa-soft, #6E5430);
+          cursor: not-allowed;
+        }
+        /* v121 — Searchable hotel picker inside the Edit Post sheet.
+           Replaces the raw "Hotel ID" textbox. */
+        .pf-edit-hotel-pill {
+          display: inline-flex; align-items: center; gap: 8px;
+          margin: 4px 0 10px;
+          padding: 6px 6px 6px 12px;
+          background: rgba(201, 166, 107, 0.16);
+          border: 1px solid rgba(201, 166, 107, 0.40);
+          border-radius: 999px;
+          max-width: 100%;
+        }
+        .pf-edit-hotel-pill-name {
+          color: var(--cozy-warm-dark, #1F1A0F);
+          font-size: 0.82rem; font-weight: 700;
+          line-height: 1;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .pf-edit-hotel-pill-x {
+          width: 22px; height: 22px;
+          border-radius: 999px;
+          border: none;
+          background: rgba(31, 26, 15, 0.10);
+          color: var(--cozy-warm-dark, #1F1A0F);
+          font-size: 0.92rem; font-weight: 800;
+          line-height: 1;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .pf-edit-hotel-results {
+          margin-top: 6px;
+          background: var(--cozy-cream-50, #FFFCF6);
+          border: 1px solid var(--cozy-taupe, #E8DCC8);
+          border-radius: 12px;
+          overflow: hidden;
+          max-height: 240px;
+          overflow-y: auto;
+        }
+        .pf-edit-hotel-row {
+          display: flex; align-items: center; justify-content: space-between;
+          width: 100%;
+          padding: 10px 12px;
+          background: transparent;
+          border: none;
+          border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
+          color: var(--cozy-warm-dark, #1F1A0F);
+          font-size: 0.82rem;
+          text-align: left;
+          cursor: pointer;
+        }
+        .pf-edit-hotel-row:last-child { border-bottom: none; }
+        .pf-edit-hotel-row:hover { background: rgba(201, 166, 107, 0.10); }
+        .pf-edit-hotel-row-name { font-weight: 700; }
+        .pf-edit-hotel-row-city {
+          font-size: 0.72rem;
+          color: var(--cozy-cocoa-soft, #6E5430);
+          margin-left: 8px;
         }
 
         /* Toast */
@@ -969,28 +1301,61 @@ function PostCard({
   onEdit: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // v121 — custom-audio overlay. When the post has a soundtrack attached
+  // (`audioUrl`), we mute the video and play this audio in sync with the
+  // card's active/paused state. Mirrors the InstagramHotelFeed pattern so
+  // both surfaces sound identical for the same post.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   // Animated heart for double-tap and like-button pop.
   const [heartPulse, setHeartPulse] = useState<number>(0);
+  const hasCustomAudio = !!post.audioUrl;
 
   // Active card plays; inactive pauses.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+    // v121 — when a custom soundtrack is in play, ALWAYS mute the video so
+    // we don't double-up source-video audio + the picked track. Otherwise
+    // honour the global mute state from the parent.
+    v.muted = hasCustomAudio ? true : muted;
     if (isActive) {
-      v.muted = muted;
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
     } else {
       try { v.pause(); v.currentTime = 0; } catch {}
     }
-  }, [isActive, muted]);
+  }, [isActive, muted, hasCustomAudio]);
 
   // Reflect external mute state changes.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.muted = muted;
-  }, [muted]);
+    v.muted = hasCustomAudio ? true : muted;
+  }, [muted, hasCustomAudio]);
+
+  // v121 — Drive the optional custom audio in lockstep with the active card
+  // + global mute. NEVER route this element through Web Audio (applyGain) —
+  // cross-origin MP3s without CORS-clean headers get silenced by the
+  // browser the moment they hit a MediaElementSource. Native volume is
+  // plenty loud + always audible.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (isActive && hasCustomAudio && !muted) {
+      try {
+        a.muted = false;
+        a.volume = 1;
+        const p = a.play();
+        if (p && typeof p.then === "function") p.catch(() => {});
+      } catch {}
+    } else {
+      try { a.pause(); a.currentTime = 0; } catch {}
+    }
+    return () => {
+      const el = audioRef.current;
+      if (el) { try { el.pause(); el.currentTime = 0; } catch {} }
+    };
+  }, [isActive, hasCustomAudio, muted]);
 
   // Double-tap-to-like — IG signature interaction.
   const lastTapRef = useRef<number>(0);
@@ -1088,7 +1453,8 @@ function PostCard({
         </div>
       </div>
 
-      {/* Media */}
+      {/* Media — v121 applies the chosen IG filter preset as a CSS filter
+          so the on-card render matches the composer preview exactly. */}
       <div className="pf-media">
         {post.kind === "video" && post.src ? (
           <>
@@ -1102,6 +1468,9 @@ function PostCard({
               preload={isActive ? "auto" : "metadata"}
               muted
               onClick={handleMediaTap}
+              style={post.filterPreset && post.filterPreset !== "none"
+                ? { filter: filterCssFor(post.filterPreset) }
+                : undefined}
             />
             <button
               type="button"
@@ -1109,6 +1478,17 @@ function PostCard({
               onClick={onToggleMute}
               aria-label={muted ? "Unmute" : "Mute"}
             >{muted ? "🔇" : "🔊"}</button>
+            {/* v121 — Custom soundtrack overlay. Hidden audio element that
+                plays in lockstep with the active state + global mute. */}
+            {hasCustomAudio && (
+              <audio
+                ref={audioRef}
+                src={post.audioUrl}
+                loop
+                preload={isActive ? "auto" : "metadata"}
+                aria-hidden
+              />
+            )}
           </>
         ) : post.poster || post.src ? (
           <img
@@ -1116,6 +1496,9 @@ function PostCard({
             alt={post.caption || ""}
             className="pf-image"
             onClick={handleMediaTap}
+            style={post.filterPreset && post.filterPreset !== "none"
+              ? { filter: filterCssFor(post.filterPreset) }
+              : undefined}
           />
         ) : (
           <div className="pf-blank">📷</div>
@@ -1181,11 +1564,24 @@ function PostCard({
         </p>
       )}
 
-      {/* Tagged hotel CTA */}
-      {post.hotelId && (
-        <Link href={`/hotels/${post.hotelId}`} className="pf-hotel-cta">
-          🏨 View hotel ›
-        </Link>
+      {/* v121 — Meta row: location + tagged hotel pills. Renders BELOW the
+          caption so the user sees the same composer-time metadata they
+          attached. Generic "View hotel ›" replaced with "At {Hotel Name} ›"
+          when the hotel name is known — falls back to the generic label
+          only when the source data didn't include a name. */}
+      {(post.locationName || post.hotelId) && (
+        <div className="pf-meta-row">
+          {post.locationName && (
+            <span className="pf-meta-pill pf-meta-loc">
+              📍 {post.locationName}
+            </span>
+          )}
+          {post.hotelId && (
+            <Link href={`/hotels/${post.hotelId}`} className="pf-meta-pill pf-meta-hotel">
+              🏨 {post.hotelName ? `At ${post.hotelName}` : "View hotel"} ›
+            </Link>
+          )}
+        </div>
       )}
 
       <style jsx global>{`
@@ -1360,19 +1756,41 @@ function PostCard({
           color: var(--cozy-warm-dark, #1F1A0F);
         }
         .pf-caption strong { font-weight: 700; margin-right: 4px; }
-        .pf-hotel-cta {
-          display: inline-block;
+        /* v121 — Meta pill row (location + hotel). Replaces the legacy
+           .pf-hotel-cta. Flex-wrap so on narrow phones the location pill
+           drops to its own line cleanly. */
+        .pf-meta-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
           margin: 8px 14px 0;
-          padding: 7px 12px;
-          border-radius: 999px;
-          background: rgba(201, 166, 107, 0.14);
-          border: 1px solid rgba(201, 166, 107, 0.30);
-          color: var(--cozy-cocoa, #4A3820);
-          font-size: 0.78rem;
-          font-weight: 700;
-          text-decoration: none;
         }
-        .pf-hotel-cta:hover { background: rgba(201, 166, 107, 0.22); }
+        .pf-meta-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 11px;
+          border-radius: 999px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          line-height: 1;
+          text-decoration: none;
+          white-space: nowrap;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .pf-meta-loc {
+          background: rgba(157, 173, 143, 0.18);
+          border: 1px solid rgba(157, 173, 143, 0.40);
+          color: var(--cozy-cocoa, #4A3820);
+        }
+        .pf-meta-hotel {
+          background: rgba(201, 166, 107, 0.16);
+          border: 1px solid rgba(201, 166, 107, 0.36);
+          color: var(--cozy-cocoa, #4A3820);
+        }
+        .pf-meta-hotel:hover { background: rgba(201, 166, 107, 0.26); }
       `}</style>
     </article>
   );
