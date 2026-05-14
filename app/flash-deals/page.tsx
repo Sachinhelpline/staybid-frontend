@@ -210,8 +210,8 @@ function FlashDealsContent() {
         </div>
       </div>
 
-      {/* ── City filter pills ────────────────────────────────────────────── */}
-      <div className="fd-cities">
+      {/* ── City filter pills — v122.3: tap auto-scrolls to results ──── */}
+      <div className="fd-cities" data-autonext-self="fd-results">
         {cities.map((c) => {
           const active = (c === "All" && !city) || c === city;
           return (
@@ -226,8 +226,8 @@ function FlashDealsContent() {
         })}
       </div>
 
-      {/* ── Deals grid ───────────────────────────────────────────────────── */}
-      <div className="fd-grid-wrap">
+      {/* ── Deals grid — v122.3 auto-scroll target ──────────────────── */}
+      <div className="fd-grid-wrap" data-autonext="fd-results">
         {loading && <SkeletonGrid />}
 
         {!loading && deals.length === 0 && (

@@ -112,3 +112,125 @@ function cssEscape(s: string): string {
   if (typeof (window as any)?.CSS?.escape === "function") return (window as any).CSS.escape(s);
   return s.replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c);
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   v122.3 — Global auto-next delegate
+   ──────────────────────────────────────────────────────────────────────
+   Instead of wiring scrollToAutoNext into every onClick handler across
+   the codebase (a long-tail, error-prone effort), we install ONE
+   document-level delegate that watches for clicks on elements carrying
+   either of these attributes:
+
+     data-autonext-target="<key>"        — when clicked, scroll
+                                            [data-autonext="<key>"] into
+                                            view. Fires on every device.
+     data-autonext-target-blur="<key>"   — fires on `blur` instead of
+                                            click. Use on text inputs
+                                            (Enter key + tap-away).
+     data-autonext-target-enter="<key>"  — fires on Enter keydown. Use
+                                            on text inputs that should
+                                            advance on Enter.
+
+   Bonus: data-autonext-self="<key>" on a CONTAINER causes any click
+   inside it (e.g. tapping a radio chip) to auto-scroll the next
+   section into view. Useful for chip-group selectors where you don't
+   want to add the attribute to every chip individually.
+
+   Once installAutoNextDelegate() runs at app boot, every component in
+   the codebase opts in via attributes alone — no JS wiring needed per
+   page. Same UX everywhere.
+
+   Safety:
+   • Idempotent — installs once per window even if called multiple times.
+   • Passive listeners — never blocks page interactivity.
+   • Capture: false — runs after React's synthetic-event tree so any
+     state-driven re-render commits to the DOM before we measure.
+   • Respects prefers-reduced-motion (via scrollElementIntoView).
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Install the global delegate. Call once at app boot from a client
+ *  component mounted in the root layout. Subsequent calls are no-ops. */
+export function installAutoNextDelegate() {
+  if (typeof window === "undefined") return;
+  const W = window as any;
+  if (W.__sbAutoNextDelegateInstalled) return;
+  W.__sbAutoNextDelegateInstalled = true;
+
+  /** Resolve the next-key from an event target by walking up the DOM
+   *  to find any of the trigger attributes. */
+  function resolveKey(target: EventTarget | null, attrs: string[]): string | null {
+    if (!target || !(target instanceof Element)) return null;
+    for (const attr of attrs) {
+      const trigger = target.closest(`[${attr}]`);
+      if (trigger) {
+        const v = trigger.getAttribute(attr);
+        if (v) return v;
+      }
+    }
+    return null;
+  }
+
+  // ── Click delegate ────────────────────────────────────────────────
+  document.addEventListener(
+    "click",
+    (ev) => {
+      const key = resolveKey(ev.target, ["data-autonext-target", "data-autonext-self"]);
+      if (!key) return;
+      scrollToAutoNext(key);
+    },
+    { passive: true, capture: false },
+  );
+
+  // ── Blur delegate (use the focusout bubble, since blur doesn't bubble) ─
+  document.addEventListener(
+    "focusout",
+    (ev) => {
+      const key = resolveKey(ev.target, ["data-autonext-target-blur"]);
+      if (!key) return;
+      scrollToAutoNext(key);
+    },
+    { passive: true, capture: false },
+  );
+
+  // ── Enter-key delegate on inputs / textareas ──────────────────────
+  document.addEventListener(
+    "keydown",
+    (ev) => {
+      if (ev.key !== "Enter") return;
+      const key = resolveKey(ev.target, ["data-autonext-target-enter"]);
+      if (!key) return;
+      // Don't prevent default (let forms submit, textareas insert newlines
+      // unless the consumer added their own preventDefault).
+      scrollToAutoNext(key);
+    },
+    { passive: true, capture: false },
+  );
+}
+
+/** Smart filled-input watcher — useful for PIN / OTP inputs that should
+ *  auto-advance once they reach a target length. Attach via attribute:
+ *
+ *    <input data-autonext-target-filled="<key>" data-autonext-min="6" />
+ *
+ *  The delegate listens for `input` events and fires when the input's
+ *  value length reaches `data-autonext-min` (default 6). */
+export function installAutoNextFilledWatcher() {
+  if (typeof window === "undefined") return;
+  const W = window as any;
+  if (W.__sbAutoNextFilledInstalled) return;
+  W.__sbAutoNextFilledInstalled = true;
+
+  document.addEventListener(
+    "input",
+    (ev) => {
+      const t = ev.target as HTMLInputElement | null;
+      if (!t || !(t instanceof Element)) return;
+      const attr = t.getAttribute?.("data-autonext-target-filled");
+      if (!attr) return;
+      const min = Number(t.getAttribute("data-autonext-min") || "6");
+      const val = "value" in t ? String((t as any).value || "") : "";
+      if (val.length >= min) scrollToAutoNext(attr);
+    },
+    { passive: true, capture: false },
+  );
+}

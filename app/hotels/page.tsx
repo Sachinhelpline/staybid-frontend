@@ -133,8 +133,8 @@ function HotelList() {
         />
       </div>
 
-      {/* ── City filter chips (compact, theme-aware) ── */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      {/* ── City filter chips — v122.3: tap auto-scrolls to results ── */}
+      <div className="flex flex-wrap gap-1.5 mb-4" data-autonext-self="hotels-results">
         {cities.map((c) => {
           const active = (c === "All" && !city) || c === city;
           return (
@@ -171,9 +171,9 @@ function HotelList() {
         </div>
       )}
 
-      {/* ── Hotel grid ── */}
+      {/* ── Hotel grid ── v122.3: data-autonext target for filter chip scroll */}
       {!loading && hotels.length > 0 && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-autonext="hotels-results">
           {hotels.map((h: any, idx: number) => {
             // BUG-FIX 2: prefer ACTIVE flash deal price over room.floorPrice
             // for the "Starting from" badge. Hotels were showing ₹3899

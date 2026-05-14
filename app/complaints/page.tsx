@@ -319,8 +319,8 @@ function Composer({
         </div>
 
         <div className="px-5 py-5 space-y-4">
-          {/* Type chips */}
-          <div>
+          {/* Type chips — v122.3: every click auto-scrolls to "priority" section */}
+          <div data-autonext="type" data-autonext-self="priority">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">Issue type</label>
             <div className="grid grid-cols-2 gap-2">
               {(["booking", "payment", "refund", "service", "bid", "other"] as const).map((t) => {
@@ -344,8 +344,8 @@ function Composer({
             </div>
           </div>
 
-          {/* Priority */}
-          <div>
+          {/* Priority — v122.3 */}
+          <div data-autonext="priority" data-autonext-self="booking">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">Priority</label>
             <div className="flex gap-2">
               {(["low", "medium", "high"] as const).map((p) => {
@@ -370,8 +370,8 @@ function Composer({
             </div>
           </div>
 
-          {/* Attach booking */}
-          <div>
+          {/* Attach booking — v122.3 */}
+          <div data-autonext="booking">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">
               Attach booking <span className="text-luxury-400 font-normal lowercase">(optional)</span>
             </label>
@@ -380,6 +380,7 @@ function Composer({
               onChange={(e) => setBookingId(e.target.value)}
               className="input-luxury w-full"
               disabled={loadingBookings}
+              data-autonext-target-blur="subject"
             >
               <option value="">{loadingBookings ? "Loading…" : "Not related to a specific booking"}</option>
               {bookings.map((b) => (
@@ -388,8 +389,8 @@ function Composer({
             </select>
           </div>
 
-          {/* Subject */}
-          <div>
+          {/* Subject — v122.3: blur (tap-away / Tab) advances to description */}
+          <div data-autonext="subject">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">
               Short title <span className="text-luxury-400 font-normal lowercase">(optional)</span>
             </label>
@@ -400,11 +401,13 @@ function Composer({
               placeholder="e.g. Room was not the type I booked"
               className="input-luxury w-full"
               maxLength={180}
+              data-autonext-target-blur="description"
+              data-autonext-target-enter="description"
             />
           </div>
 
           {/* Description */}
-          <div>
+          <div data-autonext="description">
             <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">
               What happened? *
             </label>

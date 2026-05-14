@@ -368,6 +368,7 @@ function CreatorApplicationForm({
           </div>
         </div>
 
+        {/* v122.3 — Bio textarea: on blur, advance to location */}
         <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5">Short Bio *</label>
         <textarea
           value={bio} onChange={(e) => setBio(e.target.value)}
@@ -375,23 +376,26 @@ function CreatorApplicationForm({
           placeholder="Travel content, hospitality reviews, lifestyle…"
           className="input-luxury w-full mb-3"
           required
+          data-autonext-target-blur="creator-location"
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3" data-autonext="creator-location">
           <div>
             <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5">Primary City</label>
             <input value={location} onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. Mussoorie" className="input-luxury w-full" />
+              placeholder="e.g. Mussoorie" className="input-luxury w-full"
+              data-autonext-target-blur="creator-interests" />
           </div>
           <div>
             <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5">Total Followers</label>
             <input value={followers} onChange={(e) => setFollowers(e.target.value.replace(/[^0-9]/g, ""))}
-              inputMode="numeric" placeholder="e.g. 12500" className="input-luxury w-full" />
+              inputMode="numeric" placeholder="e.g. 12500" className="input-luxury w-full"
+              data-autonext-target-blur="creator-interests" />
           </div>
         </div>
 
-        <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5">Your Interests</label>
-        <div className="flex flex-wrap gap-1.5">
+        <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5" data-autonext="creator-interests">Your Interests</label>
+        <div className="flex flex-wrap gap-1.5" data-autonext-self="creator-bank">
           {INTEREST_OPTIONS.map((i) => {
             const on = interests.includes(i);
             return (
@@ -406,29 +410,34 @@ function CreatorApplicationForm({
         </div>
       </div>
 
-      <div className="card-luxury p-5">
+      <div className="card-luxury p-5" data-autonext="creator-bank">
         <h3 className="font-bold text-luxury-900 mb-1">Payout Bank Details</h3>
         <p className="text-luxury-500 text-xs mb-3">Optional now — required before your first payout. Stored encrypted.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input value={bankName} onChange={(e) => setBankName(e.target.value)}
-            placeholder="Bank name" className="input-luxury w-full" />
+            placeholder="Bank name" className="input-luxury w-full"
+            data-autonext-target-blur="creator-bank" />
           <input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, ""))}
-            inputMode="numeric" placeholder="Account number" className="input-luxury w-full" />
+            inputMode="numeric" placeholder="Account number" className="input-luxury w-full"
+            data-autonext-target-blur="creator-bank" />
           <input value={ifscCode} onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
-            placeholder="IFSC" className="input-luxury w-full" />
+            placeholder="IFSC" className="input-luxury w-full"
+            data-autonext-target-blur="creator-agreement" />
         </div>
       </div>
 
-      <div className="card-luxury p-5">
+      <div className="card-luxury p-5" data-autonext="creator-agreement">
         <label className="flex items-start gap-3 cursor-pointer">
           <input type="checkbox" checked={agreementAccepted}
             onChange={(e) => setAgreementAccepted(e.target.checked)}
-            className="mt-1 w-5 h-5 accent-gold-600" />
+            className="mt-1 w-5 h-5 accent-gold-600"
+            data-autonext-target="creator-submit" />
           <span className="text-sm text-luxury-700">
             I agree to the StayBid <span className="font-semibold text-gold-700">Creator Agreement</span> — 12% commission on bookings attributed to me, payable monthly after a 14-day return window. KYC (Aadhaar + PAN) required before payout.
           </span>
         </label>
       </div>
+      <div data-autonext="creator-submit" />
 
       {error && (
         <div className="card-luxury p-4 border-red-300 bg-red-50">

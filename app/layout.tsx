@@ -13,6 +13,11 @@ import { BottomDock } from "@/components/discover/BottomDock";
 import { BackChip } from "@/components/BackChip";
 import { ServerStatus } from "@/components/ServerStatus";
 import NotificationToast from "@/components/NotificationToast";
+// v122.3 — installs the global auto-next-scroll delegate so EVERY
+// CTA carrying `data-autonext-target="<key>"` smoothly scrolls the
+// matching `[data-autonext="<key>"]` section into view on click. No
+// per-page handler wiring needed; just attributes.
+import { AutoNextMount } from "@/components/AutoNextMount";
 export const viewport: Viewport = {
   // Black theme color so the OS status-bar / app-switcher chrome blends
   // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
@@ -155,6 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SoundProvider>
            <FollowProvider>
             <PostsProvider>
+            <AutoNextMount />
             <ServerStatus />
             <Navbar />
             {/* Floating back chip — top-left, visible on every customer
@@ -170,7 +176,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v122.2</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v122.3</div>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -190,7 +196,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v122.2-navbar-collapse-auto-next-scroll";
+var SB_BUILD="v122.3-global-auto-next-delegate";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
