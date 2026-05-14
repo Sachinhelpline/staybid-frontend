@@ -185,23 +185,46 @@ export default function MePage() {
     });
   }, [myUserId]);
 
-  // Merge local (PostsStore) + remote (Supabase). Deduplicate by id so
-  // a freshly-uploaded post that's in both shows up only once.
+  // Merge local (PostsStore) + remote (Supabase). Deduplicate by id AND
+  // by content fingerprint so a freshly-uploaded post that's in both
+  // sources shows up only once.
+  //
+  // v120.1 — Added content-fingerprint as a SECOND dedup pass on top of
+  // id-dedup. v118's "addPost only after upload success" left a tiny
+  // window where the local entry could keep a temp id while the remote
+  // already had the durable server id. The composer's v120.1 fix swaps
+  // ids before addPost, but this backstop catches any legacy entries
+  // already in localStorage from before the fix, AND covers the
+  // /api/influencer/my-videos (hotel_videos) cross-source case where
+  // the same media has different ids in social_posts vs hotel_videos.
+  // Fingerprint: kind + media URL prefix + caption (matches the dedup
+  // shape used by InstagramHotelFeed's userItems↔propItems pass).
   const allPosts = useMemo(() => {
     const merged: any[] = [];
     const seen = new Set<string>();
+    const seenFp = new Set<string>();
+    const fpOf = (kind: string, mediaUrl: string, caption: string) => {
+      const k = (kind || "").toLowerCase();
+      const m = (mediaUrl || "").split("?")[0].slice(-96); // last 96 chars of URL = unique-ish without the query string
+      const c = (caption || "").trim().slice(0, 60).toLowerCase();
+      return `${k}|${m}|${c}`;
+    };
     // Local first (just-posted feel) — kind: reel/photo/story
     posts.forEach((p) => {
       const id = String(p.id);
-      if (!seen.has(id)) { seen.add(id); merged.push(p); }
+      const fp = fpOf(p.kind, p.mediaUrl, p.caption);
+      if (seen.has(id) || seenFp.has(fp)) return;
+      seen.add(id); seenFp.add(fp);
+      merged.push(p);
     });
     // Remote second — normalize media_type to local kinds
     remotePosts.forEach((rp) => {
       const id = String(rp.id);
-      if (seen.has(id)) return;
       const kind = String(rp.media_type || "").toLowerCase() === "reel" ? "reel"
                  : String(rp.media_type || "").toLowerCase() === "story" ? "story"
                  : "photo";
+      const fp = fpOf(kind, rp.media_url || "", rp.caption || "");
+      if (seen.has(id) || seenFp.has(fp)) return;
       merged.push({
         id,
         kind,
@@ -223,7 +246,7 @@ export default function MePage() {
         createdAt:  new Date(rp.created_at || Date.now()).getTime(),
         keepAsPost: kind !== "story",
       });
-      seen.add(id);
+      seen.add(id); seenFp.add(fp);
     });
     return merged;
   }, [posts, remotePosts]);

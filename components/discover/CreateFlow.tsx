@@ -2013,7 +2013,10 @@ export function Composer({
   // commit the same upload twice. The ref flips immediately, before any
   // re-render, so the second call is a no-op.
   const postedRef = useRef(false);
-  const { addPost, updatePost } = usePosts();
+  // v120.1 — `updatePost` no longer needed here. runUpload returns the
+  // server metadata directly, and post()/retry() addPost a freshly-built
+  // entry that already has the durable id + Storage URLs.
+  const { addPost } = usePosts();
 
   // Reset when reopened
   // v120 — IG-style filter bottom-sheet. The composer no longer ships a
@@ -2165,7 +2168,27 @@ export function Composer({
   // v114 — pulled out so the Retry button can re-run the same upload with
   // the SAME tempId (clientPostId stays stable -> server idempotency holds,
   // so multiple "Retry" taps will never duplicate posts on social_posts).
-  const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<{ ok: boolean; error?: string }> => {
+  //
+  // v120.1 — returns server-side metadata (serverId, durable Storage URLs,
+  // uploaded soundUrl) so the caller can commit the FINAL post entry to
+  // PostsStore with correct cross-session-stable values. The previous
+  // contract (returning only {ok, error}) forced the caller to addPost
+  // the original blob-URL-based userPost — leaving PostsStore with dead
+  // blob URLs for media + audio AND a tempId that didn't match the remote
+  // social_posts row id. That mismatch caused:
+  //   1. /me to show local + remote as TWO grid tiles (id-only dedup)
+  //   2. The feed to play the dead audio blob URL → "silent" audio
+  //   3. The feed to show the ORIGINAL video (no overlays) instead of
+  //      the compressed/overlay-burned blob the server actually stored
+  type RunUploadOk = {
+    ok: true;
+    serverId: string;          // social_posts row id (durable across sessions)
+    serverMedia: string;       // public Storage URL of the FINAL (compressed/overlay-burned) media
+    serverPoster: string;      // public Storage URL of the poster JPEG
+    serverSoundUrl: string;    // public Storage URL of the attached audio (empty when none)
+  };
+  type RunUploadFail = { ok: false; error: string };
+  const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<RunUploadOk | RunUploadFail> => {
     try {
       const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
       if (!tok)    return { ok: false, error: "Not signed in. Saved on this device only." };
@@ -2308,23 +2331,16 @@ export function Composer({
       const serverId = json?.post?.id ? String(json.post.id) : "";
       const serverMedia = json?.post?.media_url || uploaded.mediaUrl;
       const serverPoster = json?.post?.thumbnail_url || uploaded.thumbnailUrl || post.posterUrl || "";
-      try {
-        updatePost(tempId, {
-          id: serverId || tempId,
-          mediaUrl: serverMedia,
-          posterUrl: serverPoster,
-          // v115 — also swap the local entry's audio.url from the
-          // device-only blob: URL to the durable public URL so the
-          // uploader sees their post play correctly without needing
-          // to reload (otherwise their own video keeps playing the
-          // original device track until a hard refresh).
-          ...(soundUrl && post.audio
-            ? { audio: { name: post.audio.name, url: soundUrl } }
-            : {}),
-        });
-      } catch {}
+      const serverSoundUrl = (soundUrl && post.audio) ? soundUrl : "";
       setUploadProgress(100);
-      return { ok: true };
+      // v120.1 — return durable server values. The caller (post() / retry())
+      // is responsible for committing to PostsStore with these, so the
+      // local entry's id matches the remote row + the media/audio URLs
+      // are public Storage URLs (not blobs) from the first render. The
+      // legacy updatePost(tempId, ...) call here was a no-op anyway —
+      // v118's "addPost only after success" contract means the local
+      // entry doesn't exist yet at this point.
+      return { ok: true, serverId, serverMedia, serverPoster, serverSoundUrl };
     } catch (err: any) {
       const msg = err?.message?.includes("Storage upload failed")
         ? "Couldn't upload media (network / file format)."
@@ -2334,7 +2350,9 @@ export function Composer({
     // v119 — `overlays` in deps so the callback captures the latest set
     // every time the user adds/drags/resizes. Recreating the callback is
     // cheap; we only INVOKE it once per Post click via post()/retry().
-  }, [updatePost, overlays]);
+    // v120.1 — `updatePost` no longer used inside runUpload (the caller
+    // commits the final entry via addPost). Removed from deps.
+  }, [overlays]);
 
   // Holds the most recently attempted post payload so the Retry button can
   // re-run runUpload without losing the user's selections.
@@ -2350,13 +2368,23 @@ export function Composer({
     const result = await runUpload(tempId, post);
     setPosting(false);
     if (result.ok) {
-      // v118 — match post() behaviour: only commit to PostsStore here, on
-      // the success branch. Zombie-prevention contract.
+      // v120.1 — commit with SERVER metadata so PostsStore has durable
+      // values (matching remote row id, public Storage URLs for media +
+      // audio). See runUpload's type doc for the trio-of-bugs this fixes.
+      const finalPost: UserPost = {
+        ...post,
+        id: result.serverId || post.id,
+        mediaUrl: result.serverMedia || post.mediaUrl,
+        posterUrl: result.serverPoster || post.posterUrl,
+        audio: result.serverSoundUrl && post.audio
+          ? { name: post.audio.name, url: result.serverSoundUrl }
+          : post.audio,
+      };
       try {
-        addPost({ ...post, uploadStatus: "uploaded" } as StoreUserPost);
+        addPost({ ...finalPost, uploadStatus: "uploaded" } as StoreUserPost);
       } catch {}
       notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
-      onPosted(post);
+      onPosted(finalPost);
       onClose();
     } else {
       setLastError(result.error || "Upload failed. Tap Retry.");
@@ -2420,14 +2448,28 @@ export function Composer({
     runUpload(tempId, userPost).then((result) => {
       setPosting(false);
       if (result.ok) {
-        // v118 — first chance to commit. Mark uploadStatus so any future
-        // hydrate-time cleanup (legacy entries with no status get an
-        // implicit "uploaded" — same effect).
+        // v120.1 — commit with SERVER metadata so PostsStore matches the
+        // remote social_posts row (id + media + audio + poster all stable
+        // across sessions). The previous code committed the original
+        // userPost which kept tempId + dead blob URLs → 3 cascading bugs:
+        //   1. /me showed 1 local + 1 remote = 2 grid copies per upload
+        //   2. Feed played dead blob audio.url → "silent" custom audio
+        //   3. Feed loaded ORIGINAL video (no overlays) instead of the
+        //      compressed-with-overlays blob the server actually stored
+        const finalPost: UserPost = {
+          ...userPost,
+          id: result.serverId || userPost.id,
+          mediaUrl: result.serverMedia || userPost.mediaUrl,
+          posterUrl: result.serverPoster || userPost.posterUrl,
+          audio: result.serverSoundUrl && userPost.audio
+            ? { name: userPost.audio.name, url: result.serverSoundUrl }
+            : userPost.audio,
+        };
         try {
-          addPost({ ...userPost, uploadStatus: "uploaded" } as StoreUserPost);
+          addPost({ ...finalPost, uploadStatus: "uploaded" } as StoreUserPost);
         } catch {}
         notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
-        onPosted(userPost);
+        onPosted(finalPost);
         onClose();
       } else {
         setLastError(result.error || "Upload failed. Tap Retry.");
