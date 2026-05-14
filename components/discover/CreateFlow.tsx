@@ -23,6 +23,7 @@ import { api } from "@/lib/api";
 // social_posts row so the post survives blob death (tab close, hard
 // reload, logout, device switch). See post() handler below.
 import { uploadSocialMedia, uploadSocialAudio } from "@/lib/social/storage-upload";
+import { compressVideo } from "@/lib/social/video-compress";
 import { notify } from "@/lib/notifications";
 
 // ─── Music library — honest, royalty-free, CORS-clean ────────────────────
@@ -1764,6 +1765,14 @@ export function Composer({
   const [retryCount, setRetryCount]     = useState(0);
   const [lastError,  setLastError]      = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState(0);
+  // v116 — client-side video compression. `compressionProgress` runs 0-100
+  // while the canvas re-encode is in flight; `compressing` separates the
+  // "compressing" phase from "uploading" in the banner. `compressedInfo`
+  // carries the before / after byte counts so the UI can surface savings
+  // ("Compressed 24.3 MB → 6.1 MB").
+  const [compressing, setCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [compressedInfo, setCompressedInfo] = useState<{ before: number; after: number } | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   // v113 — separate camera-capture input. Same accept but with `capture`
   // attribute so the phone opens the camera straight away.
@@ -1803,6 +1812,9 @@ export function Composer({
       setRetryCount(0);
       setLastError("");
       setUploadProgress(0);
+      setCompressing(false);
+      setCompressionProgress(0);
+      setCompressedInfo(null);
       setCoverFrames([]);
       setCoverPickerOpen(false);
     }
@@ -1825,6 +1837,31 @@ export function Composer({
       document.body.style.overflow = prevOverflow;
     };
   }, [open]);
+
+  // v116 — sync the audio preview element with the picked track. When the
+  // user picks a custom audio in the composer, the video preview is muted
+  // via `muted={!!audio}` but NOTHING was playing the new audio — so the
+  // user heard silence and assumed audio attach was broken. This effect
+  // mounts the audio element + plays it (synced from 0). Stops cleanly
+  // when the user clears audio or closes the composer.
+  useEffect(() => {
+    const a = audioPreviewRef.current;
+    if (!a) return;
+    if (!open || !audio?.url) {
+      try { a.pause(); a.currentTime = 0; } catch {}
+      return;
+    }
+    try {
+      a.currentTime = 0;
+      a.volume = 1;
+      a.muted = false;
+      const p = a.play();
+      if (p && typeof p.then === "function") p.catch(() => { /* autoplay policy — first gesture re-tries */ });
+    } catch {}
+    return () => {
+      try { a.pause(); a.currentTime = 0; } catch {}
+    };
+  }, [audio?.url, open]);
 
   // ⚠️ Do NOT revoke the object URL when the composer closes — the blob URL
   // is now owned by the post inside PostsStore and the feed needs it to play
@@ -1896,9 +1933,45 @@ export function Composer({
       setUploadProgress(2);
       const mediaType: "PHOTO" | "REEL" | "STORY" =
         post.kind === "photo" ? "PHOTO" : post.kind === "story" ? "STORY" : "REEL";
+
+      // v116 — client-side compression for videos (reels + stories).
+      // Photos skip this branch entirely. The compressed blob replaces
+      // the original mediaUrl + mediaMime for the rest of the upload —
+      // typically 60-80% smaller, finishes inside the 90s watchdog
+      // even on India 3G. Failure falls through to the original file.
+      let uploadBlobUrl = post.mediaUrl;
+      let uploadMime    = post.mediaMime;
+      const isVideoPost = mediaType === "REEL" || mediaType === "STORY" || (post.mediaMime || "").startsWith("video/");
+      if (isVideoPost) {
+        try {
+          setCompressing(true);
+          setCompressionProgress(0);
+          const srcBlob = await fetch(post.mediaUrl).then((r) => r.blob());
+          const result = await compressVideo(srcBlob, (pct) => setCompressionProgress(Math.round(pct)));
+          if (result.compressed && result.blob !== srcBlob) {
+            const newUrl = URL.createObjectURL(result.blob);
+            uploadBlobUrl = newUrl;
+            uploadMime    = result.mime;
+            setCompressedInfo({ before: result.originalBytes, after: result.finalBytes });
+          } else {
+            setCompressedInfo({ before: result.originalBytes, after: result.finalBytes });
+          }
+        } catch (e: any) {
+          // Hard size errors propagate up so the user knows to trim.
+          if (e?.message?.includes("trim it under")) {
+            setCompressing(false);
+            return { ok: false, error: e.message };
+          }
+          // Soft errors (codec mismatch etc) — ship the original file.
+          // Storage will accept whatever the phone produced.
+        } finally {
+          setCompressing(false);
+        }
+      }
+
       const uploaded = await uploadSocialMedia({
-        mediaBlobUrl: post.mediaUrl,
-        mediaMime:    post.mediaMime,
+        mediaBlobUrl: uploadBlobUrl,
+        mediaMime:    uploadMime,
         kind:         mediaType,
         posterDataUrl: post.posterUrl?.startsWith("data:") ? post.posterUrl : undefined,
         userId,
@@ -2659,10 +2732,37 @@ export function Composer({
 
               {/* v114 — upload progress + retry banner. Surfaces inline so
                   the creator never closes the modal on an invisible error.
-                  Same tempId on retry = server-side idempotency holds. */}
-              {posting && uploadProgress > 0 && (
+                  Same tempId on retry = server-side idempotency holds.
+                  v116 — compression phase shown first ("Optimising for fast
+                  upload…") so the user knows we're not stuck at 0% upload. */}
+              {compressing && (
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(91,141,255,0.10)", border: "1px solid rgba(91,141,255,0.30)" }}>
+                  <p className="text-sky-200 text-[0.74rem] font-semibold mb-1.5">
+                    ✨ Optimising for fast upload… {compressionProgress}%
+                  </p>
+                  <p className="text-sky-200/70 text-[0.6rem] mb-1.5 leading-snug">
+                    Re-encoding your video at IG quality so it uploads in seconds (not minutes) — phone never leaves your hand.
+                  </p>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
+                    <div
+                      className="h-full transition-all"
+                      style={{
+                        width: `${compressionProgress}%`,
+                        background: "linear-gradient(90deg, #5b8dff, #b964ff)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {!compressing && posting && uploadProgress > 0 && (
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,204,113,0.10)", border: "1px solid rgba(46,204,113,0.30)" }}>
                   <p className="text-emerald-200 text-[0.74rem] font-semibold mb-1.5">⏫ Uploading… {uploadProgress}%</p>
+                  {compressedInfo && compressedInfo.after < compressedInfo.before && (
+                    <p className="text-emerald-200/70 text-[0.6rem] mb-1.5">
+                      Compressed {(compressedInfo.before/1024/1024).toFixed(1)} MB → {(compressedInfo.after/1024/1024).toFixed(1)} MB
+                      {" "}({Math.round((1 - compressedInfo.after / compressedInfo.before) * 100)}% smaller)
+                    </p>
+                  )}
                   <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
                     <div
                       className="h-full transition-all"

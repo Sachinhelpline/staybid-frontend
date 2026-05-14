@@ -1613,12 +1613,32 @@ const HotelCard = memo(function HotelCard({
   // — or, for user-posted reels, the audio attached at upload time).
   // v114 — seed customAudio from `_userPostAudio` so a creator's custom
   // soundtrack overrides the video's original audio in the feed exactly
-  // like Instagram. If the post has NO audio attached, the video's own
-  // track plays normally.
-  const [customAudio, setCustomAudio] = useState<AudioTrack | null>(() => {
+  // like Instagram.
+  // v116 — also REACT to changes in `_userPostAudio` via a useEffect so
+  // the audio swap propagates after PostsStore.updatePost() patches the
+  // local entry's audio.url from blob: to the public Storage URL (right
+  // after the upload completes). Without this, the uploader's own card
+  // kept playing the original video audio + the dead blob URL.
+  const initialPostAudio = (h as any)?._userPostAudio;
+  const [customAudio, setCustomAudio] = useState<AudioTrack | null>(
+    initialPostAudio && initialPostAudio.url
+      ? { id: "post-audio", name: initialPostAudio.name || "Custom audio", artist: "", url: initialPostAudio.url }
+      : null
+  );
+  useEffect(() => {
     const a = (h as any)?._userPostAudio;
-    return a && a.url ? { id: "post-audio", name: a.name || "Custom audio", artist: "", url: a.url } : null;
-  });
+    if (a && a.url) {
+      // Only re-seed if the URL actually changed (otherwise we'd thrash
+      // playback on every render).
+      if (!customAudio || customAudio.url !== a.url) {
+        setCustomAudio({ id: "post-audio", name: a.name || "Custom audio", artist: "", url: a.url });
+      }
+    } else if (customAudio?.id === "post-audio") {
+      // Post audio was cleared.
+      setCustomAudio(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(h as any)?._userPostAudio?.url]);
   const [audioPickerOpen, setAudioPickerOpen] = useState(false);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
