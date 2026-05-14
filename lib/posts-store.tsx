@@ -67,6 +67,12 @@ export type UserPost = {
    * feed (and survives past 24h). Toggled in the Composer at create time.
    */
   keepAsPost?: boolean;
+  /**
+   * v114 — Chosen IG-style filter preset id (e.g. "warm", "noir", "fade").
+   * The same CSS filter is replayed in the feed via filterCssFor().
+   * `null` / undefined / "none" all mean original look.
+   */
+  filter?: string | null;
   createdAt: number;
 };
 

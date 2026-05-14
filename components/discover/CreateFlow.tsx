@@ -106,6 +106,9 @@ export type UserPost = {
   /** Story-only — when on, the story also surfaces in the feed and
       survives past 24h. */
   keepAsPost?: boolean;
+  /** v114 — Chosen IG-style CSS filter preset id (e.g. "warm", "noir").
+      Applied on the preview AND replayed in the feed via filterCssFor(). */
+  filter?: string | null;
   createdAt: number;
 };
 
@@ -125,7 +128,7 @@ const EMOJI_BAR = ["❤️", "🔥", "✨", "😍", "🥳", "🌄", "🛏", "�
  * also gives us a meaningful thumbnail BEFORE the user posts, so the
  * profile grid never has to render a video element at all.
  */
-async function extractVideoThumbnail(file: File): Promise<string> {
+async function extractVideoThumbnail(file: File, atSecond?: number): Promise<string> {
   return new Promise((resolve) => {
     let settled = false;
     const finish = (v: string) => { if (!settled) { settled = true; resolve(v); } };
@@ -139,8 +142,12 @@ async function extractVideoThumbnail(file: File): Promise<string> {
       (v as any).webkitPlaysInline = true;
       v.src = tempUrl;
       v.onloadedmetadata = () => {
-        // Seek to a meaningful frame — first frames are often black.
-        const target = Math.min(0.6, (v.duration || 1) / 4);
+        // v114 — pass `atSecond` to scrub to a specific time; otherwise pick
+        // a meaningful frame (first 0.6s are usually black on phone shots).
+        const dur = v.duration || 1;
+        const target = atSecond != null
+          ? Math.max(0, Math.min(dur - 0.05, atSecond))
+          : Math.min(0.6, dur / 4);
         try { v.currentTime = target; } catch {}
       };
       v.onseeked = () => {
@@ -179,6 +186,32 @@ async function extractVideoThumbnail(file: File): Promise<string> {
 }
 
 const TAG_PRESETS = ["TravelDiaries", "LuxuryStay", "BudgetTrip", "Foodie", "Mountains", "Beaches", "Solo", "Couple", "Family", "WeekendGetaway", "StayBidLife", "VerifiedStay"];
+
+// v114 — IG-style filter presets. CSS-only (no canvas re-encode yet) so it
+// works on every device and reflects instantly on the preview. Each post
+// persists the chosen `filter` key in PostsStore and on social_posts as
+// metadata; the feed renders the matching CSS on the active card so the
+// look you previewed is what viewers see.
+export const FILTER_PRESETS: { id: string; label: string; css: string }[] = [
+  { id: "none",       label: "Original",   css: "none" },
+  { id: "warm",       label: "Warm",       css: "saturate(1.15) contrast(1.04) sepia(0.10)" },
+  { id: "cool",       label: "Cool",       css: "saturate(1.08) contrast(1.05) hue-rotate(-8deg) brightness(1.02)" },
+  { id: "vivid",      label: "Vivid",      css: "saturate(1.45) contrast(1.10)" },
+  { id: "vintage",    label: "Vintage",    css: "sepia(0.30) contrast(0.95) saturate(0.90) brightness(1.04)" },
+  { id: "mono",       label: "Mono",       css: "grayscale(1) contrast(1.10)" },
+  { id: "noir",       label: "Noir",       css: "grayscale(1) contrast(1.35) brightness(0.92)" },
+  { id: "dreamy",     label: "Dreamy",     css: "blur(0.4px) saturate(1.15) brightness(1.06)" },
+  { id: "cinematic",  label: "Cinematic",  css: "contrast(1.20) saturate(0.92) brightness(0.96)" },
+  { id: "honey",      label: "Honey",      css: "saturate(1.20) hue-rotate(-12deg) brightness(1.05) sepia(0.18)" },
+  { id: "azure",      label: "Azure",      css: "hue-rotate(12deg) saturate(1.10) brightness(1.04)" },
+  { id: "fade",       label: "Fade",       css: "contrast(0.88) saturate(0.85) brightness(1.06)" },
+];
+
+export function filterCssFor(filterId?: string | null): string {
+  if (!filterId) return "none";
+  const f = FILTER_PRESETS.find(x => x.id === filterId);
+  return f?.css || "none";
+}
 
 // ─── Plus FAB (entry button) ─────────────────────────────────────────────
 export function CreateFAB({ onClick }: { onClick: () => void }) {
@@ -1494,6 +1527,179 @@ export function AudioPicker({
   );
 }
 
+// ─── Cover-frame picker — pick any frame of the video as the poster ────
+// v114 — scrubs the source video with a draggable slider + a row of 6
+// pre-extracted thumbnails. The chosen frame is captured to a JPEG data
+// URL via extractVideoThumbnail(file, atSecond) and surfaced back to the
+// composer via onPick(dataUrl, second). Same canvas pipeline that already
+// ran on first file pick — zero new dependencies, works on every browser
+// that decodes the source video.
+export function CoverFramePicker({
+  open, file, onClose, onPick,
+}: {
+  open: boolean;
+  file: File | null;
+  onClose: () => void;
+  onPick: (dataUrl: string, atSecond: number) => void;
+}) {
+  const [duration, setDuration] = useState(0);
+  const [scrub, setScrub] = useState(0);
+  const [thumbs, setThumbs] = useState<{ t: number; src: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const urlRef   = useRef<string>("");
+
+  // Build a single object URL for the source video for live scrubbing.
+  useEffect(() => {
+    if (!open || !file) return;
+    const u = URL.createObjectURL(file);
+    urlRef.current = u;
+    return () => { try { URL.revokeObjectURL(u); } catch {} };
+  }, [open, file]);
+
+  // Pre-extract 6 sample thumbnails so the user has a quick overview.
+  useEffect(() => {
+    if (!open || !file) return;
+    let cancelled = false;
+    (async () => {
+      // Wait for metadata via a quick probe video first to learn the duration.
+      const probe = document.createElement("video");
+      probe.preload = "metadata";
+      probe.src = urlRef.current;
+      probe.muted = true;
+      probe.playsInline = true;
+      await new Promise<void>((res) => {
+        probe.onloadedmetadata = () => res();
+        probe.onerror = () => res();
+        setTimeout(res, 2500);
+      });
+      const dur = probe.duration && isFinite(probe.duration) && probe.duration > 0 ? probe.duration : 6;
+      if (cancelled) return;
+      setDuration(dur);
+      setScrub(Math.min(0.6, dur / 4));
+      // Extract 6 evenly-spaced frames (skip 0 to dodge black opening frames).
+      const slots = Array.from({ length: 6 }, (_, i) => (dur * (i + 1)) / 7);
+      const out: { t: number; src: string }[] = [];
+      for (const t of slots) {
+        if (cancelled) return;
+        const src = await extractVideoThumbnail(file, t);
+        if (cancelled) return;
+        if (src) out.push({ t, src });
+      }
+      if (!cancelled) setThumbs(out);
+    })();
+    return () => { cancelled = true; };
+  }, [open, file]);
+
+  async function pickAtScrub() {
+    if (!file || busy) return;
+    setBusy(true);
+    try {
+      const src = await extractVideoThumbnail(file, scrub);
+      if (src) { onPick(src, scrub); onClose(); }
+    } finally { setBusy(false); }
+  }
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[97] flex items-end" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.78)", backdropFilter: "blur(8px)" }} />
+      <div
+        className="relative w-full"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          height: "92dvh",
+          maxHeight: "92dvh",
+          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          borderTopLeftRadius: 22, borderTopRightRadius: 22,
+          borderTop: "1px solid rgba(255,255,255,0.14)",
+          display: "flex", flexDirection: "column",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
+        }}
+      >
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
+        <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8 shrink-0">
+          <button onClick={onClose} className="text-white/85 text-[0.84rem]">Cancel</button>
+          <p className="text-white font-semibold text-[0.92rem]">🖼 Choose cover frame</p>
+          <button onClick={pickAtScrub} disabled={busy} className="text-gold-300 font-bold text-[0.84rem] disabled:opacity-30">
+            {busy ? "Saving…" : "Use frame"}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          {/* Live preview at current scrub position */}
+          <div
+            className="relative w-full rounded-2xl overflow-hidden bg-black mx-auto mb-3"
+            style={{ aspectRatio: "9/16", maxHeight: "52dvh" }}
+          >
+            <video
+              ref={videoRef}
+              src={urlRef.current}
+              className="w-full h-full object-contain"
+              muted playsInline
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                try { v.currentTime = scrub; } catch {}
+              }}
+            />
+            <span
+              className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[0.62rem] font-bold"
+              style={{ background: "rgba(0,0,0,0.55)", color: "#ffd76b", border: "1px solid rgba(255,215,107,0.35)", backdropFilter: "blur(6px)" }}
+            >
+              {scrub.toFixed(1)}s / {duration ? duration.toFixed(1) : "…"}s
+            </span>
+          </div>
+
+          {/* Time scrubber */}
+          {duration > 0 && (
+            <input
+              type="range"
+              min={0}
+              max={Math.max(0.01, duration - 0.05)}
+              step={0.05}
+              value={scrub}
+              onChange={(e) => {
+                const t = Number(e.target.value);
+                setScrub(t);
+                const v = videoRef.current;
+                if (v) { try { v.currentTime = t; } catch {} }
+              }}
+              className="w-full"
+              style={{ accentColor: "#ffd76b" }}
+            />
+          )}
+
+          {/* Sample thumbnails */}
+          <p className="text-white/55 text-[0.6rem] uppercase tracking-widest mt-4 mb-2">Quick picks</p>
+          {thumbs.length === 0 ? (
+            <p className="text-white/45 text-[0.74rem]">Extracting frames…</p>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 hide-scroll">
+              {thumbs.map((th, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setScrub(th.t); onPick(th.src, th.t); onClose(); }}
+                  className="shrink-0 w-16 h-24 rounded-lg overflow-hidden block"
+                  style={{ border: "2px solid rgba(255,255,255,0.18)" }}
+                  aria-label={`Use frame at ${th.t.toFixed(1)} seconds`}
+                >
+                  <img src={th.src} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { scrollbar-width: none; }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── Composer (the multi-step compose modal) ─────────────────────────────
 export function Composer({
   open, kind, onClose, onPosted, sanitize,
@@ -1531,6 +1737,21 @@ export function Composer({
   // the target frame (default; matches what viewers will see in the feed);
   // `contain` shows the whole frame letter-boxed (useful to verify framing).
   const [previewFit, setPreviewFit] = useState<"cover" | "contain">("cover");
+  // v114 — IG-style filter presets. Applied as CSS filter on the preview AND
+  // persisted on the post payload so the feed renders the same look.
+  const [filter, setFilter] = useState<string>("none");
+  // v114 — cover-frame picker. For videos, lets the creator scrub through
+  // the timeline and pick ANY frame as the poster (matches IG / TikTok).
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [coverFrames, setCoverFrames] = useState<{ t: number; dataUrl: string }[]>([]);
+  // v114 — upload state for the retry-on-failure flow. Lastest error message
+  // surfaces in a banner; "Retry" re-runs the upload pipeline without
+  // re-selecting the file. uploadProgress is informational only (Storage
+  // upload doesn't expose granular bytes-uploaded events from the
+  // fetch path yet — surfacing 30/70/100% milestones is enough UX signal).
+  const [retryCount, setRetryCount]     = useState(0);
+  const [lastError,  setLastError]      = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement | null>(null);
   // v113 — separate camera-capture input. Same accept but with `capture`
   // attribute so the phone opens the camera straight away.
@@ -1565,8 +1786,33 @@ export function Composer({
       postedRef.current = false;
       setWarnedSanitize(false);
       setFormatWarning("");
+      setPreviewFit("cover");
+      setFilter("none");
+      setRetryCount(0);
+      setLastError("");
+      setUploadProgress(0);
+      setCoverFrames([]);
+      setCoverPickerOpen(false);
     }
   }, [open, kind]);
+
+  // v114 — body lock + global "composer-open" class. While the composer is
+  // open we:
+  //   1. Lock body scroll so the page underneath doesn't bleed touches.
+  //   2. Add `sb-composer-open` to <body> — BottomDock hides itself and the
+  //      InstagramHotelFeed's per-card `forcePaused` (which already watches
+  //      body className via MutationObserver) freezes every <video> + audio
+  //      so the creator never has background sound while uploading.
+  useEffect(() => {
+    if (!open) return;
+    document.body.classList.add("sb-composer-open");
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.classList.remove("sb-composer-open");
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   // ⚠️ Do NOT revoke the object URL when the composer closes — the blob URL
   // is now owned by the post inside PostsStore and the feed needs it to play
@@ -1574,7 +1820,12 @@ export function Composer({
   // posted reel/photo show up as a broken card. URLs are session-scoped
   // anyway; the browser cleans them up when the tab closes.
 
-  if (!open) return null;
+  // NOTE: `if (!open) return null;` lives FURTHER DOWN now (just before
+  // the JSX return). It used to sit here, but the v114 retry-aware upload
+  // adds two useCallbacks + one useRef inside the component body — and
+  // calling hooks after a conditional return violates the Rules of Hooks.
+  // Moving the early return below the hook block keeps the hook count
+  // identical across every render of Composer.
 
   const accept = kind === "photo" ? "image/*" : kind === "story" ? "image/*,video/*" : "video/*";
   const isVideo = mediaFile?.type.startsWith("video/");
@@ -1616,13 +1867,101 @@ export function Composer({
 
   const insertEmoji = (e: string) => setCaption((c) => c + e);
 
+  // v114 — pulled out so the Retry button can re-run the same upload with
+  // the SAME tempId (clientPostId stays stable -> server idempotency holds,
+  // so multiple "Retry" taps will never duplicate posts on social_posts).
+  const runUpload = useCallback(async (tempId: string, post: UserPost): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
+      if (!tok)    return { ok: false, error: "Not signed in. Saved on this device only." };
+      let userId = "";
+      try {
+        const payload = JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        userId = payload.id || payload.user_id || payload.sub || "";
+      } catch {}
+      if (!userId) return { ok: false, error: "Re-sign-in needed. Saved on this device only." };
+
+      setUploadProgress(15);
+      const mediaType: "PHOTO" | "REEL" | "STORY" =
+        post.kind === "photo" ? "PHOTO" : post.kind === "story" ? "STORY" : "REEL";
+      const uploaded = await uploadSocialMedia({
+        mediaBlobUrl: post.mediaUrl,
+        mediaMime:    post.mediaMime,
+        kind:         mediaType,
+        posterDataUrl: post.posterUrl?.startsWith("data:") ? post.posterUrl : undefined,
+        userId,
+      });
+      setUploadProgress(70);
+
+      const r = await fetch("/api/social/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+        body: JSON.stringify({
+          clientPostId:  tempId,
+          mediaType,
+          mediaUrl:      uploaded.mediaUrl,
+          thumbnailUrl:  uploaded.thumbnailUrl || undefined,
+          caption:       post.caption,
+          soundTrack:    post.audio?.name || undefined,
+          soundUrl:      post.audio?.url  || undefined,
+          hotelId:       post.taggedHotel?.id || undefined,
+          locationName:  post.location?.name  || undefined,
+          locationLat:   typeof post.location?.lat === "number" ? post.location.lat : undefined,
+          locationLng:   typeof post.location?.lng === "number" ? post.location.lng : undefined,
+          highlightKey:  post.highlight?.key || undefined,
+          filter:        post.filter || undefined,
+        }),
+      });
+      setUploadProgress(95);
+      if (!r.ok) return { ok: false, error: `Server returned ${r.status}. Tap Retry.` };
+      const json = await r.json().catch(() => null);
+      const serverId = json?.post?.id ? String(json.post.id) : "";
+      const serverMedia = json?.post?.media_url || uploaded.mediaUrl;
+      const serverPoster = json?.post?.thumbnail_url || uploaded.thumbnailUrl || post.posterUrl || "";
+      try {
+        updatePost(tempId, { id: serverId || tempId, mediaUrl: serverMedia, posterUrl: serverPoster });
+      } catch {}
+      setUploadProgress(100);
+      return { ok: true };
+    } catch (err: any) {
+      const msg = err?.message?.includes("Storage upload failed")
+        ? "Couldn't upload media (network / file format)."
+        : (err?.message || "Upload failed.");
+      return { ok: false, error: msg };
+    }
+  }, [updatePost]);
+
+  // Holds the most recently attempted post payload so the Retry button can
+  // re-run runUpload without losing the user's selections.
+  const lastAttemptRef = useRef<{ tempId: string; post: UserPost } | null>(null);
+
+  const retry = useCallback(async () => {
+    if (!lastAttemptRef.current) return;
+    setLastError("");
+    setRetryCount((c) => c + 1);
+    setPosting(true);
+    setUploadProgress(0);
+    const { tempId, post } = lastAttemptRef.current;
+    const result = await runUpload(tempId, post);
+    setPosting(false);
+    if (result.ok) {
+      notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
+      onPosted(post);
+      onClose();
+    } else {
+      setLastError(result.error || "Upload failed. Tap Retry.");
+    }
+  }, [runUpload, onPosted, onClose]);
+
   const post = () => {
     if (!mediaFile || !mediaUrl) return;
     // Hard double-fire guard — see postedRef declaration for the reasoning.
     if (postedRef.current) return;
     postedRef.current = true;
     const sanitizedCaption = sanitize ? sanitize(caption).clean : caption;
+    setLastError("");
     setPosting(true);
+    setUploadProgress(0);
     // v111 — `tempId` doubles as the server-side idempotency key
     // (`client_post_id` on social_posts). Even if /api/social/posts is
     // hit 5 times for the same logical post (Strict Mode, retry, SW
@@ -1647,6 +1986,8 @@ export function Composer({
       // Highlight bucket (built-in or custom). Picked optionally; null = no
       // bucket, post just shows under the main "Reels" tab.
       highlight: highlight || null,
+      // v114 — chosen filter preset. null/"none" means original look.
+      filter: filter && filter !== "none" ? filter : null,
       // Story-only metadata. Stories live for 24h unless `keepAsPost` is on.
       ...(kind === "story"
         ? { storyExpiresAt: Date.now() + 24 * 60 * 60 * 1000, keepAsPost: !!saveAsPost }
@@ -1654,135 +1995,26 @@ export function Composer({
       createdAt: Date.now(),
     };
     // Commit to the global reactive PostsStore — feed picks it up instantly.
-    // The store persists to localStorage internally, so we don't need a
-    // separate localStorage write here.
     try { addPost(userPost as StoreUserPost); } catch {}
+    lastAttemptRef.current = { tempId, post: userPost };
 
-    // v110 — kick off the durable persistence path in the background. The
-    // user sees the post in the feed instantly (above), and the upload
-    // continues across the close. On success, swap the local entry's
-    // blob: mediaUrl for the public Storage URL + replace the temp id with
-    // the real social_posts row id so it survives:
-    //   • tab close (blob URL dies)
-    //   • hard reload
-    //   • logout / re-login
-    //   • opening the app on a different device
-    // On failure, leave the local entry alone (still visible for the rest
-    // of the session) and surface the error via toast so the user knows
-    // they should retry from the + button.
-    (async () => {
-      try {
-        // Resolve auth user id from JWT (matches the social-auth helper's
-        // payload.id || payload.sub fallback chain). No id → can't post
-        // server-side; local entry stays.
-        const tok = (typeof window !== "undefined" && localStorage.getItem("sb_token")) || "";
-        if (!tok) {
-          notify({
-            kind: "warning",
-            title: "Saved locally",
-            body: "Sign in to share this to your StayBid profile so it survives logout.",
-          });
-          return;
-        }
-        let userId = "";
-        try {
-          const payload = JSON.parse(
-            atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
-          );
-          userId = payload.id || payload.user_id || payload.sub || "";
-        } catch { /* malformed token — skip */ }
-        if (!userId) {
-          notify({
-            kind: "warning",
-            title: "Saved locally",
-            body: "Re-sign-in to sync this post to your StayBid profile.",
-          });
-          return;
-        }
-
-        // Step 1: upload media + poster to Supabase Storage (`social-media`
-        // bucket). Returns durable, public URLs.
-        const mediaType: "PHOTO" | "REEL" | "STORY" =
-          kind === "photo" ? "PHOTO" : kind === "story" ? "STORY" : "REEL";
-        const uploaded = await uploadSocialMedia({
-          mediaBlobUrl: mediaUrl,
-          mediaMime:    mediaFile.type,
-          kind:         mediaType,
-          posterDataUrl: posterUrl?.startsWith("data:") ? posterUrl : undefined,
-          userId,
-        });
-
-        // Step 2: create the social_posts row. The route auto-creates the
-        // user's social_profile if it doesn't exist yet (ensureForUser).
-        const r = await fetch("/api/social/posts", {
-          method: "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            Authorization:   `Bearer ${tok}`,
-          },
-          body: JSON.stringify({
-            clientPostId:  tempId,   // v111 — server-side idempotency key
-            mediaType,
-            mediaUrl:      uploaded.mediaUrl,
-            thumbnailUrl:  uploaded.thumbnailUrl || undefined,
-            caption:       sanitizedCaption,
-            soundTrack:    audio?.name || undefined,
-            soundUrl:      audio?.url  || undefined,
-            hotelId:       taggedHotel?.id || undefined,
-            locationName:  location?.name  || undefined,
-            locationLat:   typeof location?.lat === "number" ? location.lat : undefined,
-            locationLng:   typeof location?.lng === "number" ? location.lng : undefined,
-            // v112.1 — persist the highlight bucket on the server row so
-            // /me's "tap a highlight" filter shows this post in that
-            // bucket on every device, not just where it was uploaded.
-            highlightKey:  highlight?.key || undefined,
-          }),
-        });
-        if (!r.ok) {
-          notify({
-            kind: "error",
-            title: "Couldn't sync to your profile",
-            body: "Post is saved on this device. Try again from + on the reel feed.",
-          });
-          return;
-        }
-        const json = await r.json().catch(() => null);
-        const serverId    = json?.post?.id ? String(json.post.id) : "";
-        const serverMedia = json?.post?.media_url || uploaded.mediaUrl;
-        const serverPoster = json?.post?.thumbnail_url || uploaded.thumbnailUrl || posterUrl || "";
-
-        // Step 3: swap blob URL → public URL on the local entry. Same id
-        // bump so /me's remote-fetch dedup (by id) lines up — without it
-        // the post would appear twice when the user opens /me after a
-        // reload (once from local, once from /api/social/feed).
-        try {
-          updatePost(tempId, {
-            id:        serverId || tempId,
-            mediaUrl:  serverMedia,
-            posterUrl: serverPoster,
-          });
-        } catch { /* store update failure is non-fatal */ }
-        notify({
-          kind: "success",
-          title: "Shared to your profile",
-          body: "Your post is safe across devices and re-logins.",
-        });
-      } catch (err: any) {
-        notify({
-          kind: "error",
-          title: "Upload failed",
-          body: err?.message?.includes("Storage upload failed")
-            ? "Couldn't upload media. Saved on this device only — try again from +."
-            : "Saved on this device only. Try again from + on the reel feed.",
-        });
-      }
-    })();
-
-    setTimeout(() => {
+    // v114 — await the upload. On success: close + success toast. On
+    // failure: KEEP the modal open and surface a retry banner so the
+    // creator can Retry without losing their selections or rebuilding
+    // tags / filter / cover. The tempId is the same across retries so
+    // the server-side `client_post_id` deduplication still holds.
+    runUpload(tempId, userPost).then((result) => {
       setPosting(false);
-      onPosted(userPost);
-      onClose();
-    }, 600);
+      if (result.ok) {
+        notify({ kind: "success", title: "Shared to your profile", body: "Your post is safe across devices and re-logins." });
+        onPosted(userPost);
+        onClose();
+      } else {
+        // Allow retry without resetting postedRef so the user can ALSO
+        // close + try again from /me with the local copy.
+        setLastError(result.error || "Upload failed. Tap Retry.");
+      }
+    });
   };
 
   const captionPreview = (() => {
@@ -1795,13 +2027,25 @@ export function Composer({
   const targetAspect = kind === "photo" ? "4/5" : "9/16";
   const targetLabel  = kind === "photo" ? "4:5 portrait" : "9:16 vertical";
 
+  // v114 — early-return AFTER all hooks have run. See the hook-order note
+  // up above for why this can't sit at the top of the component anymore.
+  if (!open) return null;
+
   // v113 — portal to <body> so the composer escapes any ancestor stacking
   // context. InstagramHotelFeed wraps everything in an `absolute z-10`
   // surface; without the portal, this fixed z-[91] sheet gets clamped to
   // z-10 in the root stacking order and the z-60 BottomDock renders ON
   // TOP of the composer (the actual cause of "Post button hidden").
   const sheet = (
-    <div className="fixed inset-0 z-[91] flex items-end" onClick={onClose}>
+    // v114 — z bumped 91 → 1000 + explicit isolation so the composer ALWAYS
+    // wins over BottomDock (z 60), Navbar (z 50), ServerStatus banner (z 70),
+    // and any future fixed surface. Combined with the portal-to-body fix
+    // (v113), nothing can ever render on top again.
+    <div
+      className="fixed inset-0 z-[1000] flex items-end"
+      onClick={onClose}
+      style={{ isolation: "isolate" }}
+    >
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(8px)" }} />
       {/*
         v113 — Full-viewport sheet. Was `height: 94vh` which on Android Chrome
@@ -1976,7 +2220,7 @@ export function Composer({
                   <video
                     src={mediaUrl}
                     className="w-full h-full"
-                    style={{ objectFit: previewFit }}
+                    style={{ objectFit: previewFit, filter: filterCssFor(filter) }}
                     autoPlay loop muted={!!audio} playsInline
                   />
                 ) : (
@@ -1984,7 +2228,7 @@ export function Composer({
                     src={mediaUrl}
                     alt=""
                     className="w-full h-full"
-                    style={{ objectFit: previewFit }}
+                    style={{ objectFit: previewFit, filter: filterCssFor(filter) }}
                   />
                 )}
 
@@ -2016,6 +2260,69 @@ export function Composer({
                 >
                   {targetLabel.split(" ")[0].toUpperCase()}
                 </span>
+
+                {/* v114 — "Cover frame" button. Only for videos. Opens the
+                    scrubber sheet so the creator can pick any frame as the
+                    poster (matches IG / TikTok "Choose cover"). */}
+                {isVideo && (
+                  <button
+                    type="button"
+                    onClick={() => setCoverPickerOpen(true)}
+                    className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-[0.6rem] font-bold tracking-wide"
+                    style={{
+                      background: "rgba(0,0,0,0.55)",
+                      backdropFilter: "blur(8px)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                    }}
+                  >
+                    🖼 Cover frame
+                  </button>
+                )}
+              </div>
+
+              {/* v114 — IG-style filter strip. Horizontal scroll of named
+                  presets, each shown with the actual media as a tiny live
+                  thumbnail so the creator can SEE what each filter does.
+                  Selecting one applies CSS filter on the preview AND
+                  persists on the post so the feed renders the same look. */}
+              <div
+                className="-mx-4 mt-2 mb-1 px-4 pb-2 overflow-x-auto flex gap-2 hide-scroll"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                {FILTER_PRESETS.map((f) => {
+                  const active = filter === f.id || (filter === null && f.id === "none");
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFilter(f.id)}
+                      className="shrink-0 flex flex-col items-center gap-1"
+                      aria-pressed={active}
+                    >
+                      <span
+                        className="w-12 h-16 rounded-lg overflow-hidden block"
+                        style={{
+                          border: active ? "2px solid #ffd76b" : "2px solid rgba(255,255,255,0.18)",
+                          boxShadow: active ? "0 0 0 1px rgba(0,0,0,0.4), 0 4px 14px rgba(240,180,41,0.45)" : "none",
+                          transition: "all 0.18s ease",
+                        }}
+                      >
+                        {/* Use the poster if we have it (fast); fall back to mediaUrl
+                            for photos. Apply the filter so each chip previews live. */}
+                        <img
+                          src={(isVideo ? (posterUrl || "") : mediaUrl) || mediaUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          style={{ filter: f.css }}
+                        />
+                      </span>
+                      <span className="text-[0.58rem] font-semibold" style={{ color: active ? "#ffd76b" : "rgba(255,255,255,0.65)" }}>
+                        {f.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               {/* Format warning surfaces here so the user knows BEFORE
                   posting that the file probably won't play in the feed. */}
@@ -2305,15 +2612,58 @@ export function Composer({
                 </div>
               </div>
 
+              {/* v114 — upload progress + retry banner. Surfaces inline so
+                  the creator never closes the modal on an invisible error.
+                  Same tempId on retry = server-side idempotency holds. */}
+              {posting && uploadProgress > 0 && (
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,204,113,0.10)", border: "1px solid rgba(46,204,113,0.30)" }}>
+                  <p className="text-emerald-200 text-[0.74rem] font-semibold mb-1.5">⏫ Uploading… {uploadProgress}%</p>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
+                    <div
+                      className="h-full transition-all"
+                      style={{
+                        width: `${uploadProgress}%`,
+                        background: "linear-gradient(90deg, #2ecc71, #5b8dff)",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {lastError && (
+                <div className="rounded-xl px-3 py-3" style={{ background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)" }}>
+                  <p className="text-red-300 text-[0.78rem] font-semibold mb-1">⚠ {lastError}</p>
+                  <p className="text-red-200/60 text-[0.66rem] mb-2">
+                    Your post is still saved on this device{retryCount > 0 ? ` (attempt ${retryCount + 1})` : ""}.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={retry}
+                      disabled={posting}
+                      className="flex-1 rounded-lg py-2 px-3 text-[0.78rem] font-bold disabled:opacity-40"
+                      style={{ background: "linear-gradient(135deg, #ff6b6b, #ee5a52)", color: "#fff", border: "1px solid rgba(255,255,255,0.20)" }}
+                    >
+                      {posting ? "Retrying…" : "↻ Retry upload"}
+                    </button>
+                    <button
+                      onClick={() => { setLastError(""); onPosted(lastAttemptRef.current?.post as any); onClose(); }}
+                      className="rounded-lg py-2 px-3 text-[0.74rem] font-semibold"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.18)" }}
+                    >
+                      Keep local
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Confirm post (extra safety) */}
               <button
                 onClick={post}
-                disabled={posting}
+                disabled={posting || !!lastError}
                 className="ig-cta-3d ig-cta-book w-full"
                 style={{ padding: "12px", fontSize: "0.86rem" }}
               >
                 <span className="ig-cta-icon">⚡</span>
-                <span className="ig-cta-text">{posting ? "Posting…" : `Post to your profile`}</span>
+                <span className="ig-cta-text">{posting ? "Posting…" : lastError ? "Tap Retry above" : `Post to your profile`}</span>
               </button>
             </div>
           </div>
@@ -2343,6 +2693,15 @@ export function Composer({
         onClose={() => setHighlightOpen(false)}
         current={highlight}
         onPick={(h) => setHighlight(h)}
+      />
+      {/* v114 — cover frame picker. Replaces posterUrl with the chosen
+          frame so the profile grid + feed poster show what the creator
+          wants, not the auto-extracted 0.6s frame. */}
+      <CoverFramePicker
+        open={coverPickerOpen}
+        file={mediaFile}
+        onClose={() => setCoverPickerOpen(false)}
+        onPick={(dataUrl) => { setPosterUrl(dataUrl); }}
       />
     </div>
   );

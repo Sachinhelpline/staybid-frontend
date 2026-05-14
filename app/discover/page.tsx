@@ -82,6 +82,15 @@ export default function DiscoverPage() {
         _userPostLocation: post.location_name
           ? { name: post.location_name, lat: post.location_lat, lng: post.location_lng }
           : null,
+        // v114 — IG-style filter preset. Read from social_posts.filter and
+        // applied as CSS on the rendered <video>/<img> so viewers see the
+        // exact look the creator picked in the composer.
+        _userPostFilter: post.filter || null,
+        // v114 — surface custom audio so the feed's customAudio state seed
+        // mutes original video audio and plays this track in sync.
+        _userPostAudio: post.sound_url
+          ? { name: post.sound_track || "Custom audio", url: post.sound_url }
+          : null,
       } as any,
       score: 0,
       reasons: [a?.user_type === "HOTEL" ? "Verified hotel" : a?.user_type === "CREATOR" ? "Creator" : "Member"],

@@ -114,6 +114,12 @@ export function BottomDock() {
           border-top: 1px solid var(--border-soft);
           box-shadow: 0 -4px 18px rgba(31, 26, 15, 0.08);
         }
+        /* v114 — hide the dock while the Composer is open so it can't
+           bleed through ANY stacking context (real iOS Safari + Android
+           Chrome both have edge cases where high-z fixed panels still
+           let a sibling fixed nav peek through). The Composer sets
+           body.sb-composer-open on mount + clears on unmount. */
+        body.sb-composer-open .ig-bottom-dock { display: none !important; }
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;

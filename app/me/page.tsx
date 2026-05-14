@@ -214,7 +214,12 @@ export default function MePage() {
         posterUrl:  rp.thumbnail_url || "",
         caption:    rp.caption || "",
         tags:       [],
-        audio:      null,
+        // v114 — surface custom audio so the feed can mute video's original
+        // audio and play this in sync when the user opens their own post.
+        audio:      rp.sound_url ? { name: rp.sound_track || "Custom audio", url: rp.sound_url } : null,
+        // v114 — preserve the chosen IG-style filter so the feed renders
+        // with the same look the creator picked at upload time.
+        filter:     rp.filter || null,
         createdAt:  new Date(rp.created_at || Date.now()).getTime(),
         keepAsPost: kind !== "story",
       });

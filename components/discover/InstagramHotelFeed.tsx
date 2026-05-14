@@ -24,7 +24,7 @@ import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
-import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack } from "@/components/discover/CreateFlow";
+import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack, filterCssFor as filterCssForId } from "@/components/discover/CreateFlow";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
@@ -1609,8 +1609,16 @@ const HotelCard = memo(function HotelCard({
   // GLOBAL gain (volume booster) — read here so the gain node updates when
   // the user moves the slider in the right rail.
   const { gain } = useSoundStore();
-  // Per-card audio override (custom soundtrack picked from the audio strip)
-  const [customAudio, setCustomAudio] = useState<AudioTrack | null>(null);
+  // Per-card audio override (custom soundtrack picked from the audio strip
+  // — or, for user-posted reels, the audio attached at upload time).
+  // v114 — seed customAudio from `_userPostAudio` so a creator's custom
+  // soundtrack overrides the video's original audio in the feed exactly
+  // like Instagram. If the post has NO audio attached, the video's own
+  // track plays normally.
+  const [customAudio, setCustomAudio] = useState<AudioTrack | null>(() => {
+    const a = (h as any)?._userPostAudio;
+    return a && a.url ? { id: "post-audio", name: a.name || "Custom audio", artist: "", url: a.url } : null;
+  });
   const [audioPickerOpen, setAudioPickerOpen] = useState(false);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
@@ -1625,13 +1633,17 @@ const HotelCard = memo(function HotelCard({
   // forcePaused in their dep arrays. Pauses whenever:
   //   • document.visibilityState === "hidden"  (phone lock, tab switch, app minimise)
   //   • body.fdeal-viewer-open is set           (flash-deal viewer overlay open)
+  //   • body.sb-composer-open is set           (v114 — Create modal open;
+  //     prevents background reel audio from distracting the creator while
+  //     they upload a new video)
   const [forcePaused, setForcePaused] = useState(false);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const compute = () => {
       const hidden = document.visibilityState === "hidden";
       const viewerOpen = document.body.classList.contains("fdeal-viewer-open");
-      setForcePaused(hidden || viewerOpen);
+      const composerOpen = document.body.classList.contains("sb-composer-open");
+      setForcePaused(hidden || viewerOpen || composerOpen);
     };
     compute();
     document.addEventListener("visibilitychange", compute);
@@ -1833,7 +1845,13 @@ const HotelCard = memo(function HotelCard({
           preload={videoPreload}
           {...({ "webkit-playsinline": "true", "x-webkit-airplay": "allow" } as any)}
           className="absolute inset-0 w-full h-full"
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{
+            width: "100%", height: "100%", objectFit: "cover",
+            // v114 — replay the IG-style filter the creator picked in the
+            // composer. `_userPostFilter` is the preset id; map it to a CSS
+            // filter string here. For non-user-post cards this is "none".
+            filter: filterCssForId((h as any)._userPostFilter),
+          }}
           onError={(e) => {
             const v = e.currentTarget as HTMLVideoElement;
             const code = v?.error?.code;
@@ -1891,6 +1909,7 @@ const HotelCard = memo(function HotelCard({
           decoding="async"
           loading={active ? "eager" : "lazy"}
           className="ig-kb absolute inset-0 w-full h-full object-cover"
+          style={{ filter: filterCssForId((h as any)._userPostFilter) }}
         />
       ) : h._userPost ? (
         // User post whose media couldn't be played. Show a coloured
@@ -2969,6 +2988,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // Highlight bucket — surfaced on the profile-sheet highlight
           // grid so the user can browse their own reels by theme.
           _userPostHighlight: (p as any).highlight || null,
+          // v114 — Chosen IG-style filter (e.g. "warm", "noir"). Applied
+          // as CSS filter on the active card so viewers see the exact
+          // look the creator picked in the composer.
+          _userPostFilter: (p as any).filter || null,
         },
         score: 999,
         reasons: ["Your upload"],

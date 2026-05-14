@@ -93,6 +93,13 @@ export async function POST(req: Request) {
   if (typeof body.highlightKey === "string" && body.highlightKey.trim()) {
     row.highlight_key = body.highlightKey.trim().slice(0, 64);
   }
+  // v114 — persist chosen IG-style filter preset id ("warm" / "noir" / etc).
+  // The feed re-applies the same CSS filter on the rendered <video> /
+  // <img> via filterCssFor(). Stored on the dedicated `filter` column
+  // (added via migrations/2026-05-14-social-posts-filter.sql).
+  if (typeof body.filter === "string" && body.filter.trim() && body.filter !== "none") {
+    row.filter = body.filter.trim().slice(0, 32);
+  }
 
   const r = await fetch(`${SB_URL}/rest/v1/social_posts`, {
     method: "POST",
