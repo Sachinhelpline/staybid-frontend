@@ -508,7 +508,7 @@ header[style*="height: 48px"] input {
   letter-spacing: 0.08em !important;
 }
 .admin-kpi-grid p:last-child,
-.admin-kpi-grid p[style*="fontFamily: Syne"] {
+.admin-kpi-grid p[style*="font-family: Syne"] {
   font-size: 18px !important;
   line-height: 1.1 !important;
   margin-top: 3px !important;
@@ -531,33 +531,37 @@ main div[style*="background: #151820"][style*="border-radius"] {
   .admin-card { padding: 12px 14px !important; border-radius: 10px !important; }
 }
 
-/* ── Inline pixel font sizes — one more step compression ──────────── */
-main [style*="fontSize: 32px"],
-main [style*="fontSize:32px"]  { font-size: 20px !important; }
-main [style*="fontSize: 28px"],
-main [style*="fontSize:28px"]  { font-size: 18px !important; }
-main [style*="fontSize: 24px"],
-main [style*="fontSize:24px"]  { font-size: 16px !important; }
-main [style*="fontSize: 22px"],
-main [style*="fontSize:22px"]  { font-size: 15px !important; }
-main [style*="fontSize: 20px"],
-main [style*="fontSize:20px"]  { font-size: 14px !important; }
-main [style*="fontSize: 18px"],
-main [style*="fontSize:18px"]  { font-size: 13.5px !important; }
-main [style*="fontSize: 16px"],
-main [style*="fontSize:16px"]  { font-size: 13px !important; }
-main [style*="fontSize: 15px"],
-main [style*="fontSize:15px"]  { font-size: 12.5px !important; }
-main [style*="fontSize: 14px"],
-main [style*="fontSize:14px"]  { font-size: 12px !important; }
-main [style*="fontSize: 13px"],
-main [style*="fontSize:13px"]  { font-size: 11.5px !important; }
-main [style*="fontSize: 12px"],
-main [style*="fontSize:12px"]  { font-size: 11px !important; }
-main [style*="fontSize: 11px"],
-main [style*="fontSize:11px"]  { font-size: 10.5px !important; }
-main [style*="fontSize: 10px"],
-main [style*="fontSize:10px"]  { font-size: 9.5px !important; }
+/* ── Inline pixel font sizes — one more step compression.
+       React converts inline `fontSize: 22` (camelCase) to `font-size: 22px`
+       (kebab-case) in the actual DOM style attribute, so the substring
+       selector must use the kebab form. Earlier blocks used `fontSize:`
+       which never matched anything. ──────────────────────────────────── */
+main [style*="font-size: 32px"],
+main [style*="font-size:32px"]  { font-size: 20px !important; }
+main [style*="font-size: 28px"],
+main [style*="font-size:28px"]  { font-size: 18px !important; }
+main [style*="font-size: 24px"],
+main [style*="font-size:24px"]  { font-size: 16px !important; }
+main [style*="font-size: 22px"],
+main [style*="font-size:22px"]  { font-size: 15px !important; }
+main [style*="font-size: 20px"],
+main [style*="font-size:20px"]  { font-size: 14px !important; }
+main [style*="font-size: 18px"],
+main [style*="font-size:18px"]  { font-size: 13.5px !important; }
+main [style*="font-size: 16px"],
+main [style*="font-size:16px"]  { font-size: 13px !important; }
+main [style*="font-size: 15px"],
+main [style*="font-size:15px"]  { font-size: 12.5px !important; }
+main [style*="font-size: 14px"],
+main [style*="font-size:14px"]  { font-size: 12px !important; }
+main [style*="font-size: 13px"],
+main [style*="font-size:13px"]  { font-size: 11.5px !important; }
+main [style*="font-size: 12px"],
+main [style*="font-size:12px"]  { font-size: 11px !important; }
+main [style*="font-size: 11px"],
+main [style*="font-size:11px"]  { font-size: 10.5px !important; }
+main [style*="font-size: 10px"],
+main [style*="font-size:10px"]  { font-size: 9.5px !important; }
 
 /* ── Tables: tighter th/td + smaller font ───────────────────────── */
 .admin-data-table-wrap th,
@@ -583,18 +587,175 @@ main table th {
   letter-spacing: 0.08em;
 }
 
-/* ── Image thumbnails inside admin tables / cards ──────────────── */
-main table img,
-main td img,
-.admin-card img:not([class*="logo"]) {
-  max-width: 36px !important;
-  max-height: 36px !important;
-  border-radius: 6px !important;
+/* ── Smart thumbnail aspect-ratio system (v126) ────────────────────
+   Different content types deserve different aspect ratios. Rather than
+   forcing every image to 36×36 square (which mangled the videos page's
+   16:9 player thumbs), we detect the natural ratio of each kind of
+   content + shrink decorative icon boxes alongside the font shrink so
+   nothing feels oversized compared to its label.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* 1. SQUARE thumbnails (1:1) — avatars, user mugs, status circles.
+      Used inside table cells + small UI chrome. Default for img inside
+      table cells unless overridden by an explicit aspect-ratio inline. */
+main table img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]),
+main td img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]),
+.admin-card img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]):not([class*="logo"]) {
+  width: 34px !important;
+  height: 34px !important;
+  aspect-ratio: 1 / 1;
+  border-radius: 7px !important;
   object-fit: cover;
 }
-main table div[style*="border-radius"][style*="background"][style*="display"][style*="flex"][style*="alignItems: center"][style*="justifyContent: center"] {
-  width: 36px !important;
-  height: 36px !important;
+@media (max-width: 767px) {
+  main table img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]),
+  main td img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]),
+  .admin-card img:not([style*="aspect-ratio"]):not([style*="aspect-ratio"]):not([class*="logo"]) {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* 2. DECORATIVE icon boxes (1:1) — the 44×44 emoji boxes inside
+      redemption-rules / commission-rules / similar cards. Detected by
+      the inline pattern "width: 44, height: 44, borderRadius, display: flex"
+      that admin pages use for the rounded-emoji-tile pattern. */
+main div[style*="width: 44"][style*="height: 44"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:44"][style*="height:44"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  font-size: 17px !important;
+}
+main div[style*="width: 50"][style*="height: 50"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:50"][style*="height:50"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 19px !important;
+}
+main div[style*="width: 56"][style*="height: 56"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:56"][style*="height:56"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 21px !important;
+}
+@media (max-width: 767px) {
+  main div[style*="width: 44"][style*="height: 44"],
+  main div[style*="width:44"][style*="height:44"] {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 15px !important;
+  }
+  main div[style*="width: 50"][style*="height: 50"],
+  main div[style*="width:50"][style*="height:50"] {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+  }
+}
+
+/* 3. VIDEO LANDSCAPE thumbnails (16:9) — hotel video cards in
+      /admin/videos. The wrapper has inline aspectRatio: 16/9 already;
+      we just hint smaller height so cards aren't dominating the grid. */
+main div[style*="aspectRatio: \"16/9\""],
+main div[style*="aspect-ratio: 16/9"] {
+  border-radius: 9px !important;
+}
+@media (min-width: 1024px) {
+  /* Reduce minmax in 16:9 video grids — cards become more browseable */
+  main div[style*="repeat(auto-fill, minmax(280px"] {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+  }
+}
+@media (max-width: 767px) {
+  main div[style*="repeat(auto-fill, minmax(280px"] {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  }
+}
+
+/* 4. REEL PORTRAIT thumbnails (9:16) — short reels / stories.
+      Helper class for any future page that renders reel previews. */
+.admin-thumb-reel {
+  aspect-ratio: 9 / 16;
+  width: auto;
+  height: 96px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+@media (max-width: 767px) {
+  .admin-thumb-reel { height: 72px; }
+}
+
+/* 5. HOTEL COVER thumbnails (16:10) — booking page hotel previews.
+      Helper class for explicit hotel photo placements. */
+.admin-thumb-hotel {
+  aspect-ratio: 16 / 10;
+  width: auto;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+@media (max-width: 767px) {
+  .admin-thumb-hotel { height: 40px; }
+}
+
+/* 6. AVATAR helper (1:1, smaller than table-img default) — for chip
+      avatars next to text in cards. */
+.admin-avatar,
+[data-admin-avatar] {
+  width: 28px;
+  height: 28px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+}
+@media (max-width: 767px) {
+  .admin-avatar,
+  [data-admin-avatar] { width: 24px; height: 24px; }
+}
+
+/* 7. STATUS DOT / LIVE indicator — small circular indicators */
+main div[style*="width: 8"][style*="height: 8"][style*="border-radius: 50%"],
+main div[style*="width: 10"][style*="height: 10"][style*="border-radius: 50%"] {
+  flex-shrink: 0;
+}
+
+/* 8. AVATAR initials box (no <img>, just inline initials) — common in
+      Users / Creators tables. The 32×32 width pattern used by these
+      pages stays the same since it's already tight. The 36-40 variants
+      get the slight squeeze. */
+main div[style*="width: 36"][style*="height: 36"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:36"][style*="height:36"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 13px !important;
+}
+main div[style*="width: 40"][style*="height: 40"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:40"][style*="height:40"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 14px !important;
+}
+
+/* 9. LARGER decorative boxes (60-88 used as feature icons) — shrink */
+main div[style*="width: 60"][style*="height: 60"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:60"][style*="height:60"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 22px !important;
+}
+main div[style*="width: 72"][style*="height: 72"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:72"][style*="height:72"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 52px !important;
+  height: 52px !important;
+  font-size: 26px !important;
+}
+main div[style*="width: 88"][style*="height: 88"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"],
+main div[style*="width:88"][style*="height:88"][style*="display"][style*="flex"][style*="align-items"][style*="justify-content"] {
+  width: 60px !important;
+  height: 60px !important;
+  font-size: 30px !important;
 }
 
 /* ── Buttons across admin — tighter ────────────────────────────── */
@@ -621,20 +782,20 @@ main textarea {
 }
 
 /* ── Section vertical rhythm — tighter marginBottom ─────────── */
-main div[style*="marginBottom: 24px"],
-main div[style*="marginBottom:24px"]  { margin-bottom: 14px !important; }
-main div[style*="marginBottom: 20px"],
-main div[style*="marginBottom:20px"]  { margin-bottom: 12px !important; }
-main div[style*="marginBottom: 16px"],
-main div[style*="marginBottom:16px"]  { margin-bottom: 10px !important; }
-main div[style*="marginBottom: 14px"],
-main div[style*="marginBottom:14px"]  { margin-bottom: 9px !important; }
-main div[style*="marginBottom: 12px"],
-main div[style*="marginBottom:12px"]  { margin-bottom: 8px !important; }
-main div[style*="marginTop: 24px"],
-main div[style*="marginTop:24px"]     { margin-top: 14px !important; }
-main div[style*="marginTop: 20px"],
-main div[style*="marginTop:20px"]     { margin-top: 12px !important; }
+main div[style*="margin-bottom: 24px"],
+main div[style*="margin-bottom:24px"]  { margin-bottom: 14px !important; }
+main div[style*="margin-bottom: 20px"],
+main div[style*="margin-bottom:20px"]  { margin-bottom: 12px !important; }
+main div[style*="margin-bottom: 16px"],
+main div[style*="margin-bottom:16px"]  { margin-bottom: 10px !important; }
+main div[style*="margin-bottom: 14px"],
+main div[style*="margin-bottom:14px"]  { margin-bottom: 9px !important; }
+main div[style*="margin-bottom: 12px"],
+main div[style*="margin-bottom:12px"]  { margin-bottom: 8px !important; }
+main div[style*="margin-top: 24px"],
+main div[style*="margin-top:24px"]     { margin-top: 14px !important; }
+main div[style*="margin-top: 20px"],
+main div[style*="margin-top:20px"]     { margin-top: 12px !important; }
 
 /* ── Chart heights ─────────────────────────────────────────── */
 .admin-chart-row .recharts-responsive-container,
@@ -672,8 +833,8 @@ main .recharts-responsive-container {
 
 /* ── Status pills / chips inside admin ──────────────────────── */
 main span[style*="border-radius: 999"],
-main span[style*="borderRadius: 999"],
-main span[style*="borderRadius:999"] {
+main span[style*="border-radius: 999"],
+main span[style*="border-radius:999"] {
   padding: 2px 8px !important;
   font-size: 10px !important;
   letter-spacing: 0.08em;
