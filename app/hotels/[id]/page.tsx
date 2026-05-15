@@ -798,7 +798,10 @@ export default function HotelDetail() {
       setBidSuccess(true);
       setBidRoom(null);
       fetchMyBids();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) {
+      if (e?.message === "__CANCELLED__") return;
+      alert(e?.message || "Couldn't place your bid. Please try again.");
+    }
     finally { setBidLoading(false); }
   };
 
@@ -1265,8 +1268,13 @@ export default function HotelDetail() {
       alert(mode === "full" ? "Booking confirmed! 🎉" : `🔒 Price locked for 24h! Balance ₹${(total-holdAmount).toLocaleString()} due ${mode==="payhotel"?"at hotel":"online"}.`);
       fetchMyBids();
     } catch (e: any) {
-      if (e.message === "__CANCELLED__") { return; }
-      alert(e.message);
+      if (e?.message === "__CANCELLED__") { return; }
+      if (jwtRedirect(e?.message) || isFirebaseToken()) {
+        setReview(null);
+        openVerifyAndRetry(() => handleCounterAccept(bid));
+        return;
+      }
+      alert(e?.message || "Couldn't confirm the counter offer. Please try again.");
     }
     finally { setActionLoading(""); }
   };
@@ -1282,7 +1290,9 @@ export default function HotelDetail() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       fetchMyBids();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) {
+      alert(e?.message || "Couldn't reject the counter offer. Please try again.");
+    }
     finally { setActionLoading(""); }
   };
 

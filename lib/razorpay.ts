@@ -1,3 +1,12 @@
+// v125 — Razorpay client helper, hardened.
+// - Real error from /api/razorpay/order (description + code) bubbles up so
+//   the user sees "Account inactive" / "Amount too low" / etc. — never the
+//   generic "Order creation failed" again.
+// - Script loader retries once on transient network blips.
+// - Cancellation flows through as a typed __CANCELLED__ error the caller
+//   can recognise (existing convention preserved).
+// - Verification failure includes the server-supplied reason.
+
 export interface RazorpayPaymentResult {
   razorpay_order_id: string;
   razorpay_payment_id: string;
@@ -11,39 +20,88 @@ export interface OpenCheckoutOptions {
   userName?: string;
   userPhone?: string;
   userEmail?: string;
+  // v125 — optional metadata so admin/cron can debug a stuck order later.
+  notes?: Record<string, string>;
+  receipt?: string;
 }
 
-function loadScript(): Promise<boolean> {
+export class RazorpayError extends Error {
+  code: string | null;
+  status: number | null;
+  constructor(message: string, code: string | null = null, status: number | null = null) {
+    super(message);
+    this.name = "RazorpayError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function loadScript(attempt = 0): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(false);
     if ((window as any).Razorpay) return resolve(true);
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
     script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
+    script.onerror = () => {
+      // One retry on transient blip (CDN hiccup / slow cellular).
+      if (attempt < 1) {
+        setTimeout(() => loadScript(attempt + 1).then(resolve), 600);
+      } else {
+        resolve(false);
+      }
+    };
     document.head.appendChild(script);
   });
 }
 
-export async function openRazorpayCheckout(opts: OpenCheckoutOptions): Promise<RazorpayPaymentResult> {
+export async function openRazorpayCheckout(
+  opts: OpenCheckoutOptions,
+): Promise<RazorpayPaymentResult> {
   const loaded = await loadScript();
-  if (!loaded) throw new Error("Razorpay script load karne mein error. Internet check karein.");
+  if (!loaded) {
+    throw new RazorpayError(
+      "Razorpay script load nahi hua. Internet check karein aur retry karein.",
+    );
+  }
 
-  const orderRes = await fetch("/api/razorpay/order", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      amount: opts.amount,
-      receipt: `staybid_${Date.now()}`,
-      notes: { hotel: opts.hotelName },
-    }),
-  });
-  const order = await orderRes.json();
-  if (!orderRes.ok) throw new Error(order.error || "Payment order create nahi hua");
+  // Create the order server-side
+  let order: any;
+  try {
+    const orderRes = await fetch("/api/razorpay/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: opts.amount,
+        receipt: opts.receipt || `staybid_${Date.now()}`,
+        notes: { hotel: opts.hotelName, ...(opts.notes || {}) },
+      }),
+    });
+    order = await orderRes.json().catch(() => ({}));
+    if (!orderRes.ok || !order?.id) {
+      throw new RazorpayError(
+        order?.error || "Payment order create nahi hua",
+        order?.code || null,
+        orderRes.status,
+      );
+    }
+  } catch (err: any) {
+    if (err instanceof RazorpayError) throw err;
+    throw new RazorpayError(
+      err?.message || "Network error while creating order. Try again.",
+    );
+  }
 
-  return new Promise((resolve, reject) => {
-    const rzp = new (window as any).Razorpay({
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd",
+  return new Promise<RazorpayPaymentResult>((resolve, reject) => {
+    const RazorpayCtor = (window as any).Razorpay;
+    if (!RazorpayCtor) {
+      reject(new RazorpayError("Razorpay checkout SDK missing on window"));
+      return;
+    }
+    const rzp = new RazorpayCtor({
+      key:
+        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_live_SfFAsbYjbHfztd",
       order_id: order.id,
       amount: order.amount,
       currency: "INR",
@@ -63,20 +121,43 @@ export async function openRazorpayCheckout(opts: OpenCheckoutOptions): Promise<R
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(response),
           });
-          const data = await verifyRes.json();
-          if (data.verified) {
+          const data = await verifyRes.json().catch(() => ({}));
+          if (data?.verified) {
             resolve(response);
           } else {
-            reject(new Error("Payment verification failed. Please contact support."));
+            reject(
+              new RazorpayError(
+                data?.error
+                  ? `Payment verification failed: ${data.error}`
+                  : "Payment verification failed. Please contact support.",
+              ),
+            );
           }
-        } catch {
-          reject(new Error("Payment verification failed. Please contact support."));
+        } catch (err: any) {
+          reject(
+            new RazorpayError(
+              err?.message ||
+                "Payment verification network error. Contact support.",
+            ),
+          );
         }
       },
       modal: {
-        ondismiss: () => reject(new Error("__CANCELLED__")),
+        ondismiss: () => reject(new RazorpayError("__CANCELLED__")),
+        escape: true,
+        backdropclose: false,
       },
     });
+
+    try {
+      rzp.on?.("payment.failed", (resp: any) => {
+        const desc = resp?.error?.description || resp?.error?.reason || "Payment failed.";
+        reject(new RazorpayError(desc, resp?.error?.code || null));
+      });
+    } catch {
+      // Older SDK builds may not expose .on — safe to ignore.
+    }
+
     rzp.open();
   });
 }

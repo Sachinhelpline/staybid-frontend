@@ -352,7 +352,7 @@ export default function MyBidsPage() {
       fetchBids(true);
     } catch (e: any) {
       if (e?.message === "__CANCELLED__") { return; }
-      alert(e.message);
+      alert(e?.message || "Couldn't confirm the counter offer. Please try again.");
     } finally {
       setActionLoading("");
     }
@@ -370,7 +370,7 @@ export default function MyBidsPage() {
       if (!res.ok) throw new Error(data.error || "Could not decline");
       fetchBids(true);
     } catch (e: any) {
-      alert(e.message);
+      alert(e?.message || "Couldn't decline the counter. Please try again.");
     } finally {
       setActionLoading("");
     }
