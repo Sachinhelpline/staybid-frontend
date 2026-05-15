@@ -316,57 +316,64 @@ export default function BidPage() {
     }
   };
 
-  /* ── Success Screen ── */
+  /* ── Success Screen ── v122.5: cream-theme contrast fixes (white-on-
+     cream was invisible) + denser layout with all key info visible
+     at once (city / check-in / nights / budget / total / hotels). */
   if (success) return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f0ebe0 100%)" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-6" style={{ background: "linear-gradient(160deg, #faf9f6 0%, #f0ebe0 100%)" }}>
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-3xl border border-white/10 shadow-2xl p-8 text-center">
-          <div className="w-20 h-20 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ background: "linear-gradient(135deg, #c9911a, #f0b429)" }}>
-            <span className="text-3xl">🎯</span>
+        <div className="rounded-3xl border shadow-2xl p-6 text-center" style={{ background: "#ffffff", borderColor: "rgba(184,134,11,0.18)" }}>
+          <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: "linear-gradient(135deg, #c9911a, #f0b429)" }}>
+            <span className="text-2xl">🎯</span>
           </div>
-          <p className="text-gold-500 text-[0.65rem] font-semibold tracking-[0.2em] uppercase mb-2">Bid Request Launched</p>
-          <h1 className="font-display font-light text-white text-3xl mb-3">Hotels Are Competing!</h1>
-          <p className="text-white/50 text-sm leading-relaxed mb-6">
-            Your bid for <strong className="text-white/80">{success.nights} nights in {success.city}</strong> has been sent to <strong className="text-gold-600">{success.hotelsNotified || "all matching"} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>. You'll be notified the moment they respond.
+          <p className="text-[0.62rem] font-bold tracking-[0.22em] uppercase mb-1.5" style={{ color: "var(--accent, #c9911a)" }}>Bid Request Launched</p>
+          <h1 className="font-display font-light text-2xl mb-2" style={{ color: "var(--text-base, #1F1A0F)" }}>Hotels Are Competing!</h1>
+          <p className="text-[0.82rem] leading-snug mb-4" style={{ color: "var(--text-soft, #4A3820)" }}>
+            Bid for <strong style={{ color: "var(--text-base, #1F1A0F)" }}>{success.nights} {success.nights === 1 ? "night" : "nights"} in {success.city}</strong> sent to{" "}
+            <strong style={{ color: "var(--accent, #c9911a)" }}>{success.hotelsNotified || "all matching"} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>. You'll be notified the moment they respond.
           </p>
 
-          {/* Mini summary */}
-          <div className="bg-white/5 rounded-2xl p-4 mb-6 grid grid-cols-3 gap-3 text-left">
+          {/* Trip summary — 4-col grid for max info density */}
+          <div className="rounded-2xl p-3 mb-3 grid grid-cols-4 gap-2 text-left" style={{ background: "rgba(201,145,26,0.06)", border: "1px solid rgba(201,145,26,0.18)" }}>
             <div>
-              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Check-in</p>
-              <p className="text-xs font-bold text-white/90">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+              <p className="text-[0.55rem] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-muted, #6E5430)" }}>Check-in</p>
+              <p className="text-[0.76rem] font-bold" style={{ color: "var(--text-base, #1F1A0F)" }}>{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
             </div>
             <div>
-              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Nights</p>
-              <p className="text-xs font-bold text-white/90">{success.nights}</p>
+              <p className="text-[0.55rem] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-muted, #6E5430)" }}>Check-out</p>
+              <p className="text-[0.76rem] font-bold" style={{ color: "var(--text-base, #1F1A0F)" }}>{new Date(success.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
             </div>
             <div>
-              <p className="text-[0.58rem] text-white/40 uppercase tracking-wider mb-0.5">Budget/night</p>
-              <p className="text-xs font-bold text-white/90">₹{success.budget}</p>
+              <p className="text-[0.55rem] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-muted, #6E5430)" }}>Nights</p>
+              <p className="text-[0.76rem] font-bold" style={{ color: "var(--text-base, #1F1A0F)" }}>{success.nights}</p>
+            </div>
+            <div>
+              <p className="text-[0.55rem] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-muted, #6E5430)" }}>Budget/n</p>
+              <p className="text-[0.76rem] font-bold" style={{ color: "var(--text-base, #1F1A0F)" }}>₹{success.budget}</p>
             </div>
           </div>
 
           {/* Est. total */}
           {success.totalEst > 0 && (
-            <div className="bg-gold-50 border border-gold-200 rounded-2xl p-3 mb-6">
-              <p className="text-xs text-white/60 mb-0.5">Estimated total (incl. rooms)</p>
-              <p className="text-xl font-bold text-gold-700">₹{success.totalEst.toLocaleString("en-IN")}</p>
-              <p className="text-[0.6rem] text-white/50">+ taxes · final price confirmed by hotel</p>
+            <div className="rounded-2xl p-3 mb-4" style={{ background: "linear-gradient(135deg, #fff7e0, #ffeec4)", border: "1px solid rgba(184,134,11,0.30)" }}>
+              <p className="text-[0.65rem] mb-0.5" style={{ color: "var(--text-soft, #4A3820)" }}>Estimated total (incl. {success.rooms} {success.rooms === 1 ? "room" : "rooms"})</p>
+              <p className="text-xl font-bold" style={{ color: "#8a5a08" }}>₹{success.totalEst.toLocaleString("en-IN")}</p>
+              <p className="text-[0.58rem]" style={{ color: "var(--text-muted, #6E5430)" }}>+ taxes · final price confirmed by hotel</p>
             </div>
           )}
 
           <div className="space-y-2">
-            <button onClick={() => router.push("/my-bids")} className="lux-btn w-full py-3.5 rounded-2xl text-sm">
+            <button onClick={() => router.push("/my-bids")} className="lux-btn w-full py-3 rounded-2xl text-sm">
               Track My Bids
             </button>
-            <button onClick={() => router.push("/hotels")} className="w-full py-3 text-sm text-white/60 hover:text-white/90 transition">
+            <button onClick={() => router.push("/hotels")} className="w-full py-2 text-[0.82rem] transition hover:underline" style={{ color: "var(--text-soft, #4A3820)" }}>
               Browse Hotels
             </button>
           </div>
         </div>
 
-        <p className="text-center text-xs text-white/40 mt-5 tracking-wide">
-          Average hotel response time: <span className="text-white/60 font-medium">2–4 hours</span>
+        <p className="text-center text-[0.72rem] mt-3 tracking-wide" style={{ color: "var(--text-muted, #6E5430)" }}>
+          Average hotel response time: <span className="font-semibold" style={{ color: "var(--text-base, #1F1A0F)" }}>2–4 hours</span>
         </p>
       </div>
     </div>

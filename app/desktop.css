@@ -633,4 +633,97 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   }
 }
 
-/* End v122 desktop layer */
+/* ─────────────────────────────────────────────────────────────────────────
+   18. v122.5 — INFORMATION DENSITY pass on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   User feedback after v122.4: pages felt "too sparse, too few items per
+   viewport, fonts too big" on laptops/desktops. This block tightens the
+   default sizing across every customer page at >=1024px so more content
+   fits on screen at once while keeping the premium feel.
+
+   Mobile remains byte-identical (no rules below the @media gate apply).
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Body type slightly tighter line-height for denser blocks of text. */
+  body { line-height: 1.5; }
+
+  /* Cap oversized luxury hero typography on desktop. Pages use
+     `font-display` for hero headings; that was clamping up to 3.4rem on
+     wide screens. Bring it down to 2.4rem so a typical 1440x900 viewport
+     can see hero + first content row above the fold. */
+  .lux-bg h1.font-display,
+  .fd-root h1,
+  .me-root h1 {
+    font-size: clamp(1.7rem, 2.2vw, 2.4rem) !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Customer page hero sub-text + section paragraphs slightly tighter. */
+  .lux-bg p,
+  .fd-root p { line-height: 1.5; }
+
+  /* Tighter vertical rhythm on standard card patterns. The customer
+     surface uses Tailwind `space-y-*` and `p-*` extensively. We only
+     touch the largest values so visual hierarchy stays intact. */
+  .lux-bg .space-y-6 > * + * { margin-top: 1.1rem; }
+  .lux-bg .space-y-8 > * + * { margin-top: 1.3rem; }
+  .lux-bg .space-y-10 > * + * { margin-top: 1.6rem; }
+  /* Card padding — cap large p-* utilities at desktop. */
+  .lux-bg .p-8 { padding: 1.5rem !important; }
+  .lux-bg .p-10 { padding: 1.75rem !important; }
+  .lux-bg .py-12 { padding-top: 1.75rem !important; padding-bottom: 1.75rem !important; }
+  .lux-bg .py-10 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+
+  /* Grid gaps — Tailwind's gap-6/8 = 24/32px; on desktop where each card
+     already has its own padding, 20/24 is plenty of breathing room. */
+  .lux-bg .gap-6 { gap: 1.25rem !important; }
+  .lux-bg .gap-8 { gap: 1.5rem !important; }
+
+  /* /me profile typography tightening (matches v122.1's bumped sizes). */
+  .me-root .me-display-name { font-size: 1rem !important; }
+  .me-root .me-bio { font-size: 0.9rem !important; line-height: 1.45 !important; }
+
+  /* IG-style post feed card padding tightening. The PostsScrollFeed
+     uses generous spacing for mobile; desktop has more horizontal room
+     so vertical density can increase. */
+  .pf-card { margin-bottom: 20px !important; }
+  .pf-card-actions { padding: 8px 14px !important; }
+  .pf-card-caption { padding: 4px 14px 10px !important; }
+
+  /* Hotel detail page — bump the hero margin-bottom-8 down so the
+     room cards + booking summary sit closer to the hero. */
+  .lux-bg .mb-8 { margin-bottom: 1rem !important; }
+  .lux-bg .mb-10 { margin-bottom: 1.25rem !important; }
+
+  /* /flash-deals: cards in the grid were hitting a min-width of 320px
+     which forced ~3-col on 1280-wide displays. Drop to 280 so a wide
+     desktop sees 4 cards per row. */
+  .fd-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  }
+
+  /* Admin panel info-density bump (separate from admin.css since this
+     is the global desktop layer). KPI cards' inline grids and inner
+     paddings stay generous — admin.css owns them. */
+}
+
+/* On big desktops (>=1440), even denser room for richer layouts. */
+@media (min-width: 1440px) {
+  /* Hotel listing — 4 cols already at 1440+ from §6; bump gap. */
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    gap: 1.5rem !important;
+  }
+  /* Flash deals — 5 cols at this width. */
+  .fd-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+  }
+}
+
+/* On 4K (>=1920), keep things readable — cap text size further. */
+@media (min-width: 1920px) {
+  /* Customer content stays at 1280-1440 max-width via §5; admin caps
+     to 1700 via admin.css §11. So we don't need to fight stretched
+     content — just keep typography at the same scale. */
+}
+
+/* End v122 desktop layer (v122.5 — density pass) */

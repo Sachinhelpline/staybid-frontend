@@ -1288,8 +1288,12 @@ export default function HotelDetail() {
           </div>
         )}
 
-        {/* ── Hero image ── */}
-        <div className="h-72 md:h-96 rounded-3xl overflow-hidden bg-luxury-100 mb-8 relative shadow-luxury-lg">
+        {/* ── Hero image ── v122.5: cap height on every viewport so the
+            rooms grid + booking summary stay above the fold instead of
+            requiring a full scroll. h-56 mobile · md:h-64 tablet ·
+            lg:h-72 desktop · was h-72 / md:h-96 which dominated the
+            laptop viewport. mb-8 → mb-4 reduces wasted gap below hero. */}
+        <div className="h-56 md:h-64 lg:h-72 rounded-3xl overflow-hidden bg-luxury-100 mb-4 relative shadow-luxury-lg">
           {hotel.images?.[0] ? (
             <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
           ) : (

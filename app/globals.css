@@ -881,29 +881,35 @@ body.is-reel-page {
 }
 .lux-cal-weekcell.is-weekend { color: #c9911a; }
 
-/* ── Day grid ── */
+/* ── Day grid ── v122.5: tighter so the whole calendar fits a typical
+   laptop viewport (700-820px) without forcing an inner scroll. Each day
+   cell is still touch-friendly (>=44px), just less padded. */
 .lux-cal-grid {
   display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  padding: 0 0.6rem 0.6rem;
+  gap: 3px;
+  padding: 0 0.5rem 0.5rem;
   overflow-y: auto;
   flex: 1;
 }
 
 .lux-cal-day {
   position: relative;
-  aspect-ratio: 1 / 1.18;
-  min-height: 56px;
+  aspect-ratio: 1 / 1.10;
+  min-height: 44px;
   border: 1.2px solid transparent;
-  border-radius: 12px;
+  border-radius: 11px;
   background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,248,225,0.5) 100%);
   cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 0.18rem 0.1rem;
+  padding: 0.12rem 0.08rem;
   font-family: inherit;
   transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
   color: #2b1d05;
   -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 640px) {
+  .lux-cal-day { min-height: 52px; aspect-ratio: 1 / 1.15; }
+  .lux-cal-grid { gap: 4px; padding: 0 0.6rem 0.6rem; }
 }
 .lux-cal-day:not(.is-past):not(.is-checkin):not(.is-checkout):hover {
   border-color: rgba(201,145,26,0.45);
@@ -922,14 +928,14 @@ body.is-reel-page {
 .lux-cal-day.is-past .lux-cal-daynum { color: #a39378; }
 
 .lux-cal-daynum {
-  font-size: 0.95rem; font-weight: 700; line-height: 1;
+  font-size: 0.86rem; font-weight: 700; line-height: 1;
 }
 .lux-cal-dayprice {
-  font-size: 0.62rem; font-weight: 800; line-height: 1; margin-top: 0.22rem;
+  font-size: 0.56rem; font-weight: 800; line-height: 1; margin-top: 0.16rem;
   letter-spacing: 0.01em;
 }
 .lux-cal-daylabel {
-  font-size: 0.55rem; font-weight: 800; line-height: 1; margin-top: 0.28rem;
+  font-size: 0.5rem; font-weight: 800; line-height: 1; margin-top: 0.18rem;
   letter-spacing: 0.08em; text-transform: uppercase;
 }
 .lux-cal-day.tier-green  .lux-cal-daylabel { color: #047857; }
