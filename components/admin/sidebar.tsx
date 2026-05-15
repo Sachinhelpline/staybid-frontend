@@ -68,7 +68,12 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
           transition: "width 0.25s ease, transform 0.25s ease",
           display: "flex",
           flexDirection: "column",
-          minHeight: "100vh",
+          // v126 — fixed-height (not minHeight) so the inner <nav> can
+          // properly own its overflow-y. With minHeight, content > viewport
+          // grew the aside beyond the screen and clipped sidebar entries
+          // below the fold instead of scrolling inside the sidebar.
+          height: "100vh",
+          maxHeight: "100vh",
           position: "fixed",
           top: 0,
           left: 0,
@@ -114,8 +119,14 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
           </button>
         </div>
 
-        {/* Nav items */}
-        <nav style={{ flex: 1, padding: "12px 0", overflow: "auto" }}>
+        {/* Nav items — v126: tightened row padding + visible gold scrollbar +
+            "scroll for more" hint so all 23 entries are discoverable on
+            shorter laptops without the user having to hunt for a hidden
+            scrollbar. */}
+        <nav
+          className="admin-sidebar-nav"
+          style={{ flex: 1, padding: "6px 0", overflowY: "auto", overflowX: "hidden", minHeight: 0 }}
+        >
           {NAV.map((item) => {
             const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
             return (
@@ -127,19 +138,20 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
-                  padding: effectiveCollapsed ? "12px 18px" : "12px 20px",
+                  gap: 11,
+                  padding: effectiveCollapsed ? "8px 18px" : "8px 20px",
                   color: active ? "#D4AF37" : "#8A8FA8",
                   background: active ? "rgba(212,175,55,0.1)" : "transparent",
                   borderLeft: active ? "2px solid #D4AF37" : "2px solid transparent",
                   textDecoration: "none",
-                  fontSize: 14,
+                  fontSize: 13,
+                  lineHeight: 1.25,
                   fontFamily: "DM Sans, sans-serif",
                   whiteSpace: "nowrap",
                   transition: "all 0.15s",
                 }}
               >
-                <span style={{ fontSize: 16, flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
                 {!effectiveCollapsed && <span>{item.label}</span>}
               </Link>
             );
@@ -149,16 +161,30 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
         {!effectiveCollapsed && (
           <div
             style={{
-              padding: "12px 20px",
+              padding: "10px 20px",
               borderTop: "1px solid rgba(255,255,255,0.07)",
               color: "#8A8FA8",
               fontSize: 11,
               fontFamily: "DM Sans, sans-serif",
+              flexShrink: 0,
             }}
           >
             StayBid Admin v1.0
           </div>
         )}
+
+        <style jsx>{`
+          .admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.45) transparent; }
+          .admin-sidebar-nav::-webkit-scrollbar { width: 6px; }
+          .admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+          .admin-sidebar-nav::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(212,175,55,0.55), rgba(212,175,55,0.25));
+            border-radius: 999px;
+          }
+          .admin-sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(212,175,55,0.85), rgba(212,175,55,0.45));
+          }
+        `}</style>
       </aside>
     </>
   );
