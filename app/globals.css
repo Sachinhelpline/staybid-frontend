@@ -1080,27 +1080,14 @@ body.is-reel-page {
    to the data it carries.
    ════════════════════════════════════════════════════════════════ */
 
-/* ─── Page shell with cinematic gradient backdrop ───────────────── */
+/* ─── Page shell — simplified for perf (v123.1) ─────────────────── */
 .hx-shell {
   background:
-    radial-gradient(1400px 700px at 8% -8%, rgba(201, 166, 107, 0.16), transparent 55%),
-    radial-gradient(1100px 600px at 100% 12%, rgba(212, 149, 131, 0.08), transparent 55%),
-    radial-gradient(900px 800px at 50% 110%, rgba(157, 173, 143, 0.07), transparent 60%),
+    radial-gradient(900px 520px at 10% -5%, rgba(201, 166, 107, 0.10), transparent 60%),
     var(--bg-page);
   min-height: 100dvh;
   position: relative;
 }
-.hx-shell::before {
-  content: "";
-  position: absolute; inset: 0;
-  background-image:
-    url("data:image/svg+xml,%3Csvg width='52' height='52' viewBox='0 0 52 52' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a66b' fill-opacity='0.03'%3E%3Cpath d='M26 0L52 26L26 52L0 26Z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  opacity: 0.55;
-  pointer-events: none;
-  z-index: 0;
-}
-.hx-shell > * { position: relative; z-index: 1; }
-[data-theme="dark"] .hx-shell::before { opacity: 0.25; }
 
 /* ─── Editorial mosaic gallery ──────────────────────────────────── */
 .hx-mosaic {
@@ -1158,12 +1145,11 @@ body.is-reel-page {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  transform: scale(1.01);
-  transition: transform 1.4s cubic-bezier(.22, 1, .36, 1), filter 0.5s ease;
+  transition: transform 0.55s ease-out, filter 0.3s ease;
 }
 .hx-mosaic-tile:hover .hx-mosaic-img {
-  transform: scale(1.08);
-  filter: brightness(1.04) saturate(1.08);
+  transform: scale(1.04);
+  filter: brightness(1.03) saturate(1.05);
 }
 .hx-mosaic-tile::after {
   content: "";
@@ -1517,13 +1503,16 @@ body.is-reel-page {
   border-radius: 24px;
   overflow: hidden;
   position: relative;
-  transition: transform 0.32s cubic-bezier(.22, 1, .36, 1), box-shadow 0.32s ease, border-color 0.32s ease;
+  transition: transform 0.28s ease-out, box-shadow 0.3s ease, border-color 0.3s ease;
   box-shadow: 0 10px 28px -16px rgba(31, 26, 15, 0.15);
+  contain: layout style paint;
 }
-.hx-room-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 22px 48px -18px rgba(201, 166, 107, 0.28);
-  border-color: rgba(201, 166, 107, 0.45);
+@media (hover: hover) {
+  .hx-room-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -18px rgba(201, 166, 107, 0.28);
+    border-color: rgba(201, 166, 107, 0.45);
+  }
 }
 .hx-room-card.is-flash {
   border-color: rgba(201, 166, 107, 0.55);
@@ -1557,12 +1546,13 @@ body.is-reel-page {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  transform: scale(1.02);
-  transition: transform 1.6s cubic-bezier(.22, 1, .36, 1), filter 0.4s ease;
+  transition: transform 0.6s ease-out, filter 0.3s ease;
 }
-.hx-room-card:hover .hx-room-media-img {
-  transform: scale(1.08);
-  filter: brightness(1.04) saturate(1.06);
+@media (hover: hover) {
+  .hx-room-card:hover .hx-room-media-img {
+    transform: scale(1.04);
+    filter: brightness(1.03);
+  }
 }
 .hx-room-media-grad {
   position: absolute; inset: 0;
@@ -1911,14 +1901,26 @@ body.is-reel-page {
   margin-top: 6px;
 }
 
-/* ─── Scroll-reveal ─────────────────────────────────────────────── */
+/* ─── Reveal (v123.1) — CSS-only auto-play, no JS dependency ────
+   Default state: VISIBLE. Animation plays from invisible -> visible
+   on mount via animation-fill-mode: backwards. This way:
+   - SSR / no-JS users see content immediately
+   - If IntersectionObserver fails, content stays visible
+   - No GPU-pressuring will-change permanently active
+   - No flash-of-invisible-content possible */
 .hx-reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.7s cubic-bezier(.22, 1, .36, 1), transform 0.7s cubic-bezier(.22, 1, .36, 1);
-  will-change: opacity, transform;
+  animation: hx-reveal-in 0.55s cubic-bezier(.22, 1, .36, 1) backwards;
 }
-.hx-reveal.is-revealed { opacity: 1; transform: translateY(0); }
+@keyframes hx-reveal-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Stagger gentle nth-of-type delays so blocks ease in sequentially */
+.hx-reveal:nth-of-type(2) { animation-delay: 0.05s; }
+.hx-reveal:nth-of-type(3) { animation-delay: 0.10s; }
+.hx-reveal:nth-of-type(4) { animation-delay: 0.15s; }
+.hx-reveal:nth-of-type(n+5) { animation-delay: 0.20s; }
+
 @media (prefers-reduced-motion: reduce) {
   .hx-reveal,
   .hx-room-card,
@@ -2057,4 +2059,60 @@ body.is-reel-page {
     grid-template-columns: minmax(0, 1fr) 320px;
     gap: 36px;
   }
+}
+
+/* ─── v123.1 — Mobile sticky Check Availability pill ─────────────
+   Floats just above the BottomDock when sticky rail is hidden.
+   Same handler as desktop rail's "Check availability →" CTA — only
+   scrolls to the existing #availability-picker. No new logic, no
+   CTA rule change. */
+.hx-mobile-cta-wrap {
+  position: fixed;
+  left: 14px; right: 14px;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  z-index: 35;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+}
+@media (min-width: 1100px) {
+  .hx-mobile-cta-wrap { display: none; }
+}
+.hx-mobile-cta-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, var(--cozy-champagne-light) 0%, var(--cozy-champagne) 50%, #b18943 100%);
+  color: #2b1d05;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow: 0 14px 32px -10px rgba(201, 166, 107, 0.55), 0 4px 12px rgba(31, 26, 15, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
+  animation: hx-mobile-cta-in 0.5s cubic-bezier(.22, 1, .36, 1) 0.5s backwards;
+}
+@keyframes hx-mobile-cta-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hx-mobile-cta-pill:active {
+  transform: translateY(1px);
+  box-shadow: 0 8px 20px -8px rgba(201, 166, 107, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.hx-mobile-cta-pill .pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #2b1d05;
+  display: inline-block;
+  animation: hx-pulse-soft 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-mobile-cta-pill,
+  .hx-mobile-cta-pill .pulse { animation: none !important; }
 }

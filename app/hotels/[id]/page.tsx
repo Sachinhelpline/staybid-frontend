@@ -402,33 +402,11 @@ export default function HotelDetail() {
     return () => clearInterval(timer);
   }, [hotel, selectedCheckIn]);
 
-  // ── v123 — Scroll-reveal observer (fades + lifts .hx-reveal elements
-  // when they enter the viewport). Single observer reused across the
-  // page. Respects prefers-reduced-motion via CSS.
-  useEffect(() => {
-    if (typeof window === "undefined" || !hotel) return;
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      document.querySelectorAll<HTMLElement>(".hx-reveal").forEach((el) => el.classList.add("is-revealed"));
-      return;
-    }
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            e.target.classList.add("is-revealed");
-            obs.unobserve(e.target);
-          }
-        }
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -8% 0px" }
-    );
-    // Re-collect on next tick so newly-mounted elements (rooms list etc.) are seen.
-    const t = setTimeout(() => {
-      document.querySelectorAll<HTMLElement>(".hx-reveal:not(.is-revealed)").forEach((el) => obs.observe(el));
-    }, 50);
-    return () => { clearTimeout(t); obs.disconnect(); };
-  }, [hotel, tab]);
+  // ── v123.1 — Scroll-reveal moved to pure CSS (animation auto-plays
+  // on mount via .hx-reveal). No JS observer needed — content is
+  // visible by default and just animates in. Removes GPU pressure from
+  // 13+ will-change layers + eliminates the flash-of-invisible-content
+  // bug that v123 had when the IntersectionObserver didn't fire.
 
   // ── Flash deal calculations ────────────────────────
   const flashRoom      = hotel?.rooms?.find((r: any) => r.id === dealRoomId);
@@ -3166,6 +3144,42 @@ export default function HotelDetail() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── v123.1 — Mobile-only sticky Check Availability pill.
+          Hidden when sticky desktop rail is shown (≥1100px), hidden
+          while the calendar / booking modals are open. Uses the SAME
+          existing flow as the desktop rail's button — scrolls to the
+          existing #availability-picker, OR if dates already set, opens
+          BookNow on the cheapest room (matches openBookNow handler).
+          NO CTA RULE CHANGE — purely a discoverability surface. */}
+      {hotel && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && (
+        <div className="hx-mobile-cta-wrap" aria-hidden={false}>
+          <button
+            type="button"
+            className="hx-mobile-cta-pill"
+            onClick={() => {
+              if (datesSelected && hotel.rooms?.length) {
+                // Dates already picked — go straight to Book Now on cheapest room
+                const cheapest = hotel.rooms.reduce((acc: any, r: any) =>
+                  (!acc || (r.floorPrice || 99999) < (acc.floorPrice || 99999)) ? r : acc, null);
+                if (cheapest) {
+                  withBackendAuth(() => openBookNow(cheapest));
+                  return;
+                }
+              }
+              // Otherwise just scroll to the availability picker
+              const el = document.getElementById("availability-picker");
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            aria-label={datesSelected ? "Book Now" : "Check availability"}
+          >
+            <span className="pulse" />
+            {datesSelected
+              ? `Book Now · ₹${(lowestForRibbon || 0).toLocaleString()}/night`
+              : "Check availability →"}
+          </button>
         </div>
       )}
 
