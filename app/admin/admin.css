@@ -437,3 +437,298 @@ header[style*="position: fixed"][style*="height: 64px"] input {
 }
 
 /* End v122.7 admin density */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v126 — Premium tight density pass (every box smaller, native-feeling)
+   ═══════════════════════════════════════════════════════════════════════════
+   User reported the admin still felt "too big" after v122.7. This pass
+   tightens every recurring visual unit by ~15-25%:
+   - KPI card padding 14-16 → 10-12
+   - KPI value fonts 22-26 → 17-20
+   - Card border-radius 12-14 → 9-10
+   - Chart heights 220-280 → 180-220
+   - Section vertical rhythm marginBottom 16-24 → 10-14
+   - Topbar height 64 → 48
+   - All buttons px padding tightened
+   - Image / avatar / thumbnail sizing capped
+   - Modal / drawer / sidebar font sizes one notch smaller
+   - Works at every viewport: mobile (<480), phone (480-767), tablet
+     (768-1023), desktop (1024-1439), wide (1440+), 4K (1920+).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Topbar shrink (was 52 in v122.7 → 48 now) ────────────────────────── */
+header[style*="position: fixed"][style*="height: 64px"],
+header[style*="height: 52px"] {
+  height: 48px !important;
+}
+header[style*="position: fixed"] input,
+header[style*="height: 48px"] input {
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  height: 30px !important;
+}
+
+/* ── Admin page padding tighter on desktop ────────────────────────────── */
+@media (min-width: 1024px) {
+  main {
+    padding-top: 60px !important;
+    padding-bottom: 28px !important;
+  }
+  main > div,
+  main > section {
+    padding-top: 0 !important;
+  }
+}
+
+/* ── Headings one more step down on desktop ─────────────────────────── */
+@media (min-width: 1024px) {
+  .admin-h1, h1[class*="h1Style"] {
+    font-size: 21px !important;
+    line-height: 1.25 !important;
+    margin-bottom: 12px !important;
+  }
+  h2 {
+    font-size: 15px !important;
+  }
+}
+
+/* ── KPI cards: tighter pad + smaller value font (every viewport) ─── */
+.admin-kpi-grid > * {
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+}
+@media (min-width: 1024px) {
+  .admin-kpi-grid > * {
+    padding: 11px 13px !important;
+    border-radius: 10px !important;
+  }
+}
+.admin-kpi-grid p:first-child {
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+}
+.admin-kpi-grid p:last-child,
+.admin-kpi-grid p[style*="fontFamily: Syne"] {
+  font-size: 18px !important;
+  line-height: 1.1 !important;
+  margin-top: 3px !important;
+}
+@media (min-width: 1280px) {
+  .admin-kpi-grid p:last-child {
+    font-size: 20px !important;
+  }
+}
+
+/* ── Cards (all admin-card variants) — tighter ────────────────────── */
+.admin-card,
+main aside[style*="background: #0F1117"],
+main div[style*="background: #0F1117"][style*="border-radius"],
+main div[style*="background: #151820"][style*="border-radius"] {
+  padding: 11px 13px !important;
+  border-radius: 10px !important;
+}
+@media (min-width: 1024px) {
+  .admin-card { padding: 12px 14px !important; border-radius: 10px !important; }
+}
+
+/* ── Inline pixel font sizes — one more step compression ──────────── */
+main [style*="fontSize: 32px"],
+main [style*="fontSize:32px"]  { font-size: 20px !important; }
+main [style*="fontSize: 28px"],
+main [style*="fontSize:28px"]  { font-size: 18px !important; }
+main [style*="fontSize: 24px"],
+main [style*="fontSize:24px"]  { font-size: 16px !important; }
+main [style*="fontSize: 22px"],
+main [style*="fontSize:22px"]  { font-size: 15px !important; }
+main [style*="fontSize: 20px"],
+main [style*="fontSize:20px"]  { font-size: 14px !important; }
+main [style*="fontSize: 18px"],
+main [style*="fontSize:18px"]  { font-size: 13.5px !important; }
+main [style*="fontSize: 16px"],
+main [style*="fontSize:16px"]  { font-size: 13px !important; }
+main [style*="fontSize: 15px"],
+main [style*="fontSize:15px"]  { font-size: 12.5px !important; }
+main [style*="fontSize: 14px"],
+main [style*="fontSize:14px"]  { font-size: 12px !important; }
+main [style*="fontSize: 13px"],
+main [style*="fontSize:13px"]  { font-size: 11.5px !important; }
+main [style*="fontSize: 12px"],
+main [style*="fontSize:12px"]  { font-size: 11px !important; }
+main [style*="fontSize: 11px"],
+main [style*="fontSize:11px"]  { font-size: 10.5px !important; }
+main [style*="fontSize: 10px"],
+main [style*="fontSize:10px"]  { font-size: 9.5px !important; }
+
+/* ── Tables: tighter th/td + smaller font ───────────────────────── */
+.admin-data-table-wrap th,
+.admin-data-table-wrap td,
+main table th,
+main table td {
+  padding: 5px 8px !important;
+  font-size: 11.5px !important;
+  line-height: 1.3 !important;
+}
+@media (min-width: 1024px) {
+  .admin-data-table-wrap th,
+  .admin-data-table-wrap td,
+  main table th,
+  main table td {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+}
+main table th {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Image thumbnails inside admin tables / cards ──────────────── */
+main table img,
+main td img,
+.admin-card img:not([class*="logo"]) {
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 6px !important;
+  object-fit: cover;
+}
+main table div[style*="border-radius"][style*="background"][style*="display"][style*="flex"][style*="alignItems: center"][style*="justifyContent: center"] {
+  width: 36px !important;
+  height: 36px !important;
+}
+
+/* ── Buttons across admin — tighter ────────────────────────────── */
+main button:not([style*="position: fixed"]):not([aria-label*="lose"]) {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  border-radius: 7px !important;
+}
+main button[style*="padding: 9px"],
+main button[style*="padding: 10px"] {
+  padding: 6px 12px !important;
+}
+main button[style*="padding: 12px"] {
+  padding: 8px 14px !important;
+}
+
+/* ── Inputs / selects in admin pages ──────────────────────────── */
+main input:not([type="checkbox"]):not([type="radio"]),
+main select,
+main textarea {
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  border-radius: 7px !important;
+}
+
+/* ── Section vertical rhythm — tighter marginBottom ─────────── */
+main div[style*="marginBottom: 24px"],
+main div[style*="marginBottom:24px"]  { margin-bottom: 14px !important; }
+main div[style*="marginBottom: 20px"],
+main div[style*="marginBottom:20px"]  { margin-bottom: 12px !important; }
+main div[style*="marginBottom: 16px"],
+main div[style*="marginBottom:16px"]  { margin-bottom: 10px !important; }
+main div[style*="marginBottom: 14px"],
+main div[style*="marginBottom:14px"]  { margin-bottom: 9px !important; }
+main div[style*="marginBottom: 12px"],
+main div[style*="marginBottom:12px"]  { margin-bottom: 8px !important; }
+main div[style*="marginTop: 24px"],
+main div[style*="marginTop:24px"]     { margin-top: 14px !important; }
+main div[style*="marginTop: 20px"],
+main div[style*="marginTop:20px"]     { margin-top: 12px !important; }
+
+/* ── Chart heights ─────────────────────────────────────────── */
+.admin-chart-row .recharts-responsive-container,
+main .recharts-responsive-container {
+  min-height: 180px !important;
+  max-height: 240px;
+}
+@media (min-width: 1440px) {
+  .admin-chart-row .recharts-responsive-container,
+  main .recharts-responsive-container {
+    min-height: 220px !important;
+    max-height: 280px;
+  }
+}
+
+/* ── Modal / drawer chrome ──────────────────────────────────── */
+.admin-modal,
+.admin-drawer {
+  font-size: 12.5px !important;
+}
+.admin-modal h2,
+.admin-drawer h2 {
+  font-size: 15px !important;
+  margin-bottom: 10px !important;
+}
+.admin-modal input,
+.admin-modal select,
+.admin-modal textarea,
+.admin-drawer input,
+.admin-drawer select,
+.admin-drawer textarea {
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+}
+
+/* ── Status pills / chips inside admin ──────────────────────── */
+main span[style*="border-radius: 999"],
+main span[style*="borderRadius: 999"],
+main span[style*="borderRadius:999"] {
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  letter-spacing: 0.08em;
+}
+
+/* ── Tablet (768-1023) refinement on top of v126 ───────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+    gap: 9px !important;
+  }
+  .admin-kpi-grid > * { padding: 9px 11px !important; }
+  .admin-card { padding: 11px 12px !important; }
+  .admin-h1, h1[class*="h1Style"] { font-size: 19px !important; }
+}
+
+/* ── Mobile (≤ 767) tightest density ─────────────────────────── */
+@media (max-width: 767px) {
+  main { padding: 64px 10px 80px !important; }
+  .admin-h1, h1[class*="h1Style"] { font-size: 18px !important; margin-bottom: 10px !important; }
+  .admin-kpi-grid { gap: 8px !important; }
+  .admin-kpi-grid > * { padding: 9px 11px !important; }
+  .admin-kpi-grid p:last-child { font-size: 16px !important; }
+  .admin-card { padding: 10px 12px !important; border-radius: 9px !important; }
+  .admin-data-table-wrap th,
+  .admin-data-table-wrap td,
+  main table th,
+  main table td {
+    padding: 5px 7px !important;
+    font-size: 11px !important;
+  }
+  main button:not([style*="position: fixed"]) {
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+  main input:not([type="checkbox"]):not([type="radio"]),
+  main select,
+  main textarea {
+    padding: 5px 9px !important;
+    font-size: 11.5px !important;
+  }
+  main table img,
+  main td img,
+  .admin-card img:not([class*="logo"]) {
+    max-width: 30px !important;
+    max-height: 30px !important;
+  }
+}
+
+/* ── Mini phone (≤ 380) — last squeeze ─────────────────────── */
+@media (max-width: 380px) {
+  main { padding: 60px 8px 80px !important; }
+  .admin-h1, h1[class*="h1Style"] { font-size: 16px !important; }
+  .admin-kpi-grid p:last-child { font-size: 15px !important; }
+  .admin-card { padding: 9px 11px !important; }
+}
+
+/* End v126 admin density */
