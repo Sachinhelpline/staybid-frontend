@@ -534,10 +534,10 @@
     padding-left: 24px !important;
     padding-right: 24px !important;
   }
-  /* Slightly bigger heros than phones, slightly smaller than desktop. */
+  /* v122.6 — tablet hero tighter so cards above the fold double. */
   .lux-bg h1.font-display,
   .fd-root h1 {
-    font-size: clamp(1.8rem, 3.6vw, 2.4rem) !important;
+    font-size: clamp(1.05rem, 2.2vw, 1.5rem) !important;
   }
 }
 
@@ -647,15 +647,14 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   /* Body type slightly tighter line-height for denser blocks of text. */
   body { line-height: 1.5; }
 
-  /* Cap oversized luxury hero typography on desktop. Pages use
-     `font-display` for hero headings; that was clamping up to 3.4rem on
-     wide screens. Bring it down to 2.4rem so a typical 1440x900 viewport
-     can see hero + first content row above the fold. */
+  /* v122.6 — hero typography even tighter so cards above the fold
+     double on every laptop+ viewport. Specificity high enough to beat
+     section 5's same-selector @media rule below. */
   .lux-bg h1.font-display,
   .fd-root h1,
   .me-root h1 {
-    font-size: clamp(1.7rem, 2.2vw, 2.4rem) !important;
-    line-height: 1.1 !important;
+    font-size: clamp(1.15rem, 1.8vw, 1.75rem) !important;
+    line-height: 1.15 !important;
   }
 
   /* Customer page hero sub-text + section paragraphs slightly tighter. */
@@ -726,4 +725,194 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
      content — just keep typography at the same scale. */
 }
 
-/* End v122 desktop layer (v122.5 — density pass) */
+/* ─────────────────────────────────────────────────────────────────────────
+   19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
+   ─────────────────────────────────────────────────────────────────────────
+   v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.
+   /hotels/[id], /complaints, /upgrade, /verification, /tag/[name],
+   /saved, /points, /wallet, /me/posts, /saved/posts and several others
+   use `min-h-screen bg-luxury-50` or similar — they NEVER had .lux-bg
+   so the v122.5 rules silently no-op'd on them.
+
+   v122.6 scopes density rules to `body` instead. Tailwind utility
+   classes only appear where the customer-side code uses them; admin
+   inline-styled cards are unaffected. Tap targets stay >=40px.
+
+   This block has NO @media gate — applies at every viewport, every
+   customer surface, every page. ~2x info density target.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Card / container padding: cut large utilities ~50% everywhere ── */
+body .p-10 { padding: 0.95rem !important; }
+body .p-8  { padding: 0.85rem !important; }
+body .p-7  { padding: 0.75rem !important; }
+body .p-6  { padding: 0.7rem !important; }
+body .p-5  { padding: 0.6rem !important; }
+body .py-12 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+body .py-10 { padding-top: 0.85rem !important; padding-bottom: 0.85rem !important; }
+body .py-8  { padding-top: 0.7rem !important; padding-bottom: 0.7rem !important; }
+body .py-6  { padding-top: 0.55rem !important; padding-bottom: 0.55rem !important; }
+body .px-8  { padding-left: 0.85rem !important; padding-right: 0.85rem !important; }
+body .px-6  { padding-left: 0.7rem !important; padding-right: 0.7rem !important; }
+body .px-5  { padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
+
+/* ── Margin / vertical rhythm: tighter stacks ──────────────────────── */
+body .mb-10 { margin-bottom: 0.7rem !important; }
+body .mb-8  { margin-bottom: 0.6rem !important; }
+body .mb-6  { margin-bottom: 0.45rem !important; }
+body .mb-5  { margin-bottom: 0.4rem !important; }
+body .mb-4  { margin-bottom: 0.35rem !important; }
+body .mt-10 { margin-top: 0.7rem !important; }
+body .mt-8  { margin-top: 0.6rem !important; }
+body .mt-6  { margin-top: 0.45rem !important; }
+body .mt-5  { margin-top: 0.4rem !important; }
+
+/* space-y — used in form column stacks */
+body .space-y-10 > * + * { margin-top: 0.7rem !important; }
+body .space-y-8  > * + * { margin-top: 0.6rem !important; }
+body .space-y-6  > * + * { margin-top: 0.45rem !important; }
+body .space-y-5  > * + * { margin-top: 0.4rem !important; }
+body .space-y-4  > * + * { margin-top: 0.35rem !important; }
+body .space-y-3  > * + * { margin-top: 0.25rem !important; }
+
+/* Grid + flex gaps */
+body .gap-8 { gap: 0.6rem !important; }
+body .gap-6 { gap: 0.5rem !important; }
+body .gap-5 { gap: 0.45rem !important; }
+body .gap-4 { gap: 0.4rem !important; }
+body .gap-3 { gap: 0.3rem !important; }
+
+/* ── Hero image heights — every customer route. (Admin/partner inline
+       cards are unaffected because they don't use .h-* utilities.) ── */
+main .h-96 { height: 11rem !important; }
+main .h-80 { height: 9.5rem !important; }
+main .h-72 { height: 8.5rem !important; }
+main .h-64 { height: 7.5rem !important; }
+main .h-56 { height: 6.5rem !important; }
+main .h-52 { height: 6rem !important; }
+@media (min-width: 768px) {
+  main .md\:h-96 { height: 13rem !important; }
+  main .md\:h-80 { height: 11rem !important; }
+  main .md\:h-72 { height: 9.5rem !important; }
+  main .md\:h-64 { height: 8.5rem !important; }
+  main .md\:h-56 { height: 7.5rem !important; }
+}
+@media (min-width: 1024px) {
+  main .lg\:h-96 { height: 15rem !important; }
+  main .lg\:h-80 { height: 13rem !important; }
+  main .lg\:h-72 { height: 11rem !important; }
+  main .lg\:h-64 { height: 9.5rem !important; }
+}
+
+/* ── Border radii — reduce visual bulk on every customer surface ──── */
+body main .rounded-3xl { border-radius: 13px !important; }
+body main .rounded-2xl { border-radius: 10px !important; }
+body main .rounded-xl  { border-radius: 8px !important; }
+
+/* ── Hero typography clamped at every viewport ────────────────────── */
+body main h1.font-display,
+body main .fd-root h1,
+body main .me-root h1 {
+  font-size: clamp(1.1rem, 2.8vw, 1.75rem) !important;
+  line-height: 1.15 !important;
+  margin-bottom: 0.2rem !important;
+}
+body main .text-4xl, body main .sm\:text-4xl { font-size: 1.5rem !important; line-height: 1.15 !important; }
+body main .text-3xl { font-size: 1.25rem !important; line-height: 1.2 !important; }
+body main .text-2xl { font-size: 1.1rem !important; line-height: 1.2 !important; }
+body main .text-xl  { font-size: 0.98rem !important; line-height: 1.25 !important; }
+body main .text-lg  { font-size: 0.9rem !important; line-height: 1.3 !important; }
+body main .text-base { font-size: 0.85rem !important; }
+
+/* ── Buttons — tighter padding, keep tap targets ≥40px on mobile ─── */
+body main .lux-btn,
+body main button.lux-btn {
+  padding: 0.5rem 0.95rem !important;
+  font-size: 0.82rem !important;
+}
+body main .py-3\.5 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+body main .py-3    { padding-top: 0.45rem !important; padding-bottom: 0.45rem !important; }
+body main .py-2\.5 { padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; }
+
+/* Inputs — keep min-height 40px (touch-friendly), shrink visible padding. */
+body main .input-luxury,
+body main input.input-luxury,
+body main textarea.input-luxury {
+  padding: 0.5rem 0.8rem !important;
+  font-size: 0.85rem !important;
+  min-height: 40px;
+}
+
+/* ── /me profile chrome on mobile too (was only adjusted on desktop) ─ */
+.me-root .me-header { padding: 12px 14px 4px !important; gap: 14px !important; }
+.me-root .me-avatar-wrap, .me-root .me-avatar-btn {
+  width: 64px !important; height: 64px !important;
+}
+.me-root .me-avatar-fallback { font-size: 1.6rem !important; }
+.me-root .me-avatar-cam { width: 22px !important; height: 22px !important; font-size: 0.7rem !important; }
+.me-root .me-stat-value { font-size: 0.92rem !important; }
+.me-root .me-stat-label { font-size: 0.6rem !important; }
+.me-root .me-bio-wrap { padding: 2px 14px 6px !important; }
+.me-root .me-display-name { font-size: 0.82rem !important; }
+.me-root .me-bio { font-size: 0.74rem !important; line-height: 1.3 !important; margin: 0 0 2px !important; }
+.me-root .me-meta, .me-root .me-website { font-size: 0.68rem !important; }
+.me-root .me-actions { padding: 4px 12px 10px !important; gap: 5px !important; }
+.me-root .me-action-btn { padding: 6px 10px !important; font-size: 0.74rem !important; }
+.me-root .me-highlights { padding: 4px 12px 10px !important; gap: 10px !important; }
+.me-root .me-highlight { width: 56px !important; }
+.me-root .me-highlight-ring { width: 50px !important; height: 50px !important; font-size: 1.15rem !important; }
+.me-root .me-highlight-label { font-size: 0.6rem !important; max-width: 56px !important; }
+.me-root .me-tab { padding: 8px 0 !important; font-size: 1rem !important; }
+
+/* Desktop /me gets the v122.1 generous sizing back via the existing
+   §7 @media (min-width:1024) block — those rules sit after these and
+   their !important wins over these where they overlap. */
+
+/* ── Calendar popup — fit any 600px+ viewport without inner scroll. ─
+   Day cells were 72-79px tall on 768+ because of the existing
+   aspect-ratio 1:1.10 (height grows with width). v122.6 caps height
+   explicitly so the 6-week grid always fits the remaining 400-470px
+   below the header/check-in/footer. */
+.lux-cal-day {
+  min-height: 36px !important;
+  max-height: 48px !important;
+  aspect-ratio: auto !important;
+  padding: 0.08rem 0.05rem !important;
+}
+.lux-cal-grid { gap: 2px !important; padding: 0 0.4rem 0.4rem !important; }
+.lux-cal-daynum { font-size: 0.78rem !important; }
+.lux-cal-dayprice { font-size: 0.5rem !important; margin-top: 0.06rem !important; }
+.lux-cal-daylabel { font-size: 0.46rem !important; margin-top: 0.06rem !important; }
+@media (min-width: 640px) {
+  .lux-cal-day { min-height: 42px !important; max-height: 54px !important; }
+  .lux-cal-grid { gap: 3px !important; padding: 0 0.55rem 0.55rem !important; }
+}
+/* Calendar header / chrome tightening to free up vertical space for days */
+.lux-cal-sheet { max-height: 96vh !important; }
+.lux-cal-sheet > * { flex-shrink: 0; }
+.lux-cal-sheet .lux-cal-grid { flex-shrink: 1; }
+
+/* ── Reduce the customer-facing main padding-top on listing-style
+       routes so the first row sits closer to the navbar. ──────────── */
+.lux-bg > .max-w-7xl,
+.fd-root > .fd-wrap {
+  padding-top: 0.6rem !important;
+}
+
+/* Mobile-specific tighter rules (compounding on top of the all-viewport
+   rules above). */
+@media (max-width: 767px) {
+  .lux-bg h1.font-display,
+  .fd-root h1 {
+    font-size: clamp(1.05rem, 4vw, 1.4rem) !important;
+  }
+  /* On phones, the customer hero / brand label / eyebrow text should
+     be tighter so the first card peeks at the bottom of the viewport. */
+  .lux-bg .text-3xl, .fd-root .text-3xl { font-size: 1.15rem !important; }
+  .lux-bg .text-2xl, .fd-root .text-2xl { font-size: 1.05rem !important; }
+  /* Page-level top breathing room reduced on mobile too. */
+  .lux-bg > .max-w-7xl,
+  .fd-root > .fd-wrap { padding-top: 0.4rem !important; }
+}
+
+/* End v122 desktop layer (v122.6 — all-viewport density pass) */
