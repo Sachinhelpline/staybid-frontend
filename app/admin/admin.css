@@ -334,3 +334,106 @@
 }
 
 /* End v122.1 operator polish */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v122.7 — Admin panel density pass (mobile + tablet + desktop)
+   ═══════════════════════════════════════════════════════════════════════════
+   Admin pages use inline styles instead of Tailwind utilities, so the
+   global density rules in desktop.css §19 don't reach them. This block
+   targets the recurring admin chrome via attribute selectors and the
+   conventional .admin-* class names from layout/sidebar/topbar/cards.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cards: pad/radius tighter at every viewport ──────────────────── */
+.admin-card,
+main aside[style*="background: #0F1117"],
+main div[style*="background: #0F1117"][style*="border-radius"],
+main div[style*="background: #151820"][style*="border-radius"] {
+  padding: 12px 14px !important;
+}
+@media (min-width: 1024px) {
+  .admin-card { padding: 14px 16px !important; }
+}
+
+/* ── Typography in admin pages: shrink the common inline pixel sizes
+       used inside admin pages. Admin code uses `fontSize: 20-32px` inline
+       on headings, 13-15px on body text. Target both. ───────────────── */
+main [style*="fontSize: 32px"],
+main [style*="fontSize:32px"],
+main [style*="font-size: 32px"] { font-size: 22px !important; }
+
+main [style*="fontSize: 28px"],
+main [style*="fontSize:28px"] { font-size: 19px !important; }
+
+main [style*="fontSize: 24px"],
+main [style*="fontSize:24px"] { font-size: 17px !important; }
+
+main [style*="fontSize: 22px"],
+main [style*="fontSize:22px"] { font-size: 16px !important; }
+
+main [style*="fontSize: 20px"],
+main [style*="fontSize:20px"] { font-size: 15px !important; }
+
+main [style*="fontSize: 18px"],
+main [style*="fontSize:18px"] { font-size: 14px !important; }
+
+main [style*="fontSize: 16px"],
+main [style*="fontSize:16px"] { font-size: 13.5px !important; }
+
+main [style*="fontSize: 15px"],
+main [style*="fontSize:15px"] { font-size: 13px !important; }
+
+main [style*="fontSize: 14px"],
+main [style*="fontSize:14px"] { font-size: 12.5px !important; }
+
+main [style*="fontSize: 13px"],
+main [style*="fontSize:13px"] { font-size: 12px !important; }
+
+/* ── Admin KPI grid spacing on every viewport ───────────────────── */
+.admin-kpi-grid {
+  gap: 8px !important;
+}
+.admin-kpi-grid > * {
+  padding: 10px 12px !important;
+}
+@media (min-width: 1024px) {
+  .admin-kpi-grid { gap: 12px !important; }
+  .admin-kpi-grid > * { padding: 14px 16px !important; }
+}
+
+/* ── Admin tables: tighter ─────────────────────────────────────── */
+.admin-data-table-wrap th,
+.admin-data-table-wrap td {
+  padding: 6px 8px !important;
+  font-size: 12.5px !important;
+}
+@media (min-width: 1024px) {
+  .admin-data-table-wrap th,
+  .admin-data-table-wrap td {
+    padding: 8px 10px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* ── Admin sidebar item padding (~25% tighter) ─────────────────── */
+aside[style*="background: #0F1117"] a {
+  padding: 9px 16px !important;
+  font-size: 13px !important;
+}
+@media (min-width: 1024px) {
+  aside[style*="background: #0F1117"] a {
+    padding: 10px 18px !important;
+    font-size: 13.5px !important;
+  }
+}
+
+/* ── Admin topbar (the header at top:0) ───────────────────────── */
+header[style*="position: fixed"][style*="height: 64px"] {
+  height: 52px !important;
+}
+header[style*="position: fixed"][style*="height: 64px"] input {
+  padding: 5px 10px !important;
+  font-size: 12.5px !important;
+}
+
+/* End v122.7 admin density */

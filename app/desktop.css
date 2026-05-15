@@ -782,27 +782,34 @@ body .gap-5 { gap: 0.45rem !important; }
 body .gap-4 { gap: 0.4rem !important; }
 body .gap-3 { gap: 0.3rem !important; }
 
-/* ── Hero image heights — every customer route. (Admin/partner inline
-       cards are unaffected because they don't use .h-* utilities.) ── */
-main .h-96 { height: 11rem !important; }
-main .h-80 { height: 9.5rem !important; }
-main .h-72 { height: 8.5rem !important; }
-main .h-64 { height: 7.5rem !important; }
-main .h-56 { height: 6.5rem !important; }
-main .h-52 { height: 6rem !important; }
-@media (min-width: 768px) {
-  main .md\:h-96 { height: 13rem !important; }
-  main .md\:h-80 { height: 11rem !important; }
-  main .md\:h-72 { height: 9.5rem !important; }
-  main .md\:h-64 { height: 8.5rem !important; }
-  main .md\:h-56 { height: 7.5rem !important; }
+/* ── Hero / banner-only image heights — ONLY the obvious "wide
+       banner" containers. v122.7 NOTE: previous version (v122.6) overrode
+       every .h-* including gallery THUMBNAILS, which distorted small
+       photos because width stayed the same while height halved. Now we
+       only target the explicit hero containers, NOT generic h-* on
+       small image cards. Other heights left alone so photos preserve
+       their natural aspect ratio. ───────────────────────────────────── */
+main .shadow-luxury-lg.h-72,
+main .shadow-luxury-lg.h-96,
+main .shadow-luxury-lg.h-56,
+main .shadow-luxury-lg.h-64,
+main .shadow-luxury-lg.md\:h-96,
+main .shadow-luxury-lg.lg\:h-72 {
+  /* Marker class .shadow-luxury-lg only appears on full-bleed hero
+     banners on customer pages. Cap at 10-13rem on desktop. */
+  max-height: 13rem;
 }
-@media (min-width: 1024px) {
-  main .lg\:h-96 { height: 15rem !important; }
-  main .lg\:h-80 { height: 13rem !important; }
-  main .lg\:h-72 { height: 11rem !important; }
-  main .lg\:h-64 { height: 9.5rem !important; }
+@media (max-width: 767px) {
+  main .shadow-luxury-lg.h-72,
+  main .shadow-luxury-lg.h-56 {
+    max-height: 9rem;
+  }
 }
+
+/* (v122.7: aspect-ratio rule removed — it was matching .h-52/.h-56
+   thumbnails inside grid items and forcing 4:3 against the FULL width
+   of the parent container, blowing them up to ~900px tall. Photos now
+   keep their natural Tailwind heights and width:object-cover fill.) */
 
 /* ── Border radii — reduce visual bulk on every customer surface ──── */
 body main .rounded-3xl { border-radius: 13px !important; }
