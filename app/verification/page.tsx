@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
+import StayFeedbackCard, { isPostCheckout } from "@/components/StayFeedbackCard";
 
 type Booking = {
   id: string; bidId?: string; hotelId: string; hotelName?: string;
@@ -223,6 +224,18 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
 
       {r && (r.status === "uploaded" || r.status === "verified") && hotelVideo && (
         <VideoPanel video={hotelVideo} report={report} bookingId={booking.id} hotelId={booking.hotelId} requestId={r.id} />
+      )}
+
+      {/* v127 — Post-checkout smiley feedback. Renders for every booking
+          where status === "CHECKED_OUT" OR the checkOut date is in the
+          past. Shows alongside (not in place of) the verification block. */}
+      {isPostCheckout({ status: booking.status, checkOut: booking.checkOut }) && (
+        <StayFeedbackCard
+          bidId={booking.bidId || booking.id}
+          hotelName={booking.hotelName || "this stay"}
+          hotelId={booking.hotelId}
+          verificationRequestId={r?.id}
+        />
       )}
 
       {err && <div className="mt-3 text-sm text-red-700">{err}</div>}

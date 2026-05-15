@@ -24,8 +24,12 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 function RecordInner() {
   const router = useRouter();
   const sp = useSearchParams();
-  const type = (sp.get("type") || "hotel") as "hotel" | "customer";
+  const type = (sp.get("type") || "hotel") as "hotel" | "customer" | "stay_feedback";
   const requestId = sp.get("requestId") || "";
+  // v127 — stay_feedback flow: bidId/hotelId travel via query string,
+  // smiley scores were stashed in localStorage by StayFeedbackCard.
+  const bidIdParam = sp.get("bidId") || "";
+  const hotelIdParam = sp.get("hotelId") || "";
 
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [code, setCode] = useState<string>("");
@@ -50,6 +54,33 @@ function RecordInner() {
 
   // Load cfg + code
   useEffect(() => {
+    // v127 — stay_feedback flow has no verification request to seed from.
+    // Build a lightweight 3-step config inline so the recorder still works.
+    if (type === "stay_feedback" && !requestId) {
+      setCfg({
+        tier: "silver",
+        durationSecs: 60,
+        slaHours: 0,
+        steps: [
+          { id: "issue_overview",  title: "What happened?",
+            title_hi: "क्या हुआ?",
+            prompt: "Briefly describe what didn't match expectations.",
+            prompt_hi: "जो उम्मीद थी और जो मिला, उसका फर्क बताएं।",
+            minSecs: 15, required: true, ai_checks: [], min_pass_score: 0 },
+          { id: "evidence_close",  title: "Show the issue (close-up)",
+            title_hi: "करीब से दिखाएं",
+            prompt: "Pan slowly across the area / item you flagged.",
+            prompt_hi: "धीरे-धीरे पैन करें।",
+            minSecs: 20, required: true, ai_checks: [], min_pass_score: 0 },
+          { id: "room_context",    title: "Room context (optional)",
+            title_hi: "कमरे का संदर्भ",
+            prompt: "Show the surrounding area so the admin sees context.",
+            prompt_hi: "आसपास का इलाका दिखाएं।",
+            minSecs: 15, required: false, optional: true, ai_checks: [], min_pass_score: 0 },
+        ],
+      });
+      return;
+    }
     if (!requestId) return;
     (async () => {
       try {
@@ -61,7 +92,7 @@ function RecordInner() {
         setCfg(c);
       } catch (e: any) { setErr(e?.message || "Failed to load config"); }
     })();
-  }, [requestId]);
+  }, [requestId, type]);
 
   useEffect(() => {
     if (cfg?.tier === "platinum" && !geo && navigator.geolocation) {
@@ -160,7 +191,11 @@ function RecordInner() {
     for (const seg of segments) {
       try {
         const ext = seg.blob.type.includes("webm") ? "webm" : "mp4";
-        const path = `${requestId}/${type}/${seg.stepId}-${Date.now()}.${ext}`;
+        // v127 — stay_feedback flow may not have a requestId; use bidId
+        // (already in the URL) as the storage prefix so files don't all
+        // land at the bucket root.
+        const prefix = requestId || bidIdParam || "stay";
+        const path = `${prefix}/${type}/${seg.stepId}-${Date.now()}.${ext}`;
         const url = `${SUPABASE_URL}/storage/v1/object/verification-videos/${path}`;
         const r = await fetch(url, {
           method: "POST",
@@ -202,6 +237,40 @@ function RecordInner() {
       if (!uploaded) { setPhase("preview"); return; }
       const totalSecs = uploaded.reduce((s, x) => s + x.durationSecs, 0);
       const token = localStorage.getItem(type === "hotel" ? "sb_partner_token" : "sb_token") || localStorage.getItem("sb_token") || "";
+
+      // v127 — stay_feedback branch: bypass /api/verify/finalize entirely
+      // (no vp_request to attach segments to). Post a structured complaint
+      // with the smiley scores stashed by StayFeedbackCard + the uploaded
+      // evidence video URLs.
+      if (type === "stay_feedback") {
+        let stashed: any = null;
+        try { stashed = JSON.parse(localStorage.getItem(`sb_stay_feedback_${bidIdParam}`) || "null"); } catch {}
+        const feedback = {
+          ...(stashed?.scores || {}),
+          note: stashed?.note || undefined,
+          evidenceVideoUrls: uploaded.map((s) => s.url).filter(Boolean) as string[],
+          evidenceTotalSecs: totalSecs,
+        };
+        const r = await fetch("/api/complaints/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            type: "stay_feedback",
+            bidId: bidIdParam,
+            hotelId: hotelIdParam || stashed?.hotelId,
+            verificationRequestId: requestId || stashed?.verificationRequestId,
+            feedback,
+          }),
+        });
+        const text = await r.text();
+        let j: any = {};
+        try { j = JSON.parse(text); } catch { j = { error: text.slice(0, 200) }; }
+        if (!r.ok) { setErr(j.error || `Submit failed (${r.status})`); setPhase("preview"); return; }
+        try { localStorage.removeItem(`sb_stay_feedback_${bidIdParam}`); } catch {}
+        setPhase("done");
+        return;
+      }
+
       const r = await fetch("/api/verify/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -228,12 +297,20 @@ function RecordInner() {
   if (!cfg) return <div className="min-h-screen bg-luxury-900 text-white flex items-center justify-center">Loading session…</div>;
 
   if (phase === "done") {
+    const doneCopy =
+      type === "stay_feedback"
+        ? "Your feedback and evidence video are on file. Admin will review side-by-side with the hotel's verification video."
+        : type === "hotel"
+        ? "AI analysis is running. Guest will be notified."
+        : "AI analysis is running. Your evidence is on file.";
     return (
       <div className="min-h-screen bg-luxury-900 text-white flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
           <div className="text-6xl mb-4">✓</div>
-          <h1 className="font-display text-3xl">Recording uploaded</h1>
-          <p className="text-white/70 mt-2 text-sm">AI analysis is running. {type === "hotel" ? "Guest will be notified." : "Your evidence is on file."}</p>
+          <h1 className="font-display text-3xl">
+            {type === "stay_feedback" ? "Feedback submitted" : "Recording uploaded"}
+          </h1>
+          <p className="text-white/70 mt-2 text-sm">{doneCopy}</p>
           <button onClick={() => router.push(type === "hotel" ? "/partner/dashboard" : "/verification")}
                   className="mt-6 px-7 py-3 rounded-full bg-gradient-to-r from-gold-600 to-gold-500 font-semibold">Done</button>
         </div>

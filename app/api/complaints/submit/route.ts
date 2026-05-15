@@ -11,8 +11,38 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { ensureUser } from "@/lib/sb-server";
 
-const VALID_TYPES = new Set(["bid", "booking", "payment", "service", "refund", "video", "general", "other"]);
+const VALID_TYPES = new Set(["bid", "booking", "payment", "service", "refund", "video", "general", "other", "stay_feedback"]);
 const VALID_PRIORITY = new Set(["low", "medium", "high"]);
+const VALID_SMILEY = new Set(["positive", "neutral", "negative"]);
+const FEEDBACK_KEYS = ["roomMatch", "staff", "hygiene", "food", "staffResponse"] as const;
+
+// v127 — Normalise the smiley payload coming from /verification's
+// "Rate your stay" composer. Returns a sanitised object or null if the
+// payload is missing / malformed. Refusing the row entirely on bad shape
+// would be hostile — admins prefer "complaint with partial feedback" over
+// "no complaint at all because one key was misspelled".
+function normaliseFeedback(raw: any): Record<string, any> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const out: Record<string, any> = {};
+  let hasAny = false;
+  for (const k of FEEDBACK_KEYS) {
+    const v = raw[k];
+    if (typeof v === "string" && VALID_SMILEY.has(v)) {
+      out[k] = v;
+      hasAny = true;
+    }
+  }
+  if (!hasAny) return null;
+  // Optional metadata the composer can pass through
+  if (typeof raw.note === "string") out.note = raw.note.trim().slice(0, 1000);
+  if (Array.isArray(raw.evidenceVideoUrls)) {
+    out.evidenceVideoUrls = raw.evidenceVideoUrls
+      .filter((s: any) => typeof s === "string")
+      .slice(0, 8);
+  }
+  out.submittedAt = new Date().toISOString();
+  return out;
+}
 
 export async function POST(req: Request) {
   try {
@@ -23,8 +53,23 @@ export async function POST(req: Request) {
     const type = VALID_TYPES.has(body.type) ? body.type : "general";
     const priority = VALID_PRIORITY.has(body.priority) ? body.priority : "low";
 
+    // v127 — Stay-feedback submissions don't carry a free-text description
+    // (the composer is smiley-only). Allow an empty description on that
+    // type and synthesise a human-readable one from the smiley payload so
+    // /admin/complaints' existing description column stays populated.
+    const feedback = normaliseFeedback(body.feedback);
+    const feedbackType = type === "stay_feedback" ? "stay_feedback" : null;
+
     const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 180) : "";
-    const description = typeof body.description === "string" ? body.description.trim().slice(0, 4000) : "";
+    let description = typeof body.description === "string" ? body.description.trim().slice(0, 4000) : "";
+
+    if (!description && type === "stay_feedback" && feedback) {
+      const negCount = FEEDBACK_KEYS.filter((k) => feedback[k] === "negative").length;
+      const neutralCount = FEEDBACK_KEYS.filter((k) => feedback[k] === "neutral").length;
+      description = negCount > 0
+        ? `Stay feedback: ${negCount} negative checkpoint${negCount > 1 ? "s" : ""}${neutralCount ? `, ${neutralCount} neutral` : ""}.`
+        : `Stay feedback: all checkpoints positive${neutralCount ? ` (${neutralCount} neutral)` : ""}.`;
+    }
     if (!description) {
       return NextResponse.json({ error: "Description required" }, { status: 400 });
     }
@@ -84,6 +129,20 @@ export async function POST(req: Request) {
     if (rawBidId) row.bidId = rawBidId;
     if (body.hotelId)   row.hotelId   = String(body.hotelId);
     if (body.paymentId) row.paymentId = String(body.paymentId);
+
+    // v127 — Stay-feedback payload.
+    if (feedback) row.feedback = feedback;
+    if (feedbackType) row.feedbackType = feedbackType;
+    if (body.verificationRequestId) row.verificationRequestId = String(body.verificationRequestId);
+    if (body.evidenceVideoId)       row.evidenceVideoId       = String(body.evidenceVideoId);
+
+    // Auto-bump priority to "high" when 2+ checkpoints are negative so
+    // admin sees these surface above generic complaints in the queue.
+    if (feedback && priority === "low") {
+      const negCount = FEEDBACK_KEYS.filter((k) => feedback[k] === "negative").length;
+      if (negCount >= 2) row.priority = "high";
+      else if (negCount === 1) row.priority = "medium";
+    }
 
     // v105.1 — complaints.customerId has a FK constraint pointing at
     // public.users.id. Firebase Google-sign-in customers may not have a

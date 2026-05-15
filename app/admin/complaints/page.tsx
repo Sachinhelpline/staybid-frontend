@@ -5,6 +5,20 @@ import Modal, { Field } from "@/components/admin/modal";
 import { adminColors as C, btnGold, btnGhost, h1Style, inputStyle, pageStyle, pill, selectStyle } from "@/lib/admin/styles";
 import { exportRows } from "@/lib/admin/export";
 
+// v127 — stay-feedback smiley grid + side-by-side video block
+const SMILEY_GLYPH: Record<string, { icon: string; color: string; label: string }> = {
+  positive: { icon: "😊", color: "#16a34a", label: "Loved it" },
+  neutral:  { icon: "😐", color: "#a16207", label: "It's okay" },
+  negative: { icon: "😞", color: "#dc2626", label: "Not good" },
+};
+const CHECKPOINT_LABELS: Record<string, string> = {
+  roomMatch:    "Room matches video",
+  staff:        "Staff behavior",
+  hygiene:      "Hygiene & cleanliness",
+  food:         "Food quality",
+  staffResponse:"Staff response",
+};
+
 export default function AdminComplaints() {
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +103,7 @@ export default function AdminComplaints() {
           <option value="bid">Bid</option>
           <option value="booking">Booking</option>
           <option value="video">Video</option>
+          <option value="stay_feedback">Stay Feedback (smiley)</option>
           <option value="general">General</option>
         </select>
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
@@ -121,6 +136,11 @@ export default function AdminComplaints() {
             <div style={{ color: C.textDim, fontSize: 11, marginBottom: 6 }}>DESCRIPTION</div>
             <div style={{ color: C.text, fontSize: 13, lineHeight: 1.6 }}>{selected.description || "No description provided."}</div>
           </div>
+
+          {/* v127 — Smiley feedback grid + side-by-side videos */}
+          {selected.feedbackType === "stay_feedback" && (
+            <StayFeedbackBlock complaint={selected} />
+          )}
 
           <div style={{ marginTop: 14, padding: 14, background: "rgba(168,85,247,0.06)", border: `1px solid rgba(168,85,247,0.2)`, borderRadius: 10 }}>
             <div style={{ color: C.purple, fontSize: 11, fontWeight: 600, marginBottom: 6 }}>AI SUGGESTED RESOLUTION</div>
@@ -192,3 +212,135 @@ const smallBtn = {
   fontSize: 12,
   fontWeight: 600,
 } as const;
+
+// v127 — renders the smiley grid + side-by-side videos inside the admin
+// complaint detail modal. Self-fetches the hotel + customer video URLs.
+function StayFeedbackBlock({ complaint }: { complaint: any }) {
+  const fb = (complaint?.feedback || {}) as Record<string, any>;
+  const checkpointKeys = Object.keys(CHECKPOINT_LABELS);
+  const negCount = checkpointKeys.filter((k) => fb[k] === "negative").length;
+  const evidenceUrls: string[] = Array.isArray(fb.evidenceVideoUrls) ? fb.evidenceVideoUrls : [];
+
+  const [videos, setVideos] = useState<{ hotelVideo: any; customerVideo: any } | null>(null);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+
+  useEffect(() => {
+    const reqId = complaint?.verificationRequestId;
+    const evId  = complaint?.evidenceVideoId;
+    if (!reqId && !evId) { setVideos(null); return; }
+    setLoadingVideos(true);
+    const qs = new URLSearchParams();
+    if (reqId) qs.set("requestId", reqId);
+    if (evId)  qs.set("evidenceVideoId", evId);
+    fetch(`/api/admin/complaints/videos?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((j) => setVideos({ hotelVideo: j.hotelVideo, customerVideo: j.customerVideo }))
+      .catch(() => setVideos(null))
+      .finally(() => setLoadingVideos(false));
+  }, [complaint?.verificationRequestId, complaint?.evidenceVideoId, complaint?.id]);
+
+  // Pick the most-playable URL out of a vp_videos row (urls.mp4 / urls.webm / url).
+  const pickUrl = (v: any): string | null => {
+    if (!v) return null;
+    if (v.urls && typeof v.urls === "object") {
+      return v.urls.mp4 || v.urls.webm || v.urls.original || v.url || null;
+    }
+    return v.url || null;
+  };
+
+  const hotelUrl = pickUrl(videos?.hotelVideo);
+  const customerUrl = pickUrl(videos?.customerVideo) || evidenceUrls[0] || null;
+
+  return (
+    <div style={{
+      marginTop: 14, padding: 14,
+      background: "rgba(212,175,55,0.06)",
+      border: `1px solid rgba(212,175,55,0.25)`,
+      borderRadius: 10,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ color: C.gold, fontSize: 11, fontWeight: 600 }}>STAY FEEDBACK · SMILEY CHECKPOINTS</div>
+        <span style={pill(negCount >= 2 ? C.red : negCount === 1 ? C.amber : C.green, "")}>
+          {negCount} negative
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8, marginBottom: 12 }}>
+        {checkpointKeys.map((k) => {
+          const v = fb[k];
+          const g = v ? SMILEY_GLYPH[v] : null;
+          return (
+            <div key={k} style={{
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: g ? `${g.color}15` : "rgba(255,255,255,0.03)",
+              border: `1px solid ${g ? `${g.color}55` : "rgba(255,255,255,0.06)"}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 18 }}>{g?.icon || "—"}</span>
+                <span style={{ fontSize: 11, color: g?.color || C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  {g?.label || "—"}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: C.text, marginTop: 4 }}>{CHECKPOINT_LABELS[k]}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {fb.note && (
+        <div style={{ marginBottom: 12, padding: 10, borderRadius: 8, background: "rgba(255,255,255,0.03)" }}>
+          <div style={{ color: C.textDim, fontSize: 10, marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.6 }}>Customer note</div>
+          <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5 }}>{fb.note}</div>
+        </div>
+      )}
+
+      {(complaint.verificationRequestId || complaint.evidenceVideoId || evidenceUrls.length > 0) && (
+        <div>
+          <div style={{ color: C.textDim, fontSize: 10, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.6 }}>
+            Side-by-side review
+          </div>
+          {loadingVideos && !videos ? (
+            <div style={{ color: C.textDim, fontSize: 12 }}>Loading videos…</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <VideoSlot title="Hotel's verification video" url={hotelUrl} emptyMsg="Hotel hasn't uploaded a verification video for this booking." />
+              <VideoSlot title="Customer evidence" url={customerUrl}      emptyMsg="No evidence video — customer submitted feedback only." />
+            </div>
+          )}
+          {evidenceUrls.length > 1 && (
+            <div style={{ marginTop: 8, color: C.textDim, fontSize: 11 }}>
+              + {evidenceUrls.length - 1} additional evidence segment{evidenceUrls.length - 1 > 1 ? "s" : ""} —{" "}
+              {evidenceUrls.slice(1).map((u, i) => (
+                <a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{ color: C.gold, marginRight: 8 }}>
+                  segment {i + 2}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VideoSlot({ title, url, emptyMsg }: { title: string; url: string | null; emptyMsg: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: C.textDim, marginBottom: 4, fontWeight: 600 }}>{title}</div>
+      {url ? (
+        <video src={url} controls playsInline preload="metadata"
+               style={{ width: "100%", aspectRatio: "16 / 9", background: "#000", borderRadius: 6, border: `1px solid ${C.border}` }} />
+      ) : (
+        <div style={{
+          aspectRatio: "16 / 9", background: "rgba(255,255,255,0.02)",
+          border: `1px dashed ${C.border}`, borderRadius: 6,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
+          color: C.textDim, fontSize: 11, textAlign: "center",
+        }}>
+          {emptyMsg}
+        </div>
+      )}
+    </div>
+  );
+}
