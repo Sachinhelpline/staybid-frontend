@@ -742,29 +742,45 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
    customer surface, every page. ~2x info density target.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* ── v122.8: REVERTED v122.6 blanket padding/margin/gap shrinks.
-       Those forced 50% cuts on EVERY .p-/.gap-/.mb- utility, which
-       interacted with un-shrunk image widths and produced visually
-       cramped cards that didn't match content (the "ajeeb lag raha
-       hai" feedback). Now we only trim the BIGGEST utilities by
-       ~25%, leaving small/medium intact so visual hierarchy survives. */
-body main .p-10 { padding: 1.5rem !important; }
-body main .p-8  { padding: 1.25rem !important; }
-body main .p-7  { padding: 1.1rem !important; }
-body main .py-12 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
-body main .py-10 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
-body main .py-8  { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+/* ── Card / container padding: cut large utilities ~50% everywhere ── */
+body .p-10 { padding: 0.95rem !important; }
+body .p-8  { padding: 0.85rem !important; }
+body .p-7  { padding: 0.75rem !important; }
+body .p-6  { padding: 0.7rem !important; }
+body .p-5  { padding: 0.6rem !important; }
+body .py-12 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+body .py-10 { padding-top: 0.85rem !important; padding-bottom: 0.85rem !important; }
+body .py-8  { padding-top: 0.7rem !important; padding-bottom: 0.7rem !important; }
+body .py-6  { padding-top: 0.55rem !important; padding-bottom: 0.55rem !important; }
+body .px-8  { padding-left: 0.85rem !important; padding-right: 0.85rem !important; }
+body .px-6  { padding-left: 0.7rem !important; padding-right: 0.7rem !important; }
+body .px-5  { padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
 
-body main .mb-10 { margin-bottom: 1rem !important; }
-body main .mb-8  { margin-bottom: 0.85rem !important; }
-body main .mt-10 { margin-top: 1rem !important; }
-body main .mt-8  { margin-top: 0.85rem !important; }
+/* ── Margin / vertical rhythm: tighter stacks ──────────────────────── */
+body .mb-10 { margin-bottom: 0.7rem !important; }
+body .mb-8  { margin-bottom: 0.6rem !important; }
+body .mb-6  { margin-bottom: 0.45rem !important; }
+body .mb-5  { margin-bottom: 0.4rem !important; }
+body .mb-4  { margin-bottom: 0.35rem !important; }
+body .mt-10 { margin-top: 0.7rem !important; }
+body .mt-8  { margin-top: 0.6rem !important; }
+body .mt-6  { margin-top: 0.45rem !important; }
+body .mt-5  { margin-top: 0.4rem !important; }
 
-body main .space-y-10 > * + * { margin-top: 1rem !important; }
-body main .space-y-8  > * + * { margin-top: 0.85rem !important; }
+/* space-y — used in form column stacks */
+body .space-y-10 > * + * { margin-top: 0.7rem !important; }
+body .space-y-8  > * + * { margin-top: 0.6rem !important; }
+body .space-y-6  > * + * { margin-top: 0.45rem !important; }
+body .space-y-5  > * + * { margin-top: 0.4rem !important; }
+body .space-y-4  > * + * { margin-top: 0.35rem !important; }
+body .space-y-3  > * + * { margin-top: 0.25rem !important; }
 
-body main .gap-10 { gap: 1rem !important; }
-body main .gap-8  { gap: 0.85rem !important; }
+/* Grid + flex gaps */
+body .gap-8 { gap: 0.6rem !important; }
+body .gap-6 { gap: 0.5rem !important; }
+body .gap-5 { gap: 0.45rem !important; }
+body .gap-4 { gap: 0.4rem !important; }
+body .gap-3 { gap: 0.3rem !important; }
 
 /* ── Hero / banner-only image heights — ONLY the obvious "wide
        banner" containers. v122.7 NOTE: previous version (v122.6) overrode
@@ -804,17 +820,16 @@ body main .rounded-xl  { border-radius: 8px !important; }
 body main h1.font-display,
 body main .fd-root h1,
 body main .me-root h1 {
-  /* v122.8 — give hero typography a touch more presence back so headings
-     don't read smaller than body copy. Was clamp(1.1-1.75); now 1.4-2.2 */
-  font-size: clamp(1.4rem, 2.4vw, 2.2rem) !important;
-  line-height: 1.2 !important;
+  font-size: clamp(1.1rem, 2.8vw, 1.75rem) !important;
+  line-height: 1.15 !important;
+  margin-bottom: 0.2rem !important;
 }
-/* v122.8 — text-* overrides REVERTED. v122.6's aggressive font cuts
-   (text-3xl 1.25rem, text-2xl 1.1rem etc.) flattened the visual
-   hierarchy and made everything feel squished against the smaller
-   image heights. Heroes are still capped via the h1.font-display
-   clamp above (clamp 1.15-1.75rem). Body text-* now uses Tailwind
-   defaults so headings retain their natural rhythm vs body copy. */
+body main .text-4xl, body main .sm\:text-4xl { font-size: 1.5rem !important; line-height: 1.15 !important; }
+body main .text-3xl { font-size: 1.25rem !important; line-height: 1.2 !important; }
+body main .text-2xl { font-size: 1.1rem !important; line-height: 1.2 !important; }
+body main .text-xl  { font-size: 0.98rem !important; line-height: 1.25 !important; }
+body main .text-lg  { font-size: 0.9rem !important; line-height: 1.3 !important; }
+body main .text-base { font-size: 0.85rem !important; }
 
 /* ── Buttons — tighter padding, keep tap targets ≥40px on mobile ─── */
 body main .lux-btn,
@@ -907,137 +922,4 @@ body main textarea.input-luxury {
   .fd-root > .fd-wrap { padding-top: 0.4rem !important; }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   20. v122.8 — CONTENT-AWARE aspect ratios per image type
-   ─────────────────────────────────────────────────────────────────────────
-   Different photos need different proportions to look right with their
-   content. v122.6's blanket height cuts squished them; v122.7 removed
-   the overrides but left photos at default Tailwind heights (often
-   too tall for their content). v122.8 sets ONE explicit aspect-ratio
-   PER IMAGE TYPE so width and height shrink together naturally.
-
-   Image type → aspect ratio:
-   - Hotel/room HERO BANNER (full-bleed at top of detail)  21 / 9
-   - Hotel CARD photo (in /hotels list grid)               16 / 10
-   - Hotel ROOM card photo (in /hotels/[id] rooms section) 16 / 10
-   - PHOTO GALLERY thumbnail (4-up under hero)              4 / 3
-   - Avatar circle                                          1 / 1
-   - REEL video card                                        9 / 16
-
-   These selectors target the conventional class patterns used in
-   the codebase (.shadow-luxury-lg = hero, .group + .h-52 = hotel
-   card thumb, .group + .h-56 = room photo, etc.). Photos preserve
-   their proportions on every viewport from 320 to 4K.
-   ───────────────────────────────────────────────────────────────────────── */
-
-/* Hero banner (hotels detail page) — wide banner. v122.8 final pass:
-   aspect-ratio + max-height made the hero only 821px wide inside a
-   1360px parent (leaving 540px white-space on the right). Switch to
-   explicit width 100% + viewport-scaled height so the hero fills the
-   full content width on every device. */
-main .shadow-luxury-lg.h-72,
-main .shadow-luxury-lg.h-56,
-main .shadow-luxury-lg.h-64,
-main .shadow-luxury-lg.h-96,
-main .shadow-luxury-lg.md\:h-96 {
-  width: 100% !important;
-  height: 13rem !important;        /* 208 px on phones — banner-shape */
-  aspect-ratio: auto !important;
-  max-height: none !important;
-}
-@media (min-width: 640px) {
-  main .shadow-luxury-lg.h-72,
-  main .shadow-luxury-lg.h-56,
-  main .shadow-luxury-lg.h-64,
-  main .shadow-luxury-lg.h-96,
-  main .shadow-luxury-lg.md\:h-96 {
-    height: 16rem !important;      /* 256 px */
-  }
-}
-@media (min-width: 1024px) {
-  main .shadow-luxury-lg.h-72,
-  main .shadow-luxury-lg.h-56,
-  main .shadow-luxury-lg.h-64,
-  main .shadow-luxury-lg.h-96,
-  main .shadow-luxury-lg.md\:h-96 {
-    height: 20rem !important;      /* 320 px — banner */
-  }
-}
-@media (min-width: 1440px) {
-  main .shadow-luxury-lg.h-72,
-  main .shadow-luxury-lg.h-56,
-  main .shadow-luxury-lg.h-64,
-  main .shadow-luxury-lg.h-96,
-  main .shadow-luxury-lg.md\:h-96 {
-    height: 22rem !important;      /* 352 px */
-  }
-}
-
-/* Hotel CARD image in /hotels list grid — the `.group` wrapper holds
-   the photo container as its first .h-52 child. */
-main .grid .group > .h-52,
-main .group .h-52:first-child {
-  aspect-ratio: 16 / 10 !important;
-  height: auto !important;
-}
-
-/* Room CARD image on /hotels/[id] — `.group .h-56.overflow-hidden` */
-main .group > .h-56.overflow-hidden,
-main .group .relative.h-56.overflow-hidden {
-  aspect-ratio: 16 / 10 !important;
-  height: auto !important;
-  max-height: 14rem;
-}
-
-/* Photo gallery thumbnails (4-up strip under main hero on hotel detail) */
-main .grid.grid-cols-4 .h-20,
-main .grid.grid-cols-4 .h-24,
-main .grid.grid-cols-4 .h-28,
-main .grid.grid-cols-4 .h-32,
-main .grid.grid-cols-2 > div > .h-32,
-main .grid.grid-cols-2 > div > .h-36 {
-  aspect-ratio: 4 / 3 !important;
-  height: auto !important;
-}
-
-/* Flash deal card photo — fd-card-img is the canonical hook */
-.fd-card-img,
-main .fd-card > div:first-child {
-  aspect-ratio: 16 / 10 !important;
-  height: auto !important;
-  max-height: 12rem;
-}
-
-/* Avatars — anything rounded-full with a fixed h/w gets aspect-ratio 1
-   as a defensive measure (rounded-full + fixed h-X w-X already produces
-   a circle; this catches edge cases where the W was forgotten). */
-main .rounded-full {
-  aspect-ratio: 1 / 1;
-}
-
-/* Reel video card — already vertical via the IG feed; ensure aspect
-   stays 9:16 inside the windowed `.ig-card` slot. */
-main .ig-card video,
-main .ig-card .ig-card-skel {
-  aspect-ratio: 9 / 16;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   21. v122.8 — Hotel detail desktop layout shift (Airbnb-style)
-   ─────────────────────────────────────────────────────────────────────────
-   On desktop (>=1024px), reorganize /hotels/[id] so the booking summary
-   sticks to the right column while content scrolls in the left column.
-   This is the standard pattern on Booking.com / Airbnb / Agoda. On
-   mobile + tablet the page stays single-column as before.
-   ───────────────────────────────────────────────────────────────────────── */
-@media (min-width: 1024px) {
-  /* The hotel detail page's outermost content uses `max-w-4xl mx-auto`
-     (v122.1 bumped to 1240px on desktop). Widen further on the detail
-     page so a 2-column layout has breathing room. */
-  main > .min-h-screen.bg-luxury-50 > .max-w-4xl,
-  main .bg-luxury-50 > .max-w-4xl {
-    max-width: 1400px !important;
-  }
-}
-
-/* End v122 desktop layer (v122.8 — content-aware aspect + airbnb layout) */
+/* End v122 desktop layer (v122.6 — all-viewport density pass) */
