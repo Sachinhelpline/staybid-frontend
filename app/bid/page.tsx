@@ -435,7 +435,7 @@ export default function BidPage() {
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
   if (success) return (
     <div className="bx-shell min-h-screen flex items-center justify-center px-4 py-6">
-      <div className="max-w-md w-full">
+      <div className="bx-page-wrap-success w-full">
         <div className="bx-win-card">
           <div className="bx-win-badge">🎯</div>
           <p className="bx-hero-eyebrow" style={{ justifyContent: "center" }}>
@@ -498,7 +498,7 @@ export default function BidPage() {
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
-      <div className="max-w-xl mx-auto px-4 pt-4">
+      <div className="bx-page-wrap mx-auto px-4 pt-4">
 
         {/* Toolbar */}
         <div className="bx-toolbar">

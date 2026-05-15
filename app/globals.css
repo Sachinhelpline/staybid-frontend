@@ -3114,3 +3114,48 @@ body.is-reel-page {
   .bx-ticker-row { animation: none !important; }
 }
 
+/* ════════════════════════════════════════════════════════════════
+   v124 responsive wrap — keep wizard form readable on every device.
+   Mobile: full width. Tablet: comfortable 640px. Laptop: 720px.
+   Desktop: 760px. NOT auto-widened by desktop.css generic rules
+   because .bx-page-wrap is its own class (not .max-w-xl).
+   ════════════════════════════════════════════════════════════════ */
+.bx-page-wrap {
+  width: 100%;
+  max-width: 560px;
+}
+@media (min-width: 640px)  { .bx-page-wrap { max-width: 600px; } }
+@media (min-width: 768px)  { .bx-page-wrap { max-width: 660px; } }
+@media (min-width: 1024px) { .bx-page-wrap { max-width: 720px; } }
+@media (min-width: 1440px) { .bx-page-wrap { max-width: 780px; } }
+.bx-page-wrap-success {
+  max-width: 440px;
+}
+@media (min-width: 768px)  { .bx-page-wrap-success { max-width: 480px; } }
+@media (min-width: 1024px) { .bx-page-wrap-success { max-width: 520px; } }
+
+/* Tablet+: tighten the editorial typography density a notch so the
+   page doesn't feel airy. */
+@media (min-width: 768px) {
+  .bx-hero-title  { font-size: clamp(1.9rem, 3.4vw, 2.4rem); }
+  .bx-hero-sub    { font-size: 0.86rem; max-width: 48ch; }
+  .bx-stats-ribbon { gap: 10px; margin-top: 18px; }
+  .bx-section-h    { margin: 26px 0 12px; }
+  .bx-section-h-title { font-size: 1.65rem; }
+
+  /* Dial gets a touch bigger on tablet for visual weight */
+  .bx-dial-ring { width: 148px; height: 148px; }
+  .bx-dial-pct  { font-size: 2.2rem; }
+}
+
+/* Laptop+: side-by-side dial + sticky-ish layout feel for Step 3.
+   Probability dial sits LEFT in a 50/50 split with the side panel. */
+@media (min-width: 1024px) {
+  .bx-dial-ring   { width: 160px; height: 160px; }
+  .bx-dial-pct    { font-size: 2.4rem; }
+  .bx-dial-tier   { font-size: 1.6rem; }
+  .bx-launch-btn  { padding: 20px 24px; font-size: 1.3rem; }
+  .bx-review-pct  { font-size: 3.6rem; }
+  .bx-review-hero { padding: 28px 24px; }
+}
+
