@@ -8,6 +8,7 @@ import AdminLineChart from "@/components/admin/charts/line-chart";
 import AdminBarChart from "@/components/admin/charts/bar-chart";
 import AdminPieChart from "@/components/admin/charts/pie-chart";
 import KpiCardShared from "@/components/admin/kpi-card";
+import { LivePill, useAutoPoll } from "@/components/admin/live-ticker";
 
 type Kpis = {
   totalBids: number;
@@ -60,6 +61,8 @@ export default function AdminAnalytics() {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [days]);
+  // v126.2 — auto-poll every 15s while tab is visible
+  const { lastAt, refresh } = useAutoPoll(load, 15_000);
 
   const k: Kpis | null = data?.kpis || null;
   const tierCounts: Record<string, number> = data?.tierCounts || {};
@@ -83,10 +86,13 @@ export default function AdminAnalytics() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 26, color: "#E8EAF0", margin: 0 }}>
-            📊 Bidding Analytics
-          </h1>
-          <p style={{ color: "#8A8FA8", fontSize: 13, margin: "6px 0 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: 22, color: "#E8EAF0", margin: 0 }}>
+              📊 Bidding Analytics
+            </h1>
+            <LivePill lastRefreshAt={lastAt} refreshNow={refresh} />
+          </div>
+          <p style={{ color: "#8A8FA8", fontSize: 12, margin: "6px 0 0" }}>
             Lifecycle metrics · acceptance rate · auto-accept hit · hold conversion · revenue
           </p>
         </div>

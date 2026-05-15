@@ -22,7 +22,7 @@ export async function GET() {
       `${SB_URL}/rest/v1/room_pricing_config?select=room_id,ai_managed,current_price,floor_price,competitor_min,discount_pct,last_updated&order=last_updated.desc&limit=2000`,
       { headers: SB_H },
     ).then((r) => (r.ok ? r.json() : [])),
-    fetch(`${SB_URL}/rest/v1/flash_deals?select=id,validUntil,active`, { headers: SB_H }).then((r) =>
+    fetch(`${SB_URL}/rest/v1/flash_deals?select=id,validUntil,isActive,aiPrice,floorPrice,start_price,last_drop_at`, { headers: SB_H }).then((r) =>
       r.ok ? r.json() : [],
     ),
   ]);
@@ -41,10 +41,20 @@ export async function GET() {
   const activeDeals = dealsRaw.filter((d) => {
     const validUntil = d.validUntil ? new Date(d.validUntil) : null;
     const stillValid = validUntil ? validUntil > now : false;
-    const active = d.active !== false;
+    // Schema uses `isActive` (camelCase) not `active`. Default true if missing.
+    const active = d.isActive !== false;
     return stillValid && active;
   });
   const expiredDeals = dealsRaw.length - activeDeals.length;
+  // v126.2 — surface AI-managed flash deals count. A deal is "AI managed"
+  // if it has an aiPrice computed (i.e. the recalc cron has touched it).
+  const aiManagedDeals = dealsRaw.filter((d) => d.aiPrice != null && d.aiPrice > 0).length;
+  // Most-recent flash deal recalc — falls back to most recent createdAt
+  const lastFlashRecalc = dealsRaw
+    .map((d) => d.last_drop_at)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
 
   // Last recalculation = freshest pricing config update
   const lastRecalc = cfgRows[0]?.last_updated || null;
@@ -66,9 +76,12 @@ export async function GET() {
     coverage: totalRooms ? Math.round((cfgRows.length / totalRooms) * 100) : 0,
     activeFlashDeals: activeDeals.length,
     activeDeals: activeDeals.length,         // back-compat alias for existing UI
+    totalFlashDeals: dealsRaw.length,
+    aiManagedFlashDeals: aiManagedDeals,
     expiredFlashDeals: expiredDeals,
     flashDeals: dealsRaw,
     lastRecalc,
+    lastFlashRecalc,
     avgSavingsPct: Math.round(avgSavings * 10) / 10,
   });
 }

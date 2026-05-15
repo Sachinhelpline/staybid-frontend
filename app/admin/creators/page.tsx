@@ -71,7 +71,47 @@ export default function AdminCreators() {
         </div>
       ),
     },
-    { key: "phone", label: "Phone", render: (c: any) => c.users?.phone || "—" },
+    {
+      key: "phone",
+      label: "Contact",
+      // v126.2 — Firebase Google sign-in users carry `unknown_<uid>` in the
+      // phone field (placeholder because no phone was collected at signup).
+      // Showing that raw string was misleading admin — they thought the
+      // creator's phone was hidden. Now we surface a meaningful display:
+      // real phone if present, else email + a Firebase chip + the UID.
+      render: (c: any) => {
+        const phone = c.users?.phone || "";
+        const email = c.users?.email || "";
+        const isUnknownPhone = /^(unknown_|firebase_|fb_)/i.test(phone);
+        const realPhone = !isUnknownPhone && phone ? phone : null;
+        // Strip the unknown_ prefix to expose the underlying Firebase UID
+        const uid = isUnknownPhone ? phone.replace(/^unknown_(fb_)?/i, "") : null;
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+            {realPhone ? (
+              <a href={`tel:${realPhone}`} style={{ color: "#E8EAF0", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                📞 {realPhone}
+              </a>
+            ) : email ? (
+              <a href={`mailto:${email}`} style={{ color: "#E8EAF0", fontSize: 11.5, fontWeight: 600, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>
+                ✉️ {email}
+              </a>
+            ) : (
+              <span style={{ fontSize: 10, color: "#8A8FA8", fontStyle: "italic" }}>No contact on file</span>
+            )}
+            {isUnknownPhone && (
+              <span style={{
+                fontSize: 9, color: "#A855F7", letterSpacing: "0.08em",
+                background: "rgba(168,85,247,0.12)", padding: "1px 6px",
+                borderRadius: 999, alignSelf: "flex-start", fontWeight: 700,
+              }} title={`Firebase UID: ${uid}`}>
+                G sign-in · UID {uid?.slice(0, 6)}…
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       key: "location",
       label: "City",
@@ -203,8 +243,19 @@ export default function AdminCreators() {
             Application id <code>{String(selected.id || "").slice(0, 12)}…</code>
           </p>
 
-          <Field label="Phone" value={selected.users?.phone || "—"} />
+          <Field
+            label="Phone"
+            value={(() => {
+              const ph = selected.users?.phone || "";
+              if (/^(unknown_|firebase_|fb_)/i.test(ph)) {
+                const uid = ph.replace(/^unknown_(fb_)?/i, "");
+                return `Not provided · Firebase Google sign-in (UID ${uid.slice(0, 12)}…)`;
+              }
+              return ph || "—";
+            })()}
+          />
           <Field label="Email" value={selected.users?.email || "—"} />
+          <Field label="User ID" value={String(selected.user_id || "—")} />
           <Field label="City" value={selected.location || "—"} />
           <Field label="Followers" value={Number(selected.total_followers || 0).toLocaleString("en-IN")} />
           <Field label="Tier" value={String(selected.verification_tier ?? 1)} />

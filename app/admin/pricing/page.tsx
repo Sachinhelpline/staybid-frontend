@@ -178,17 +178,36 @@ export default function AdminPricing() {
 
       {tab === "status" && status && (
         <div>
-          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
             <KPICard title="AI-Managed Rooms" value={status.aiManaged} color={C.blue} />
             <KPICard title="Manual Pricing" value={status.manual} color={C.amber} />
             <KPICard title="Total Rooms" value={status.totalRooms} color={C.gold} />
-            <KPICard title="Active Flash Deals" value={status.activeDeals} color={C.green} />
+            <KPICard title="Coverage" value={`${status.coverage || 0}%`} color={C.green} />
           </div>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
-            <div style={{ color: C.textDim, fontSize: 12, marginBottom: 8 }}>LAST RECALC</div>
-            <div style={{ color: C.text, fontSize: 14 }}>{new Date(status.lastRecalc).toLocaleString("en-IN")}</div>
-            <div style={{ color: C.textDim, fontSize: 12, marginTop: 16, lineHeight: 1.6 }}>
-              AI prices recalculate every 60 seconds based on demand, day-of-week, and competitor prices. Use the Overrides tab to lock specific rooms.
+          {/* v126.2 — flash deals are AI-managed just like rooms. Surface total /
+              AI-managed / active counts side-by-side so admin can verify
+              recalc is touching every flash deal. */}
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
+            <KPICard title="Total Flash Deals" value={status.totalFlashDeals || 0} color={C.gold} />
+            <KPICard title="AI-Managed Flash" value={status.aiManagedFlashDeals || 0} color={C.blue} />
+            <KPICard title="Active Flash Deals" value={status.activeDeals} color={C.green} />
+            <KPICard title="Expired Flash" value={status.expiredFlashDeals || 0} color={C.textDim as any} />
+          </div>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <div>
+              <div style={{ color: C.textDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Last room recalc</div>
+              <div style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{status.lastRecalc ? new Date(status.lastRecalc).toLocaleString("en-IN") : "—"}</div>
+            </div>
+            <div>
+              <div style={{ color: C.textDim, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Last flash recalc</div>
+              <div style={{ color: C.text, fontSize: 13, fontWeight: 600 }}>{status.lastFlashRecalc ? new Date(status.lastFlashRecalc).toLocaleString("en-IN") : "Never · run cron"}</div>
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div style={{ color: C.textDim, fontSize: 11, lineHeight: 1.5 }}>
+                Room prices recalculate every 60 seconds via /api/cron/pricing. Flash deals run on the same cron — if "Last flash recalc" shows Never, trigger
+                <code style={{ background: "rgba(212,175,55,0.1)", padding: "1px 6px", borderRadius: 4, marginLeft: 4, color: C.gold }}>/api/cron/pricing?token=staybid-cron-dev</code>
+                manually. Use the Overrides tab to lock specific rooms.
+              </div>
             </div>
           </div>
         </div>

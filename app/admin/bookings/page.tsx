@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
+import { LivePill, LiveCountdown, useAutoPoll } from "@/components/admin/live-ticker";
 
 // v94 — source style map (mirror of lib/attribution SOURCE_*) — kept local
 // because the admin panel doesn't import from the customer-side lib.
@@ -30,6 +31,8 @@ export default function AdminBookings() {
       .catch(() => setLoading(false));
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
+  // v126.2 — live auto-poll every 10s + LIVE pill at top.
+  const { lastAt, refresh } = useAutoPoll(load, 10_000);
 
   // v94 — source filter is applied client-side over the loaded set so
   // admins can switch channels without re-hitting the API.
@@ -105,8 +108,34 @@ export default function AdminBookings() {
     },
     {
       key: "createdAt",
-      label: "Created",
-      render: (b: any) => new Date(b.createdAt).toLocaleDateString("en-IN"),
+      label: "Live",
+      // v126.2 — live timeline:
+      //   • ACCEPTED with acceptance_window → countdown to expiry (15 min default)
+      //   • PENDING with auto_accept_at → countdown to auto-accept
+      //   • CHECKED_IN with checkOut → countdown to checkout
+      //   • else → "X ago" relative time
+      render: (b: any) => {
+        const now = Date.now();
+        if (b.status === "ACCEPTED" && b.acceptance_window_expires_at) {
+          return <LiveCountdown endsAt={b.acceptance_window_expires_at} label="PAY IN" />;
+        }
+        if (b.status === "PENDING" && b.auto_accept_at) {
+          return <LiveCountdown endsAt={b.auto_accept_at} label="AUTO" />;
+        }
+        if (b.status === "CHECKED_IN" && b.checkOut) {
+          return <LiveCountdown endsAt={b.checkOut} label="CHK-OUT" />;
+        }
+        const created = b.createdAt ? new Date(b.createdAt).getTime() : null;
+        if (!created) return "—";
+        const diff = now - created;
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return <span style={{ color: "#2ECC71" }}>just now</span>;
+        if (mins < 60) return <span style={{ color: "#8A8FA8", fontSize: 11 }}>{mins}m ago</span>;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return <span style={{ color: "#8A8FA8", fontSize: 11 }}>{hrs}h ago</span>;
+        const days = Math.floor(hrs / 24);
+        return <span style={{ color: "#8A8FA8", fontSize: 11 }}>{days}d ago</span>;
+      },
     },
     {
       key: "actions",
@@ -143,9 +172,12 @@ export default function AdminBookings() {
 
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
-      <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 28, margin: "0 0 20px" }}>
-        Bookings & Bids
-      </h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <h1 className="admin-h1" style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", fontSize: 22, margin: 0 }}>
+          Bookings & Bids
+        </h1>
+        <LivePill lastRefreshAt={lastAt} refreshNow={refresh} size="md" />
+      </div>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
         <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#D4AF37" live />

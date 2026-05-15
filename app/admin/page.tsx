@@ -115,7 +115,11 @@ export default function AdminDashboard() {
     }, []);
     if (!w) return null;
     const widgets: { title: string; value: any; icon: string; color: string; sub: string; href: string }[] = [
-      { title: "Influencers",        value: `${w.influencersActive}/${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: "active / total", href: "/admin/users" },
+      // v126.2 — Influencer = Creator. Same `influencers` table backs both
+      // the legacy "influencer" naming AND the customer-facing "Creator"
+      // surface. Show the more familiar word + split the active/total
+      // visually so admins don't read "3/3" as "33".
+      { title: "Creators",           value: `${w.influencersActive} · ${w.influencersTotal}`, icon: "✨", color: "#A855F7", sub: `${w.influencersActive} active of ${w.influencersTotal}`, href: "/admin/creators" },
       { title: "Videos Pending",     value: w.videosPending,                                  icon: "🎬", color: "#D4AF37", sub: `${w.videosApproved} approved`, href: "/admin/videos" },
       { title: "Points Wallets",     value: w.pointWallets,                                   icon: "⭐", color: "#F0D060", sub: "earning users",                href: "/admin/revenue" },
       { title: "Saves",              value: w.savesTotal,                                     icon: "🔖", color: "#3D9CF5", sub: "across all targets",           href: "/admin" },
