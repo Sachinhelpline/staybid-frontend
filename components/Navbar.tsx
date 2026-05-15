@@ -9,6 +9,9 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 // instance); now the same context drives /me drawer, DialerNav, /upgrade
 // banner together, and an auto-refresh trigger flips everyone in sync.
 import { useTier } from "@/lib/tier-store";
+// v125.3 — single source of truth for the customer Menu. Edit
+// lib/user-links.ts; both mobile drawer and desktop dropdown update.
+import { USER_LINKS_BASE, CREATOR_LINK, HOTEL_LINK } from "@/lib/user-links";
 
 const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
@@ -26,16 +29,10 @@ const NAV_LINKS = [
 // account is upgraded to that role. Hotel Partner link now points at
 // /partner inside this app (same Next.js bundle, separate sb_partner_token
 // auth) rather than the abandoned external Vercel deployment.
-const USER_LINKS_BASE = [
-  { href: "/my-bids",       label: "My Bids",       icon: "📋" },
-  { href: "/bookings",      label: "Bookings",      icon: "🎫" },
-  { href: "/saved",         label: "Saved",         icon: "🔖" },
-  { href: "/verification",  label: "Verification",  icon: "🎬" },
-  { href: "/wallet",        label: "Wallet",        icon: "💰" },
-  { href: "/points",        label: "Points",        icon: "⭐" },
-];
-const CREATOR_USER_LINK = { href: "/influencer", label: "Creator", icon: "✨" } as const;
-const HOTEL_USER_LINK   = { href: "/partner",    label: "Partner", icon: "🏢" } as const;
+// v125.3 — USER_LINKS_BASE, CREATOR_LINK, HOTEL_LINK now imported from
+// @/lib/user-links so this file and app/me/page.tsx stay byte-identical.
+// Single source of truth. To add/remove/rename a menu item, edit
+// lib/user-links.ts and BOTH menus update.
 
 const BOTTOM_PRIMARY = [
   { href: "/",            label: "Home",      icon: "🏠" },
@@ -130,8 +127,8 @@ export function Navbar() {
   const showHotel   = isHotelOwner;
   const userLinks = useMemo(() => {
     const out: any[] = [...USER_LINKS_BASE];
-    if (showCreator) out.push(CREATOR_USER_LINK);
-    if (showHotel)   out.push(HOTEL_USER_LINK);
+    if (showCreator) out.push(CREATOR_LINK);
+    if (showHotel)   out.push(HOTEL_LINK);
     return out;
   }, [showCreator, showHotel]);
 

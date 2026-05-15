@@ -52,6 +52,16 @@ import { getClientUserId } from "@/lib/client-auth";
 // highlights) AND meant the avatar wasn't tappable. ProfilePhotoEditor
 // has avatar / name / bio / location / website / highlights all in one.
 import { ProfilePhotoEditor } from "@/components/discover/CreateFlow";
+// v125.3 — single source of truth for the customer Menu. Edit
+// lib/user-links.ts; both this mobile drawer AND the desktop Navbar
+// dropdown update in lock-step.
+import {
+  USER_LINKS_BASE as SHARED_USER_LINKS_BASE,
+  CREATOR_LINK as SHARED_CREATOR_LINK,
+  HOTEL_LINK as SHARED_HOTEL_LINK,
+  ACCOUNT_LINK as SHARED_ACCOUNT_LINK,
+} from "@/lib/user-links";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 type Tab = "posts" | "reels" | "tagged";
 
@@ -888,45 +898,13 @@ function Stat({
 // ─── Hamburger drawer ──────────────────────────────────────────────────
 type DrawerLink = { href: string; label: string; sub?: string; icon: string; external?: boolean };
 
-// v105 — drawer cleanup:
-//   - Removed "Flash Deals" — already in bottom nav as DEALS tab; duplicate.
-//   - Removed "StayPoints" — Wallet card now shows points + tap opens /points history.
-//   - Added "Complaints & Help" — was reachable only via booking deep-link; now top-level.
-// v108 — Creator Hub + Hotel Partner items are gated by `tier` (built below
-// in MoreDrawer): Public users don't see them at all. Path to upgrade
-// stays available via the ↑ icon on the top bar.
-const DRAWER_LINKS_BASE: DrawerLink[] = [
-  { href: "/my-bids",      label: "My Bids",          sub: "Your active offers",            icon: "📋" },
-  { href: "/bookings",     label: "Bookings",         sub: "Past + upcoming stays",         icon: "🎫" },
-  { href: "/saved",        label: "Saved",            sub: "Wishlist hotels & reels",       icon: "🔖" },
-  { href: "/wallet",       label: "Wallet",           sub: "Balance + StayPoints",          icon: "💰" },
-  { href: "/complaints",   label: "Complaints & Help",sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
-  { href: "/verification", label: "Verify Stay",      sub: "Hotel verification",            icon: "✅" },
-];
-
-const CREATOR_LINK: DrawerLink = {
-  href: "/influencer",
-  label: "Creator Hub",
-  sub:   "Earnings + referrals",
-  icon:  "✨",
-};
-
-// v108 — actual hotel partner panel is /partner inside this app (separate
-// auth via sb_partner_token). Was an external link to an abandoned Vercel
-// deployment; the user explicitly asked us to repoint it.
-const HOTEL_LINK: DrawerLink = {
-  href: "/partner",
-  label: "Hotel Partner",
-  sub:   "Open partner dashboard",
-  icon:  "🏢",
-};
-
-const ACCOUNT_LINK: DrawerLink = {
-  href: "/profile",
-  label: "Account settings",
-  sub:   "Email, phone, security",
-  icon:  "⚙",
-};
+// v125.3 — the drawer items, Creator/Hotel gates and Account row all live
+// in lib/user-links.ts so the desktop Navbar dropdown stays byte-identical.
+// Aliasing the imports preserves every prior reference (CREATOR_LINK etc.).
+const DRAWER_LINKS_BASE: DrawerLink[] = SHARED_USER_LINKS_BASE;
+const CREATOR_LINK: DrawerLink = SHARED_CREATOR_LINK;
+const HOTEL_LINK:   DrawerLink = SHARED_HOTEL_LINK;
+const ACCOUNT_LINK: DrawerLink = SHARED_ACCOUNT_LINK;
 
 function MoreDrawer({
   open, isCreator, isHotelOwner, onClose, onLogout,
@@ -954,7 +932,10 @@ function MoreDrawer({
       <div className="me-drawer-panel" onClick={(e) => e.stopPropagation()}>
         <div className="me-drawer-head">
           <span className="me-drawer-title">Menu</span>
-          <button type="button" onClick={onClose} className="me-drawer-close" aria-label="Close menu">✕</button>
+          {/* v125.3 — bulletproof close: 40×40 visual + 56×56 hit-area
+              via .sb-modal-close, captured by the global click delegate
+              even if the React onClick misfires on Android Chrome. */}
+          <ModalCloseButton onClose={onClose} tone="light" ariaLabel="Close menu" className="me-drawer-close-btn" />
         </div>
         <ul className="me-drawer-list">
           {links.map((it) => (
