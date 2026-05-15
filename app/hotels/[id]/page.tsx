@@ -9,6 +9,8 @@ import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceRes
 import { io } from "socket.io-client";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
+import HotelHero from "@/components/hotel/HotelHero";
+import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -399,6 +401,34 @@ export default function HotelDetail() {
     const timer = setInterval(recalculate, 60_000);
     return () => clearInterval(timer);
   }, [hotel, selectedCheckIn]);
+
+  // ── v123 — Scroll-reveal observer (fades + lifts .hx-reveal elements
+  // when they enter the viewport). Single observer reused across the
+  // page. Respects prefers-reduced-motion via CSS.
+  useEffect(() => {
+    if (typeof window === "undefined" || !hotel) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      document.querySelectorAll<HTMLElement>(".hx-reveal").forEach((el) => el.classList.add("is-revealed"));
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-revealed");
+            obs.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -8% 0px" }
+    );
+    // Re-collect on next tick so newly-mounted elements (rooms list etc.) are seen.
+    const t = setTimeout(() => {
+      document.querySelectorAll<HTMLElement>(".hx-reveal:not(.is-revealed)").forEach((el) => obs.observe(el));
+    }, 50);
+    return () => { clearTimeout(t); obs.disconnect(); };
+  }, [hotel, tab]);
 
   // ── Flash deal calculations ────────────────────────
   const flashRoom      = hotel?.rooms?.find((r: any) => r.id === dealRoomId);
@@ -1257,157 +1287,168 @@ export default function HotelDetail() {
     </div>
   );
 
-  return (
-    <div className="bg-luxury-50 min-h-screen">
-      <div className="max-w-4xl mx-auto px-5 py-10">
+  // ── v123 — UI helpers for the redesigned page ──
+  const lowestRoomPrice = hotel?.rooms?.length
+    ? Math.min(...hotel.rooms.map((r: any) => r.floorPrice || 99999))
+    : 0;
+  const lowestForRibbon = lowestRoomPrice < 99999 ? lowestRoomPrice : 0;
+  const roomsAvail = hotel?.rooms?.length || 0;
+  const otaSavingsBest = lowestForRibbon > 0
+    ? Math.round((1 - lowestForRibbon / (lowestForRibbon * 1.22)) * 100)
+    : 0;
 
-        {/* ── Flash Deal Banner (sticky so it follows the customer while they
-            browse photos / rooms / reviews — they can book the deal from
-            anywhere on the page without going back to /flash-deals) ── */}
+  return (
+    <div className="hx-shell">
+      <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
+
+        {/* ── Toolbar — Back chip + crumb ── */}
+        <div className="hx-toolbar">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="hx-toolbar-back"
+            aria-label="Go back"
+          >
+            ‹
+          </button>
+          <span className="hx-toolbar-crumb">
+            {hotel.city ? `Stays in ${hotel.city}` : "Stays"} <span style={{ margin: "0 4px" }}>·</span> {hotel.name}
+          </span>
+        </div>
+
+        {/* ── Flash Deal Banner (sticky so it follows the customer while
+            they browse) — premium glass-on-cream redesign ── */}
         {dealId && dealPrice && (
-          <div className="sticky top-2 z-30 mb-6 p-4 rounded-2xl border border-gold-300 bg-gradient-to-r from-gold-50 to-amber-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-gold backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+          <div
+            className="hx-reveal"
+            style={{
+              position: "sticky", top: "12px", zIndex: 30,
+              marginBottom: "20px",
+              padding: "14px 18px",
+              borderRadius: "20px",
+              background: "linear-gradient(135deg, rgba(217, 190, 130, 0.20), rgba(212, 149, 131, 0.14))",
+              backdropFilter: "blur(14px)",
+              border: "1px solid rgba(201, 166, 107, 0.45)",
+              boxShadow: "0 18px 40px -16px rgba(201, 166, 107, 0.42)",
+              display: "flex", flexDirection: "row", alignItems: "center",
+              flexWrap: "wrap", justifyContent: "space-between", gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "11px" }}>
+              <span style={{
+                width: "10px", height: "10px", borderRadius: "50%",
+                background: "var(--cozy-rose)",
+                boxShadow: "0 0 0 4px rgba(212, 149, 131, 0.25)",
+                animation: "hx-pulse-soft 1.4s ease-in-out infinite",
+                flexShrink: 0,
+              }} />
               <div>
-                <p className="text-xs font-bold text-gold-600 uppercase tracking-widest">⚡ Flash Deal Active</p>
-                <p className="text-sm text-luxury-700 mt-0.5">
+                <p style={{
+                  fontSize: "0.6rem", fontWeight: 800, color: "var(--cozy-rose)",
+                  textTransform: "uppercase", letterSpacing: "0.16em", margin: 0,
+                }}>⚡ Flash Deal Active</p>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
                   {flashRoom?.name || "Room"} at{" "}
-                  <span className="font-bold text-luxury-900 text-lg">₹{dealPrice}</span>/night
+                  <span style={{ fontWeight: 800, color: "var(--cozy-warm-dark)", fontSize: "1.05rem" }}>₹{dealPrice}</span>
+                  <span style={{ color: "var(--text-muted)" }}>/night</span>
                   {dealDiscount && (
-                    <span className="ml-2 px-2 py-0.5 bg-gold-500 text-white text-xs font-bold rounded-full">{dealDiscount}% OFF</span>
+                    <span style={{
+                      marginLeft: "8px",
+                      padding: "2px 9px",
+                      background: "linear-gradient(135deg, var(--cozy-champagne-light), var(--cozy-champagne))",
+                      color: "#2b1d05",
+                      fontSize: "0.65rem",
+                      fontWeight: 800,
+                      borderRadius: "999px",
+                    }}>{dealDiscount}% OFF</span>
                   )}
                 </p>
               </div>
             </div>
             <button
               onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
-              className="btn-luxury px-6 py-2.5 rounded-xl text-sm whitespace-nowrap shadow-gold"
+              className="hx-cta hx-cta-primary"
+              style={{ flex: "0 0 auto", padding: "11px 22px" }}
             >
               Book This Flash Deal
             </button>
           </div>
         )}
 
-        {/* ── Hero image ── v122.5: cap height on every viewport so the
-            rooms grid + booking summary stay above the fold instead of
-            requiring a full scroll. h-56 mobile · md:h-64 tablet ·
-            lg:h-72 desktop · was h-72 / md:h-96 which dominated the
-            laptop viewport. mb-8 → mb-4 reduces wasted gap below hero. */}
-        <div className="h-56 md:h-64 lg:h-72 rounded-3xl overflow-hidden bg-luxury-100 mb-4 relative shadow-luxury-lg">
-          {hotel.images?.[0] ? (
-            <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <span className="text-7xl opacity-15">🏨</span>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-          {hotel.trustBadge && (
-            <span className="absolute top-4 left-4 badge-gold flex items-center gap-1">✓ Verified Stay</span>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <h1 className="font-display font-light text-white text-3xl md:text-4xl leading-tight drop-shadow-lg">{hotel.name}</h1>
-            <p className="text-white/70 text-sm mt-1 tracking-wide">{hotel.city}, {hotel.state}</p>
-          </div>
-        </div>
+        {/* ── v123 EDITORIAL HERO ── */}
+        <HotelHero
+          name={hotel.name}
+          city={hotel.city}
+          state={hotel.state}
+          starRating={hotel.starRating}
+          avgRating={hotel.avgRating}
+          totalReviews={hotel.totalReviews}
+          trustBadge={!!hotel.trustBadge}
+          images={hotel.images}
+          onOpenGallery={(i) => { setGalleryIdx(i); setGalleryOpen(true); }}
+        />
 
-        {/* ── Photo Gallery Grid ── */}
-        {(() => {
-          // Pad with Unsplash placeholders if hotel has fewer than 5 photos
-          const PLACEHOLDERS = [
-            "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
-            "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
-            "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
-            "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
-            "https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&q=80",
-            "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&q=80",
-          ];
-          const base = Array.isArray(hotel.images) ? hotel.images : [];
-          const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
-          const thumbs = allImgs.slice(1, 5);
-          return (
-            <div className="mb-6">
-              <div className="grid grid-cols-4 gap-2 h-24 md:h-32">
-                {thumbs.map((img: string, i: number) => (
-                  <div key={i}
-                    className="relative rounded-2xl overflow-hidden cursor-pointer group"
-                    onClick={() => { setGalleryIdx(i + 1); setGalleryOpen(true); }}>
-                    <img src={img} alt={`Photo ${i + 2}`}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all duration-300" />
-                    {i === 3 && allImgs.length > 5 && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">+{allImgs.length - 5} more</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
-                className="mt-2 text-xs text-gold-600 font-semibold hover:text-gold-700 transition-colors flex items-center gap-1">
-                📷 View all photos
-              </button>
-            </div>
-          );
-        })()}
+        {/* ── v123 ANIMATED STATS RIBBON ── */}
+        <HotelStatsRibbon
+          avgRating={hotel.avgRating}
+          totalReviews={hotel.totalReviews}
+          starRating={hotel.starRating}
+          roomsAvailable={roomsAvail}
+          totalRooms={roomsAvail}
+          lowestPrice={lowestForRibbon}
+          otaSavingsPct={otaSavingsBest}
+          trustBadge={!!hotel.trustBadge}
+          flashDealActive={!!(dealId && dealPrice)}
+        />
 
-        {/* ── Hotel meta ── */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          {hotel.starRating && (
-            <span className="text-gold-400 text-lg tracking-widest">{"★".repeat(hotel.starRating)}</span>
-          )}
-          {hotel.avgRating > 0 && (
-            <span className="px-3 py-1 bg-gold-100 text-gold-600 text-sm font-semibold rounded-full border border-gold-200">
-              ★ {hotel.avgRating.toFixed(1)} · {hotel.totalReviews} reviews
-            </span>
-          )}
-          {hotel.rooms?.length > 0 && (() => {
-            const minPrice = Math.min(...hotel.rooms.map((r: any) => r.floorPrice || 99999));
-            return minPrice < 99999 ? (
-              <span className="px-3 py-1 bg-luxury-100 text-luxury-700 text-sm font-semibold rounded-full border border-luxury-200">
-                Starting from <span className="text-luxury-900 font-bold">₹{minPrice.toLocaleString()}</span>/night
-              </span>
-            ) : null;
-          })()}
-          <button
-            onClick={() => setTab("reviews")}
-            className="px-3 py-1 text-sm font-semibold text-gold-600 underline underline-offset-2 hover:text-gold-700 transition-colors"
-          >
-            Read Reviews →
-          </button>
-        </div>
+        {/* ── Two-column page grid (sticky rail on desktop ≥1100px) ── */}
+        <div className="hx-page-grid" style={{ marginTop: "22px" }}>
+          <div>
 
+        {/* ── Description ── */}
         {hotel.description && (
-          <p className="text-luxury-600 mb-8 leading-relaxed text-[0.95rem]">{hotel.description}</p>
+          <div className="hx-reveal" style={{ marginTop: "8px" }}>
+            <div className="hx-section-h">
+              <span className="hx-section-h-label">About</span>
+              <span className="hx-section-h-rule" />
+            </div>
+            <p style={{
+              color: "var(--text-soft)",
+              fontSize: "0.96rem",
+              lineHeight: 1.68,
+              margin: 0,
+              maxWidth: "720px",
+            }}>
+              {hotel.description}
+            </p>
+          </div>
         )}
 
         {/* ── Amenities ── */}
         {hotel.amenities?.length > 0 && (
-          <div className="mb-10">
-            <h2 className="font-semibold text-luxury-900 text-base mb-4 tracking-tight">Amenities</h2>
-            <div className="flex flex-wrap gap-2">
+          <div className="hx-reveal">
+            <div className="hx-section-h">
+              <span className="hx-section-h-label">Amenities</span>
+              <span className="hx-section-h-rule" />
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {hotel.amenities.map((a: string) => (
-                <span key={a} className="px-3 py-1.5 bg-white border border-luxury-200 rounded-full text-sm text-luxury-600">{a}</span>
+                <span key={a} className="hx-amenity-chip" style={{ fontSize: "0.78rem", padding: "7px 14px" }}>{a}</span>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── Tabs ── */}
-        <div className="flex border-b border-luxury-200 mb-8">
+        {/* ── Premium Tabs ── */}
+        <div className="hx-tabs hx-reveal">
           {(["rooms","reviews","about"] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`px-5 py-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
-                tab === t
-                  ? "text-gold-600 border-gold-500"
-                  : "text-luxury-400 border-transparent hover:text-luxury-700"
-              }`}
+              className={`hx-tab ${tab === t ? "is-active" : ""}`}
             >
-              {t === "rooms" ? "Rooms" : t === "reviews" ? "Reviews" : "About"}
+              {t === "rooms" ? "Rooms & Pricing" : t === "reviews" ? `Guest Reviews${hotel.totalReviews ? ` (${hotel.totalReviews})` : ""}` : "About this stay"}
             </button>
           ))}
         </div>
@@ -1598,8 +1639,11 @@ export default function HotelDetail() {
 
         {/* ── My Bids ── */}
         {myBids.length > 0 && (
-          <div className="mb-10">
-            <h2 className="font-semibold text-luxury-900 text-base mb-5 tracking-tight">Your Bids</h2>
+          <div className="mb-10 hx-reveal">
+            <div className="hx-section-h">
+              <span className="hx-section-h-label">Your offers on this stay</span>
+              <span className="hx-section-h-rule" />
+            </div>
             <div className="space-y-3">
               {myBids.map((b: any) => {
                 const st = statusStyle(b.status);
@@ -1642,15 +1686,15 @@ export default function HotelDetail() {
           </div>
         )}
 
-        {/* ── Availability Picker — Hi-tech ── */}
-        <div id="availability-picker" className="picker-hitech p-5 mb-6">
-          <div className="flex items-center gap-2.5 mb-4 relative z-[2]">
-            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
-                  style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
+        {/* ── v123 Availability Picker — premium glass-on-cream ── */}
+        <div id="availability-picker" className="hx-availability hx-reveal" style={{ marginBottom: "24px" }}>
+          <div className="hx-availability-head">
+            <span className="hx-availability-badge">🔍</span>
             <div>
-              <h3 className="font-bold text-luxury-900 text-sm tracking-tight leading-tight">Check Availability & Get Best Price</h3>
-              <p className="text-[0.6rem] text-luxury-500 tracking-widest uppercase font-semibold flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> AI Live Engine · Real-time rates
+              <h3 className="hx-availability-title">Check availability &amp; get your best price</h3>
+              <p className="hx-availability-sub">
+                <span className="hx-availability-sub-dot" />
+                AI live engine · real-time rates
               </p>
             </div>
           </div>
@@ -1765,19 +1809,33 @@ export default function HotelDetail() {
           )}
         </div>
 
-        {/* ── Available Rooms ── */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-semibold text-luxury-900 text-base tracking-tight">Available Rooms</h2>
-          <div className="flex items-center gap-1.5 text-[0.6rem] text-luxury-400 font-semibold uppercase tracking-widest">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            AI Live Pricing
+        {/* ── Available Rooms — v123 premium ── */}
+        <div className="hx-reveal" style={{ marginTop: "8px" }}>
+          <div className="hx-section-h">
+            <span className="hx-section-h-label">Available Rooms</span>
+            <span className="hx-section-h-rule" />
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "5px",
+              fontSize: "0.58rem", fontWeight: 800,
+              letterSpacing: "0.16em", textTransform: "uppercase",
+              color: "var(--cozy-cocoa-soft)", flexShrink: 0,
+            }}>
+              <span style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: "var(--cozy-sage)",
+                animation: "hx-pulse-soft 1.6s ease-in-out infinite",
+              }} />
+              AI Live Pricing
+            </span>
           </div>
         </div>
         {hotel.rooms?.length === 0 && (
-          <p className="text-luxury-400 py-6 text-sm">No rooms available right now.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", padding: "28px 0", textAlign: "center" }}>
+            No rooms available right now.
+          </p>
         )}
 
-        <div className="space-y-6 mb-10">
+        <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
             const isFlashRoom = dealRoomId === r.id && dealPrice;
             const aiPrice = roomPrices[r.id];
@@ -1821,121 +1879,123 @@ export default function HotelDetail() {
 
             return (
               <div key={r.id}
-                className={`group rounded-3xl overflow-hidden shadow-luxury transition-all duration-500 hover:shadow-gold hover:scale-[1.01] ${
-                  isFlashRoom
-                    ? "border-2 border-gold-400"
-                    : bidRoom?.id === r.id
-                    ? "border-2 border-gold-400"
-                    : "border border-luxury-100"
-                }`}
-                style={{ background: "#fff" }}
+                className={`hx-room-card hx-reveal ${isFlashRoom ? "is-flash" : ""} ${bidRoom?.id === r.id ? "is-selected" : ""}`}
               >
-                {/* ── Room Image ── */}
-                <div className="relative h-56 overflow-hidden">
+                <div className="hx-room-body">
+
+                {/* ── Room Image (LEFT on desktop ≥900px, TOP on mobile) ── */}
+                <div className="hx-room-media">
                   <img
                     src={roomImg}
                     alt={r.name || r.type}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="hx-room-media-img"
                     onError={(e: any) => { e.target.src = "https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }}
+                    loading="lazy"
                   />
-                  {/* Dark gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="hx-room-media-grad" />
 
                   {/* Top badges row */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                  <div className="hx-room-media-top">
                     {isFlashRoom && (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.62rem] font-bold bg-red-500 text-white shadow-lg">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                      <span className="hx-badge-flash">
+                        <span className="hx-badge-flash-dot" />
                         FLASH DEAL
                       </span>
                     )}
                     {!isFlashRoom && ds && (
-                      <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.6rem] font-bold border backdrop-blur-md bg-white/80 ${ds.text} ${ds.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${ds.dot} ${aiPrice!.demandLevel === "Surge" ? "animate-ping" : ""}`} />
+                      <span className={`hx-badge-demand ${aiPrice!.demandLevel === "Surge" ? "is-surge" : ""}`}>
+                        <span className="hx-badge-demand-dot" />
                         {aiPrice!.demandLevel} Demand
                       </span>
                     )}
-                    <div className="ml-auto flex items-center gap-1 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-[0.55rem] font-bold text-white/80 uppercase tracking-widest">Live Price</span>
-                    </div>
+                    <span className="hx-badge-live">
+                      <span className="hx-badge-live-dot" />
+                      Live Price
+                    </span>
                   </div>
 
                   {/* Room name overlay at bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="font-display font-light text-white text-xl leading-tight drop-shadow-lg">{r.name || r.type}</h3>
-                    <p className="text-white/65 text-xs mt-0.5 tracking-wide">{r.type} · up to {r.capacity} guests</p>
+                  <div className="hx-room-media-name">
+                    <h3>{r.name || r.type}</h3>
+                    <p>{r.type} · up to {r.capacity} guests</p>
                   </div>
                 </div>
 
                 {/* ── Card Body ── */}
-                <div className="p-5">
+                <div className="hx-room-content-wrap">
+                <div className="hx-room-content">
                   {/* Amenities chips with icons */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
+                  <div className="hx-amenity-row">
                     {roomAmenities.slice(0, 6).map((a: string) => (
-                      <span key={a} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-600 font-medium hover:border-gold-300 hover:bg-gold-50 transition-colors">
-                        <span className="text-[0.7rem]">{getAmenityIcon(a)}</span>
+                      <span key={a} className="hx-amenity-chip">
+                        <span style={{ fontSize: "0.78rem" }}>{getAmenityIcon(a)}</span>
                         {a}
                       </span>
                     ))}
                     {roomAmenities.length > 6 && (
-                      <span className="text-xs px-2.5 py-1 bg-luxury-50 border border-luxury-100 rounded-full text-luxury-400 font-medium">+{roomAmenities.length - 6} more</span>
+                      <span className="hx-amenity-chip" style={{ color: "var(--text-muted)" }}>
+                        +{roomAmenities.length - 6} more
+                      </span>
                     )}
                   </div>
 
                   {isFlashRoom ? (
                     /* ── FLASH ROOM PRICING ── */
                     <div>
-                      <div className="flex items-end justify-between mb-4">
-                        <div>
-                          <p className="text-[0.6rem] font-bold text-gold-500 uppercase tracking-widest mb-0.5">Flash Deal Price</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-sm text-luxury-300 line-through">₹{r.floorPrice.toLocaleString()}</span>
-                            <span className="text-3xl font-bold text-gold-600">₹{dealPrice}</span>
+                      <div className="hx-price-block is-flash">
+                        <div className="hx-price-row">
+                          <div>
+                            <p className="hx-price-label">Flash Deal Price</p>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                              <span className="hx-price-strike">₹{r.floorPrice.toLocaleString()}</span>
+                              <span className="hx-price-amount flash">₹{Number(dealPrice).toLocaleString()}</span>
+                            </div>
+                            <p className="hx-price-sub">/night · {dealDiscount}% off</p>
                           </div>
-                          <p className="text-xs text-luxury-400">/night · {dealDiscount}% off</p>
+                          {aiPrice && (
+                            <div className="hx-price-mini">
+                              <p style={{ marginBottom: "2px" }}>Market Rate</p>
+                              <p className="v">₹{aiPrice.price.toLocaleString()}</p>
+                              <p style={{ color: "var(--cozy-sage)", fontWeight: 700, marginTop: "2px" }}>
+                                {Math.round((1 - parseFloat(dealPrice!) / aiPrice.price) * 100)}% below market
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        {aiPrice && (
-                          <div className="text-right">
-                            <p className="text-[0.55rem] text-luxury-400 uppercase tracking-wider">Market Rate</p>
-                            <p className="text-sm font-bold text-luxury-600">₹{aiPrice.price.toLocaleString()}</p>
-                            <p className="text-[0.6rem] text-emerald-600 font-semibold">
-                              {Math.round((1 - parseFloat(dealPrice!) / aiPrice.price) * 100)}% below market
-                            </p>
-                          </div>
-                        )}
                       </div>
-                      <button
-                        onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
-                        className="btn-luxury w-full py-3.5 rounded-2xl text-sm shadow-gold"
-                      >
-                        ⚡ Book This Flash Deal
-                      </button>
+                      <div className="hx-cta-row">
+                        <button
+                          onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
+                          className="hx-cta hx-cta-primary"
+                        >
+                          ⚡ Book This Flash Deal
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     /* ── REGULAR ROOM PRICING ── */
                     <div>
                       {!datesSelected ? (
                         /* ── No dates selected — teaser ── */
-                        <div className="mb-4">
-                          <div className="p-4 bg-gold-50 border border-gold-200 rounded-2xl text-center mb-3">
-                            <p className="text-sm font-semibold text-gold-700 mb-1">📅 Select dates to see live price</p>
-                            <p className="text-xs text-gold-600">AI pricing engine calculates the best rate for your travel dates</p>
-                            <div className="mt-2 flex items-center justify-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse" />
-                              <span className="text-[0.6rem] text-gold-500 font-bold uppercase tracking-widest">Starting from ₹{(r.floorPrice || 0).toLocaleString()}/night</span>
-                            </div>
+                        <div>
+                          <div className="hx-teaser">
+                            <p className="hx-teaser-title">📅 Select dates to see live price</p>
+                            <p className="hx-teaser-sub">AI pricing engine calculates the best rate for your travel dates</p>
+                            <span className="hx-teaser-from">
+                              <span className="hx-teaser-from-dot" />
+                              From ₹{(r.floorPrice || 0).toLocaleString()}/night
+                            </span>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="hx-cta-row">
                             <button
                               onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="btn-3d btn-3d-gold flex-1 text-sm"
+                              className="hx-cta hx-cta-primary"
                             >
                               Book Now →
                             </button>
                             <button
                               onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="btn-3d btn-3d-white flex-1 text-sm"
+                              className="hx-cta hx-cta-secondary"
                             >
                               🤝 Negotiate
                             </button>
@@ -2014,101 +2074,120 @@ export default function HotelDetail() {
                             );
                           })()}
 
-                          {/* AI price + OTA comparison */}
-                          <div className="grid grid-cols-2 gap-3 mb-4">
-                            {/* Live AI Price */}
-                            <div className={`rounded-2xl p-4 transition-all duration-500 ${
-                              isFlashing
-                                ? "bg-gold-50 border-2 border-gold-400 scale-[1.02]"
-                                : "bg-luxury-50 border border-luxury-100"
-                            }`}>
-                              <div className="flex items-center gap-1 mb-1">
-                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                                <p className="text-[0.55rem] text-luxury-400 uppercase tracking-widest font-bold">StayBid Live Price</p>
-                              </div>
-                              <p className={`text-2xl font-bold transition-colors duration-500 ${isFlashing ? "text-gold-600" : "text-luxury-900"}`}>
-                                ₹{livePrice.toLocaleString()}
-                              </p>
-                              <p className="text-[0.6rem] text-luxury-400">/night</p>
-                              {aiPrice && aiPrice.priceChangePct !== 0 && (
-                                <p className={`text-[0.6rem] font-bold mt-0.5 ${aiPrice.priceChangePct > 0 ? "text-red-500" : "text-emerald-600"}`}>
-                                  {aiPrice.priceChangePct > 0 ? "▲" : "▼"} {Math.abs(aiPrice.priceChangePct)}% vs base
+                          {/* Live price + demand signal — v123 premium */}
+                          <div className={`hx-price-block ${isFlashing ? "is-flash" : ""}`}>
+                            <div className="hx-price-row">
+                              <div>
+                                <p className="hx-price-label">StayBid Live Price</p>
+                                <p className={`hx-price-amount ${isFlashing ? "hx-price-flash" : ""}`}>
+                                  ₹{livePrice.toLocaleString()}
                                 </p>
+                                <p className="hx-price-sub">
+                                  /night
+                                  {aiPrice && aiPrice.priceChangePct !== 0 && (
+                                    <span style={{
+                                      marginLeft: "8px",
+                                      fontWeight: 700,
+                                      color: aiPrice.priceChangePct > 0 ? "var(--cozy-rose)" : "var(--cozy-sage)",
+                                    }}>
+                                      {aiPrice.priceChangePct > 0 ? "▲" : "▼"} {Math.abs(aiPrice.priceChangePct)}% vs base
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                              {aiPrice && ds && (
+                                <div className="hx-price-mini">
+                                  <p style={{ marginBottom: "3px" }}>Demand</p>
+                                  <p className="v" style={{ fontSize: "0.95rem" }}>{aiPrice.demandLevel}</p>
+                                  <div style={{
+                                    marginTop: "6px",
+                                    height: "4px",
+                                    width: "90px",
+                                    background: "var(--cozy-cream-200)",
+                                    borderRadius: "999px",
+                                    overflow: "hidden",
+                                  }}>
+                                    <div style={{
+                                      width: `${aiPrice.demandScore}%`,
+                                      height: "100%",
+                                      background: "linear-gradient(90deg, var(--cozy-champagne-light), var(--cozy-champagne))",
+                                      borderRadius: "999px",
+                                      transition: "width 0.7s ease",
+                                    }} />
+                                  </div>
+                                </div>
                               )}
                             </div>
-
-                            {/* Demand Info */}
-                            {aiPrice && ds && (
-                              <div className={`rounded-2xl p-4 border ${ds.bg} ${ds.border}`}>
-                                <p className="text-[0.55rem] uppercase tracking-widest font-bold text-luxury-400 mb-1">Demand Signal</p>
-                                <p className={`text-sm font-bold ${ds.text}`}>{aiPrice.demandLevel}</p>
-                                <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all duration-700"
-                                    style={{ width: `${aiPrice.demandScore}%`, background: ds.dot.replace("bg-", "").replace("-", " ") }}
-                                  />
-                                </div>
-                                <p className={`text-[0.55rem] mt-1.5 font-medium ${ds.text}`}>
-                                  {aiPrice.factors[0]}
-                                </p>
-                              </div>
-                            )}
                           </div>
 
                           {/* Trend chip */}
                           {aiPrice && (
-                            <div className="flex flex-wrap gap-1.5 mb-4">
-                              <span className={`text-[0.6rem] font-bold px-2.5 py-1 rounded-full ${
-                                aiPrice.trend === "rising"  ? "bg-red-50 text-red-600 border border-red-200" :
-                                aiPrice.trend === "falling" ? "bg-emerald-50 text-emerald-600 border border-emerald-200" :
-                                "bg-luxury-50 text-luxury-500 border border-luxury-100"
-                              }`}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
+                              <span style={{
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                padding: "5px 11px",
+                                borderRadius: "999px",
+                                background: aiPrice.trend === "rising" ? "rgba(212, 149, 131, 0.16)" :
+                                            aiPrice.trend === "falling" ? "rgba(157, 173, 143, 0.18)" :
+                                            "var(--bg-pill)",
+                                color: aiPrice.trend === "rising" ? "var(--cozy-rose)" :
+                                       aiPrice.trend === "falling" ? "#5e7349" :
+                                       "var(--cozy-cocoa)",
+                                border: `1px solid ${
+                                  aiPrice.trend === "rising" ? "rgba(212, 149, 131, 0.3)" :
+                                  aiPrice.trend === "falling" ? "rgba(157, 173, 143, 0.35)" :
+                                  "var(--border-soft)"
+                                }`,
+                              }}>
                                 {aiPrice.trend === "rising" ? "📈 Price rising — book now" : aiPrice.trend === "falling" ? "📉 Price dropping" : "⟷ Stable price"}
                               </span>
                               {aiPrice.factors.slice(0, 2).map((f) => (
-                                <span key={f} className="text-[0.6rem] font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                                <span key={f} style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 600,
+                                  padding: "5px 11px",
+                                  borderRadius: "999px",
+                                  background: "var(--accent-soft)",
+                                  color: "var(--cozy-cocoa)",
+                                  border: "1px solid rgba(201, 166, 107, 0.3)",
+                                }}>
                                   {f}
                                 </span>
                               ))}
                             </div>
                           )}
 
-                          {/* OTA Comparison — realistic market rates */}
-                          <div className="mb-4 p-3 bg-luxury-50 rounded-2xl border border-luxury-100">
-                            <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest mb-2.5">Live Market Comparison</p>
-                            <div className="space-y-1.5">
-                              {otas.map(o => (
-                                <div key={o.name} className="flex justify-between items-center text-xs">
-                                  <span className="flex items-center gap-1.5 text-luxury-500 font-medium">
-                                    <span>{o.icon}</span>{o.name}
-                                  </span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-luxury-400 line-through text-[0.7rem]">₹{o.price.toLocaleString()}</span>
-                                  </div>
-                                </div>
-                              ))}
-                              <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-gold-600 to-gold-400 rounded-xl mt-2">
-                                <span className="font-bold text-white text-xs flex items-center gap-1.5">🏆 StayBid Price</span>
-                                <span className="font-bold text-white text-sm">₹{livePrice.toLocaleString()}</span>
+                          {/* OTA comparison — v123 premium */}
+                          <div className="hx-ota">
+                            <p className="hx-ota-h">Live market comparison</p>
+                            {otas.map(o => (
+                              <div key={o.name} className="hx-ota-row">
+                                <span className="name"><span>{o.icon}</span>{o.name}</span>
+                                <span className="price">₹{o.price.toLocaleString()}</span>
                               </div>
-                              {otaSaving > 0 && (
-                                <p className="text-[0.65rem] text-emerald-600 font-bold text-center pt-1">
-                                  ✓ Save ₹{otaSaving.toLocaleString()} vs best OTA ({Math.round(otaSaving/bestOTA*100)}% cheaper)
-                                </p>
-                              )}
+                            ))}
+                            <div className="hx-ota-winner">
+                              <span className="hx-ota-winner-l">🏆 StayBid Price</span>
+                              <span className="hx-ota-winner-r">₹{livePrice.toLocaleString()}</span>
                             </div>
+                            {otaSaving > 0 && (
+                              <p className="hx-ota-savings">
+                                ✓ Save ₹{otaSaving.toLocaleString()} vs best OTA ({Math.round(otaSaving/bestOTA*100)}% cheaper)
+                              </p>
+                            )}
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="hx-cta-row">
                             <button
                               onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="btn-3d btn-3d-gold flex-1 text-sm"
+                              className="hx-cta hx-cta-primary"
                             >
                               Book Now →
                             </button>
                             <button
                               onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="btn-3d btn-3d-white flex-1 text-sm"
+                              className="hx-cta hx-cta-secondary"
                             >
                               🤝 Negotiate
                             </button>
@@ -2117,14 +2196,95 @@ export default function HotelDetail() {
                       )}
                     </div>
                   )}
-                </div>
+                </div>{/* /hx-room-content */}
+                </div>{/* /hx-room-content-wrap */}
+                </div>{/* /hx-room-body */}
               </div>
             );
           })}
         </div>
 
         </> /* end rooms tab */}
-      </div>
+
+          </div>{/* /column main */}
+
+          {/* ── v123 Sticky desktop booking summary (≥1100px only) ── */}
+          <aside className="hx-sticky-rail" aria-label="Best rate summary">
+            <div className="hx-sticky-card hx-reveal">
+              <span className="hx-sticky-rate-l">Best rate from</span>
+              <div className="hx-sticky-rate-v">
+                ₹{(lowestForRibbon || 0).toLocaleString()}
+              </div>
+              <p className="hx-sticky-rate-s">
+                /night before taxes · {roomsAvail} room{roomsAvail === 1 ? "" : "s"} available
+              </p>
+
+              <div style={{
+                display: "flex", alignItems: "center", gap: "8px",
+                margin: "16px 0 14px",
+                padding: "10px 12px",
+                background: "var(--accent-soft)",
+                border: "1px solid rgba(201, 166, 107, 0.3)",
+                borderRadius: "12px",
+              }}>
+                <span style={{ fontSize: "1rem" }}>💡</span>
+                <p style={{ fontSize: "0.74rem", color: "var(--cozy-cocoa)", margin: 0, lineHeight: 1.45 }}>
+                  Set dates &amp; negotiate to unlock the lowest price for your exact stay.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("availability-picker");
+                  el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="hx-cta hx-cta-primary"
+                style={{ width: "100%", marginBottom: "8px" }}
+              >
+                Check availability →
+              </button>
+
+              {hotel.rooms?.length > 0 && (() => {
+                const cheapest = hotel.rooms.reduce((acc: any, r: any) =>
+                  (!acc || (r.floorPrice || 99999) < (acc.floorPrice || 99999)) ? r : acc, null);
+                if (!cheapest) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => withBackendAuth(() => openNegotiate(cheapest))}
+                    className="hx-cta hx-cta-secondary"
+                    style={{ width: "100%" }}
+                  >
+                    🤝 Negotiate Price
+                  </button>
+                );
+              })()}
+
+              <div style={{
+                marginTop: "16px", paddingTop: "14px",
+                borderTop: "1px solid var(--border-soft)",
+                display: "flex", flexDirection: "column", gap: "8px",
+              }}>
+                {[
+                  { i: "🛡", t: "Verified by StayBid" },
+                  { i: "💰", t: "Best-price guarantee" },
+                  { i: "🔄", t: "Free cancellation 24h prior" },
+                ].map(({ i, t }) => (
+                  <div key={t} style={{
+                    display: "flex", alignItems: "center", gap: "10px",
+                    fontSize: "0.78rem", color: "var(--text-soft)",
+                  }}>
+                    <span style={{ fontSize: "0.95rem" }}>{i}</span>
+                    {t}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>{/* /hx-page-grid */}
+
+      </div>{/* /max-w-6xl */}
 
       {/* ══════════════════════════════════════════
           PHOTO GALLERY LIGHTBOX
@@ -3162,3 +3322,4 @@ export default function HotelDetail() {
     </div>
   );
 }
+
