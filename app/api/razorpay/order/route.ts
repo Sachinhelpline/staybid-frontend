@@ -1,21 +1,64 @@
-// v125 — bulletproof order route.
-// Previously called the `razorpay` SDK whose errors are NOT Error instances
-// (they are { statusCode, error: { description, ... } } objects). On Vercel
-// the SDK was either tree-shaken or failing to initialize, so `err.message`
-// was always undefined → the user saw a generic "Order creation failed"
-// alert with zero signal about the real cause.
+// v125.1 — self-healing order route.
 //
-// v125 talks to Razorpay's REST API directly with Basic-auth — no SDK, no
-// bundle surprises, and the real `error.description` is forwarded to the
-// client so future regressions surface honestly.
+// History
+// -------
+// v124.2 called the `razorpay` SDK. Its errors are plain
+// `{ statusCode, error: { description } }` objects (not Error instances) so
+// `err.message` was always undefined → user saw a generic "Order creation
+// failed" alert with zero signal about the real cause.
+//
+// v125 switched to Razorpay's REST API directly. The first real error
+// description ("Authentication failed") surfaced — revealing that the
+// Vercel env vars `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` are set to a
+// stale TEST-mode value (`rzp_test_pla...`) whose secret has rotated. So
+// even after fixing the SDK swallowing the error, real customers still
+// couldn't pay because the env var pair is broken.
+//
+// v125.1 makes the route self-heal: it tries env-var keys first, and if
+// Razorpay responds 401 / "Authentication failed" it automatically retries
+// with the known-good hardcoded LIVE keys. Customer transaction succeeds
+// either way; the env-var mismatch is surfaced in the response under
+// `_keysSource` for the diagnostic endpoint. This is the bulletproof
+// pattern documented in CLAUDE.md ("keys hardcoded as fallback so payment
+// works even without Vercel env vars").
 
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID     || "rzp_live_SfFAsbYjbHfztd";
-const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "dv3xFGG44R2FSqlshkDVY2Gn";
+// Known-good LIVE production credentials (per CLAUDE.md). These are the
+// canonical source of truth — env vars are an OPTIONAL override.
+const LIVE_KEY_ID     = "rzp_live_SfFAsbYjbHfztd";
+const LIVE_KEY_SECRET = "dv3xFGG44R2FSqlshkDVY2Gn";
+
+const ENV_KEY_ID     = process.env.RAZORPAY_KEY_ID     || "";
+const ENV_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+
+// Build the candidate key list:
+// 1. If env vars are set AND start with `rzp_live_`, try them first.
+//    A `rzp_test_*` env var on production is almost always a misconfig,
+//    so we skip it entirely.
+// 2. Always fall back to the hardcoded LIVE pair.
+type KeyPair = { id: string; secret: string; source: "env" | "hardcoded" };
+function buildKeyCandidates(): KeyPair[] {
+  const out: KeyPair[] = [];
+  if (ENV_KEY_ID && ENV_KEY_SECRET && ENV_KEY_ID.startsWith("rzp_live_")) {
+    out.push({ id: ENV_KEY_ID, secret: ENV_KEY_SECRET, source: "env" });
+  }
+  // Always include hardcoded as the safety net.
+  if (!out.length || out[0].id !== LIVE_KEY_ID) {
+    out.push({ id: LIVE_KEY_ID, secret: LIVE_KEY_SECRET, source: "hardcoded" });
+  }
+  return out;
+}
+
+const RZP_KEY_ID = ENV_KEY_ID.startsWith("rzp_live_")
+  ? ENV_KEY_ID
+  : LIVE_KEY_ID;
+const RZP_KEY_SECRET = ENV_KEY_ID.startsWith("rzp_live_")
+  ? ENV_KEY_SECRET
+  : LIVE_KEY_SECRET;
 
 export async function POST(req: NextRequest) {
   let body: any;
@@ -51,70 +94,120 @@ export async function POST(req: NextRequest) {
       ? body.notes
       : {};
 
-  const auth = Buffer.from(`${RZP_KEY_ID}:${RZP_KEY_SECRET}`).toString("base64");
+  // v125.1 — try each keypair in order. The first one that doesn't return
+  // 401 wins. On 401 ("Authentication failed") fall through to the next.
+  // This makes the customer transaction immune to a misconfigured env var.
+  const candidates = buildKeyCandidates();
+  let lastDescription = "Order creation failed";
+  let lastCode: string | null = null;
+  let lastStatus = 500;
+  let lastData: any = null;
 
-  try {
-    const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: amountPaise,
-        currency: "INR",
-        receipt,
-        notes,
-        payment_capture: 1,
-      }),
-      // 20 s should be plenty — Razorpay typically responds in 200-600ms.
-      // A hang past this means the network is wedged and we should fail
-      // fast rather than letting the user stare at "Opening Razorpay…".
-      signal: AbortSignal.timeout(20_000),
-    });
+  for (const cand of candidates) {
+    const auth = Buffer.from(`${cand.id}:${cand.secret}`).toString("base64");
+    try {
+      const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: amountPaise,
+          currency: "INR",
+          receipt,
+          notes,
+          payment_capture: 1,
+        }),
+        // 20 s should be plenty — Razorpay typically responds in 200-600ms.
+        // A hang past this means the network is wedged and we should fail
+        // fast rather than letting the user stare at "Opening Razorpay…".
+        signal: AbortSignal.timeout(20_000),
+      });
 
-    const data = await rzpRes.json().catch(() => ({}));
+      const data = await rzpRes.json().catch(() => ({}));
 
-    if (!rzpRes.ok) {
-      // Razorpay error shape: { error: { code, description, source, step, reason } }
-      const description: string =
+      if (rzpRes.ok) {
+        // Success — annotate with which keypair worked so the diagnostic
+        // endpoint can flag a stale env-var override without blocking
+        // customers.
+        if (cand.source === "hardcoded" && candidates.length > 1) {
+          console.warn(
+            "[razorpay/order] env-var keys failed auth; succeeded with hardcoded LIVE keys",
+          );
+        }
+        return NextResponse.json({ ...data, _keysSource: cand.source });
+      }
+
+      // 401 / 403 → bad credentials, try next candidate. Anything else is
+      // a hard upstream failure (bad amount, account suspended for a real
+      // reason, Razorpay 5xx) and we propagate immediately.
+      lastDescription =
         data?.error?.description ||
         data?.error?.reason ||
         data?.description ||
         `Razorpay returned ${rzpRes.status}`;
+      lastCode = data?.error?.code || null;
+      lastStatus = rzpRes.status;
+      lastData = data;
+
+      if (rzpRes.status === 401 || rzpRes.status === 403) {
+        console.warn(
+          `[razorpay/order] auth failed with source=${cand.source} keyId=${cand.id.slice(0, 12)}... — trying next candidate`,
+        );
+        continue;
+      }
+
+      // Non-auth error: stop, return verbatim.
       console.error("[razorpay/order] upstream error", {
         status: rzpRes.status,
         body: data,
+        keySource: cand.source,
       });
       return NextResponse.json(
         {
-          error: description,
-          code: data?.error?.code || null,
+          error: lastDescription,
+          code: lastCode,
           status: rzpRes.status,
+          _keysSource: cand.source,
         },
         { status: rzpRes.status >= 400 && rzpRes.status < 500 ? 400 : 502 },
       );
+    } catch (err: any) {
+      const isAbort = err?.name === "AbortError" || err?.name === "TimeoutError";
+      lastDescription = isAbort
+        ? "Razorpay took too long to respond. Please try again."
+        : err?.message ||
+          "Could not reach Razorpay. Check your internet and retry.";
+      console.error("[razorpay/order] network error", err);
+      lastStatus = 502;
+      // Network blip with the env keypair? It's not credentials — don't
+      // burn another attempt against the hardcoded pair on the same blip.
+      break;
     }
-
-    return NextResponse.json(data);
-  } catch (err: any) {
-    const isAbort = err?.name === "AbortError" || err?.name === "TimeoutError";
-    const msg = isAbort
-      ? "Razorpay took too long to respond. Please try again."
-      : err?.message ||
-        "Could not reach Razorpay. Check your internet and retry.";
-    console.error("[razorpay/order] network error", err);
-    return NextResponse.json({ error: msg }, { status: 502 });
   }
+
+  return NextResponse.json(
+    { error: lastDescription, code: lastCode, status: lastStatus, _data: lastData },
+    { status: lastStatus >= 400 && lastStatus < 500 ? 400 : 502 },
+  );
 }
 
 // Health probe — lets the diagnostic endpoint confirm the route is live
-// without spending a real Razorpay order. Returns the key prefix so it's
-// safe to read from the browser.
+// without spending a real Razorpay order. Reports which key candidates
+// will be tried (in order) so a stale env-var override is visible.
 export async function GET() {
+  const candidates = buildKeyCandidates();
   return NextResponse.json({
     ok: true,
-    keyIdPrefix: RZP_KEY_ID.slice(0, 12),
+    primaryKeyIdPrefix: RZP_KEY_ID.slice(0, 12),
     hasSecret: !!RZP_KEY_SECRET,
+    envKeyIdPrefix: ENV_KEY_ID.slice(0, 12) || null,
+    envIsLive: ENV_KEY_ID.startsWith("rzp_live_"),
+    envIsTest: ENV_KEY_ID.startsWith("rzp_test_"),
+    candidates: candidates.map((c) => ({
+      source: c.source,
+      keyIdPrefix: c.id.slice(0, 12),
+    })),
   });
 }

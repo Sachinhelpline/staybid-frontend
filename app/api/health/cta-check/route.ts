@@ -96,21 +96,56 @@ async function probeRazorpayOrderRoute(origin: string): Promise<Probe> {
     if (!res.ok) throw new Error(`Self HTTP ${res.status}`);
     const data = await res.json();
     if (!data?.ok) throw new Error("Order route reports not-ok");
-    return { keyIdPrefix: data.keyIdPrefix, hasSecret: data.hasSecret };
+    return {
+      primaryKeyIdPrefix: data.primaryKeyIdPrefix,
+      hasSecret: data.hasSecret,
+      envKeyIdPrefix: data.envKeyIdPrefix,
+      envIsLive: data.envIsLive,
+      envIsTest: data.envIsTest,
+      candidates: data.candidates,
+    };
+  });
+}
+
+// Live end-to-end probe: actually creates a real Razorpay order against
+// the self-healing route. If this passes, customer Pay-Full WILL work
+// right now. Uses a small ₹1 amount so the order is cheap to clean up.
+async function probeRazorpayOrderCreate(origin: string): Promise<Probe> {
+  return timed("self.razorpay-order-POST", async () => {
+    const res = await fetch(`${origin}/api/razorpay/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: 1,
+        receipt: `health_${Date.now()}`,
+        notes: { health: "true" },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Self HTTP ${res.status}`);
+    if (!data?.id) throw new Error("No order id returned");
+    return {
+      orderId: data.id,
+      keysSource: data._keysSource || "unknown",
+      amount: data.amount,
+    };
   });
 }
 
 export async function GET(req: Request) {
   const origin = new URL(req.url).origin;
 
-  const [razorpay, supabase, railway, selfOrder] = await Promise.all([
-    probeRazorpay(),
-    probeSupabase(),
-    probeRailway(),
-    probeRazorpayOrderRoute(origin),
-  ]);
+  const [razorpay, supabase, railway, selfOrderGet, selfOrderPost] =
+    await Promise.all([
+      probeRazorpay(),
+      probeSupabase(),
+      probeRailway(),
+      probeRazorpayOrderRoute(origin),
+      probeRazorpayOrderCreate(origin),
+    ]);
 
-  const probes = [razorpay, supabase, railway, selfOrder];
+  const probes = [razorpay, supabase, railway, selfOrderGet, selfOrderPost];
   const allOk = probes.every((p) => p.ok);
 
   return NextResponse.json(
@@ -131,6 +166,8 @@ export async function GET(req: Request) {
             return "Railway backend cold or down — wait 30s and retry, or check Railway logs.";
           if (p.name === "self.razorpay-order-GET")
             return "Local route /api/razorpay/order failed — check Vercel build logs.";
+          if (p.name === "self.razorpay-order-POST")
+            return `End-to-end order creation failed: ${p.detail}. Customer Pay-Full will alert this.`;
           return `${p.name}: ${p.detail}`;
         }),
     },
