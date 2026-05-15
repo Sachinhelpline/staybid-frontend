@@ -98,7 +98,44 @@ export default function HotelDetail() {
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
 
-  // Customer's bidder tier — derived from past bid history. Drives the
+  // v124.2 — Hide the floating "Check availability" mobile pill when ANY
+  // in-page primary CTA is visible. Real-device feedback: pill sat ON TOP
+  // of the in-page "Book Now / Negotiate" row when scrolled to the bottom.
+  // The pill is REDUNDANT once the user can already see the primary CTAs.
+  const [inPageCtaVisible, setInPageCtaVisible] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+    const timer = setTimeout(() => {
+      const ctas = document.querySelectorAll(".hx-cta-primary");
+      if (!ctas.length) return;
+      const visibleSet = new Set<Element>();
+      const obs = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) visibleSet.add(e.target);
+            else visibleSet.delete(e.target);
+          }
+          setInPageCtaVisible(visibleSet.size > 0);
+        },
+        { threshold: 0.4, rootMargin: "0px 0px -90px 0px" }
+      );
+      ctas.forEach((el) => obs.observe(el));
+      (window as any).__hxCtaObs = obs;
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      const obs = (window as any).__hxCtaObs;
+      if (obs) { obs.disconnect(); delete (window as any).__hxCtaObs; }
+    };
+  }, [hotel?.id, hotel?.rooms?.length]);
+
+  // Customer's bidder tier — derived from past bid history.
+  // v124.2 — unified body class so BottomDock + DialerNav + BackChip
+  // all hide cleanly while ANY of the inline modals on this page are
+  // open. The BookingReview / LuxuryCalendar / LocationGlobe components
+  // already toggle .sb-modal-open themselves; this effect covers the
+  // remaining inline modals (Book Now / Negotiate / Flash Book / picker /
+  // gallery). Drives the
   // confidence chip shown in the Negotiate modal + informs backend on
   // expected auto-accept latency (premium = instant, lowball = manual).
   const [bidderScore, setBidderScore] = useState<BidderScore | null>(null);
@@ -179,6 +216,18 @@ export default function HotelDetail() {
   // Gallery state
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
+
+  // v124.2 — toggle sb-modal-open whenever an inline modal is open so the
+  // BottomDock / DialerNav / BackChip auto-hide. Decoupled from the
+  // BookingReview / LuxuryCalendar / LocationGlobe components which each
+  // own their own toggle for safety.
+  useEffect(() => {
+    const anyOpen = !!(bnRoom || negRoom || flashBookOpen || pickerModal || galleryOpen);
+    if (anyOpen) {
+      document.body.classList.add("sb-modal-open");
+      return () => document.body.classList.remove("sb-modal-open");
+    }
+  }, [bnRoom, negRoom, flashBookOpen, pickerModal, galleryOpen]);
 
   const selectedCheckIn = globalCheckIn || bnIn || negIn || today;
 
@@ -3154,7 +3203,7 @@ export default function HotelDetail() {
           existing #availability-picker, OR if dates already set, opens
           BookNow on the cheapest room (matches openBookNow handler).
           NO CTA RULE CHANGE — purely a discoverability surface. */}
-      {hotel && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && (
+      {hotel && !inPageCtaVisible && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && (
         <div className="hx-mobile-cta-wrap" aria-hidden={false}>
           <button
             type="button"

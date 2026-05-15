@@ -93,6 +93,10 @@ export function BackChip() {
         /* Hide the label — the glyph alone is unambiguous and the chip
            stays out of the way on every page. */
         .sb-back-chip-label { display: none; }
+        /* v124.2 — hide back chip when any modal is open so it doesn't
+           overlap modal close button at top-left. */
+        body.sb-modal-open .sb-back-chip,
+        body.sb-composer-open .sb-back-chip { display: none !important; }
 
         /* Each non-reel page gets a small top padding so the back chip
            never sits on top of the page's first content row.

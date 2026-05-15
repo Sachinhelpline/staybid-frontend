@@ -119,7 +119,8 @@ export function BottomDock() {
            Chrome both have edge cases where high-z fixed panels still
            let a sibling fixed nav peek through). The Composer sets
            body.sb-composer-open on mount + clears on unmount. */
-        body.sb-composer-open .ig-bottom-dock { display: none !important; }
+        body.sb-composer-open .ig-bottom-dock,
+        body.sb-modal-open    .ig-bottom-dock { display: none !important; }
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;
@@ -162,9 +163,19 @@ export function BottomDock() {
         }
         /* Global padding so no page content gets stuck under the dock.
            Reel-app routes (/, /discover, /reels) opt out via their own
-           layout but everything else gets a safe ~70px bottom buffer. */
-        body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+           layout but everything else gets a safe ~70px bottom buffer.
+           v124.2: bumped from safe-area-only to dock-height + safe-area
+           so the LAST in-page CTA (Book Now, Submit Bid, etc.) is always
+           clear of the dock on mobile + tablet. Real-device feedback —
+           several pages had the last CTA row half-covered. */
+        body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
         body.is-reel-page { padding-bottom: 0; }
+        /* Operator panels (admin, partner, onboard, auth) hide the dock —
+           don't reserve the dock-height there. */
+        body:has([data-route-admin]), body:has([data-route-partner]),
+        body:has([data-route-onboard]), body.no-bottom-dock {
+          padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        }
 
       `}</style>
     </>

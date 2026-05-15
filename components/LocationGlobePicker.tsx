@@ -35,7 +35,11 @@ export function LocationGlobeModal({ activeCity, onClose }: {
     setMounted(true);
     const old = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = old; };
+    document.body.classList.add("sb-modal-open");
+    return () => {
+      document.body.style.overflow = old;
+      document.body.classList.remove("sb-modal-open");
+    };
   }, []);
 
   const setAndBroadcast = (c: string) => {

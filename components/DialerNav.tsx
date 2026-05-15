@@ -400,6 +400,10 @@ export function DialerNav() {
           transition: opacity 0.4s ease;
         }
         @media (min-width: 768px) { .dialer-fab { display: none; } }
+        /* v124.2 — hide dialer when any modal is open so it never overlaps
+           a modal's left-edge content (calendar prev/next, etc.). */
+        body.sb-modal-open .dialer-fab,
+        body.sb-composer-open .dialer-fab { display: none !important; }
 
         /* ── Backdrop (picker open) ───────────────────────────── */
         .dialer-backdrop {

@@ -87,10 +87,14 @@ export default function LuxuryCalendar({
     setPicking(mode);
     const base = fromIso(checkIn) || fromIso(checkOut) || new Date();
     setCursor(startOfMonth(base));
-    // body scroll lock
+    // body scroll lock + hide dock/dialer/back-chip while calendar is open
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    document.body.classList.add("sb-modal-open");
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.classList.remove("sb-modal-open");
+    };
   }, [open, mode, checkIn, checkOut]);
 
   // Cheapest room floor price as anchor

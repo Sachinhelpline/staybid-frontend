@@ -48,12 +48,17 @@ export type BookingReviewProps = {
 export default function BookingReview(p: BookingReviewProps) {
   const [busy, setBusy] = useState<"" | "pay" | "hold" | "payhotel">("");
 
-  // Block body scroll while open
+  // Block body scroll while open + hide BottomDock so its CTAs don't peek
+  // through the bottom-sheet on mobile (v124.2 — real-device feedback).
   useEffect(() => {
     if (!p.open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    document.body.classList.add("sb-modal-open");
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.classList.remove("sb-modal-open");
+    };
   }, [p.open]);
 
   if (!p.open) return null;
@@ -72,8 +77,8 @@ export default function BookingReview(p: BookingReviewProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[55] flex items-end sm:items-center justify-center backdrop-blur-md"
-      style={{ background: "rgba(2,4,12,0.78)" }}
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md"
+      style={{ background: "rgba(2,4,12,0.78)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       onClick={p.onClose}
     >
       <div
