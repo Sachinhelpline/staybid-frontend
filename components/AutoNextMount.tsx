@@ -20,11 +20,15 @@ import {
   installAutoNextDelegate,
   installAutoNextFilledWatcher,
 } from "@/lib/auto-next-scroll";
+import { installModalCloseDelegate } from "@/lib/modal-close-delegate";
 
 export function AutoNextMount() {
   useEffect(() => {
     installAutoNextDelegate();
     installAutoNextFilledWatcher();
+    // v125.2 — bulletproof modal close tap rescue. Listens at capture
+    // phase for any tap whose target/ancestor carries `data-modal-close`.
+    installModalCloseDelegate();
   }, []);
   return null;
 }

@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -491,7 +492,7 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }:
   return (
     <div className="fd-drawer-bg" onClick={onClose}>
       <div className="fd-drawer" onClick={(e) => e.stopPropagation()}>
-        <button className="fd-drawer-x" onClick={onClose}>✕</button>
+        <ModalCloseButton onClose={onClose} tone="light" className="fd-drawer-x" />
 
         {/* Hero image */}
         <div className="fd-drawer-img">

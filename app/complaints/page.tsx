@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 type Complaint = {
   id: string;
@@ -315,7 +316,7 @@ function Composer({
             <div className="font-display text-xl text-luxury-900">Raise a complaint</div>
             <div className="text-xs text-luxury-500 mt-0.5">We typically reply within 24 hrs</div>
           </div>
-          <button onClick={onClose} className="text-luxury-400 text-2xl leading-none px-1">✕</button>
+          <ModalCloseButton onClose={onClose} tone="light" />
         </div>
 
         <div className="px-5 py-5 space-y-4" data-autonext-form>

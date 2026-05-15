@@ -9,6 +9,7 @@ import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceRes
 import { io } from "socket.io-client";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
+import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
@@ -2341,8 +2342,7 @@ export default function HotelDetail() {
           <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center"
             onClick={() => setGalleryOpen(false)}>
             <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setGalleryOpen(false)}
-                className="absolute -top-12 right-0 text-white/70 hover:text-white text-3xl z-10 transition-colors">✕</button>
+              <ModalCloseButton onClose={() => setGalleryOpen(false)} tone="dark" className="absolute -top-12 right-0 z-10" />
 
               <div className="relative rounded-2xl overflow-hidden bg-black/50 max-h-[70vh] flex items-center justify-center">
                 <img
@@ -2467,7 +2467,7 @@ export default function HotelDetail() {
                 <p className="text-white font-semibold text-lg">{flashRoom?.name || "Room"}</p>
                 <p className="text-white/70 text-sm">{hotel.name}</p>
               </div>
-              <button onClick={() => setFlashBookOpen(false)} className="text-white/70 hover:text-white text-2xl">✕</button>
+              <ModalCloseButton onClose={() => setFlashBookOpen(false)} tone="dark" />
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[70vh]">
@@ -2680,7 +2680,7 @@ export default function HotelDetail() {
                 <p className="text-white font-semibold text-lg">{bnRoom.name||bnRoom.type}</p>
                 <p className="text-white/60 text-sm">{hotel.name}</p>
               </div>
-              <button onClick={() => setBnRoom(null)} className="text-white/60 hover:text-white text-2xl">✕</button>
+              <ModalCloseButton onClose={() => setBnRoom(null)} tone="dark" />
             </div>
             <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
 
@@ -2840,7 +2840,7 @@ export default function HotelDetail() {
                     <p className="text-white font-semibold text-base leading-tight">{negRoom.name||negRoom.type}</p>
                   </div>
                 </div>
-                <button onClick={() => setNegRoom(null)} className="text-white/40 hover:text-white text-xl w-8 h-8 rounded-full hover:bg-white/5 transition">✕</button>
+                <ModalCloseButton onClose={() => setNegRoom(null)} tone="dark" />
               </div>
 
               {/* BODY */}
@@ -3213,7 +3213,12 @@ export default function HotelDetail() {
           existing #availability-picker, OR if dates already set, opens
           BookNow on the cheapest room (matches openBookNow handler).
           NO CTA RULE CHANGE — purely a discoverability surface. */}
-      {hotel && !inPageCtaVisible && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && (
+      {/* v125.2 — also hide during success modals (Bid Submitted / Booking
+          Confirmed / Bid Placed) so the floating CTA pill doesn't peek
+          through and tempt a second tap. Some success flows clear their
+          *Room state on submit (bidSuccess / bnSuccess), so without these
+          guards the floating CTA would re-appear behind the celebration. */}
+      {hotel && !inPageCtaVisible && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && !bidSuccess && !bnSuccess && !negSuccess && !flashBookSuccess && (
         <div className="hx-mobile-cta-wrap" aria-hidden={false}>
           <button
             type="button"
@@ -3274,8 +3279,7 @@ export default function HotelDetail() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setPickerModal(null)}
-                  className="w-9 h-9 rounded-full bg-white/80 border border-luxury-200 flex items-center justify-center text-luxury-500 hover:text-luxury-800 transition text-lg">✕</button>
+                <ModalCloseButton onClose={() => setPickerModal(null)} tone="light" />
               </div>
 
               {/* Dates */}

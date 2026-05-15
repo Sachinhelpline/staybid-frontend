@@ -33,6 +33,7 @@ import { filterCssFor } from "@/components/discover/CreateFlow";
 // info gets scrubbed per the v25 anti-bypass rule. Same helper the
 // composer + InstagramHotelFeed use, so the contract stays consistent.
 import { sanitizeText } from "@/lib/sanitize-text";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 export type FeedPost = {
   id: string;
@@ -595,12 +596,12 @@ export function PostsScrollFeed({
             <div className="pf-drawer-handle" />
             <div className="pf-comments-head">
               <p className="pf-drawer-title">Comments</p>
-              <button
-                type="button"
-                onClick={() => { setCommentsOpen(""); setCommentDraft(""); }}
+              <ModalCloseButton
+                onClose={() => { setCommentsOpen(""); setCommentDraft(""); }}
+                tone="light"
+                ariaLabel="Close comments"
                 className="pf-comments-close"
-                aria-label="Close comments"
-              >✕</button>
+              />
             </div>
             <div className="pf-comments-list">
               {(commentLists[commentsOpen] && commentLists[commentsOpen].length > 0) ? (

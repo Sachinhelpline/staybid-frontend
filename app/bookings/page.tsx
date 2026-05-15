@@ -11,6 +11,7 @@ import {
 } from "@/lib/hold-amount";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import BookingChat from "@/components/BookingChat";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -262,7 +263,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                   <div className="font-display text-xl text-luxury-900">How was {hotelName}?</div>
                   <p className="text-xs text-luxury-500 mt-0.5">Your feedback helps thousands of travellers</p>
                 </div>
-                <button onClick={() => setOpen(false)} className="text-luxury-400 text-2xl leading-none px-1">✕</button>
+                <ModalCloseButton onClose={() => setOpen(false)} tone="light" />
               </div>
 
               {/* Star rating */}

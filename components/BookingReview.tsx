@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { computeHoldAmount, type HoldTier } from "@/lib/hold-amount";
+import ModalCloseButton from "@/components/ModalCloseButton";
 
 export type RateLine = { label: string; value: string; subtle?: boolean };
 
@@ -116,7 +117,7 @@ export default function BookingReview(p: BookingReviewProps) {
               <p className="text-white font-semibold text-base leading-tight truncate max-w-[200px]">{p.hotelName}</p>
             </div>
           </div>
-          <button onClick={p.onClose} className="text-white/50 hover:text-white text-xl w-8 h-8 rounded-full hover:bg-white/5 transition">✕</button>
+          <ModalCloseButton onClose={p.onClose} tone="dark" />
         </div>
 
         {/* SCROLLABLE BODY — v122.4: data-autonext-form makes every

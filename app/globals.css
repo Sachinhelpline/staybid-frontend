@@ -3159,3 +3159,93 @@ body.is-reel-page {
   .bx-review-hero { padding: 28px 24px; }
 }
 
+/* ──────────────────────────────────────────────────────────────────────
+   v125.2 — Bulletproof modal close button
+   Used by <ModalCloseButton> and by every legacy close button via the
+   global capture-phase delegate (lib/modal-close-delegate.ts).
+   ────────────────────────────────────────────────────────────────────── */
+.sb-modal-close {
+  /* visual: a 40×40 round button, but with an invisible 56×56 hit box
+     via ::before so finger taps land reliably even on small displays. */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  /* Bulletproof tappability — never let a stacking context or transform
+     ancestor swallow the tap. */
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.18);
+  user-select: none;
+  z-index: 1;
+  transition: background 0.15s ease, transform 0.1s ease, color 0.15s ease;
+}
+.sb-modal-close::before {
+  /* invisible 56×56 hit-area extension */
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.sb-modal-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.sb-modal-close:active {
+  transform: scale(0.94);
+  background: rgba(255, 255, 255, 0.22);
+}
+.sb-modal-close:focus-visible {
+  outline: 2px solid var(--cozy-champagne, #c9a66b);
+  outline-offset: 2px;
+}
+/* Tone variants */
+.sb-modal-close--dark {
+  /* on dark surface (e.g. BookingReview header gradient) */
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(240, 180, 41, 0.32);
+  color: #ffe8b5;
+}
+.sb-modal-close--dark:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.sb-modal-close--light {
+  /* on cream surface (e.g. /complaints composer, /bookings sheet) */
+  background: rgba(31, 26, 15, 0.06);
+  border-color: rgba(31, 26, 15, 0.14);
+  color: var(--cozy-warm-dark, #1f1a0f);
+}
+.sb-modal-close--light:hover { background: rgba(31, 26, 15, 0.12); }
+
+/* Bulletproof rule: any element marked [data-modal-close] gets the same
+   pointer-events + hit-area guarantees as .sb-modal-close, even if the
+   class wasn't applied. This lets the global delegate close legacy modal
+   X buttons that haven't been migrated yet. */
+[data-modal-close] {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  position: relative;
+  cursor: pointer;
+}
+[data-modal-close]::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: transparent;
+  z-index: -1;
+}
+
