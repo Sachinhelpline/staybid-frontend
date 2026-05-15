@@ -18,10 +18,19 @@ export async function GET(req: NextRequest) {
   const customerIds = await resolveUserIds(primaryId, payload?.phone);
   const inList = customerIds.join(",");
 
-  const [bookings, acceptedBids] = await Promise.all([
+  // v124 — also pull real wallet_credits balance + ledger so the wallet page
+  // shows ACTUAL spendable balance (from points redemptions etc.), not just
+  // the computed "total spent" from bids/bookings.
+  const [bookings, acceptedBids, walletCreditRows, walletLedgerRows] = await Promise.all([
     sbSelect(`bookings?customerId=in.(${inList})&select=*`),
     sbSelect(`bids?customerId=in.(${inList})&status=eq.ACCEPTED&select=*`),
+    sbSelect(`wallet_credits?user_id=in.(${inList})&select=*`),
+    sbSelect(`wallet_credit_history?user_id=in.(${inList})&select=*&order=created_at.desc&limit=50`),
   ]);
+  // Aggregate across both cross-pool user ids if multiple rows exist
+  const realBalance = (walletCreditRows || []).reduce((s: number, w: any) => s + Number(w.balance_inr || 0), 0);
+  const lifetimeCredited = (walletCreditRows || []).reduce((s: number, w: any) => s + Number(w.lifetime_credited || 0), 0);
+  const lifetimeDebited = (walletCreditRows || []).reduce((s: number, w: any) => s + Number(w.lifetime_debited || 0), 0);
 
   // BULLETPROOF: pull authoritative paid amounts (from bid_paid_amounts)
   // for every accepted bid. This is what the customer actually paid via
@@ -65,16 +74,32 @@ export async function GET(req: NextRequest) {
     createdAt: b.updatedAt || b.createdAt,
   }));
 
-  const transactions = [...bookingTxns, ...bidTxns].sort((a, b) =>
+  // v124 — wallet credit history rows become transactions too. Credits are
+  // positive (green); debits are negative (red).
+  const creditTxns = (walletLedgerRows || []).map((l: any) => ({
+    id: `wch_${l.id}`,
+    type: Number(l.delta_inr) >= 0 ? "CREDIT" : "DEBIT",
+    amount: Math.abs(Number(l.delta_inr || 0)),
+    description: l.reason || (l.type === "credit_from_points" ? "Wallet credit from StayPoints"
+                              : l.type === "debit_on_booking" ? "Applied to booking"
+                              : l.type === "refund" ? "Refund"
+                              : "Wallet adjustment"),
+    createdAt: l.created_at,
+  }));
+
+  const transactions = [...creditTxns, ...bookingTxns, ...bidTxns].sort((a, b) =>
     new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   );
 
-  const totalDebit = transactions.reduce((s, t) => s + t.amount, 0);
+  const totalDebit = [...bookingTxns, ...bidTxns].reduce((s, t) => s + t.amount, 0);
 
   return NextResponse.json({
     wallet: {
-      balance: 0,
-      totalCredit: 0,
+      // Real spendable balance from wallet_credits (₹)
+      balance: realBalance,
+      totalCredit: lifetimeCredited,
+      walletCreditBalance: realBalance,
+      walletCreditDebited: lifetimeDebited,
       totalDebit,
       spent: totalDebit,
       transactions,

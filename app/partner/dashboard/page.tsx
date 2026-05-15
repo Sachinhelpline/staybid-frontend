@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 import { ImageUpload } from "@/components/ImageUpload";
 import BookingChat from "@/components/BookingChat";
+import { api } from "@/lib/api";
 // v113 — premium availability calendar + bulk block-dates sheet.
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
 
@@ -86,7 +87,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"redeem"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -636,6 +637,8 @@ export default function PartnerDashboard() {
     { id:"availability", icon:"🗓️", label:"Availability" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
     { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
+    // v124 — StayPoints redemption fulfilment (scan / enter coupon at check-in)
+    { id:"redeem", icon:"🎟️", label:"Redeem Codes" },
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
@@ -1897,6 +1900,11 @@ export default function PartnerDashboard() {
           </div>
         )}
 
+        {/* ══════════════ REDEEM (v124) ══════════════ */}
+        {tab === "redeem" && hotel?.id && (
+          <PartnerRedeemTab hotelId={hotel.id} />
+        )}
+
         {/* ══════════════ PROFILE ══════════════ */}
         {tab === "profile" && (
           <div className="fade-up max-w-xl">
@@ -2224,6 +2232,165 @@ export default function PartnerDashboard() {
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+// ───────── v124 Redeem tab — partner scans / enters a guest code at check-in ─────
+function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
+  const [codeInput, setCodeInput] = useState("");
+  const [validating, setValidating] = useState(false);
+  const [validated, setValidated] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [recent, setRecent] = useState<any[]>([]);
+  const [toast, setToast] = useState("");
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2400);
+  }
+
+  async function lookup() {
+    const code = codeInput.trim().toUpperCase();
+    if (!code) return;
+    setValidating(true);
+    setError("");
+    setValidated(null);
+    try {
+      const r: any = await api.partnerValidateCode(code);
+      if (r?.code) {
+        setValidated(r);
+        if (!r.canFulfill) {
+          setError(
+            r.code.status !== "active"
+              ? `This code is ${r.code.status}.`
+              : r.code.kind !== "amenity"
+              ? "This is a customer-checkout coupon. Only amenity codes are fulfilled at the hotel."
+              : "Cannot fulfill this code."
+          );
+        }
+      } else {
+        setError(r?.error || "Code not found");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Network error");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  async function fulfill() {
+    if (!validated?.code?.code) return;
+    setValidating(true);
+    try {
+      const r: any = await api.partnerFulfillCode({ code: validated.code.code, hotelId });
+      if (r?.ok) {
+        showToast(`✓ Fulfilled: ${validated.code.title || validated.code.code}`);
+        setRecent((rs) => [{ ...validated, fulfilledAt: new Date().toISOString() }, ...rs.slice(0, 19)]);
+        setValidated(null);
+        setCodeInput("");
+        setError("");
+      } else {
+        setError(r?.error || "Failed to fulfill");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Network error");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  return (
+    <div className="fade-up max-w-2xl">
+      <h2 className="font-display text-2xl font-light text-luxury-900 mb-1">Redeem Guest Codes</h2>
+      <p className="text-sm text-luxury-500 mb-5">Scan or enter the guest's StayPoints reward code at check-in. Amenity perks (breakfast, late checkout, upgrades) appear here.</p>
+
+      <div className="card-p mb-4">
+        <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-2">
+          Guest code or barcode
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            value={codeInput}
+            onChange={(e) => { setCodeInput(e.target.value.toUpperCase()); setValidated(null); setError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && lookup()}
+            placeholder="STAY-XXXX-XXXX or 12-digit"
+            className="inp-p font-mono tracking-wider text-lg placeholder:font-sans placeholder:tracking-normal placeholder:text-sm"
+          />
+          <button onClick={lookup} disabled={validating || !codeInput.trim()}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50 whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+            {validating ? "…" : "Look up"}
+          </button>
+        </div>
+        {error && (
+          <p className="text-xs text-red-600 mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+        )}
+      </div>
+
+      {validated && (
+        <div className="card-p mb-4 border-2 border-gold-300 bg-gold-50/40">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0"
+              style={{ background: "linear-gradient(135deg,#f0b429,#c9911a)" }}>
+              {validated.code.kind === "amenity" ? "🏨" : validated.code.kind === "coupon" ? "🎟️" : "🎁"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-luxury-900 text-base leading-tight">{validated.code.title || validated.code.code}</p>
+              <p className="font-mono text-xs text-luxury-600 mt-1">{validated.code.code}</p>
+            </div>
+            <span className={`text-[0.55rem] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+              validated.code.status === "active" ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+              : "bg-red-100 text-red-700 border border-red-300"
+            }`}>{validated.code.status}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+            <div><span className="text-luxury-400">Guest:</span> <span className="font-semibold text-luxury-900">{validated.customer?.name || "Guest"}</span></div>
+            <div><span className="text-luxury-400">Phone:</span> <span className="font-semibold text-luxury-900">{validated.customer?.phone || "—"}</span></div>
+            <div><span className="text-luxury-400">Kind:</span> <span className="font-semibold text-luxury-900 capitalize">{validated.code.kind.replace("_", " ")}</span></div>
+            <div><span className="text-luxury-400">Expires:</span> <span className="font-semibold text-luxury-900">{new Date(validated.code.expires_at).toLocaleDateString("en-IN")}</span></div>
+          </div>
+          {validated.canFulfill ? (
+            <button onClick={fulfill} disabled={validating}
+              className="w-full py-3 rounded-2xl font-extrabold text-sm text-white"
+              style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
+              {validating ? "Marking…" : "✓ Mark Fulfilled"}
+            </button>
+          ) : (
+            <p className="text-xs text-luxury-500 text-center py-2">This code cannot be fulfilled at the hotel.</p>
+          )}
+        </div>
+      )}
+
+      {recent.length > 0 && (
+        <div className="card-p">
+          <h3 className="font-bold text-luxury-900 text-sm mb-3">Recently Fulfilled</h3>
+          <div className="space-y-2">
+            {recent.map((r, i) => (
+              <div key={i} className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">✓</span>
+                  <div>
+                    <p className="font-mono text-xs font-bold text-emerald-800">{r.code.code}</p>
+                    <p className="text-[0.65rem] text-emerald-700">{r.code.title || r.code.kind} · {r.customer?.name || "Guest"}</p>
+                  </div>
+                </div>
+                <p className="text-[0.6rem] text-emerald-600">{new Date(r.fulfilledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-emerald-600 text-white text-xs font-semibold shadow-lg z-50"
+          style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

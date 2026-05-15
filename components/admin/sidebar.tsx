@@ -19,6 +19,8 @@ const NAV = [
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
   { href: "/admin/commission-rules", label: "Commission Rules", icon: "💰" },
+  { href: "/admin/redemption-rules", label: "Redemption Rules", icon: "🎁" },
+  { href: "/admin/redemption-codes", label: "Issued Codes", icon: "🎟️" },
   { href: "/admin/revenue", label: "Revenue", icon: "💹" },
   { href: "/admin/feedback", label: "Feedback", icon: "⭐" },
   { href: "/admin/notifications", label: "Notifications", icon: "📨" },

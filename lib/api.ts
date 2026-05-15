@@ -130,6 +130,96 @@ export const api = {
   getPointsHistory: (limit = 50, offset = 0)          => direct(`/api/points/history?limit=${limit}&offset=${offset}`),
   redeemPoints:     (points: number, opts: { reason?: string; sourceType?: string; sourceId?: string } = {}) =>
     direct("/api/points/redeem", { method: "POST", body: JSON.stringify({ points, ...opts }) }),
+
+  // v124 — StayPoints redemption system: catalog, code-issue, codes wallet,
+  // validation, and apply-to-booking. Wallet credit + coupon + amenity kinds.
+  getRedemptionRules: () => fetch("/api/redemption/rules").then(r => r.json()),
+  redeemRule:         (ruleIdOrSlug: { ruleId?: string; slug?: string }) =>
+    direct("/api/redemption/redeem", { method: "POST", body: JSON.stringify(ruleIdOrSlug) }),
+  getMyRedemptionCodes: (status?: "active" | "used" | "expired") =>
+    direct(`/api/redemption/codes${status ? `?status=${status}` : ""}`),
+  validateRedemptionCode: (code: string, bookingTotal?: number) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+    const qs = new URLSearchParams({ code });
+    if (bookingTotal) qs.set("bookingTotal", String(bookingTotal));
+    return fetch(`/api/redemption/validate?${qs.toString()}`, {
+      headers: t ? { Authorization: `Bearer ${t}` } : {},
+    }).then((r) => r.json());
+  },
+  applyRedemption: (data: { bidId: string; couponCode?: string; walletCreditInr?: number }) =>
+    direct("/api/redemption/apply", { method: "POST", body: JSON.stringify(data) }),
+  // Partner-side
+  partnerValidateCode: (code: string) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") : null;
+    return fetch(`/api/partner/redemption?code=${encodeURIComponent(code)}`, {
+      headers: t ? { "x-partner-token": t } : {},
+    }).then((r) => r.json());
+  },
+  partnerFulfillCode: (data: { code: string; hotelId: string }) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") : null;
+    return fetch(`/api/partner/redemption`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(t ? { "x-partner-token": t } : {}) },
+      body: JSON.stringify(data),
+    }).then((r) => r.json());
+  },
+  // Admin-side
+  adminGetRedemptionRules: () => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    return fetch("/api/admin/redemption-rules", {
+      headers: { ...(t ? { "x-admin-token": t } : {}), ...(u?.id ? { "x-admin-id": u.id } : {}) },
+    }).then((r) => r.json());
+  },
+  adminUpsertRedemptionRule: (rule: any) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    return fetch("/api/admin/redemption-rules", {
+      method: rule.id ? "PATCH" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(t ? { "x-admin-token": t } : {}),
+        ...(u?.id ? { "x-admin-id": u.id } : {}),
+      },
+      body: JSON.stringify(rule),
+    }).then((r) => r.json());
+  },
+  adminDeleteRedemptionRule: (id: string) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    return fetch(`/api/admin/redemption-rules?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { ...(t ? { "x-admin-token": t } : {}), ...(u?.id ? { "x-admin-id": u.id } : {}) },
+    }).then((r) => r.json());
+  },
+  adminGetRedemptionCodes: (params: Record<string, string> = {}) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    const qs = new URLSearchParams(params).toString();
+    return fetch(`/api/admin/redemption-codes${qs ? "?" + qs : ""}`, {
+      headers: { ...(t ? { "x-admin-token": t } : {}), ...(u?.id ? { "x-admin-id": u.id } : {}) },
+    }).then((r) => r.json());
+  },
+  adminRedemptionCodeAction: (id: string, action: "revoke" | "extend", days?: number) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    return fetch(`/api/admin/redemption-codes`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(t ? { "x-admin-token": t } : {}),
+        ...(u?.id ? { "x-admin-id": u.id } : {}),
+      },
+      body: JSON.stringify({ id, action, days }),
+    }).then((r) => r.json());
+  },
+  adminGetRedemptionAnalytics: (days = 30) => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
+    const u = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sb_admin_user") || "{}") : {};
+    return fetch(`/api/admin/analytics/redemption?days=${days}`, {
+      headers: { ...(t ? { "x-admin-token": t } : {}), ...(u?.id ? { "x-admin-id": u.id } : {}) },
+    }).then((r) => r.json());
+  },
   adminAdjustPoints: (userId: string, delta: number, reason?: string) => {
     const t = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") : null;
     return fetch("/api/admin/points/adjust", {

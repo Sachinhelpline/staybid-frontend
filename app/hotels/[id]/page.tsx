@@ -8,7 +8,7 @@ import { openRazorpayCheckout } from "@/lib/razorpay";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
 import { io } from "socket.io-client";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
-import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
+import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "@/components/BookingReview";
 import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
@@ -587,21 +587,28 @@ export default function HotelDetail() {
       rateLines, totalAmount: flashGrandTotal,
       flowLabel: "🔥 Flash Deal",
       onUpdate: () => setReview(null),
-      onPayFull: () => executeFlashBook("full", 0),
-      onHold:    (h) => executeFlashBook("hold", h),
-      onPayAtHotel: (h) => executeFlashBook("payhotel", h),
+      onPayFull: (final, applied) => executeFlashBook("full", 0, final, applied),
+      onHold:    (h, final, applied) => executeFlashBook("hold", h, final, applied),
+      onPayAtHotel: (h, final, applied) => executeFlashBook("payhotel", h, final, applied),
       holdEnabled: holdConfig?.hold_enabled ?? true,
       payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
       holdTiers: holdConfig?.tier_overrides || undefined,
     });
   };
 
-  const executeFlashBook = async (mode: "full"|"hold"|"payhotel", holdAmount: number) => {
+  const executeFlashBook = async (
+    mode: "full"|"hold"|"payhotel",
+    holdAmount: number,
+    finalAmount: number = flashGrandTotal,
+    applied: AppliedRedemption = {},
+  ) => {
     setBookLoading(true);
     try {
-      const charge = mode === "full" ? flashGrandTotal : holdAmount;
-      // Step 1: Razorpay payment
-      const payResult = await openRazorpayCheckout({
+      // v124 — Razorpay charges the post-redemption amount. If finalAmount===0
+      // (full wallet+coupon coverage), skip Razorpay entirely.
+      const charge = mode === "full" ? finalAmount : holdAmount;
+      let payResult: any = { razorpay_payment_id: "wallet_only" };
+      if (charge > 0) payResult = await openRazorpayCheckout({
         amount: charge,
         hotelName: hotel.name,
         description: mode === "full"
@@ -658,6 +665,16 @@ export default function HotelDetail() {
       }
 
       try { await api.acceptBid(bidRes.bid.id); } catch {}
+      // v124 — apply coupon / wallet credit to the bid (idempotent server-side)
+      if (applied?.couponCode || applied?.walletCreditAppliedInr) {
+        try {
+          await api.applyRedemption({
+            bidId: bidRes.bid.id,
+            couponCode: applied.couponCode,
+            walletCreditInr: applied.walletCreditAppliedInr,
+          });
+        } catch {}
+      }
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: today, checkOut: flashCheckOut }));
       localStorage.setItem(`deal_price_${bidRes.bid.id}`, String(dealAmt));
       localStorage.setItem(`paid_amount_${bidRes.bid.id}`, String(paidTotal));
@@ -883,9 +900,9 @@ export default function HotelDetail() {
       rateLines, totalAmount: total,
       flowLabel: "Book Now",
       onUpdate: () => { setReview(null); },   // keeps Book Now modal open underneath
-      onPayFull: () => executeBookNow("full", 0, { nights, total }),
-      onHold:    (h) => executeBookNow("hold", h, { nights, total }),
-      onPayAtHotel: (h) => executeBookNow("payhotel", h, { nights, total }),
+      onPayFull: (final, applied) => executeBookNow("full", 0, { nights, total }, final, applied),
+      onHold:    (h, final, applied) => executeBookNow("hold", h, { nights, total }, final, applied),
+      onPayAtHotel: (h, final, applied) => executeBookNow("payhotel", h, { nights, total }, final, applied),
       holdEnabled: holdConfig?.hold_enabled ?? true,
       payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
       holdTiers: holdConfig?.tier_overrides || undefined,
@@ -895,14 +912,18 @@ export default function HotelDetail() {
   const executeBookNow = async (
     mode: "full" | "hold" | "payhotel",
     holdAmount: number,
-    ctx: { nights: number; total: number }
+    ctx: { nights: number; total: number },
+    finalAmount?: number,
+    applied: AppliedRedemption = {},
   ) => {
     setBnLoading(true);
     try {
       const { nights, total } = ctx;
-      const charge = mode === "full" ? total : holdAmount;
-      // Step 1: Razorpay payment
-      const payResult = await openRazorpayCheckout({
+      const effectiveTotal = finalAmount ?? total;
+      const charge = mode === "full" ? effectiveTotal : holdAmount;
+      // v124 — skip Razorpay if redemption fully covered the booking
+      let payResult: any = { razorpay_payment_id: "wallet_only" };
+      if (charge > 0) payResult = await openRazorpayCheckout({
         amount: charge,
         hotelName: hotel.name,
         description: mode === "full"
@@ -918,6 +939,16 @@ export default function HotelDetail() {
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
       try { await api.acceptBid(bidRes.bid.id); } catch {}
+      // v124 — apply redemption to bid
+      if (applied?.couponCode || applied?.walletCreditAppliedInr) {
+        try {
+          await api.applyRedemption({
+            bidId: bidRes.bid.id,
+            couponCode: applied.couponCode,
+            walletCreditInr: applied.walletCreditAppliedInr,
+          });
+        } catch {}
+      }
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: bnIn, checkOut: bnOut }));
 
       // Hold state — recorded only when not paying full upfront
@@ -1006,9 +1037,9 @@ export default function HotelDetail() {
         rateLines, totalAmount: total,
         flowLabel: "⚡ Instant Bid",
         onUpdate: () => setReview(null),
-        onPayFull: () => executeNegotiate("full", 0, { nights, total }),
-        onHold:    (h) => executeNegotiate("hold", h, { nights, total }),
-        onPayAtHotel: (h) => executeNegotiate("payhotel", h, { nights, total }),
+        onPayFull: (final, applied) => executeNegotiate("full", 0, { nights, total }, final, applied),
+        onHold:    (h, final, applied) => executeNegotiate("hold", h, { nights, total }, final, applied),
+        onPayAtHotel: (h, final, applied) => executeNegotiate("payhotel", h, { nights, total }, final, applied),
         holdEnabled: holdConfig?.hold_enabled ?? true,
         payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
         holdTiers: holdConfig?.tier_overrides || undefined,
@@ -1065,13 +1096,18 @@ export default function HotelDetail() {
   const executeNegotiate = async (
     mode: "full" | "hold" | "payhotel",
     holdAmount: number,
-    ctx: { nights: number; total: number }
+    ctx: { nights: number; total: number },
+    finalAmount?: number,
+    applied: AppliedRedemption = {},
   ) => {
     setNegLoading(true);
     try {
       const { nights, total } = ctx;
-      const charge = mode === "full" ? total : holdAmount;
-      const payResult = await openRazorpayCheckout({
+      const effectiveTotal = finalAmount ?? total;
+      const charge = mode === "full" ? effectiveTotal : holdAmount;
+      // v124 — skip Razorpay if redemption fully covered the booking
+      let payResult: any = { razorpay_payment_id: "wallet_only" };
+      if (charge > 0) payResult = await openRazorpayCheckout({
         amount: charge,
         hotelName: hotel.name,
         description: mode === "full"
@@ -1086,6 +1122,16 @@ export default function HotelDetail() {
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id });
+      // v124 — apply redemption to bid
+      if (applied?.couponCode || applied?.walletCreditAppliedInr) {
+        try {
+          await api.applyRedemption({
+            bidId: bidRes.bid.id,
+            couponCode: applied.couponCode,
+            walletCreditInr: applied.walletCreditAppliedInr,
+          });
+        } catch {}
+      }
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
       if (mode !== "full") {
@@ -1184,9 +1230,9 @@ export default function HotelDetail() {
       rateLines, totalAmount: total,
       flowLabel: "🤝 Accept Counter",
       onUpdate: () => setReview(null),
-      onPayFull: () => executeCounterAccept(bid, "full", 0, { nights, total }),
-      onHold:    (h) => executeCounterAccept(bid, "hold", h, { nights, total }),
-      onPayAtHotel: (h) => executeCounterAccept(bid, "payhotel", h, { nights, total }),
+      onPayFull: (final, applied) => executeCounterAccept(bid, "full", 0, { nights, total }, final, applied),
+      onHold:    (h, final, applied) => executeCounterAccept(bid, "hold", h, { nights, total }, final, applied),
+      onPayAtHotel: (h, final, applied) => executeCounterAccept(bid, "payhotel", h, { nights, total }, final, applied),
       holdEnabled: holdConfig?.hold_enabled ?? true,
       payAtHotelEnabled: holdConfig?.pay_at_hotel_enabled ?? true,
       holdTiers: holdConfig?.tier_overrides || undefined,
@@ -1197,17 +1243,22 @@ export default function HotelDetail() {
     bid: any,
     mode: "full" | "hold" | "payhotel",
     holdAmount: number,
-    ctx: { nights: number; total: number }
+    ctx: { nights: number; total: number },
+    finalAmount?: number,
+    applied: AppliedRedemption = {},
   ) => {
     const bidId = bid.id;
     const counterAmt = bid.counterAmount || bid.amount;
     setActionLoading(bidId);
     try {
       const { nights, total } = ctx;
-      const charge = mode === "full" ? total : holdAmount;
+      const effectiveTotal = finalAmount ?? total;
+      const charge = mode === "full" ? effectiveTotal : holdAmount;
       const stored = JSON.parse(localStorage.getItem(`bid_dates_${bidId}`) || "null");
 
-      const payResult = await openRazorpayCheckout({
+      // v124 — skip Razorpay if redemption fully covered the booking
+      let payResult: any = { razorpay_payment_id: "wallet_only" };
+      if (charge > 0) payResult = await openRazorpayCheckout({
         amount: charge,
         hotelName: hotel.name,
         description: mode === "full"
@@ -1237,6 +1288,17 @@ export default function HotelDetail() {
           checkIn: stored?.checkIn, checkOut: stored?.checkOut,
           payAtHotel: mode === "payhotel",
         });
+      }
+
+      // v124 — apply redemption to bid (counter-accept path)
+      if (applied?.couponCode || applied?.walletCreditAppliedInr) {
+        try {
+          await api.applyRedemption({
+            bidId,
+            couponCode: applied.couponCode,
+            walletCreditInr: applied.walletCreditAppliedInr,
+          });
+        } catch {}
       }
 
       try {

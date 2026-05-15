@@ -3,6 +3,8 @@
 // Sits between "user picks bid/accept/book" and the actual Razorpay
 // payment. Shows complete trip details + lets customer:
 //   • Update (re-open the original modal to change dates/guests/amount)
+//   • Apply a coupon code (v124)
+//   • Toggle wallet credit (v124)
 //   • Pay Full ₹X & Book — instant confirm
 //   • 🔒 Hold for 24h · ₹Y — lock the price, balance settles later
 //
@@ -11,10 +13,24 @@
 // owns the actions and passes them as callbacks.
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { computeHoldAmount, type HoldTier } from "@/lib/hold-amount";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import {
+  getPendingRedemption,
+  clearPendingRedemption,
+  normalizeCodeInput,
+  type PendingRedemption,
+} from "@/lib/redemption";
+import { api } from "@/lib/api";
 
 export type RateLine = { label: string; value: string; subtle?: boolean };
+
+export type AppliedRedemption = {
+  couponCode?: string;
+  couponDiscountInr?: number;
+  walletCreditAppliedInr?: number;
+};
 
 export type BookingReviewProps = {
   open: boolean;
@@ -31,26 +47,38 @@ export type BookingReviewProps = {
   kids?: number;
   // Pricing
   rateLines: RateLine[];      // detailed breakdown
-  totalAmount: number;        // full amount due
+  totalAmount: number;        // full amount due BEFORE redemption
   flowLabel?: string;         // "Book Now" / "Flash Deal" / "Bid Accepted" — shown as a context chip
-  // Actions
+  // Actions — receive the (possibly-discounted) final amount as 1st arg
   onUpdate?: () => void;      // optional — if present, "Update" chip is shown
-  onPayFull: () => void | Promise<void>;
-  onHold?: (holdAmount: number) => void | Promise<void>; // omit to disable hold
-  onPayAtHotel?: (holdAmount: number) => void | Promise<void>; // optional second hold variant
+  onPayFull: (finalAmount: number, applied: AppliedRedemption) => void | Promise<void>;
+  onHold?: (holdAmount: number, finalAmount: number, applied: AppliedRedemption) => void | Promise<void>;
+  onPayAtHotel?: (holdAmount: number, finalAmount: number, applied: AppliedRedemption) => void | Promise<void>;
   // Hotel config (per-hotel toggles — fallback to defaults)
   holdEnabled?: boolean;
   payAtHotelEnabled?: boolean;
-  // Per-hotel custom hold tiers (from /api/hotel-hold-config). When omitted,
-  // platform defaults from DEFAULT_HOLD_TIERS apply.
   holdTiers?: HoldTier[];
+  // v124 — when true, render the coupon + wallet-credit row. Defaults true.
+  // Pass false on flows where redemption shouldn't apply (e.g. hold-balance
+  // settlement modal).
+  allowRedemption?: boolean;
+  // Pre-fetched wallet credit balance (₹) — saves a round-trip on open
+  walletCreditBalance?: number;
 };
 
 export default function BookingReview(p: BookingReviewProps) {
   const [busy, setBusy] = useState<"" | "pay" | "hold" | "payhotel">("");
 
+  // v124 — redemption state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMsg, setCouponMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [walletCreditBalance, setWalletCreditBalance] = useState(p.walletCreditBalance || 0);
+  const [walletCreditOn, setWalletCreditOn] = useState(false);
+
   // Block body scroll while open + hide BottomDock so its CTAs don't peek
-  // through the bottom-sheet on mobile (v124.2 — real-device feedback).
+  // through the bottom-sheet on mobile.
   useEffect(() => {
     if (!p.open) return;
     const prev = document.body.style.overflow;
@@ -62,18 +90,82 @@ export default function BookingReview(p: BookingReviewProps) {
     };
   }, [p.open]);
 
+  // On open, pull any pending coupon queued from /my-codes + fresh wallet
+  // credit balance (covers cases where prop wasn't passed).
+  useEffect(() => {
+    if (!p.open) return;
+    if (p.allowRedemption === false) return;
+
+    const pending: PendingRedemption | null = getPendingRedemption();
+    if (pending && pending.code) {
+      setCouponInput(pending.code);
+      // Auto-validate
+      validateCoupon(pending.code, true);
+    }
+    // Fetch wallet credit balance if not provided
+    if (!p.walletCreditBalance) {
+      api.getMyRedemptionCodes().then((d: any) => {
+        const bal = Number(d?.walletCredit?.balance_inr || 0);
+        setWalletCreditBalance(bal);
+      }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.open]);
+
   if (!p.open) return null;
 
-  const holdAmount = computeHoldAmount(p.totalAmount, p.holdTiers);
-  const balanceDue = p.totalAmount - holdAmount;
-  const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+  const baseTotal = p.totalAmount;
+  // Wallet credit max applicable = min(balance, remaining-after-coupon)
+  const afterCoupon = Math.max(0, baseTotal - couponDiscount);
+  const walletCreditApplied = walletCreditOn ? Math.min(walletCreditBalance, afterCoupon) : 0;
+  const finalAmount = Math.max(0, afterCoupon - walletCreditApplied);
+
+  const holdAmount = computeHoldAmount(finalAmount, p.holdTiers);
+  const balanceDue = finalAmount - holdAmount;
+  const fmt = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
   const fmtDate = (s: string) =>
     new Date(s).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
-  const run = async (kind: "pay" | "hold" | "payhotel", fn: () => any) => {
+  async function validateCoupon(rawCode: string, silent = false) {
+    const code = normalizeCodeInput(rawCode);
+    if (!code) return;
+    setCouponBusy(true);
+    setCouponMsg(null);
+    try {
+      const r: any = await api.validateRedemptionCode(code, baseTotal);
+      if (r?.ok && r?.willApply?.ok) {
+        setCouponDiscount(Number(r.willApply.discountInr || 0));
+        setCouponInput(code);
+        if (!silent) setCouponMsg({ kind: "ok", text: `Applied: ${fmt(r.willApply.discountInr)} off` });
+        else setCouponMsg({ kind: "ok", text: `Coupon ready: ${fmt(r.willApply.discountInr)} off` });
+      } else {
+        setCouponDiscount(0);
+        setCouponMsg({ kind: "err", text: r?.error || r?.willApply?.error || "Invalid code" });
+      }
+    } catch (e: any) {
+      setCouponMsg({ kind: "err", text: e?.message || "Network error" });
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponInput("");
+    setCouponDiscount(0);
+    setCouponMsg(null);
+    clearPendingRedemption();
+  }
+
+  const appliedPayload: AppliedRedemption = {
+    couponCode: couponDiscount > 0 ? couponInput : undefined,
+    couponDiscountInr: couponDiscount > 0 ? couponDiscount : undefined,
+    walletCreditAppliedInr: walletCreditApplied > 0 ? walletCreditApplied : undefined,
+  };
+
+  const run = async (kind: "pay" | "hold" | "payhotel", fn: (final: number, applied: AppliedRedemption) => any) => {
     if (busy) return;
     setBusy(kind);
-    try { await fn(); } finally { setBusy(""); }
+    try { await fn(finalAmount, appliedPayload); } finally { setBusy(""); }
   };
 
   return (
@@ -92,7 +184,7 @@ export default function BookingReview(p: BookingReviewProps) {
         }}
       >
         <style>{`
-          @keyframes brShine { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+          @keyframes brShine { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
           @keyframes brSweep { 0%{transform:translateX(-120%)} 100%{transform:translateX(220%)} }
           @keyframes brPulse { 0%,100%{transform:scale(1);opacity:.9} 50%{transform:scale(1.06);opacity:1} }
           @keyframes brFadeUp{ from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
@@ -120,8 +212,7 @@ export default function BookingReview(p: BookingReviewProps) {
           <ModalCloseButton onClose={p.onClose} tone="dark" />
         </div>
 
-        {/* SCROLLABLE BODY — v122.4: data-autonext-form makes every
-            inner section auto-scroll-to-next on tap, no per-button wiring. */}
+        {/* SCROLLABLE BODY */}
         <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(94vh - 64px - 96px)" }} data-autonext-form>
 
           {/* Hotel + room summary */}
@@ -169,6 +260,87 @@ export default function BookingReview(p: BookingReviewProps) {
             <span className="text-[0.55rem] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">✓ Confirmed</span>
           </div>
 
+          {/* v124 — Redemption row */}
+          {p.allowRedemption !== false && (
+            <div className="br-section rounded-2xl p-3 border-2 border-dashed border-gold-200 bg-gold-50/40 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-[0.2em]">🎟️ Coupon · 💰 Wallet</p>
+                <Link href="/my-codes" className="text-[0.6rem] font-bold text-gold-600 hover:text-gold-700">My codes →</Link>
+              </div>
+
+              {/* Coupon input */}
+              {couponDiscount > 0 ? (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base">✓</span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs font-bold text-emerald-800 truncate">{couponInput}</p>
+                      <p className="text-[0.6rem] text-emerald-700">{fmt(couponDiscount)} off applied</p>
+                    </div>
+                  </div>
+                  <button onClick={removeCoupon} className="text-[0.6rem] font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-md shrink-0">
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    inputMode="text"
+                    value={couponInput}
+                    onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponMsg(null); }}
+                    placeholder="Enter coupon code"
+                    className="flex-1 rounded-xl border border-luxury-200 bg-white px-3 py-2 text-sm font-mono tracking-wider uppercase placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:border-gold-400"
+                  />
+                  <button
+                    onClick={() => validateCoupon(couponInput)}
+                    disabled={couponBusy || !couponInput.trim()}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                    style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+                    {couponBusy ? "…" : "Apply"}
+                  </button>
+                </div>
+              )}
+              {couponMsg && couponDiscount === 0 && (
+                <p className={`text-[0.65rem] font-semibold ${couponMsg.kind === "err" ? "text-red-600" : "text-emerald-700"}`}>
+                  {couponMsg.text}
+                </p>
+              )}
+
+              {/* Wallet credit toggle */}
+              {walletCreditBalance > 0 && (
+                <button
+                  onClick={() => setWalletCreditOn((v) => !v)}
+                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 border-2 transition ${
+                    walletCreditOn ? "bg-emerald-50 border-emerald-300" : "bg-white border-luxury-200 hover:border-gold-300"
+                  }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💰</span>
+                    <div className="text-left">
+                      <p className="text-xs font-bold text-luxury-900">Wallet Credit</p>
+                      <p className="text-[0.6rem] text-luxury-500">Available: {fmt(walletCreditBalance)}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {walletCreditOn ? (
+                      <>
+                        <p className="text-xs font-bold text-emerald-700">−{fmt(walletCreditApplied)}</p>
+                        <p className="text-[0.55rem] uppercase tracking-wider font-bold text-emerald-600">Applied</p>
+                      </>
+                    ) : (
+                      <p className="text-[0.6rem] uppercase tracking-wider font-bold text-gold-600">Apply →</p>
+                    )}
+                  </div>
+                </button>
+              )}
+              {walletCreditBalance === 0 && couponDiscount === 0 && (
+                <Link href="/points/redeem" className="block text-center text-[0.65rem] font-semibold text-gold-600 hover:text-gold-700 underline">
+                  No codes yet — redeem with StayPoints
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* Rate breakdown */}
           <div className="br-section rounded-2xl p-4 border-2 border-gold-200 bg-gradient-to-br from-gold-50 to-amber-50">
             <p className="text-[0.6rem] font-bold text-gold-600 uppercase tracking-[0.2em] mb-2.5">Rate Breakdown</p>
@@ -179,12 +351,27 @@ export default function BookingReview(p: BookingReviewProps) {
                   <span className={line.subtle ? "" : "font-semibold"}>{line.value}</span>
                 </div>
               ))}
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold pt-1">
+                  <span>Coupon discount</span>
+                  <span>−{fmt(couponDiscount)}</span>
+                </div>
+              )}
+              {walletCreditApplied > 0 && (
+                <div className="flex justify-between text-emerald-700 font-semibold">
+                  <span>Wallet credit</span>
+                  <span>−{fmt(walletCreditApplied)}</span>
+                </div>
+              )}
               <div className="border-t border-gold-300 pt-2 mt-2 flex justify-between items-end">
                 <span className="font-bold text-luxury-900">Total</span>
                 <div className="text-right">
-                  <p className="text-[2rem] leading-none font-extrabold br-gold-text">{fmt(p.totalAmount)}</p>
-                  {p.nights > 1 && (
-                    <p className="text-[0.6rem] text-luxury-500 mt-0.5">{fmt(Math.round(p.totalAmount / p.nights))}/night avg</p>
+                  {(couponDiscount > 0 || walletCreditApplied > 0) && (
+                    <p className="text-xs line-through text-luxury-400 mb-0.5">{fmt(baseTotal)}</p>
+                  )}
+                  <p className="text-[2rem] leading-none font-extrabold br-gold-text">{fmt(finalAmount)}</p>
+                  {p.nights > 1 && finalAmount > 0 && (
+                    <p className="text-[0.6rem] text-luxury-500 mt-0.5">{fmt(Math.round(finalAmount / p.nights))}/night avg</p>
                   )}
                 </div>
               </div>
@@ -192,7 +379,7 @@ export default function BookingReview(p: BookingReviewProps) {
           </div>
 
           {/* Hold info card */}
-          {(p.holdEnabled !== false && p.onHold) && (
+          {(p.holdEnabled !== false && p.onHold && finalAmount > 0) && (
             <div className="br-section rounded-2xl p-4 border"
               style={{ background: "linear-gradient(135deg,rgba(16,185,129,0.06),rgba(240,180,41,0.04))", borderColor: "rgba(16,185,129,0.25)" }}>
               <div className="flex items-start gap-3">
@@ -201,7 +388,7 @@ export default function BookingReview(p: BookingReviewProps) {
                 <div className="flex-1">
                   <p className="text-sm font-bold text-emerald-700">Not ready? Hold this rate for 24 hours</p>
                   <p className="text-[0.7rem] text-emerald-600 mt-0.5 leading-relaxed">
-                    Pay just <span className="font-extrabold">{fmt(holdAmount)}</span> now to lock {fmt(p.totalAmount)} —
+                    Pay just <span className="font-extrabold">{fmt(holdAmount)}</span> now to lock {fmt(finalAmount)} —
                     pay the balance <span className="font-extrabold">{fmt(balanceDue)}</span> within 24h
                     {p.payAtHotelEnabled ? " (or settle at the hotel desk)" : ""}.
                   </p>
@@ -223,11 +410,13 @@ export default function BookingReview(p: BookingReviewProps) {
               color: "#1a1205",
               boxShadow: "0 8px 24px rgba(240,180,41,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
             }}>
-            {busy === "pay" ? "⏳ Opening Razorpay…" : `✨ Pay Full ${fmt(p.totalAmount)} & Confirm`}
+            {busy === "pay" ? "⏳ Opening Razorpay…" :
+             finalAmount === 0 ? `✨ Confirm Booking — FREE`
+             : `✨ Pay ${fmt(finalAmount)} & Confirm`}
           </button>
 
-          {(p.holdEnabled !== false && p.onHold) && (
-            <button onClick={() => run("hold", () => p.onHold!(holdAmount))}
+          {(p.holdEnabled !== false && p.onHold && finalAmount > 0) && (
+            <button onClick={() => run("hold", (final, applied) => p.onHold!(holdAmount, final, applied))}
               disabled={!!busy}
               className="w-full py-3 rounded-2xl font-bold text-sm tracking-wide border-2 disabled:opacity-40 transition-all active:scale-[0.99]"
               style={{
@@ -239,8 +428,8 @@ export default function BookingReview(p: BookingReviewProps) {
             </button>
           )}
 
-          {(p.payAtHotelEnabled && p.onPayAtHotel) && (
-            <button onClick={() => run("payhotel", () => p.onPayAtHotel!(holdAmount))}
+          {(p.payAtHotelEnabled && p.onPayAtHotel && finalAmount > 0) && (
+            <button onClick={() => run("payhotel", (final, applied) => p.onPayAtHotel!(holdAmount, final, applied))}
               disabled={!!busy}
               className="w-full py-2.5 rounded-2xl font-semibold text-xs tracking-wide border disabled:opacity-40 transition-all active:scale-[0.99] text-luxury-700 border-luxury-200 hover:border-luxury-400 bg-luxury-50">
               {busy === "payhotel" ? "⏳ Opening…" : `🏨 Pay ${fmt(holdAmount)} now · Settle balance at hotel`}
@@ -248,7 +437,7 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
 
           <p className="text-[0.6rem] text-center text-luxury-400 leading-relaxed">
-            Secure payment via Razorpay · Refundable if hotel cancels · Earn {Math.floor(p.totalAmount / 100) * 5} StayPoints
+            Secure payment via Razorpay · Refundable if hotel cancels · Earn {Math.floor(finalAmount / 100) * 5} StayPoints
           </p>
         </div>
       </div>

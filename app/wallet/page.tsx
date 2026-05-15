@@ -89,7 +89,10 @@ export default function WalletPage() {
         }));
 
       if (w && (w.balance !== undefined || w.totalCredit !== undefined || w.totalDebit !== undefined)) {
-        // Real wallet exists — merge computed spend if backend spent is 0
+        // Real wallet exists — merge computed spend if backend spent is 0.
+        // v124: walletCreditBalance from /api/wallet is the REAL spendable
+        // ₹ balance (sum of wallet_credits.balance_inr). Surface it distinctly
+        // from the "total spent" tracker.
         const backendSpend = w.totalDebit || w.total_debit || w.spent || 0;
         setWallet({
           ...w,
@@ -157,6 +160,23 @@ export default function WalletPage() {
         </div>
 
         {error && <div className="p-4 bg-red-50 border border-red-200 rounded-2xl mb-5"><p className="text-sm text-red-600">{error}</p></div>}
+
+        {/* v124 — Earn-and-redeem CTA shortcut. Visible above the balance
+            card so first-time wallet visitors see the path to earning real
+            spendable balance from their StayPoints. */}
+        <div className="grid grid-cols-2 gap-2.5 mb-4">
+          <Link href="/points/redeem"
+            className="rounded-2xl p-3 text-white text-center font-bold text-xs relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+            <span className="text-base block mb-0.5">✨</span>
+            Redeem Points
+          </Link>
+          <Link href="/my-codes"
+            className="rounded-2xl p-3 text-luxury-900 text-center font-bold text-xs border-2 border-luxury-200 bg-white hover:border-gold-300 transition">
+            <span className="text-base block mb-0.5">🎟️</span>
+            My Codes
+          </Link>
+        </div>
 
         {wallet && (
           <>

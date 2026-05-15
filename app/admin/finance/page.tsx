@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import KPICard from "@/components/admin/kpi-card";
 import DataTable from "@/components/admin/data-table";
 import Modal from "@/components/admin/modal";
 import { adminColors as C, btnGold, btnGhost, h1Style, inputStyle, pageStyle, pill } from "@/lib/admin/styles";
 import { exportRows } from "@/lib/admin/export";
+import { api } from "@/lib/api";
 
 type Tab = "ledger" | "payouts";
 
@@ -17,15 +19,19 @@ export default function AdminFinance() {
   const [pAmount, setPAmount] = useState("");
   const [pNotes, setPNotes] = useState("");
   const [pPeriod, setPPeriod] = useState(new Date().toISOString().slice(0, 7));
+  // v124 — redemption finance KPIs
+  const [redemption, setRedemption] = useState<{ totalCostUsed: number; totalLiabilityActive: number; walletDebited: number; totalIssued: number; totalUsed: number } | null>(null);
 
   function load() {
     setLoading(true);
     Promise.all([
       fetch("/api/admin/finance/commissions").then((r) => r.json()),
       fetch("/api/admin/finance/payout").then((r) => r.json()),
-    ]).then(([l, p]) => {
+      api.adminGetRedemptionAnalytics(30).catch(() => null),
+    ]).then(([l, p, redem]) => {
       setLedger(l.ledger || []);
       setPayouts(p.payouts || []);
+      if (redem?.kpis) setRedemption(redem.kpis);
       setLoading(false);
     });
   }
@@ -129,6 +135,32 @@ export default function AdminFinance() {
         <KPICard title="Paid Out" value={`₹${paidPayouts.toLocaleString()}`} color={C.blue} />
       </div>
 
+      {/* v124 — Redemption cost row. Real P&L hit from points → coupons /
+          wallet credits. totalCostUsed = sum of value_inr on USED codes in
+          window. totalLiabilityActive = future P&L hit from outstanding
+          active codes. */}
+      {redemption && (
+        <div className="admin-card" style={{
+          background: "linear-gradient(135deg, rgba(212,175,55,0.05), rgba(168,85,247,0.05))",
+          border: "1px solid rgba(212,175,55,0.2)",
+          borderRadius: 12, padding: 16, marginBottom: 24,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+            <p style={{ fontSize: 11, color: C.gold, textTransform: "uppercase", letterSpacing: "0.15em", margin: 0, fontWeight: 700 }}>
+              🎁 Redemption Cost (last 30d)
+            </p>
+            <Link href="/admin/redemption-codes" style={{ color: C.gold, fontSize: 11, fontWeight: 600, textDecoration: "none" }}>View ledger →</Link>
+          </div>
+          <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+            <KpiMini label="₹ Cost (used)" value={`₹${(redemption.totalCostUsed || 0).toLocaleString()}`} color={C.green} />
+            <KpiMini label="₹ Liability (active)" value={`₹${(redemption.totalLiabilityActive || 0).toLocaleString()}`} color={C.amber} />
+            <KpiMini label="Wallet Credit Debited" value={`₹${(redemption.walletDebited || 0).toLocaleString()}`} color={C.blue} />
+            <KpiMini label="Codes Issued" value={String(redemption.totalIssued || 0)} color={C.text} />
+            <KpiMini label="Codes Used" value={String(redemption.totalUsed || 0)} color={C.green} />
+          </div>
+        </div>
+      )}
+
       <div className="admin-tabs" style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
         {(["ledger", "payouts"] as Tab[]).map((t) => (
           <button
@@ -180,6 +212,15 @@ export default function AdminFinance() {
 
 function Lbl({ children }: { children: any }) {
   return <div style={{ color: C.textDim, fontSize: 11, marginBottom: 6, fontWeight: 600, letterSpacing: 0.5 }}>{children}</div>;
+}
+
+function KpiMini({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div style={{ background: "rgba(0,0,0,0.2)", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+      <p style={{ fontSize: 10, color: C.textDim, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>{label}</p>
+      <p style={{ fontSize: 20, color, fontWeight: 700, marginTop: 4, marginBottom: 0, fontFamily: "Syne, sans-serif" }}>{value}</p>
+    </div>
+  );
 }
 
 const smallBtn = {

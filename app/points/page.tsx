@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
@@ -17,14 +18,22 @@ export default function PointsPage() {
   const { user, loading: authLoading } = useAuth();
   const [wallet, setWallet] = useState<any>(null);
   const [recent, setRecent] = useState<any[]>([]);
+  const [activeCodesCount, setActiveCodesCount] = useState(0);
+  const [walletCreditBalance, setWalletCreditBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/auth"); return; }
-    api.getPoints()
-      .then((d) => { setWallet(d?.wallet || null); setRecent(d?.recent || []); })
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.getPoints().catch(() => ({ wallet: null, recent: [] })),
+      api.getMyRedemptionCodes("active").catch(() => ({ codes: [], walletCredit: null })),
+    ]).then(([p, c]) => {
+      setWallet(p?.wallet || null);
+      setRecent(p?.recent || []);
+      setActiveCodesCount((c?.codes || []).length);
+      setWalletCreditBalance(Number(c?.walletCredit?.balance_inr || 0));
+    }).finally(() => setLoading(false));
   }, [authLoading, user, router]);
 
   if (loading) {
@@ -67,6 +76,34 @@ export default function PointsPage() {
             )}
           </div>
         </div>
+
+        {/* Primary CTAs — Redeem + View codes */}
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <Link href="/points/redeem"
+            className="rounded-2xl p-4 text-white text-center font-bold text-sm relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", boxShadow: "0 8px 24px rgba(240,180,41,0.35)" }}>
+            <span className="text-base block mb-0.5">✨</span>
+            Redeem Rewards
+          </Link>
+          <Link href="/my-codes"
+            className="rounded-2xl p-4 text-luxury-900 text-center font-bold text-sm relative overflow-hidden border-2 border-luxury-200 bg-white hover:border-gold-300 transition">
+            <span className="text-base block mb-0.5">🎟️</span>
+            My Codes{activeCodesCount > 0 ? ` · ${activeCodesCount}` : ""}
+          </Link>
+        </div>
+        {walletCreditBalance > 0 && (
+          <Link href="/wallet"
+            className="block rounded-2xl p-3 mb-3 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">💰</span>
+              <div>
+                <p className="text-xs font-bold text-emerald-800">Wallet Credit Available</p>
+                <p className="text-[0.65rem] text-emerald-700">Use at any booking</p>
+              </div>
+            </div>
+            <p className="font-display text-lg font-bold text-emerald-700">₹{fmt(walletCreditBalance)} →</p>
+          </Link>
+        )}
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           <Stat label="Lifetime Earned" value={fmt(wallet?.lifetime_earned || 0)} />
