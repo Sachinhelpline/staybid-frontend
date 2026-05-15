@@ -96,19 +96,24 @@ export default function AdminAnalytics() {
             Lifecycle metrics · acceptance rate · auto-accept hit · hold conversion · revenue
           </p>
         </div>
-        {/* Range picker */}
-        <div style={{ display: "flex", gap: 8 }}>
-          {[7, 30, 90].map((d) => (
-            <button key={d} onClick={() => setDays(d)}
+        {/* Range picker — v126.2 added Today (1d) tab */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {[
+            { d: 1,  label: "Today" },
+            { d: 7,  label: "7d" },
+            { d: 30, label: "30d" },
+            { d: 90, label: "90d" },
+          ].map((opt) => (
+            <button key={opt.d} onClick={() => setDays(opt.d)}
               style={{
                 padding: "6px 14px", borderRadius: 999,
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
                 border: "1px solid",
-                ...(days === d
+                ...(days === opt.d
                   ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
                   : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
               }}>
-              {d}d
+              {opt.label}
             </button>
           ))}
         </div>

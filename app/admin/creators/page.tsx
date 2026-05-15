@@ -199,11 +199,11 @@ export default function AdminCreators() {
       </p>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#D4AF37" live sub="current filter" />
-        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#F0D060" live />
-        <KpiCard title="Active"       value={stats.active}   icon="✅" color="#2ECC71" live />
-        <KpiCard title="Blocked"      value={stats.blocked}  icon="🚫" color="#FF4757" live />
-        <KpiCard title="KYC Verified" value={stats.verified} icon="🛡️" color="#A855F7" live sub="Aadhaar + PAN" />
+        <KpiCard title="In View"      value={stats.total}    icon="✨" color="#D4AF37" live sub="current filter" onClick={() => setStatusFilter("all")} />
+        <KpiCard title="Pending"      value={stats.pending}  icon="⏳" color="#F0D060" live onClick={() => setStatusFilter("pending")} />
+        <KpiCard title="Active"       value={stats.active}   icon="✅" color="#2ECC71" live onClick={() => setStatusFilter("active")} />
+        <KpiCard title="Blocked"      value={stats.blocked}  icon="🚫" color="#FF4757" live onClick={() => setStatusFilter("blocked")} />
+        <KpiCard title="KYC Verified" value={stats.verified} icon="🛡️" color="#A855F7" live sub="Aadhaar + PAN" onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/commission-rules"))} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>

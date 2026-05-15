@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 
 export default function AdminHotels() {
+  const router = useRouter();
   const [hotels, setHotels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState("all");
@@ -114,11 +116,11 @@ export default function AdminHotels() {
       </h1>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#D4AF37" live sub={`${stats.suspended} suspended`} />
-        <KpiCard title="Active"        value={stats.active}    icon="✅" color="#2ECC71" live />
-        <KpiCard title="Total Rooms"   value={stats.totalRooms} icon="🛏️" color="#A855F7" live />
-        <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon="📅" color="#3D9CF5" live />
-        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#F0D060" live />
+        <KpiCard title="Total Hotels"  value={stats.total}     icon="🏨" color="#D4AF37" live sub={`${stats.suspended} suspended`} onClick={() => setStatus("all")} />
+        <KpiCard title="Active"        value={stats.active}    icon="✅" color="#2ECC71" live onClick={() => setStatus("active")} />
+        <KpiCard title="Total Rooms"   value={stats.totalRooms} icon="🛏️" color="#A855F7" live onClick={() => router.push("/admin/pricing")} />
+        <KpiCard title="MTD Bookings"  value={stats.mtdBookings} icon="📅" color="#3D9CF5" live onClick={() => router.push("/admin/bookings")} />
+        <KpiCard title="Total GMV"     value={stats.totalGmv}  format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#F0D060" live onClick={() => router.push("/admin/finance")} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>

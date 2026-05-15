@@ -144,11 +144,11 @@ export default function AdminUsers() {
 
       {/* v103 — premium KPI strip */}
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#D4AF37" live sub={`${stats.newWeek} new in 7d`} />
-        <KpiCard title="Platinum"       value={stats.platinum}  icon="💎" color="#A855F7" live />
-        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#F0D060" live />
-        <KpiCard title="Active"         value={stats.active}    icon="✅" color="#2ECC71" live sub={`${stats.banned} banned`} />
-        <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live />
+        <KpiCard title="Total Users"    value={stats.total}     icon="👤" color="#D4AF37" live sub={`${stats.newWeek} new in 7d`} onClick={() => { setTier("all"); setStatus("all"); }} />
+        <KpiCard title="Platinum"       value={stats.platinum}  icon="💎" color="#A855F7" live onClick={() => setTier("platinum")} />
+        <KpiCard title="Gold"           value={stats.gold}      icon="🥇" color="#F0D060" live onClick={() => setTier("gold")} />
+        <KpiCard title="Active"         value={stats.active}    icon="✅" color="#2ECC71" live sub={`${stats.banned} banned`} onClick={() => setStatus("active")} />
+        <KpiCard title="Lifetime Spend" value={stats.totalSpend} format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
 
       {/* Filters */}

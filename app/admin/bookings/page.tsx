@@ -180,11 +180,11 @@ export default function AdminBookings() {
       </div>
 
       <div className="admin-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 22 }}>
-        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#D4AF37" live />
-        <KpiCard title="Accepted+"    value={stats.accepted}  icon="✅" color="#2ECC71" live sub="confirmed → checked-out" />
-        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#F0D060" live />
-        <KpiCard title="Countered"    value={stats.countered} icon="💬" color="#FF8C42" live />
-        <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live />
+        <KpiCard title="Total Bids"   value={stats.total}     icon="📋" color="#D4AF37" live onClick={() => setStatus("all")} />
+        <KpiCard title="Accepted+"    value={stats.accepted}  icon="✅" color="#2ECC71" live sub="confirmed → checked-out" onClick={() => setStatus("ACCEPTED")} />
+        <KpiCard title="Pending"      value={stats.pending}   icon="⏳" color="#F0D060" live onClick={() => setStatus("PENDING")} />
+        <KpiCard title="Countered"    value={stats.countered} icon="💬" color="#FF8C42" live onClick={() => setStatus("COUNTER")} />
+        <KpiCard title="Gross Paid"   value={stats.gross}     format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")} icon="💰" color="#3D9CF5" live onClick={() => (typeof window !== "undefined" && (window.location.href = "/admin/finance"))} />
       </div>
 
       <div className="admin-filters" style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>

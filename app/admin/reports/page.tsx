@@ -9,7 +9,7 @@
 // kind of report from one place.
 
 import { useEffect, useState } from "react";
-import { exportRows } from "@/lib/admin/export";
+import { exportRows, exportPDF, shareRows, shareLinks } from "@/lib/admin/export";
 
 type Report = {
   id: string;
@@ -406,6 +406,13 @@ export default function AdminReportsPage() {
   const [busy, setBusy] = useState<string>("");
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [preview, setPreview] = useState<{ id: string; rows: any[]; columns: any[] } | null>(null);
+  // v126.2 — Share menu state
+  const [shareOpen, setShareOpen] = useState<{ rep: Report; rows: any[]; columns: any[] } | null>(null);
+  const [toast, setToast] = useState("");
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  }
 
   // Pre-warm row counts for the KPI strip (best-effort, ignore errors)
   useEffect(() => {
@@ -434,8 +441,34 @@ export default function AdminReportsPage() {
     try {
       const { rows, columns } = await rep.fetch({});
       exportRows(rep.id, rows, columns);
+      showToast(`CSV downloaded · ${rows.length.toLocaleString("en-IN")} rows`);
     } catch (e: any) {
       alert(`Export failed: ${e?.message || "unknown"}`);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function runPDF(rep: Report) {
+    setBusy(rep.id);
+    try {
+      const { rows, columns } = await rep.fetch({});
+      exportPDF(rep.id, rep.label, rows, columns);
+      showToast("PDF preview opened · use Save as PDF");
+    } catch (e: any) {
+      alert(`PDF failed: ${e?.message || "unknown"}`);
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function openShare(rep: Report) {
+    setBusy(rep.id);
+    try {
+      const { rows, columns } = await rep.fetch({});
+      setShareOpen({ rep, rows, columns });
+    } catch (e: any) {
+      alert(`Failed: ${e?.message || "unknown"}`);
     } finally {
       setBusy("");
     }
@@ -516,14 +549,22 @@ export default function AdminReportsPage() {
               <span style={{ fontSize: 10, color: "#5C627A", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 {rep.category} · {counts[rep.id] != null ? `${counts[rep.id].toLocaleString("en-IN")} rows` : "…"}
               </span>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => showPreview(rep)} disabled={!!busy}
-                  style={{ padding: "5px 11px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "transparent", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}>
-                  {busy === rep.id ? "…" : "Preview"}
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                <button onClick={() => showPreview(rep)} disabled={!!busy} title="Preview first 20 rows"
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "transparent", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}>
+                  👁 Preview
                 </button>
-                <button onClick={() => runExport(rep)} disabled={!!busy}
-                  style={{ padding: "5px 12px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#1a1205", border: "none", cursor: "pointer" }}>
-                  {busy === rep.id ? "Exporting…" : "Export CSV"}
+                <button onClick={() => runExport(rep)} disabled={!!busy} title="Download as CSV"
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(212,175,55,0.16)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.36)", cursor: "pointer" }}>
+                  📄 CSV
+                </button>
+                <button onClick={() => runPDF(rep)} disabled={!!busy} title="Download as PDF"
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(255,71,87,0.12)", color: "#FF8C42", border: "1px solid rgba(255,140,66,0.32)", cursor: "pointer" }}>
+                  📕 PDF
+                </button>
+                <button onClick={() => openShare(rep)} disabled={!!busy} title="Share via WhatsApp / email / system share"
+                  style={{ padding: "5px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.32)", cursor: "pointer" }}>
+                  📲 Share
                 </button>
               </div>
             </div>
@@ -583,6 +624,111 @@ export default function AdminReportsPage() {
           </div>
         </div>
       )}
+
+      {/* Share modal (v126.2) */}
+      {shareOpen && (
+        <div onClick={() => setShareOpen(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#0F1117", borderRadius: 16, width: "100%", maxWidth: 460, padding: 18, border: "1px solid rgba(255,255,255,0.1)" }}>
+            <h2 style={{ color: "#D4AF37", fontFamily: "Syne, sans-serif", margin: 0, fontSize: 16, marginBottom: 6 }}>📲 Share {shareOpen.rep.label}</h2>
+            <p style={{ color: "#8A8FA8", fontSize: 11, margin: "0 0 14px" }}>
+              {shareOpen.rows.length.toLocaleString("en-IN")} rows · pick a destination
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {/* Native share — only shown when supported */}
+              {typeof navigator !== "undefined" && typeof (navigator as any).share === "function" && (
+                <button onClick={async () => {
+                  const r = await shareRows({
+                    filename: shareOpen.rep.id,
+                    title: `StayBid — ${shareOpen.rep.label}`,
+                    description: shareOpen.rep.description,
+                    rows: shareOpen.rows,
+                    columns: shareOpen.columns,
+                    format: "csv",
+                  });
+                  showToast(r.ok ? `Shared (${r.via})` : "Share cancelled");
+                  setShareOpen(null);
+                }} style={shareBtn("#2ECC71")}>
+                  📱 System share
+                </button>
+              )}
+              {(() => {
+                const links = shareLinks(
+                  `StayBid Report — ${shareOpen.rep.label}`,
+                  `${shareOpen.rep.description}\n${shareOpen.rows.length} rows · generated ${new Date().toLocaleDateString("en-IN")}`,
+                );
+                return (
+                  <>
+                    <a href={links.whatsapp} target="_blank" rel="noopener noreferrer" style={shareLink("#25D366")}>
+                      💬 WhatsApp
+                    </a>
+                    <a href={links.email} style={shareLink("#3D9CF5")}>
+                      ✉️ Email
+                    </a>
+                    <a href={links.telegram} target="_blank" rel="noopener noreferrer" style={shareLink("#2AABEE")}>
+                      ✈️ Telegram
+                    </a>
+                    <button onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(links.copy);
+                        showToast("Link copied to clipboard");
+                      } catch {
+                        showToast("Copy failed");
+                      }
+                    }} style={shareBtn("#A855F7")}>
+                      🔗 Copy text
+                    </button>
+                    <button onClick={() => {
+                      exportRows(shareOpen.rep.id, shareOpen.rows, shareOpen.columns);
+                      showToast("CSV downloaded — attach in your app");
+                    }} style={shareBtn("#D4AF37")}>
+                      📄 Download CSV first
+                    </button>
+                    <button onClick={() => {
+                      exportPDF(shareOpen.rep.id, shareOpen.rep.label, shareOpen.rows, shareOpen.columns);
+                      showToast("PDF preview opened — Save then share");
+                    }} style={shareBtn("#FF8C42")}>
+                      📕 Download PDF first
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+            <p style={{ color: "#5C627A", fontSize: 10, marginTop: 12, lineHeight: 1.5 }}>
+              The data leaves the platform once shared. Confidential — internal use only.
+            </p>
+            <div style={{ marginTop: 12, textAlign: "right" }}>
+              <button onClick={() => setShareOpen(null)} style={{ background: "transparent", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)", padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#0F1117", color: "#D4AF37", padding: "10px 18px", borderRadius: 999, fontSize: 13, fontWeight: 600, border: "1px solid rgba(212,175,55,0.3)", zIndex: 70, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
+
+const shareBtn = (color: string): React.CSSProperties => ({
+  padding: "10px 12px",
+  fontSize: 12,
+  fontWeight: 700,
+  borderRadius: 9,
+  background: `${color}1A`,
+  color,
+  border: `1px solid ${color}55`,
+  cursor: "pointer",
+  textAlign: "center",
+});
+const shareLink = (color: string): React.CSSProperties => ({
+  ...shareBtn(color),
+  textDecoration: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+});

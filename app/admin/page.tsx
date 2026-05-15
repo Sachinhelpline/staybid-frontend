@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
 import KpiCard from "@/components/admin/kpi-card";
 import AdminLineChart from "@/components/admin/charts/line-chart";
@@ -9,8 +10,11 @@ import AdminPieChart from "@/components/admin/charts/pie-chart";
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // v126.2 — "Today" toggle: when on, dashboard KPIs swap to today-only values
+  const [todayOnly, setTodayOnly] = useState(false);
   // v97 — dashboard liveness has 3 honest states:
   //   • "live"     = Socket.io connected + REST polling running       (green)
   //   • "polling"  = Socket.io disconnected (Railway cold / down) but
@@ -159,7 +163,25 @@ export default function AdminDashboard() {
             Real-time overview of platform performance
           </p>
         </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {/* v126.2 — Today / All-time toggle */}
+          <div style={{ display: "inline-flex", gap: 4, padding: 3, borderRadius: 999, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            {[
+              { k: false, label: "All-time" },
+              { k: true,  label: "Today" },
+            ].map((t) => (
+              <button key={String(t.k)} onClick={() => setTodayOnly(t.k)}
+                style={{
+                  padding: "5px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                  border: "none",
+                  background: todayOnly === t.k ? "linear-gradient(135deg,#D4AF37,#F0D060)" : "transparent",
+                  color: todayOnly === t.k ? "#1a1205" : "#8A8FA8",
+                  letterSpacing: "0.06em",
+                }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
           <div
             title={
               liveStatus === "live"
@@ -237,43 +259,49 @@ export default function AdminDashboard() {
       >
         {/* v100 — KpiCards now animate value changes (CountUp) and pulse
             the accent stripe whenever Socket.io/REST poll bumps a number.
-            7-day trend arrays from the dashboard endpoint feed inline
-            sparklines so trend is visible without leaving the KPI row. */}
+            v126.2 — every card is now clickable; Today toggle swaps to
+            today-only values. */}
         <KpiCard
           title="Total GMV"
-          value={k.gmv || 0}
+          value={(todayOnly ? data?.today?.gmv : k.gmv) || 0}
           format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-          icon="💰" color="#D4AF37" sub="all time" live
+          icon="💰" color="#D4AF37" sub={todayOnly ? "today" : "all time"} live
           sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
+          onClick={() => router.push("/admin/finance")}
         />
         <KpiCard
-          title="Active Bookings"
-          value={k.activeBookings || 0}
+          title={todayOnly ? "Today's Bookings" : "Active Bookings"}
+          value={(todayOnly ? data?.today?.accepted : k.activeBookings) || 0}
           icon="📋" color="#2ECC71"
-          sub={`of ${k.totalBookings || 0} total`} live
+          sub={todayOnly ? `${data?.today?.bids || 0} bids placed` : `of ${k.totalBookings || 0} total`} live
           sparkline={(data?.bookingTrend || []).map((p: any) => p.value)}
+          onClick={() => router.push("/admin/bookings")}
         />
         <KpiCard
           title="Revenue (5%)"
-          value={k.revenue || 0}
+          value={(todayOnly ? data?.today?.revenue : k.revenue) || 0}
           format={(n) => "₹" + Math.round(n).toLocaleString("en-IN")}
-          icon="📊" color="#3D9CF5" sub="commission earned" live
+          icon="📊" color="#3D9CF5" sub={todayOnly ? "today's commission" : "commission earned"} live
           sparkline={(data?.revenueTrend || []).map((p: any) => p.value)}
+          onClick={() => router.push("/admin/revenue")}
         />
         <KpiCard
           title="Pending Verifications"
           value={k.pendingVerif || 0}
           icon="🎥" color="#A855F7" sub="awaiting review" live
+          onClick={() => router.push("/admin/verification")}
         />
         <KpiCard
           title="Fraud Flags"
           value={k.fraud || 0}
           icon="🛡️" color="#FF4757" sub="needs attention" live
+          onClick={() => router.push("/admin/fraud")}
         />
         <KpiCard
-          title="New Users"
-          value={k.newUsers || 0}
+          title={todayOnly ? "New Users Today" : "New Users (7d)"}
+          value={(todayOnly ? data?.today?.newUsers : k.newUsers) || 0}
           icon="👤" color="#F0D060" sub={`of ${k.totalUsers || 0} total`} live
+          onClick={() => router.push("/admin/users")}
         />
       </div>
 
