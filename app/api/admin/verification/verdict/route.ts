@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "requestId and verdict required" }, { status: 400 });
   }
 
+  // v126.3 — vp_requests only has columns: status, updated_at, etc. The
+  // adminNotes/reviewedAt/refundAmount fields don't exist on this table, so
+  // we update the supported columns + log the rest via the audit trail.
   const patchRes = await fetch(`${SB_URL}/rest/v1/vp_requests?id=eq.${requestId}`, {
     method: "PATCH",
     headers: {
@@ -22,9 +25,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       status: verdict,
-      adminNotes: notes || null,
-      reviewedAt: new Date().toISOString(),
-      refundAmount: refundAmount || 0,
+      updated_at: new Date().toISOString(),
     }),
   });
 

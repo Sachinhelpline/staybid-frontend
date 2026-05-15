@@ -128,10 +128,60 @@ export default function AdminPricing() {
     },
   ];
 
+  // v126.3 — manual cron trigger so admin can drop flash deal prices on
+  // demand. Vercel Hobby plan only allows daily cron schedules; setting up
+  // a sub-daily flash drop cadence needs either Pro plan OR an external
+  // cron service (cron-job.org / EasyCron). Until that's wired, this CTA
+  // lets the admin pull-trigger the recalc whenever they want.
+  const [cronBusy, setCronBusy] = useState(false);
+  const [cronToast, setCronToast] = useState("");
+  async function runPricingCronNow() {
+    setCronBusy(true);
+    setCronToast("⏳ Running cron — scraping + recalculating…");
+    try {
+      const r = await fetch("/api/cron/pricing?token=staybid-cron-dev", { method: "GET" });
+      const d = await r.json();
+      if (r.ok) {
+        setCronToast(`✓ Scraped ${d.scraped} · Recalc ${d.recalculated} rooms · ${d.flashUpdated || 0} flash deals · ${Math.round(d.elapsedMs / 1000)}s`);
+        // Refresh the page data
+        try { load(); } catch {}
+      } else {
+        setCronToast(`✗ Failed: ${d.error || "unknown"}`);
+      }
+    } catch (e: any) {
+      setCronToast(`✗ ${e?.message || "network"}`);
+    } finally {
+      setCronBusy(false);
+      setTimeout(() => setCronToast(""), 5000);
+    }
+  }
+
   return (
     <div style={pageStyle}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 20, gap: 8, flexWrap: "wrap" }}>
         <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Pricing & Deals</h1>
+        {tab === "status" && (
+          <button onClick={runPricingCronNow} disabled={cronBusy}
+            style={{
+              marginLeft: "auto",
+              background: "linear-gradient(135deg,#D4AF37,#F0D060)",
+              color: "#1a1205", border: "none",
+              padding: "7px 14px", borderRadius: 8,
+              fontSize: 12, fontWeight: 700, cursor: cronBusy ? "wait" : "pointer",
+              display: "inline-flex", alignItems: "center", gap: 6,
+            }}
+            title="Recalculates AI prices for all rooms + flash deals + scrapes competitor prices. Same endpoint the daily cron hits.">
+            {cronBusy ? "⏳ Running…" : "⚡ Run AI recalc now"}
+          </button>
+        )}
+        {cronToast && (
+          <span style={{
+            marginLeft: tab === "status" ? 8 : "auto",
+            fontSize: 12, color: C.gold, fontWeight: 600,
+            padding: "5px 12px", borderRadius: 999,
+            background: "rgba(212,175,55,0.12)", border: "1px solid rgba(212,175,55,0.35)",
+          }}>{cronToast}</span>
+        )}
         {tab === "flash" && (
           <button onClick={() => setCreating(true)} style={{ ...btnGold, marginLeft: "auto" }}>+ New Flash Deal</button>
         )}
