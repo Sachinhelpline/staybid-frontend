@@ -16,7 +16,9 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminCreators() {
   const [creators, setCreators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("pending");
+  // v126 — default "all" so admin immediately sees every creator application.
+  // Previously "pending" → showed 0 even when 3 active creators existed.
+  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
