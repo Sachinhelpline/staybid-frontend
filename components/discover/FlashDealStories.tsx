@@ -17,6 +17,7 @@
 //   having to lift a finger.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sbImage, SB_IMG_THUMB, SB_IMG_HERO } from "@/lib/sb-image";
 // v130 — every flash-deal price rendered + every Book Now URL carries a
 // ₹100-multiple. Same source of truth as /flash-deals + /hotels/[id]
 // (v129 era). Without this, the home page rail's local fmtINR rendered
@@ -228,7 +229,7 @@ export function FlashDealStoryRail({
               <span className="fdeal-rail-ring">
                 <span className="fdeal-rail-avatar">
                   {d.hotelImage
-                    ? <img src={d.hotelImage} alt="" loading="lazy" decoding="async" />
+                    ? <img src={sbImage(d.hotelImage, SB_IMG_THUMB)} alt="" loading="lazy" decoding="async" />
                     : <span className="fdeal-rail-initials">{(d.hotelName || "H").slice(0, 1).toUpperCase()}</span>}
                 </span>
               </span>
@@ -707,7 +708,7 @@ export function FlashDealStoryViewer({
         {/* Background hero image with Ken-Burns zoom */}
         <div className="fdeal-viewer-bg">
           {deal.hotelImage ? (
-            <img src={deal.hotelImage} alt={deal.hotelName} className="fdeal-viewer-bg-img" />
+            <img src={sbImage(deal.hotelImage, SB_IMG_HERO)} alt={deal.hotelName} loading="eager" decoding="async" className="fdeal-viewer-bg-img" />
           ) : (
             <div className="fdeal-viewer-bg-fallback">{(deal.hotelName || "H").slice(0, 1).toUpperCase()}</div>
           )}

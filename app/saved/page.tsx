@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 
 type Tab = "all" | "video" | "hotel" | "influencer" | "deal";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -181,7 +182,7 @@ function SaveCard({
       <Wrap href={`/hotels/${t.id}`} onUnsave={() => onUnsave(s)}>
         <div className="relative aspect-[4/3] bg-luxury-100">
           {t.images?.[0]
-            ? <img src={t.images[0]} alt={t.name} className="w-full h-full object-cover" />
+            ? <img src={sbImage(t.images[0], SB_IMG_CARD)} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center text-3xl">🏨</div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white">

@@ -3,7 +3,9 @@
 **Repo:** `Sachinhelpline/staybid-frontend` · branch `claude/analyze-supabase-bandwidth-9NiKG`
 **Auditor:** Claude (Opus 4.7 1M)
 **Date:** 2026-05-16
-**Trigger:** ~8.6 GB Supabase egress observed on May 12 — find the cause, quantify the waste, ship fixes.
+**Trigger:** ~6.6 GB Supabase **Cached Egress** observed on May 12 — find the cause, quantify the waste, ship fixes. Billing period total 22.69 GB on a 5 GB Free plan → 17.69 GB overage. Grace period ends 17 May 2026.
+
+> **Important correction after seeing the Supabase usage chart:** the metric flagged is **"Cached Egress"** — bytes served via cache hits across API + **Storage** + Edge Functions. Most of those bytes are almost certainly **Storage egress** (hotel images + reel videos + audio), not the JSON-payload waste this audit was originally framed around. The JSON narrowing in this PR still cuts a real slice; the bigger lever is image/video size + serving fewer of them per session. See follow-up wave + the v131.1 image patches.
 
 > Note on the requested branch name: the task body asks for `optimize/supabase-bandwidth-reduction`, but the binding workflow rules in this session pin all development to `claude/analyze-supabase-bandwidth-9NiKG`. All fixes ship on that branch. Re-aliasing to a different name is a one-line follow-up (`git branch -m`) if you prefer.
 

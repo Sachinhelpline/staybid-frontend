@@ -30,6 +30,7 @@ import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import { sbImage, SB_IMG_CARD, SB_IMG_THUMB, SB_IMG_AVATAR, SB_IMG_HERO } from "@/lib/sb-image";
 import {
   FlashDealStoryRail,
   FlashDealStoryViewer,
@@ -1063,8 +1064,10 @@ function CreatorProfileSheet({
                       A small ▶ overlay marks reels visually. */}
                   {h.images?.[0] ? (
                     <img
-                      src={h.images[0]}
+                      src={sbImage(h.images[0], SB_IMG_THUMB)}
                       alt={h.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -1856,7 +1859,7 @@ const HotelCard = memo(function HotelCard({
           // (helps Chromium pick the right decoder when the file is iOS
           // HEVC). For the dummy CDN clips we keep the simple src=.
           {...(h._userPost ? {} : { src: videoSrc })}
-          poster={activeImg}
+          poster={sbImage(activeImg, SB_IMG_HERO)}
           loop
           autoPlay
           muted={muted}
@@ -2038,7 +2041,7 @@ const HotelCard = memo(function HotelCard({
             {h._isSelf && myAvatarUrl ? (
               <img src={myAvatarUrl} alt="" decoding="async" loading={active ? "eager" : "lazy"} className="w-full h-full object-cover rounded-full" />
             ) : h.images?.[0] ? (
-              <img src={h.images[0]} alt={h.name} decoding="async" loading={active ? "eager" : "lazy"} className="w-full h-full object-cover rounded-full" />
+              <img src={sbImage(h.images[0], SB_IMG_AVATAR)} alt={h.name} decoding="async" loading={active ? "eager" : "lazy"} className="w-full h-full object-cover rounded-full" />
             ) : (
               <span className="text-[0.78rem] font-bold text-black">
                 {h._isSelf ? (myDisplayName || "Y").slice(0, 1).toUpperCase() : initials}

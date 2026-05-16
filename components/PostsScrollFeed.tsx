@@ -34,6 +34,7 @@ import { filterCssFor } from "@/components/discover/CreateFlow";
 // composer + InstagramHotelFeed use, so the contract stays consistent.
 import { sanitizeText } from "@/lib/sanitize-text";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import { sbImage, SB_IMG_AVATAR, SB_IMG_HERO } from "@/lib/sb-image";
 
 export type FeedPost = {
   id: string;
@@ -1387,7 +1388,7 @@ function PostCard({
       <div className="pf-head">
         <span className="pf-avatar">
           {post.ownerAvatar
-            ? <img src={post.ownerAvatar} alt="" />
+            ? <img src={sbImage(post.ownerAvatar, SB_IMG_AVATAR)} alt="" loading="lazy" decoding="async" />
             : <span className="pf-avatar-fallback">{initials}</span>}
         </span>
         <div className="pf-head-text">
@@ -1461,12 +1462,18 @@ function PostCard({
           <>
             <video
               ref={videoRef}
-              src={post.src}
-              poster={post.poster || undefined}
+              // v131 — only mount src for active/adjacent posts; otherwise
+              // leave it empty so far-away cards in a long /me/posts or
+              // /saved/posts scroll don't fire HEAD requests for every video.
+              src={isActive ? post.src : undefined}
+              poster={sbImage(post.poster, SB_IMG_HERO) || undefined}
               className="pf-video"
               loop
               playsInline
-              preload={isActive ? "auto" : "metadata"}
+              // Non-active cards in this vertical scroll get preload="none"
+              // (was "metadata") — eliminates per-card range requests when
+              // a user scrolls fast through /me/posts.
+              preload={isActive ? "auto" : "none"}
               muted
               onClick={handleMediaTap}
               style={post.filterPreset && post.filterPreset !== "none"
@@ -1484,18 +1491,21 @@ function PostCard({
             {hasCustomAudio && (
               <audio
                 ref={audioRef}
-                src={post.audioUrl}
+                // v131 — match video behaviour: only fetch when active.
+                src={isActive ? post.audioUrl : undefined}
                 loop
-                preload={isActive ? "auto" : "metadata"}
+                preload={isActive ? "auto" : "none"}
                 aria-hidden
               />
             )}
           </>
         ) : post.poster || post.src ? (
           <img
-            src={post.poster || post.src}
+            src={sbImage(post.poster || post.src, SB_IMG_HERO)}
             alt={post.caption || ""}
             className="pf-image"
+            loading={isActive ? "eager" : "lazy"}
+            decoding="async"
             onClick={handleMediaTap}
             style={post.filterPreset && post.filterPreset !== "none"
               ? { filter: filterCssFor(post.filterPreset) }
