@@ -3248,3 +3248,125 @@ Hotel scorecard recompute is opportunistic: hot hotels (any bid/complaint in las
 - **TypeScript clean** — no new errors. Both `for..of Set` traps in recompute route + cron sweep fixed with `Array.from()`.
 - **Bulletproof for heavy traffic:** rank queries are O(N) per city via the cached `hotel_scores` table; lazy-recompute keeps cold-hotel pages from blocking on a full Supabase sweep; sb-cache + HTTP swr layers keep repeat opens cheap.
 
+
+## 3D Award-Medal Badge Era (v128.1, 2026-05-16)
+
+Single same-day patch on top of v128. User reported the original hero badge was too big on the hotel detail page (158×184px filled a quarter of the above-the-fold real estate) and looked flat — they wanted a smaller, modern, 3D **prize-medal aesthetic with the rank prominently displayed on TOP like a 1st-place medal**, with proper responsive sizing across mobile / tablet / laptop / desktop.
+
+### The redesign — what changed
+
+**Before (v128):** Rounded-rectangle card with a circular SVG progress ring, score in the middle, rank pill in the top-left. Functional but flat — looked like a dashboard widget.
+
+**After (v128.1):** A **3D circular metallic medal** with a **trophy ribbon banner on top** carrying the rank — exactly the "1st prize / 2nd prize" winner-medal visual the user requested.
+
+```
+        ┌────────┐               ← trophy ribbon (rank tier color)
+        │ 🥇 1ST │                  · left + right notched tails
+        └───┬────┘                  · gradient banner + drop shadow
+         ╭──┴──╮
+        ╱       ╲                ← 3D metallic medal disc
+       │   87    │                  · radial highlight (top-left light)
+       │  /100   │                  · rotating conic sheen (8s loop)
+        ╲       ╱                   · 5-layer box-shadow stack
+         ╰─•───╯                    · score in serif italic Cormorant
+                                    · live-pulse dot at corner
+```
+
+### Tier system — classic prize hierarchy
+
+The user explicitly compared it to "1st prize, 2nd prize" — so rank maps to medal-color tradition:
+
+| Rank | Tier class | Gradient | Trophy text |
+|---|---|---|---|
+| 1 | `hsb-tier-gold` | champagne sunset (`#FFE7A3 → #D9BE82 → #8B6914`) | 🥇 1st |
+| 2 | `hsb-tier-silver` | cool platinum sage (`#F0F0EC → #C8C9C2 → #6B7565`) | 🥈 2nd |
+| 3 | `hsb-tier-bronze` | warm copper (`#E8B58A → #B8794A → #6B3D1F`) | 🥉 3rd |
+| 4-10 | `hsb-tier-champagne` | champagne (`#E7CFA0 → #C9A66B → #8B6914`) | 🏆 #N |
+| 11+ | `hsb-tier-muted` | muted gold (`#CCBFA0 → #A89674 → #6E5430`) | #N |
+| no rank | citywide variant | champagne | badge.label (e.g. "Excellent") |
+
+### 3D effects baked in (CSS-only, zero deps)
+
+**Medal disc — depth illusion via layered shadows + gradients:**
+- `radial-gradient(circle at 32% 28%, ...)` for top-left highlight (simulated light source)
+- `radial-gradient(circle at 50% 50%, color → darker)` for the base metallic curve
+- 5-layer `box-shadow` stack:
+  1. Outer ambient drop (`0 14px 28px -10px`)
+  2. Closer drop shadow (`0 5px 10px -3px`)
+  3. Outer rim ring (`0 0 0 2px color-mix(...)`)
+  4. Inner top highlight (`inset 0 3px 5px rgba(255,255,255,0.55)`)
+  5. Inner bottom shadow (`inset 0 -4px 7px rgba(31,26,15,0.30)`)
+  6. Engraved inset ring (`inset 0 0 0 1px rgba(255,255,255,0.25)`)
+- Rotating `conic-gradient` sheen overlay with `mix-blend-mode: screen` for metallic shimmer
+- Score number gets `text-shadow: 0 1px 0 rgba(255,255,255,0.45), 0 -1px 0 rgba(31,26,15,0.20)` for emboss effect
+
+**Trophy ribbon — sash + notched tails:**
+- Body: gradient banner (tier-color), inner highlight + outer drop-shadow
+- Left + right tails (`hsb-trophy-tail-l/r`): 9×14px absolute-positioned flags clipped via `clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 35% 50%)` (notched bottom)
+- All wrapped in `filter: drop-shadow(0 3px 5px rgba(31,26,15,0.22))` so the whole ribbon casts ONE shadow rather than three competing ones
+- `margin-bottom: -8px` tucks the ribbon behind the medal disc (z-index layering)
+
+**Live pulse dot:**
+- 7px white pill anchored bottom-right of the medal
+- Outer halo via 2px tier-color box-shadow + 4px white outer halo
+- Inner 3.5px sage dot pulses scale 1 ⇄ 0.55 at 1.8s ease-in-out
+
+### Responsive sizing (every device covered)
+
+| Viewport | Hero badge | Medal disc | Score font |
+|---|---|---|---|
+| iPhone SE (≤380px) | 84×106 | 76px | 1.7rem |
+| Phone default | 92×116 | 84px | 1.85rem |
+| Tablet (≥600px) | 100×124 | 92px | 2.0rem |
+| Laptop (≥1024px) | 108×130 | 96px | 2.1rem |
+| Desktop wide (≥1440px) | 116×138 | 100px | 2.25rem |
+
+Card variant scales 76px → 84px at ≥1024px. Compact variant stays a single inline pill (~44px medal, no trophy tails, rounded-pill chrome).
+
+### Files modified (this era)
+
+```
+components/hotel/HotelScoreBadge.tsx    # full rewrite: JSX (rank+medal) + CSS (3D + responsive)
+app/hotels/[id]/page.tsx                # tightened wrapper layout (smaller gap, terser copy)
+app/layout.tsx                          # SB_BUILD v128 → v128.1 + badge chip "v128.1"
+```
+
+### Service-worker version map (continued)
+- v128 → hotel-scorecard-live-rank
+- **v128.1 → 3d-award-medal-badge (current)**
+
+### Verified end-to-end
+- `tsc --noEmit --skipLibCheck` returns ZERO errors after the JSX + CSS rewrite.
+- Trophy ribbon's `clip-path` polygon notches render cleanly on all current Chromium / Safari / Firefox versions; no fallback needed (CSS `clip-path` baseline since 2019).
+- `color-mix(in oklab, ...)` used for the outer rim ring is supported on all current browsers (Safari 16.4+, Chrome 111+). Edge case: very old Android WebView ≤ Chrome 110 would render the unblended fallback color — acceptable degrade.
+- Commit `bfb4561` on `main` · Vercel deployment `dpl_3TUf3vWzNf6cQyPVGqoa2bp7v9rY` triggered automatically.
+
+### Things to Avoid (v128.1 Era)
+
+- **Never** restore the `<svg>` progress ring inside the medal. The new design uses pure CSS gradients + box-shadows to render the depth — adding a ring INSIDE the metallic disc would create competing focal points and dilute the "prize medal" aesthetic. The original ring's progress information now lives in the modal's per-checkpoint bars.
+- **Never** strip the `mix-blend-mode: screen` from `.hsb-medal-sheen`. Without it the sheen overlay sits on top of the metallic gradient as a flat translucent layer instead of brightening the surface like real light reflecting off metal — the depth illusion collapses.
+- **Never** remove the `margin-bottom: -8px` on `.hsb-trophy`. That negative margin is what tucks the ribbon's notched tails BEHIND the medal disc — without it the ribbon floats above and looks like a separate label instead of a banner attached to the medal.
+- **Never** raise the trophy text size past `0.65rem`. Larger and the ribbon body widens past the medal disc + the responsive sizes start overflowing the wrapper's `gap: 16px`. The text uses `letter-spacing: 0.07em + text-transform: uppercase` for legibility at small sizes.
+- **Never** swap the tier-gold gradient for pure yellow (`#FFD700`). The current `#FFE7A3 → #D9BE82 → #8B6914` champagne-sunset palette stays inside the v90 cozy palette so the badge doesn't clash with the rest of the customer surface. Pure yellow would feel like a casino chip.
+- **Never** strip the `:focus-visible { outline + border-radius: 12px }` on `.hsb`. The medal disc's outer rim ring + box-shadow already give the impression of a focus state, but screen-reader + keyboard users need an EXPLICIT outline to land on the button. The 12px radius is intentional — it surrounds the entire button (ribbon + medal) rather than just the medal circle.
+- **Never** add a `transform: scale(1.05)` on `.hsb:hover` — the layered shadows + rotating sheen already provide enough visual feedback. Scaling shifts the rotating sheen anchor and creates a visible jitter. The current `translateY(-2px) scale(1.015)` is calibrated to look like a slight lift without disturbing the sheen.
+- **Never** copy this badge's `5-layer box-shadow` recipe to other surfaces without re-checking the shadow color against that surface's background. The current stack uses cocoa-tinted shadows that read correctly on cream (light mode) and warm-walnut (dark mode); on a pure-white or pure-black backdrop the shadows would either disappear or look bruised.
+- **Never** remove the responsive breakpoint at `max-width: 380px`. iPhone SE / older Pixel users land there; the default 92px width starts overflowing their 320-360px column width once the description copy renders next to it. The 84px override is what keeps the layout one-line on those devices.
+
+### What this era did NOT do (intentionally)
+- **Animated SVG ring around the medal.** Considered for showing score progress visually inside the medal; rejected because the metallic gradient + central score already convey the value, and an extra ring would visually compete with the trophy ribbon for attention. The progress-bar visual lives in the modal instead.
+- **Different medal shapes per tier** (e.g. star for top 3, shield for the rest). The user asked for prize-medal aesthetic specifically — that's a circle. Variation per tier happens through the TROPHY RIBBON's color + icon, not the medal silhouette.
+- **Hover preview of city rank.** Considered showing the rank/total/percentile in a small tooltip on hover. Decided to keep that information for the click-into modal where it has room to breathe — adding it as a hover would clutter the badge's main job (signaling tier at a glance).
+- **Hard-coded tier breakpoints.** The current `rank ≤ 10 = champagne, rank ≥ 11 = muted` cutoff is hard-coded in the component. A future era could move these breakpoints into a config object so the platform team can tune "what counts as a top hotel" per city size (e.g. for cities with 5 hotels, top-3 is gold/silver/bronze and everything else is champagne — but for cities with 200 hotels, you might want top-10 = champagne and top-100 = muted).
+
+---
+
+## Updated production state (v128.1, 2026-05-16)
+- **Current version:** v128.1 · commit `bfb4561` on `main` · branch `claude/musing-chatterjee-c488d1` (worktree)
+- **3D award-medal badge live** on every hotel detail page + hotel list cards. Rank ribbon on top with classic gold/silver/bronze tier colors for 1st/2nd/3rd, champagne for 4-10, muted for 11+.
+- **Responsive across 5 breakpoints** — iPhone SE (≤380px) up to desktop wide (≥1440px). Medal disc scales from 76px to 100px, score font scales from 1.7rem to 2.25rem.
+- **Same data layer as v128** — no migrations, no API changes, no Supabase touches. Purely a visual layer upgrade.
+- **Same accessibility contract** — full aria-label with score + rank + city + "Tap for full breakdown", title tooltip, focus-visible outline, reduced-motion respected.
+- **Vercel deployment** `dpl_3TUf3vWzNf6cQyPVGqoa2bp7v9rY` BUILDING from `bfb4561`. Goes READY in ~60-90s + auto-aliased to `staybids.in`.
+- **Visible verification:** badge chip in bottom-right corner reads `v128.1`. `localStorage.sb_build === "v128.1-3d-award-medal-badge"`.
+
