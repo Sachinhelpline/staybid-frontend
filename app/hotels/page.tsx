@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 function HotelList() {
   const searchParams = useSearchParams();
@@ -222,6 +223,15 @@ function HotelList() {
                       {"★".repeat(h.starRating)}
                     </span>
                   )}
+
+                  {/* v128 — compact live scorecard badge (bottom-right of image) */}
+                  <div
+                    className="absolute bottom-3 right-3 z-10"
+                    style={{ pointerEvents: "auto" }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  >
+                    <HotelScoreBadge hotelId={h.id} hotelName={h.name} variant="card" />
+                  </div>
                 </div>
 
                 {/* Info */}

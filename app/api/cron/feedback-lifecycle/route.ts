@@ -31,6 +31,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { purgeVerificationVideos, purgeEvidenceVideos } from "@/lib/verify/cleanup";
+import { computeHotelScore } from "@/lib/hotel-score";
+import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
@@ -61,6 +63,8 @@ async function runLifecycle() {
     evidenceVideosPurged: 0,
     escalated: 0,
     storageObjectsDeleted: 0,
+    scorecardsRefreshed: 0,
+    citiesReranked: 0,
     errors: [] as string[],
   };
 
@@ -269,6 +273,111 @@ async function runLifecycle() {
     }
   } catch (e: any) {
     stats.errors.push(`sweep4:${e?.message || e}`);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // SWEEP 5 — Hotel scorecard recompute (v128)
+  // ───────────────────────────────────────────────────────────
+  // For every hotel that had ANY activity in the last hour
+  // (new bid / status change / new complaint / verification update)
+  // recompute its scorecard and rerank its city. Keeps the live badge
+  // + rank fresh without hammering compute every page open.
+  try {
+    const recentCutoff = new Date(now.getTime() - 6 * 3600_000).toISOString();
+    // Hotels touched by recent activity
+    const touchedRes = await fetch(
+      `${SB_URL}/rest/v1/bids?or=(createdAt.gt.${encodeURIComponent(recentCutoff)},updatedAt.gt.${encodeURIComponent(recentCutoff)})&select=hotelId&limit=1000`,
+      { headers: SB_H, cache: "no-store" },
+    );
+    const touchedBids: any[] = touchedRes.ok ? await touchedRes.json().catch(() => []) : [];
+    const touchedCompRes = await fetch(
+      `${SB_URL}/rest/v1/complaints?createdAt=gt.${encodeURIComponent(recentCutoff)}&select=hotelId&limit=500`,
+      { headers: SB_H, cache: "no-store" },
+    );
+    const touchedComps: any[] = touchedCompRes.ok ? await touchedCompRes.json().catch(() => []) : [];
+
+    const hotelIds = Array.from(new Set([
+      ...touchedBids.map((b) => b.hotelId).filter(Boolean),
+      ...touchedComps.map((c) => c.hotelId).filter(Boolean),
+    ]));
+
+    if (hotelIds.length) {
+      const hotelsRes = await fetch(
+        `${SB_URL}/rest/v1/hotels?id=in.(${hotelIds.map((id) => encodeURIComponent(id)).join(",")})&select=id,name,city,state`,
+        { headers: SB_H, cache: "no-store" },
+      );
+      const hotels: any[] = hotelsRes.ok ? await hotelsRes.json().catch(() => []) : [];
+
+      const touchedCities = new Set<string>();
+      for (const h of hotels) {
+        try {
+          const inputs = await loadHotelScoreInputs(h.id);
+          const card = computeHotelScore(inputs);
+          await fetch(`${SB_URL}/rest/v1/hotel_scores?on_conflict=hotel_id`, {
+            method: "POST",
+            headers: { ...SB_H, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+            body: JSON.stringify({
+              hotel_id: card.hotelId,
+              city: h.city,
+              state: h.state,
+              overall: card.overall,
+              status: card.status,
+              badge_emoji: card.badge.emoji,
+              badge_label: card.badge.label,
+              badge_color: card.badge.color,
+              checkpoints: card.checkpoints,
+              total_bookings: card.totalBookings,
+              total_stay_feedback: card.totalStayFeedback,
+              total_complaints: card.totalComplaints,
+              computed_at: card.computedAt,
+              updated_at: new Date().toISOString(),
+            }),
+          }).catch(() => {});
+          stats.scorecardsRefreshed++;
+          if (h.city) touchedCities.add(h.city);
+        } catch (e: any) {
+          stats.errors.push(`sweep5:${h.id}:${e?.message || e}`);
+        }
+      }
+
+      // Rerank cities touched.
+      // Array.from() to avoid `for..of MapIterator` tsconfig downlevelIteration error.
+      const touchedCitiesList = Array.from(touchedCities);
+      for (let ci = 0; ci < touchedCitiesList.length; ci++) {
+        const city = touchedCitiesList[ci];
+        try {
+          const rowsRes = await fetch(
+            `${SB_URL}/rest/v1/hotel_scores?city=eq.${encodeURIComponent(city)}&select=hotel_id,overall&order=overall.desc.nullslast`,
+            { headers: SB_H, cache: "no-store" },
+          );
+          const rows: any[] = rowsRes.ok ? await rowsRes.json().catch(() => []) : [];
+          const rated = rows.filter((r) => r.overall !== null);
+          const total = rated.length;
+          for (let i = 0; i < rated.length; i++) {
+            const rank = i + 1;
+            const percentile = total > 1 ? +(((total - rank) / (total - 1)) * 100).toFixed(1) : 100;
+            await fetch(
+              `${SB_URL}/rest/v1/hotel_scores?hotel_id=eq.${encodeURIComponent(rated[i].hotel_id)}`,
+              {
+                method: "PATCH",
+                headers: { ...SB_H, "Content-Type": "application/json", Prefer: "return=minimal" },
+                body: JSON.stringify({
+                  rank_in_city: rank,
+                  total_in_city: total,
+                  percentile_city: percentile,
+                  updated_at: new Date().toISOString(),
+                }),
+              },
+            ).catch(() => {});
+          }
+          stats.citiesReranked++;
+        } catch (e: any) {
+          stats.errors.push(`sweep5-rerank:${city}:${e?.message || e}`);
+        }
+      }
+    }
+  } catch (e: any) {
+    stats.errors.push(`sweep5:${e?.message || e}`);
   }
 
   return stats;

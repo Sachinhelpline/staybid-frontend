@@ -1,0 +1,207 @@
+// v128 — Hotel Performance Scorecard endpoint.
+//
+// GET /api/hotels/:id/scorecard
+//
+// Returns the cached scorecard + live rank-within-city for the hotel.
+// If the cache row is older than 30 minutes, recompute opportunistically
+// (cron is the primary refresh path; this is the safety net).
+//
+// Response shape:
+//   {
+//     hotelId, city,
+//     overall, status, badge: { emoji, label, color },
+//     rank: { rank, total, percentile },
+//     checkpoints: CheckpointResult[],   // 10 entries with weight + earned + evidence
+//     totals: { bookings, stayFeedback, complaints },
+//     computedAt
+//   }
+//
+// Cached at the HTTP layer (5min, swr=30min) AND server-side (sb-cache).
+// Personalisation runs per request only for the per-user "are you in
+// this hotel's top-rated tier" badge (future addition).
+
+import { NextResponse } from "next/server";
+import { SB_URL, SB_H } from "@/lib/sb";
+import { sbCached } from "@/lib/sb-cache";
+import { computeHotelScore, rankWithinCity } from "@/lib/hotel-score";
+import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
+
+const REFRESH_AFTER_MS = 30 * 60_000; // 30 minutes
+
+async function sb(path: string): Promise<any[]> {
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    headers: SB_H,
+    cache: "no-store",
+  });
+  return r.ok ? r.json().catch(() => []) : [];
+}
+
+async function readCached(hotelId: string): Promise<any | null> {
+  const rows = await sb(
+    `hotel_scores?hotel_id=eq.${encodeURIComponent(hotelId)}&select=*&limit=1`,
+  );
+  return rows[0] || null;
+}
+
+async function upsertScore(card: any, cityRank: any, hotelMeta: any) {
+  const body = {
+    hotel_id: card.hotelId,
+    city: hotelMeta?.city || null,
+    state: hotelMeta?.state || null,
+    overall: card.overall,
+    rank_in_city: cityRank.rank,
+    total_in_city: cityRank.total,
+    percentile_city: cityRank.percentile,
+    status: card.status,
+    badge_emoji: card.badge.emoji,
+    badge_label: card.badge.label,
+    badge_color: card.badge.color,
+    checkpoints: card.checkpoints,
+    total_bookings: card.totalBookings,
+    total_stay_feedback: card.totalStayFeedback,
+    total_complaints: card.totalComplaints,
+    computed_at: card.computedAt,
+    updated_at: new Date().toISOString(),
+  };
+  // PostgREST upsert on conflict
+  await fetch(`${SB_URL}/rest/v1/hotel_scores?on_conflict=hotel_id`, {
+    method: "POST",
+    headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+async function recompute(hotelId: string, hotelMeta: any) {
+  const inputs = await loadHotelScoreInputs(hotelId);
+  const card = computeHotelScore(inputs);
+
+  // Rank within city: pull every other hotel in the same city + their
+  // cached overall scores. Hotels with no cached row are skipped from
+  // the rank pool (they get included next cron sweep).
+  let cityRank = { rank: null as number | null, total: 0, percentile: null as number | null };
+  if (hotelMeta?.city) {
+    const cityHotels = await sb(
+      `hotels?city=eq.${encodeURIComponent(hotelMeta.city)}&select=id&limit=500`,
+    );
+    const cityHotelIds = (cityHotels as any[]).map((h) => h.id);
+    if (cityHotelIds.length) {
+      const cityScores = await sb(
+        `hotel_scores?hotel_id=in.(${cityHotelIds
+          .map((id: string) => encodeURIComponent(id))
+          .join(",")})&select=hotel_id,overall`,
+      );
+      const scoresForRank: Array<{ hotelId: string; overall: number | null }> = [
+        ...(cityScores as any[]).map((s) => ({
+          hotelId: s.hotel_id,
+          overall: s.overall === null ? null : Number(s.overall),
+        })),
+        // Inject this hotel's just-computed overall (overrides if it was in DB)
+        { hotelId: card.hotelId, overall: card.overall },
+      ];
+      // Dedupe by hotelId, latest wins
+      const dedup = new Map<string, { hotelId: string; overall: number | null }>();
+      for (const s of scoresForRank) dedup.set(s.hotelId, s);
+      cityRank = rankWithinCity(Array.from(dedup.values()), card.hotelId);
+    }
+  }
+
+  await upsertScore(card, cityRank, hotelMeta);
+  return { card, cityRank };
+}
+
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const hotelId = params.id;
+  if (!hotelId) {
+    return NextResponse.json({ error: "hotelId required" }, { status: 400 });
+  }
+
+  try {
+    // Pull hotel meta (city/state) — cached via sb-cache
+    const hotelRows: any[] = await sbCached(
+      `hotel-meta:${hotelId}`,
+      () =>
+        sb(
+          `hotels?id=eq.${encodeURIComponent(hotelId)}&select=id,name,city,state&limit=1`,
+        ),
+      60_000,
+    );
+    const hotelMeta = hotelRows[0] || null;
+    if (!hotelMeta) {
+      return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
+    }
+
+    let row = await readCached(hotelId);
+    let fresh = false;
+    const age = row ? Date.now() - new Date(row.computed_at).getTime() : Infinity;
+    if (!row || age > REFRESH_AFTER_MS) {
+      const out = await recompute(hotelId, hotelMeta);
+      row = {
+        hotel_id: hotelId,
+        city: hotelMeta.city,
+        state: hotelMeta.state,
+        overall: out.card.overall,
+        rank_in_city: out.cityRank.rank,
+        total_in_city: out.cityRank.total,
+        percentile_city: out.cityRank.percentile,
+        status: out.card.status,
+        badge_emoji: out.card.badge.emoji,
+        badge_label: out.card.badge.label,
+        badge_color: out.card.badge.color,
+        checkpoints: out.card.checkpoints,
+        total_bookings: out.card.totalBookings,
+        total_stay_feedback: out.card.totalStayFeedback,
+        total_complaints: out.card.totalComplaints,
+        computed_at: out.card.computedAt,
+      };
+      fresh = true;
+    }
+
+    return NextResponse.json(
+      {
+        hotelId,
+        city: row.city,
+        state: row.state,
+        overall: row.overall === null ? null : Number(row.overall),
+        status: row.status,
+        badge: {
+          emoji: row.badge_emoji,
+          label: row.badge_label,
+          color: row.badge_color,
+        },
+        rank: {
+          rank: row.rank_in_city,
+          total: row.total_in_city,
+          percentile: row.percentile_city === null ? null : Number(row.percentile_city),
+        },
+        checkpoints: row.checkpoints || [],
+        totals: {
+          bookings: row.total_bookings || 0,
+          stayFeedback: row.total_stay_feedback || 0,
+          complaints: row.total_complaints || 0,
+        },
+        computedAt: row.computed_at,
+        fresh,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
+        },
+      },
+    );
+  } catch (e: any) {
+    return NextResponse.json(
+      {
+        hotelId,
+        overall: null,
+        status: "unrated",
+        badge: { emoji: "✨", label: "New on StayBid", color: "#C9A66B" },
+        rank: { rank: null, total: 0, percentile: null },
+        checkpoints: [],
+        totals: { bookings: 0, stayFeedback: 0, complaints: 0 },
+        computedAt: new Date().toISOString(),
+        error: e?.message || "scorecard failed",
+      },
+      { status: 200 },
+    );
+  }
+}

@@ -12,6 +12,7 @@ import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "
 import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
@@ -1501,6 +1502,23 @@ export default function HotelDetail() {
           trustBadge={!!hotel.trustBadge}
           flashDealActive={!!(dealId && dealPrice)}
         />
+
+        {/* ── v128 PERFORMANCE SCORECARD BADGE (rank + score + tap-for-breakdown) ── */}
+        <div className="hx-reveal" style={{ marginTop: 14, display: "flex", justifyContent: "flex-start", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
+          <HotelScoreBadge
+            hotelId={String(id)}
+            hotelName={hotel?.name}
+            variant="hero"
+          />
+          <div style={{ flex: "1 1 220px", minWidth: 0, color: "var(--text-soft, #4a3820)", fontSize: "0.82rem", lineHeight: 1.45 }}>
+            <div style={{ fontFamily: "var(--font-display, 'Cormorant Garamond'), serif", fontStyle: "italic", fontSize: "1.05rem", color: "var(--text-base, #1f1a0f)" }}>
+              StayBid Performance Scorecard
+            </div>
+            <div style={{ marginTop: 4 }}>
+              Live score across 10 checkpoints — bid response, stay feedback, complaints + more. Tap the badge for the full breakdown and city ranking.
+            </div>
+          </div>
+        </div>
 
         {/* ── Two-column page grid (sticky rail on desktop ≥1100px) ── */}
         <div className="hx-page-grid" style={{ marginTop: "22px" }}>

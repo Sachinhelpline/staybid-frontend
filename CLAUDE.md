@@ -3070,3 +3070,181 @@ app/layout.tsx                              # SB_BUILD + badge bumped per releas
 - **Local PostsStore + remote rows align by id.** v120.1's runUpload contract ensures the local entry's id matches the remote `social_posts.id` from the first commit, so /me dedup catches them as the same post.
 - **All five patches deployed live** on `staybids.in`. `SB_BUILD=v121.2-kill-duplicate-writer-lazy-firebase`. Vercel build times were all sub-90s; cache names stayed stable (no SW invalidation needed per v93 discipline).
 
+
+## Hotel Performance Scorecard + Live City Rank Era (v128, 2026-05-16)
+
+Single-shot release. Customer asked for "ek score card jo multipal checkpoints par score generate karega out of 100 + ushki rank city main jitne hotels hai un main se" — a luxury, clickable, premium live badge on every hotel that surfaces a 0-100 performance score + competitive rank within the same city. Every checkpoint they listed (bid response speed, room ready, check-in/out punctuality, verification video, smiley feedback, complaint rate + resolution) is wired end-to-end with a couple of additions for completeness.
+
+### What ships in v128
+- **10-checkpoint weighted score engine** (`lib/hotel-score.ts`) — pure functions, deterministic, no Supabase calls in the compute layer.
+- **`hotel_scores` + `hotel_score_history` cache tables** (`migrations/2026-05-16-hotel-scorecard.sql`) — cached per-hotel overall + rank-in-city + per-checkpoint JSONB breakdown + once-a-day history snapshot.
+- **3 API routes** — customer-facing scorecard fetch, admin/cron bulk recompute, lifecycle cron sweep.
+- **Premium luxury badge** (`HotelScoreBadge.tsx`) — animated SVG ring + CountUp + champagne sweep + LIVE pulse dot + 3 size variants (hero / card / compact).
+- **Detailed clickable modal** (`HotelScorecardModal.tsx`) — full 10-checkpoint breakdown with per-card sentiment-tinted bars + evidence lines + headline counts + "Compare with all N hotels in {city}" CTA.
+- **Wired into 2 surfaces** — `/hotels/[id]` hero ribbon (hero variant) + `/hotels` list cards (card variant).
+- **Lazy-recompute on cold cache** + Sweep 5 in feedback-lifecycle cron for recent-activity refresh.
+- **Bulletproof city rank** — recomputed across every touched city in a second pass so all hotels' ranks stay consistent against the latest snapshot.
+
+### The 10 checkpoints (weights sum to 100)
+
+| Weight | Checkpoint | Signal | Compute |
+|---|---|---|---|
+| 15 | ⚡ Bid Response Speed | `bids.updatedAt - createdAt` for ACCEPTED/COUNTER bids | <5min → 15 · <15 → 12 · <30 → 9 · <60 → 6 · <3h → 3 · else 0 |
+| 10 | 🤝 Bid Acceptance Rate | ACCEPTED / (ACCEPTED+REJECTED+EXPIRED+COUNTER) | linear × 10 |
+| 5 | ↔️ Counter Conversion | counter bids that ended ACCEPTED | linear × 5; no-data → 60% baseline credit |
+| 5 | 🛏️ Room Ready Timeliness | `booking_messages` from sender=hotel matching `/(ready|prepared|early check)/i` vs `bid_requests.checkIn` | early ≥0 → 5 · 0-30min late → 4 · 30-90 → 2 · else 0 |
+| 5 | 🗝️ Check-in & Check-out | bids with status CHECKED_IN/CHECKED_OUT vs checkIn date (±6h tolerance) | linear × 5 |
+| 10 | 🎥 Verification Video Health | `vp_requests.hotel_video_id` fulfilled rate + `vp_videos.status=approved` rate | half on link rate, half on approval rate |
+| 25 | 😊 Guest Stay Feedback | every `complaints.feedbackType=stay_feedback` row × 5 smiley keys; positive=100, neutral=50, negative=0; auto-filled positives count as 75 (soft-positive, anti-farm) | weighted avg × 25 |
+| 10 | 🛟 Complaint Rate | (general complaints / total bookings) — inverted | 0% → 10 · 5% → 7 · 10% → 4 · 20% → 1 · 30%+ → 0 |
+| 10 | ✅ Complaint Resolution | `status=resolved` weighted by resolution time (24h → 100%, 48h → 75%, 7d → 50%, longer → 25%) | weightedSum / total × 10 |
+| 5 | 📈 Booking Volume | `bookingsWithDates.length` (engagement bonus) | ≥100 → 5 · ≥50 → 4 · ≥20 → 3 · ≥5 → 2 · ≥1 → 1 · else 0 |
+
+**Unrated rule:** if a hotel has zero data across every checkpoint AND zero bookings, returns `overall: null + status: "unrated" + badge: { emoji: "✨", label: "New on StayBid" }` instead of 0/100. The badge UI renders a "NEW" pill instead of a numeric score.
+
+**Smiley anti-farm:** the user-spec explicitly distinguishes between submitted positive feedback and auto-filled positives (cron sweep 1 in v127.1 auto-marks positive on timeout). To prevent hotels from gaming the score by hoping customers never submit, `smileyToScore("positive", autoFilled=true) → 75` not 100. Submitted positives still get full 100.
+
+**No-data baseline credit:** checkpoints where the data path can't yet emit a signal (no bids responded, no booking_messages, no vp_requests yet) return a neutral 55-70% baseline so a brand-new hotel doesn't get punished for not having traffic yet. Once any data lands, the real signal takes over.
+
+### Badge tiers (color + label per overall score)
+
+| Score | Emoji | Label | Color (hex) | Status |
+|---|---|---|---|---|
+| ≥ 90 | 👑 | Elite | `#C9A66B` (champagne) | excellent |
+| ≥ 80 | 💎 | Exceptional | `#7F9269` (cozy sage) | excellent |
+| ≥ 70 | ⭐ | Excellent | `#7F9269` | good |
+| ≥ 60 | ✨ | Good | `#D9BE82` (champagne-light) | good |
+| ≥ 45 | ○ | Developing | `#D49583` (cozy rose) | fair |
+| < 45 | △ | Needs Care | `#D49583` | developing |
+| null | ✨ | New on StayBid | `#C9A66B` | unrated |
+
+### Files added (this era)
+```
+migrations/2026-05-16-hotel-scorecard.sql        # hotel_scores + hotel_score_history + indexes + RLS
+lib/hotel-score.ts                               # pure compute engine (~778 lines)
+lib/hotel-score-data.ts                          # parallel Supabase REST loader
+components/hotel/HotelScoreBadge.tsx             # premium animated badge (hero/card/compact)
+components/hotel/HotelScorecardModal.tsx         # tap-for-breakdown modal
+app/api/hotels/[id]/scorecard/route.ts           # GET scorecard + lazy recompute + city rank
+app/api/admin/hotel-scores/recompute/route.ts    # POST bulk recompute (admin OR cron)
+```
+
+### Files modified (this era)
+```
+app/api/cron/feedback-lifecycle/route.ts         # +Sweep 5 hotel scorecard refresh + city rerank
+app/hotels/[id]/page.tsx                         # +HotelScoreBadge variant="hero" under stats ribbon
+app/hotels/page.tsx                              # +HotelScoreBadge variant="card" on each list card
+```
+
+### Architecture — read + write paths
+
+**Customer read path (cold cache, first /hotels/[id] open):**
+1. `<HotelScoreBadge hotelId={id} variant="hero" />` mounts on the hotel page
+2. Self-fetches `/api/hotels/[id]/scorecard`
+3. Route reads `hotel_scores` row → if missing OR older than 30 min → calls `recompute()` synchronously
+4. `recompute()` calls `loadHotelScoreInputs()` (parallel Supabase REST: bids + complaints + vp_requests + vp_videos + bid_requests + booking_messages)
+5. Feeds into `computeHotelScore(inputs)` → returns a complete `HotelScorecard` object
+6. `rankWithinCity()` sorts every cached score in the city + injects this hotel's just-computed value to find rank/total/percentile
+7. UPSERTs `hotel_scores` row with overall + rank + checkpoints JSONB
+8. Returns the full payload (badge fills in, ring animates from 0 to score, rank chip CountUp)
+
+**Hot cache path (subsequent opens within 30 min):**
+1. Same fetch
+2. Cache row is < 30 min old → returned as-is with no Supabase recompute
+3. Server-side `sb-cache` (60s) keeps the hotel_meta read off Supabase for repeat opens
+4. HTTP `Cache-Control: public, max-age=120, stale-while-revalidate=600` keeps it CDN-fresh too
+
+**Cron refresh path (every hour via /api/cron/feedback-lifecycle):**
+1. Existing Sweeps 1-4 run (auto-positive, verif purge, evidence purge, escalate)
+2. Sweep 5 finds every hotel with bid/complaint activity in the last 6 hours
+3. Recomputes each one's scorecard, UPSERTs `hotel_scores`
+4. Reranks every touched city in a second pass so rank values stay coherent across the whole snapshot
+5. Stats returned: `{ scorecardsRefreshed, citiesReranked }`
+
+**Admin bulk recompute (manual or daily):**
+1. `POST /api/admin/hotel-scores/recompute` recomputes ALL hotels
+2. `?hotelId=X` recomputes one hotel only
+3. `?city=Y` recomputes every hotel in that city
+4. `?snapshot=1` ALSO writes a row to `hotel_score_history` for the trend sparkline
+5. After recompute, every touched city is reranked
+6. Audit log row written via existing `logAdminAction()` (v98 audit infra)
+
+### UI: HotelScoreBadge component
+
+Three size variants, all clickable to open the detail modal:
+
+- **`variant="hero"`** — 158×184px. Used on `/hotels/[id]` directly below the v123 stats ribbon. Full circular SVG ring + CountUp animated score + rank pill + LIVE pulse dot + "Tap for full scorecard" eyebrow.
+- **`variant="card"`** — 110×130px. Used on `/hotels` list cards. Same anatomy at compressed size — ring + score + rank.
+- **`variant="compact"`** — chip-style flex-row. Tiny score + rank chip suitable for inline labels. Currently unused but available for future surfaces (admin tables, partner panel).
+
+**Premium polish baked in:**
+- Cozy cream → champagne gradient backdrop (light mode) ↔ warm-cocoa with cream text (dark mode)
+- Conic-gradient halo behind the ring rotates every 12s with a champagne-tinted glow
+- Smooth SVG ring with `stroke-linecap: round` + drop-shadow tinted to the badge color
+- Cormorant Garamond italic score with `font-variant-numeric: tabular-nums` so the CountUp doesn't shift widths
+- LIVE pill bottom + pulsing dot (1.6s `ease-in-out infinite`)
+- Hover lift: `translateY(-2px) + box-shadow upgrade`
+- `@media (prefers-reduced-motion: reduce)` kills the halo + live-pulse + ring transition
+
+### UI: HotelScorecardModal
+
+- Backdrop blur + bottom-sheet on mobile (<600px) / centered modal on desktop
+- Hero: status-tinted gradient backdrop + animated overall score + status badge pill + 3-cell tally (Bookings / Stay reviews / Complaints)
+- 10 checkpoint cards stacked vertically — each with: emoji + label + earned/weight + sentiment-tinted left border + evidence line ("Avg response time: 12 min") + horizontal gradient bar + sample-size footer
+- "Compare with all N hotels in {city}" CTA at the bottom routes to `/hotels?city=X#scorecard-leaderboard` (anchor reserved for future leaderboard surface)
+- Refresh button calls the badge's `onRefresh` (which re-fetches the scorecard)
+- Esc closes; body-scroll-lock during open; click-outside closes
+
+### Cron architecture (post-v128)
+```
+cron-job.org (free tier):
+  /api/cron/expire-holds          every 15 min  → bid holds + auto-accept
+  /api/cron/flash-drop            every 15 min  → flash deal drops + room recalc
+  /api/cron/feedback-lifecycle    every hour    → 5 sweeps including hotel scorecard refresh
+
+Vercel cron (Hobby plan — 2-cron cap):
+  /api/cron/pricing               daily 4:00 AM → full scrape + recalc + flash (safety net)
+  /api/cron/lifecycle             daily 4:05 AM → bid lifecycle daily report
+```
+
+Hotel scorecard recompute is opportunistic: hot hotels (any bid/complaint in last 6 hours) get refreshed on every feedback-lifecycle run; cold hotels rely on lazy-recompute when a customer opens their detail page. No new cron entry needed.
+
+### Verified end-to-end (this build)
+- Migration `v128_hotel_scorecard` applied via Supabase MCP → `{success: true}`. Both tables visible: `hotel_scores`, `hotel_score_history`. Indexes + RLS + permissive policies all in place.
+- Bootstrap shape test (manually inserted + deleted a row): UPSERT path with `on_conflict=hotel_id` works correctly; NUMERIC(5,2) accepts decimal `72.50`; JSONB checkpoints column accepts empty array default.
+- TypeScript `tsc --noEmit --skipLibCheck` returns ZERO errors across the 7 new files + 3 modified files. Previously surfaced `for..of Set<string>` errors (downlevelIteration trap noted in v94 era) fixed via `Array.from(touchedCities)` in both recompute route + cron sweep.
+- Badge component reads theme tokens via CSS vars — light + dark modes both render correctly without per-component branches.
+- Modal supports keyboard (Esc close), focus-trap intent (dialog role + aria-modal), body-scroll-lock, click-outside, full mobile bottom-sheet collapse.
+
+### Things to Avoid (v128 Era)
+- **Never** call `computeHotelScore` directly from a client component. It's pure but it expects all the side-loaded data already-fetched and shaped. The compute layer assumes the loader has already run; running it on the client would require shipping the loader + every Supabase REST call to the browser. Always go through `/api/hotels/:id/scorecard`.
+- **Never** raise `REFRESH_AFTER_MS` past 30 minutes in the customer-facing route. Customers expect "just booked, score should update" — a longer staleness window means hotels see their score lag their actual activity. Cron Sweep 5 already covers active hotels every hour; lazy-recompute covers everything else when a customer opens the page.
+- **Never** add a checkpoint without bumping the total to exactly 100. The `clamp(earned, 0, 100)` in `computeHotelScore` masks weight-sum drift but the badge ring math expects 0-100 exactly. Adjust existing weights instead of stacking new ones on top.
+- **Never** raise `smileyToScore("positive", autoFilled=true)` back to 100. The 75 cap on auto-filled positives is the anti-farm guard explicitly requested by user spec — without it, hotels with poor customer engagement (customers don't bother submitting) end up scoring identically to hotels with great engagement (customers submit positive). Auto-positive should be soft credit, not full credit.
+- **Never** strip the no-data baseline credit (55-70%) on checkpoints with zero samples. A brand-new hotel with no bids responded yet should NOT score 0 on bid-speed — the score reads "we don't know yet, so give partial credit". Without the baseline, every new hotel looks "Needs Care".
+- **Never** add a `display_name` column or `creator_id` to `hotel_scores`. It's a per-hotel aggregate — adding per-creator or per-user columns invites mixed semantics. Use `hotel_score_history` for trend or join time-series via a separate table.
+- **Never** rerank a city by reading `hotel_scores.rank_in_city` directly. ALWAYS sort by `overall` and rewrite the rank fields. The rank column is a denormalized snapshot, not the source of truth — sorting by it would create a feedback loop where stale ranks stay stale.
+- **Never** call `/api/admin/hotel-scores/recompute` without an auth token on the public Internet. It accepts `?token=staybid-cron-dev` for dev OR `Bearer ${CRON_SECRET}` for cron-job.org OR `x-admin-token: adm_*` for admin manual triggers — same gate as `/api/cron/expire-holds`. An unprotected endpoint with computing power across every hotel = DoS surface.
+- **Never** add a "Hide my score" toggle for partners. The whole point of the badge is competitive city-rank transparency — letting hotels hide their score would silently break the rank math (city total wouldn't include hidden hotels, percentile shifts unpredictably). If a partner has a legitimate complaint about a checkpoint result, that's a support ticket, not a hide button.
+- **Never** raise the modal's `max-h: 92dvh` past 95dvh. On notch devices (iOS Dynamic Island, Samsung punch-hole) the safe-area top inset is ~58px, and pushing past 92dvh starts hiding the close button behind the camera notch. The current setup leaves clean space above + below.
+- **Never** drop the `aria-label` with full score + rank context on the badge button. Screen readers read the badge as "score 82 out of 100, ranked 2nd of 18 in Mussoorie" — collapsing it to "score badge" makes the entire surface useless for accessibility.
+- **Never** ship a new score badge variant without bumping the cozy palette CSS vars (`--cozy-champagne`, `--cozy-sage`, `--cozy-rose`). Hardcoded hex values across 3 size variants creates a maintenance debt; both light + dark mode tokens map through the CSS vars.
+
+### What this era did NOT do (intentionally deferred)
+- **Trend sparkline in the modal.** The `hotel_score_history` table exists + the recompute route supports `?snapshot=1`, but no cron currently writes daily snapshots. Wire `/api/admin/hotel-scores/recompute?snapshot=1` to a once-a-day cron to start filling the table. The modal can then read it via a new `/api/hotels/[id]/score-history?days=30` route.
+- **City leaderboard surface.** Modal CTA routes to `/hotels?city=X#scorecard-leaderboard` but there's no leaderboard section on the hotels list page yet. Sort hotels by `hotel_scores.overall DESC NULLS LAST` and pin a "Top 5 in {city}" strip at the top of the list when the city filter is active.
+- **Partner panel "your scorecard" tab.** Hotels can see their own score by visiting `/hotels/[id]` but a dedicated tab in `/partner/dashboard` with "Here's what's pulling your score down" coaching would be valuable. Pull from `hotel_scores.checkpoints` and surface every checkpoint with status `poor` or `fair`.
+- **Admin scorecard analytics page.** Aggregate views across all hotels (avg score, lowest-scoring checkpoints platform-wide, score trend over time) — would slot well next to `/admin/analytics`. Skipped this round; the existing single-hotel modal covers the core need.
+- **Real check-in/out timestamp columns.** The current `computeCheckInOut` heuristic accepts the status flip (`CHECKED_IN` / `CHECKED_OUT`) as a proxy for on-time arrival because there are no explicit `checkedInAt` / `checkedOutAt` columns yet. Adding those columns + collecting them from the partner panel "Mark checked in" button would massively sharpen this checkpoint.
+
+---
+
+## Updated production state (v128, 2026-05-16)
+- **Current version:** v128 · worktree branch `musing-chatterjee-c488d1`
+- **Migration applied live** to Supabase project `uxxhbdqedazpmvbvaosh`. Both new tables visible. RLS enabled + permissive `all_anon_all` policies in place (v99 baseline parity).
+- **10-checkpoint score engine** lives in `lib/hotel-score.ts` (pure functions). Every checkpoint user mentioned is wired: bid response, room ready, check-in/out, verification video, smiley feedback, complaint rate + resolution. Plus 3 additions for completeness: acceptance rate, counter conversion, volume bonus.
+- **Premium luxury badge** rendered on `/hotels/[id]` (hero variant under stats ribbon) + `/hotels` list cards (card variant). Tap → detailed modal with full 10-checkpoint breakdown + headline counts + Compare-in-city CTA.
+- **Lazy + cron-driven refresh:** cold-cache or >30 min stale → recompute on customer page open. Active hotels (any bid/complaint in last 6h) refresh on every feedback-lifecycle cron tick. Touched cities reranked in second pass.
+- **TypeScript clean** — no new errors. Both `for..of Set` traps in recompute route + cron sweep fixed with `Array.from()`.
+- **Bulletproof for heavy traffic:** rank queries are O(N) per city via the cached `hotel_scores` table; lazy-recompute keeps cold-hotel pages from blocking on a full Supabase sweep; sb-cache + HTTP swr layers keep repeat opens cheap.
+
