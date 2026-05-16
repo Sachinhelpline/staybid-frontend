@@ -12,10 +12,10 @@ import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { ensureUser } from "@/lib/sb-server";
 import { purgeVerificationVideos } from "@/lib/verify/cleanup";
 
-// v127.1 — 14-day resolution window for stay-feedback complaints carrying
+// v127.2 — 48-hour resolution window for stay-feedback complaints carrying
 // evidence video. Cron escalates rows past this deadline that are still
-// status='open'.
-const RESOLUTION_WINDOW_DAYS = Number(process.env.SB_RESOLUTION_WINDOW_DAYS || 14);
+// status='open'. Tightened from v127.1's 14 days per user spec.
+const RESOLUTION_WINDOW_HOURS = Number(process.env.SB_RESOLUTION_WINDOW_HOURS || 48);
 
 const VALID_TYPES = new Set(["bid", "booking", "payment", "service", "refund", "video", "general", "other", "stay_feedback"]);
 const VALID_PRIORITY = new Set(["low", "medium", "high"]);
@@ -158,7 +158,7 @@ export async function POST(req: Request) {
       body.evidenceVideoId
     );
     if (type === "stay_feedback" && hasEvidence) {
-      row.resolutionDeadlineAt = new Date(Date.now() + RESOLUTION_WINDOW_DAYS * 86400_000).toISOString();
+      row.resolutionDeadlineAt = new Date(Date.now() + RESOLUTION_WINDOW_HOURS * 3600_000).toISOString();
     }
 
     // v105.1 — complaints.customerId has a FK constraint pointing at

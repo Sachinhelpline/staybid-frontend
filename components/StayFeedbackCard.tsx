@@ -39,10 +39,13 @@ const SMILEYS: { v: Smiley; icon: string; label: string; color: string }[] = [
   { v: "negative", icon: "😞", label: "Not good",   color: "#dc2626" },
 ];
 
-// v127.1 — 48-hour feedback window after checkout. Past this the
-// lifecycle cron auto-fills positive feedback + deletes the hotel
-// verification video. UI shows a live countdown so the customer knows.
-const FEEDBACK_WINDOW_HOURS = 48;
+// v127.2 — 12-hour feedback window after checkout (tightened from
+// v127.1's 48h per user spec). Past this the lifecycle cron auto-fills
+// positive feedback + deletes the hotel verification video. UI shows a
+// live countdown so the customer knows. Card also supports "mid_stay"
+// mode (during stay, complaining about room not matching the video) —
+// no countdown there; same backend + same lifecycle on submit.
+const FEEDBACK_WINDOW_HOURS = 12;
 
 function formatRemaining(ms: number): string {
   if (ms <= 0) return "expired";
@@ -56,18 +59,30 @@ function formatRemaining(ms: number): string {
   return `${m}m`;
 }
 
+type Mode = "post_checkout" | "mid_stay";
+
 export default function StayFeedbackCard({
   bidId,
   hotelName,
   hotelId,
   verificationRequestId,
   checkOut,
+  mode = "post_checkout",
 }: {
   bidId: string;
   hotelName: string;
   hotelId?: string;
   verificationRequestId?: string;
   checkOut?: string;
+  /**
+   * v127.2 — `mid_stay` lets customers complain DURING their stay if
+   * the room doesn't match the hotel's verification video. Same composer,
+   * same backend (`complaints` row with feedbackType=stay_feedback),
+   * same lifecycle (videos delete on resolve). Only differences vs
+   * post_checkout: no 12h countdown, complaint-framed copy, evidence
+   * video is more strongly suggested.
+   */
+  mode?: Mode;
 }) {
   const router = useRouter();
   const { token } = useAuth();
@@ -171,15 +186,20 @@ export default function StayFeedbackCard({
 
   if (existing) {
     const f = existing.feedback || {};
+    const isMidStay = mode === "mid_stay";
     return (
       <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-luxury-50 border border-emerald-200">
         <div className="flex items-start gap-3">
           <div className="text-3xl">✓</div>
           <div className="flex-1">
-            <div className="font-display text-lg text-emerald-900">Thanks for your feedback</div>
+            <div className="font-display text-lg text-emerald-900">
+              {isMidStay ? "Complaint registered" : "Thanks for your feedback"}
+            </div>
             <div className="text-xs text-emerald-800/70 mt-0.5">
               Submitted {new Date(existing.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-              {" · "}+100 StayPoints credited
+              {isMidStay
+                ? " · Admin will review within 48h"
+                : " · +100 StayPoints credited"}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {CHECKPOINTS.map((c) => {
@@ -200,30 +220,52 @@ export default function StayFeedbackCard({
     );
   }
 
+  const isMidStay = mode === "mid_stay";
+  const cardTone = isMidStay
+    ? "bg-gradient-to-br from-red-50/40 to-amber-50 border-red-200/60"
+    : "bg-gradient-to-br from-gold-50/40 to-luxury-50 border-gold-200/60";
+
   return (
-    <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-gold-50/40 to-luxury-50 border border-gold-200/60">
+    <div className={`mt-4 p-4 rounded-2xl border ${cardTone}`}>
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <div className="font-display text-lg text-luxury-900">Rate your stay at {hotelName}</div>
-          <div className="text-xs text-luxury-500 mt-0.5">5 quick questions · earn 100 StayPoints</div>
+          <div className="font-display text-lg text-luxury-900">
+            {isMidStay
+              ? `Raise a complaint about ${hotelName}`
+              : `Rate your stay at ${hotelName}`}
+          </div>
+          <div className="text-xs text-luxury-500 mt-0.5">
+            {isMidStay
+              ? "Hotel room not matching the verification video? Tell us what's wrong."
+              : "5 quick questions · earn 100 StayPoints"}
+          </div>
         </div>
         <div className="text-xs text-luxury-500 font-mono whitespace-nowrap">{filled}/{CHECKPOINTS.length}</div>
       </div>
 
-      {remainingMs !== null && (
+      {/* Countdown shows only in post-checkout mode. Mid-stay has no
+          customer-facing deadline; lifecycle applies after submit. */}
+      {!isMidStay && remainingMs !== null && (
         <div className={`mb-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 border ${
           expired
             ? "bg-luxury-100 border-luxury-200 text-luxury-600"
-            : remainingMs < 6 * 3600_000
+            : remainingMs < 3 * 3600_000
             ? "bg-amber-50 border-amber-200 text-amber-900"
             : "bg-emerald-50 border-emerald-200 text-emerald-900"
         }`}>
           <span>⏳</span>
           <span>
             {expired
-              ? "Window closed — we'll auto-mark this stay as positive shortly."
-              : <>You have <span className="font-semibold">{formatRemaining(remainingMs)}</span> left to submit feedback. After {FEEDBACK_WINDOW_HOURS}h post-checkout we auto-mark it as positive and delete the hotel's verification video.</>}
+              ? "Window closed — we'll auto-mark this stay as positive shortly + delete the hotel's verification video."
+              : <>You have <span className="font-semibold">{formatRemaining(remainingMs)}</span> left to submit feedback. After {FEEDBACK_WINDOW_HOURS}h post-checkout we auto-mark it as positive and delete the hotel's verification video everywhere.</>}
           </span>
+        </div>
+      )}
+
+      {isMidStay && (
+        <div className="mb-3 px-3 py-2 rounded-lg text-xs bg-red-50 border border-red-200 text-red-900">
+          🚨 Filing a complaint <span className="font-semibold">during your stay</span>. Admin reviews within 48h.
+          Recording an evidence video is <span className="font-semibold">optional but speeds resolution</span>.
         </div>
       )}
 
@@ -281,7 +323,10 @@ export default function StayFeedbackCard({
       {negCount > 0 && allFilled && (
         <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
           <div className="font-semibold mb-1">📹 You flagged {negCount} negative checkpoint{negCount > 1 ? "s" : ""}.</div>
-          <div>Record a short evidence video so the admin can review side-by-side with the hotel's verification video. This helps us act faster on your concern.</div>
+          <div>
+            Recording a short evidence video helps admin review side-by-side with the hotel's verification video.
+            <span className="font-semibold"> Video is OPTIONAL</span> — you can submit without one if your smileys + note are enough.
+          </div>
         </div>
       )}
 
@@ -295,14 +340,14 @@ export default function StayFeedbackCard({
               disabled={!allFilled || submitting}
               className="btn-luxury w-full sm:flex-1 disabled:opacity-50"
             >
-              📹 Record evidence video
+              📹 Record evidence video {isMidStay ? "& file complaint" : "& submit"}
             </button>
             <button
               onClick={() => submit("submit_only")}
               disabled={!allFilled || submitting}
               className="w-full sm:w-auto px-4 py-2 rounded-full bg-luxury-100 hover:bg-luxury-200 text-luxury-700 text-sm font-semibold disabled:opacity-50"
             >
-              Submit without video
+              {isMidStay ? "Submit without video" : "Submit without video"}
             </button>
           </>
         ) : (
@@ -311,10 +356,20 @@ export default function StayFeedbackCard({
             disabled={!allFilled || submitting}
             className="btn-luxury w-full disabled:opacity-50"
           >
-            {submitting ? "Submitting…" : allFilled ? "Submit feedback" : `Rate all ${CHECKPOINTS.length} checkpoints to continue`}
+            {submitting
+              ? "Submitting…"
+              : allFilled
+              ? (isMidStay ? "File complaint" : "Submit feedback")
+              : `Rate all ${CHECKPOINTS.length} checkpoints to continue`}
           </button>
         )}
       </div>
+
+      {!isMidStay && allFilled && negCount === 0 && (
+        <p className="mt-2 text-[11px] text-luxury-500 text-center">
+          All positive — no video needed. Submit to earn StayPoints.
+        </p>
+      )}
     </div>
   );
 }

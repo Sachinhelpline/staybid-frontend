@@ -34,10 +34,10 @@ import { purgeVerificationVideos, purgeEvidenceVideos } from "@/lib/verify/clean
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-// 48 hours after checkOut → feedback deadline. Adjust via env var.
-const FEEDBACK_WINDOW_HOURS = Number(process.env.SB_FEEDBACK_WINDOW_HOURS || 48);
-// 14 days → resolution deadline for complaints carrying evidence video.
-const RESOLUTION_WINDOW_DAYS = Number(process.env.SB_RESOLUTION_WINDOW_DAYS || 14);
+// 12 hours after checkOut → feedback deadline. Adjust via env var.
+const FEEDBACK_WINDOW_HOURS = Number(process.env.SB_FEEDBACK_WINDOW_HOURS || 12);
+// 48 hours → resolution deadline for complaints carrying evidence video.
+const RESOLUTION_WINDOW_HOURS = Number(process.env.SB_RESOLUTION_WINDOW_HOURS || 48);
 
 async function authorized(req: NextRequest): Promise<boolean> {
   const { searchParams } = new URL(req.url);
@@ -120,7 +120,7 @@ async function runLifecycle() {
             priority: "low",
             status: "open",
             subject: null,
-            description: "Auto-marked positive — customer did not submit feedback within the 48-hour window.",
+            description: "Auto-marked positive — customer did not submit feedback within the 12-hour window.",
             feedback: {
               roomMatch:    "positive",
               staff:        "positive",
@@ -154,7 +154,7 @@ async function runLifecycle() {
                 payload: {
                   bidId: b.id,
                   hotelId: b.hotelId,
-                  message: "We marked your recent stay as positive since you didn't submit feedback in time. If anything was wrong, you can still raise a complaint anytime.",
+                  message: "We marked your recent stay as positive since you didn't submit feedback within the 12-hour window. If anything was wrong, you can still raise a complaint anytime.",
                 },
               }),
             }).catch(() => {});
@@ -239,7 +239,7 @@ async function runLifecycle() {
   // SWEEP 4 — Escalate stale open complaints with evidence video
   // ───────────────────────────────────────────────────────────
   try {
-    const escalateBefore = new Date(now.getTime() - RESOLUTION_WINDOW_DAYS * 86400_000).toISOString();
+    const escalateBefore = new Date(now.getTime() - RESOLUTION_WINDOW_HOURS * 3600_000).toISOString();
     const rowsRes = await fetch(
       `${SB_URL}/rest/v1/complaints?feedbackType=eq.stay_feedback&status=eq.open&evidenceVideoId=not.is.null&createdAt=lt.${encodeURIComponent(escalateBefore)}&select=id&limit=100`,
       { headers: SB_H, cache: "no-store" },
@@ -262,7 +262,7 @@ async function runLifecycle() {
             target: "admin",
             priority: "high",
             status: "pending",
-            payload: { complaintId: r.id, reason: `Unresolved past ${RESOLUTION_WINDOW_DAYS}-day deadline` },
+            payload: { complaintId: r.id, reason: `Unresolved past ${RESOLUTION_WINDOW_HOURS}-hour deadline` },
           }),
         }).catch(() => {});
       }

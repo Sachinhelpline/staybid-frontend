@@ -223,7 +223,15 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
       )}
 
       {r && (r.status === "uploaded" || r.status === "verified") && hotelVideo && (
-        <VideoPanel video={hotelVideo} report={report} bookingId={booking.id} hotelId={booking.hotelId} requestId={r.id} />
+        <VideoPanel
+          video={hotelVideo}
+          report={report}
+          bookingId={booking.bidId || booking.id}
+          hotelId={booking.hotelId}
+          requestId={r.id}
+          hotelName={booking.hotelName}
+          postCheckout={isPostCheckout({ status: booking.status, checkOut: booking.checkOut })}
+        />
       )}
 
       {/* v127 — Post-checkout smiley feedback. Renders for every booking
@@ -255,7 +263,7 @@ function StatusBadge({ r, report }: { r: any; report: any }) {
   return <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">Pending</span>;
 }
 
-function VideoPanel({ video, report, bookingId, hotelId, requestId }: any) {
+function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, postCheckout }: any) {
   const checks = report?.checks || {};
   const checklist = [
     { key: "code_ok",     label: "Verification code spoken" },
@@ -268,39 +276,40 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId }: any) {
   return (
     <div className="mt-4 space-y-3">
       <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {report ? (
-          <div className="card-luxury p-3 text-xs">
-            <div className="font-display text-base text-gold-700 mb-2">AI Trust Score: {report.trust_score}/100</div>
-            <div className="space-y-1">
-              {checklist.map((c) => {
-                const ok = c.custom ? c.custom() : checks[c.key];
-                if (ok === undefined) return null;
-                return (
-                  <div key={c.key} className="flex items-center gap-2">
-                    <span className={ok ? "text-emerald-600" : "text-red-500"}>{ok ? "✓" : "✗"}</span>
-                    <span className="text-luxury-700">{c.label}</span>
-                  </div>
-                );
-              })}
-            </div>
+      {report ? (
+        <div className="card-luxury p-3 text-xs">
+          <div className="font-display text-base text-gold-700 mb-2">AI Trust Score: {report.trust_score}/100</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
+            {checklist.map((c) => {
+              const ok = c.custom ? c.custom() : checks[c.key];
+              if (ok === undefined) return null;
+              return (
+                <div key={c.key} className="flex items-center gap-2">
+                  <span className={ok ? "text-emerald-600" : "text-red-500"}>{ok ? "✓" : "✗"}</span>
+                  <span className="text-luxury-700">{c.label}</span>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="card-luxury p-3 text-xs text-luxury-500">AI report pending…</div>
-        )}
-        <ComplaintTrigger bookingId={bookingId} hotelId={hotelId} requestId={requestId} tier={video.tier} />
-      </div>
-    </div>
-  );
-}
+        </div>
+      ) : (
+        <div className="card-luxury p-3 text-xs text-luxury-500">AI report pending…</div>
+      )}
 
-function ComplaintTrigger({ bookingId, hotelId, requestId, tier }: any) {
-  return (
-    <div className="card-luxury p-3 text-xs">
-      <div className="font-semibold text-luxury-900 mb-1">Mismatch from what you got?</div>
-      <p className="text-luxury-600 leading-relaxed">Record a {tier === "platinum" ? 180 : tier === "gold" ? 120 : 60}s evidence video showing the issue.</p>
-      <Link href={`/verification/record?type=customer&requestId=${requestId}&bookingId=${bookingId}&hotelId=${hotelId}`}
-            className="mt-2 inline-block text-gold-700 font-semibold hover:underline">Report Issue →</Link>
+      {/* v127.2 — Mid-stay complaint composer. Only renders BEFORE
+          checkout so it doesn't double-show alongside the post-checkout
+          "Rate your stay" card. Same backend + same 48h lifecycle as the
+          post-checkout flow — videos delete on resolve, only smileys
+          persist long-term. */}
+      {!postCheckout && (
+        <StayFeedbackCard
+          mode="mid_stay"
+          bidId={bookingId}
+          hotelName={hotelName || "this hotel"}
+          hotelId={hotelId}
+          verificationRequestId={requestId}
+        />
+      )}
     </div>
   );
 }
