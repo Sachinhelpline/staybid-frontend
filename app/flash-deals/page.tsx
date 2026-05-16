@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -368,9 +369,23 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
       {/* Body */}
       <div className="fd-body">
         <div className="fd-hotel-row">
-          <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
-          {deal.hotel?.starRating ? (
-            <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+          <div className="fd-hotel-row-left">
+            <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
+            {deal.hotel?.starRating ? (
+              <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+            ) : null}
+          </div>
+          {/* v128.4 — Performance scorecard badge (clickable). Card variant
+              fits the flash-deal layout; tapping opens the same modal as
+              on hotel detail page. */}
+          {deal.hotelId ? (
+            <div className="fd-score-slot" onClick={(e) => e.stopPropagation()}>
+              <HotelScoreBadge
+                hotelId={deal.hotelId}
+                hotelName={deal.hotel?.name}
+                variant="card"
+              />
+            </div>
           ) : null}
         </div>
         <div className="fd-rt-row">
@@ -904,14 +919,23 @@ function FdStyles() {
       /* Body */
       .fd-body { padding: 14px 16px 16px; }
       .fd-hotel-row {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 8px; margin-bottom: 2px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 10px; margin-bottom: 8px;
+      }
+      .fd-hotel-row-left {
+        flex: 1 1 auto; min-width: 0;
+        display: flex; flex-direction: column; gap: 2px;
       }
       .fd-hotel-name {
         font-size: 0.95rem; font-weight: 600; color: var(--text-base);
         margin: 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        max-width: 70%;
+      }
+      /* v128.4 — Flash deal scorecard badge slot. flex-shrink:0 so the
+         medal never gets squeezed; click stops propagation to the card. */
+      .fd-score-slot { flex-shrink: 0; align-self: flex-start; }
+      @media (max-width: 480px) {
+        .fd-hotel-row { gap: 8px; }
       }
       /* v92 — Star + room type + slots use theme accent (champagne) so
          they read on both cream + cocoa surfaces. The bright #f0b429

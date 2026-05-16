@@ -30,6 +30,7 @@ type StarReview = {
 };
 type ReviewsPayload = {
   starReviews: StarReview[];
+  legacyAggregate?: { avgRating: number | null; totalReviews: number } | null;
   stats: {
     starCount: number;
     avgStars: number | null;
@@ -109,7 +110,9 @@ function ReviewsPageInner() {
 
   const reviews = payload?.starReviews || [];
   const stats = payload?.stats;
+  const legacy = payload?.legacyAggregate;
   const histogramMax = Math.max(1, ...(stats?.starHistogram || [0]));
+  const hasLegacy = !!(legacy && (legacy.totalReviews || legacy.avgRating));
 
   const filtered = useMemo(() => {
     if (filter === "all") return reviews;
@@ -156,16 +159,62 @@ function ReviewsPageInner() {
             Loading reviews…
           </div>
         ) : reviews.length === 0 ? (
-          <div className="rev-empty">
-            <span className="rev-empty-emoji">✨</span>
-            <div className="rev-empty-title">No customer reviews yet</div>
-            <div className="rev-empty-body">
-              Be the first to share your experience after checkout.<br />
-              Every review credits you 100 StayPoints + helps future guests trust this hotel.
+          <>
+            {hasLegacy ? (
+              <div className="rev-legacy-hero">
+                <div className="rev-legacy-tag">⭐ AGGREGATE RATING · prior platforms</div>
+                <div className="rev-legacy-row">
+                  <div className="rev-legacy-num">
+                    {legacy?.avgRating != null ? legacy.avgRating.toFixed(1) : "—"}
+                    <span className="rev-legacy-num-sub">/5</span>
+                  </div>
+                  <div className="rev-legacy-meta">
+                    <div className="rev-legacy-stars" aria-hidden>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <span
+                          key={i}
+                          className={i <= Math.round(legacy?.avgRating || 0) ? "on" : ""}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    <div className="rev-legacy-count">
+                      Based on {legacy?.totalReviews.toLocaleString()} review
+                      {legacy?.totalReviews === 1 ? "" : "s"} across travel platforms
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="rev-empty">
+              <span className="rev-empty-emoji">✨</span>
+              <div className="rev-empty-title">
+                {hasLegacy
+                  ? "No verified StayBid reviews yet"
+                  : "No customer reviews yet"}
+              </div>
+              <div className="rev-empty-body">
+                Be the first verified StayBid guest to share your experience.<br />
+                Every review credits you 100 StayPoints + helps future guests trust this hotel.
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <>
+            {/* Legacy aggregate strip (above the verified hero) */}
+            {hasLegacy ? (
+              <div className="rev-legacy-strip">
+                <span className="rev-legacy-strip-tag">⭐ AGGREGATE</span>
+                <span className="rev-legacy-strip-num">
+                  {legacy?.avgRating?.toFixed(1)}/5
+                </span>
+                <span className="rev-legacy-strip-meta">
+                  from {legacy?.totalReviews.toLocaleString()} prior-platform reviews
+                </span>
+              </div>
+            ) : null}
+
             {/* Hero stats */}
             {stats?.avgStars != null ? (
               <div className="rev-hero">
@@ -544,6 +593,95 @@ function ReviewsPageInner() {
           text-align: center;
           color: var(--cozy-cocoa-soft, #6e5430);
           font-size: 0.88rem;
+        }
+
+        /* v128.4 — Legacy aggregate (prior-platform reviews) */
+        .rev-legacy-hero {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 18px;
+          margin-bottom: 18px;
+          background: linear-gradient(150deg, rgba(201,166,107,0.16) 0%, var(--bg-elevated, #fffcf6) 90%);
+          border: 1px solid rgba(201, 166, 107, 0.32);
+          border-radius: 18px;
+          box-shadow:
+            0 4px 14px -6px rgba(31, 26, 15, 0.10),
+            inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+        .rev-legacy-tag {
+          font-size: 0.62rem;
+          font-weight: 800;
+          letter-spacing: 0.10em;
+          color: var(--cozy-cocoa, #4a3820);
+          text-transform: uppercase;
+        }
+        .rev-legacy-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .rev-legacy-num {
+          font-family: var(--font-display, "Cormorant Garamond"), serif;
+          font-style: italic;
+          font-weight: 700;
+          font-size: 2.6rem;
+          line-height: 1;
+          color: var(--text-base, #1f1a0f);
+          letter-spacing: -0.02em;
+        }
+        .rev-legacy-num-sub {
+          font-size: 1rem;
+          opacity: 0.5;
+          margin-left: 4px;
+        }
+        .rev-legacy-meta { display: flex; flex-direction: column; gap: 4px; }
+        .rev-legacy-stars {
+          font-size: 1rem;
+          color: var(--cozy-champagne, #C9A66B);
+          letter-spacing: 0.06em;
+        }
+        .rev-legacy-stars span { opacity: 0.28; }
+        .rev-legacy-stars span.on { opacity: 1; }
+        .rev-legacy-count {
+          font-size: 0.78rem;
+          color: var(--cozy-cocoa-soft, #6e5430);
+          font-weight: 600;
+        }
+
+        .rev-legacy-strip {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 14px;
+          margin-bottom: 12px;
+          background: rgba(201, 166, 107, 0.10);
+          border: 1px solid rgba(201, 166, 107, 0.25);
+          border-radius: 999px;
+          font-size: 0.76rem;
+          color: var(--cozy-cocoa, #4a3820);
+          flex-wrap: wrap;
+        }
+        .rev-legacy-strip-tag {
+          font-size: 0.58rem;
+          font-weight: 800;
+          letter-spacing: 0.10em;
+          background: var(--cozy-warm-dark, #1F1A0F);
+          color: var(--cozy-cream-50, #FFFCF6);
+          padding: 3px 8px;
+          border-radius: 999px;
+        }
+        .rev-legacy-strip-num {
+          font-family: var(--font-display, "Cormorant Garamond"), serif;
+          font-style: italic;
+          font-weight: 700;
+          font-size: 1rem;
+          color: var(--text-base, #1f1a0f);
+        }
+        .rev-legacy-strip-meta {
+          font-size: 0.72rem;
+          color: var(--cozy-cocoa-soft, #6e5430);
         }
 
         /* Empty / loading */

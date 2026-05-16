@@ -68,7 +68,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const payload = await sbCached(
       `hotel-reviews:${hotelId}:${limit}`,
       async () => {
-        const [starRowsRaw, sfRowsRaw] = await Promise.all([
+        // v128.4 — Pull hotels.totalReviews + avgRating as a "legacy aggregate"
+        // so the reviews page doesn't look empty when a hotel has reputation
+        // from prior platforms but no StayBid-verified review yet.
+        const [starRowsRaw, sfRowsRaw, hotelRows] = await Promise.all([
           sb(
             `feedback_tracking?hotel_id=eq.${encodeURIComponent(hotelId)}` +
               `&submitted=eq.true` +
@@ -82,7 +85,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
               `&select=id,customerId,feedback,feedbackAutoFilled,createdAt` +
               `&order=createdAt.desc&limit=${limit}`,
           ),
+          sb(
+            `hotels?id=eq.${encodeURIComponent(hotelId)}` +
+              `&select=avgRating,totalReviews&limit=1`,
+          ),
         ]);
+        const hotelMeta = (hotelRows as any[])[0] || null;
+        const legacyAggregate = hotelMeta && (hotelMeta.totalReviews || hotelMeta.avgRating)
+          ? {
+              avgRating: hotelMeta.avgRating ? Number(hotelMeta.avgRating) : null,
+              totalReviews: hotelMeta.totalReviews ? Number(hotelMeta.totalReviews) : 0,
+            }
+          : null;
 
         const starReviews = (starRowsRaw as any[]).map((r) => ({
           id: r.id,
@@ -144,6 +158,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           hotelId,
           starReviews,
           stayFeedback,
+          legacyAggregate,
           stats: {
             starCount: starReviews.length,
             avgStars,

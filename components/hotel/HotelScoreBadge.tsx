@@ -250,10 +250,13 @@ export default function HotelScoreBadge({
           </span>
         )}
 
-        {/* 3D medal disc */}
+        {/* 3D medal disc — v128.4: "SCORE" label added inside for symmetry
+            with the "Rank N" trophy ribbon above. Customer never wonders
+            what the number means. */}
         <span className="hsb-medal" aria-hidden>
           <span className="hsb-medal-sheen" />
           <span className="hsb-medal-inner">
+            <span className="hsb-medal-score-lbl">Score</span>
             <span className="hsb-medal-num">{animatedScore}</span>
             <span className="hsb-medal-denom">/100</span>
           </span>
@@ -487,28 +490,43 @@ const styles = `
     0 1px 0 rgba(255, 255, 255, 0.45),
     0 -1px 0 rgba(31, 26, 15, 0.20);
 }
+.hsb-medal-score-lbl {
+  font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
+  font-size: 0.42rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 252, 246, 0.78);
+  text-transform: uppercase;
+  line-height: 1;
+  margin-bottom: 1px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
+}
 .hsb-medal-num {
   font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
   font-weight: 700;
   font-style: italic;
-  font-size: 1.55rem;
+  font-size: 1.4rem;
   color: #FFFCF6;
   letter-spacing: -0.02em;
   font-feature-settings: "tnum" 1;
+  line-height: 1;
 }
 .hsb-medal-denom {
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
-  font-size: 0.5rem;
+  font-size: 0.46rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   color: rgba(255, 252, 246, 0.85);
   margin-top: 1px;
   text-transform: uppercase;
+  line-height: 1;
 }
-.hsb-card .hsb-medal-num { font-size: 1.2rem; }
-.hsb-card .hsb-medal-denom { font-size: 0.46rem; }
+.hsb-card .hsb-medal-num { font-size: 1.1rem; }
+.hsb-card .hsb-medal-denom { font-size: 0.42rem; }
+.hsb-card .hsb-medal-score-lbl { font-size: 0.38rem; letter-spacing: 0.12em; }
 .hsb-compact .hsb-medal-num { font-size: 0.9rem; }
 .hsb-compact .hsb-medal-denom { display: none; }
+.hsb-compact .hsb-medal-score-lbl { display: none; }
 
 /* Live pulse dot — bottom-right corner of the medal */
 .hsb-medal-live {
@@ -607,8 +625,9 @@ const styles = `
 @media (min-width: 600px) {
   .hsb-hero { width: 84px; min-height: 106px; }
   .hsb-hero .hsb-medal { width: 76px; height: 76px; }
-  .hsb-hero .hsb-medal-num { font-size: 1.7rem; }
-  .hsb-hero .hsb-medal-denom { font-size: 0.52rem; }
+  .hsb-hero .hsb-medal-num { font-size: 1.55rem; }
+  .hsb-hero .hsb-medal-denom { font-size: 0.48rem; }
+  .hsb-hero .hsb-medal-score-lbl { font-size: 0.42rem; }
   .hsb-hero .hsb-trophy-body { font-size: 0.58rem; padding: 3px 10px 4px; }
 }
 
@@ -616,8 +635,9 @@ const styles = `
 @media (min-width: 1024px) {
   .hsb-hero { width: 90px; min-height: 112px; }
   .hsb-hero .hsb-medal { width: 80px; height: 80px; }
-  .hsb-hero .hsb-medal-num { font-size: 1.8rem; }
-  .hsb-hero .hsb-medal-denom { font-size: 0.54rem; }
+  .hsb-hero .hsb-medal-num { font-size: 1.65rem; }
+  .hsb-hero .hsb-medal-denom { font-size: 0.5rem; }
+  .hsb-hero .hsb-medal-score-lbl { font-size: 0.44rem; }
   .hsb-hero .hsb-trophy-body { font-size: 0.6rem; padding: 4px 11px; }
   .hsb-hero .hsb-trophy-tail { width: 8px; height: 13px; }
   .hsb-card { width: 70px; min-height: 88px; }
@@ -628,14 +648,17 @@ const styles = `
 @media (min-width: 1440px) {
   .hsb-hero { width: 96px; min-height: 118px; }
   .hsb-hero .hsb-medal { width: 84px; height: 84px; }
-  .hsb-hero .hsb-medal-num { font-size: 1.9rem; }
+  .hsb-hero .hsb-medal-num { font-size: 1.75rem; }
+  .hsb-hero .hsb-medal-score-lbl { font-size: 0.46rem; }
 }
 
 /* Very narrow phones (iPhone SE ≤ 380px) */
 @media (max-width: 380px) {
   .hsb-hero { width: 70px; min-height: 92px; }
   .hsb-hero .hsb-medal { width: 62px; height: 62px; }
-  .hsb-hero .hsb-medal-num { font-size: 1.35rem; }
+  .hsb-hero .hsb-medal-num { font-size: 1.2rem; }
+  .hsb-hero .hsb-medal-denom { font-size: 0.4rem; }
+  .hsb-hero .hsb-medal-score-lbl { font-size: 0.36rem; letter-spacing: 0.10em; }
   .hsb-hero .hsb-trophy-body { padding: 2px 7px 3px; font-size: 0.5rem; }
   .hsb-hero .hsb-trophy-tail { width: 7px; height: 11px; }
   .hsb-hero .hsb-trophy-icon { font-size: 0.62rem; }
