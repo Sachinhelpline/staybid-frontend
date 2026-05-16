@@ -36,6 +36,10 @@ import {
   useFlashDealStories,
   type FlashDealStory,
 } from "@/components/discover/FlashDealStories";
+// v130 — flash-deal Book Now URL carries a ₹100-snapped price into the
+// hotel page so the receiving Flash Book modal paints a value that
+// already obeys the platform rule. Defensive: the hotel page re-snaps too.
+import { snap100 } from "@/lib/price-snap";
 
 type Item = { hotel: any; score?: number; reasons?: string[]; exploration?: boolean };
 
@@ -4235,10 +4239,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         onClose={() => setFlashStoryIdx(null)}
         onTrackEvent={onTrackEvent}
         onBook={(d: FlashDealStory) => {
+          // v130 — snap the dealPrice query param so the hotel page reads a
+          // ₹100-multiple straight from the URL. Mirrors the snap in the
+          // /flash-deals card Grab Now path so both surfaces are byte-equal.
           const url =
             `/hotels/${d.hotelId}` +
             `?dealId=${encodeURIComponent(d.id)}` +
-            `&dealPrice=${encodeURIComponent(String(d.dealPrice))}` +
+            `&dealPrice=${encodeURIComponent(String(snap100(d.dealPrice)))}` +
             `&roomId=${encodeURIComponent(d.roomId)}` +
             `&discount=${encodeURIComponent(String(d.discount))}` +
             `&directBook=true`;

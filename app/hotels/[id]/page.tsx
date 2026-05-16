@@ -26,6 +26,10 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+// v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
+// schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
+// path: never blocks on a missing column — falls back to 'auto'.
+import { getAutopilotMode, resolveAutoAcceptMs } from "@/lib/autopilot";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -35,7 +39,12 @@ const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 function bidProb(amount: number, floor: number) {
   const r = amount / floor;
-  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981", tip: "Highest priority — auto-confirms instantly!", responseTime: "Auto-confirms!" };
+  // v130 — customer-facing copy never says "AI" / "auto" / "system" so the
+  // experience reads as "the hotel confirmed your bid". The autopilot
+  // scheduler is purely operational; the customer only sees a Hotel-first
+  // story. (Pricing chrome elsewhere on the page can still say "AI Smart
+  // Pricing" since live demand-based rates are industry standard.)
+  if (r >= 1.00) return { p: 95, label: "👑 Priority Booking", badge: "Max Cashback Points", color: "text-emerald-600", bg: "bg-emerald-50", track: "#10b981", tip: "Highest priority — the hotel will confirm right away.", responseTime: "Confirms right away" };
   if (r >= 0.95) return { p: Math.round(70+(r-0.95)/0.05*24), label: "⭐ Strong Offer",    badge: "Bonus Points Eligible", color: "text-yellow-600", bg: "bg-yellow-50",  track: "#ca8a04", tip: "Very strong offer — hotel will likely respond within the hour.", responseTime: "~1 hr" };
   if (r >= 0.90) return { p: Math.round(45+(r-0.90)/0.05*24), label: "✨ Good Standing",   badge: "Standard Points",       color: "text-amber-600",  bg: "bg-amber-50",   track: "#d97706", tip: "Good offer — hotel typically responds in 2–3 hours.", responseTime: "2–3 hrs" };
   if (r >= 0.85) return { p: Math.round(25+(r-0.85)/0.05*19), label: "Moderate",           badge: "",                      color: "text-orange-500", bg: "bg-orange-50",  track: "#f97316", tip: "Hotel may counter with a higher price. Try raising slightly.", responseTime: "3–6 hrs" };
@@ -816,6 +825,27 @@ export default function HotelDetail() {
           flow: "bid",
           attribution: attribution || { source: "direct", capturedAt: Date.now() },
         });
+
+        // v130 — Hybrid AI Autopilot. Tier-based auto-accept on the
+        // simple Bid path too. Below-floor amounts have ratio < 1, but
+        // schedule-accept just sets auto_accept_at; the bid still flips
+        // at the timer. LOWBALL tier returns Infinity → no schedule.
+        // Use `apMode` (NOT `mode`) to avoid shadowing the executeNegotiate
+        // mode pattern that lives elsewhere in this file.
+        try {
+          const tier = bidderScore?.tier || "NEW";
+          const baseMs = bidderScore?.autoAcceptMs ?? 480_000;
+          const apMode = await getAutopilotMode(hotel.id);
+          const autoAcceptMs = resolveAutoAcceptMs(tier, baseMs, apMode);
+          if (Number.isFinite(autoAcceptMs)) {
+            const token = localStorage.getItem("sb_token");
+            await fetch(`/api/bids/${bidRes.bid.id}/schedule-accept`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ tier, autoAcceptMs, autopilotMode: apMode }),
+            });
+          }
+        } catch {}
       }
       setBidSuccess(true);
       setBidRoom(null);
@@ -1031,7 +1061,7 @@ export default function HotelDetail() {
     if (isAboveFloor) {
       const rateLines = [
         { label: `₹${negAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
-        { label: "⚡ Instant confirm bid", value: "Auto-accept", subtle: true },
+        { label: "⚡ Instant confirm bid", value: "Hotel confirms", subtle: true },
       ];
       setReview({
         hotelName: hotel.name,
@@ -1175,23 +1205,30 @@ export default function HotelDetail() {
         attribution: attribution || { source: "direct", capturedAt: Date.now() },
       });
 
-      // Phase 6: stop instant-accepting above-floor bids. Schedule them
-      // for tier-based auto-accept so the hotel has a window to counter/
-      // reject. lib/bidder-score.ts maps tier -> autoAcceptMs (PREMIUM 30s,
-      // STRONG 2min, NORMAL 5min, CAUTIOUS 10min, LOWBALL = manual review).
+      // v70 + v130 — tier-based auto-accept on EVERY above-floor unpaid bid,
+      // adjusted by the hotel's Autopilot mode. lib/bidder-score.ts maps
+      // tier -> autoAcceptMs (PREMIUM 30s … LOWBALL Infinity). lib/autopilot
+      // then clamps based on mode (auto/hybrid/manual) — Infinity = manual.
+      // NOTE: local var is `apMode` (NOT `mode`) — the outer executeNegotiate
+      // already has a `mode: "full"|"hold"|"payhotel"` parameter that the
+      // rest of this function compares against. Shadowing breaks every
+      // mode === "full" check elsewhere in the closure.
       const tier = bidderScore?.tier || "NEW";
-      const autoAcceptMs = bidderScore?.autoAcceptMs ?? 300_000; // default 5 min
+      const baseMs = bidderScore?.autoAcceptMs ?? 480_000; // default NORMAL ~8 min
+      const apMode = await getAutopilotMode(hotel.id);
+      const autoAcceptMs = resolveAutoAcceptMs(tier, baseMs, apMode);
       try {
         const token = localStorage.getItem("sb_token");
         await fetch(`/api/bids/${bidRes.bid.id}/schedule-accept`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ tier, autoAcceptMs }),
+          body: JSON.stringify({ tier, autoAcceptMs, autopilotMode: apMode }),
         });
       } catch {}
-      // For UI: "Auto-confirms!" message shown only for PREMIUM (effectively instant).
-      // Other tiers show "Bid Submitted — confirms in X" via the success modal.
-      const isPremiumInstant = tier === "PREMIUM" && autoAcceptMs <= 60_000;
+      // UI: only show the "instant" success copy when the mode + tier
+      // actually produce a sub-minute confirm. Anything else lands as
+      // "Bid Submitted — the hotel will confirm in ~X".
+      const isPremiumInstant = tier === "PREMIUM" && Number.isFinite(autoAcceptMs) && autoAcceptMs <= 60_000;
       setNegAuto(isPremiumInstant);
 
       // Confirmation email only fires after actual acceptance (cron/trigger).
@@ -3233,7 +3270,7 @@ export default function HotelDetail() {
           <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
-            <p className="text-luxury-400 text-sm mb-6">{negAuto ? "Your bid was auto-accepted! Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
+            <p className="text-luxury-400 text-sm mb-6">{negAuto ? "The hotel confirmed your bid. Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
             <div className="flex gap-3">
               <button onClick={() => setNegRoom(null)} className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm">Close</button>
               <Link href={negAuto ? "/bookings" : "/my-bids"} className="flex-1 py-3 rounded-2xl btn-luxury text-sm text-center">{negAuto ? "My Bookings" : "My Bids"}</Link>

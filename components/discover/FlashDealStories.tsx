@@ -17,6 +17,12 @@
 //   having to lift a finger.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
+// v130 — every flash-deal price rendered + every Book Now URL carries a
+// ₹100-multiple. Same source of truth as /flash-deals + /hotels/[id]
+// (v129 era). Without this, the home page rail's local fmtINR rendered
+// un-snapped values + the viewer's onBook URL passed raw `dealPrice`,
+// so the hotel page modal painted old prices.
+import { snap100 } from "@/lib/price-snap";
 
 export type FlashDealStory = {
   id:           string;
@@ -129,7 +135,9 @@ function readViewedIds(): string[] {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-function fmtINR(n: number) { return `₹${Math.round(n).toLocaleString("en-IN")}`; }
+// v130 — snap every price to a ₹100 multiple at the formatter so the rail +
+// viewer agree with /flash-deals + /hotels/[id] end-to-end.
+function fmtINR(n: number) { return `₹${snap100(n).toLocaleString("en-IN")}`; }
 
 type Countdown =
   | { mode: "hms"; h: string; m: string; s: string; expired: false }

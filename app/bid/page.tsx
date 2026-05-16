@@ -363,6 +363,15 @@ export default function BidPage() {
       //    shows up in /my-bids. If the user's budget is below the room's floor
       //    price, place the bid at floor price and record the user's desired
       //    amount in the message so the hotel can counter.
+      //
+      // v130 — DELIBERATELY NO schedule-accept here. The /bid page is a
+      // reverse-auction BROADCAST: the customer sends the same bid to every
+      // matching hotel and waits to see who accepts / counters / rejects.
+      // Auto-accepting on tier here would short-circuit the competition —
+      // the first hotel to time out would auto-win even if a better counter
+      // from a different hotel was about to land. The simple Bid button on
+      // /hotels/[id] (1:1 to one hotel) DOES use schedule-accept; this
+      // multi-hotel path stays manual review by design.
       const results = await Promise.allSettled(
         matching.map(async (hotel: any) => {
           const detail = await api.getHotel(hotel.id);

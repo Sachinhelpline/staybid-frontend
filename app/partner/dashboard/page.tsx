@@ -14,6 +14,10 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
 // through that box). See lib/counter-addons.ts for the rationale.
 import { COUNTER_ADDONS, serializeAddons } from "@/lib/counter-addons";
+// v130 — Hybrid AI Autopilot (Option 2). Partner picks how aggressive the
+// AI is on their inventory: auto / hybrid / manual. See lib/autopilot.ts
+// for the customer-side resolver + lib/bidder-score.ts for the tier rules.
+import { AUTOPILOT_MODE_LABEL, AUTOPILOT_MODE_DESC, type AutopilotMode, invalidateAutopilotCache } from "@/lib/autopilot";
 
 // Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
 // shared BookingChat component agnostic of which session keys we use.
@@ -153,6 +157,12 @@ export default function PartnerDashboard() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg]   = useState("");
 
+  // v130 — Autopilot mode. Loaded once on dashboard mount + on profile-tab
+  // open. Defaults to 'auto' if migration not yet applied (column missing).
+  const [autopilotMode, setAutopilotMode] = useState<AutopilotMode>("auto");
+  const [autopilotSaving, setAutopilotSaving] = useState(false);
+  const [autopilotMsg, setAutopilotMsg] = useState("");
+
   // ── Auth guard ─────────────────────────────────────────────────────────
   useEffect(() => {
     const token = getToken();
@@ -160,6 +170,9 @@ export default function PartnerDashboard() {
     if (!token || !user) { router.replace("/partner"); return; }
     setPUser(user);
     loadAll(token, user);
+    // v130 — kick off autopilot lookup in the background. Falls back to
+    // 'auto' if the API isn't reachable / migration isn't applied yet.
+    loadAutopilot();
   }, []);
 
   // ── Live auto-refresh every 20s + on focus (silent, no spinner) ────────
@@ -237,6 +250,54 @@ export default function PartnerDashboard() {
     // Partner entry immediately.
     if (typeof window !== "undefined") window.dispatchEvent(new Event("sb:tier-refresh"));
     router.replace("/partner");
+  }
+
+  // v130 — load + save autopilot mode for this partner's hotel.
+  async function loadAutopilot() {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const r = await fetch("/api/partner/autopilot", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!r.ok) return;
+      const d = await r.json().catch(() => ({} as any));
+      const m = (d?.mode as AutopilotMode) || "auto";
+      if (m === "auto" || m === "hybrid" || m === "manual") setAutopilotMode(m);
+    } catch { /* default 'auto' stays */ }
+  }
+  async function saveAutopilot(mode: AutopilotMode) {
+    const token = getToken();
+    if (!token) return;
+    setAutopilotSaving(true);
+    setAutopilotMsg("");
+    try {
+      const r = await fetch("/api/partner/autopilot", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ mode }),
+      });
+      const d = await r.json().catch(() => ({} as any));
+      if (!r.ok) {
+        if (r.status === 412) {
+          setAutopilotMsg("⚠ Autopilot table not yet provisioned — your admin needs to apply the v130 migration.");
+        } else {
+          setAutopilotMsg(`❌ ${d?.error || "Could not save"}`);
+        }
+        return;
+      }
+      setAutopilotMode(mode);
+      // Bust the customer-side cache so subsequent bids on this hotel pick
+      // up the new mode immediately (without waiting for the 60s TTL).
+      if (hotel?.id) invalidateAutopilotCache(hotel.id);
+      setAutopilotMsg(`✓ Mode saved · ${AUTOPILOT_MODE_LABEL[mode]}`);
+      setTimeout(() => setAutopilotMsg(""), 2500);
+    } catch (e: any) {
+      setAutopilotMsg(`❌ ${e?.message || "Network error"}`);
+    } finally {
+      setAutopilotSaving(false);
+    }
   }
 
   // ── Bid action ──────────────────────────────────────────────────────────
@@ -1962,6 +2023,69 @@ export default function PartnerDashboard() {
         {tab === "profile" && (
           <div className="fade-up max-w-xl">
             <h2 className="font-display text-2xl font-light text-luxury-900 mb-5">Hotel Profile</h2>
+
+            {/* v130 — Autopilot mode card. Lives at the top of Profile so the
+                partner sees their automation posture immediately. Defaults
+                to 'auto' if the column isn't provisioned — no UI hides
+                behind a migration. */}
+            <div className="card-p space-y-3 mb-5 border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-luxury-50">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🤖</span>
+                <h3 className="font-bold text-luxury-900 text-base">Autopilot Mode</h3>
+                <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.55rem] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-300">
+                  {AUTOPILOT_MODE_LABEL[autopilotMode]}
+                </span>
+              </div>
+              <p className="text-[0.72rem] text-luxury-500 leading-relaxed">
+                Pick how the hotel confirms bids on your behalf. You can still accept / counter / decline any pending bid before its timer fires — your action always overrides.
+              </p>
+
+              <div className="grid grid-cols-1 gap-2">
+                {(["auto", "hybrid", "manual"] as AutopilotMode[]).map((m) => {
+                  const on = autopilotMode === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      disabled={autopilotSaving}
+                      onClick={() => saveAutopilot(m)}
+                      className={`text-left rounded-2xl border-2 p-3 transition-all ${
+                        on
+                          ? "border-amber-500 bg-white shadow-sm scale-[1.01]"
+                          : "border-luxury-200 bg-white hover:border-amber-300"
+                      } disabled:opacity-60`}
+                      aria-pressed={on}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          aria-hidden
+                          className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center text-[0.5rem] font-bold ${
+                            on ? "bg-amber-500 border-amber-500 text-white" : "border-luxury-300 text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-bold ${on ? "text-amber-900" : "text-luxury-800"}`}>
+                            {AUTOPILOT_MODE_LABEL[m]}
+                          </p>
+                          <p className={`text-[0.65rem] mt-0.5 leading-relaxed ${on ? "text-amber-700" : "text-luxury-500"}`}>
+                            {AUTOPILOT_MODE_DESC[m]}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {autopilotMsg && (
+                <p className={`text-xs font-semibold ${autopilotMsg.startsWith("✓") ? "text-emerald-600" : autopilotMsg.startsWith("⚠") ? "text-amber-700" : "text-red-600"}`}>
+                  {autopilotMsg}
+                </p>
+              )}
+            </div>
+
             <div className="card-p space-y-4">
               {[
                 { key:"name",        label:"Hotel Name",    type:"text",   placeholder:"Your hotel's full name" },

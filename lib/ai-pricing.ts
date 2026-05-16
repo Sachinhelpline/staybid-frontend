@@ -1,8 +1,20 @@
 /**
  * StayBid AI Dynamic Pricing Engine
  * Demand/supply model calibrated for Uttarakhand hill-station market.
- * Factors: season, day-of-week, Indian festivals/events, lead time, city demand, micro-variation.
+ * Factors: season, day-of-week, Indian festivals/events, lead time, city demand, micro-variation,
+ *          live occupancy (v130 — yield-management layer).
  * Prices update every hour (seeded by hour so deterministic within same hour).
+ *
+ * v130 — added an OPTIONAL `occupancyRatio` parameter (0–1) to
+ * calculateDynamicPrice. When provided, drives a yield-management
+ * boost/discount on top of the existing model: empty hotels drop
+ * price automatically (fills inventory), near-sold-out nights surge
+ * (captures revenue). Callers that don't pass it preserve the old
+ * deterministic-only behavior end-to-end (zero regression risk for any
+ * existing consumer of this function).
+ *
+ * v130 — all output prices + suggestedFlash snap to ₹100 (was ₹50). Matches
+ * the platform-wide bidding rule established in v129 (lib/price-snap.ts).
  */
 
 export type DemandLevel = "Low" | "Moderate" | "High" | "Very High" | "Surge";
@@ -90,11 +102,37 @@ function getMicroMult(base: number, checkIn: string, city: string): number {
   return 1 + variation;
 }
 
+// ── Yield-management: live occupancy → price boost / discount ────────────────
+// v130 — Option B yield rule. Takes a 0–1 ratio (0 = totally empty, 1 = sold
+// out). When unknown / not provided, returns 1.0 (no-op) so legacy callers
+// stay byte-identical.
+//   <30%  → 0.88×  (deep discount — fill empty rooms)
+//   30-50% → 0.96× (gentle discount — pull demand)
+//   50-70% → 1.00× (neutral)
+//   70-85% → 1.12× (limited rooms — premium)
+//   >85%  → 1.28× (near sold-out — surge)
+function getOccupancyMult(ratio?: number): { mult: number; label: string | null } {
+  if (typeof ratio !== "number" || !Number.isFinite(ratio)) return { mult: 1.0, label: null };
+  const r = Math.max(0, Math.min(1, ratio));
+  if (r < 0.30) return { mult: 0.88, label: "Low Occupancy — Deal" };
+  if (r < 0.50) return { mult: 0.96, label: "Open Inventory" };
+  if (r < 0.70) return { mult: 1.00, label: null };
+  if (r < 0.85) return { mult: 1.12, label: "Limited Rooms" };
+  return            { mult: 1.28, label: "Near Sold-out — Surge" };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export function calculateDynamicPrice(
   baseFloorPrice: number,
   checkInDate: string,
   city: string,
+  /**
+   * Optional yield-management input. 0 = empty, 1 = fully sold for the
+   * date. When provided, drives an occupancy boost on top of the demand
+   * model. Callers without this value get the pre-v130 deterministic-only
+   * behavior unchanged.
+   */
+  occupancyRatio?: number,
 ): DynamicPriceResult {
   const checkIn = new Date(checkInDate);
   const today   = new Date();
@@ -108,10 +146,15 @@ export function calculateDynamicPrice(
   const { mult: leadMult,  label: leadLabel } = getLeadMult(daysUntil);
   const cityMult   = CITY_DEMAND[city] ?? 1.0;
   const microMult  = getMicroMult(baseFloorPrice, checkInDate, city);
+  // v130 — yield-management. mult = 1.0 when ratio not supplied → legacy
+  // callers preserved verbatim.
+  const { mult: occupancyMult, label: occupancyLabel } = getOccupancyMult(occupancyRatio);
 
-  const totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult;
+  const totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult * occupancyMult;
   const rawPrice  = baseFloorPrice * totalMult;
-  const price     = Math.max(baseFloorPrice, Math.round(rawPrice / 50) * 50);
+  // v130 — snap to ₹100 (was ₹50). Aligns with the platform-wide price-snap
+  // rule (lib/price-snap.ts). Floor remains a hard lower bound.
+  const price     = Math.max(baseFloorPrice, Math.round(rawPrice / 100) * 100);
 
   // Demand score 0-100
   const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - 0.60) / (1.80 - 0.60) * 100)));
@@ -131,18 +174,23 @@ export function calculateDynamicPrice(
   if (leadMult < 0.90) factors.push("Last-minute Vacancy");
   else if (leadMult >= 1.10) factors.push("Advance Booking Demand");
   if (cityMult >= 1.18) factors.push(`High Demand — ${city}`);
+  // v130 — surface the yield factor only when it actually moved price.
+  if (occupancyLabel) factors.push(occupancyLabel);
   if (factors.length === 0) factors.push("Standard Market Rate");
 
-  // Flash deal suggestion: 72–78% of AI price, never below baseFloorPrice
+  // Flash deal suggestion: 72–78% of AI price, never below baseFloorPrice.
+  // v130 — snap to ₹100 like the rest of the platform.
   const suggestedFlash = Math.max(
-    Math.round(baseFloorPrice * 0.85 / 50) * 50,
-    Math.round(price * 0.76 / 50) * 50,
+    Math.round(baseFloorPrice * 0.85 / 100) * 100,
+    Math.round(price * 0.76 / 100) * 100,
   );
 
   const priceChangePct = Math.round((totalMult - 1) * 100);
 
   // Trend: compare with yesterday-same-time multiplier (approximate)
   const yestMult = SEASON_MULT[checkIn.getMonth()] * DOW_MULT[(checkIn.getDay() + 6) % 7] * cityMult;
+  // v130 — trend reflects yield-adjusted total mult too: a hotel that filled
+  // up overnight reads as "rising" even mid-week.
   const trend: PriceTrend = totalMult > yestMult * 1.03 ? "rising" : totalMult < yestMult * 0.97 ? "falling" : "stable";
 
   const nextUpdateIn = (60 - new Date().getMinutes()) * 60;

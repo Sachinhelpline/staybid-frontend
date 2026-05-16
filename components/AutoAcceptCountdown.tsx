@@ -80,7 +80,7 @@ export default function AutoAcceptCountdown({ bidId, autoAcceptAt, bidderTier, o
       <div className="flex items-center gap-2">
         <span className="text-base">⏱</span>
         <p className="text-[0.72rem] font-bold flex-1" style={{ color: isUrgent ? "#fbbf24" : "#f0b429" }}>
-          Auto-confirms in <span className="font-mono">{m}:{String(s).padStart(2, "0")}</span>
+          Hotel confirms in <span className="font-mono">{m}:{String(s).padStart(2, "0")}</span>
         </p>
         {tier && (
           <span className="text-[0.55rem] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
@@ -90,7 +90,7 @@ export default function AutoAcceptCountdown({ bidId, autoAcceptAt, bidderTier, o
         )}
       </div>
       <p className="text-[0.6rem] text-white/45 mt-1 leading-snug">
-        Hotel has this window to counter or reject. Otherwise auto-confirms.
+        Hotel can still counter or reject before the timer ends.
       </p>
     </div>
   );
