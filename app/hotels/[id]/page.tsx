@@ -1584,18 +1584,45 @@ export default function HotelDetail() {
           </div>
         )}
 
-        {/* ── Premium Tabs ── */}
+        {/* ── Premium Tabs (v128.3 — +Guest Feedback) ── */}
         <div className="hx-tabs hx-reveal">
-          {(["rooms","reviews","about"] as const).map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`hx-tab ${tab === t ? "is-active" : ""}`}
-            >
-              {t === "rooms" ? "Rooms & Pricing" : t === "reviews" ? `Guest Reviews${hotel.totalReviews ? ` (${hotel.totalReviews})` : ""}` : "About this stay"}
-            </button>
-          ))}
+          {(["rooms","reviews","feedback","about"] as const).map(t => {
+            // "reviews" + "feedback" navigate to dedicated full pages so
+            // customers get the deep premium experience. The other two
+            // tabs stay inline on the detail page.
+            const isPageLink = t === "reviews" || t === "feedback";
+            const label =
+              t === "rooms"
+                ? "Rooms & Pricing"
+                : t === "reviews"
+                  ? `Guest Reviews${hotel.totalReviews ? ` (${hotel.totalReviews})` : ""}`
+                  : t === "feedback"
+                    ? "Guest Feedback"
+                    : "About this stay";
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  if (isPageLink) {
+                    const here = typeof window !== "undefined" ? window.location.pathname : `/hotels/${id}`;
+                    const path = t === "reviews" ? "reviews" : "feedback";
+                    const qs = new URLSearchParams({
+                      return: here,
+                      hotel: hotel?.name || "",
+                    });
+                    router.push(`/hotels/${encodeURIComponent(String(id))}/${path}?${qs.toString()}`);
+                  } else {
+                    setTab(t);
+                  }
+                }}
+                className={`hx-tab ${tab === t && !isPageLink ? "is-active" : ""}`}
+              >
+                {label}
+                {isPageLink ? <span aria-hidden style={{ marginLeft: 6, opacity: 0.55 }}>↗</span> : null}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── REVIEWS TAB ── */}

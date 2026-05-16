@@ -122,6 +122,26 @@ export default function HotelScoreBadge({
     };
   }, [hotelId, initial, load]);
 
+  // v128.3 — Auto-reopen scorecard modal when user returns from the
+  // /hotels/[id]/reviews or /feedback full-page routes. The modal sets
+  // a sessionStorage flag BEFORE navigating; we read it here and
+  // auto-open the modal after a tiny delay so the page renders first.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem("sb_scorecard_reopen");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data?.hotelId === hotelId && Date.now() - data.at < 120_000) {
+        sessionStorage.removeItem("sb_scorecard_reopen");
+        const t = setTimeout(() => {
+          if (mounted.current) setOpen(true);
+        }, 280);
+        return () => clearTimeout(t);
+      }
+    } catch {}
+  }, [hotelId]);
+
   const overall = card?.overall ?? 0;
   const animatedScore = useCountUp(overall, 1100);
   const isUnrated = !card || card.overall === null;

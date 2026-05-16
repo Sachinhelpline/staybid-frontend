@@ -13,71 +13,26 @@
  * Full keyboard support (Esc closes), focus-trap, body-scroll-lock,
  * touch-friendly bottom-sheet on mobile.
  */
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 
-// v128.2 — Clickable checkpoints that drill-down into a public-reviews view.
-// User explicitly asked these two be tappable so customers can read every
-// review WITHOUT leaving the scorecard surface, and "X" returns here.
+// v128.3 — Clickable checkpoints navigate to dedicated full-page routes
+// (replaces the v128.2 in-modal drill-down which felt cramped on mobile).
+// User asked: "actual real page par jump karo" — when tapped, the page
+// fills the screen, no blur/overlap, and back/close returns to wherever
+// they came from with the scorecard modal auto-reopened.
 const DRILL_DOWN_KEYS = new Set(["starRating", "staySmiley"]);
-
-type ReviewsPayload = {
-  starReviews: Array<{
-    id: string;
-    guestTag: string;
-    rating: number;
-    comment: string | null;
-    createdAt: string;
-  }>;
-  stayFeedback: Array<{
-    id: string;
-    guestTag: string;
-    autoFilled: boolean;
-    snapshot: Record<string, "positive" | "neutral" | "negative">;
-    createdAt: string;
-  }>;
-  stats: {
-    starCount: number;
-    avgStars: number | null;
-    starHistogram: number[];
-    stayFeedbackCount: number;
-    stayFeedbackPctPositive: number | null;
-    stayFeedbackNegativeCount: number;
-  };
+const DRILL_DOWN_PATH: Record<string, string> = {
+  starRating: "reviews",
+  staySmiley: "feedback",
 };
 
-const SMILEY_LABELS: Record<string, { label: string; emoji: string }> = {
-  roomMatch: { label: "Room matches video", emoji: "🛏️" },
-  staff: { label: "Staff behavior", emoji: "🤝" },
-  hygiene: { label: "Hygiene & cleanliness", emoji: "🧼" },
-  food: { label: "Food quality", emoji: "🍽️" },
-  staffResponse: { label: "Staff response", emoji: "⚡" },
-};
-
-function smileyTone(v: "positive" | "neutral" | "negative"): string {
-  if (v === "positive") return "#7F9269";
-  if (v === "neutral") return "#D9BE82";
-  return "#D49583";
-}
-
-function smileyEmoji(v: "positive" | "neutral" | "negative"): string {
-  if (v === "positive") return "😊";
-  if (v === "neutral") return "😐";
-  return "😞";
-}
-
-function formatRelativeDate(iso: string): string {
-  if (!iso) return "";
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "";
-  const diff = Date.now() - t;
-  const days = Math.floor(diff / 86400_000);
-  if (days < 1) return "today";
-  if (days < 2) return "yesterday";
-  if (days < 14) return `${days} days ago`;
-  if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
-  return new Date(iso).toLocaleDateString();
-}
+// v128.3 — Review payload types live in the dedicated full-page routes
+// at /hotels/[id]/reviews + /hotels/[id]/feedback. The modal no longer
+// loads reviews itself; tap a drill-down checkpoint and the user is
+// navigated there with `?return=<currentPath>&from=scorecard` so back
+// brings them right back to where they were.
 
 type Scorecard = {
   hotelId: string;
@@ -120,8 +75,6 @@ function checkpointTone(s: string): string {
   return "#6E5430";
 }
 
-type DrillView = "overview" | "starRating" | "staySmiley";
-
 export default function HotelScorecardModal({
   hotelId,
   hotelName,
@@ -130,21 +83,13 @@ export default function HotelScorecardModal({
   onRefresh,
 }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<DrillView>("overview");
-  const [reviews, setReviews] = useState<ReviewsPayload | null>(null);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   // ── Esc / body lock ─────────────────────────────────────────────
-  // Escape key behaves intelligently — drill-down view returns to
-  // overview first, then second press (or X tap) closes the whole modal.
-  // Matches the user spec: "close kare to wapas performance scorecard
-  // wali screen pe rahe jahan se click kiya tha".
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (view !== "overview") setView("overview");
-        else onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -153,37 +98,37 @@ export default function HotelScorecardModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose, view]);
+  }, [onClose]);
 
-  // ── Lazy load reviews when user first drills into either tab ─────
-  // We fetch ONE payload that has both starReviews + stayFeedback so
-  // toggling between the two drill-down views is instant after first hit.
-  useEffect(() => {
-    if (view === "overview" || reviews) return;
-    let cancelled = false;
-    setReviewsLoading(true);
-    fetch(`/api/hotels/${encodeURIComponent(hotelId)}/reviews?limit=80`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: ReviewsPayload | null) => {
-        if (cancelled) return;
-        setReviews(d || null);
-        setReviewsLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setReviewsLoading(false);
+  // ── Navigate to a dedicated full page on checkpoint tap (v128.3) ──
+  // Stores a session flag so the BADGE on the return page auto-re-opens
+  // this modal once the user lands back. Matches user spec exactly:
+  // "X ya jaishe bhi close kare toh fir se automatic ushko performance
+  // scorecard wali screen par rahe jahan se click kiya tha".
+  const openDrillDown = useCallback(
+    (key: string) => {
+      if (!DRILL_DOWN_KEYS.has(key)) return;
+      const path = DRILL_DOWN_PATH[key];
+      if (!path) return;
+      // Stash the reopen intent BEFORE navigating so race conditions
+      // can't lose it. Badge will pick it up on mount.
+      try {
+        sessionStorage.setItem(
+          "sb_scorecard_reopen",
+          JSON.stringify({ hotelId, at: Date.now() }),
+        );
+      } catch {}
+      const returnUrl = pathname || `/hotels/${hotelId}`;
+      const qs = new URLSearchParams({
+        return: returnUrl,
+        from: "scorecard",
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [view, hotelId, reviews]);
-
-  const openDrillDown = useCallback((key: DrillView) => {
-    if (!DRILL_DOWN_KEYS.has(key as any)) return;
-    setView(key);
-  }, []);
-
-  const backToOverview = useCallback(() => setView("overview"), []);
+      if (hotelName) qs.set("hotel", hotelName);
+      router.push(`/hotels/${encodeURIComponent(hotelId)}/${path}?${qs.toString()}`);
+      onClose();
+    },
+    [hotelId, hotelName, pathname, router, onClose],
+  );
 
   const checkpoints = card?.checkpoints || [];
 
@@ -211,18 +156,6 @@ export default function HotelScorecardModal({
         ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
       >
-      {view !== "overview" ? (
-        <DrillDownPanel
-          view={view}
-          payload={reviews}
-          loading={reviewsLoading}
-          tone={tone}
-          hotelName={hotelName}
-          onBack={backToOverview}
-          onClose={onClose}
-        />
-      ) : (
-        <>
         {/* Hero */}
         <div className="hsm-hero" style={{ background: `linear-gradient(150deg, ${tone}22 0%, var(--bg-card, #faf5eb) 60%)` }}>
           <button
@@ -297,13 +230,13 @@ export default function HotelScorecardModal({
               const fillPct = Math.max(0, Math.min(100, c.pct || 0));
               const isClickable = DRILL_DOWN_KEYS.has(c.key);
               const onCpClick = () => {
-                if (isClickable) openDrillDown(c.key as DrillView);
+                if (isClickable) openDrillDown(c.key);
               };
               const onCpKey = (e: React.KeyboardEvent) => {
                 if (!isClickable) return;
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  openDrillDown(c.key as DrillView);
+                  openDrillDown(c.key);
                 }
               };
               return (
@@ -407,8 +340,6 @@ export default function HotelScorecardModal({
             Computed {card ? new Date(card.computedAt).toLocaleString() : "—"}.
           </div>
         </div>
-        </>
-      )}
       </div>
 
       <style jsx>{`
@@ -1016,186 +947,3 @@ export default function HotelScorecardModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// v128.2 — Drill-down sub-component
-// Renders inside the SAME sheet so backdrop click / Esc / X all behave
-// per user spec: drill-down view first, then back to overview.
-// ─────────────────────────────────────────────────────────────────────
-function DrillDownPanel({
-  view,
-  payload,
-  loading,
-  tone,
-  hotelName,
-  onBack,
-  onClose,
-}: {
-  view: DrillView;
-  payload: ReviewsPayload | null;
-  loading: boolean;
-  tone: string;
-  hotelName?: string;
-  onBack: () => void;
-  onClose: () => void;
-}) {
-  const isStars = view === "starRating";
-  const stats = payload?.stats;
-  const rows = isStars ? payload?.starReviews || [] : payload?.stayFeedback || [];
-  const histogramMax = Math.max(1, ...(stats?.starHistogram || [0]));
-
-  return (
-    <div className="hsm-drill" style={{ background: `linear-gradient(180deg, ${tone}12 0%, var(--bg-card, #faf5eb) 70%)` }}>
-      <div className="hsm-drill-header">
-        <button
-          type="button"
-          className="hsm-drill-back"
-          onClick={onBack}
-          aria-label="Back to scorecard"
-          title="Back to scorecard"
-        >
-          ←
-        </button>
-        <div>
-          <div className="hsm-drill-title">
-            {isStars ? "⭐ Customer Reviews" : "😊 Guest Stay Feedback"}
-          </div>
-          <div className="hsm-drill-sub">
-            {hotelName ? `${hotelName} · ` : ""}
-            {isStars ? "Public 1–5 star reviews" : "Per-checkpoint smiley grid"}
-          </div>
-        </div>
-        <button
-          type="button"
-          className="hsm-drill-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="hsm-drill-body">
-        {loading && !payload ? (
-          <div className="hsm-drill-empty">
-            <span className="hsm-drill-empty-emoji">⏳</span>
-            Loading reviews…
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="hsm-drill-empty">
-            <span className="hsm-drill-empty-emoji">{isStars ? "✨" : "💭"}</span>
-            {isStars
-              ? "No customer star reviews yet. Be the first to share your experience after checkout."
-              : "No stay feedback submitted yet. Smiley checkpoints unlock after each guest's checkout."}
-          </div>
-        ) : (
-          <>
-            {/* Stats banner */}
-            {isStars && stats?.avgStars != null ? (
-              <div className="hsm-drill-stats">
-                <div className="hsm-stat-big">
-                  {stats.avgStars.toFixed(1)}
-                  <small> / 5</small>
-                </div>
-                <div className="hsm-stat-bars">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const count = stats.starHistogram[star - 1] || 0;
-                    const pct = (count / histogramMax) * 100;
-                    return (
-                      <div className="hsm-stat-bar-row" key={star}>
-                        <span style={{ color: "var(--cozy-cocoa, #4a3820)", fontWeight: 700 }}>
-                          {star}★
-                        </span>
-                        <div className="hsm-stat-bar">
-                          <div className="hsm-stat-bar-fill" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="hsm-bar-count">{count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {!isStars && stats ? (
-              <div className="hsm-drill-stats">
-                <div className="hsm-stat-big">
-                  {stats.stayFeedbackPctPositive ?? 0}
-                  <small>% positive</small>
-                </div>
-                <div className="hsm-stat-bars">
-                  <div style={{ color: "var(--text-soft, #4a3820)", lineHeight: 1.5 }}>
-                    {stats.stayFeedbackCount} guest{stats.stayFeedbackCount === 1 ? "" : "s"} surveyed
-                    {stats.stayFeedbackNegativeCount > 0
-                      ? ` · ${stats.stayFeedbackNegativeCount} negative checkpoint${
-                          stats.stayFeedbackNegativeCount === 1 ? "" : "s"
-                        }`
-                      : ""}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {/* List */}
-            {isStars ? (
-              <div className="hsm-rev-list">
-                {(payload?.starReviews || []).map((r) => (
-                  <div className="hsm-rev" key={r.id}>
-                    <div className="hsm-rev-head">
-                      <span className="hsm-rev-guest" aria-label={`Guest ${r.guestTag}`}>
-                        🙂 {r.guestTag}
-                      </span>
-                      <span className="hsm-rev-stars" aria-label={`${r.rating} of 5 stars`}>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <span key={i} className={i <= r.rating ? "on" : ""}>★</span>
-                        ))}
-                      </span>
-                      <span className="hsm-rev-date">{formatRelativeDate(r.createdAt)}</span>
-                    </div>
-                    <div className={`hsm-rev-body${r.comment ? "" : " hsm-rev-empty-body"}`}>
-                      {r.comment || "Rated without a written review."}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div>
-                {(payload?.stayFeedback || []).map((r) => (
-                  <div className="hsm-sf" key={r.id}>
-                    <div className="hsm-sf-head">
-                      <span className="hsm-rev-guest" aria-label={`Guest ${r.guestTag}`}>
-                        🙂 {r.guestTag}
-                      </span>
-                      <span className="hsm-rev-date">{formatRelativeDate(r.createdAt)}</span>
-                      {r.autoFilled ? (
-                        <span className="hsm-sf-auto-pill">Auto-marked</span>
-                      ) : null}
-                    </div>
-                    <div className="hsm-sf-grid">
-                      {(["roomMatch", "staff", "hygiene", "food", "staffResponse"] as const).map((k) => {
-                        const v = r.snapshot[k];
-                        const sLabel = SMILEY_LABELS[k];
-                        return (
-                          <div
-                            key={k}
-                            className="hsm-sf-cell"
-                            style={{ ["--hsm-sf-tone" as any]: v ? smileyTone(v) : "#C9A66B" }}
-                            title={v ? `${sLabel.label}: ${v}` : sLabel.label}
-                          >
-                            <span className="hsm-sf-emoji">
-                              {v ? smileyEmoji(v) : "·"}
-                            </span>
-                            <span className="hsm-sf-cell-lbl">{sLabel.label.split(" ")[0]}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
