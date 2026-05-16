@@ -144,6 +144,11 @@ export default function HotelScorecardModal({
 
   const tone = card ? statusTone(card.status) : "#C9A66B";
 
+  // v128.7 — Unrated state: hotel has no score yet. Show a friendly
+  // "awaiting first score" hero instead of an empty 0/100 + 0/0/0
+  // tally. Customer understands the score auto-fills as data flows in.
+  const isUnrated = !card || card.overall == null || card.status === "unrated";
+
   // v128.5 — Portal render. The modal was visually clipped on the
   // /flash-deals page because each .fd-card has `overflow:hidden` and
   // the modal mounted INSIDE that card got clipped to the card bounds.
@@ -191,41 +196,71 @@ export default function HotelScorecardModal({
             </div>
           ) : null}
 
-          <div className="hsm-hero-score-row">
-            <div className="hsm-hero-score">
-              <span className="hsm-hero-num">
-                {card?.overall != null ? card.overall.toFixed(1) : "—"}
-              </span>
-              <span className="hsm-hero-denom">/ 100</span>
+          {isUnrated ? (
+            // v128.7 — Friendly "awaiting" hero. No misleading 0/100 +
+            // empty tally. Tells customer the score AUTO-UPGRADES as
+            // value flows in.
+            <div className="hsm-hero-awaiting">
+              <span className="hsm-hero-awaiting-emoji" aria-hidden>✨</span>
+              <div className="hsm-hero-awaiting-text">
+                <div className="hsm-hero-awaiting-title">Awaiting first score</div>
+                <div className="hsm-hero-awaiting-sub">
+                  This hotel's StayBid score auto-upgrades as bookings,
+                  reviews, and stay feedback come in. Tap "See breakdown"
+                  below to learn how every checkpoint contributes.
+                </div>
+              </div>
+              <div className="hsm-hero-awaiting-pills">
+                <span className="hsm-awaiting-pill">
+                  <span aria-hidden>📋</span> First booking
+                </span>
+                <span className="hsm-awaiting-pill">
+                  <span aria-hidden>⭐</span> First review
+                </span>
+                <span className="hsm-awaiting-pill">
+                  <span aria-hidden>😊</span> First stay feedback
+                </span>
+              </div>
             </div>
-            <div
-              className="hsm-hero-status"
-              style={{ borderColor: tone, color: tone }}
-            >
-              <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{card?.badge.emoji}</span>
-              <span style={{ fontWeight: 600 }}>{card?.badge.label}</span>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="hsm-hero-score-row">
+                <div className="hsm-hero-score">
+                  <span className="hsm-hero-num">
+                    {card?.overall != null ? card.overall.toFixed(1) : "—"}
+                  </span>
+                  <span className="hsm-hero-denom">/ 100</span>
+                </div>
+                <div
+                  className="hsm-hero-status"
+                  style={{ borderColor: tone, color: tone }}
+                >
+                  <span style={{ fontSize: "1.2rem", lineHeight: 1 }}>{card?.badge.emoji}</span>
+                  <span style={{ fontWeight: 600 }}>{card?.badge.label}</span>
+                </div>
+              </div>
 
-          {/* Headline counts */}
-          {card ? (
-            <div className="hsm-tally">
-              <div className="hsm-tally-cell">
-                <div className="hsm-tally-num">{card.totals.bookings}</div>
-                <div className="hsm-tally-lbl">Bookings</div>
-              </div>
-              <div className="hsm-tally-divider" />
-              <div className="hsm-tally-cell">
-                <div className="hsm-tally-num">{card.totals.stayFeedback}</div>
-                <div className="hsm-tally-lbl">Stay reviews</div>
-              </div>
-              <div className="hsm-tally-divider" />
-              <div className="hsm-tally-cell">
-                <div className="hsm-tally-num">{card.totals.complaints}</div>
-                <div className="hsm-tally-lbl">Complaints</div>
-              </div>
-            </div>
-          ) : null}
+              {/* Headline counts */}
+              {card ? (
+                <div className="hsm-tally">
+                  <div className="hsm-tally-cell">
+                    <div className="hsm-tally-num">{card.totals.bookings}</div>
+                    <div className="hsm-tally-lbl">Bookings</div>
+                  </div>
+                  <div className="hsm-tally-divider" />
+                  <div className="hsm-tally-cell">
+                    <div className="hsm-tally-num">{card.totals.stayFeedback}</div>
+                    <div className="hsm-tally-lbl">Stay reviews</div>
+                  </div>
+                  <div className="hsm-tally-divider" />
+                  <div className="hsm-tally-cell">
+                    <div className="hsm-tally-num">{card.totals.complaints}</div>
+                    <div className="hsm-tally-lbl">Complaints</div>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
 
         {/* Checkpoint cards */}
@@ -512,6 +547,70 @@ export default function HotelScorecardModal({
         .hsm-tally-divider {
           width: 1px; align-self: stretch;
           background: rgba(201, 166, 107, 0.3);
+        }
+
+        /* v128.7 — Awaiting (unrated) hero — friendly state replacing
+         * the misleading "—/100 + 0 bookings + 0 reviews" empty box. */
+        .hsm-hero-awaiting {
+          margin-top: 16px;
+          padding: 16px 18px;
+          background: linear-gradient(150deg,
+            color-mix(in oklab, #C9A66B 14%, var(--bg-elevated, #fffcf6)) 0%,
+            var(--bg-card, #faf5eb) 90%);
+          border: 1.5px solid rgba(201, 166, 107, 0.35);
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.55),
+            0 2px 8px -4px rgba(31, 26, 15, 0.12);
+        }
+        .hsm-hero-awaiting-emoji {
+          font-size: 2.2rem;
+          line-height: 1;
+          align-self: flex-start;
+          animation: hsm-twinkle 2.4s ease-in-out infinite;
+        }
+        @keyframes hsm-twinkle {
+          0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+          50% { transform: scale(1.15) rotate(10deg); opacity: 1; }
+        }
+        .hsm-hero-awaiting-title {
+          font-family: var(--font-display, "Cormorant Garamond"), serif;
+          font-style: italic;
+          font-weight: 600;
+          font-size: 1.4rem;
+          color: var(--text-base, #1f1a0f);
+          line-height: 1.15;
+        }
+        .hsm-hero-awaiting-sub {
+          font-size: 0.85rem;
+          color: var(--text-soft, #4a3820);
+          line-height: 1.55;
+          margin-top: 4px;
+        }
+        .hsm-hero-awaiting-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 6px;
+        }
+        .hsm-awaiting-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 11px;
+          border-radius: 999px;
+          background: var(--bg-elevated, #fffcf6);
+          border: 1px solid rgba(201, 166, 107, 0.30);
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: var(--cozy-cocoa, #4a3820);
+          letter-spacing: 0.03em;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hsm-hero-awaiting-emoji { animation: none; }
         }
 
         .hsm-body { padding: 18px 18px 22px; }
