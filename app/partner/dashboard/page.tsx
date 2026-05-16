@@ -7,6 +7,13 @@ import BookingChat from "@/components/BookingChat";
 import { api } from "@/lib/api";
 // v113 — premium availability calendar + bulk block-dates sheet.
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
+// v129 — every counter price is a ₹100 multiple (matches the customer
+// Negotiate slider step). Same source of truth as /bid + /flash-deals.
+import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+// v129 — structured complimentary-amenity catalog replaces the free-text
+// "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
+// through that box). See lib/counter-addons.ts for the rationale.
+import { COUNTER_ADDONS, serializeAddons } from "@/lib/counter-addons";
 
 // Tiny wrapper that pulls partner-side auth from localStorage. Keeps the
 // shared BookingChat component agnostic of which session keys we use.
@@ -124,7 +131,9 @@ export default function PartnerDashboard() {
   const [bidFilter, setBidFilter]       = useState<"PENDING"|"COUNTER"|"ACCEPTED"|"REJECTED"|"ALL">("PENDING");
   const [bidAction, setBidAction]       = useState<"accept"|"counter"|"reject">("accept");
   const [counterAmt, setCounterAmt]     = useState("");
-  const [bidMessage, setBidMessage]     = useState("");
+  // v129 — selected complimentary amenities the partner is bundling with
+  // this counter offer. Serialized into the message field on submit.
+  const [counterAddons, setCounterAddons] = useState<string[]>([]);
   const [bidActLoading, setBidActLoading] = useState(false);
   const [bidActDone, setBidActDone]     = useState(false);
 
@@ -239,7 +248,16 @@ export default function PartnerDashboard() {
       const res = await fetch(`/api/partner/bids/${selectedBid.id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: bidAction, counterAmount: counterAmt, message: bidMessage }),
+        // v129 — counter amount snapped to ₹100 multiple; "message" carries
+        // ONLY the serialized structured-amenity catalog (sentinel-prefixed)
+        // so the customer's my-bids view can parse chip pills. Free-text
+        // partner-to-guest input was removed as an anti-bypass surface.
+        body: JSON.stringify({
+          action: bidAction,
+          counterAmount: bidAction === "counter" ? snap100(counterAmt) : counterAmt,
+          message: bidAction === "counter" ? serializeAddons(counterAddons) : "",
+          addons: bidAction === "counter" ? counterAddons : [],
+        }),
       });
       if (!res.ok) throw new Error("Action failed");
       setBidActDone(true);
@@ -247,7 +265,7 @@ export default function PartnerDashboard() {
       const bRes = await fetch("/api/partner/bids", { headers: { Authorization: `Bearer ${token}` } });
       const bd = await bRes.json();
       if (bd.bids) setBids(bd.bids);
-      setTimeout(() => { setSelectedBid(null); setBidActDone(false); setBidMessage(""); setCounterAmt(""); setBidAction("accept"); }, 1500);
+      setTimeout(() => { setSelectedBid(null); setBidActDone(false); setCounterAddons([]); setCounterAmt(""); setBidAction("accept"); }, 1500);
     } catch(e: any) { alert(e.message || "Action failed"); }
     finally { setBidActLoading(false); }
   }
@@ -939,7 +957,7 @@ export default function PartnerDashboard() {
                         <p className="font-bold text-luxury-900 flex-shrink-0">{fmtCur(b.amount)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
                         <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
                         {b.status === "PENDING" && (
-                          <button onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(b.amount||"")); setBidMessage(""); }}
+                          <button onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(b.amount || 0))); setCounterAddons([]);}}
                             className="flex-shrink-0 btn-gold text-xs px-3 py-1.5">Respond</button>
                         )}
                       </div>
@@ -1043,7 +1061,7 @@ export default function PartnerDashboard() {
 
                       {b.status === "PENDING" && (
                         <button
-                          onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(b.amount||"")); setBidMessage(""); }}
+                          onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(b.amount || 0))); setCounterAddons([]);}}
                           className="btn-gold w-full py-2.5 text-sm mt-1">
                           Respond to Bid →
                         </button>
@@ -2023,35 +2041,162 @@ export default function PartnerDashboard() {
                 ))}
               </div>
 
-              {bidAction === "counter" && (
-                <div>
-                  <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Your Counter Price</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-luxury-400 font-medium">₹</span>
-                    <input type="number" value={counterAmt} onChange={e=>setCounterAmt(e.target.value)}
-                      placeholder={String(selectedBid.amount||"")} className="inp-p pl-7" autoFocus />
-                  </div>
-                </div>
-              )}
+              {bidAction === "counter" && (() => {
+                // v129 — counter price is a ₹100-multiple draggable slider that
+                // mirrors the customer Negotiate arena. Lower bound is the
+                // guest's bid (we never counter BELOW what they offered);
+                // upper bound is +50 % of guest bid (capped sensible). Three
+                // quick-pick chips: 💰 Match · ⭐ Smart · ⚡ Premium.
+                const guest = snap100(selectedBid.amount || 0);
+                const minCt = Math.max(PRICE_MIN, guest);
+                const maxCt = Math.max(ceil100(guest * 1.5), minCt + PRICE_STEP * 5);
+                const currentVal = snapClamp100(counterAmt || guest, minCt, maxCt);
+                const chips = [
+                  { label: "💰 Match",   pct: 1.00, sub: "Accept guest price" },
+                  { label: "⭐ Smart",   pct: 1.15, sub: "Win-win" },
+                  { label: "⚡ Premium", pct: 1.30, sub: "Top counter" },
+                ];
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">Your Counter Price</label>
+                      <span className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest">Steps of ₹{PRICE_STEP}</span>
+                    </div>
 
-              <div>
-                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">
-                  Message to Guest <span className="text-luxury-300 normal-case">(optional)</span>
-                </label>
-                <textarea rows={2} value={bidMessage} onChange={e=>setBidMessage(e.target.value)}
-                  placeholder={
-                    bidAction==="accept"  ? "Welcome! Looking forward to hosting you…" :
-                    bidAction==="counter" ? "Thank you for your interest. Here's our best offer…" :
-                    "We regret we can't accommodate your request at this time…"
-                  }
-                  className="inp-p resize-none" />
-              </div>
+                    {/* Slider value display + Indian-locale */}
+                    <div className="rounded-2xl p-4 mb-3 bg-gradient-to-br from-amber-50 to-luxury-50 border border-amber-200">
+                      <div className="flex items-baseline justify-between">
+                        <div>
+                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Counter at</p>
+                          <p className="text-2xl font-extrabold text-luxury-900">{fmtCur(currentVal)}<span className="text-xs font-medium text-luxury-400 ml-1">/night</span></p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Guest bid</p>
+                          <p className="text-sm font-bold text-luxury-700">{fmtCur(guest)}</p>
+                          <p className="text-[0.55rem] text-luxury-400">
+                            {currentVal > guest
+                              ? `+${fmtCur(currentVal - guest)} above`
+                              : currentVal === guest
+                                ? "matches"
+                                : `−${fmtCur(guest - currentVal)} below`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Draggable slider */}
+                      <input
+                        type="range"
+                        min={minCt}
+                        max={maxCt}
+                        step={PRICE_STEP}
+                        value={currentVal}
+                        onChange={(e) => setCounterAmt(String(snapClamp100(Number(e.target.value), minCt, maxCt)))}
+                        className="w-full mt-3 accent-amber-500"
+                        aria-label="Counter price slider"
+                      />
+                      <div className="flex justify-between mt-1 text-[0.55rem] text-luxury-400 font-mono">
+                        <span>{fmtCur(minCt)}</span>
+                        <span>{fmtCur(maxCt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Quick-pick chips */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {chips.map((c) => {
+                        const amt = snapClamp100(guest * c.pct, minCt, maxCt);
+                        const active = currentVal === amt;
+                        return (
+                          <button
+                            key={c.label}
+                            type="button"
+                            onClick={() => setCounterAmt(String(amt))}
+                            className={`rounded-xl p-2 text-center border-2 transition-all ${
+                              active
+                                ? "bg-amber-50 border-amber-400 shadow-sm scale-[1.02]"
+                                : "bg-white border-luxury-200 hover:border-amber-300"
+                            }`}
+                          >
+                            <p className={`text-[0.62rem] font-bold ${active ? "text-amber-700" : "text-luxury-600"}`}>{c.label}</p>
+                            <p className={`text-xs font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
+                            <p className={`text-[0.5rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* v129 — Structured complimentary-amenity catalog.
+                        Free-text "Message to Guest" is GONE. Hotels can only
+                        bundle perks from this whitelisted catalog; the
+                        selection serializes into the message field with a
+                        sentinel prefix the customer side parses into chips.
+                        Anti-bypass: phone/email/WhatsApp can't be typed. */}
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">
+                          Include complimentary
+                        </label>
+                        <span className="text-[0.55rem] text-luxury-400">{counterAddons.length} selected</span>
+                      </div>
+                      <p className="text-[0.62rem] text-luxury-500 leading-relaxed mb-2">
+                        Tap to attach perks to your counter. Guest sees these as chips next to your price — no typed messages allowed.
+                      </p>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-1">
+                        {COUNTER_ADDONS.map((a) => {
+                          const on = counterAddons.includes(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() =>
+                                setCounterAddons((prev) =>
+                                  prev.includes(a.id) ? prev.filter((x) => x !== a.id) : [...prev, a.id],
+                                )
+                              }
+                              className={`flex items-start gap-2 rounded-xl p-2 border text-left transition-all ${
+                                on
+                                  ? "bg-amber-50 border-amber-400 shadow-sm"
+                                  : "bg-white border-luxury-200 hover:border-amber-300"
+                              }`}
+                              aria-pressed={on}
+                            >
+                              <span className="text-lg leading-none mt-0.5">{a.icon}</span>
+                              <span className="flex-1 min-w-0">
+                                <span className={`block text-[0.7rem] font-bold leading-tight ${on ? "text-amber-800" : "text-luxury-800"}`}>
+                                  {a.label}
+                                </span>
+                                <span className={`block text-[0.55rem] mt-0.5 ${on ? "text-amber-600" : "text-luxury-400"}`}>
+                                  {a.desc}
+                                </span>
+                              </span>
+                              <span
+                                aria-hidden
+                                className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center text-[0.5rem] font-bold ${
+                                  on ? "bg-amber-500 border-amber-500 text-white" : "border-luxury-300 text-transparent"
+                                }`}
+                              >
+                                ✓
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* v129 — "Message to Guest" textarea removed.
+                  - On COUNTER: amenities below carry the partner's offer.
+                  - On ACCEPT/DECLINE: no message field at all. Confirmation
+                    + decline are status flips; in-stay chat opens AFTER
+                    booking confirms (see /partner/dashboard Booking modal
+                    BookingChat — gated to status ≥ ACCEPTED per v25 + v71). */}
 
               <button onClick={submitBidAction} disabled={bidActLoading || (bidAction==="counter" && !counterAmt)}
                 className="btn-gold w-full py-3 text-sm">
                 {bidActLoading ? "Sending…" :
-                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(selectedBid.amount)}/night` :
-                  bidAction==="counter" ? `💬 Send Counter: ${counterAmt ? fmtCur(Number(counterAmt)) : "—"}/night` :
+                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(snap100(selectedBid.amount))}/night` :
+                  bidAction==="counter" ? `💬 Send Counter: ${counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night${counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}` :
                   "❌ Decline Bid"}
               </button>
             </div>

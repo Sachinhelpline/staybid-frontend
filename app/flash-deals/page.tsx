@@ -5,6 +5,9 @@ import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+// v129 — every flash-deal price is a ₹100 multiple. Same rule as the
+// Negotiate slider, /bid presets, and partner counter slider.
+import { snap100 } from "@/lib/price-snap";
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -45,8 +48,12 @@ type Deal = {
 };
 
 /* Format helpers ----------------------------------------------------------- */
+// v129 — every rendered price snaps to a ₹100 multiple at the formatter so
+// extra-per-night chips, headline rates, and the modal's room ladder all read
+// from one source of truth. The underlying deal record is left untouched —
+// only the display + click-through URLs use the snapped value.
 const fmtINR = (n: number) =>
-  "₹" + Math.round(n).toLocaleString("en-IN");
+  "₹" + snap100(n).toLocaleString("en-IN");
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 /* Animated number that counts up smoothly ----------------------------------- */
@@ -271,7 +278,9 @@ function FlashDealsContent() {
               rid === open.roomId
                 ? open
                 : { ...open, roomId: rid, aiPrice: open.upgrades.find(u => u.roomId === rid)?.dealPrice ?? open.aiPrice };
-            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${finalRoom.aiPrice}&roomId=${finalRoom.roomId}&discount=${open.discount}&directBook=true`;
+            // v129 — URL carries the snapped ₹100-multiple so the receiving
+            // hotel page paints a price that already obeys the platform rule.
+            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${open.discount}&directBook=true`;
             router.push(url);
           }}
         />
@@ -463,7 +472,9 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             onClick={(e) => {
               e.stopPropagation();
               if (sold) return;
-              const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${showAiPrice}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
+              // v129 — same snap as the drawer Grab Now path. The hotel page
+              // re-snaps defensively when it reads `dealPrice` back in.
+              const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
               router.push(url);
             }}
           >

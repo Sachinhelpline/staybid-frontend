@@ -28,6 +28,10 @@ import LuxuryCalendar from "@/components/LuxuryCalendar";
 // so the user never has to manually scroll between fields in this 4-step
 // wizard. See lib/auto-next-scroll.ts for the helper.
 import { scrollToAutoNext } from "@/lib/auto-next-scroll";
+// v129 — every customer-facing bid amount snaps to a ₹100 multiple. Same
+// helpers power the Negotiate modal slider + partner counter slider so a
+// preset / drag / type-in input all land on the same indivisible billing unit.
+import { snap100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -210,7 +214,9 @@ export default function BidPage() {
     view:           "Any",
     mealPlan:       "bb",
     occasion:       "none",
-    specialRequests:"",
+    // v129 — `specialRequests` removed: free-text field was an anti-bypass
+    // surface (phone/email/WhatsApp could slip through). Add-on toggles below
+    // are now the only structured channel for stay preferences.
     maxBudget:      "",
     earlyCheckIn:   false,
     lateCheckOut:   false,
@@ -229,14 +235,21 @@ export default function BidPage() {
 
   const city     = CITY_DATA[form.city];
   const nights   = numNights(form.checkIn, form.checkOut);
-  const budget   = parseFloat(form.maxBudget) || 0;
+  // v129 — `budget` is the snapped (₹100-multiple) view of the typed input.
+  // The probability dial, total estimate, and the bid amount sent to backend
+  // all read this value so a half-typed "₹3,355" never leaks past the UI.
+  const budgetRaw = parseFloat(form.maxBudget) || 0;
+  const budget    = snap100(budgetRaw);
   const bidStr   = city && budget > 0 ? calcBidStrength(budget, city.avg) : null;
   const totalEst = budget > 0 && nights > 0 ? budget * nights * form.rooms : 0;
 
+  // v129 — every preset is a ₹100 multiple (same step as the Negotiate slider
+  // and partner counter slider). Lowest indivisible billing unit on the
+  // platform is ₹100; presets must land on it cleanly.
   const presets = city ? [
-    { label: "Budget",   pct: 70,  amount: Math.round(city.avg * 0.70 / 50) * 50,  icon: "💰", desc: "Best saving, lower chance" },
-    { label: "Smart",    pct: 88,  amount: Math.round(city.avg * 0.88 / 50) * 50,  icon: "⭐", desc: "Optimal balance",  recommended: true },
-    { label: "Premium",  pct: 105, amount: Math.round(city.avg * 1.05 / 50) * 50,  icon: "⚡", desc: "Instant confirm" },
+    { label: "Budget",   pct: 70,  amount: snap100(city.avg * 0.70),  icon: "💰", desc: "Best saving, lower chance" },
+    { label: "Smart",    pct: 88,  amount: snap100(city.avg * 0.88),  icon: "⭐", desc: "Optimal balance",  recommended: true },
+    { label: "Premium",  pct: 105, amount: snap100(city.avg * 1.05),  icon: "⚡", desc: "Instant confirm" },
   ] : [];
 
   /* ── v124 Live insights — real data, refreshed on city change + 30s polling ── */
@@ -309,6 +322,8 @@ export default function BidPage() {
     if (!user) return router.push("/auth");
     setLoading(true);
     try {
+      // v129 — only structured fields go into requirements. Free-text
+      // `specialRequests` was removed as an anti-bypass surface.
       const extras = [
         form.earlyCheckIn    ? "Early check-in requested"  : "",
         form.lateCheckOut    ? "Late check-out requested"  : "",
@@ -316,7 +331,6 @@ export default function BidPage() {
         form.petFriendly     ? "Pet-friendly room needed"  : "",
         form.smokingRoom     ? "Smoking room preferred"    : "",
         form.occasion !== "none" ? `Special occasion: ${form.occasion}` : "",
-        form.specialRequests,
       ].filter(Boolean).join(". ");
 
       const requirements = [
@@ -862,30 +876,11 @@ export default function BidPage() {
                   ))}
                 </div>
 
-                <div style={{ marginTop: 14 }}>
-                  <div className="bx-section-h" style={{ margin: "0 0 8px" }}>
-                    <span className="bx-section-h-label">Additional requests</span>
-                    <span className="bx-section-h-rule" />
-                  </div>
-                  <textarea
-                    value={form.specialRequests}
-                    onChange={(e) => upd("specialRequests", e.target.value)}
-                    placeholder="Mountain view, quiet floor, extra pillows, wheelchair access…"
-                    rows={3}
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px",
-                      background: "var(--bg-card)",
-                      border: "1.5px solid var(--border-soft)",
-                      borderRadius: 14,
-                      color: "var(--text-base)",
-                      fontSize: "0.85rem",
-                      resize: "vertical",
-                      fontFamily: "inherit",
-                      outline: "none",
-                    }}
-                  />
-                </div>
+                {/* v129 — "Additional requests" free-text textarea removed.
+                    It was an anti-bypass surface: customers could (and did)
+                    type phone numbers / WhatsApp handles / emails into it
+                    that hotels would receive verbatim. Stay preferences now
+                    flow exclusively through the structured toggles above. */}
               </div>
             </div>
           )}
@@ -941,13 +936,22 @@ export default function BidPage() {
                       type="number"
                       value={form.maxBudget}
                       onChange={(e) => upd("maxBudget", e.target.value)}
+                      onBlur={(e) => {
+                        // v129 — snap any typed amount to a ₹100 multiple on
+                        // blur so the value the user sees matches what gets
+                        // submitted. Live snap during typing would block them
+                        // mid-edit.
+                        const v = parseFloat(e.target.value) || 0;
+                        if (v > 0) upd("maxBudget", String(Math.max(PRICE_MIN, snap100(v))));
+                      }}
                       placeholder="0"
-                      min="500"
+                      min={PRICE_MIN}
+                      step={PRICE_STEP}
                       className="bx-budget-input"
                       inputMode="numeric"
                     />
                   </div>
-                  <div className="bx-budget-suffix">per room / per night</div>
+                  <div className="bx-budget-suffix">per room / per night · steps of ₹{PRICE_STEP}</div>
                   {city && budget > 0 && (
                     <div className={`bx-budget-vs ${budget >= city.avg ? "is-up" : "is-down"}`}>
                       {budget >= city.avg
@@ -1095,15 +1099,8 @@ export default function BidPage() {
                   </>
                 )}
 
-                {form.specialRequests && (
-                  <>
-                    <div className="bx-cost-divider" style={{ margin: "14px 0" }} />
-                    <div>
-                      <div className="bx-review-item-label" style={{ marginBottom: 4 }}>Special Requests</div>
-                      <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", lineHeight: 1.45 }}>{form.specialRequests}</p>
-                    </div>
-                  </>
-                )}
+                {/* v129 — Special Requests review row removed alongside the
+                    textarea on Step 2. See the comment in the addons section. */}
 
                 <div className="bx-cost-divider" style={{ margin: "14px 0" }} />
 

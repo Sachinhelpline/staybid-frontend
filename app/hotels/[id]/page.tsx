@@ -24,6 +24,8 @@ import {
   recordAttribution,
   type Attribution,
 } from "@/lib/attribution";
+// v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
+import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 // Browser calls go through Vercel proxy so Jio/ISP blocks on Railway don't apply
@@ -843,7 +845,8 @@ export default function HotelDetail() {
       return;
     }
     setNegRoom(r);
-    setNegAmt(Math.round(r.floorPrice * 0.88));
+    // v129 — initial bid lands at 88% of floor, snapped to a ₹100 multiple.
+    setNegAmt(snap100(r.floorPrice * 0.88));
     setNegIn(globalCheckIn);
     setNegOut(globalCheckOut);
     setNegSuccess(false);
@@ -2893,8 +2896,12 @@ export default function HotelDetail() {
       ══════════════════════════════════════════ */}
       {negRoom && !negSuccess && (() => {
         const floor   = negRoom.floorPrice;
-        const min     = Math.round(floor * 0.65);
-        const max     = Math.round(floor * 1.05);
+        // v129 — slider bounds + bid amount are always ₹100 multiples so every
+        // step on the drag bar lands on the same indivisible billing unit the
+        // platform uses end-to-end (Save Big chip, Smart chip, Instant chip,
+        // hotel counter slider, /bid presets — all share PRICE_STEP).
+        const min     = Math.max(PRICE_MIN, floor100(floor * 0.65));
+        const max     = ceil100(floor * 1.05);
         const prob    = bidProb(negAmt, floor);
         const nights  = (negIn && negOut && negIn < negOut)
           ? Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000))
@@ -3091,8 +3098,8 @@ export default function HotelDetail() {
 
                   {/* Slider */}
                   <div className="mt-5">
-                    <input type="range" min={min} max={max} step={50} value={negAmt}
-                      onChange={e => setNegAmt(Number(e.target.value))}
+                    <input type="range" min={min} max={max} step={PRICE_STEP} value={negAmt}
+                      onChange={e => setNegAmt(snapClamp100(Number(e.target.value), min, max))}
                       className="neg-slider2"
                       style={{ ["--sc-glow" as any]: `${prob.track}99` }} />
                     <div className="flex justify-between mt-1.5 text-[0.62rem] text-white/40 font-mono">
@@ -3125,7 +3132,10 @@ export default function HotelDetail() {
                     { label: "⭐ Smart",      pct: 0.90, sub: "Recommended"   },
                     { label: "⚡ Instant",    pct: 1.00, sub: "Auto-confirms" },
                   ].map(s => {
-                    const amt = Math.round(floor * s.pct / 50) * 50;
+                    // v129 — every quick-pick is a ₹100 multiple. The slider's
+                    // step is also 100, so a chip-tap always lands on a stop
+                    // the slider can re-select cleanly.
+                    const amt = snapClamp100(floor * s.pct, min, max);
                     const active = negAmt === amt;
                     return (
                       <button key={s.label} onClick={() => setNegAmt(amt)}

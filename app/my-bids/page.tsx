@@ -13,6 +13,12 @@ import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
+// v129 — counter amounts snap to ₹100 multiples (same source of truth as the
+// Negotiate slider + partner counter slider). Hotels can ONLY bundle perks
+// from the structured COUNTER_ADDONS catalog — `parseAddons` pulls those
+// back from the message field as chip pills.
+import { snap100 } from "@/lib/price-snap";
+import { parseAddons } from "@/lib/counter-addons";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -266,7 +272,11 @@ export default function MyBidsPage() {
   // Counter accept routes through BookingReview so customer can pick
   // Pay-Full / Hold / Pay-At-Hotel before charging.
   const handleCounterAccept = (b: any) => {
-    const counterAmt = Number(b.counterAmount || b.amount || 0);
+    // v129 — every nightly rate the customer sees in the review modal is
+    // already snapped, so what they see matches what gets charged. The
+    // partner panel snaps before submitting too — defensive snap here in
+    // case a legacy COUNTER row from before v129 had an odd amount.
+    const counterAmt = snap100(b.counterAmount || b.amount || 0);
     const nights = nightsBetween(b.checkIn, b.checkOut);
     const total = counterAmt * nights;
     if (!total) { alert("Invalid amount"); return; }
@@ -298,7 +308,8 @@ export default function MyBidsPage() {
     ctx: { nights: number; total: number }
   ) => {
     const bidId = b.id;
-    const counterAmt = Number(b.counterAmount || b.amount || 0);
+    // v129 — same snap as handleCounterAccept; charge amount derives from it.
+    const counterAmt = snap100(b.counterAmount || b.amount || 0);
     setActionLoading(bidId);
     try {
       const { nights, total } = ctx;
@@ -698,30 +709,61 @@ export default function MyBidsPage() {
                   />
                 )}
 
-                {/* Counter */}
-                {b.status === "COUNTER" && (
-                  <div className="mt-3 p-4 rounded-2xl border border-orange-400/30 bg-orange-500/10">
-                    <p className="text-sm text-orange-100 mb-3">
-                      Hotel countered at <span className="text-xl font-bold text-orange-200">₹{b.counterAmount}</span>/night
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleCounterAccept(b)}
-                        disabled={actionLoading === b.id}
-                        className="flex-1 py-2.5 gold-btn rounded-xl text-sm disabled:opacity-40"
-                      >
-                        {actionLoading === b.id ? "…" : `Accept ₹${b.counterAmount}`}
-                      </button>
-                      <button
-                        onClick={() => handleCounterReject(b.id)}
-                        disabled={actionLoading === b.id}
-                        className="flex-1 py-2.5 bg-red-500/15 text-red-300 text-sm font-semibold rounded-xl hover:bg-red-500/25 border border-red-400/30 transition disabled:opacity-40"
-                      >
-                        Decline
-                      </button>
+                {/* Counter — v129 snaps the displayed counter price to ₹100
+                    and parses the partner's structured amenity selection from
+                    the message field into chip pills (anti-bypass: no
+                    free-text from hotel makes it past parseAddons). */}
+                {b.status === "COUNTER" && (() => {
+                  const counterSnapped = snap100(b.counterAmount || 0);
+                  // The partner-side serializer writes "[StayBid-Addons] id1,id2"
+                  // into either `hotelMessage` (Supabase fallback) or `message`
+                  // (Railway). Check both and parseAddons returns [] on no match.
+                  const addons = parseAddons(b.hotelMessage || b.message || "");
+                  return (
+                    <div className="mt-3 p-4 rounded-2xl border border-orange-400/30 bg-orange-500/10">
+                      <p className="text-sm text-orange-100 mb-3">
+                        Hotel countered at <span className="text-xl font-bold text-orange-200">₹{counterSnapped.toLocaleString("en-IN")}</span>/night
+                      </p>
+
+                      {addons.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-[0.6rem] font-bold text-orange-200/80 uppercase tracking-widest mb-1.5">
+                            🎁 Complimentary included
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {addons.map((a) => (
+                              <span
+                                key={a.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-semibold bg-orange-400/15 border border-orange-300/30 text-orange-100"
+                                title={a.desc}
+                              >
+                                <span>{a.icon}</span>
+                                <span>{a.label}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleCounterAccept(b)}
+                          disabled={actionLoading === b.id}
+                          className="flex-1 py-2.5 gold-btn rounded-xl text-sm disabled:opacity-40"
+                        >
+                          {actionLoading === b.id ? "…" : `Accept ₹${counterSnapped.toLocaleString("en-IN")}`}
+                        </button>
+                        <button
+                          onClick={() => handleCounterReject(b.id)}
+                          disabled={actionLoading === b.id}
+                          className="flex-1 py-2.5 bg-red-500/15 text-red-300 text-sm font-semibold rounded-xl hover:bg-red-500/25 border border-red-400/30 transition disabled:opacity-40"
+                        >
+                          Decline
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Accepted: Pay Now gate */}
                 {b.status === "ACCEPTED" && !paid && (
