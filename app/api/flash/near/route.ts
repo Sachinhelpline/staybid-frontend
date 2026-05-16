@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbCached } from "@/lib/sb-cache";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -53,9 +54,11 @@ export async function GET(req: NextRequest) {
     if (Array.isArray(r) && r.length > 0) { dealsRaw = r; break; }
   }
   // hotels + rooms are shared across every caller and rarely change → long TTL.
+  // Narrowed selects (was select=*). Drops description/address/internal
+  // columns from every hotel + room row. ~75–85% payload reduction.
   const [hotels, rooms] = await Promise.all([
-    sbCachedFetch(`hotels?select=*`, TTL_CATALOG),
-    sbCachedFetch(`rooms?select=*`, TTL_CATALOG),
+    sbCachedFetch(`hotels?select=${HOTEL_CARD_COLS}`, TTL_CATALOG),
+    sbCachedFetch(`rooms?select=${ROOM_CARD_COLS}`, TTL_CATALOG),
   ]);
 
   const now = Date.now();
@@ -333,11 +336,11 @@ export async function GET(req: NextRequest) {
     deals:       personalized,
     generatedAt: new Date().toISOString(),
   });
-  // v107 — browser-cacheable for 10 s + SWR window of 30 s. The reshuffle
-  // still happens on the SERVER per request because `viewed` IDs (and the
-  // city filter, signals etc.) are part of the URL — so different users
-  // / different state get different cache keys. Within the same key,
-  // 10 s of identical results is fine for a flash-deal rail.
-  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  // v131.2 — bump CDN window. The reshuffle is keyed on viewed IDs + city
+  // + signals (all in the URL), so different users / different state still
+  // get different cache keys. Within a key, 60s of identical results is
+  // fine for the flash-deal rail (deals don't fluctuate that fast). Stale
+  // serves preserve sub-30ms TTFB during the bg revalidate. Was 10/30.
+  res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
   return res;
 }

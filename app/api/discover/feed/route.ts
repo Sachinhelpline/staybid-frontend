@@ -96,12 +96,24 @@ export async function POST(req: NextRequest) {
     sbCached("discover:rooms", () =>
       fetch(`${SB_URL}/rest/v1/rooms?select=id,hotelId,type,capacity,floorPrice,images,amenities`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),
       TTL_CATALOG),
-    sbCached("discover:bids", () =>
-      fetch(`${SB_URL}/rest/v1/bids?select=hotelId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),
-      TTL_POPULAR),
-    sbCached("discover:bookings", () =>
-      fetch(`${SB_URL}/rest/v1/bookings?select=hotelId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),
-      TTL_POPULAR),
+    // v131 — cap to recent 90 days + 2000 rows. Popularity is a "signal of
+    // demand", not a full historical tally — capping the scan keeps egress
+    // bounded as bids/bookings grow. Proper fix is a materialized
+    // hotel_popularity_30d view; this is the holding pattern.
+    sbCached("discover:bids", () => {
+      const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+      return fetch(
+        `${SB_URL}/rest/v1/bids?select=hotelId&createdAt=gte.${encodeURIComponent(since)}&limit=2000`,
+        { headers: SB_H, cache: "no-store" },
+      ).then(r => r.json()).catch(() => []);
+    }, TTL_POPULAR),
+    sbCached("discover:bookings", () => {
+      const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+      return fetch(
+        `${SB_URL}/rest/v1/bookings?select=hotelId&createdAt=gte.${encodeURIComponent(since)}&limit=2000`,
+        { headers: SB_H, cache: "no-store" },
+      ).then(r => r.json()).catch(() => []);
+    }, TTL_POPULAR),
     userId
       ? fetch(`${SB_URL}/rest/v1/bids?customerId=eq.${userId}&status=eq.ACCEPTED&select=hotelId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => [])
       : Promise.resolve([]),

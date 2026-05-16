@@ -5,6 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 
 function HotelList() {
   const searchParams = useSearchParams();
@@ -199,8 +200,10 @@ function HotelList() {
                 <div className="h-52 bg-white/10 relative overflow-hidden flex-shrink-0">
                   {h.images?.[0] ? (
                     <img
-                      src={h.images[0]}
+                      src={sbImage(h.images[0], SB_IMG_CARD)}
                       alt={h.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
