@@ -27,6 +27,12 @@ import { computeHotelScore, rankWithinCity } from "@/lib/hotel-score";
 import { loadHotelScoreInputs } from "@/lib/hotel-score-data";
 
 const REFRESH_AFTER_MS = 30 * 60_000; // 30 minutes
+// v131.6 — when the cached row already has a valid score (non-null, > 0),
+// honour it for up to 24h before recomputing. This prevents the engine's
+// "no source data → unrated" branch from wiping out demo/seeded scorecards
+// every 30 minutes. Hotels with NULL/zero cached score still recompute
+// aggressively so they can pick up real data as it lands.
+const HONOR_GOOD_SCORE_MS = 24 * 60 * 60_000; // 24 hours
 
 async function sb(path: string): Promise<any[]> {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -133,7 +139,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     let row = await readCached(hotelId);
     let fresh = false;
     const age = row ? Date.now() - new Date(row.computed_at).getTime() : Infinity;
-    if (!row || age > REFRESH_AFTER_MS) {
+    // v131.6 — protect good cached scores from being wiped by no-data
+    // recompute. If the cached row has a valid score, honour it for 24h.
+    const hasGoodScore = row && row.overall != null && Number(row.overall) > 0;
+    const effectiveTTL = hasGoodScore ? HONOR_GOOD_SCORE_MS : REFRESH_AFTER_MS;
+    if (!row || age > effectiveTTL) {
       const out = await recompute(hotelId, hotelMeta);
       row = {
         hotel_id: hotelId,
