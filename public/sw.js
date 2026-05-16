@@ -52,12 +52,12 @@
 // Hide likes + Disable comments). Static + API cache names left
 // alone (hashed chunks are immutable, API is network-only).
 const CACHE_NAME = 'staybid-static-v2';
-// v126 — one-time HTML_CACHE bump (v3 → v4). Users on v125.x had SWR-cached
-// HTML that still referenced the pre-v126 admin sidebar chunk, missing the
-// new Finance / RLS / Redemption Rules / Issued Codes entries. activate
-// handler drops the stale HTML cache → fresh HTML fetch on next nav loads
-// the new chunk references → all 23 sidebar entries appear.
-const HTML_CACHE = 'staybid-html-v4';
+// v131 — one-time HTML_CACHE bump (v4 → v5). Users on v130 had SWR-cached
+// HTML from the brief window during the v131 deploy where wrong column
+// names in social_posts / hotel_videos / social_profiles projections made
+// PostgREST 400 the entire response. Bumping the cache name forces the
+// activate handler to drop the stale HTML → fresh fetch on next nav.
+const HTML_CACHE = 'staybid-html-v5';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
