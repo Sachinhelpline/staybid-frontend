@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { socialUserFromReq } from "@/lib/social/auth-helper";
 import { getProfileByUsername } from "@/lib/social/social-profile.service";
+import { HOTEL_CARD_COLS } from "@/lib/sb-columns";
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
@@ -32,7 +33,7 @@ export async function GET(req: Request, { params }: { params: { username: string
   let hotel: any = null;
   if (profile.user_type === "HOTEL" && profile.hotel_id) {
     const r = await fetch(
-      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(profile.hotel_id)}&select=*&limit=1`,
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(profile.hotel_id)}&select=${HOTEL_CARD_COLS}&limit=1`,
       { headers: READ_HEADERS, cache: "no-store" }
     );
     if (r.ok) {

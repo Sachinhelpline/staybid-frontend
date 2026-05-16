@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
+import { HOTEL_VIDEO_FEED_COLS } from "@/lib/sb-columns";
 
 // GET /api/hashtags/[name] — videos that include #name in their title,
 // plus a count + a few related hashtags co-occurring in those captions.
@@ -7,7 +8,8 @@ export async function GET(_req: NextRequest, { params }: { params: { name: strin
   const tag = String(params.name || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 40);
   if (!tag) return NextResponse.json({ tag: "", videos: [], count: 0, related: [] });
 
-  const url = `${SB_URL}/rest/v1/hotel_videos?verification_status=eq.approved&title=ilike.*%23${encodeURIComponent(tag)}*&order=created_at.desc&limit=60&select=*`;
+  // v131 — narrowed select (was *).
+  const url = `${SB_URL}/rest/v1/hotel_videos?verification_status=eq.approved&title=ilike.*%23${encodeURIComponent(tag)}*&order=created_at.desc&limit=60&select=${HOTEL_VIDEO_FEED_COLS}`;
   const res = await fetch(url, { headers: SB_READ });
   const videos = await res.json().catch(() => []);
   const list = Array.isArray(videos) ? videos : [];

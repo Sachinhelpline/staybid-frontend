@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sbCached } from "@/lib/sb-cache";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -53,9 +54,11 @@ export async function GET(req: NextRequest) {
     if (Array.isArray(r) && r.length > 0) { dealsRaw = r; break; }
   }
   // hotels + rooms are shared across every caller and rarely change → long TTL.
+  // Narrowed selects (was select=*). Drops description/address/internal
+  // columns from every hotel + room row. ~75–85% payload reduction.
   const [hotels, rooms] = await Promise.all([
-    sbCachedFetch(`hotels?select=*`, TTL_CATALOG),
-    sbCachedFetch(`rooms?select=*`, TTL_CATALOG),
+    sbCachedFetch(`hotels?select=${HOTEL_CARD_COLS}`, TTL_CATALOG),
+    sbCachedFetch(`rooms?select=${ROOM_CARD_COLS}`, TTL_CATALOG),
   ]);
 
   const now = Date.now();

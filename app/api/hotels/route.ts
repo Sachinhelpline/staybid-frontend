@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
 
 
 const SB_H = {
@@ -20,23 +21,34 @@ export async function GET(req: NextRequest) {
   const q    = searchParams.get("q")    || "";
 
   // Build hotel filter — no camelCase ordering (PostgREST requires quoted identifiers)
-  const qs = new URLSearchParams({ select: "*", limit: "100" });
+  // Narrowed select (was *). Drops description/address fields not used by cards.
+  const qs = new URLSearchParams({ select: HOTEL_CARD_COLS, limit: "100" });
   if (city) qs.set("city", `ilike.${city}`);
   if (q)    qs.set("name", `ilike.*${q}*`);
 
   const filterKey = qs.toString();
-  const [hotels, rooms] = await Promise.all([
-    sbCached<any[]>(`hotels:list:${filterKey}`, async () => {
-      const r = await fetch(`${SB_URL}/rest/v1/hotels?${filterKey}`, { headers: SB_H, cache: "no-store" });
-      const t = await r.text();
-      try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
-    }, TTL_CATALOG),
-    sbCached<any[]>(`hotels:rooms-all`, async () => {
-      const r = await fetch(`${SB_URL}/rest/v1/rooms?select=*&limit=500`, { headers: SB_H, cache: "no-store" });
-      const t = await r.text();
-      try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
-    }, TTL_CATALOG),
-  ]);
+  const hotels = await sbCached<any[]>(`hotels:list:${filterKey}`, async () => {
+    const r = await fetch(`${SB_URL}/rest/v1/hotels?${filterKey}`, { headers: SB_H, cache: "no-store" });
+    const t = await r.text();
+    try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
+  }, TTL_CATALOG);
+
+  // v131 — scope rooms to ONLY the hotels we're about to return. Previously
+  // pulled 500 rooms across every hotel regardless of the city filter; with
+  // a 5-hotel Mussoorie filter that's a ~95% over-fetch. The cache key uses
+  // the sorted hotelId set so repeat opens of the same city stay warm.
+  const hotelIdList: string[] = hotels.map((h: any) => h.id).filter(Boolean);
+  const rooms: any[] = hotelIdList.length === 0
+    ? []
+    : await sbCached<any[]>(`hotels:rooms:${hotelIdList.slice().sort().join(",")}`, async () => {
+        const idIn = hotelIdList.map((id) => `"${id}"`).join(",");
+        const r = await fetch(
+          `${SB_URL}/rest/v1/rooms?hotelId=in.(${idIn})&select=${ROOM_CARD_COLS}&limit=500`,
+          { headers: SB_H, cache: "no-store" }
+        );
+        const t = await r.text();
+        try { const j = JSON.parse(t); return Array.isArray(j) ? j : []; } catch { return []; }
+      }, TTL_CATALOG);
 
   // Attach rooms to each hotel — build an index once (was N*M scan).
   const roomsByHotel: Record<string, any[]> = {};

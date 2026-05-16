@@ -10,6 +10,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { sbCached } from "@/lib/sb-cache";
+import {
+  SOCIAL_POST_FEED_COLS,
+  SOCIAL_PROFILE_CARD_COLS,
+  HOTEL_CARD_COLS,
+} from "@/lib/sb-columns";
 // v112.3 — normalize so legacy "fb_<uid>" tokens still resolve to the
 // canonical social_profiles row (which has user_id without the prefix
 // after the v112.2 merge). Without this, /me showed 0 posts for any
@@ -69,7 +74,9 @@ export async function GET(req: NextRequest) {
     authorId = resolved;
   }
 
-  let filter = `select=*&is_active=eq.true&order=created_at.desc&limit=${limit}`;
+  // v131 — narrowed select (was *). Drops internal moderation columns +
+  // retry counters that the public feed never renders.
+  let filter = `select=${SOCIAL_POST_FEED_COLS}&is_active=eq.true&order=created_at.desc&limit=${limit}`;
   if (cursor)             filter += `&created_at=lt.${encodeURIComponent(cursor)}`;
   if (type)               filter += `&media_type=eq.${encodeURIComponent(type)}`;
   if (authorId)           filter += `&author_id=eq.${encodeURIComponent(authorId)}`;
@@ -102,7 +109,7 @@ export async function GET(req: NextRequest) {
       `social:authors:${authorKey}`,
       async () => {
         const ar = await fetch(
-          `${SB_URL}/rest/v1/social_profiles?id=in.(${authorIds.map(encodeURIComponent).join(",")})&select=*`,
+          `${SB_URL}/rest/v1/social_profiles?id=in.(${authorIds.map(encodeURIComponent).join(",")})&select=${SOCIAL_PROFILE_CARD_COLS}`,
           { headers: READ, cache: "no-store" }
         );
         if (!ar.ok) return [];
@@ -127,7 +134,7 @@ export async function GET(req: NextRequest) {
       `social:hotels:${hotelKey}`,
       async () => {
         const hr = await fetch(
-          `${SB_URL}/rest/v1/hotels?id=in.(${hotelIds.map(encodeURIComponent).join(",")})&select=*`,
+          `${SB_URL}/rest/v1/hotels?id=in.(${hotelIds.map(encodeURIComponent).join(",")})&select=${HOTEL_CARD_COLS}`,
           { headers: READ, cache: "no-store" }
         );
         if (!hr.ok) return [];
