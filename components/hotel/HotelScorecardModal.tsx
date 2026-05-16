@@ -13,7 +13,8 @@
  * Full keyboard support (Esc closes), focus-trap, body-scroll-lock,
  * touch-friendly bottom-sheet on mobile.
  */
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -143,7 +144,19 @@ export default function HotelScorecardModal({
 
   const tone = card ? statusTone(card.status) : "#C9A66B";
 
-  return (
+  // v128.5 — Portal render. The modal was visually clipped on the
+  // /flash-deals page because each .fd-card has `overflow:hidden` and
+  // the modal mounted INSIDE that card got clipped to the card bounds.
+  // Same issue would hit any future surface that wraps the badge in a
+  // transform / filter / contain ancestor (Reels has many of those).
+  // Mounting at document.body guarantees the modal escapes EVERY parent
+  // stacking context and reliably covers the full viewport.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const modal = (
     <div
       className="hsm-backdrop"
       onClick={onClose}
@@ -945,5 +958,8 @@ export default function HotelScorecardModal({
       `}</style>
     </div>
   );
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(modal, document.body);
 }
 

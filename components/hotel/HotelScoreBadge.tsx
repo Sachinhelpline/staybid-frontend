@@ -324,12 +324,20 @@ const styles = `
   color: var(--text-base, #1f1a0f);
   transition: transform .28s cubic-bezier(.22,1,.36,1), filter .28s;
   -webkit-touch-callout: none;
+  /* v128.5 — gentle ambient breathing animation so users see this is
+   *  interactive at a glance. Scales 100%↔102% over 2.8s, infinite. */
+  animation: hsb-breathe 2.8s ease-in-out infinite;
+}
+@keyframes hsb-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.025); }
 }
 .hsb:hover {
-  transform: translateY(-2px) scale(1.015);
-  filter: drop-shadow(0 8px 18px rgba(31, 26, 15, 0.18));
+  transform: translateY(-2px) scale(1.04);
+  filter: drop-shadow(0 8px 18px rgba(31, 26, 15, 0.22));
+  animation-play-state: paused;
 }
-.hsb:active { transform: translateY(0) scale(0.98); }
+.hsb:active { transform: translateY(0) scale(0.96); animation-play-state: paused; }
 .hsb:focus-visible {
   outline: 2px solid var(--cozy-champagne, #C9A66B);
   outline-offset: 4px;
@@ -432,23 +440,44 @@ const styles = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* The medal IS the color — radial highlight + base + outer rim */
+  /* v128.5 — pulsing ring radiates outward to telegraph "clickable" */
+  --hsb-pulse-color: var(--hsb-color, #C9A66B);
+}
+.hsb-medal::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 70%, transparent);
+  animation: hsb-pulse-ring 2.4s cubic-bezier(.4, 0, .2, 1) infinite;
+  opacity: 0.95;
+}
+@keyframes hsb-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 70%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 14px color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--hsb-pulse-color, #C9A66B) 0%, transparent);
+  }
+}
+/* Medal background-stack — overflow REMOVED so ::after pulse ring is
+ * not clipped by the disc edge. The sheen self-clips via border-radius:50%
+ * so removing overflow:hidden here doesn't break the metallic shimmer. */
+.hsb .hsb-medal {
   background:
     radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.0) 38%),
     radial-gradient(circle at 50% 50%, var(--hsb-color, #C9A66B) 0%, color-mix(in oklab, var(--hsb-color, #C9A66B) 70%, #2B2415) 100%);
   box-shadow:
-    /* Outer ambient drop */
     0 14px 28px -10px rgba(31, 26, 15, 0.50),
     0 5px 10px -3px rgba(31, 26, 15, 0.32),
-    /* Outer rim ring */
     0 0 0 2px color-mix(in oklab, var(--hsb-color, #C9A66B) 60%, #FFFCF6),
-    /* Inner highlight (top) */
     inset 0 3px 5px rgba(255, 255, 255, 0.55),
-    /* Inner shadow (bottom) */
     inset 0 -4px 7px rgba(31, 26, 15, 0.30),
-    /* Engraved ring inset */
     inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-  overflow: hidden;
   isolation: isolate;
 }
 .hsb-hero .hsb-medal { width: 70px; height: 70px; }
@@ -676,7 +705,8 @@ const styles = `
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .hsb-medal-sheen, .hsb-medal-live-dot, .hsb-skel-shimmer { animation: none; }
+  .hsb-medal-sheen, .hsb-medal-live-dot, .hsb-skel-shimmer,
+  .hsb-medal::after, .hsb { animation: none; }
   .hsb { transition: none; }
 }
 `;
