@@ -30,19 +30,44 @@ export const HOTEL_DETAIL_COLS =
 export const ROOM_CARD_COLS =
   "id,hotelId,type,capacity,floorPrice,aiPrice,images,amenities";
 
-// Social posts (Discover reel feed). Includes only fields the renderer
-// actually consumes — drops internal moderation columns, retry counts, etc.
-export const SOCIAL_POST_FEED_COLS =
-  "id,author_id,hotel_id,media_type,video_url,image_url,poster_url,audio_url,caption,filter_preset,location_name,tagged_users,is_active,created_at,likes_count,comments_count,views_count";
+// Social posts (Discover reel feed).
+//
+// HOTFIX v131.3: previous narrow projection used non-existent columns
+// (video_url / image_url / poster_url / audio_url / likes_count etc.)
+// which made PostgREST 400 the entire query → empty feed, no reels.
+// Real columns per migrations/2026-05-10-social-feed.sql + later
+// filter / highlight_key migrations: media_url, thumbnail_url, sound_*,
+// view_count / like_count / comment_count (singular).
+//
+// To stay future-proof against silent column additions (sound_owner_id,
+// location_lat/lng, additional filter knobs, anti-bypass flags), this
+// stays as `*`. The bandwidth win on social_posts comes from the route's
+// existing 15s sbCached + 60s CDN window, not the projection.
+export const SOCIAL_POST_FEED_COLS = "*";
 
 // Social profile chip on every reel card.
-export const SOCIAL_PROFILE_CARD_COLS =
-  "id,user_id,username,display_name,avatar_url,user_type,verification_tier,followers_count,bio";
+//
+// HOTFIX v131.3: previous projection used verification_tier (doesn't
+// exist on social_profiles) + followers_count (plural — real column is
+// follower_count). The InstagramHotelFeed renderer reads multiple author
+// fields, so to avoid silent undefined on a downstream field, this stays
+// as `*`. Cache + CDN windows still cover the bandwidth case.
+export const SOCIAL_PROFILE_CARD_COLS = "*";
 
 // Influencer card on /reels creator chip + public profile.
+// NOTE: influencers table DOES have verification_tier + followers_count
+// (plural) — different schema from social_profiles. Verified against
+// pre-fix /api/videos/feed. Safe to keep narrow.
 export const INFLUENCER_CARD_COLS =
   "id,user_id,display_name,avatar_url,verification_tier,followers_count,total_followers";
 
 // Reel feed videos.
-export const HOTEL_VIDEO_FEED_COLS =
-  "id,hotel_id,uploaded_by,title,description,video_url,thumbnail_url,duration_seconds,verification_status,created_at,likes_count,comments_count,views_count";
+//
+// HOTFIX v131.3: previous projection used `video_url` and `description`
+// — neither exists on hotel_videos. Real video URL column is `s3_url`
+// (verified against /api/influencer/public/[id]/route.ts which has been
+// in production for months). Reverting to `*` so any other columns the
+// renderer needs (e.g. uploader_type, caption, filter knobs added later)
+// don't silently disappear. Bandwidth win still comes from the 20s
+// sbCached + 60s CDN window on /api/videos/feed.
+export const HOTEL_VIDEO_FEED_COLS = "*";
