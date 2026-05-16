@@ -48,12 +48,33 @@ export async function loadHotelScoreInputs(
       `&order=created_at.desc&limit=300`,
   );
 
-  const [bids, complaints, vpRequests, vpVideos] = await Promise.all([
+  // v128.2 — Customer star reviews from feedback_tracking. Only
+  // submitted=true rows have a real rating; drafts/empty rows skipped.
+  const reviewsP = sb(
+    `feedback_tracking?hotel_id=eq.${encodeURIComponent(hotelId)}` +
+      `&submitted=eq.true` +
+      `&rating=not.is.null` +
+      `&select=id,booking_id,rating,comments,submitted,created_at,timestamp` +
+      `&order=created_at.desc&limit=500`,
+  );
+
+  const [bids, complaints, vpRequests, vpVideos, reviewsRaw] = await Promise.all([
     bidsP,
     complaintsP,
     vpReqsP,
     vpVidsP,
+    reviewsP,
   ]);
+
+  // Normalise reviews — created_at fallback to timestamp.
+  const reviews = (reviewsRaw as any[]).map((r) => ({
+    id: r.id,
+    booking_id: r.booking_id,
+    rating: r.rating,
+    comments: r.comments,
+    submitted: r.submitted,
+    created_at: r.created_at || r.timestamp,
+  }));
 
   // 4. Side-load bid_requests for ACCEPTED bids → derive bookingsWithDates.
   const acceptedBids = bids.filter((b: any) =>
@@ -106,6 +127,7 @@ export async function loadHotelScoreInputs(
     vpRequests: vpRequests as any,
     vpVideos: vpVideos as any,
     complaints: complaints as any,
+    reviews,
   };
 }
 

@@ -182,12 +182,10 @@ export default function HotelScoreBadge({
     : rank.rank ? "muted"
     : null;
 
-  const rankLabel = rank.rank
-    ? rank.rank === 1 ? "1st"
-      : rank.rank === 2 ? "2nd"
-      : rank.rank === 3 ? "3rd"
-      : `#${rank.rank}`
-    : null;
+  // v128.2 — user explicitly asked to spell out "RANK" instead of just
+  // "1st / 2nd / 3rd / #N". Word "Rank" sits IN the ribbon so customers
+  // never wonder what the number means.
+  const rankLabel = rank.rank ? `Rank ${rank.rank}` : null;
 
   const rankIcon = rank.rank === 1 ? "🥇"
     : rank.rank === 2 ? "🥈"
@@ -315,9 +313,11 @@ const styles = `
   border-radius: 12px;
 }
 
-/* Per-variant sizing ─────────────────────────────────────────────── */
-.hsb-hero { width: 92px; min-height: 116px; }
-.hsb-card { width: 76px; min-height: 96px; }
+/* v128.2 — Per-variant sizing.
+ * Smaller than v128.1 across all breakpoints. User explicitly asked for
+ * less screen real-estate on mobile + desktop hotels list cards. */
+.hsb-hero { width: 78px; min-height: 100px; }
+.hsb-card { width: 62px; min-height: 80px; }
 .hsb-compact {
   flex-direction: row;
   align-items: center;
@@ -342,14 +342,14 @@ const styles = `
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 4px 11px 5px;
-  border-radius: 6px;
+  padding: 3px 9px 4px;
+  border-radius: 5px;
   background: linear-gradient(180deg, var(--hsb-trophy-light, #D9BE82) 0%, var(--hsb-trophy-base, #C9A66B) 55%, var(--hsb-trophy-dark, #8B6914) 100%);
   color: #FFFCF6;
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
   font-weight: 800;
-  font-size: 0.6rem;
-  letter-spacing: 0.07em;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   text-shadow: 0 1px 1px rgba(0,0,0,0.30);
   box-shadow:
@@ -360,8 +360,11 @@ const styles = `
   line-height: 1;
   white-space: nowrap;
 }
-.hsb-trophy-icon { font-size: 0.85rem; line-height: 1; }
+.hsb-trophy-icon { font-size: 0.72rem; line-height: 1; }
 .hsb-trophy-text { line-height: 1; }
+/* Card-variant ribbon stays compact */
+.hsb-card .hsb-trophy-body { padding: 2px 7px 3px; font-size: 0.5rem; gap: 2px; }
+.hsb-card .hsb-trophy-icon { font-size: 0.62rem; }
 /* Ribbon "tails" — left + right notched flags peeking from behind */
 .hsb-trophy-tail {
   position: absolute;
@@ -425,9 +428,9 @@ const styles = `
   overflow: hidden;
   isolation: isolate;
 }
-.hsb-hero .hsb-medal { width: 84px; height: 84px; }
-.hsb-card .hsb-medal { width: 68px; height: 68px; }
-.hsb-compact .hsb-medal { width: 44px; height: 44px; }
+.hsb-hero .hsb-medal { width: 70px; height: 70px; }
+.hsb-card .hsb-medal { width: 56px; height: 56px; }
+.hsb-compact .hsb-medal { width: 38px; height: 38px; }
 
 /* Metallic sheen sweep across the disc */
 .hsb-medal-sheen {
@@ -468,23 +471,23 @@ const styles = `
   font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
   font-weight: 700;
   font-style: italic;
-  font-size: 1.85rem;
+  font-size: 1.55rem;
   color: #FFFCF6;
   letter-spacing: -0.02em;
   font-feature-settings: "tnum" 1;
 }
 .hsb-medal-denom {
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.10em;
   color: rgba(255, 252, 246, 0.85);
   margin-top: 1px;
   text-transform: uppercase;
 }
-.hsb-card .hsb-medal-num { font-size: 1.45rem; }
-.hsb-card .hsb-medal-denom { font-size: 0.5rem; }
-.hsb-compact .hsb-medal-num { font-size: 1.0rem; }
+.hsb-card .hsb-medal-num { font-size: 1.2rem; }
+.hsb-card .hsb-medal-denom { font-size: 0.46rem; }
+.hsb-compact .hsb-medal-num { font-size: 0.9rem; }
 .hsb-compact .hsb-medal-denom { display: none; }
 
 /* Live pulse dot — bottom-right corner of the medal */
@@ -567,9 +570,9 @@ const styles = `
   overflow: hidden;
   background: linear-gradient(160deg, var(--bg-card, #faf5eb), var(--bg-elevated, #fffcf6));
 }
-.hsb-skel.hsb-hero { width: 92px; height: 116px; border-radius: 16px; }
-.hsb-skel.hsb-card { width: 76px; height: 96px; border-radius: 14px; }
-.hsb-skel.hsb-compact { width: 100px; height: 36px; border-radius: 999px; }
+.hsb-skel.hsb-hero { width: 78px; height: 100px; border-radius: 14px; }
+.hsb-skel.hsb-card { width: 62px; height: 80px; border-radius: 12px; }
+.hsb-skel.hsb-compact { width: 92px; height: 32px; border-radius: 999px; }
 .hsb-skel-shimmer {
   position: absolute; inset: 0;
   background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
@@ -577,44 +580,45 @@ const styles = `
 }
 @keyframes hsb-shimmer { to { transform: translateX(120%); } }
 
-/* ── Responsive breakpoints ──────────────────────────────────────── */
-/* Mobile-first defaults are above. Scale UP on tablet + desktop. */
+/* ── Responsive breakpoints (v128.2 — shrunk ~20% across the board) ─── */
+/* Mobile-first defaults are above. Scale UP gently on larger screens. */
 
 /* Tablet (>= 600px) */
 @media (min-width: 600px) {
-  .hsb-hero { width: 100px; min-height: 124px; }
-  .hsb-hero .hsb-medal { width: 92px; height: 92px; }
-  .hsb-hero .hsb-medal-num { font-size: 2.0rem; }
-  .hsb-hero .hsb-medal-denom { font-size: 0.58rem; }
-  .hsb-hero .hsb-trophy-body { font-size: 0.62rem; padding: 4px 12px 5px; }
+  .hsb-hero { width: 84px; min-height: 106px; }
+  .hsb-hero .hsb-medal { width: 76px; height: 76px; }
+  .hsb-hero .hsb-medal-num { font-size: 1.7rem; }
+  .hsb-hero .hsb-medal-denom { font-size: 0.52rem; }
+  .hsb-hero .hsb-trophy-body { font-size: 0.58rem; padding: 3px 10px 4px; }
 }
 
 /* Laptop (>= 1024px) */
 @media (min-width: 1024px) {
-  .hsb-hero { width: 108px; min-height: 130px; }
-  .hsb-hero .hsb-medal { width: 96px; height: 96px; }
-  .hsb-hero .hsb-medal-num { font-size: 2.1rem; }
-  .hsb-hero .hsb-medal-denom { font-size: 0.6rem; }
-  .hsb-hero .hsb-trophy-body { font-size: 0.65rem; padding: 5px 13px; }
-  .hsb-hero .hsb-trophy-tail { width: 10px; height: 16px; }
-  .hsb-card { width: 84px; min-height: 100px; }
-  .hsb-card .hsb-medal { width: 72px; height: 72px; }
+  .hsb-hero { width: 90px; min-height: 112px; }
+  .hsb-hero .hsb-medal { width: 80px; height: 80px; }
+  .hsb-hero .hsb-medal-num { font-size: 1.8rem; }
+  .hsb-hero .hsb-medal-denom { font-size: 0.54rem; }
+  .hsb-hero .hsb-trophy-body { font-size: 0.6rem; padding: 4px 11px; }
+  .hsb-hero .hsb-trophy-tail { width: 8px; height: 13px; }
+  .hsb-card { width: 70px; min-height: 88px; }
+  .hsb-card .hsb-medal { width: 60px; height: 60px; }
 }
 
 /* Desktop (>= 1440px) */
 @media (min-width: 1440px) {
-  .hsb-hero { width: 116px; min-height: 138px; }
-  .hsb-hero .hsb-medal { width: 100px; height: 100px; }
-  .hsb-hero .hsb-medal-num { font-size: 2.25rem; }
+  .hsb-hero { width: 96px; min-height: 118px; }
+  .hsb-hero .hsb-medal { width: 84px; height: 84px; }
+  .hsb-hero .hsb-medal-num { font-size: 1.9rem; }
 }
 
 /* Very narrow phones (iPhone SE ≤ 380px) */
 @media (max-width: 380px) {
-  .hsb-hero { width: 84px; min-height: 106px; }
-  .hsb-hero .hsb-medal { width: 76px; height: 76px; }
-  .hsb-hero .hsb-medal-num { font-size: 1.7rem; }
-  .hsb-hero .hsb-trophy-body { padding: 3px 9px 4px; font-size: 0.55rem; }
-  .hsb-hero .hsb-trophy-tail { width: 8px; height: 12px; }
+  .hsb-hero { width: 70px; min-height: 92px; }
+  .hsb-hero .hsb-medal { width: 62px; height: 62px; }
+  .hsb-hero .hsb-medal-num { font-size: 1.35rem; }
+  .hsb-hero .hsb-trophy-body { padding: 2px 7px 3px; font-size: 0.5rem; }
+  .hsb-hero .hsb-trophy-tail { width: 7px; height: 11px; }
+  .hsb-hero .hsb-trophy-icon { font-size: 0.62rem; }
 }
 
 /* Dark theme — medal stays metallic, trophy text colors adjust */

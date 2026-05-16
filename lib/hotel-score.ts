@@ -68,14 +68,21 @@
 // NEW hotels with zero data: returns score=null + status="unrated"
 // so the badge can render a "New on StayBid" pill instead of "0/100".
 
+// v128.2 — added "starRating" checkpoint (1-5 star reviews from
+// feedback_tracking table). User explicitly flagged this as the most
+// proven public signal. Reweighted to keep total = 100:
+//   staySmiley: 25 → 15 (still big, but no longer dwarfs star rating)
+//   counterConversion: 5 → 0 (removed — too noisy + low signal)
+//   + starRating: 0 → 15  (NEW — out-of-5 reviews, public + clickable)
+//   = 100 ✓
 export const CHECKPOINT_WEIGHTS = {
   bidSpeed: 15,
   acceptRate: 10,
-  counterConversion: 5,
   roomReady: 5,
   checkInOut: 5,
   verifVideo: 10,
-  staySmiley: 25,
+  staySmiley: 15,
+  starRating: 15,  // NEW v128.2
   complaintRate: 10,
   resolution: 10,
   volume: 5,
@@ -145,6 +152,15 @@ export type HotelScoreInputs = {
     createdAt?: string;
     resolvedAt?: string | null;
     priority?: string;
+  }>;
+  // v128.2 — feedback_tracking rows (1-5 star reviews)
+  reviews?: Array<{
+    id?: string;
+    booking_id?: string | null;
+    rating: number;          // 1..5
+    comments?: string | null;
+    submitted?: boolean;
+    created_at?: string;
   }>;
 };
 
@@ -272,40 +288,50 @@ function computeAcceptRate(inputs: HotelScoreInputs): CheckpointResult {
   };
 }
 
-function computeCounterConversion(inputs: HotelScoreInputs): CheckpointResult {
-  const weight = CHECKPOINT_WEIGHTS.counterConversion;
-  // Counter bids that ultimately went to ACCEPTED. Without a join we
-  // estimate via: counter bids with counterAmount AND a sibling bid
-  // for the same request that ended ACCEPTED. Simpler heuristic: of
-  // bids whose status was ever COUNTER, count how many now ACCEPTED.
-  const countered = inputs.bids.filter(
-    (b) => b.status === "COUNTER" || (b.counterAmount != null && b.counterAmount > 0),
+// v128.2 — Customer star reviews (out of 5) from feedback_tracking.
+// This is the public signal customers trust most — explicitly user-asked.
+// Scoring: linear (avgRating / 5) × weight. 4.0 avg → 80% of weight.
+// Auto-flagged in the modal as a CLICKABLE checkpoint that opens the
+// drill-down review list.
+function computeStarRating(inputs: HotelScoreInputs): CheckpointResult {
+  const weight = CHECKPOINT_WEIGHTS.starRating;
+  const reviews = (inputs.reviews || []).filter(
+    (r) =>
+      r &&
+      typeof r.rating === "number" &&
+      r.rating >= 1 &&
+      r.rating <= 5 &&
+      (r.submitted === undefined || r.submitted === true),
   );
-  const converted = countered.filter((b) => b.status === "ACCEPTED").length;
-  if (countered.length === 0) {
+  if (reviews.length === 0) {
     return {
-      key: "counterConversion",
-      label: "Counter Conversion",
-      emoji: "↔️",
+      key: "starRating",
+      label: "Customer Reviews",
+      emoji: "⭐",
       weight,
-      earned: weight * 0.6, // neutral default — no counter activity means no problems
+      earned: weight * 0.6, // baseline credit — no reviews yet
       pct: 60,
-      evidence: "No counter offers tracked yet.",
+      evidence: "Awaiting first customer rating.",
       sampleSize: 0,
       status: "no_data",
     };
   }
-  const rate = converted / countered.length;
+  const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+  const ratio = avg / 5;
+  const earned = +(ratio * weight).toFixed(2);
+  const pct = ratio * 100;
   return {
-    key: "counterConversion",
-    label: "Counter Conversion",
-    emoji: "↔️",
+    key: "starRating",
+    label: "Customer Reviews",
+    emoji: "⭐",
     weight,
-    earned: +(rate * weight).toFixed(2),
-    pct: rate * 100,
-    evidence: `${converted} of ${countered.length} counters reached agreement.`,
-    sampleSize: countered.length,
-    status: statusFromPct(rate * 100, true),
+    earned,
+    pct,
+    evidence: `${reviews.length} review${
+      reviews.length === 1 ? "" : "s"
+    } · avg ${avg.toFixed(1)} of 5 — tap to read every review.`,
+    sampleSize: reviews.length,
+    status: statusFromPct(pct, true),
   };
 }
 
@@ -553,7 +579,7 @@ function computeStaySmiley(inputs: HotelScoreInputs): CheckpointResult {
     pct: avgScore,
     evidence: `${rows.length} guest${rows.length === 1 ? "" : "s"} rated — ${Math.round(
       (posCount / n) * 100,
-    )}% positive checkpoints${negCount > 0 ? `, ${negCount} negative` : ""}.`,
+    )}% positive checkpoints${negCount > 0 ? `, ${negCount} negative` : ""} — tap to view every checkpoint.`,
     sampleSize: rows.length,
     status: statusFromPct(avgScore, true),
   };
@@ -690,11 +716,11 @@ export function computeHotelScore(inputs: HotelScoreInputs): HotelScorecard {
   const checkpoints: CheckpointResult[] = [
     computeBidSpeed(inputs),
     computeAcceptRate(inputs),
-    computeCounterConversion(inputs),
     computeRoomReady(inputs),
     computeCheckInOut(inputs),
     computeVerifVideo(inputs),
     computeStaySmiley(inputs),
+    computeStarRating(inputs),    // v128.2 — replaces counterConversion
     computeComplaintRate(inputs),
     computeResolution(inputs),
     computeVolume(inputs),
