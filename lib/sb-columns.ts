@@ -25,10 +25,19 @@ export const HOTEL_CARD_COLS =
 export const HOTEL_DETAIL_COLS =
   HOTEL_CARD_COLS + ",description,address,reviewsCount";
 
-// Room rows used on listings + flash-deal candidate selection. Excludes
-// the heavy `description` text and admin-only knobs.
+// Room rows used on listings + flash-deal candidate selection.
+//
+// HOTFIX v131.4: previous projection included `aiPrice` — that column
+// DOES NOT EXIST on the rooms table (only on flash_deals). PostgREST
+// 400'd every rooms read since v131, returning [] → /api/flash/near
+// synthesized 0 deals → "All deals sold out for tonight" everywhere.
+// Real rooms columns per migration: id, hotelId, type, capacity,
+// floorPrice, mrp, name, description, amenities, images, bedrooms,
+// bathrooms, quantity, isAvailable, createdAt, flashFloorPrice.
+//
+// Including mrp so detail pages can show strikethrough original prices.
 export const ROOM_CARD_COLS =
-  "id,hotelId,type,capacity,floorPrice,aiPrice,images,amenities";
+  "id,hotelId,type,name,capacity,floorPrice,mrp,images,amenities";
 
 // Social posts (Discover reel feed).
 //
