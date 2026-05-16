@@ -12,6 +12,7 @@ import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "
 import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
+import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -1564,6 +1565,10 @@ export default function HotelDetail() {
                 </span>
               )}
             </div>
+
+            {/* v127.1 — Aggregated post-checkout smiley feedback. Only the
+                 smiley initials persist long-term per data-lifecycle rule. */}
+            <HotelFeedbackSummary hotelId={hotel.id} />
             <div className="space-y-4">
               {(hotel.reviews?.length > 0 ? hotel.reviews : sampleReviews).map((r: any) => {
                 const stars = Math.min(5, Math.max(1, r.rating || 5));

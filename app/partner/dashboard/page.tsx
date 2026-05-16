@@ -1851,6 +1851,41 @@ export default function PartnerDashboard() {
                         {c.description && (
                           <p className="text-xs text-luxury-700 leading-relaxed mt-2 whitespace-pre-wrap line-clamp-4">{c.description}</p>
                         )}
+                        {/* v127.1 — Stay-feedback smiley summary so hotels see WHAT
+                             guests rated, not just a generic description. Privacy:
+                             only the smiley grid + auto-flag pill; no customer
+                             notes, no video URLs. */}
+                        {c.feedbackType === "stay_feedback" && c.feedback && (
+                          <div className="mt-2 px-3 py-2 rounded-lg bg-gold-50 border border-gold-200">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[0.6rem] font-bold text-gold-800 uppercase tracking-wider">
+                                Stay feedback {c.feedbackAutoFilled && <span className="ml-1 opacity-60">· auto-marked positive</span>}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {[
+                                ["roomMatch","Room"],
+                                ["staff","Staff"],
+                                ["hygiene","Hygiene"],
+                                ["food","Food"],
+                                ["staffResponse","Response"],
+                              ].map(([k,label]) => {
+                                const v = (c.feedback as any)?.[k];
+                                const icon = v === "positive" ? "😊" : v === "neutral" ? "😐" : v === "negative" ? "😞" : "—";
+                                const tone = v === "positive" ? "bg-emerald-100 text-emerald-800"
+                                          : v === "neutral"  ? "bg-amber-100 text-amber-800"
+                                          : v === "negative" ? "bg-red-100 text-red-800"
+                                          : "bg-luxury-100 text-luxury-600";
+                                return (
+                                  <span key={k} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.7rem] ${tone}`}>
+                                    <span>{icon}</span>
+                                    <span className="font-medium">{label}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         {(c.adminNotes || c.adminNote) && (
                           <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
                             <div className="text-[0.6rem] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">Admin reply</div>

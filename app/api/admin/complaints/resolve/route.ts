@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logAdminAction, adminFromReq } from "@/lib/admin/audit";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { purgeEvidenceVideos } from "@/lib/verify/cleanup";
 
 
 
@@ -49,14 +50,38 @@ export async function POST(req: NextRequest) {
     }),
   });
 
+  // v127.1 — When a stay_feedback complaint flips to resolved/rejected,
+  // purge the customer's evidence video files immediately (per user spec:
+  // "jaishe hi complaing resolve hoti hai toh video sabhi jangha se delete
+  // ho jayegi"). Only the smiley initials persist long-term.
+  let videoCleanup: any = null;
+  if (resolution === "resolved" || resolution === "rejected") {
+    try {
+      const beforeRes = await fetch(
+        `${SB_URL}/rest/v1/complaints?id=eq.${encodeURIComponent(complaintId)}&select=id,feedback,evidenceVideoId,feedbackType&limit=1`,
+        { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
+      );
+      const before = (beforeRes.ok ? await beforeRes.json().catch(() => []) : [])[0];
+      if (before?.feedbackType === "stay_feedback") {
+        videoCleanup = await purgeEvidenceVideos({
+          id: before.id,
+          feedback: before.feedback,
+          evidenceVideoId: before.evidenceVideoId,
+        });
+      }
+    } catch (e: any) {
+      videoCleanup = { error: e?.message || String(e) };
+    }
+  }
+
   // v98 — audit
   logAdminAction({
     admin: adminFromReq(req),
     action: `complaint.${resolution}`,
     targetType: "complaint",
     targetId: complaintId,
-    details: { refundAmount: refundAmount || 0, paymentId: paymentId || null, refund: refundResult },
+    details: { refundAmount: refundAmount || 0, paymentId: paymentId || null, refund: refundResult, videoCleanup },
   });
 
-  return NextResponse.json({ ok: patchRes.ok, refund: refundResult });
+  return NextResponse.json({ ok: patchRes.ok, refund: refundResult, videoCleanup });
 }

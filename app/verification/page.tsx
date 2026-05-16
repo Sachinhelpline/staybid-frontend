@@ -235,6 +235,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
           hotelName={booking.hotelName || "this stay"}
           hotelId={booking.hotelId}
           verificationRequestId={r?.id}
+          checkOut={booking.checkOut}
         />
       )}
 

@@ -39,16 +39,35 @@ const SMILEYS: { v: Smiley; icon: string; label: string; color: string }[] = [
   { v: "negative", icon: "😞", label: "Not good",   color: "#dc2626" },
 ];
 
+// v127.1 — 48-hour feedback window after checkout. Past this the
+// lifecycle cron auto-fills positive feedback + deletes the hotel
+// verification video. UI shows a live countdown so the customer knows.
+const FEEDBACK_WINDOW_HOURS = 48;
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "expired";
+  const h = Math.floor(ms / 3600_000);
+  const m = Math.floor((ms % 3600_000) / 60_000);
+  if (h >= 24) {
+    const d = Math.floor(h / 24);
+    return `${d}d ${h % 24}h`;
+  }
+  if (h >= 1) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export default function StayFeedbackCard({
   bidId,
   hotelName,
   hotelId,
   verificationRequestId,
+  checkOut,
 }: {
   bidId: string;
   hotelName: string;
   hotelId?: string;
   verificationRequestId?: string;
+  checkOut?: string;
 }) {
   const router = useRouter();
   const { token } = useAuth();
@@ -85,6 +104,18 @@ export default function StayFeedbackCard({
   const filled = Object.keys(scores).length;
   const negCount = (Object.values(scores) as Smiley[]).filter((v) => v === "negative").length;
   const allFilled = filled === CHECKPOINTS.length;
+
+  // Deadline countdown — based on checkOut + FEEDBACK_WINDOW_HOURS.
+  // Re-renders every 60s. Doesn't render at all if checkOut is missing.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const deadlineMs = checkOut ? new Date(checkOut).getTime() + FEEDBACK_WINDOW_HOURS * 3600_000 : null;
+  const remainingMs = deadlineMs ? deadlineMs - Date.now() : null;
+  void tick; // referenced just to keep React re-rendering this hook chain
+  const expired = remainingMs !== null && remainingMs <= 0;
 
   const submit = async (kind: "submit_only" | "record_then_submit") => {
     if (!allFilled || submitting) return;
@@ -178,6 +209,23 @@ export default function StayFeedbackCard({
         </div>
         <div className="text-xs text-luxury-500 font-mono whitespace-nowrap">{filled}/{CHECKPOINTS.length}</div>
       </div>
+
+      {remainingMs !== null && (
+        <div className={`mb-3 px-3 py-2 rounded-lg text-xs flex items-center gap-2 border ${
+          expired
+            ? "bg-luxury-100 border-luxury-200 text-luxury-600"
+            : remainingMs < 6 * 3600_000
+            ? "bg-amber-50 border-amber-200 text-amber-900"
+            : "bg-emerald-50 border-emerald-200 text-emerald-900"
+        }`}>
+          <span>⏳</span>
+          <span>
+            {expired
+              ? "Window closed — we'll auto-mark this stay as positive shortly."
+              : <>You have <span className="font-semibold">{formatRemaining(remainingMs)}</span> left to submit feedback. After {FEEDBACK_WINDOW_HOURS}h post-checkout we auto-mark it as positive and delete the hotel's verification video.</>}
+          </span>
+        </div>
+      )}
 
       <div className="space-y-2.5">
         {CHECKPOINTS.map((c) => (

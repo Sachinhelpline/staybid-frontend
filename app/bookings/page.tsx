@@ -487,6 +487,18 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
           <RateStayBanner bidId={b.id} hotelName={hotel.name || "this hotel"} stayPoints={stayPoints} />
         )}
 
+        {/* v127.1 — Deep-link to the smiley feedback composer on /verification.
+            Customer has 48h post-checkout to submit; after that we auto-mark
+            positive + delete the hotel's verification video. */}
+        {isCompleted && (
+          <a
+            href="/verification"
+            className="mt-2 inline-flex items-center justify-center w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold-100 to-amber-100 border border-gold-300 text-gold-900 text-sm font-semibold hover:from-gold-200 hover:to-amber-200"
+          >
+            😊 Rate hotel video & service · earn 100 StayPoints →
+          </a>
+        )}
+
         {/* v105 — Report-an-issue link with proper spacing + visual separator.
             Was stacking too tightly under <BookingChat> with -mt-1 negative
             margin, looked like an overlap on Android phones. Now sits on

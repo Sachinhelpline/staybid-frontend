@@ -10,6 +10,12 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { ensureUser } from "@/lib/sb-server";
+import { purgeVerificationVideos } from "@/lib/verify/cleanup";
+
+// v127.1 — 14-day resolution window for stay-feedback complaints carrying
+// evidence video. Cron escalates rows past this deadline that are still
+// status='open'.
+const RESOLUTION_WINDOW_DAYS = Number(process.env.SB_RESOLUTION_WINDOW_DAYS || 14);
 
 const VALID_TYPES = new Set(["bid", "booking", "payment", "service", "refund", "video", "general", "other", "stay_feedback"]);
 const VALID_PRIORITY = new Set(["low", "medium", "high"]);
@@ -144,6 +150,17 @@ export async function POST(req: Request) {
       else if (negCount === 1) row.priority = "medium";
     }
 
+    // v127.1 — If this stay_feedback row carries evidence video, stamp a
+    // resolution deadline so the lifecycle cron can auto-escalate stale
+    // open complaints. Hard-no-video positive feedback gets no deadline.
+    const hasEvidence = !!(
+      (feedback && Array.isArray(feedback.evidenceVideoUrls) && feedback.evidenceVideoUrls.length > 0) ||
+      body.evidenceVideoId
+    );
+    if (type === "stay_feedback" && hasEvidence) {
+      row.resolutionDeadlineAt = new Date(Date.now() + RESOLUTION_WINDOW_DAYS * 86400_000).toISOString();
+    }
+
     // v105.1 — complaints.customerId has a FK constraint pointing at
     // public.users.id. Firebase Google-sign-in customers may not have a
     // mirrored users row (the /api/auth/social-login backend route was
@@ -178,6 +195,25 @@ export async function POST(req: Request) {
         status: "pending",
       }),
     }).catch(() => {});
+
+    // v127.1 — The moment the customer submits stay feedback, purge the
+    // hotel's verification video for that booking. Per user spec only the
+    // smiley initials persist; the video has served its purpose.
+    // Fire-and-forget — Storage failures don't roll back the complaint.
+    if (type === "stay_feedback" && created?.verificationRequestId) {
+      const reqId = created.verificationRequestId;
+      const complaintId = created.id;
+      (async () => {
+        try {
+          await purgeVerificationVideos(reqId);
+          await fetch(`${SB_URL}/rest/v1/complaints?id=eq.${encodeURIComponent(complaintId)}`, {
+            method: "PATCH",
+            headers: { ...SB_H, "Content-Type": "application/json" },
+            body: JSON.stringify({ videoCleanedAt: new Date().toISOString() }),
+          });
+        } catch {}
+      })();
+    }
 
     return NextResponse.json({ ok: true, complaint: created });
   } catch (e: any) {
