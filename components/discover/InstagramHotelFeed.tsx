@@ -2315,29 +2315,29 @@ const HotelCard = memo(function HotelCard({
           {h.avgRating > 0 && <span className="ig-pill">★ {Number(h.avgRating).toFixed(1)}</span>}
           {!h._userPost && <span className="ig-pill ig-pill-live"><span className="ig-dot" /> LIVE BIDDING</span>}
           <span className="ig-pill">{fmtCount(viewCount)} views</span>
-        </div>
 
-        {/* v128.4 — Inline scorecard chip. Real hotel reels get a small
-            clickable badge so customers can drill into reviews/feedback
-            from anywhere. Skipped for user posts (no hotelId on those). */}
-        {!h._userPost && h.id ? (
-          <div className="mb-1.5" onClick={(e) => e.stopPropagation()}>
-            <HotelScoreBadge
-              hotelId={String(h.id)}
-              hotelName={h.name}
-              variant="compact"
-            />
-          </div>
-        ) : null}
-        {h._userPostTaggedHotel?.id ? (
-          <div className="mb-1.5" onClick={(e) => e.stopPropagation()}>
-            <HotelScoreBadge
-              hotelId={String(h._userPostTaggedHotel.id)}
-              hotelName={h._userPostTaggedHotel.name}
-              variant="compact"
-            />
-          </div>
-        ) : null}
+          {/* v128.6 — Score badge lives INSIDE the pills row so it
+              shares flex-wrap with the other chips. Saves vertical
+              space on the desktop reel-frame where every row matters. */}
+          {!h._userPost && h.id ? (
+            <span className="ig-score-chip" onClick={(e) => e.stopPropagation()}>
+              <HotelScoreBadge
+                hotelId={String(h.id)}
+                hotelName={h.name}
+                variant="compact"
+              />
+            </span>
+          ) : null}
+          {h._userPostTaggedHotel?.id ? (
+            <span className="ig-score-chip" onClick={(e) => e.stopPropagation()}>
+              <HotelScoreBadge
+                hotelId={String(h._userPostTaggedHotel.id)}
+                hotelName={h._userPostTaggedHotel.name}
+                variant="compact"
+              />
+            </span>
+          ) : null}
+        </div>
 
         <h3 className="text-white font-semibold text-[1.05rem] leading-tight mb-1" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>
           {h.name}
@@ -3822,6 +3822,14 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           background: rgba(255, 69, 89, 0.20);
           border: 1px solid rgba(255, 69, 89, 0.55);
           color: #ffadb6;
+        }
+        /* v128.6 — wrapper for the score badge that sits inside the
+           pills flex row. Lets the compact pill keep its own internal
+           styling while flowing naturally with surrounding ig-pill chips. */
+        .ig-score-chip {
+          display: inline-flex;
+          align-items: center;
+          line-height: 1;
         }
         .ig-dot {
           width: 6px; height: 6px; border-radius: 9999px;

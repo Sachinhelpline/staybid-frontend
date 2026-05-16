@@ -168,22 +168,83 @@ export default function HotelScoreBadge({
     );
   }
 
-  // ── Unrated (new hotel) ─────────────────────────────────────────
+  // ── Unrated (new hotel) — v128.6 ────────────────────────────────
+  // Old horizontal pill clashed with the trophy+medal of rated cards on
+  // the /hotels list. Now uses the SAME trophy+medal structure so every
+  // card has consistent height + shape. NEW trophy is champagne-tinted,
+  // medal disc shows a centered sparkle.
   if (isUnrated) {
+    const ariaLabel = "Hotel score awaiting — first stays needed. Tap for details.";
+    // Compact variant gets its own single-pill render below.
+    if (variant === "compact") {
+      return (
+        <>
+          <button
+            type="button"
+            className="hsb hsb-compact-pill hsb-tier-new"
+            onClick={handleClick}
+            aria-label={ariaLabel}
+            title={ariaLabel}
+          >
+            <span className="hsb-cp-icon">✨</span>
+            <span className="hsb-cp-text">NEW</span>
+            <span className="hsb-cp-dot">·</span>
+            <span className="hsb-cp-meta">awaiting score</span>
+          </button>
+
+          {open ? (
+            <HotelScorecardModal
+              hotelId={hotelId}
+              hotelName={hotelName}
+              card={card}
+              onClose={() => setOpen(false)}
+              onRefresh={load}
+            />
+          ) : null}
+          <style jsx>{styles}</style>
+        </>
+      );
+    }
     return (
-      <button
-        type="button"
-        className={`hsb hsb-${variant} hsb-unrated`}
-        onClick={handleClick}
-        aria-label="Hotel score — new on StayBid"
-      >
-        <span className="hsb-unrated-emoji">✨</span>
-        <span className="hsb-unrated-text">
-          <span className="hsb-unrated-l1">New on StayBid</span>
-          <span className="hsb-unrated-l2">Score forms after first stays</span>
-        </span>
+      <>
+        <button
+          type="button"
+          className={`hsb hsb-${variant} hsb-medal-style hsb-tier-new`}
+          onClick={handleClick}
+          aria-label={ariaLabel}
+          title={ariaLabel}
+          style={{ ["--hsb-color" as any]: "#C9A66B" }}
+        >
+          <span className="hsb-trophy" aria-hidden>
+            <span className="hsb-trophy-tail hsb-trophy-tail-l" />
+            <span className="hsb-trophy-tail hsb-trophy-tail-r" />
+            <span className="hsb-trophy-body">
+              <span className="hsb-trophy-icon">✨</span>
+              <span className="hsb-trophy-text">NEW</span>
+            </span>
+          </span>
+          <span className="hsb-medal" aria-hidden>
+            <span className="hsb-medal-sheen" />
+            <span className="hsb-medal-inner">
+              <span className="hsb-medal-new-emoji">✨</span>
+            </span>
+            <span className="hsb-medal-live">
+              <span className="hsb-medal-live-dot" />
+            </span>
+          </span>
+        </button>
+
+        {open ? (
+          <HotelScorecardModal
+            hotelId={hotelId}
+            hotelName={hotelName}
+            card={card}
+            onClose={() => setOpen(false)}
+            onRefresh={load}
+          />
+        ) : null}
         <style jsx>{styles}</style>
-      </button>
+      </>
     );
   }
 
@@ -216,6 +277,47 @@ export default function HotelScoreBadge({
   const ariaLabel = `Hotel performance score ${score} out of 100${
     rank.rank ? `, ranked ${rankLabel} of ${rank.total} in ${card!.city || "city"}` : ""
   }. Tap for full breakdown.`;
+
+  // v128.6 — Compact pill (used in reels + inline placements). Single
+  // horizontal chip — no stacked trophy+medal, no clipping issues, fits
+  // naturally next to other inline pills. Premium feel via tier-tinted
+  // background + subtle inner glow.
+  if (variant === "compact") {
+    const ranked = !!rank.rank;
+    return (
+      <>
+        <button
+          type="button"
+          className={`hsb hsb-compact-pill${rankTier ? ` hsb-tier-${rankTier}` : ""}`}
+          onClick={handleClick}
+          aria-label={ariaLabel}
+          title={ariaLabel}
+          style={{ ["--hsb-color" as any]: medalColor }}
+        >
+          <span className="hsb-cp-icon">{ranked ? rankIcon : badge.emoji}</span>
+          <span className="hsb-cp-text">
+            {ranked ? rankLabel : badge.label}
+          </span>
+          <span className="hsb-cp-dot">·</span>
+          <span className="hsb-cp-score">
+            {Math.round(animatedScore)}
+            <span className="hsb-cp-denom">/100</span>
+          </span>
+        </button>
+
+        {open ? (
+          <HotelScorecardModal
+            hotelId={hotelId}
+            hotelName={hotelName}
+            card={card}
+            onClose={() => setOpen(false)}
+            onRefresh={load}
+          />
+        ) : null}
+        <style jsx>{styles}</style>
+      </>
+    );
+  }
 
   return (
     <>
@@ -429,6 +531,8 @@ const styles = `
 .hsb-tier-muted .hsb-trophy { --hsb-trophy-light: #CCBFA0; --hsb-trophy-base: #A89674; --hsb-trophy-dark: #6E5430; }
 /* Citywide (no rank — show badge label) */
 .hsb-trophy-citywide { --hsb-trophy-light: #D9BE82; --hsb-trophy-base: #C9A66B; --hsb-trophy-dark: #6E5430; }
+/* New (unrated) — soft champagne — v128.6 */
+.hsb-tier-new .hsb-trophy { --hsb-trophy-light: #F1DFB6; --hsb-trophy-base: #D9BE82; --hsb-trophy-dark: #8B6914; }
 
 /* 3D medal disc ──────────────────────────────────────────────────── */
 .hsb-medal {
@@ -553,9 +657,18 @@ const styles = `
 .hsb-card .hsb-medal-num { font-size: 1.1rem; }
 .hsb-card .hsb-medal-denom { font-size: 0.42rem; }
 .hsb-card .hsb-medal-score-lbl { font-size: 0.38rem; letter-spacing: 0.12em; }
-.hsb-compact .hsb-medal-num { font-size: 0.9rem; }
-.hsb-compact .hsb-medal-denom { display: none; }
-.hsb-compact .hsb-medal-score-lbl { display: none; }
+/* v128.6 — Big sparkle for unrated state, replaces the score number */
+.hsb-medal-new-emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(31, 26, 15, 0.32));
+  animation: hsb-new-twinkle 2.4s ease-in-out infinite;
+}
+.hsb-card .hsb-medal-new-emoji { font-size: 1.3rem; }
+@keyframes hsb-new-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+  50%      { transform: scale(1.12) rotate(8deg); opacity: 1; }
+}
 
 /* Live pulse dot — bottom-right corner of the medal */
 .hsb-medal-live {
@@ -586,49 +699,108 @@ const styles = `
   50% { transform: scale(0.55); opacity: 0.45; }
 }
 
-/* COMPACT variant tweaks — pill layout, no top ribbon stacking */
-.hsb-compact {
-  background: var(--bg-card, #FFFCF6);
-  border: 1px solid rgba(201, 166, 107, 0.28);
-  padding: 4px 10px 4px 4px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(31, 26, 15, 0.08);
-}
-.hsb-compact .hsb-trophy { margin-bottom: 0; margin-right: 0; }
-.hsb-compact .hsb-trophy-body { padding: 2px 7px; font-size: 0.52rem; border-radius: 4px; }
-.hsb-compact .hsb-trophy-tail { display: none; }
-
-/* Unrated / new — small horizontal pill */
-.hsb-unrated {
+/* ── v128.6 — Compact PILL variant ──────────────────────────────────
+ * Single horizontal chip — replaces the v128.4 stacked trophy+medal
+ * compact rendering which was cramped on inline placements (reels,
+ * pill rows). Premium feel via tier-tinted gradient + champagne
+ * highlight inner stroke. Drop-shadow + breathing animation reuse
+ * the .hsb base rules above. */
+.hsb-compact-pill {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  padding: 7px 12px 7px 10px;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
   border-radius: 999px;
-  text-align: left;
-  min-height: 0;
-  background: linear-gradient(180deg, var(--bg-elevated, #fffcf6), var(--bg-card, #faf5eb));
-  border: 1px solid rgba(201, 166, 107, 0.30);
+  min-height: 26px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--hsb-color, #C9A66B) 18%, var(--bg-elevated, #FFFCF6)) 0%,
+    color-mix(in oklab, var(--hsb-color, #C9A66B) 8%, var(--bg-card, #FAF5EB)) 100%
+  );
+  border: 1px solid color-mix(in oklab, var(--hsb-color, #C9A66B) 50%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 4px 10px -4px rgba(31, 26, 15, 0.15);
-}
-.hsb-unrated-emoji { font-size: 1.3rem; line-height: 1; }
-.hsb-unrated-text { display: inline-flex; flex-direction: column; line-height: 1.1; }
-.hsb-unrated-l1 {
-  font-family: var(--font-display, "Cormorant Garamond"), serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-style: italic;
-  color: var(--text-base, #1f1a0f);
-}
-.hsb-unrated-l2 {
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 color-mix(in oklab, var(--hsb-color, #C9A66B) 18%, transparent),
+    0 2px 6px rgba(31, 26, 15, 0.12);
+  white-space: nowrap;
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
-  font-size: 0.6rem;
+  color: var(--text-base, #1f1a0f);
+  /* compact override on the outer breathing — gentler since pills are smaller */
+  animation: hsb-breathe 3.2s ease-in-out infinite;
+}
+.hsb-compact-pill .hsb-cp-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(31, 26, 15, 0.20));
+}
+.hsb-compact-pill .hsb-cp-text {
+  font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--hsb-color, #C9A66B) 60%, var(--cozy-warm-dark, #1f1a0f));
+}
+.hsb-compact-pill .hsb-cp-dot {
+  color: var(--cozy-cocoa-soft, #6e5430);
+  opacity: 0.6;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+.hsb-compact-pill .hsb-cp-score {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--text-base, #1f1a0f);
+  font-feature-settings: "tnum" 1;
+}
+.hsb-compact-pill .hsb-cp-denom {
+  font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
+  font-style: normal;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cozy-cocoa-soft, #6e5430);
+  margin-left: 1px;
+}
+.hsb-compact-pill .hsb-cp-meta {
+  font-size: 0.55rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--cozy-cocoa-soft, #6e5430);
-  margin-top: 1px;
+  text-transform: none;
 }
+
+/* Compact pill — narrow phones */
+@media (max-width: 380px) {
+  .hsb-compact-pill { padding: 4px 9px 4px 8px; gap: 5px; min-height: 22px; }
+  .hsb-compact-pill .hsb-cp-icon { font-size: 0.75rem; }
+  .hsb-compact-pill .hsb-cp-text { font-size: 0.56rem; }
+  .hsb-compact-pill .hsb-cp-score { font-size: 0.85rem; }
+  .hsb-compact-pill .hsb-cp-denom { font-size: 0.46rem; }
+}
+/* Compact pill — desktop wide */
+@media (min-width: 1024px) {
+  .hsb-compact-pill .hsb-cp-text { font-size: 0.66rem; }
+  .hsb-compact-pill .hsb-cp-score { font-size: 1rem; }
+}
+
+/* Dark mode parity */
+[data-theme="dark"] .hsb-compact-pill {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--hsb-color, #C9A66B) 22%, var(--cozy-warm-soft, #2B2415)) 0%,
+    color-mix(in oklab, var(--hsb-color, #C9A66B) 12%, var(--cozy-warm-dark, #1F1A0F)) 100%
+  );
+  color: var(--cozy-cream-50, #FFFCF6);
+}
+[data-theme="dark"] .hsb-compact-pill .hsb-cp-text { color: var(--cozy-champagne-light, #D9BE82); }
+[data-theme="dark"] .hsb-compact-pill .hsb-cp-score { color: var(--cozy-cream-50, #FFFCF6); }
+[data-theme="dark"] .hsb-compact-pill .hsb-cp-denom { color: rgba(250, 245, 235, 0.55); }
+[data-theme="dark"] .hsb-compact-pill .hsb-cp-meta { color: rgba(250, 245, 235, 0.62); }
 
 /* Skeleton ───────────────────────────────────────────────────────── */
 .hsb-skel {
