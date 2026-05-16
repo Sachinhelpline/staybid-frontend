@@ -85,6 +85,11 @@ export default function HotelDetail() {
   const [myBids, setMyBids]             = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState("");
 
+  // Per-room active image index for the 4-photo gallery on each room card.
+  // Key = room.id, value = index 0-3. Lifted to parent so each room's
+  // selection persists while user scrolls the page.
+  const [roomImgIdx, setRoomImgIdx] = useState<Record<string, number>>({});
+
   // Tabs
   const [tab, setTab] = useState("rooms");
 
@@ -2099,16 +2104,53 @@ export default function HotelDetail() {
               >
                 <div className="hx-room-body">
 
-                {/* ── Room Image (LEFT on desktop ≥900px, TOP on mobile) ── */}
+                {/* ── Room Image gallery (4 photos: bed / interior / bathroom / view) ── */}
                 <div className="hx-room-media">
-                  <img
-                    src={roomImg}
-                    alt={r.name || r.type}
-                    className="hx-room-media-img"
-                    onError={(e: any) => { e.target.src = "https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }}
-                    loading="lazy"
-                  />
-                  <div className="hx-room-media-grad" />
+                  {(() => {
+                    const roomImages: string[] = Array.isArray(r.images) && r.images.length > 0
+                      ? r.images
+                      : [roomImg];
+                    const activeIdx = roomImgIdx[r.id] ?? 0;
+                    const safeIdx = Math.min(activeIdx, roomImages.length - 1);
+                    const PHOTO_LABELS = ["Room", "Interior", "Bathroom", "View"];
+                    return (
+                      <>
+                        <img
+                          src={roomImages[safeIdx]}
+                          alt={r.name || r.type}
+                          className="hx-room-media-img"
+                          onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-fallback-" + r.id + "/800/600"; }}
+                          loading="lazy"
+                        />
+                        <div className="hx-room-media-grad" />
+                        {/* Thumbnail strip — tap to swap main image */}
+                        {roomImages.length > 1 && (
+                          <div className="hx-room-thumbs" onClick={(e) => e.stopPropagation()}>
+                            {roomImages.slice(0, 4).map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={`hx-room-thumb ${idx === safeIdx ? "is-active" : ""}`}
+                                onClick={(ev) => {
+                                  ev.preventDefault();
+                                  ev.stopPropagation();
+                                  setRoomImgIdx((prev) => ({ ...prev, [r.id]: idx }));
+                                }}
+                                aria-label={`Show ${PHOTO_LABELS[idx] || `photo ${idx + 1}`}`}
+                              >
+                                <img
+                                  src={img}
+                                  alt=""
+                                  loading="lazy"
+                                  onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-thumb-" + r.id + "-" + idx + "/200/150"; }}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Top badges row */}
                   <div className="hx-room-media-top">

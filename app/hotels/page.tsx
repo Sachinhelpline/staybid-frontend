@@ -204,6 +204,12 @@ function HotelList() {
                       alt={h.name}
                       loading="lazy"
                       decoding="async"
+                      onError={(e: any) => {
+                        // v131.5 — degrade gracefully if URL 404s. Picsum is
+                        // 100% reliable; keyed on hotel id so each broken
+                        // photo gets a unique stable fallback.
+                        e.target.src = `https://picsum.photos/seed/sb-fallback-${h.id}/800/600`;
+                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (

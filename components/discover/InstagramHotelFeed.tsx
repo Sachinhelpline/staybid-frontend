@@ -1070,7 +1070,14 @@ function CreatorProfileSheet({
                       decoding="async"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                        // v131.5 — swap to Picsum fallback (always loads) on 404
+                        const img = e.currentTarget as HTMLImageElement;
+                        if (!img.dataset.fallbackTried) {
+                          img.dataset.fallbackTried = "1";
+                          img.src = `https://picsum.photos/seed/sb-grid-${h.id || "x"}/400/600`;
+                        } else {
+                          img.style.display = "none";
+                        }
                       }}
                     />
                   ) : (
