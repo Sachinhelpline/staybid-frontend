@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
   }));
 
   const res = NextResponse.json({ hotels: hotelsWithRooms, total: hotelsWithRooms.length });
-  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  // v131.2 — bump CDN window: Vercel's edge cache absorbs ~90% of repeat
+  // traffic at the same freshness. New hotels appear within 60s; stale
+  // serves keep us fast during the bg revalidate. Was max-age=10/swr=30.
+  res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
   return res;
 }

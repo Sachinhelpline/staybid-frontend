@@ -158,6 +158,12 @@ export async function GET(req: NextRequest) {
   // warm response in ~30 ms via the SW SWR lane (see public/sw.js). The
   // `must-revalidate` keeps us safe if a CDN ever sits in front; SWR
   // still serves stale while the bg revalidate runs.
-  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  // v131.2 — bigger CDN window. The feed query is keyed on cursor/limit/
+  // type/author in the URL, so per-user filtered views still get their own
+  // cache entries. New posts appear within 60s for the SHARED feed; the
+  // user's own /me grid is augmented by PostsStore client-side which makes
+  // their own new uploads appear instantly regardless of the API cache.
+  // Was max-age=10/swr=30.
+  res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
   return res;
 }

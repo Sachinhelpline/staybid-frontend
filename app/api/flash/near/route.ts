@@ -336,11 +336,11 @@ export async function GET(req: NextRequest) {
     deals:       personalized,
     generatedAt: new Date().toISOString(),
   });
-  // v107 — browser-cacheable for 10 s + SWR window of 30 s. The reshuffle
-  // still happens on the SERVER per request because `viewed` IDs (and the
-  // city filter, signals etc.) are part of the URL — so different users
-  // / different state get different cache keys. Within the same key,
-  // 10 s of identical results is fine for a flash-deal rail.
-  res.headers.set("Cache-Control", "public, max-age=10, stale-while-revalidate=30");
+  // v131.2 — bump CDN window. The reshuffle is keyed on viewed IDs + city
+  // + signals (all in the URL), so different users / different state still
+  // get different cache keys. Within a key, 60s of identical results is
+  // fine for the flash-deal rail (deals don't fluctuate that fast). Stale
+  // serves preserve sub-30ms TTFB during the bg revalidate. Was 10/30.
+  res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
   return res;
 }
