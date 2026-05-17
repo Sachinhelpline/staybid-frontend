@@ -99,6 +99,128 @@ export async function getProfileByUsername(username: string): Promise<SocialProf
   return Array.isArray(arr) && arr[0] ? arr[0] : null;
 }
 
+// ─── v132.10 — IDENTITY-MERGE cross-lookup ─────────────────────────────
+// One person can hold multiple `users` rows in this DB (Sachin had 6):
+//   - Phone with +91 prefix       (`+918881555188` → cmnr4b8ol...)
+//   - Phone without +91 prefix    (`8881555188`     → cmnuolhpx...)
+//   - Google Firebase UID         (`Ld6xDB42…`      → social_profiles e5c72301)
+//   - Facebook Firebase UID       (`l3fo3x6W…`      → social_profiles eebb4c38)
+//   - Phone-OTP-via-old-flow      (anything else)
+//
+// Each auth path stamps `social_profiles.user_id` with whatever id it had
+// at the time. When the same human switches auth methods later, their
+// new `users.id` doesn't match the older `social_profiles.user_id` →
+// `/me` shows 0 posts and a fresh upload creates a third profile.
+//
+// `findProfileAcrossIdentities` collapses this by searching THREE axes:
+//   1. Direct user_id match (the historical primary key).
+//   2. Phone match across users — handles +91 / no-+91 prefix variation.
+//   3. Email match across users.
+//
+// Returns the OLDEST matching profile (most history attached). Callers
+// that want every match should use `getAllProfilesAcrossIdentities` below.
+//
+// NEVER auto-merges. Read-only. If you want to migrate posts to a
+// canonical profile, do it via a SQL backfill — same pattern we used
+// for Sachin's data in v132.10.
+// ───────────────────────────────────────────────────────────────────────
+export type IdentityClaims = {
+  id: string;
+  phone?: string | null;
+  email?: string | null;
+};
+
+function normalizePhone(p?: string | null): string[] {
+  if (!p) return [];
+  const trimmed = String(p).trim();
+  if (!trimmed) return [];
+  // Reject Firebase placeholder phones (`unknown_<uid>`) — never a real
+  // phone match.
+  if (/^unknown_/i.test(trimmed)) return [];
+  // Strip non-digits then re-attach a couple of common forms so we
+  // catch both `+918881555188` and `8881555188` etc.
+  const digitsOnly = trimmed.replace(/[^\d]/g, "");
+  if (digitsOnly.length < 10) return [];
+  const last10 = digitsOnly.slice(-10);
+  const variants = new Set<string>([
+    trimmed,
+    digitsOnly,
+    last10,
+    `+91${last10}`,
+    `91${last10}`,
+  ]);
+  return Array.from(variants).filter(Boolean);
+}
+
+async function lookupUserIdsByContact(phones: string[], email?: string | null): Promise<string[]> {
+  if (!phones.length && !email) return [];
+  const ids = new Set<string>();
+  if (phones.length) {
+    const inList = phones.map((p) => encodeURIComponent(p)).join(",");
+    const r = await fetch(
+      `${SB_URL}/rest/v1/users?phone=in.(${inList})&select=id`,
+      { headers: HEADERS, cache: "no-store" }
+    );
+    if (r.ok) {
+      const arr = await r.json().catch(() => []);
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    }
+  }
+  if (email && /@/.test(email)) {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`,
+      { headers: HEADERS, cache: "no-store" }
+    );
+    if (r.ok) {
+      const arr = await r.json().catch(() => []);
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    }
+  }
+  return Array.from(ids);
+}
+
+export async function findProfileAcrossIdentities(claims: IdentityClaims): Promise<SocialProfile | null> {
+  if (!claims?.id) return null;
+  // 1. Direct lookup — fast path, covers the happy case.
+  const direct = await getProfileByUserId(claims.id);
+  if (direct) return direct;
+
+  // 2. Cross-lookup by phone + email — gathers every users.id that
+  // shares contact info with the caller, then queries social_profiles
+  // for any of those user_ids. Returns the OLDEST (most history).
+  const phoneVariants = normalizePhone(claims.phone);
+  const altIds = await lookupUserIdsByContact(phoneVariants, claims.email);
+  // Exclude the caller's own id (already searched) and dedupe.
+  const candidates = altIds.filter((u) => u && u !== claims.id);
+  if (!candidates.length) return null;
+
+  const inList = candidates.map((u) => encodeURIComponent(u)).join(",");
+  const r = await fetch(
+    `${SB_URL}/rest/v1/social_profiles?user_id=in.(${inList})&select=*&order=created_at.asc&limit=10`,
+    { headers: HEADERS, cache: "no-store" }
+  );
+  if (!r.ok) return null;
+  const arr = await r.json().catch(() => []);
+  return Array.isArray(arr) && arr[0] ? arr[0] : null;
+}
+
+export async function getAllProfilesAcrossIdentities(claims: IdentityClaims): Promise<SocialProfile[]> {
+  if (!claims?.id) return [];
+  const ids = new Set<string>([claims.id]);
+  const phoneVariants = normalizePhone(claims.phone);
+  const altIds = await lookupUserIdsByContact(phoneVariants, claims.email);
+  altIds.forEach((u) => ids.add(u));
+  if (ids.size === 0) return [];
+  const inList = Array.from(ids).map((u) => encodeURIComponent(u)).join(",");
+  const r = await fetch(
+    `${SB_URL}/rest/v1/social_profiles?user_id=in.(${inList})&select=*&order=created_at.asc`,
+    { headers: HEADERS, cache: "no-store" }
+  );
+  if (!r.ok) return [];
+  const arr = await r.json().catch(() => []);
+  return Array.isArray(arr) ? arr : [];
+}
+
 // ─── Trigger 1: PUBLIC user signs up ───────────────────────────────────
 export async function createForUser(user: {
   id: string;
@@ -245,9 +367,44 @@ export async function createForHotel(hotel: {
 // ─── Lazy auto-create — used by /api/social/profiles/me when the legacy
 // auth handler hasn't fired the trigger yet (e.g. account predates this
 // feature, OR backend on Railway hasn't been redeployed with the hook).
+//
+// v132.10 — Cross-identity bridging. Before creating a fresh profile,
+// look across phone + email matches so a user who switches auth methods
+// (Google → Phone, Facebook → Phone, etc.) gets re-bound to their
+// existing profile instead of having a 2nd / 3rd profile created. When
+// we find an orphan profile (one whose `user_id` points at a Firebase
+// uid that's no longer the canonical id), we rebind it to the current
+// caller's id so /api/social/feed's direct-user_id lookup hits next time.
 export async function ensureForUser(user: { id: string; name?: string; email?: string; phone?: string }) {
+  // Fast path — caller's user_id already owns a profile.
   const existing = await getProfileByUserId(user.id);
   if (existing) return existing;
+  // v132.10 — Cross-identity match across phone + email. Catches:
+  //   - same human signed up with Google first, then with Phone-OTP
+  //   - phone stored without +91 in one record but +91 in another
+  //   - Firebase placeholder phones (unknown_<uid>) skipped automatically
+  const cross = await findProfileAcrossIdentities({
+    id: user.id, phone: user.phone || null, email: user.email || null,
+  });
+  if (cross) {
+    // Re-bind the existing profile to the caller's current canonical
+    // user.id so future direct-lookups succeed without another
+    // cross-match round-trip. The OLD user_id was an orphan Firebase
+    // uid; rebinding is non-destructive (no posts move).
+    try {
+      await fetch(`${SB_URL}/rest/v1/social_profiles?id=eq.${cross.id}`, {
+        method: "PATCH",
+        headers: HEADERS,
+        body: JSON.stringify({
+          user_id: user.id,
+          // Keep existing fields — only re-bind. Caller's name/avatar
+          // sync happens elsewhere (/api/social/profiles/me PATCH).
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    } catch { /* non-fatal — read still works via cross-lookup */ }
+    return { ...cross, user_id: user.id };
+  }
   return createForUser(user);
 }
 
@@ -276,6 +433,8 @@ const SocialProfileService = {
   ensureForUser,
   getProfileByUserId,
   getProfileByUsername,
+  findProfileAcrossIdentities,
+  getAllProfilesAcrossIdentities,
   canPost,
   canChangeSound,
   canDeletePost,
