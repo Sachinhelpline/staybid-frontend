@@ -4498,16 +4498,15 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
               Shortcuts work on desktop only · disabled while typing
             </p>
           </div>
-          <style jsx>{`
-            @keyframes sbHelpFadeIn {
-              from { opacity: 0; }
-              to   { opacity: 1; }
-            }
-            @keyframes sbHelpScaleIn {
-              from { opacity: 0; transform: translateY(8px) scale(0.97); }
-              to   { opacity: 1; transform: translateY(0) scale(1); }
-            }
-          `}</style>
+          {/* v132.9.1 — @keyframes sbHelpFadeIn + sbHelpScaleIn moved to
+              app/desktop.css to avoid the SWC styled-jsx visitor.rs:597
+              panic. CLAUDE.md "Never add a SECOND <style jsx> block to
+              InstagramHotelFeed.tsx" — this file already has two existing
+              <style jsx global> blocks (lines 1353 + 3407) inside the
+              HotelCard + InstagramHotelFeed components. Adding a third
+              triggers the documented Rust panic during Vercel's SWC
+              compile pass. tsc --noEmit doesn't catch it (it's an SWC
+              transform issue, not a TS one). */}
         </div>
       )}
     </>

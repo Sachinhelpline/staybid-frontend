@@ -1295,6 +1295,28 @@ body main textarea.input-luxury {
    NOT appear on traditional pages (/hotels, /bookings, etc.) where the
    InstagramHotelFeed isn't mounted — so no extra hide gate needed. */
 
+/* v132.9.1 — Help overlay + back-to-top entrance keyframes.
+   Defined HERE (not inside a <style jsx> block) for two reasons:
+   1. InstagramHotelFeed.tsx already has two component-scoped <style jsx
+      global> blocks; a third triggers the SWC styled_jsx visitor.rs:597
+      panic on Vercel's build (CLAUDE.md documented trap).
+   2. BackToTopButton's <style jsx> (non-global) would scope the @keyframes
+      name to a hashed identifier while the component's inline `animation:`
+      style references the un-hashed name — silent dead animation.
+   Both names must stay stable + globally addressable from inline styles. */
+@keyframes sbHelpFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sbHelpScaleIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sbBackToTopIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    25. v132.9 — TABLET sweet-spot (768-1023px) polish
    ─────────────────────────────────────────────────────────────────────────
