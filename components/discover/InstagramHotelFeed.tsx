@@ -3292,6 +3292,76 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     return () => io.disconnect();
   }, [filteredItems.length, activeIdx, onIndexChange, onLoadMore]);
 
+  // v132.7 — Desktop keyboard navigation on the reel feed.
+  // ArrowDown / j / PageDown   → next reel
+  // ArrowUp   / k / PageUp     → previous reel
+  // m                          → toggle global mute
+  // Home / End                 → first / last reel
+  //
+  // Mobile (<1024px) skipped entirely — touch users don't need it and
+  // some Android keyboards intercept ArrowDown for autosuggest.
+  // Also skipped while an input/textarea/select is focused, while any
+  // .fixed.inset-0 modal is open (chat drawer, profile sheet, etc.),
+  // or when the user is mid-edit on a comment/caption.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Bail on mobile / tablet — keyboard shortcuts are a desktop affordance.
+      if (typeof window === "undefined" || !window.matchMedia("(min-width: 1024px)").matches) return;
+      // Bail on form-field focus.
+      const t = document.activeElement;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || (t as HTMLElement).isContentEditable)) return;
+      // Bail when a modal/drawer is on screen — the user is in another flow.
+      if (document.querySelector(".fixed.inset-0:not([aria-hidden=\"true\"])")) return;
+
+      const root = containerRef.current;
+      if (!root) return;
+      const cards = root.querySelectorAll<HTMLElement>(".ig-card");
+      const total = cards.length;
+      if (total === 0) return;
+
+      const goTo = (idx: number) => {
+        const safe = Math.max(0, Math.min(total - 1, idx));
+        const target = cards[safe];
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          setActiveIdx(safe);
+          onTrackEvent?.("ig_keyboard_nav", { key: e.key, idx: safe });
+        }
+      };
+
+      switch (e.key) {
+        case "ArrowDown":
+        case "PageDown":
+        case "j":
+          e.preventDefault();
+          goTo(activeIdx + 1);
+          break;
+        case "ArrowUp":
+        case "PageUp":
+        case "k":
+          e.preventDefault();
+          goTo(activeIdx - 1);
+          break;
+        case "Home":
+          e.preventDefault();
+          goTo(0);
+          break;
+        case "End":
+          e.preventDefault();
+          goTo(total - 1);
+          break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          toggleMute();
+          onTrackEvent?.("ig_keyboard_mute", { muted: !isMuted });
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activeIdx, isMuted, toggleMute, onTrackEvent]);
+
   const handleBook = useCallback((h: any) => {
     onTrackEvent?.("ig_click_book", { hotelId: h.id });
     router.push(`/hotels/${h.id}?intent=book${buildAttrSuffix(h)}#availability-picker`);
