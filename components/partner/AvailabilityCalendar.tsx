@@ -258,12 +258,20 @@ export default function AvailabilityCalendar({
       )}
 
       <style jsx>{`
+        /* ── v132.1 — Calendar is intentionally self-themed.
+           It floats as a warm cream card on the partner panel's dark
+           background; mixing dark-theme tokens with hardcoded light
+           status-color gradients (FREE_BG green, SOURCE_STYLE.*.bg)
+           created unreadable white-on-light-green text in the
+           previous build. All cell surfaces + text are now fixed
+           light/dark regardless of the surrounding theme.            */
         .ac-root {
-          background: var(--bg-card, #ffffff);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
           border-radius: 18px;
           padding: 16px;
-          box-shadow: var(--shadow-card, 0 6px 22px rgba(31,26,15,0.10));
+          box-shadow: 0 6px 22px rgba(31,26,15,0.18);
+          color: #1F1A0F;
         }
 
         .ac-toolbar {
@@ -274,26 +282,26 @@ export default function AvailabilityCalendar({
         .ac-month-label {
           font-family: "Cormorant Garamond", serif;
           font-size: 1.25rem; font-weight: 500;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           padding: 0 10px;
           min-width: 160px; text-align: center;
         }
         .ac-icon-btn {
           width: 34px; height: 34px; border-radius: 10px;
-          background: var(--bg-pill, #FFFCF6);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
-          color: var(--text-soft, #4A3820);
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
+          color: #4A3820;
           font-size: 1.2rem; font-weight: bold;
           cursor: pointer;
           transition: transform 0.12s ease, background 0.15s ease;
         }
-        .ac-icon-btn:hover { background: var(--accent-soft, rgba(201,166,107,0.14)); }
+        .ac-icon-btn:hover { background: rgba(201,166,107,0.14); }
         .ac-icon-btn:active { transform: scale(0.94); }
         .ac-today-btn {
           margin-left: 4px;
           padding: 6px 12px; border-radius: 10px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
-          color: var(--accent, #C9A66B);
+          background: rgba(201,166,107,0.14);
+          color: #8B6914;
           border: 1px solid rgba(201,166,107,0.28);
           font-size: 0.78rem; font-weight: 700;
           cursor: pointer;
@@ -316,9 +324,9 @@ export default function AvailabilityCalendar({
         .ac-block-btn:hover { box-shadow: 0 4px 14px rgba(201,166,107,0.45); }
         .ac-block-btn:active { transform: scale(0.97); }
         .ac-refresh-btn {
-          background: var(--text-soft, #4A3820);
+          background: #4A3820;
           color: #FFFCF6;
-          border: 1px solid var(--text-soft, #4A3820);
+          border: 1px solid #4A3820;
         }
         .ac-refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -326,8 +334,8 @@ export default function AvailabilityCalendar({
           margin-top: 14px;
           display: flex;
           gap: 8px;
-          background: var(--bg-pill, #FFFCF6);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
           border-radius: 14px;
           padding: 6px;
         }
@@ -343,7 +351,7 @@ export default function AvailabilityCalendar({
           background: transparent;
           border: 1px solid transparent;
           border-radius: 10px;
-          color: var(--text-soft, #4A3820);
+          color: #4A3820;
           font-family: inherit;
           cursor: pointer;
           transition: all 0.18s ease;
@@ -361,13 +369,13 @@ export default function AvailabilityCalendar({
         .ac-view-label {
           font-size: 0.84rem;
           font-weight: 700;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           letter-spacing: 0.01em;
         }
         .ac-view-hint {
           font-size: 0.6rem;
           font-weight: 500;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           letter-spacing: 0.04em;
           text-transform: uppercase;
           margin-top: 1px;
@@ -385,10 +393,10 @@ export default function AvailabilityCalendar({
           margin-top: 18px;
           text-align: center;
           padding: 36px 16px;
-          color: var(--text-muted, #6E5430);
-          background: var(--bg-pill, #FFFCF6);
+          color: #6E5430;
+          background: #FFFCF6;
           border-radius: 14px;
-          border: 1px dashed var(--border-strong, rgba(110,84,48,0.30));
+          border: 1px dashed rgba(110,84,48,0.30);
         }
       `}</style>
     </div>
@@ -590,30 +598,37 @@ function MonthView({
       )}
 
       <style jsx>{`
+        /* ── v132.1 — Month view: hardcoded light surfaces + dark text.
+           Was relying on theme tokens that flip dark on dark-mode
+           partner panel, producing dark cells with washed-out chips and
+           clipped Saturday column. Switched to fixed light bg + dark
+           text + minmax(0, 1fr) grid template to kill horizontal
+           overflow that was hiding the rightmost column.              */
         .mv-wrap { margin-top: 14px; }
 
         .mv-tip {
           font-size: 0.72rem;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           padding: 8px 12px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
           border-radius: 10px;
           border: 1px solid rgba(201,166,107,0.22);
           margin-bottom: 12px;
         }
-        .mv-tip b { color: var(--text-base, #1F1A0F); }
+        .mv-tip b { color: #1F1A0F; }
 
         .mv-grid-wrap {
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
           border-radius: 14px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
           overflow: hidden;
+          width: 100%;
         }
         .mv-weekhd {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          background: var(--bg-card, #ffffff);
-          border-bottom: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          background: #ffffff;
+          border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .mv-weekhd-day {
           padding: 8px 4px;
@@ -622,96 +637,106 @@ function MonthView({
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
+          min-width: 0;
         }
         .mv-weekhd-we { color: #c2410c; }
 
         .mv-grid {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
+          grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 1px;
           background: rgba(232,228,217,0.5);
         }
         .mv-cell {
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
           border: none;
-          padding: 6px 6px 8px;
+          padding: 6px 4px 8px;
           min-height: 84px;
+          min-width: 0;
+          overflow: hidden;
           cursor: pointer;
           display: flex;
           flex-direction: column;
           gap: 6px;
           font-family: inherit;
           text-align: left;
+          color: #1F1A0F;
           transition: background 0.15s ease, transform 0.12s ease;
         }
         .mv-cell:hover { background: rgba(201,166,107,0.10); }
         .mv-cell:active { transform: scale(0.98); }
-        .mv-cell-we { background: rgba(232,228,217,0.30); }
+        .mv-cell-we { background: #FAF5EB; }
         .mv-cell-out {
-          background: rgba(232,228,217,0.18);
+          background: rgba(232,228,217,0.35);
           opacity: 0.55;
           cursor: default;
           pointer-events: none;
         }
         .mv-cell-today { background: rgba(201,166,107,0.14); box-shadow: inset 0 0 0 1.5px rgba(201,166,107,0.55); }
-        .mv-cell-on { background: rgba(201,166,107,0.22); box-shadow: inset 0 0 0 1.5px var(--accent, #C9A66B); }
+        .mv-cell-on { background: rgba(201,166,107,0.22); box-shadow: inset 0 0 0 1.5px #C9A66B; }
         .mv-cell-top {
           display: flex; align-items: center; justify-content: space-between;
-          gap: 4px;
+          gap: 3px;
+          min-width: 0;
         }
         .mv-day-num {
           font-size: 0.84rem;
           font-weight: 700;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           line-height: 1;
+          flex-shrink: 0;
         }
         .mv-cell-today .mv-day-num {
           background: linear-gradient(135deg,#D9BE82,#C9A66B);
           color: #1F1A0F;
           border-radius: 999px;
-          width: 24px; height: 24px;
+          width: 22px; height: 22px;
           display: inline-flex; align-items: center; justify-content: center;
           line-height: 1;
         }
         .mv-free-pill {
-          font-size: 0.6rem;
+          font-size: 0.56rem;
           font-weight: 800;
-          padding: 1px 6px;
+          padding: 1px 5px;
           border-radius: 999px;
           border: 1px solid;
-          background: rgba(255,255,255,0.55);
+          background: rgba(255,255,255,0.85);
           line-height: 1.5;
           white-space: nowrap;
+          min-width: 0;
         }
         .mv-chips {
           display: flex;
           flex-wrap: wrap;
           gap: 2px;
           align-items: center;
+          min-width: 0;
         }
         .mv-chip {
           display: inline-block;
           width: 100%;
-          max-width: 14px;
-          height: 6px;
-          border-radius: 2px;
+          max-width: 16px;
+          height: 8px;
+          border-radius: 3px;
           border: 1px solid;
+          flex-shrink: 0;
         }
         .mv-chip-more {
           font-size: 0.55rem;
           font-weight: 700;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           margin-left: 2px;
         }
         @media (max-width: 480px) {
-          .mv-cell { min-height: 70px; padding: 4px 4px 6px; }
-          .mv-day-num { font-size: 0.78rem; }
-          .mv-free-pill { font-size: 0.54rem; padding: 1px 4px; }
-          .mv-chip { max-width: 10px; height: 5px; }
+          .mv-cell { min-height: 68px; padding: 4px 3px 6px; gap: 4px; }
+          .mv-day-num { font-size: 0.74rem; }
+          .mv-cell-today .mv-day-num { width: 20px; height: 20px; font-size: 0.7rem; }
+          .mv-free-pill { font-size: 0.52rem; padding: 0 4px; }
+          .mv-chip { max-width: 12px; height: 6px; border-radius: 2px; }
         }
 
-        /* ── Detail panel ───────────────────────────────────────── */
+        /* ── Detail panel — also self-themed (v132.1) ──────────── */
         .mv-panel-backdrop {
           position: fixed; inset: 0; z-index: 95;
           background: rgba(31,26,15,0.55);
@@ -720,7 +745,7 @@ function MonthView({
         }
         .mv-panel {
           width: 100%; max-width: 540px;
-          background: var(--bg-card, #ffffff);
+          background: #ffffff;
           border-top-left-radius: 22px; border-top-right-radius: 22px;
           box-shadow: 0 -20px 60px rgba(31,26,15,0.30);
           display: flex; flex-direction: column;
@@ -738,24 +763,24 @@ function MonthView({
         .mv-panel-hd {
           display: flex; align-items: center; justify-content: space-between;
           padding: 18px 22px 14px;
-          border-bottom: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .mv-panel-eyebrow {
           font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-          color: var(--accent, #C9A66B);
+          color: #8B6914;
           text-transform: uppercase;
         }
         .mv-panel-title {
           font-family: "Cormorant Garamond", serif;
           font-size: 1.45rem; font-weight: 400;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           line-height: 1.1; margin-top: 2px;
         }
         .mv-panel-close {
           width: 34px; height: 34px; border-radius: 999px;
           background: rgba(31,26,15,0.06);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
-          color: var(--text-soft, #4A3820); font-size: 1.1rem;
+          border: 1px solid rgba(232,228,217,0.8);
+          color: #4A3820; font-size: 1.1rem;
           cursor: pointer;
         }
         .mv-panel-body {
@@ -765,15 +790,15 @@ function MonthView({
         }
         .mv-panel-sub {
           font-size: 0.74rem;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           margin-bottom: 12px;
         }
         .mv-rows { display: flex; flex-direction: column; gap: 8px; }
         .mv-row {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 12px;
-          background: var(--bg-pill, #FFFCF6);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
           border-radius: 12px;
         }
         .mv-row-free { border-color: rgba(167,208,70,0.45); }
@@ -786,15 +811,15 @@ function MonthView({
         .mv-row-info { flex: 1 1 auto; min-width: 0; }
         .mv-row-name {
           font-weight: 700; font-size: 0.92rem;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .mv-row-status {
           margin-top: 2px;
           font-size: 0.74rem;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
         }
-        .mv-row-status b { color: var(--text-soft, #4A3820); }
+        .mv-row-status b { color: #4A3820; }
         .mv-row-btn {
           flex-shrink: 0;
           padding: 8px 14px;
@@ -1033,6 +1058,12 @@ function RoomTimelineView({
       )}
 
       <style jsx>{`
+        /* ── v132.1 — Room view: hardcoded light surfaces.
+           Pre-fix bug: .rv-cell inherited color from theme tokens →
+           on dark partner panel the text turned WHITE → invisible
+           against the light green FREE_BG. Now all cell text uses
+           explicit dark colors (#1F1A0F variants) against the
+           hardcoded light status backgrounds.                       */
         .rv-wrap { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
 
         .rv-picker {
@@ -1049,31 +1080,32 @@ function RoomTimelineView({
           display: inline-flex; flex-direction: column; align-items: flex-start;
           gap: 2px;
           padding: 10px 14px;
-          background: var(--bg-pill, #FFFCF6);
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
           border-radius: 14px;
           font-family: inherit; cursor: pointer;
           min-width: 130px;
+          color: #1F1A0F;
           transition: all 0.18s ease;
         }
         .rv-room-card:hover {
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
         }
         .rv-room-card-on {
           background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
-          border-color: var(--accent, #C9A66B);
+          border-color: #C9A66B;
           box-shadow: 0 4px 14px rgba(201,166,107,0.25);
         }
         .rv-room-emoji { font-size: 1.05rem; line-height: 1; }
         .rv-room-name {
           font-size: 0.86rem; font-weight: 700;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           margin-top: 4px;
           white-space: nowrap;
         }
         .rv-room-cap {
           font-size: 0.62rem; font-weight: 600;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
@@ -1083,41 +1115,44 @@ function RoomTimelineView({
         }
         .rv-stat {
           font-size: 0.78rem;
-          color: var(--text-soft, #4A3820);
+          color: #4A3820;
           padding: 6px 12px;
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
           border-radius: 999px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
         }
         .rv-stat b {
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           margin-right: 4px;
           font-size: 0.92rem;
         }
-        .rv-stat-free { border-color: rgba(167,208,70,0.55); background: linear-gradient(135deg,#f7fee7,#ecfccb); }
-        .rv-stat-booked { border-color: rgba(212,160,21,0.45); background: linear-gradient(135deg,#fffbeb,#fef3c7); }
-        .rv-stat-total { color: var(--text-muted, #6E5430); }
+        .rv-stat-free { border-color: rgba(167,208,70,0.55); background: linear-gradient(135deg,#f7fee7,#ecfccb); color: #3f5710; }
+        .rv-stat-free b { color: #1f3404; }
+        .rv-stat-booked { border-color: rgba(212,160,21,0.45); background: linear-gradient(135deg,#fffbeb,#fef3c7); color: #7c4f0c; }
+        .rv-stat-booked b { color: #4a2f00; }
+        .rv-stat-total { color: #6E5430; }
 
         .rv-tip {
           font-size: 0.72rem;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           padding: 8px 12px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
           border-radius: 10px;
           border: 1px solid rgba(201,166,107,0.22);
         }
 
         .rv-grid-wrap {
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
           border-radius: 14px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
           overflow: hidden;
+          width: 100%;
         }
         .rv-weekhd {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
-          background: var(--bg-card, #ffffff);
-          border-bottom: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          background: #ffffff;
+          border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .rv-weekhd-day {
           padding: 8px 4px;
@@ -1126,13 +1161,14 @@ function RoomTimelineView({
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
+          min-width: 0;
         }
         .rv-weekhd-we { color: #c2410c; }
 
         .rv-grid {
           display: grid;
-          grid-template-columns: repeat(7, 1fr);
+          grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 4px;
           padding: 6px;
         }
@@ -1149,9 +1185,11 @@ function RoomTimelineView({
           align-items: center;
           justify-content: flex-start;
           gap: 2px;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           transition: transform 0.12s ease, box-shadow 0.15s ease;
           min-height: 60px;
+          min-width: 0;
+          overflow: hidden;
         }
         .rv-cell:hover:not(:disabled) {
           transform: scale(1.04);
@@ -1160,36 +1198,38 @@ function RoomTimelineView({
         }
         .rv-cell:active:not(:disabled) { transform: scale(0.96); }
         .rv-cell-out {
-          background: rgba(232,228,217,0.18) !important;
+          background: rgba(232,228,217,0.35) !important;
           border-color: rgba(232,228,217,0.50) !important;
-          opacity: 0.45;
+          opacity: 0.55;
           cursor: default;
+          color: #6E5430 !important;
         }
-        .rv-cell-out .rv-day-num { color: var(--text-muted, #6E5430); }
+        .rv-cell-out .rv-day-num { color: #6E5430; }
         .rv-cell-today {
-          box-shadow: 0 0 0 2px var(--accent, #C9A66B);
+          box-shadow: 0 0 0 2px #C9A66B;
         }
         .rv-day-num {
           font-size: 1rem;
           font-weight: 800;
           line-height: 1;
+          color: #1F1A0F;
         }
         .rv-day-label {
           font-size: 0.6rem;
           font-weight: 700;
           letter-spacing: 0.04em;
-          opacity: 0.78;
+          color: rgba(31,26,15,0.78);
           line-height: 1.1;
         }
         .rv-day-unit {
           font-size: 0.58rem;
           font-weight: 700;
-          color: rgba(31,26,15,0.65);
+          color: rgba(31,26,15,0.72);
         }
         .rv-day-guest {
           font-size: 0.56rem;
           font-weight: 600;
-          color: rgba(31,26,15,0.62);
+          color: rgba(31,26,15,0.68);
           line-height: 1;
           white-space: nowrap;
           overflow: hidden;
@@ -1197,9 +1237,9 @@ function RoomTimelineView({
           max-width: 100%;
         }
         @media (max-width: 480px) {
-          .rv-day-num { font-size: 0.86rem; }
-          .rv-day-label { font-size: 0.54rem; }
-          .rv-cell { min-height: 52px; padding: 4px 2px; border-radius: 8px; }
+          .rv-day-num { font-size: 0.84rem; }
+          .rv-day-label { font-size: 0.52rem; }
+          .rv-cell { min-height: 50px; padding: 3px 2px; border-radius: 8px; gap: 1px; }
         }
 
         /* Popover */
@@ -1211,9 +1251,9 @@ function RoomTimelineView({
         }
         .rv-pop {
           width: 320px; max-width: calc(100vw - 24px);
-          background: var(--bg-card, #ffffff);
+          background: #ffffff;
           border-radius: 18px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
           box-shadow: 0 16px 40px rgba(31,26,15,0.30);
           overflow: hidden;
           animation: rvPopIn 0.20s ease both;
@@ -1222,14 +1262,14 @@ function RoomTimelineView({
         .rv-pop-hd {
           display: flex; align-items: center; gap: 10px;
           padding: 14px 16px;
-          background: linear-gradient(135deg, var(--cozy-cream-50, #FFFCF6), var(--cozy-cream-200, #F2EAD8));
-          border-bottom: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .rv-pop-pip { width: 12px; height: 12px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
-        .rv-pop-title { flex: 1; font-weight: 700; color: var(--text-base, #1F1A0F); font-size: 0.94rem; }
+        .rv-pop-title { flex: 1; font-weight: 700; color: #1F1A0F; font-size: 0.94rem; }
         .rv-pop-close {
           width: 30px; height: 30px; border-radius: 999px;
-          background: rgba(31,26,15,0.05); color: var(--text-soft, #4A3820);
+          background: rgba(31,26,15,0.05); color: #4A3820;
           font-weight: bold; border: none; cursor: pointer;
         }
         .rv-pop-body { padding: 14px 16px 16px; }
@@ -1237,15 +1277,15 @@ function RoomTimelineView({
           display: flex; justify-content: space-between; align-items: center;
           padding: 6px 0;
           font-size: 0.82rem;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           border-bottom: 1px solid rgba(232,228,217,0.4);
         }
-        .rv-pop-row span { color: var(--text-muted, #6E5430); font-size: 0.72rem; }
+        .rv-pop-row span { color: #6E5430; font-size: 0.72rem; }
         .rv-pop-note {
           margin-top: 10px; padding: 8px 10px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
           border-radius: 8px;
-          font-size: 0.74rem; color: var(--text-soft, #4A3820);
+          font-size: 0.74rem; color: #4A3820;
         }
         .rv-pop-help {
           margin-top: 10px; padding: 8px 10px;
@@ -1472,23 +1512,24 @@ function GridView({
       )}
 
       <style jsx>{`
+        /* v132.1 — self-themed, same reasoning as .mv-* and .rv-* above. */
         .gv-tip {
           margin-top: 14px;
           font-size: 0.72rem;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           padding: 8px 12px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
           border-radius: 10px;
           border: 1px solid rgba(201,166,107,0.22);
         }
-        .gv-tip b { color: var(--text-base, #1F1A0F); }
+        .gv-tip b { color: #1F1A0F; }
 
         .gv-grid-scroll {
           margin-top: 12px;
           overflow-x: auto;
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
           border-radius: 14px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
         }
         .gv-grid {
           width: 100%;
@@ -1497,10 +1538,10 @@ function GridView({
           min-width: 720px;
           font-size: 0.72rem;
         }
-        .gv-grid thead tr { background: var(--bg-card, #ffffff); }
+        .gv-grid thead tr { background: #ffffff; }
         .gv-room-th, .gv-room-td {
           position: sticky; left: 0;
-          background: var(--bg-card, #ffffff);
+          background: #ffffff;
           z-index: 2;
           padding: 10px 12px 10px 14px;
           text-align: left;
@@ -1510,15 +1551,15 @@ function GridView({
         }
         .gv-room-th {
           font-weight: 700;
-          color: var(--text-soft, #4A3820);
+          color: #4A3820;
           font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
         }
         .gv-room-td {
-          border-top: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border-top: 1px solid rgba(232,228,217,0.8);
         }
         .gv-room-name {
           font-weight: 700;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           font-size: 0.82rem;
           white-space: nowrap;
           overflow: hidden;
@@ -1527,19 +1568,20 @@ function GridView({
         }
         .gv-day-th {
           font-weight: 600;
-          color: var(--text-muted, #6E5430);
+          color: #6E5430;
           padding: 8px 0 6px;
           min-width: 36px;
           width: 36px;
           text-align: center;
         }
         .gv-day-th-we { color: #c2410c; }
-        .gv-day-th-today { color: var(--accent, #C9A66B); }
+        .gv-day-th-today { color: #8B6914; }
         .gv-day-num {
           display: block;
           font-size: 0.82rem;
           font-weight: 700;
           line-height: 1.1;
+          color: #1F1A0F;
         }
         .gv-day-th-today .gv-day-num {
           background: linear-gradient(135deg,#D9BE82,#C9A66B);
@@ -1562,9 +1604,9 @@ function GridView({
         .gv-cell-td {
           padding: 2px;
           border-top: 1px solid rgba(232,228,217,0.5);
-          background: var(--bg-pill, #FFFCF6);
+          background: #FFFCF6;
         }
-        .gv-cell-td-we { background: rgba(232,228,217,0.30); }
+        .gv-cell-td-we { background: #FAF5EB; }
         .gv-cell-td-today { background: rgba(201,166,107,0.10); }
 
         .gv-cell {
@@ -1601,9 +1643,9 @@ function GridView({
         .gv-pop {
           position: absolute;
           width: 288px;
-          background: var(--bg-card, #ffffff);
+          background: #ffffff;
           border-radius: 14px;
-          border: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          border: 1px solid rgba(232,228,217,0.8);
           box-shadow: 0 16px 40px rgba(31,26,15,0.25);
           overflow: hidden;
           z-index: 81;
@@ -1611,14 +1653,14 @@ function GridView({
         .gv-pop-hd {
           display: flex; align-items: center; gap: 10px;
           padding: 12px 14px;
-          background: linear-gradient(135deg, var(--cozy-cream-50, #FFFCF6), var(--cozy-cream-200, #F2EAD8));
-          border-bottom: 1px solid var(--border-soft, rgba(232,228,217,0.8));
+          background: linear-gradient(135deg, #FFFCF6, #F2EAD8);
+          border-bottom: 1px solid rgba(232,228,217,0.8);
         }
         .gv-pop-pip { width: 10px; height: 10px; border-radius: 999px; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
-        .gv-pop-title { flex: 1; font-weight: 700; color: var(--text-base, #1F1A0F); font-size: 0.92rem; }
+        .gv-pop-title { flex: 1; font-weight: 700; color: #1F1A0F; font-size: 0.92rem; }
         .gv-pop-close {
           width: 28px; height: 28px; border-radius: 999px;
-          background: rgba(31,26,15,0.05); color: var(--text-soft, #4A3820);
+          background: rgba(31,26,15,0.05); color: #4A3820;
           font-weight: bold; border: none; cursor: pointer;
         }
         .gv-pop-body { padding: 12px 14px 14px; }
@@ -1626,17 +1668,17 @@ function GridView({
           display: flex; justify-content: space-between; align-items: center;
           padding: 6px 0;
           font-size: 0.82rem;
-          color: var(--text-base, #1F1A0F);
+          color: #1F1A0F;
           border-bottom: 1px solid rgba(232,228,217,0.4);
         }
-        .gv-pop-row span { color: var(--text-muted, #6E5430); font-size: 0.72rem; }
+        .gv-pop-row span { color: #6E5430; font-size: 0.72rem; }
         .gv-pop-note {
           margin-top: 8px;
           padding: 8px 10px;
-          background: var(--accent-soft, rgba(201,166,107,0.14));
+          background: rgba(201,166,107,0.14);
           border-radius: 8px;
           font-size: 0.74rem;
-          color: var(--text-soft, #4A3820);
+          color: #4A3820;
         }
         .gv-pop-help {
           margin-top: 8px;
