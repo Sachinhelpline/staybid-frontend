@@ -49,7 +49,12 @@ function MePostsInner() {
       // social_posts table (author_id holds the profile id), which is why
       // /me/posts showed "Nothing to show yet" even when the user had
       // uploads on the server.
-      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+      // v132.12 — Forward Authorization so the route uses JWT-derived
+      // email + phone for cross-identity matching (Google login case).
+      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, {
+        cache: "no-store",
+        headers: tok ? { Authorization: `Bearer ${tok}` } : undefined,
+      })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null),
       tok
