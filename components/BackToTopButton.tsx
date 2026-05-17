@@ -88,12 +88,12 @@ export default function BackToTopButton({
       }}
     >
       ↑
-      <style jsx>{`
-        @keyframes sbBackToTopIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      {/* v132.9.1 — @keyframes sbBackToTopIn moved to app/desktop.css.
+          A non-global <style jsx> block would scope the @keyframes name
+          to a hashed identifier (`sbBackToTopIn-jsx-abc123`), but the
+          inline `animation:` style references the un-hashed name —
+          producing a silent mismatch and dead animation. Defining the
+          keyframes globally in desktop.css keeps the name stable. */}
     </button>
   );
 }
