@@ -1,16 +1,16 @@
 [
   {
-    "_setup": "TWA Digital Asset Links — verifies that THIS website (staybids.in) trusts the Android app to handle its URLs without showing the browser URL bar. Without this file (or with wrong values), Chrome falls back to Custom Tabs chrome (the '× staybids.in [share] [⋮]' bar at the top of the Play Store app). Replace BOTH placeholders below with the values from Google Play Console.",
-    "_how_to_fill": {
-      "package_name": "Find it in Google Play Console → All apps → StayBid → App information → 'Package name'. Common formats: com.staybids.www, in.staybids.app, app.staybids.com.",
-      "sha256_cert_fingerprints": "Google Play Console → Setup → App integrity → App signing key certificate → 'SHA-256 certificate fingerprint'. Copy the value with colons every 2 chars (e.g. AB:CD:EF:01:23:...). If you also self-sign uploads, add BOTH the Play-signing fingerprint AND your upload-key fingerprint to the array — Android accepts either."
+    "_setup": "TWA Digital Asset Links — verifies that staybids.in trusts the Play Store app to handle its URLs without showing the Chrome Custom Tabs URL bar. The package_name + sha256_cert_fingerprints below MUST match the installed app exactly. Add MORE entries to sha256_cert_fingerprints when shipping to production (Play App Signing key SHA-256) so both internal-testing + production builds verify.",
+    "_source": {
+      "package_name": "Google Play Console → All apps → StayBid → Package name (verified 2026-05-17)",
+      "sha256_cert_fingerprints[0]": "Google Play Console → Internal app sharing → Internal test certificate → SHA-256 (provided by owner 2026-05-17). When the app graduates from Closed Testing to Production, also add the SHA-256 from Setup → App integrity → App signing key certificate."
     },
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "REPLACE_WITH_PLAY_STORE_PACKAGE_NAME",
+      "package_name": "com.staybid",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_PLAY_STORE_SHA256_FINGERPRINT"
+        "38:35:22:FE:97:A4:B4:CB:EA:C3:BD:C2:FF:CD:0C:01:47:F1:40:0F:DA:C9:7D:58:5B:D8:C4:32:9D:BD:C7:8C"
       ]
     }
   }
