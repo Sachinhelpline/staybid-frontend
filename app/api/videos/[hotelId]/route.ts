@@ -16,5 +16,11 @@ export async function GET(req: NextRequest, { params }: { params: { hotelId: str
     { headers: SB_H }
   );
   const data = res.ok ? await res.json() : [];
-  return NextResponse.json({ videos: Array.isArray(data) ? data : [], total: Array.isArray(data) ? data.length : 0 });
+  const out = NextResponse.json({ videos: Array.isArray(data) ? data : [], total: Array.isArray(data) ? data.length : 0 });
+  // v131.7 — per-hotel video lists rarely change. Long CDN window so the
+  // hotel detail page's video tab loads instantly on every revisit.
+  out.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  out.headers.set("CDN-Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  out.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  return out;
 }

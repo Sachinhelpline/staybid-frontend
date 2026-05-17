@@ -164,6 +164,9 @@ export async function GET(req: NextRequest) {
   // user's own /me grid is augmented by PostsStore client-side which makes
   // their own new uploads appear instantly regardless of the API cache.
   // Was max-age=10/swr=30.
+  // v131.7 — PROPER CDN caching via Vercel-specific headers.
   res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  res.headers.set("CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  res.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
   return res;
 }

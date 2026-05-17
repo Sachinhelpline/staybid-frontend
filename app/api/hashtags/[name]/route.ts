@@ -41,10 +41,14 @@ export async function GET(_req: NextRequest, { params }: { params: { name: strin
     .slice(0, 8)
     .map(([t, uses]) => ({ tag: t, uses }));
 
-  return NextResponse.json({
+  const out = NextResponse.json({
     tag,
     count: list.length,
     related,
     videos: list.map((v: any) => ({ ...v, hotel: hotelMap[v.hotel_id] || null })),
   });
+  out.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  out.headers.set("CDN-Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  out.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+  return out;
 }
