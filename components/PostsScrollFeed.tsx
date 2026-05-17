@@ -1321,6 +1321,15 @@ function PostCard({
     // honour the global mute state from the parent.
     v.muted = hasCustomAudio ? true : muted;
     if (isActive) {
+      // v132.11 — explicitly call load() so the video element picks up the
+      // newly-mounted src attribute. React updating the src attribute alone
+      // does NOT trigger the media element's load algorithm on Mobile
+      // Safari + Android WebView when preload="none" — the src lands in
+      // the DOM but the browser never starts fetching, and the subsequent
+      // play() call resolves immediately to a paused state. Calling load()
+      // first kicks off the fetch; play() then auto-resumes when buffered.
+      // No-op when preload="auto" (already loading) so safe to always call.
+      try { v.load(); } catch {}
       const p = v.play();
       if (p && typeof p.then === "function") p.catch(() => {});
     } else {
@@ -1347,6 +1356,10 @@ function PostCard({
       try {
         a.muted = false;
         a.volume = 1;
+        // v132.11 — same load() fix as the video element above. Without
+        // this, the audio src attribute is in the DOM but no fetch
+        // happens with preload="none" → play() resolves to silence.
+        try { a.load(); } catch {}
         const p = a.play();
         if (p && typeof p.then === "function") p.catch(() => {});
       } catch {}
