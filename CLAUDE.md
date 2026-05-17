@@ -3613,3 +3613,597 @@ app/layout.tsx                             # SB_BUILD + badge bumped per release
 - **Engine + scoring rules** in `lib/hotel-score.ts` — **NOT TOUCHED THIS ERA**
 - **Supabase Cached Egress** should drop materially over next 24-48h from the May 12 peak (6.6 GB/day). Track on the Supabase dashboard.
 
+---
+
+## CDN Cache + Reel Dedup Hardening Era (v131.7 → v131.8, 2026-05-17)
+
+Three commits on the morning after the v131.6 ship. Two production bugs surfaced in user testing the moment the v131.6 deployment went live: `/api/hotels` was still 1.6 s warm despite the v131.2 CDN cache windows (silent Vercel header strip), and one reel upload was still showing TWICE on `/` and `/discover` despite the v110.1 + v121.2 dedup work supposedly killing this bug for good. Both fixed, plus a defensive-comment commit to lock the dedup chain so a future Claude session can't regress it without tripping a wire.
+
+### v131.7 — CDN-Cache-Control + Vercel-CDN-Cache-Control (commit `43511fa`)
+
+**The bug:** I shipped v131.2 with `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` on every hot route. Browser opens of `/api/hotels` should have been hitting Vercel's edge cache and returning in <30 ms. They were 1.6 s warm — every request hitting Lambda + Supabase fresh. CDN was MISS on every hit.
+
+**Root cause:** Vercel **silently strips `s-maxage` from `Cache-Control` on routes flagged as auto-dynamic**. `/api/hotels` reads `searchParams`, so the Next.js build classifies it dynamic, and the edge proxy throws away `s-maxage` while keeping `public`. The response header that reached the browser was just `cache-control: public` — useless for CDN behaviour, and `x-vercel-cache: MISS` confirmed the edge never even tried.
+
+**The fix:** Vercel honours TWO non-stripped header keys for CDN behaviour: `CDN-Cache-Control` and `Vercel-CDN-Cache-Control`. Both take precedence over the public `Cache-Control` for edge logic. Set all three on the same response. Browser still revalidates (`max-age=0`) but the CDN now serves ~90% of repeat requests in <30 ms.
+
+Seven routes patched in the same shape:
+- `/api/hotels`
+- `/api/flash/near`
+- `/api/social/feed`
+- `/api/videos/feed`
+- `/api/videos/[hotelId]`
+- `/api/hashtags/[name]`
+- `/api/hotels/[id]/scorecard`
+
+Expected per-route latency: `/api/hotels` 1.6 s → ~30 ms warm (50× faster). No engine logic, no scoring rules, no business-logic touches.
+
+### v131.8 — Exact-match on `client_post_id` (commit `abedf15`)
+
+**User report:** "1 reel upload → 2 cards on home/reels but 1 on /me". The duplicate reel bug — supposedly dead since v121.2 — was back. /me's profile grid used id-based dedup and only showed one card. The feed (`/`, `/discover`, `/reels`) used caption-fingerprint dedup and showed two.
+
+**Root cause:** The v131.6 InstagramHotelFeed dedup built a fingerprint as `${kind}|${first 60 chars of caption}` for every local PostsStore item, then filtered `propItems` with the same fingerprint. But the server-stored caption ≠ the local PostsStore caption — display-side formatting was appending hashtag suffixes on the local copy ("❤️🔥😍" on server vs "❤️🔥😍 #travel #cozy" locally). Fingerprints diverged → caption-fingerprint dedup silently no-op'd → 1 local + 1 remote propItem both rendered.
+
+**The fix:** Promote dedup from "string approximation" to "exact identifier match". The Composer already generates a unique `clientPostId` per upload (`post-<ts>-<rand>`). The server already stores it in `social_posts.client_post_id` (v110.1 era idempotency column). Forward that column all the way through the read pipeline:
+
+1. `/api/social/feed/route.ts` returns the row including `client_post_id` (still `select=*`, was never narrowed)
+2. `app/discover/page.tsx socialPostToItem` forwards `post.client_post_id` as `_clientPostId` on the item's hotel sub-object
+3. `components/discover/InstagramHotelFeed.tsx` builds `localIds = new Set(userItems.map(u => String(u.hotel.id)))` and filters propItems: if `_isSelf` AND `_clientPostId` is in `localIds` → drop. Caption fingerprint kept as a SECONDARY fallback for legacy posts that pre-date the clientPostId era.
+
+Verified live: same upload now produces exactly one card on every surface, regardless of caption formatting drift between local + server.
+
+### Future-safe markers (commit `b4fa09e`)
+
+User flagged in the PR review: this same duplicate-reel bug has now bitten production THREE times (v110.1, v121.2, v131.8). Asked to lock the chain so future Claude sessions can't regress it without seeing a wire. Pure docs/comments commit — zero runtime change.
+
+**What got marked:**
+
+The reel-dedup chain is FIVE hops, and ANY broken hop reintroduces duplicates:
+
+1. **Composer** (`components/discover/CreateFlow.tsx`) — generates `clientPostId` per upload, sends in POST body to `/api/social/posts`
+2. **Server insert** (`app/api/social/posts/route.ts`) — saves to `social_posts.client_post_id`; unique partial index on `(author_id, client_post_id)` provides server-side dedup
+3. **Feed query** (`app/api/social/feed/route.ts`) — returns the row with `client_post_id` field intact (must stay `select=*`; narrowing this column out breaks dedup silently)
+4. **Item transform** (`app/discover/page.tsx socialPostToItem`) — forwards `post.client_post_id` as `_clientPostId` on the item's hotel sub-object
+5. **Renderer dedup** (`components/discover/InstagramHotelFeed.tsx`) — exact-match on `_clientPostId` against the local PostsStore's `localIds` set; caption-fingerprint as fallback for legacy posts
+
+Every hop now has a `⚠️ v131.8 LOAD-BEARING` comment block explaining the contract + naming the other 4 surfaces it depends on. New rule added to the CLAUDE.md v131 era's "Things to Avoid" listing all 5 hops by file path. The hope is that a future Claude session opening any one file sees the ⚠️ marker, scrolls back to read the contract, and audits the full chain before touching it.
+
+### Files modified (this era)
+```
+app/api/flash/near/route.ts                 # +CDN-Cache-Control + Vercel-CDN-Cache-Control
+app/api/hashtags/[name]/route.ts            # same
+app/api/hotels/[id]/scorecard/route.ts      # same
+app/api/hotels/route.ts                     # same
+app/api/social/feed/route.ts                # same
+app/api/videos/[hotelId]/route.ts           # same
+app/api/videos/feed/route.ts                # same
+app/api/social/posts/route.ts               # +⚠️ LOAD-BEARING marker (b4fa09e)
+app/discover/page.tsx                       # +_clientPostId forwarding (abedf15) +marker
+components/discover/InstagramHotelFeed.tsx  # +exact-match dedup (abedf15) +marker
+app/layout.tsx                              # SB_BUILD v131.6 → v131.7 → v131.8
+```
+
+### Service-worker version map (continued)
+- v131.6 → scorecard-honor-cached-scores
+- v131.7 → cdn-cache-control-vercel-strip
+- **v131.8 → exact-match-client-post-id-dedup**
+
+### Things to Avoid (v131.7 → v131.8 Era)
+
+- **Never** rely on plain `Cache-Control: public, s-maxage=N` for CDN behaviour on a Next.js App Router route that reads `searchParams`, `cookies()`, or `headers()`. Vercel auto-classifies those routes as dynamic and silently strips `s-maxage`. Set `CDN-Cache-Control` AND `Vercel-CDN-Cache-Control` with the same value — both bypass the strip. Verify with `curl -sI https://staybids.in/api/<route>` and look for `x-vercel-cache: HIT` after the first warm request.
+- **Never** assume `cache-control: public` in the response header means the CDN is honouring your window. The literal string survives the strip but the meaningful `s-maxage` directive does not. Always check `x-vercel-cache` value, not just the header text.
+- **Never** revert `_clientPostId` forwarding in `app/discover/page.tsx socialPostToItem`. It's a 5-line block with a ⚠️ LOAD-BEARING marker. Removing it breaks reel dedup in a way that's INVISIBLE during dev (because dev mostly tests with fresh accounts that have no propItems) and surfaces only in production after a user uploads their second reel.
+- **Never** narrow `social_posts` to a named-column projection that omits `client_post_id`. The v131 era already documented this as one of the broken column-narrow attempts; v131.8 makes it load-bearing for dedup. Keep `select=*` on `/api/social/feed`.
+- **Never** "simplify" the caption-fingerprint dedup branch in `InstagramHotelFeed.tsx`. It's the SECONDARY path for legacy posts that pre-date `client_post_id` (anything inserted before the v110.1 era). Removing it makes pre-v110.1 posts show up twice forever.
+- **Never** strip the `localIds` set construction in `InstagramHotelFeed.tsx`. The renderer dedup needs O(1) lookup; rebuilding it as `userItems.find(...)` inside the filter callback turns the dedup pass O(N²) and the 46-card feed visibly stutters at scroll-snap.
+- **Never** ignore an `⚠️ v131.8 LOAD-BEARING` comment. They mark the 5 dedup hops by name. If a code review touches one without auditing the others, the third-time-regression cycle starts again (v110.1 → v121.2 → v131.8 → ???).
+
+### What this era did NOT do (intentionally)
+
+- **Server-side dedup audit script.** v110.1 added a unique partial index on `(author_id, client_post_id)` — that's the server's defence. We did not write a periodic check to find duplicate rows that slipped past it (e.g. legacy NULL `client_post_id` rows from pre-v110.1). User posts pre-dating the column are still vulnerable to the caption-fingerprint fallback being wrong.
+- **Backfill `client_post_id` on legacy posts.** Could be done with a one-time SQL pass deriving a synthetic `clientPostId` from `id + author_id`. Skipped because legacy posts already render via the fingerprint fallback, and a backfill would invalidate the existing partial-index dedup contract.
+- **Auto-recovery for stripped CDN headers.** Vercel could in theory re-classify a route as static and start honouring `s-maxage` again. There's no test that fails when this happens. Manual `curl -sI` per release is the holding pattern.
+
+---
+
+## Partner Availability Calendar Rewrite Era (v132 → v132.3, 2026-05-17)
+
+Four commits across one afternoon rewriting the partner panel's per-room × per-day availability matrix into a three-view system (Month / Room / Grid), then iteratively fixing dark-mode contrast, Saturday-column clipping, off-screen modals, and finally landing a per-date pricing + quantity editor with autopilot-mode-aware safety warnings.
+
+### v132 — Three-view rewrite + visual OTA picker (commit `b9180f7`)
+
+**User feedback going in:** the v113-era per-room × per-day matrix (36×36 cells, ~6 days visible at a time on mobile, horizontal-scroll required) gave partners no whole-month overview. To check next Saturday's free rooms they had to scroll horizontally past 5 columns. Felt outdated.
+
+**The rewrite:** added a top-of-card toggle exposing three views, with Month as the new default:
+
+- **📅 Month (default)** — full 7×6 calendar grid; each in-month date shows a "free / total" count + tiny status-tinted mini chips (one per room category). Tap a date → slide-in detail panel listing every room's status for that day + inline `+Walk-in` and `🗑 Remove block` buttons. Whole month at a glance, mobile-first.
+- **🛏️ Room** — horizontal card picker on top (each card shows room name + capacity); pick one and the body becomes that room's full month timeline in large aspect-1:1 cells with status labels, guest names, unit numbers. Far easier to scan one room's calendar than reading a cramped matrix row.
+- **📊 Grid** — original v113 per-room × per-day matrix preserved verbatim for power users. Drag-to-select multi-day blocks still works here exactly as before.
+
+The shared toolbar, legend, popovers, and `BlockDatesSheet` are unchanged across all three views. Host-page contract was preserved verbatim: same component props, same handler signatures, same `/api/partner/*` endpoints, zero backend changes, zero migration. SW cache names intentionally NOT bumped (per v131 discipline — fetch-handler logic unchanged, UI-only release).
+
+**Bonus shipped same commit:** OTA Channel Sync's "Select room…" dropdown was upgraded to visual room cards + provider pills (Booking.com / Airbnb / MMT / Goibibo / Agoda / Other). Add-feed button stays disabled until both room + URL are set.
+
+### v132.1 — Self-themed calendar + Saturday clip fix (commit `ab655ac`)
+
+**User report:** on dark-mode partner panel, Month-view cells became dark with washed-out chips, Room-view labels turned WHITE on light-green cells (invisible), and the Saturday column was visibly clipped on the right edge.
+
+**Two root causes:**
+
+1. **Theme tokens vs hardcoded status colors.** The new calendar read `var(--bg-pill)` / `var(--text-base)` for cell surfaces + text — these flip light↔dark with the theme system. But the status-color visual language (FREE_BG light green, `SOURCE_STYLE.*.bg` pastels) was HARDCODED for light backgrounds. Dark-mode users got dark cell containers wrapped around hardcoded light-status gradients with text-color flipped to white. White-on-light-green is invisible.
+
+   **Fix:** make the calendar entirely self-themed. It now floats as a warm-cream card regardless of surrounding theme. Every `bg` / `text` / `border` value is fixed light/dark instead of a theme variable, so the status pastels stay readable everywhere. Outer `.ac-root` has its own `#FFFCF6` surface + `#1F1A0F` text + heavier shadow for the "card-on-dark-canvas" look in dark mode.
+
+2. **`grid-template-columns: repeat(7, 1fr)` overflow.** CSS `1fr` resolves to `minmax(min-content, 1fr)` by default. The "2/2" free-rooms pill uses `white-space: nowrap` and pushed cells past their nominal width. `.mv-grid-wrap` has `overflow: hidden` → Saturday column got visibly clipped on the right edge.
+
+   **Fix:** every `repeat(7, 1fr)` replaced with `repeat(7, minmax(0, 1fr))` + `min-width: 0` + `overflow: hidden` on every cell. Content shrinks instead of overflowing. Free-pill padding tightened too. Month-view mini-chips also tightened (8 px tall, 16 px max width) so they don't read as tiny dashes, and cell padding reduced at the `@media (max-width: 480px)` breakpoint so 7 columns fit comfortably on iPhone SE.
+
+Pure CSS fix — no JS, no API, no migration. SW cache untouched per v131 discipline.
+
+### v132.2 — Portal-mounted panel + per-date pricing & quantity editor (commit `056a19c`)
+
+Two changes shipping together — both from user testing v132.1.
+
+**Bug fix — day-detail panel was off-screen on tap.** User report: tapping a date in Month view briefly showed a black backdrop, then the panel was somewhere far below the viewport — had to scroll/drag to reveal it.
+
+Root cause: the parent `<div className="fade-up">` in the partner dashboard uses `transform: translateY(...)` animation. CSS `transform` creates a new containing block, so my modal's `position: fixed; inset: 0` anchored to `.fade-up` (which can sit above the current scroll position) instead of the viewport. Result: backdrop covered `.fade-up`, panel sat at the bottom of `.fade-up`, above the user's scrolled-into view.
+
+**Fix:** wrap every overlay in `createPortal(..., document.body)` to escape the containing-block trap. Applied to all three views' overlays: MonthView day-detail panel, RoomTimelineView popover, GridView popover. Each guard checks `typeof document !== "undefined"` so SSR pre-render gracefully skips.
+
+**Feature — per-date per-room price + quantity editing.** User asked: "har date ke room wise price dikhey customer ki tarah … direct price change kar sake … single bhi multipal bhi … popup khule kya karna chahte hai — price change ya quantity change?"
+
+What shipped:
+
+- **NEW table `room_date_overrides`** (`migrations/2026-05-17-room-date-overrides.sql`) — one row per `(roomId, date)` with UNIQUE constraint. `floorPrice` + `quantityOverride` both nullable; either or both can be set, null falls back to the base room value. Permissive RLS + `updatedAt` auto-touch trigger.
+- **NEW API `/api/partner/room-pricing`** — GET (range query, returns overrides indexed by `${roomId}|${date}` for O(1) cell lookup), POST (bulk upsert 1-365 items per call with `on_conflict + merge-duplicates` so resaving same key updates instead of erroring), DELETE (by id OR by `roomId+date`, cell reverts to base). Auth via the same dual-userId resolver as `/api/partner/hotel` (handles +91 vs non-+91 phone duplicates from v44 era).
+- **`/api/partner/calendar` extended** — now also returns `roomPrices` (base floorPrice / mrp / quantity per room) and `priceOverrides` (per-date overrides). All three reads run in parallel — no extra latency vs the v132.1 shape.
+- **UI: Month view cell pricing.** Each in-month cell now shows the cheapest effective room price at the bottom (e.g. "₹2.5k"). Updates immediately when overrides save.
+- **Day-detail panel rows** show two chips per room: 💰 price + 🛏 qty. Override chips are gold-tinted with strikethrough showing the base value so partner sees the delta at a glance. ✏️ edit button opens the editor.
+- **Multi-day selection mode.** New "📅 Multi-day" button next to the tip bar enables tap-to-toggle selection (gold highlight + ✓ badge). Sticky bottom action bar appears at first selection with two buttons: 💰 Price · 🔢 Qty — opens the editor over the selected range + a room picker.
+- **`PricingEditorModal`** handles single + bulk + price + qty via a two-tab toggle (Price / Quantity). Shows base value as hint. Reset-to-base button for single edits that already have an override. All editor surfaces portaled (same `.fade-up` trap fix).
+- **Parent dashboard wired** — new `roomPrices` + `priceOverrides` state hydrated from calendar API; new `savePricing` (bulk POST) + `clearPricing` (DELETE) handlers; both refresh the calendar after success so UI reflects the write.
+
+### v132.3 — 4 price types + autopilot warnings + Free→Available (commit `d7b431b`)
+
+Three asks from user testing v132.2, shipped together with a build hotfix squashed at the end.
+
+**1. Free → Available + Room-view prices.** User: "yeh free q show ho raha hai ishko available se replace karo" + "Room section me bhi price dikhna chahiye jaisa Month me dikh raha hai".
+
+Renamed every USER-VISIBLE "Free" string to "Available" across legend, cell labels, day-panel rows, aria-labels, and the Room-view stats strip. Internal vars (`isFree`, `FREE_BG`, `FREE_BORDER`, `stats.free`) kept as-is — auditing confirmed no schema field or API key is called "free", just UI text. "Booked" stays as-is (already the partner-app standard for reservations, matches Bookings tab).
+
+Added price display to Room-view cells via new `.rv-day-price` element. Each in-month cell now shows ₹X.Xk effective price for the active selected room — pulls from `room_date_overrides` if set, else from `rooms.floorPrice`. Mirrors the Month-view per-cell price pattern.
+
+**2. Four price types in the editor.** User: "wahan charo price edit krne ka option hona chahiye jaise room ka regular price and floor price aise hi flash deal ka — ushke bhi dono price regular price jo show ho raha hota hai aur floor price".
+
+Schema (`migrations/2026-05-17-room-date-overrides-four-prices.sql`) added 3 new NUMERIC nullable cols to `room_date_overrides`: `mrp`, `flashPrice`, `flashFloorPrice`. Each is an independent override; empty input = NULL = fall back to base.
+
+Editor tabs are now 5 instead of 2:
+- 🏷 Regular     → `rooms.mrp` override for this date
+- 💰 Floor       → `rooms.floorPrice` override (the bid floor)
+- ⚡ Flash       → `flash_deals` regular price for this date
+- 🔥 Flash Floor → `rooms.flashFloorPrice` override
+- 🛏 Qty         → `quantityOverride`
+
+Partner can set any combination. API validates each price field independently as non-negative number.
+
+**3. Autopilot-mode-aware smart warnings.** User: "hotel owner ne kaun sa mode on kiya hai ushe dhyan rakhte hue design ho na ki ush mode ko break kar de. Bypass krwana chahta hai toh notification show ho ki yeh rule break hoga aur kaun si date / room / flash deal ke liye hai."
+
+Calendar API now also returns `hotels.autopilot_mode` (from v130 Hybrid Autopilot Yield era) + the `flash_deals` active for each room (id + price + floorPrice + validUntil).
+
+PricingEditorModal surfaces this with:
+
+**Top — colored mode chip:**
+- 🤖 Full Autopilot — every tier-eligible bid auto-confirms
+- ⚖️ Hybrid — only premium / strong bidders auto-confirm
+- 👤 Manual Review — every bid waits for your approval
+
+**Bottom — warning engine fires BEFORE save, with two levels:**
+
+ℹ️ **Info (advisory, doesn't block):**
+- N of these dates already has a confirmed booking → override applies to future bids only
+- This room has N active flash deals → editor writes a per-date override, the deal page is separate
+
+⚠️ **Warn (must acknowledge — first Save click flips button to "Save anyway"):**
+- Floor > Regular MRP — auto-accept windows may never trigger
+- Flash floor > regular floor — flash should be more discounted
+- Flash regular < flash floor — flash would auto-reject everything
+- Autopilot=auto and floor ≥ 110% of MRP — auto-confirms may never trigger
+- Autopilot=hybrid and floor ≤ 40% of MRP — premium bidders will auto-confirm well below your margin target
+
+Each warning shows specifically which dates + rooms + flash deals are affected. User can still save (these are advisory) but the button changes color and label so the bypass is intentional.
+
+**Build hotfix squashed into the same PR.** Vercel build failed: SWC reported `autopilotMode` defined multiple times in `app/partner/dashboard/page.tsx`. The dashboard already had its own `autopilotMode` state from the v130 Hybrid Autopilot Yield feature (sourced from `/api/partner/hotel`). My v132.3 commit added a second declaration. Dropped the duplicate; the existing setter is now used by both `loadHotel` + `loadCalendar`. Local `tsc --noEmit` missed it because TypeScript treats `let`/`const` redeclarations in the same scope differently than SWC's strict compiler.
+
+### Files added (this era)
+```
+migrations/2026-05-17-room-date-overrides.sql               # roomId+date overrides (floorPrice + qty)
+migrations/2026-05-17-room-date-overrides-four-prices.sql   # +mrp +flashPrice +flashFloorPrice
+app/api/partner/room-pricing/route.ts                       # GET / POST bulk upsert / DELETE
+```
+
+### Files modified (this era — major touches)
+```
+components/partner/AvailabilityCalendar.tsx   # +1557→2360 lines · Month + Room + Grid views,
+                                                portal-mounted overlays, 5-tab editor, warning engine
+app/partner/dashboard/page.tsx                # +roomPrices + priceOverrides state · savePricing /
+                                                clearPricing handlers · autopilotMode dedup
+app/api/partner/calendar/route.ts             # +roomPrices + priceOverrides + autopilot_mode +
+                                                flash_deals parallel reads
+app/layout.tsx                                # SB_BUILD v131.8 → v132 → v132.1 → v132.2 → v132.3
+```
+
+### Service-worker version map (continued)
+- v131.8 → exact-match-client-post-id-dedup
+- v132 → three-view-availability-month-room-grid
+- v132.1 → self-themed-cells-no-saturday-clip
+- v132.2 → portal-modals-per-date-pricing-editor
+- **v132.3 → four-prices-autopilot-warnings-free-to-available**
+
+### Things to Avoid (v132 → v132.3 Era)
+
+- **Never** mount a partner-panel modal/overlay inside the `.fade-up` parent without wrapping it in `createPortal(..., document.body)`. The `.fade-up` ancestor has `transform: translateY(...)` which creates a containing block — `position: fixed; inset: 0` then anchors to `.fade-up` instead of the viewport. Verified live: backdrop covers the animated panel but the modal body sits below the scroll position. Always portal partner modals.
+- **Never** use `repeat(7, 1fr)` on a CSS Grid that has nowrap content inside the cells. `1fr` resolves to `minmax(min-content, 1fr)` — cells expand to fit their longest line and overflow the container. Use `repeat(7, minmax(0, 1fr))` + `min-width: 0` + `overflow: hidden` on every cell to make content shrink instead.
+- **Never** read theme tokens (`var(--bg-pill)` / `var(--text-base)`) for the AvailabilityCalendar surfaces while the status-color visual language (FREE_BG, SOURCE_STYLE pastels) is hardcoded for light backgrounds. Either flip ALL of the calendar's colors to theme tokens (huge surface area, dark-mode pastel design work) or keep ALL of them fixed light/dark like v132.1 did. Mixing the two paradigms = white text on light-green cells.
+- **Never** declare a `autopilotMode` state inside `loadCalendar` when the parent dashboard already has one from `loadHotel`. SWC catches the duplicate at build time but `tsc --noEmit` doesn't (TS scopes the second declaration to the block; SWC sees the function-level shadow). Verify with `next build` locally before pushing, or always re-use the parent setter.
+- **Never** revert the "Free → Available" UI rename. The internal variable names (`isFree`, `FREE_BG`, `stats.free`) intentionally stay as-is — they're symbols. The user-visible strings explicitly need to read "Available" so partners don't mistake the column for a freebie/unpaid status. Audit any new copy in this calendar against the same rule.
+- **Never** drop the warning engine from `PricingEditorModal`. The user explicitly asked for autopilot-mode-aware warnings before save — "ushe dhyan rakhte hue design ho na ki ush mode ko break kar de". Auto-saving an override that breaks the partner's chosen autopilot strategy without warning re-introduces the same trust-loss issue that the v130 Hybrid Autopilot release fixed.
+- **Never** strip a price field from the 5-tab editor without also dropping the matching column from `room_date_overrides`. The schema (`mrp`, `floorPrice`, `flashPrice`, `flashFloorPrice`, `quantityOverride`) and the UI are 1:1. Removing a tab leaves orphan column data that the parent dashboard re-reads on next calendar fetch — partners will see "?" override chips with no edit path.
+- **Never** bump `public/sw.js` `CACHE_NAME` for UI-only AvailabilityCalendar changes. The v131 discipline holds — bump only when the fetch-handler logic in sw.js actually changes. UI-only releases keep the same cache name + the v57 stable-URL contract.
+- **Never** widen `room_date_overrides` past per-date granularity (e.g. per-hour or per-customer-tier). The UNIQUE constraint on `(roomId, date)` is the contract. Adding a third dimension would need a new join key + a fresh upsert path; rejecting bulk POSTs with `merge-duplicates` would break the multi-day selection mode.
+
+### What this era did NOT do (intentionally)
+
+- **Drag-to-select multi-day inside Month view.** Multi-day selection is a TAP-TO-TOGGLE mode triggered by the "📅 Multi-day" button. Drag-to-select is preserved only in Grid view (the v113 power-user matrix). Adding drag to Month view would conflict with the tap-to-open-detail-panel gesture.
+- **Per-date flash-deal active/inactive toggle.** The editor writes per-date overrides for flash regular + flash-floor prices, but it does NOT create or disable flash_deal rows. The Flash Deals tab remains the authoritative surface for activation.
+- **Calendar history / audit log.** Every override write is immediate, no undo, no diff log. Future partners may want to see "what was last week's price for room X" — would need a separate `room_date_overrides_history` table or rely on Supabase's logical-replication audit.
+
+---
+
+## Desktop UX Overhaul Era (v132.4 → v132.9.1, 2026-05-17)
+
+Two commits — one massive squash of v132.4 through v132.9 (six sub-versions of desktop/laptop UX polish) and one same-day SWC build-panic hotfix that took the squash from "merged" to "actually live on Vercel". Mobile-first codebase untouched at <1024 px — every change inside `@media (min-width: ...)` blocks or `matchMedia()` guards.
+
+### v132.4 — Modal centering on desktop
+
+Every partner / customer modal in the customer codebase ships as a bottom-sheet (drag-from-bottom, mobile-first). On desktop displays the bottom-sheet treatment leaves modals pinned to the bottom of a 1920×1080 viewport — wrong center of attention, wrong proportions. v132.4 adds an `@media (min-width: 1024px)` block in `app/desktop.css` that centers 14+ modals (Negotiate, Book Now, Flash Deal, Booking Review, Acceptance Window, Hold Banner, Hotel Picker, Edit Profile, Highlight Picker, Audio Picker, Story Viewer, Profile Photo Editor, Create Sheet, Comment Drawer) with `align-items: center; justify-content: center;` + a fade+scale entrance animation (`transform: scale(0.96) → 1` + `opacity: 0 → 1` over 180 ms). Hover polish on close buttons + primary CTAs (subtle background lighten + cursor pointer).
+
+### v132.5 — Hotels list desktop density
+
+The `/hotels` listing maxed out at 3 columns until a 1440px breakpoint, leaving wide-screen monitors showing huge gaps between cards. v132.5 ships:
+- 4-column grid at `min-width: 1280px` (xl monitors)
+- 5-column grid at `min-width: 1536px` (2xl monitors)
+- Sort dropdown (Price asc / Price desc / Rating desc / Reviews desc / Default)
+- 5★ / 4★ / 3★ multi-select pills (toggle on/off, AND-filter against API response)
+- Reset CTA when any sort/star filter is active
+- Filtered-count chip ("Showing 12 of 31 hotels in Mussoorie")
+- URL sync — sort + stars persist to `?sort=price-asc&stars=4,5` so refresh / share preserves the filter state
+
+### v132.6 — Photo gallery keyboard navigation
+
+Hotel detail lightbox previously required clicks on chevron buttons to navigate. v132.6 adds desktop-only keyboard support: `←` previous, `→` next, `Esc` to close. A small "← → to navigate · Esc to close" hint appears at the bottom of the lightbox on desktop only. Listener attached on mount, cleaned up on unmount. Bails when target is a form field.
+
+### v132.7 — Reel feed keyboard navigation
+
+`InstagramHotelFeed` is touch-first on mobile. Desktop power-users wanted keyboard. v132.7 adds:
+- `↓` / `j` / `PgDn` — next reel
+- `↑` / `k` / `PgUp` — previous reel
+- `Home` — first reel
+- `End` — last reel
+- `m` — toggle mute
+
+**Bails on form-field focus** (user typing in a comment input shouldn't navigate the feed) and **bails when any modal is open** (so `Esc` to close a profile sheet doesn't also skip the reel). Detected via `document.querySelector('.fixed.inset-0:not([aria-hidden])')`.
+
+### v132.8 — Hotel detail 2-column desktop layout
+
+`/hotels/[id]` on desktop was a flat 1-column flow — gallery, then a long scroll of availability picker → rooms → reviews → OTA comparison. At ≥1024px most of the screen was wasted whitespace. v132.8 retrofits CSS Grid:
+- Left column: gallery, content sections, reviews tab, room cards
+- Right column: sticky 340-400 px rail with the availability picker pinned at top + the price summary
+- `position: sticky; top: 96px` so the rail stays visible during scroll
+
+Critically the retrofit is CSS-only — no JSX restructuring. The existing flat flow still renders top-to-bottom on mobile; desktop just regroups it into 2 columns via `grid-template-columns: minmax(0, 1fr) 340px` at the breakpoint.
+
+### v132.9 — Polish (keyboard help, back-to-top, URL sync, tablet)
+
+The catch-all polish version:
+- **`?` keyboard-help overlay** — global desktop-only shortcut. Press `?` (or `Shift+/`) and a centered modal lists every keyboard binding shipped in v132.6 + v132.7 + global navigation. Press `Esc` or `?` again to close. Bails on form-field focus.
+- **⤴ back-to-top floating button** (new `components/BackToTopButton.tsx`) — surfaces when scroll past `threshold` (default 600 px) AND viewport ≥1024 px. Hidden automatically while any `.fixed.inset-0` modal is open so it doesn't peek through a backdrop. Reduced-motion users get an instant jump; everyone else gets `scrollTo({ top: 0, behavior: 'smooth' })`. Mobile users have BottomDock + DialerNav for nav — no need for an extra chip fighting for thumb reach, so component is gated to desktop only.
+- **URL sync for hotels list** — `?sort=...&stars=4,5` round-trips for share/refresh persistence.
+- **Tablet refinement** at 768-1023 px — modal centering OFF (still bottom-sheet — tablets are mostly thumb-driven), hotels list at 3 columns (not 4), reel feed picks up most keyboard nav anyway because it doesn't depend on viewport width.
+
+### v132.9.1 — SWC styled-jsx panic hotfix (commit `a671110`)
+
+PR #16's squash-merge BROKE the Vercel production build. Local `tsc --noEmit` was clean, but `next build` panicked at SWC's styled_jsx visitor.rs:597 — the exact same trap documented in the CLAUDE.md v120 Composer Era.
+
+**Root cause:** the v132.9 squash added a THIRD `<style jsx>` block to `components/discover/InstagramHotelFeed.tsx`. That file already has two component-scoped `<style jsx global>` blocks (one for the per-card chrome, one for the FlashDealStories rail). SWC's styled_jsx transform panics when ≥3 styled-jsx blocks coexist in one component file — same panic that bit the v120 Composer build.
+
+**Secondary bug:** `BackToTopButton.tsx` shipped with a non-global `<style jsx>` block declaring `@keyframes sbBackToTopIn`. styled-jsx scopes the keyframe NAME to a hashed identifier when used non-global, but the inline `style={{ animation: 'sbBackToTopIn 0.18s ease' }}` referenced the UN-HASHED name. Result: animation silently doesn't run. Caught while reviewing the same surface.
+
+**Fix:** removed BOTH `<style jsx>` blocks. Moved `sbHelpFadeIn`, `sbHelpScaleIn`, and `sbBackToTopIn` `@keyframes` to `app/desktop.css` as globally-addressable rules with stable names. Now every animation lives in the global stylesheet, no styled-jsx panic, animations actually run.
+
+Verified READY on Vercel preview build before merging this time. `tsc --noEmit` was clean both before and after — this trap is only catchable by running `next build` locally (SWC transform panic, not a TypeScript error).
+
+### Files added (this era)
+```
+components/BackToTopButton.tsx              # desktop-only floating ⤴ button
+```
+
+### Files modified (this era)
+```
+app/desktop.css                              # +420 lines across v132.4-v132.9 + v132.9.1 keyframes
+                                              # modal centering, hotels density, gallery hints,
+                                              # reel kbd hint, 2-col hotel detail, ?-help overlay,
+                                              # tablet refinement, sbHelpFadeIn/sbHelpScaleIn/
+                                              # sbBackToTopIn @keyframes (globally addressable)
+app/hotels/page.tsx                          # sort dropdown, star multi-select, reset CTA,
+                                              # URL sync (?sort=...&stars=4,5), filtered-count chip
+app/hotels/[id]/page.tsx                     # 2-col grid wrapper, photo gallery kbd handlers
+components/discover/InstagramHotelFeed.tsx   # reel kbd nav (↓↑jkPgDnPgUpHomeEndm), ?-help overlay,
+                                              # bails on form-field focus + open modals,
+                                              # 2 styled-jsx blocks (was: 3 before v132.9.1)
+app/layout.tsx                               # SB_BUILD v132.3 → v132.4 → ... → v132.9 → v132.9.1
+```
+
+### Service-worker version map (continued)
+- v132.3 → four-prices-autopilot-warnings-free-to-available
+- v132.4 → desktop-modal-centering
+- v132.5 → hotels-list-density-sort-stars
+- v132.6 → photo-gallery-kbd
+- v132.7 → reel-feed-kbd
+- v132.8 → hotel-detail-2col-sticky-rail
+- v132.9 → kbd-help-back-to-top-url-sync
+- **v132.9.1 → swc-styled-jsx-panic-fix (vercel-ready)**
+
+### Things to Avoid (Desktop UX Overhaul Era)
+
+- **Never** add a third `<style jsx>` block to `InstagramHotelFeed.tsx`. The file is at the SWC limit (two `<style jsx global>` blocks). A third triggers `visitor.rs:597` panic at `next build` time. Local `tsc --noEmit` does NOT catch this — only Vercel's build (or `next build` locally) does. Move any new global-scope styles to `app/desktop.css` or `app/globals.css` instead. Same trap was documented in the v120 era; v132.9.1 was the rediscovery.
+- **Never** declare a non-global `<style jsx>` keyframe and reference it from an inline `style={{ animation: '...' }}`. The keyframe NAME gets scoped/hashed; the inline `style` reads the un-hashed name; the animation silently doesn't run. Always use `<style jsx global>` for keyframes OR move them to a global stylesheet.
+- **Never** rely on `tsc --noEmit` alone to gate a styled-jsx-heavy commit. SWC's transform panics are TypeScript-clean but Vercel-build-failing. Run `next build` locally before pushing any commit that adds JSX styling, especially in a file that already has multiple style blocks.
+- **Never** mount `<BackToTopButton />` on mobile. The component already self-gates via `window.matchMedia('(min-width: 1024px)')` — but if a future caller hard-mounts it without the guard, the floating ⤴ chip fights for thumb reach against the BottomDock + DialerNav. Mobile users already have primary nav within reach; an extra chip = visual clutter + missed taps on dock items.
+- **Never** strip the form-field-focus bail from the reel feed keyboard handlers. A user typing "m" in a comment input must NOT toggle mute. Detected via `document.activeElement?.tagName in ['INPUT', 'TEXTAREA', 'SELECT']` + `[contenteditable=true]` check. Removing the bail = every keystroke also navigates the feed.
+- **Never** strip the open-modal bail from the reel feed keyboard handlers. `Esc` closing a profile sheet must NOT also skip to the next reel. Detected via `document.querySelector('.fixed.inset-0:not([aria-hidden])')`. The aria-hidden negation is important — some modals stay in the DOM but flip aria-hidden on close.
+- **Never** drop the URL sync on `/hotels` sort + stars. Once a power-user picks "5★ + Price asc", they'll share the URL with a friend or refresh the page. Both flows expect the filters to persist. The implementation is `router.replace(\`?${searchParams}\`, { scroll: false })` — `scroll: false` is critical so the page doesn't jump on filter change.
+- **Never** make the right rail in `/hotels/[id]` 2-column layout `position: sticky` without `top: 96px` (or whatever the current Navbar height is). Without the offset, the rail sticks at viewport top = covers the Navbar = looks broken on scroll. Always offset by sticky top by the visible chrome height.
+- **Never** ship a `?` keyboard-help overlay that lists shortcuts that aren't actually implemented. The overlay is read by power users who memorize it; lying creates trust loss. Audit the overlay against the actual handler list every time you add a new shortcut.
+
+### What this era did NOT do (intentionally)
+
+- **Desktop-specific Navbar variant.** The existing Navbar already adapts well at ≥768 px. Building a wider desktop variant with mega-menu was considered and skipped — keeps the mobile-first surface coherent.
+- **Multi-monitor reel feed.** Ultrawide monitors (3440×1440) show the reel feed at a comfortable middle column with empty space either side. A future era could add a side-rail with creator recommendations or trending hotels in those gutters.
+- **Keyboard help shortcuts inside the partner panel.** v132.6 + v132.7 keyboard nav is customer-side only. Partners are mostly tablet/desktop already and could use shortcuts too — deferred.
+- **Drag-to-resize the 2-col rail in `/hotels/[id]`.** The rail width is fixed at `340-400px` via CSS Grid. Resizable splitter was considered; rejected as over-engineered for a single page.
+- **Hover-preview on hotel cards in 5-col density.** At 5 columns each card is ~280 px wide — too small for a quick-glance peek. Hover-preview would need a portaled tooltip with hero image + score + price; deferred.
+
+---
+
+## Auth & Identity Hardening Era (v132.10 → v132.15, 2026-05-17/18)
+
+Six commits across one evening (and one minute past midnight) addressing a cascade of identity issues that surfaced after the v132.9.1 desktop overhaul shipped. User opened `/me` after switching auth methods and saw "0 posts" — despite having 33 reels in the DB. Then opened the Play Store TWA app and saw the URL bar (TWA verifier failing). Then logged out and saw the previous user's avatar still rendered. Then signed out and `/me` STILL looked logged in. Every commit fixed one layer of the same underlying problem: there is no single `users.id` per human in this DB, and the codebase had been quietly assuming there was.
+
+### v132.10 — Cross-identity profile merge (commit `920949e`)
+
+**The discovery:** User opened `/me` after a Google sign-in. Said "0 posts" at top of profile despite having uploaded 33 reels over the past month. Direct SQL query: `SELECT COUNT(*) FROM social_posts WHERE author_id = '<current session profile id>'` returned 0. Same query against a DIFFERENT profile id returned 29. Another against a third profile id returned 4.
+
+**Root cause:** the same human (the user testing) held **4 separate `users.id` rows** across 3 auth methods over time:
+- Google Firebase (`Ld6xDB42…` UID, separate row)
+- Facebook Firebase (`l3fo3x6W…` UID, separate row)
+- Phone-OTP with `+91` prefix (`+918881555188` → `cmnr4b8ol…`)
+- Phone-OTP without `+91` prefix (`8881555188` → `cmnuolhpx…`)
+
+Each auth path historically spawned its own `social_profile` row keyed against whichever `users.id` was current at the time. The user's current `/me` session was via phone-OTP, but no `social_profile` was ever bound to that canonical id. Direct user_id lookup → miss → 0 posts. Meanwhile the 33 posts sat under a profile bound to the Facebook Firebase UID from a prior session.
+
+**Two-layer fix:**
+
+**Data backfill** (Supabase MCP `execute_sql`, single transaction):
+- Migrated 29 posts from orphan profile `e5c72301` → canonical profile `eebb4c38` (UPDATE `social_posts.author_id` + `sound_owner_id`)
+- Renamed + deleted the orphan profile, freeing the username
+- Rebound canonical profile: `user_id = cmnr4b8ol0001whjy8jc1xxxh`, `username = sachin_tomer`, `display_name = Sachin Tomer`
+- Verified: 1 profile for Sachin, 33 posts under canonical, 0 orphan; zero dependent rows in `video_likes` / `user_saves` / `user_follows`
+
+**Code future-proof** (the part that matters going forward):
+
+`lib/social/social-profile.service.ts` got a new `findProfileAcrossIdentities` helper walking 3 axes:
+1. Direct `user_id` lookup (fast path)
+2. Phone match across `users` (5 variants of `+91` / no-prefix / spaces / different e.164 shapes; skips `unknown_<UID>` Firebase placeholders)
+3. Email match across `users`
+
+Returns the OLDEST matching profile (most history attached). Plus a companion `getAllProfilesAcrossIdentities` for future aggregation surfaces.
+
+`ensureForUser` upgraded to call the cross-lookup BEFORE creating a fresh profile — opportunistically re-binds the orphan profile to the caller's canonical `users.id` so future direct lookups hit the fast path.
+
+`/api/social/feed` resolver upgraded — on direct-lookup miss, fetches caller's `users` row (phone + email) and delegates to the cross-identity helper. Respects existing `sbCached` + HEADERS + `TTL_LOOKUPS` patterns.
+
+**Contract:** the code NEVER moves posts at runtime. NEVER deletes anything from a code path. Read-only discovery + one PATCH on the orphan profile to re-bind `user_id` (idempotent). All destructive cleanup stays in human-supervised SQL.
+
+### v132.11 — Mobile Safari paused video (commit `f36d786`)
+
+Tiny two-line fix in `components/PostsScrollFeed.tsx`. Surfaced during user testing of /me/posts and /saved/posts on mobile Safari.
+
+**User report:** open /me/posts on iPhone, swipe to the second card — video stays paused. Tap-to-play works but auto-advance doesn't. Reproducible on Android WebView too.
+
+**Root cause:** v131's bandwidth optimization gated `<video>` + `<audio>` elements with `preload="none"` + `src={isActive ? url : undefined}`. **Mobile Safari + Android WebView do not auto-invoke the load algorithm when `src` changes under `preload="none"`.** When the element flips from inactive → active, `src` updates but the media is never fetched. `play()` resolves to a paused state with no error.
+
+**Fix:** call `videoRef.current.load()` BEFORE `videoRef.current.play()` inside the `isActive` branch. Same for `<audio>`. The explicit `load()` kicks the fetch; `play()` then has bytes to work with.
+
+Scope: PostsScrollFeed only (used by /me/posts + /saved/posts). InstagramHotelFeed unaffected — its active card uses `preload="auto"` which auto-loads on `src` change.
+
+### v132.12 — JWT email bridge + Mobile OTP gate (commit `1845e1f`)
+
+Two changes in one commit, both addressing identity edge cases the v132.10 backfill exposed.
+
+**Layer 1 — JWT email bridge for cross-identity lookup.**
+
+The v132.10 cross-identity helper walks phone + email — but only against the **caller's `users` row**. That works when the user's `users` row has a populated phone or email. It DOESN'T work when the auth method (e.g. Firebase Google) wrote `unknown_<UID>` as a placeholder and never backfilled the email.
+
+User test: Google sign-in still showed "0 posts" because the Google-session `users` row had `email = NULL` (Google identity was stored only in the Firebase JWT, never replicated to the `users` table). The cross-lookup found nothing to match against.
+
+**Fix:** when extracting auth from the request, ALSO pull `email` + `phone` from the JWT payload itself (not just `users` row). Pass those alongside the row data into `findProfileAcrossIdentities`. Filters `unknown_<UID>` placeholders (which are useless for matching).
+
+Result: any future Google/Facebook/Phone identity-switch resolves via JWT email automatically — no SQL backfill required.
+
+Also: deleted empty duplicate profile `71936d42` created by an earlier Google session; rebound canonical `eebb4c38` (33 posts intact); skipped `users.email` backfill (UNIQUE conflict on the email column from a prior login attempt — handled at code via the JWT bridge instead).
+
+`/me` + `/me/posts` updated to forward `Authorization` header on the `/api/social/feed` fetch so the resolver has the JWT to extract from.
+
+**Layer 2 — Mobile OTP feature gate.**
+
+User report: tapping "Login with Mobile OTP" on /auth errored out. Firebase Phone Auth was hitting a billing-related limit or DLT issue; intermittent.
+
+**Fix:** `PHONE_OTP_ENABLED` const reads `NEXT_PUBLIC_ENABLE_PHONE_OTP` env var. When `"0"` (default), the button + `sendFirebaseOtp` handler are hidden from `/auth`. WhatsApp OTP + Google + Facebook stay live and cover the same use case. Re-enable later by flipping the env var to `"1"` — all Firebase phone-auth code paths preserved verbatim, just gated.
+
+### v132.13 — TWA assetlinks.json (commit `6bca21f`)
+
+User report: installed the Play Store app, opened it — URL bar showed at the top instead of fullscreen TWA chrome. Looks like a browser, not a native app.
+
+**Root cause:** the StayBid Play Store app is a Trusted Web Activity (TWA) wrapper. Android hides the browser chrome ONLY when `/.well-known/assetlinks.json` on the domain verifies the app's package + signing cert. The file was missing in production (404 on `staybids.in/.well-known/assetlinks.json`), so Chrome fell back to Custom Tabs UI with the URL bar.
+
+**Fix:**
+
+1. NEW `public/.well-known/assetlinks.json` with the standard TWA schema:
+   ```json
+   [{
+     "relation": ["delegate_permission/common.handle_all_urls"],
+     "target": {
+       "namespace": "android_app",
+       "package_name": "com.staybid",
+       "sha256_cert_fingerprints": ["38:35:22:FE:97:A4:B4:CB:..."]
+     }
+   }]
+   ```
+   Real Play Store data: `package_name = com.staybid`, SHA-256 = the actual signing cert fingerprint.
+
+2. `next.config.js` `headers()` extended — explicit `Content-Type: application/json`, short cache window, CORS open for the `/.well-known/*` path so PWA Builder's verifier and Android's TWA verifier always succeed regardless of future CDN config drift.
+
+Next time the app is reinstalled from Play Store: Android TWA verifier fetches the file → package + SHA match → URL bar disappears, fullscreen TWA mode active.
+
+**Future:** when the app graduates to production signing (Play App Signing), add the production SHA-256 to `sha256_cert_fingerprints[]` (it's an array — both certs coexist). No structural changes needed.
+
+### v132.14 — Bulletproof logout (commit `6380e61`)
+
+The continuation of a saga that started in v121.1 (clear sb_token), continued in v121.2 (lazy Firebase signOut), and now finally lands at "wipe everything user-specific".
+
+**User report:** logged out, navigated to `/me`, expected to see signed-out state. Saw the previous user's avatar, handle, follower count, and a populated reel feed with their PostsStore residue. Logged out a second time. Same UI. Felt like logout was broken.
+
+**Root cause:** `AuthContext.user` correctly flipped to `null` on logout. But the visible "logged-in" UI on `/me` was driven by INDEPENDENT stores reading their own localStorage keys that v121.1's logout never touched:
+- `FollowStore` → `sb_follows_v1`, `sb_user_avatar_url`, `sb_user_display_name`, `sb_user_bio`, `sb_user_location`, `sb_user_website`, `sb_user_custom_highlights_v1`
+- `PostsStore` → `sb_user_posts`
+- Notifications → `sb_seen_notifications_v1`
+- Reels → `sb_post_likes_v1`, `sb_post_comments_v1`, `sb_local_saves`
+- Bid holds → `hold_state_*`, `accept_window_*`
+- Attribution → `sb_attribution_*`
+- Routing → `sb_ref`
+
+v121.1 cleared maybe 8 keys total. There are 20+ that survive logout, and any one of them is enough to keep the UI showing identity-tinted state.
+
+**Fix:** iterate every key in `localStorage` and DELETE anything NOT in a small device-prefs allow-list:
+```ts
+const KEEP = new Set([
+  "sb_theme",            // light/dark preference is device-level
+  "sb_city",             // location chip
+  "sb_build",            // SW kill-switch trigger
+  "sb_reel_filter_source",
+  "sb_reel_filter_city",
+  "sb_reel_mute",
+  "sb_reel_gain",
+]);
+for (const key of Object.keys(localStorage)) {
+  if (!KEEP.has(key)) localStorage.removeItem(key);
+}
+```
+
+Future-proof: any new user-specific `sb_*` key added in a future era is auto-cleared on logout with zero maintenance. The allow-list is the contract — adding a key to the allow-list survives logout; everything else doesn't.
+
+**Also wiped:** `sessionStorage.clear()` + `indexedDB.deleteDatabase("firebaseLocalStorageDb")` so Firebase's persisted `user.uid` + tokens don't survive a half-completed `signOut()`. New `window.dispatchEvent(new Event('sb:logout'))` broadcast for future provider self-reset hooks.
+
+### v132.15 — Signed-out /me hero + "Sign in" toggle (commit `fbab13e`)
+
+Final piece of the auth saga. User reported AFTER v132.14: even with logout wiping everything, `/me` STILL rendered the same profile UI for signed-in OR signed-out users. The `FollowStore` returned synthesized 5.9K followers + "@you" handle + "Y" avatar fallback + clickable Edit profile + Share profile + highlight tiles. User correctly perceived this as "logged out bluff" — the page LOOKED logged in even when `AuthContext.user` was null.
+
+Three problems fixed together:
+
+**1. Signed-out hero on /me.** Early-return in `/me` with 3 account-type cards:
+- 🧑 **Public** — "Sign up to bid, save reels, earn StayPoints" → `/auth`
+- ✨ **Creator** — "Apply to monetize your hotel videos" → `/upgrade`
+- 🏨 **Hotel Partner** — "List your hotel + manage bookings" → external panel (`https://staybid-hotel-panel.vercel.app`)
+
+`authLoading` guard prevents the flash for signed-in users (otherwise on cold load the signed-in user briefly sees the signed-out hero before AuthContext hydrates).
+
+**2. MoreDrawer "Sign in" toggle.** Drawer bottom button always said "Log out · Sign out of this device" regardless of session state. After logout it now flips to "Sign in · Sign in to your account" — tap routes anonymous users to `/auth` instead of pretending to log out a nobody.
+
+New `signedIn` prop on `<MoreDrawer>` (back-compat default `true`). Signed-out drawer hides user-specific items (Bookings, Saved, Wallet, etc.), keeps the Appearance theme toggle, flips bottom button to "Sign in" with → icon.
+
+**3. Wiring.** Logged-in call site passes `signedIn={!!user}`; logged-out branch passes `signedIn={false}` + `router.push("/auth")` onLogout.
+
+Signed-in /me layout is bit-identical — same hero, same drawer, same everything. Only the signed-out branch is new.
+
+### Files added (this era)
+```
+public/.well-known/assetlinks.json     # TWA verification (v132.13)
+```
+
+### Files modified (this era)
+```
+lib/social/social-profile.service.ts   # +findProfileAcrossIdentities, +getAllProfilesAcrossIdentities (v132.10)
+                                        # +ensureForUser cross-lookup before create
+app/api/social/feed/route.ts           # +cross-identity resolver fallback (v132.10)
+                                        # +JWT email/phone extraction (v132.12)
+app/me/page.tsx                        # +Authorization header forwarding (v132.12)
+                                        # +signed-out hero (v132.15)
+                                        # +signedIn prop on MoreDrawer (v132.15)
+app/me/posts/page.tsx                  # +Authorization header forwarding (v132.12)
+app/auth/page.tsx                      # +PHONE_OTP_ENABLED env gate (v132.12)
+components/PostsScrollFeed.tsx         # +video.load() before play() (v132.11)
+next.config.js                         # +headers() for /.well-known/* CORS + Content-Type (v132.13)
+lib/auth.tsx                           # full logout rewrite: allow-list iterate (v132.14)
+                                        # +sessionStorage.clear()
+                                        # +indexedDB.deleteDatabase('firebaseLocalStorageDb')
+                                        # +sb:logout event
+app/layout.tsx                         # SB_BUILD v132.9.1 → v132.10 → ... → v132.15
+```
+
+### Service-worker version map (continued)
+- v132.9.1 → swc-styled-jsx-panic-fix
+- v132.10 → cross-identity-profile-merge
+- v132.11 → mobile-safari-paused-video-load
+- v132.12 → jwt-email-bridge-mobile-otp-gate
+- v132.13 → twa-assetlinks-hide-url-bar
+- v132.14 → bulletproof-logout-wipe-allowlist
+- **v132.15 → signed-out-me-hero-sign-in-toggle (current)**
+
+### Things to Avoid (Auth & Identity Hardening Era)
+
+- **Never** assume `users.id` is a single canonical identifier per human. This codebase has at least 4 separate `users.id` rows for the same person across phone+91 / phone-no-prefix / Google Firebase UID / Facebook Firebase UID variants. Always query through `findProfileAcrossIdentities` when looking up a social profile — the direct `user_id` lookup is the fast path, not the only path.
+- **Never** drop the JWT email/phone extraction from `/api/social/feed`. The cross-identity helper needs phone + email as match keys. The user's `users` row often has `email = NULL` (Firebase OAuth doesn't backfill the column on first sign-in). The JWT payload is the ONLY reliable source of email for Google/Facebook sessions.
+- **Never** match against `unknown_<UID>` Firebase placeholders. They look like real phone numbers ("unknown_Ld6xDB42…" is a string) but they collide with each other across users. Skip any phone that starts with `unknown_` in the cross-lookup.
+- **Never** trigger a runtime POST/DELETE/UPDATE to migrate posts in the cross-identity helper. The helper is READ-ONLY discovery + one idempotent PATCH on the orphan profile to re-bind `user_id`. Any post migration is a human-supervised SQL job, never a code path. Doing it from code = race conditions when two requests fire simultaneously + irreversible data move on misidentification.
+- **Never** call `videoRef.current.play()` on a `<video preload="none">` element without calling `.load()` first. Mobile Safari + Android WebView don't auto-invoke the load algorithm on `src` change under `preload="none"`. `play()` silently resolves to a paused state. v131's bandwidth optimization made this trap reachable; v132.11's fix is the contract going forward.
+- **Never** add a new `sb_*` localStorage key without deciding whether it should survive logout. The default IS clear-on-logout (allow-list pattern). Device-level prefs (theme, city, build) belong in the KEEP allow-list in `lib/auth.tsx`. User-identity-tinted data (avatar, follows, likes, posts, holds, attribution) MUST NOT be in the allow-list.
+- **Never** strip the `sessionStorage.clear()` + `indexedDB.deleteDatabase("firebaseLocalStorageDb")` from logout. Firebase persists its auth state across all three storage layers (localStorage, sessionStorage, IndexedDB). Wiping only localStorage leaves Firebase still signed in — the next `/auth` page pre-selects the previous user's Google account with no way to switch.
+- **Never** show the same `/me` UI for signed-in and signed-out users. The user explicitly called this "logged out bluff". The `authLoading` guard MUST precede any early-return — otherwise signed-in users on cold load see the signed-out hero flash before AuthContext hydrates from localStorage.
+- **Never** ship a "Log out" button to a signed-out user. The bottom button on `MoreDrawer` MUST flip to "Sign in" based on the `signedIn` prop. Logging out an anonymous user is a non-op — but visually it's a confusing affordance ("am I currently logged in?").
+- **Never** modify `public/.well-known/assetlinks.json` shape. TWA verifier is strict about JSON schema. Adding a comment, changing array order, or wrapping in an object will fail the verifier silently → URL bar reappears in the Play Store app. Only valid mutation: add another `sha256_cert_fingerprints[]` entry when a new signing cert is added.
+- **Never** drop the explicit `Content-Type: application/json` header on `/.well-known/assetlinks.json`. Some CDNs serve it as `text/plain` by default → Android TWA verifier rejects → URL bar shows. The `next.config.js headers()` block is load-bearing for the Play Store app experience.
+- **Never** flip `NEXT_PUBLIC_ENABLE_PHONE_OTP` to `"1"` without first verifying Firebase Phone Auth is operational AND a DLT-approved sender ID is configured. The Firebase Phone Auth code paths are preserved verbatim by v132.12; the gate is purely env-driven. But re-enabling without backend readiness = same error users hit pre-v132.12.
+
+### What this era did NOT do (intentionally)
+
+- **Backfill `users.email` from JWT.** v132.12 hit a UNIQUE conflict on the email column trying to backfill — a prior login had stamped the same email on a different `users` row. Handled at code via the JWT bridge instead, but a future SQL pass could merge those orphan email rows.
+- **Soft-deleted user identities table.** A future era could maintain a `user_identities` join table mapping every (auth_method, identifier) → canonical `users.id`. Today's solution is the cross-lookup helper walking 3 axes per query. Works but is O(N) per request without caching.
+- **MSG91 SMS OTP as a fallback for Firebase Phone Auth.** Documented in `docs/MSG91_BACKEND_PASTE.md` since the v72 era — still pending DLT template approval at the Railway backend. v132.12 gated Firebase OTP behind env flag in the meantime.
+- **Audit of remaining `*_count` mismatches in social_profiles after the v132.10 backfill.** `social_profiles.followers_count` / `following_count` are denormalized via triggers — moving 29 posts between profiles correctly reattributed `author_id` but didn't touch follow counts (those were already correct because they're keyed by `user_follows.influencer_id`, not author_id). Verified clean; no further action needed.
+- **A "Switch account" surface** that lets a user with multiple identities flip between them without logging out. Considered low-priority — the cross-identity helper means a single login surfaces ALL of that human's history regardless of which auth method they used last.
+
+---
+
+## Updated production state (v132.15, 2026-05-18)
+
+- **Current version:** v132.15 · commit `fbab13e` on `main`
+- **Reel-dedup chain locked** — 5 hops with `⚠️ v131.8 LOAD-BEARING` markers across Composer / server insert / feed query / item transform / renderer dedup. Triple-regression cycle (v110.1 → v121.2 → v131.8) hopefully closed.
+- **CDN cache windows actually honored** — every hot route ships `CDN-Cache-Control` + `Vercel-CDN-Cache-Control` in addition to the silently-stripped `Cache-Control`. `/api/hotels` warm latency: 1.6 s → ~30 ms.
+- **Partner availability calendar rewritten** — three views (Month / Room / Grid), per-date 4-price + quantity editor, autopilot-aware warning engine, dual `room_date_overrides` migrations applied to Supabase, all overlays portal-mounted to escape the `.fade-up transform` containing block.
+- **Desktop UX shipped** — modal centering at ≥1024 px, hotels list at 4/5 col with sort + star multi-select + URL sync, photo gallery + reel feed keyboard nav, hotel detail 2-col with sticky rail, `?` keyboard-help overlay, `⤴` back-to-top button. Mobile (<1024 px) bit-identical to pre-v132.4.
+- **Cross-identity profile lookup live** — `/api/social/feed` resolves a profile via direct user_id, then phone (5 variants), then email; pulls email from JWT for OAuth sessions where `users.email` is NULL.
+- **Bulletproof logout** — allow-list iterates `localStorage` clearing every user-tinted key + clears `sessionStorage` + deletes Firebase IndexedDB + dispatches `sb:logout` event.
+- **TWA Play Store app fullscreen** — `public/.well-known/assetlinks.json` shipped with real `package_name + SHA-256`; `next.config.js` enforces `Content-Type + CORS` for the verifier.
+- **/me has a real signed-out hero** — 3 account-type cards (Public / Creator / Hotel) for anonymous visitors; drawer bottom button flips "Log out" ↔ "Sign in" via `signedIn` prop.
+- **SWC styled-jsx limit hit again** — `InstagramHotelFeed.tsx` is now at 2 `<style jsx global>` blocks (the SWC ceiling for this file). Any third block panics at `visitor.rs:597` at `next build` time. New keyframes / global styles go to `app/desktop.css` or `app/globals.css`.
+- **NOT TOUCHED this era:** `public/sw.js` cache versions (stable per v93 discipline), Railway backend, scoring engine in `lib/hotel-score.ts`, attribution chain, reel-dedup chain (post-v131.8 lock), chat surfaces (`booking_messages`), `lib/sanitize-text.ts` anti-bypass.
