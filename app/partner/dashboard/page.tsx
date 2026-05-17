@@ -1516,13 +1516,16 @@ export default function PartnerDashboard() {
         )}
 
         {/* ══════════════ AVAILABILITY / PMS ══════════════
-            v113 — replaces the cramped 22×24 HTML grid with the premium
-            <AvailabilityCalendar> component:
-              · 36×36 cells with cozy-palette gradients
-              · weekend shading + today indicator
-              · tap empty → walk-in pre-fill, tap occupied → details popover
-              · drag across cells → multi-day walk-in range
-              · 📌 Block dates → bulk maintenance / group hold sheet
+            v132 — three-view rewrite of <AvailabilityCalendar>:
+              · 📅 Month (default): full month grid; tap a date → per-room
+                detail panel with walk-in / remove-block actions.
+              · 🛏️ Room: pick one room from horizontal card picker → big
+                easy-to-read month timeline for THAT room.
+              · 📊 Grid: classic per-room × per-day matrix (v113 layout
+                preserved for power users via the view toggle).
+              · 📌 Block dates → bulk maintenance / group hold sheet.
+              · OTA "Select room…" dropdown upgraded to visual room
+                cards + provider pills (no more selects).
         */}
         {tab === "availability" && (
           <div className="fade-up space-y-6">
@@ -1601,34 +1604,88 @@ export default function PartnerDashboard() {
                 })}
               </div>
 
-              {/* Add new feed */}
-              <div className="pt-4 border-t border-luxury-100 grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+              {/* Add new feed — v132: visual room-card picker + provider pills */}
+              <div className="pt-4 border-t border-luxury-100 space-y-3">
+                {/* Step 1 — Room (visual cards) */}
                 <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Room</label>
-                  <select className="inp-p" value={newFeed.roomId} onChange={e=>setNewFeed(p=>({...p, roomId:e.target.value}))}>
-                    <option value="">Select room…</option>
-                    {rooms.map(r => <option key={r.id} value={r.id}>{r.type}</option>)}
-                  </select>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
+                    Room {newFeed.roomId && <span className="text-luxury-600 normal-case">· {rooms.find(r => r.id === newFeed.roomId)?.type}</span>}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {rooms.length === 0 ? (
+                      <div className="text-xs text-luxury-400 italic">No rooms — add them in the Rooms tab first.</div>
+                    ) : rooms.map(r => {
+                      const active = newFeed.roomId === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setNewFeed(p => ({ ...p, roomId: r.id }))}
+                          className={`group inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                            active
+                              ? "bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400 shadow-sm"
+                              : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"
+                          }`}
+                          aria-pressed={active}
+                        >
+                          <span className="text-base leading-none">🛏️</span>
+                          <span className="flex flex-col items-start leading-tight">
+                            <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
+                            {r.capacity != null && (
+                              <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>
+                            )}
+                          </span>
+                          {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* Step 2 — Provider (visual pills) */}
                 <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">Provider</label>
-                  <select className="inp-p" value={newFeed.provider} onChange={e=>setNewFeed(p=>({...p, provider:e.target.value}))}>
-                    <option value="booking">Booking.com</option>
-                    <option value="airbnb">Airbnb</option>
-                    <option value="mmt">MakeMyTrip</option>
-                    <option value="goibibo">Goibibo</option>
-                    <option value="agoda">Agoda</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">Channel</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "booking", label: "Booking.com", icon: "🅱️" },
+                      { id: "airbnb",  label: "Airbnb",      icon: "🌐" },
+                      { id: "mmt",     label: "MakeMyTrip",  icon: "🅼"  },
+                      { id: "goibibo", label: "Goibibo",     icon: "🅶" },
+                      { id: "agoda",   label: "Agoda",       icon: "🅰️" },
+                      { id: "other",   label: "Other",       icon: "🔗" },
+                    ].map(p => {
+                      const active = newFeed.provider === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setNewFeed(prev => ({ ...prev, provider: p.id }))}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
+                            active
+                              ? "bg-luxury-900 text-amber-100 border-luxury-900 shadow-sm"
+                              : "bg-luxury-50 text-luxury-700 border-luxury-200 hover:border-luxury-400"
+                          }`}
+                          aria-pressed={active}
+                        >
+                          <span>{p.icon}</span>
+                          <span>{p.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">iCal URL</label>
-                  <input className="inp-p" placeholder="https://..." value={newFeed.icalUrl}
-                    onChange={e=>setNewFeed(p=>({...p, icalUrl:e.target.value}))} />
+
+                {/* Step 3 — URL + submit */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                  <div className="md:col-span-3">
+                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">iCal URL</label>
+                    <input className="inp-p" placeholder="https://…" value={newFeed.icalUrl}
+                      onChange={e=>setNewFeed(p=>({...p, icalUrl:e.target.value}))} />
+                  </div>
+                  <button onClick={addFeed} disabled={feedSaving || !newFeed.roomId || !newFeed.icalUrl} className="btn-gold text-xs py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {feedSaving ? "Adding…" : "+ Add Feed"}
+                  </button>
                 </div>
-                <button onClick={addFeed} disabled={feedSaving} className="btn-gold text-xs py-2.5">
-                  {feedSaving ? "Adding…" : "+ Add Feed"}
-                </button>
               </div>
             </div>
           </div>
