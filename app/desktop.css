@@ -282,10 +282,55 @@
   }
 }
 
-@media (min-width: 1440px) {
-  /* On wider desktops, switch hotels grid to 4 columns. */
+/* v132.5 — 4 cols at 1280+ (was: 3 cols until 1440). xl monitors now show
+   33% more hotels above the fold without any wasted side margin. */
+@media (min-width: 1280px) {
   .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* v132.5 — 5 cols at 1536+ (2xl). Wide-screen monitors get full density.
+   Hotel cards stay readable: at 1536px wrapper width ~1280px / 5 = 240px
+   per card after the 20px gaps — still wider than mobile's natural 320px
+   single-column phone width thanks to the denser layout. */
+@media (min-width: 1536px) {
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+/* v132.5 — Sort + star refinement bar (`.sb-hotels-refine`) styling.
+   The native <select> dropdown inside it inherits the page font but
+   browsers still ship a default chrome around <select> options. We
+   tighten the wrapping <label> chip + give the select arrow a custom
+   look so it reads as a single pill, not as an input field. ────────── */
+.sb-hotels-refine select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4 6l4 4 4-4' stroke='%23C9A66B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  background-size: 14px;
+  padding-right: 18px;
+  cursor: pointer;
+}
+.sb-hotels-refine select option {
+  background: var(--bg-card);
+  color: var(--text-base);
+}
+
+@media (min-width: 1024px) {
+  /* Desktop bumps the refinement row's font + padding slightly for
+     better mouse-target sizing. */
+  .sb-hotels-refine button,
+  .sb-hotels-refine label,
+  .sb-hotels-refine select {
+    font-size: 0.78rem !important;
+  }
+  .sb-hotels-refine button {
+    padding: 0.4rem 0.9rem !important;
   }
 }
 
@@ -920,6 +965,377 @@ body main textarea.input-luxury {
   /* Page-level top breathing room reduced on mobile too. */
   .lux-bg > .max-w-7xl,
   .fd-root > .fd-wrap { padding-top: 0.4rem !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   20. v132.4 — DESKTOP MODAL CENTERING & POLISH
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile-first codebase has ~20+ modals using `fixed inset-0 flex items-end`
+   (bottom-sheet pattern). On phones this is correct — drawer slides up
+   from the bottom edge, anchored to thumb reach.
+
+   On desktop with a mouse + 1080p+ canvas, full-width bottom-sheet looks
+   awkward (huge horizontal whitespace + interaction happens at screen
+   bottom instead of viewport center). This block:
+
+   1. Forces all bottom-sheet modals to CENTER vertically on desktop.
+   2. Caps inner card max-width to ~560px (BookingReview already does this
+      via Tailwind `sm:max-w-md`; CreateFlow sheets don't — we add it).
+   3. Rounds all 4 corners (mobile uses `rounded-t-3xl` only — opens from
+      bottom so bottom corners hidden by viewport edge; desktop sees both).
+   4. Replaces the slide-up animation with a fade+scale entrance — much
+      cleaner when entering from the center.
+   5. Tighter backdrop with sharper blur for premium feel on big monitors.
+
+   Selector signature: `.fixed.inset-0.flex.items-end` — that exact 4-class
+   combo is ONLY used by full-screen modal backdrops in this codebase
+   (verified across customer + partner + admin surfaces). Won't bleed
+   into floating tooltips, inline drawers, or stacked layout containers.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* ── 20.1 — Center the modal vertically + horizontally on desktop ── */
+  body .fixed.inset-0.flex.items-end {
+    align-items: center !important;
+  }
+
+  /* ── 20.2 — Subtle backdrop polish on desktop (deeper blur, darker
+         tint so the centered card pops more against a busy page) ── */
+  body .fixed.inset-0.flex.items-end[style*="rgba"] {
+    backdrop-filter: blur(8px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  }
+
+  /* ── 20.3 — Inner card: cap width, full-radius, drop shadow ──────
+       The `.ig-drawer-up` class marks every CreateFlow + reel feed
+       bottom-sheet. BookingReview uses its own inline shape. Both
+       converge on these properties on desktop. ──────────────────── */
+  body .fixed.inset-0 > .ig-drawer-up,
+  body .fixed.inset-0 .ig-drawer-up {
+    max-width: 560px !important;
+    margin-inline: auto !important;
+    border-radius: 22px !important;
+    box-shadow:
+      0 30px 80px -10px rgba(0, 0, 0, 0.42),
+      0 12px 32px -4px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  }
+
+  /* ── 20.4 — `rounded-t-*` cards (Tailwind shorthand for "rounded top
+         only") should fully round on desktop. We have NO way to
+         distinguish a top-rounded modal card from a top-rounded
+         drop-down (rare), so scope to descendants of `.fixed.inset-0`
+         which is the modal-backdrop signature. ────────────────────── */
+  body .fixed.inset-0 .rounded-t-3xl {
+    border-radius: 22px !important;
+  }
+  body .fixed.inset-0 .rounded-t-2xl {
+    border-radius: 18px !important;
+  }
+  body .fixed.inset-0 .rounded-t-xl {
+    border-radius: 14px !important;
+  }
+
+  /* ── 20.5 — Replace slide-up animation with fade+scale on desktop
+         Existing `.ig-drawer-up` keyframe (defined inline in
+         InstagramHotelFeed.tsx) does translateY(100%)→0. From a
+         center-mounted modal that looks weird — card slides in from
+         BELOW the viewport into the middle. Override with a centered
+         fade-in. ────────────────────────────────────────────────── */
+  .ig-drawer-up {
+    animation: sbModalDesktopIn 0.26s cubic-bezier(0.3, 1, 0.32, 1) both !important;
+  }
+  @keyframes sbModalDesktopIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* ── 20.6 — `paddingBottom: calc(env(safe-area-inset-bottom)…)` on
+         inner CreateFlow sheets reserves space for the iOS home
+         indicator. On centered desktop modals that becomes an awkward
+         empty band at the bottom. Neutralize. ────────────────────── */
+  body .fixed.inset-0 > .ig-drawer-up[style*="safe-area-inset-bottom"],
+  body .fixed.inset-0 .ig-drawer-up[style*="safe-area-inset-bottom"] {
+    padding-bottom: 18px !important;
+  }
+
+  /* ── 20.7 — Inner content max-height adjustment.
+         BookingReview uses maxHeight: 94vh; on a tall desktop canvas
+         this becomes ~870px of modal which dwarfs the actual content.
+         Cap at a more sensible 88vh. ─────────────────────────────── */
+  body .fixed.inset-0 > div[style*="maxHeight: 94vh"],
+  body .fixed.inset-0 > div[style*="max-height: 94vh"] {
+    max-height: 88vh !important;
+  }
+
+  /* ── 20.8 — Photo gallery lightbox (z-[70] bg-black/95) IS intentionally
+         fullscreen for cinema feel. Don't touch it. Selector below skips
+         lightboxes by checking for bg-black/95 inline class via attribute
+         match — the lightbox uses Tailwind `bg-black/95` which renders as
+         `background-color: rgba(0,0,0,0.95)`; non-lightbox modals use
+         `rgba(2,4,12,…)` or similar. Lightbox is unaffected because the
+         `.flex.items-end` selector requires items-end which lightbox does
+         NOT use (lightbox uses items-center). Verified safe. ─────────── */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   21. v132.4 — KEYBOARD AFFORDANCES on desktop reel pages
+   ─────────────────────────────────────────────────────────────────────────
+   Desktop users expect arrow-key / spacebar navigation in a reel feed
+   (YouTube Shorts / Instagram Web behavior). We can't add JS keyboard
+   handlers from a CSS file, but we CAN expose hover-only visual hints
+   on the reel feed so power users see what's interactive.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Show a subtle "click anywhere to mute/unmute" indicator on hover.
+     Mobile uses tap-to-unmute via the .ig-tap-unmute pill which auto-
+     dismisses after a few seconds. Desktop has no such pill — show
+     it on hover of the centered reel card. */
+  .ig-card:hover .ig-tap-unmute {
+    opacity: 0.9 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Reel action rail buttons get a tiny hover scale for affordance. */
+  .ig-card .ig-action-btn:hover {
+    transform: scale(1.06);
+    transition: transform 0.14s cubic-bezier(0.3, 1.4, 0.4, 1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   22. v132.4 — HOVER POLISH on common interactive elements
+   ─────────────────────────────────────────────────────────────────────────
+   Section 13 already adds hover lifts to .card-luxury, .lux-glass, .fd-card,
+   .me-grid-tile, .me-action-btn. This block extends that to more surfaces
+   that customer + partner pages use heavily but were missed.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Hotel detail page room cards — give them the same hover lift as
+     .card-luxury so they feel clickable on desktop. */
+  body main .hx-room-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(15, 12, 8, 0.10), 0 5px 12px rgba(15, 12, 8, 0.06);
+    transition: transform 0.18s cubic-bezier(.3, 1.4, .4, 1), box-shadow 0.18s ease;
+  }
+
+  /* Pills and chips throughout (city pills, filter chips, etc) get a
+     subtle background shift on hover so the cursor reads "clickable". */
+  body main button.rounded-full:hover,
+  body main button.rounded-2xl:hover:not(:disabled) {
+    filter: brightness(1.04);
+    transition: filter 0.14s ease;
+  }
+
+  /* Modal close buttons (used across all modals) get a hover spin. */
+  body .fixed.inset-0 button[aria-label="Close"]:hover {
+    transform: rotate(90deg);
+    background: rgba(255, 255, 255, 0.12) !important;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  /* Modal primary CTAs — subtle lift + stronger shadow on hover. */
+  body .fixed.inset-0 button.lux-btn:hover,
+  body .fixed.inset-0 .br-cta-pay:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(201, 145, 26, 0.30) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   23. v132.8 — /hotels/[id] DESKTOP 2-COLUMN LAYOUT (sticky right rail)
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile + tablet: the entire hotel detail page is one long flow with the
+   availability picker sandwiched mid-page (after the tabs, before the
+   rooms list). That works on phones — thumb scrolls to it naturally.
+
+   Desktop ≥1280px: the same page becomes a 2-column grid. Everything
+   except `#availability-picker` flows in column 1 (left). The picker
+   moves to column 2 (right rail, 340-380px wide) and `position:
+   sticky`-pins to the viewport top once the user scrolls past its
+   natural position — so dates + guest counters + Book/Negotiate CTAs
+   are always one click away, no matter how far down the room cards
+   or reviews the customer has scrolled.
+
+   Zero JSX changes — pure CSS retrofit. The page already wraps every
+   section as a flat direct child of `.hx-shell > .max-w-6xl > div`, so
+   `:not(#availability-picker)` cleanly forces them into column 1.
+
+   `grid-row: 1 / span 999` puts the picker at the top of column 2 from
+   the moment the page loads (instead of waiting until source-order
+   item #5). The "999" span is harmless — grid creates as many implicit
+   rows as auto-placed siblings require, no more.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1280px) {
+  /* Make the page wrapper a 2-col grid. The max-width is bumped from
+     1152 (Tailwind max-w-6xl) to 1280 so the new right rail doesn't
+     squeeze the room cards in column 1. */
+  .hx-shell > .max-w-6xl {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 340px !important;
+    column-gap: 32px !important;
+    align-items: start !important;
+    max-width: 1280px !important;
+  }
+
+  /* Every direct child of the page wrapper EXCEPT the availability
+     picker flows in column 1. `min-width: 0` prevents long content
+     (hotel name, OTA comparison table) from forcing the grid track
+     wider than 1fr. */
+  .hx-shell > .max-w-6xl > :not(#availability-picker) {
+    grid-column: 1 !important;
+    min-width: 0;
+  }
+
+  /* The availability picker becomes the sticky right rail. Spans all
+     rows of the grid so column 2 stays "owned" by the picker — no
+     phantom empty space at the bottom right of the page. */
+  .hx-shell > .max-w-6xl > #availability-picker {
+    grid-column: 2 !important;
+    grid-row: 1 / span 999 !important;
+    position: sticky !important;
+    top: 88px !important;                       /* below 64px sticky navbar + 24px breathing */
+    align-self: start !important;
+    max-height: calc(100vh - 110px);
+    overflow-x: hidden;                         /* preserve picker's hx-availability::before clip */
+    overflow-y: auto;                           /* scroll inside picker if content is tall */
+    margin-top: 0 !important;                   /* override inline marginBottom:24px from JSX */
+    margin-bottom: 0 !important;
+    width: auto;                                /* let grid track width drive size */
+  }
+
+  /* Slim scrollbar inside the picker so it's discoverable but doesn't
+     fight the cozy parchment palette. */
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar {
+    width: 5px;
+  }
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-thumb {
+    background: rgba(201, 145, 26, 0.30);
+    border-radius: 3px;
+  }
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (min-width: 1440px) {
+  /* Wider monitors get a roomier right rail + wider page cap. */
+  .hx-shell > .max-w-6xl {
+    grid-template-columns: minmax(0, 1fr) 380px !important;
+    column-gap: 40px !important;
+    max-width: 1340px !important;
+  }
+}
+
+@media (min-width: 1700px) {
+  /* On true wide-screens cap at 1440 so the page doesn't feel
+     stretched. Right rail can grow a touch more. */
+  .hx-shell > .max-w-6xl {
+    grid-template-columns: minmax(0, 1fr) 400px !important;
+    max-width: 1440px !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   24. v132.9 — Reel-feed keyboard-help chip (`?` button)
+   ─────────────────────────────────────────────────────────────────────────
+   Tiny floating chip in the bottom-left corner of the reel feed on
+   desktop. Opens the keyboard-shortcuts overlay. Hidden on mobile
+   because the matchMedia guard in the keyboard handler skips the
+   shortcuts entirely below 1024px — surfacing the chip there would
+   be a dead UI element.
+   ───────────────────────────────────────────────────────────────────────── */
+.sb-help-chip {
+  display: none;             /* hidden everywhere by default — desktop @media unmasks it */
+}
+
+@media (min-width: 1024px) {
+  .sb-help-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--bg-elevated, rgba(31, 26, 15, 0.78));
+    color: var(--accent, #C9A66B);
+    border: 1px solid var(--border-strong, rgba(201, 145, 26, 0.28));
+    box-shadow:
+      0 8px 20px rgba(15, 12, 8, 0.18),
+      0 2px 6px rgba(15, 12, 8, 0.10);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    font-weight: 700;
+    font-size: 0.92rem;
+    line-height: 1;
+    z-index: 45;
+    cursor: pointer;
+    opacity: 0.78;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.3,1.4,.4,1);
+  }
+  .sb-help-chip:hover {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.04);
+  }
+  .sb-help-chip:focus-visible {
+    outline: 2px solid var(--accent, #C9A66B);
+    outline-offset: 2px;
+  }
+}
+
+/* The chip lives on every reel route (/, /discover, /reels) but should
+   NOT appear on traditional pages (/hotels, /bookings, etc.) where the
+   InstagramHotelFeed isn't mounted — so no extra hide gate needed. */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   25. v132.9 — TABLET sweet-spot (768-1023px) polish
+   ─────────────────────────────────────────────────────────────────────────
+   Section 15 already added a couple of tablet-only rules. This block
+   extends them: tablets are big enough for slightly denser layouts
+   without crossing into desktop territory. The viewport range is
+   common on iPad Mini portrait, Galaxy Tab S landscape, foldables.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet: bump hotels-grid gap from the mobile-tight default. */
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    gap: 1.25rem !important;
+  }
+
+  /* Sort + star refinement row gets bigger touch targets on tablet —
+     fingers, not mouse, but more horizontal room than phones. */
+  .sb-hotels-refine button,
+  .sb-hotels-refine label,
+  .sb-hotels-refine select {
+    font-size: 0.78rem !important;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+  .sb-hotels-refine button {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  /* Hotel detail page: bump max-width so the photo gallery + room cards
+     get more horizontal room. Mobile defaults were too cramped on a
+     800-1000px tablet. Single column flow preserved (no 2-col grid). */
+  .hx-shell > .max-w-6xl {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  /* City filter chips on /hotels — slightly bigger on tablet. */
+  .lux-bg .flex.flex-wrap.gap-1\.5 > button {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.85rem;
+  }
 }
 
 /* End v122 desktop layer (v122.6 — all-viewport density pass) */

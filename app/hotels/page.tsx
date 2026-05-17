@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -18,6 +18,44 @@ function HotelList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [apiError, setApiError] = useState("");
   const [hydrated, setHydrated] = useState(false);
+
+  // v132.5 — client-side sort + filter dimensions (live without re-fetch).
+  // v132.9 — initial values hydrated from URL `?sort=...&stars=4,5` so
+  // refreshes + shared links preserve refinement state.
+  const initialSort = (() => {
+    const s = searchParams.get("sort");
+    return s === "price-asc" || s === "price-desc" || s === "rating" ? s : "default";
+  })() as "default" | "price-asc" | "price-desc" | "rating";
+  const initialStars = (() => {
+    const raw = searchParams.get("stars");
+    if (!raw) return new Set<number>();
+    const set = new Set<number>();
+    raw.split(",").forEach((p) => {
+      const n = Number(p.trim());
+      if (n === 3 || n === 4 || n === 5) set.add(n);
+    });
+    return set;
+  })();
+  const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">(initialSort);
+  const [selectedStars, setSelectedStars] = useState<Set<number>>(initialStars);
+
+  // v132.9 — Mirror sort + stars into the URL whenever they change so
+  // the page is shareable + survives reloads. Uses replace (not push)
+  // to avoid polluting browser history with every chip toggle.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sortBy === "default") sp.delete("sort"); else sp.set("sort", sortBy);
+    if (selectedStars.size === 0) sp.delete("stars");
+    else {
+      const arr: number[] = [];
+      selectedStars.forEach((s) => arr.push(s));
+      sp.set("stars", arr.sort((a, b) => b - a).join(","));
+    }
+    const qs = sp.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    router.replace(url, { scroll: false });
+  }, [sortBy, selectedStars, router]);
 
   // Warm up /discover so the ✨ Explore chip swap is instant.
   useEffect(() => {
@@ -98,12 +136,53 @@ function HotelList() {
 
   const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
 
+  // v132.5 — Derive sorted+filtered list. Compute each hotel's minimum
+  // price (best of active flash deal + lowest room floor) once here so
+  // the sort doesn't re-walk room arrays on every comparison.
+  const displayHotels = useMemo(() => {
+    const withMin = hotels.map((h: any) => {
+      const flashMin = (h.flashDeals || []).length
+        ? Math.min(...h.flashDeals.map((d: any) => d.aiPrice ?? d.dealPrice ?? Infinity))
+        : Infinity;
+      const roomMin = h.rooms?.length
+        ? Math.min(...h.rooms.map((r: any) => r.floorPrice))
+        : Infinity;
+      const _minPrice = Math.min(flashMin, roomMin);
+      return { ...h, _minPrice: Number.isFinite(_minPrice) ? _minPrice : null };
+    });
+    const filtered = selectedStars.size > 0
+      ? withMin.filter((h: any) => selectedStars.has(Number(h.starRating) || 0))
+      : withMin;
+    if (sortBy === "default") return filtered;
+    const cloned = [...filtered];
+    if (sortBy === "price-asc") {
+      cloned.sort((a: any, b: any) => (a._minPrice ?? Infinity) - (b._minPrice ?? Infinity));
+    } else if (sortBy === "price-desc") {
+      cloned.sort((a: any, b: any) => (b._minPrice ?? -Infinity) - (a._minPrice ?? -Infinity));
+    } else if (sortBy === "rating") {
+      cloned.sort((a: any, b: any) => (Number(b.avgRating) || 0) - (Number(a.avgRating) || 0));
+    }
+    return cloned;
+  }, [hotels, sortBy, selectedStars]);
+
+  const filtersActive = sortBy !== "default" || selectedStars.size > 0;
+  const toggleStar = (s: number) => {
+    setSelectedStars((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s); else next.add(s);
+      return next;
+    });
+  };
+  const resetFilters = () => { setSortBy("default"); setSelectedStars(new Set()); };
+
   return (
     <div className="min-h-screen lux-bg">
     {/* v90 — `.lux-bg` is now theme-aware (reads var(--bg-page)), so the
         page surface flips with the dark/light toggle. The cozy compact
         hero from v89 stays — eyebrow + heading + count + search + chips
-        fit in a tight band so the first hotel row is above the fold. */}
+        fit in a tight band so the first hotel row is above the fold.
+        v132.5 — the filter band below is sticky on desktop so users
+        keep sort + star + city controls in view while scrolling cards. */}
     <div className="max-w-7xl mx-auto px-4 py-4">
 
       {/* ── Compact page header ── */}
@@ -113,7 +192,11 @@ function HotelList() {
           Find Your Perfect Stay
         </h1>
         <p className="text-[0.78rem]" style={{ color: "var(--text-muted)" }}>
-          {loading ? "Searching…" : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
+          {loading
+            ? "Searching…"
+            : filtersActive
+              ? `${displayHotels.length} of ${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} match your filters`
+              : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
         </p>
       </div>
 
@@ -136,7 +219,7 @@ function HotelList() {
       </div>
 
       {/* ── City filter chips — v122.3: tap auto-scrolls to results ── */}
-      <div className="flex flex-wrap gap-1.5 mb-4" data-autonext-self="hotels-results">
+      <div className="flex flex-wrap gap-1.5 mb-2" data-autonext-self="hotels-results">
         {cities.map((c) => {
           const active = (c === "All" && !city) || c === city;
           return (
@@ -157,6 +240,73 @@ function HotelList() {
         })}
       </div>
 
+      {/* ── v132.5 — Sort + star refinement row.
+          Mobile: flex-wrap so each control finds its own line.
+          Desktop: spreads inline with the city chips above when
+          sb-hotels-filters wraps them all into a sticky band. ── */}
+      <div className="sb-hotels-refine flex flex-wrap items-center gap-1.5 mb-4">
+        {/* Sort dropdown */}
+        <label
+          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[0.72rem] font-medium"
+          style={{
+            background: "var(--bg-pill)",
+            color: "var(--text-soft)",
+            border: "1px solid var(--border-soft)",
+          }}
+        >
+          <span className="opacity-70" style={{ fontSize: "0.7rem" }}>Sort</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="bg-transparent outline-none cursor-pointer font-semibold"
+            style={{ color: "var(--text-base)", fontSize: "0.72rem" }}
+            aria-label="Sort hotels"
+          >
+            <option value="default">Recommended</option>
+            <option value="price-asc">Price · low → high</option>
+            <option value="price-desc">Price · high → low</option>
+            <option value="rating">Top rated</option>
+          </select>
+        </label>
+
+        {/* Star multi-select */}
+        {[5, 4, 3].map((s) => {
+          const active = selectedStars.has(s);
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => toggleStar(s)}
+              className="px-2.5 py-1 rounded-full text-[0.72rem] font-semibold transition-all"
+              style={{
+                background: active ? "var(--bg-pill-active)" : "var(--bg-pill)",
+                color: active ? "var(--text-inverse)" : "var(--text-soft)",
+                border: active ? "1px solid var(--border-strong)" : "1px solid var(--border-soft)",
+              }}
+              aria-pressed={active}
+              aria-label={`Filter ${s} star hotels`}
+            >
+              {s}★
+            </button>
+          );
+        })}
+
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="px-2.5 py-1 rounded-full text-[0.7rem] font-medium ml-auto"
+            style={{
+              background: "transparent",
+              color: "var(--text-muted)",
+              border: "1px dashed var(--border-soft)",
+            }}
+          >
+            ✕ Reset
+          </button>
+        )}
+      </div>
+
       {/* ── Loading skeleton ── */}
       {loading && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -173,10 +323,11 @@ function HotelList() {
         </div>
       )}
 
-      {/* ── Hotel grid ── v122.3: data-autonext target for filter chip scroll */}
-      {!loading && hotels.length > 0 && (
+      {/* ── Hotel grid ── v122.3: data-autonext target for filter chip scroll.
+          v132.5: renders `displayHotels` (sort + star filter applied). */}
+      {!loading && displayHotels.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6" data-autonext="hotels-results">
-          {hotels.map((h: any, idx: number) => {
+          {displayHotels.map((h: any, idx: number) => {
             // BUG-FIX 2: prefer ACTIVE flash deal price over room.floorPrice
             // for the "Starting from" badge. Hotels were showing ₹3899
             // (floor) even though a ₹999 deal was live.
@@ -330,14 +481,32 @@ function HotelList() {
         </div>
       )}
 
-      {/* ── Empty state (only shown when no error) ── */}
-      {!loading && hotels.length === 0 && !apiError && (
+      {/* ── Empty state (only shown when no error). v132.5: also covers
+          the case where filters narrow `displayHotels` to zero. ── */}
+      {!loading && displayHotels.length === 0 && !apiError && (
         <div className="text-center py-28">
           <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-5">
-            <span className="text-3xl">🏔️</span>
+            <span className="text-3xl">{filtersActive ? "🎯" : "🏔️"}</span>
           </div>
-          <p className="text-lg font-semibold text-white/90 mb-1">No hotels found</p>
-          <p className="text-sm text-white/50">Try a different city or search term</p>
+          <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>
+            {filtersActive ? "No hotels match those filters" : "No hotels found"}
+          </p>
+          <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
+            {filtersActive ? "Loosen the star filter or change the sort order" : "Try a different city or search term"}
+          </p>
+          {filtersActive && (
+            <button
+              onClick={resetFilters}
+              className="px-4 py-2 rounded-full text-sm font-semibold"
+              style={{
+                background: "var(--bg-pill-active)",
+                color: "var(--text-inverse)",
+                border: "1px solid var(--border-strong)",
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       )}
     </div>

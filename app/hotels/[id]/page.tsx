@@ -14,6 +14,7 @@ import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
+import BackToTopButton from "@/components/BackToTopButton";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -235,6 +236,33 @@ export default function HotelDetail() {
   // Gallery state
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
+
+  // v132.6 — Keyboard arrows + Escape for the photo lightbox.
+  // Desktop users expect arrow-key navigation in any gallery (YouTube,
+  // Instagram, Airbnb, Booking.com all do this). On mobile this listener
+  // is harmless — there's no keyboard. The handler reads `hotel.images`
+  // at fire-time so it's always in sync with the latest image set; the
+  // `Math.max(5, base.length)` mirrors the same total computed inside
+  // the lightbox JSX.
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const base = Array.isArray(hotel?.images) ? hotel.images : [];
+      const total = Math.max(5, base.length);
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setGalleryIdx((i) => Math.max(0, i - 1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setGalleryIdx((i) => Math.min(total - 1, i + 1));
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setGalleryOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [galleryOpen, hotel?.images]);
 
   // v124.2 — toggle sb-modal-open whenever an inline modal is open so the
   // BottomDock / DialerNav / BackChip auto-hide. Decoupled from the
@@ -2581,7 +2609,13 @@ export default function HotelDetail() {
                 )}
               </div>
 
-              <p className="text-center text-white/50 text-sm mt-3">{galleryIdx + 1} / {allImgs.length}</p>
+              <p className="text-center text-white/50 text-sm mt-3">
+                {galleryIdx + 1} / {allImgs.length}
+                {/* v132.6 — desktop-only keyboard shortcut hint */}
+                <span className="hidden lg:inline text-white/30 ml-3 text-xs tracking-wide">
+                  · ← → navigate · Esc to close
+                </span>
+              </p>
 
               <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                 {allImgs.map((img: string, i: number) => (
@@ -3623,6 +3657,10 @@ export default function HotelDetail() {
           </div>
         </div>
       )}
+
+      {/* v132.9 — Floating back-to-top button (desktop only, surfaces
+          after 600px scroll, hides while modals are open) */}
+      <BackToTopButton />
     </div>
   );
 }
