@@ -121,6 +121,9 @@ export default function PartnerDashboard() {
   const [calLoading, setCalLoading]   = useState(false);
   const [calMonth, setCalMonth]       = useState<Date>(new Date());
   const [otaFeeds, setOtaFeeds]       = useState<any[]>([]);
+  // v132.2 — per-date pricing maps (powers the inline price editor)
+  const [roomPrices,    setRoomPrices]    = useState<Record<string, any>>({});
+  const [priceOverrides, setPriceOverrides] = useState<Record<string, any>>({});
   const [walkInOpen, setWalkInOpen]   = useState<{ roomId: string; date: string } | null>(null);
   const [walkIn, setWalkIn]           = useState({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
   const [walkInSaving, setWalkInSaving] = useState(false);
@@ -523,6 +526,8 @@ export default function PartnerDashboard() {
       });
       const d = await r.json();
       setCalendar(d.calendar || {});
+      setRoomPrices(d.roomPrices || {});
+      setPriceOverrides(d.priceOverrides || {});
     } catch {}
     finally { setCalLoading(false); }
   }
@@ -605,6 +610,40 @@ export default function PartnerDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       loadCalendar();
+    } catch {}
+  }
+
+  // v132.2 — per-date room pricing + quantity override save / clear.
+  // Both write to /api/partner/room-pricing, then refresh the calendar
+  // so the new prices show up in every relevant cell.
+  async function savePricing(payload: { items: Array<{ roomId: string; date: string; floorPrice?: number | null; quantityOverride?: number | null; note?: string | null; }> }) {
+    if (!hotel?.id) return;
+    const token = getToken();
+    try {
+      const res = await fetch("/api/partner/room-pricing", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ hotelId: hotel.id, items: payload.items }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Save failed: ${err?.error || res.statusText}`);
+        return;
+      }
+      await loadCalendar();
+    } catch (e: any) {
+      alert(`Save error: ${e?.message || e}`);
+    }
+  }
+  async function clearPricing(args: { roomId: string; date: string }) {
+    if (!hotel?.id) return;
+    const token = getToken();
+    try {
+      await fetch(`/api/partner/room-pricing?hotelId=${hotel.id}&roomId=${encodeURIComponent(args.roomId)}&date=${encodeURIComponent(args.date)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadCalendar();
     } catch {}
   }
 
@@ -1553,6 +1592,10 @@ export default function PartnerDashboard() {
               }}
               onDeleteBlock={deleteBlock}
               onOpenBlockSheet={() => setBlockSheetOpen(true)}
+              roomPrices={roomPrices}
+              priceOverrides={priceOverrides}
+              onSavePricing={savePricing}
+              onClearPricing={clearPricing}
             />
 
             <BlockDatesSheet
