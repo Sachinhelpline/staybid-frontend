@@ -124,6 +124,9 @@ export default function PartnerDashboard() {
   // v132.2 — per-date pricing maps (powers the inline price editor)
   const [roomPrices,    setRoomPrices]    = useState<Record<string, any>>({});
   const [priceOverrides, setPriceOverrides] = useState<Record<string, any>>({});
+  // v132.3 — hotel autopilot mode + active flash deals (drive warnings)
+  const [autopilotMode, setAutopilotMode] = useState<"auto"|"hybrid"|"manual">("auto");
+  const [flashByRoom,   setFlashByRoom]   = useState<Record<string, any[]>>({});
   const [walkInOpen, setWalkInOpen]   = useState<{ roomId: string; date: string } | null>(null);
   const [walkIn, setWalkIn]           = useState({ fromDate:"", toDate:"", guestName:"", guestPhone:"", amount:"", note:"", assignedUnitId:"", assignedUnitNumber:"" });
   const [walkInSaving, setWalkInSaving] = useState(false);
@@ -528,6 +531,8 @@ export default function PartnerDashboard() {
       setCalendar(d.calendar || {});
       setRoomPrices(d.roomPrices || {});
       setPriceOverrides(d.priceOverrides || {});
+      if (d.autopilotMode) setAutopilotMode(d.autopilotMode);
+      setFlashByRoom(d.flashByRoom || {});
     } catch {}
     finally { setCalLoading(false); }
   }
@@ -1596,6 +1601,8 @@ export default function PartnerDashboard() {
               priceOverrides={priceOverrides}
               onSavePricing={savePricing}
               onClearPricing={clearPricing}
+              autopilotMode={autopilotMode}
+              flashByRoom={flashByRoom}
             />
 
             <BlockDatesSheet
