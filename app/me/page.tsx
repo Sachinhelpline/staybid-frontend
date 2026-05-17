@@ -163,7 +163,16 @@ export default function MePage() {
       // it to the matching social_profiles.id internally. Previously we
       // were passing user id where the route expected a profile id, so
       // this fetch always returned [].
-      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, { cache: "no-store" })
+      // v132.12 — Forward the Authorization header so the route can read
+      // JWT email + phone for cross-identity matching. Critical for
+      // Google sign-in: the Railway backend stores users.email = NULL
+      // for Firebase identities, but the Firebase ID token carries the
+      // verified email. Without this header /me would miss the
+      // canonical profile and show "0 posts" again.
+      fetch(`/api/social/feed?authorUser=${encodeURIComponent(myUserId)}&limit=60`, {
+        cache: "no-store",
+        headers: tok ? { Authorization: `Bearer ${tok}` } : undefined,
+      })
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
       tok

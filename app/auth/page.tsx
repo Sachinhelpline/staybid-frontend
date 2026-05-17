@@ -6,6 +6,23 @@ import { api } from "@/lib/api";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
+// v132.12 — Firebase Phone-Auth gate.
+// ─────────────────────────────────────────────────────────────────────────
+// Firebase's signInWithPhoneNumber requires an enabled billing plan. Until
+// the user upgrades the Firebase project, every send-OTP attempt returns
+// `auth/billing-not-enabled` and the customer is left staring at an error
+// they can't act on.
+//
+// Toggle: NEXT_PUBLIC_ENABLE_PHONE_OTP=1 in Vercel env vars.
+// Default: OFF — Mobile OTP button + screens hidden. WhatsApp OTP +
+// Google + Facebook + (future) any other social provider stays live, so
+// users always have at least 3 ways to sign in.
+//
+// When enabling later: set the env var to "1" in Vercel and redeploy.
+// All the code paths (sendFirebaseOtp + verify screens + reCAPTCHA setup)
+// are preserved verbatim — no refactor needed, just the gate.
+const PHONE_OTP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PHONE_OTP === "1";
+
 type Screen = "options" | "phone" | "phone-otp" | "whatsapp" | "whatsapp-otp";
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
@@ -134,6 +151,16 @@ export default function AuthPage() {
 
   // ── Send OTP via Firebase (Mobile) ─────────────────────────────────────────
   const sendFirebaseOtp = async () => {
+    // v132.12 — Defensive gate. The button rendering this handler is
+    // already hidden when PHONE_OTP_ENABLED is false, but a stale URL
+    // hash / deep link / dev-tools poke could still land a user on the
+    // phone screen. Surface a clean message instead of letting Firebase
+    // throw `auth/billing-not-enabled`.
+    if (!PHONE_OTP_ENABLED) {
+      setError("Mobile OTP is unavailable. Please continue with Google, Facebook, or WhatsApp OTP.");
+      setScreen("options");
+      return;
+    }
     if (phone.length < 10) return setError("Please enter a 10-digit number.");
     setLoading(true);
     setError("");
@@ -260,11 +287,20 @@ export default function AuthPage() {
                 <span className="flex-1 text-left">Login with WhatsApp OTP</span>
               </button>
 
-              <button onClick={() => { setError(""); setPhone(""); setScreen("phone"); }} disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 btn-luxury rounded-2xl text-sm font-medium text-white disabled:opacity-50">
-                <PhoneIcon />
-                <span className="flex-1 text-left">Login with Mobile OTP</span>
-              </button>
+              {/* v132.12 — Mobile OTP button rendered only when
+                  NEXT_PUBLIC_ENABLE_PHONE_OTP=1. The Firebase project
+                  needs a paid billing plan for signInWithPhoneNumber to
+                  work; until then this button stays hidden so users
+                  don't hit `auth/billing-not-enabled` errors. The
+                  WhatsApp OTP button above remains the phone-based
+                  fallback (routes through Railway, not Firebase). */}
+              {PHONE_OTP_ENABLED && (
+                <button onClick={() => { setError(""); setPhone(""); setScreen("phone"); }} disabled={loading}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 btn-luxury rounded-2xl text-sm font-medium text-white disabled:opacity-50">
+                  <PhoneIcon />
+                  <span className="flex-1 text-left">Login with Mobile OTP</span>
+                </button>
+              )}
 
               {loading && <p className="text-center text-xs text-luxury-400 pt-1">Please wait…</p>}
               <ErrorBox />

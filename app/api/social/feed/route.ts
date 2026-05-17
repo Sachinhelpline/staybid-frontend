@@ -19,7 +19,7 @@ import {
 // canonical social_profiles row (which has user_id without the prefix
 // after the v112.2 merge). Without this, /me showed 0 posts for any
 // user whose sb_token was issued under the old auth path.
-import { normalizeAuthId } from "@/lib/social/auth-helper";
+import { normalizeAuthId, socialUserFromReq } from "@/lib/social/auth-helper";
 // v132.10 — Cross-identity bridge. When the direct user_id lookup misses
 // (user authed via Google/FB, then later via phone-OTP), this helper
 // walks phone + email matches across the users table and returns any
@@ -77,8 +77,15 @@ export async function GET(req: NextRequest) {
       // `users` table to catch the multi-auth case (same human signed
       // up with Google first, now logged in via Phone-OTP — the new
       // session's user.id won't match the old Firebase-bound profile).
-      // We need the caller's phone + email to do the cross-match.
-      // The fastest source is the `users` row for `authorUserId`.
+      //
+      // v132.12 — ALSO consult the caller's JWT claims (email + phone)
+      // when an Authorization header is present. Critical for the
+      // Google-auth case: the Railway backend stores Google users with
+      // users.email = NULL even though the Firebase ID token carries
+      // the verified email. JWT claims fill that gap so cross-identity
+      // matching works on the very first /me load — no manual SQL
+      // backfill required for new users.
+      const jwtUser = socialUserFromReq(req);
       const userRows = await sbCached(
         `social:user-by-id:${normalized}`,
         async () => {
@@ -92,9 +99,16 @@ export async function GET(req: NextRequest) {
         TTL_LOOKUPS,
       );
       const me = Array.isArray(userRows) && userRows[0] ? userRows[0] : null;
-      if (me) {
+      // Prefer JWT-derived claims when present (they're authoritative
+      // for fresh Firebase sessions where the users row hasn't been
+      // backfilled yet), fall back to whatever the users row has.
+      const claimsPhone = (jwtUser?.phone && !/^unknown_/i.test(jwtUser.phone))
+        ? jwtUser.phone
+        : (me?.phone && !/^unknown_/i.test(me.phone) ? me.phone : null);
+      const claimsEmail = jwtUser?.email || me?.email || null;
+      if (me || claimsEmail || claimsPhone) {
         const cross = await findProfileAcrossIdentities({
-          id: normalized, phone: me.phone || null, email: me.email || null,
+          id: normalized, phone: claimsPhone, email: claimsEmail,
         });
         if (cross?.id) resolved = String(cross.id);
       }
