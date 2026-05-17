@@ -73,7 +73,7 @@ function fmtCount(n: number): string {
 
 export default function MePage() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const {
     myDisplayName, myAvatarUrl, myBio, myLocation, myWebsite, myCustomHighlights,
     followingCount, follows, searchFollowers,
@@ -323,6 +323,267 @@ export default function MePage() {
     return () => document.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
+  // ─────────────────────────────────────────────────────────────────────
+  // v132.15 — SIGNED-OUT branch.
+  //
+  // Before this, /me rendered the same profile chrome whether the user was
+  // signed in or not — FollowStore returns synthesized 5.9K followers, a
+  // default "@you" handle, an avatar fallback, etc. Visually identical to a
+  // logged-in account. Edit profile + Share profile buttons were clickable
+  // and the highlights row had tap targets. User correctly flagged this as
+  // a "logout bluff" — the page LOOKED logged in even when AuthContext.user
+  // was null.
+  //
+  // Fix: when not signed in, replace /me's entire body with a Welcome hero
+  // that offers the THREE account types StayBid supports — Public, Creator,
+  // Hotel. Drawer + bottom dock still mounted so navigation works.
+  //
+  // `authLoading` guard prevents a flash of the signed-out hero during the
+  // 1-frame window between page mount and AuthProvider hydrating from
+  // localStorage. Without it, signed-in users see the hero for a beat
+  // before the real profile renders.
+  // ─────────────────────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="me-root me-root-loggedout">
+        <div className="me-loggedout-spinner" aria-label="Loading" />
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <div className="me-root me-root-loggedout">
+        <header className="me-top">
+          <span className="me-top-handle">stay·bid</span>
+          <div className="me-top-actions">
+            <Link href="/auth" className="me-top-icon" aria-label="Sign in">→</Link>
+            <button
+              type="button"
+              className="me-top-icon"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+            >☰</button>
+          </div>
+        </header>
+
+        <section className="me-loggedout-hero">
+          <div className="me-loggedout-mark" aria-hidden>
+            <span className="me-loggedout-brand">stay·bid</span>
+            <span className="me-loggedout-tag">Bid Your Stay · Save Big</span>
+          </div>
+
+          <h1 className="me-loggedout-title">Welcome to StayBid</h1>
+          <p className="me-loggedout-sub">
+            Choose how you want to join — takes 10 seconds, free forever
+          </p>
+
+          <div className="me-loggedout-cards">
+            <Link href="/auth" className="me-loggedout-card me-loggedout-card-public">
+              <span className="me-loggedout-card-icon">🌟</span>
+              <div className="me-loggedout-card-text">
+                <div className="me-loggedout-card-title">Public account</div>
+                <div className="me-loggedout-card-sub">
+                  Browse hotels · place bids · save deals · earn StayPoints
+                </div>
+              </div>
+              <span className="me-loggedout-card-arrow">→</span>
+            </Link>
+
+            <Link href="/upgrade" className="me-loggedout-card me-loggedout-card-creator">
+              <span className="me-loggedout-card-icon">✨</span>
+              <div className="me-loggedout-card-text">
+                <div className="me-loggedout-card-title">Creator account</div>
+                <div className="me-loggedout-card-sub">
+                  Upload reels · build followers · 5-12% commission on every booking
+                </div>
+              </div>
+              <span className="me-loggedout-card-arrow">→</span>
+            </Link>
+
+            <a
+              href="https://staybid-hotel-panel.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="me-loggedout-card me-loggedout-card-hotel"
+            >
+              <span className="me-loggedout-card-icon">🏨</span>
+              <div className="me-loggedout-card-text">
+                <div className="me-loggedout-card-title">
+                  Hotel partner <span className="me-loggedout-card-ext">↗</span>
+                </div>
+                <div className="me-loggedout-card-sub">
+                  List your property · AI pricing · real-time bid inbox · partner dashboard
+                </div>
+              </div>
+              <span className="me-loggedout-card-arrow">→</span>
+            </a>
+          </div>
+
+          <Link href="/auth" className="me-loggedout-signin">
+            Already have an account? <strong>Sign in →</strong>
+          </Link>
+        </section>
+
+        {/* Drawer still mounts — but with signedIn=false the user-specific
+            menu items hide and the bottom button reads "Sign in" instead
+            of "Log out". */}
+        <MoreDrawer
+          open={drawerOpen}
+          isCreator={false}
+          isHotelOwner={false}
+          signedIn={false}
+          onClose={() => setDrawerOpen(false)}
+          onLogout={() => { setDrawerOpen(false); router.push("/auth"); }}
+        />
+
+        <style jsx global>{`
+          .me-root-loggedout {
+            min-height: 100dvh;
+            background: var(--bg-page);
+            color: var(--text-base);
+          }
+          .me-loggedout-spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-soft, rgba(201, 145, 26, 0.18));
+            border-top-color: var(--accent, #C9A66B);
+            animation: meLoSpin 0.8s linear infinite;
+          }
+          @keyframes meLoSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+          .me-loggedout-hero {
+            padding: 28px 22px 80px;
+            max-width: 520px;
+            margin: 0 auto;
+          }
+          .me-loggedout-mark {
+            text-align: center;
+            margin: 8px 0 22px;
+          }
+          .me-loggedout-brand {
+            display: block;
+            font-family: "Cormorant Garamond", Georgia, serif;
+            font-style: italic;
+            font-weight: 500;
+            font-size: clamp(1.85rem, 6vw, 2.4rem);
+            letter-spacing: -0.01em;
+            color: var(--text-base);
+          }
+          .me-loggedout-tag {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent, #C9A66B);
+          }
+          .me-loggedout-title {
+            font-family: "Cormorant Garamond", Georgia, serif;
+            font-weight: 400;
+            font-size: clamp(1.5rem, 5.2vw, 2rem);
+            text-align: center;
+            margin: 6px 0 4px;
+            line-height: 1.15;
+            color: var(--text-base);
+          }
+          .me-loggedout-sub {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin: 0 0 22px;
+            line-height: 1.4;
+          }
+          .me-loggedout-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 18px;
+          }
+          .me-loggedout-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 14px 14px 16px;
+            border-radius: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-soft);
+            color: var(--text-base);
+            text-decoration: none;
+            box-shadow: var(--shadow-soft, 0 2px 10px rgba(15, 12, 8, 0.04));
+            transition: transform 0.15s cubic-bezier(0.3, 1.4, 0.4, 1), box-shadow 0.15s ease;
+          }
+          .me-loggedout-card:active {
+            transform: scale(0.985);
+          }
+          @media (hover: hover) {
+            .me-loggedout-card:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 10px 24px rgba(15, 12, 8, 0.08);
+            }
+          }
+          .me-loggedout-card-icon {
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--accent-soft, rgba(201, 145, 26, 0.10));
+          }
+          .me-loggedout-card-text { flex: 1; min-width: 0; }
+          .me-loggedout-card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-base);
+            margin-bottom: 2px;
+          }
+          .me-loggedout-card-ext {
+            font-size: 0.65rem;
+            color: var(--accent, #C9A66B);
+            margin-left: 4px;
+            font-weight: 500;
+          }
+          .me-loggedout-card-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+          }
+          .me-loggedout-card-arrow {
+            flex-shrink: 0;
+            font-size: 1.05rem;
+            color: var(--accent, #C9A66B);
+            font-weight: 600;
+            opacity: 0.7;
+          }
+          .me-loggedout-signin {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            padding: 14px;
+            font-size: 0.85rem;
+            color: var(--text-soft);
+            text-decoration: none;
+            border-radius: 14px;
+            background: var(--bg-elevated, rgba(201, 145, 26, 0.04));
+            border: 1px solid var(--border-soft);
+          }
+          .me-loggedout-signin strong {
+            color: var(--accent, #C9A66B);
+            font-weight: 700;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div className="me-root">
       {/* Top bar */}
@@ -535,6 +796,7 @@ export default function MePage() {
         open={drawerOpen}
         isCreator={isCreator}
         isHotelOwner={isHotelOwner}
+        signedIn={!!user}
         onClose={() => setDrawerOpen(false)}
         onLogout={() => { logout(); router.push("/"); }}
       />
@@ -916,11 +1178,19 @@ const HOTEL_LINK:   DrawerLink = SHARED_HOTEL_LINK;
 const ACCOUNT_LINK: DrawerLink = SHARED_ACCOUNT_LINK;
 
 function MoreDrawer({
-  open, isCreator, isHotelOwner, onClose, onLogout,
+  open, isCreator, isHotelOwner, signedIn = true, onClose, onLogout,
 }: {
   open:         boolean;
   isCreator:    boolean;
   isHotelOwner: boolean;
+  // v132.15 — When false, the drawer hides every user-specific menu
+  // item (My Bids, Bookings, Saved, Wallet, Verify Stay, Account
+  // settings, etc.) since none of them work without an authenticated
+  // session. The Appearance toggle stays (theme is device-level), and
+  // the bottom CTA flips from "Log out" → "Sign in" so the click takes
+  // an anonymous user TO /auth instead of pretending to log out an
+  // already-logged-out user.
+  signedIn?:    boolean;
   onClose:      () => void;
   onLogout:     () => void;
 }) {
@@ -930,12 +1200,18 @@ function MoreDrawer({
   // who's BOTH an active creator AND a hotel partner sees BOTH entries.
   // Pending creators are included in isCreator so they can track app
   // status from the drawer.
-  const links: DrawerLink[] = [
-    ...DRAWER_LINKS_BASE,
-    ...(isCreator    ? [CREATOR_LINK] : []),
-    ...(isHotelOwner ? [HOTEL_LINK]   : []),
-    ACCOUNT_LINK,
-  ];
+  // v132.15 — signed-out users see an empty links list (Appearance
+  // toggle + Sign-in CTA only). Showing user-specific items here would
+  // either deep-link them to a logged-out version of /bookings, /wallet
+  // etc. (confusing) or 401 immediately.
+  const links: DrawerLink[] = signedIn
+    ? [
+        ...DRAWER_LINKS_BASE,
+        ...(isCreator    ? [CREATOR_LINK] : []),
+        ...(isHotelOwner ? [HOTEL_LINK]   : []),
+        ACCOUNT_LINK,
+      ]
+    : [];
   return (
     <div className="me-drawer-root" onClick={onClose}>
       <div className="me-drawer-panel" onClick={(e) => e.stopPropagation()}>
@@ -965,8 +1241,17 @@ function MoreDrawer({
             <ThemeToggle variant="lg" />
           </li>
           <li>
+            {/* v132.15 — same button, label flips with auth state.
+                Signed-in → "Log out" → fires onLogout (clears state + redirects to /auth).
+                Signed-out → "Sign in" → onLogout in the signed-out branch is a router
+                push to /auth (configured by the caller). User no longer sees a stale
+                "Log out" button when they're already logged out. */}
             <button type="button" className="me-drawer-link me-drawer-logout" onClick={onLogout}>
-              <DrawerRow icon="↶" label="Log out" sub="Sign out of this device" />
+              <DrawerRow
+                icon={signedIn ? "↶" : "→"}
+                label={signedIn ? "Log out" : "Sign in"}
+                sub={signedIn ? "Sign out of this device" : "Sign in to your account"}
+              />
             </button>
           </li>
         </ul>
