@@ -110,11 +110,19 @@ export async function GET(req: NextRequest) {
     if (Array.isArray(creators)) creators.forEach((c: any) => { creatorMap[c.user_id] = c; });
   }
 
-  return NextResponse.json({
+  const out = NextResponse.json({
     videos: videos.map((v: any) => ({
       ...v,
       hotel:   hotelMap[v.hotel_id]      || null,
       creator: v.uploaded_by ? (creatorMap[v.uploaded_by] || null) : null,
     })),
   });
+  // v131.7 — CDN caching. Reels feed is read N times per second; the
+  // underlying query is identical per (limit, offset, tag, following).
+  // CDN-Cache-Control + Vercel-CDN-Cache-Control bypass Vercel's
+  // dynamic-route s-maxage strip.
+  out.headers.set("Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+  out.headers.set("CDN-Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+  out.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=30, stale-while-revalidate=120");
+  return out;
 }
