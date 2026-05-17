@@ -88,8 +88,13 @@ export async function GET(req: NextRequest) {
 type UpsertItem = {
   roomId: string;
   date: string;
+  // v132.2 — single floor price override
   floorPrice?: number | null;
   quantityOverride?: number | null;
+  // v132.3 — three additional price overrides
+  mrp?: number | null;             // regular price (customer-visible)
+  flashPrice?: number | null;      // flash deal regular price
+  flashFloorPrice?: number | null; // flash deal floor
   note?: string | null;
 };
 
@@ -111,11 +116,15 @@ export async function POST(req: NextRequest) {
   if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Validate each item.
+  const PRICE_FIELDS: Array<keyof UpsertItem> = ["floorPrice", "mrp", "flashPrice", "flashFloorPrice"];
   for (const it of items) {
     if (!it.roomId || !it.date) return NextResponse.json({ error: "roomId + date required on every item" }, { status: 400 });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(it.date)) return NextResponse.json({ error: `Bad date: ${it.date}` }, { status: 400 });
-    if (it.floorPrice != null && (typeof it.floorPrice !== "number" || it.floorPrice < 0)) {
-      return NextResponse.json({ error: "floorPrice must be a non-negative number" }, { status: 400 });
+    for (const f of PRICE_FIELDS) {
+      const v = it[f] as unknown;
+      if (v != null && (typeof v !== "number" || (v as number) < 0)) {
+        return NextResponse.json({ error: `${String(f)} must be a non-negative number` }, { status: 400 });
+      }
     }
     if (it.quantityOverride != null && (typeof it.quantityOverride !== "number" || it.quantityOverride < 0 || !Number.isInteger(it.quantityOverride))) {
       return NextResponse.json({ error: "quantityOverride must be a non-negative integer" }, { status: 400 });
@@ -129,7 +138,10 @@ export async function POST(req: NextRequest) {
     hotelId,
     roomId: it.roomId,
     date: it.date,
-    floorPrice: it.floorPrice != null ? Number(it.floorPrice) : null,
+    floorPrice:       it.floorPrice       != null ? Number(it.floorPrice)       : null,
+    mrp:              it.mrp              != null ? Number(it.mrp)              : null,
+    flashPrice:       it.flashPrice       != null ? Number(it.flashPrice)       : null,
+    flashFloorPrice:  it.flashFloorPrice  != null ? Number(it.flashFloorPrice)  : null,
     quantityOverride: it.quantityOverride != null ? Number(it.quantityOverride) : null,
     note: it.note || null,
   }));

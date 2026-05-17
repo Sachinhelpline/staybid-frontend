@@ -33,13 +33,16 @@ export async function GET(req: NextRequest) {
     || toISODate(new Date(Date.now() + 180 * 24 * 3600 * 1000));
 
   try {
-    // Three parallel reads: occupations + base room prices/qty + per-date
-    // overrides. Overrides + base prices added in v132.2 to power inline
-    // price editing from the calendar.
-    const [occs, roomRows, overrideRows] = await Promise.all([
+    // Five parallel reads: occupations + base room prices/qty + per-date
+    // overrides + hotel autopilot mode + active flash deals. v132.3 adds
+    // the last two so the partner panel can surface mode-aware warnings
+    // and show the flash regular price baseline.
+    const [occs, roomRows, overrideRows, hotelRows, flashRows] = await Promise.all([
       getOccupations({ hotelId, from, to }),
-      sbSelect(`rooms?hotelId=eq.${encodeURIComponent(hotelId)}&select=id,floorPrice,mrp,quantity&limit=200`),
+      sbSelect(`rooms?hotelId=eq.${encodeURIComponent(hotelId)}&select=id,floorPrice,mrp,quantity,flashFloorPrice&limit=200`),
       sbSelect(`room_date_overrides?hotelId=eq.${encodeURIComponent(hotelId)}&date=gte.${from}&date=lte.${to}&select=*&limit=2000`),
+      sbSelect(`hotels?id=eq.${encodeURIComponent(hotelId)}&select=autopilot_mode,name&limit=1`),
+      sbSelect(`flash_deals?hotelId=eq.${encodeURIComponent(hotelId)}&validUntil=gte.${from}&select=id,roomId,price,floorPrice,validUntil,createdAt&limit=200`),
     ]);
 
     // Build per-room -> per-date map (each date carries the occupation's source+meta)
@@ -63,27 +66,57 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Base room price + quantity map (roomId -> {basePrice, baseQty, mrp})
-    const roomPrices: Record<string, { basePrice: number | null; baseQty: number | null; mrp: number | null }> = {};
+    // Base room price + quantity map (roomId -> {basePrice, baseQty, mrp, baseFlashFloorPrice})
+    const roomPrices: Record<string, {
+      basePrice: number | null;
+      baseQty: number | null;
+      mrp: number | null;
+      baseFlashFloorPrice: number | null;
+    }> = {};
     (roomRows as any[]).forEach((r: any) => {
       roomPrices[r.id] = {
-        basePrice: r.floorPrice != null ? Number(r.floorPrice) : null,
-        baseQty:   r.quantity   != null ? Number(r.quantity)   : null,
-        mrp:       r.mrp        != null ? Number(r.mrp)        : null,
+        basePrice:           r.floorPrice      != null ? Number(r.floorPrice)      : null,
+        baseQty:             r.quantity        != null ? Number(r.quantity)        : null,
+        mrp:                 r.mrp             != null ? Number(r.mrp)             : null,
+        baseFlashFloorPrice: r.flashFloorPrice != null ? Number(r.flashFloorPrice) : null,
       };
     });
 
-    // Per-date overrides indexed by `${roomId}|${date}` for O(1) lookup
+    // Per-date overrides indexed by `${roomId}|${date}` for O(1) lookup.
+    // v132.3 — includes all four price columns + quantity.
     const priceOverrides: Record<string, any> = {};
     (overrideRows as any[]).forEach((o: any) => {
       priceOverrides[`${o.roomId}|${o.date}`] = {
         id: o.id,
         roomId: o.roomId,
         date: o.date,
-        floorPrice: o.floorPrice != null ? Number(o.floorPrice) : null,
+        floorPrice:       o.floorPrice       != null ? Number(o.floorPrice)       : null,
+        mrp:              o.mrp              != null ? Number(o.mrp)              : null,
+        flashPrice:       o.flashPrice       != null ? Number(o.flashPrice)       : null,
+        flashFloorPrice:  o.flashFloorPrice  != null ? Number(o.flashFloorPrice)  : null,
         quantityOverride: o.quantityOverride != null ? Number(o.quantityOverride) : null,
         note: o.note || null,
       };
+    });
+
+    // v132.3 — hotel autopilot mode for the warning system in the editor
+    const hotel = (hotelRows as any[])[0] || null;
+    const autopilotMode: "auto" | "hybrid" | "manual" =
+      hotel?.autopilot_mode === "hybrid" || hotel?.autopilot_mode === "manual"
+        ? hotel.autopilot_mode
+        : "auto";
+
+    // v132.3 — active flash deals indexed by roomId for quick lookup
+    // (used by editor to warn when changing prices for a deal-active room).
+    const flashByRoom: Record<string, any[]> = {};
+    (flashRows as any[]).forEach((f: any) => {
+      if (!flashByRoom[f.roomId]) flashByRoom[f.roomId] = [];
+      flashByRoom[f.roomId].push({
+        id: f.id,
+        price: f.price != null ? Number(f.price) : null,
+        floorPrice: f.floorPrice != null ? Number(f.floorPrice) : null,
+        validUntil: f.validUntil,
+      });
     });
 
     return NextResponse.json({
@@ -92,6 +125,8 @@ export async function GET(req: NextRequest) {
       occupations: occs,
       roomPrices,
       priceOverrides,
+      autopilotMode,
+      flashByRoom,
     });
   } catch (e: any) {
     return NextResponse.json({
@@ -100,6 +135,8 @@ export async function GET(req: NextRequest) {
       occupations: [],
       roomPrices: {},
       priceOverrides: {},
+      autopilotMode: "auto",
+      flashByRoom: {},
       warning: e?.message,
     });
   }

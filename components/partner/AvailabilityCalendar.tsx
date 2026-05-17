@@ -49,28 +49,48 @@ export type Occupancy = {
 
 export type CalendarMap = Record<string, Record<string, Occupancy>>; // roomId -> dateISO -> occ
 
-// v132.2 — base room price + quantity (one entry per room)
+// v132.3 — base room price set (one entry per room).
+// Four prices: regular MRP, floor (bid minimum), flash floor.
+// flashPrice (flash regular) lives on flash_deals rows, looked up via
+// the FlashByRoomMap below.
 export type RoomPriceMap = Record<string, {
-  basePrice: number | null;
-  baseQty:   number | null;
-  mrp:       number | null;
+  basePrice:           number | null; // rooms.floorPrice (bid floor)
+  baseQty:             number | null; // rooms.quantity
+  mrp:                 number | null; // rooms.mrp (regular price)
+  baseFlashFloorPrice: number | null; // rooms.flashFloorPrice
 }>;
 
-// v132.2 — per-date per-room overrides indexed by `${roomId}|${date}`
+// v132.3 — per-date per-room overrides indexed by `${roomId}|${date}`
 export type PriceOverrideMap = Record<string, {
   id: string;
   roomId: string;
   date: string;
-  floorPrice: number | null;
-  quantityOverride: number | null;
+  floorPrice:        number | null;
+  mrp:               number | null;
+  flashPrice:        number | null;
+  flashFloorPrice:   number | null;
+  quantityOverride:  number | null;
   note: string | null;
 }>;
+
+// v132.3 — active flash deals per room
+export type FlashByRoomMap = Record<string, Array<{
+  id: string;
+  price: number | null;
+  floorPrice: number | null;
+  validUntil: string;
+}>>;
+
+export type AutopilotMode = "auto" | "hybrid" | "manual";
 
 export type PricingSavePayload = {
   items: Array<{
     roomId: string;
     date: string;
     floorPrice?: number | null;
+    mrp?: number | null;
+    flashPrice?: number | null;
+    flashFloorPrice?: number | null;
     quantityOverride?: number | null;
     note?: string | null;
   }>;
@@ -117,12 +137,16 @@ type Props = {
   priceOverrides?: PriceOverrideMap;
   onSavePricing?: (payload: PricingSavePayload) => Promise<void>;
   onClearPricing?: (args: { roomId: string; date: string }) => Promise<void>;
+  // v132.3 — autopilot mode + flash deals (drives warnings in editor)
+  autopilotMode?: AutopilotMode;
+  flashByRoom?: FlashByRoomMap;
 };
 
 export default function AvailabilityCalendar({
   rooms, calendar, month, onMonthChange, onRefresh, loading,
   onPickWalkIn, onDeleteBlock, onOpenBlockSheet,
   roomPrices = {}, priceOverrides = {}, onSavePricing, onClearPricing,
+  autopilotMode = "auto", flashByRoom = {},
 }: Props) {
   // ── View mode + active room (for Room view) ────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -238,7 +262,7 @@ export default function AvailabilityCalendar({
 
       {/* ── Legend chips ─────────────────────────────────────────── */}
       <div className="ac-legend">
-        <LegendChip bg={FREE_BG} border={FREE_BORDER} label="Free" count={stats.free} />
+        <LegendChip bg={FREE_BG} border={FREE_BORDER} label="Available" count={stats.free} />
         <LegendChip {...SOURCE_STYLE.bid}      count={stats.bid} />
         <LegendChip {...SOURCE_STYLE.ota_ical} count={stats.ota} />
         <LegendChip {...SOURCE_STYLE.walk_in}  count={stats.walk} />
@@ -265,6 +289,8 @@ export default function AvailabilityCalendar({
               priceOverrides={priceOverrides}
               onSavePricing={onSavePricing}
               onClearPricing={onClearPricing}
+              autopilotMode={autopilotMode}
+              flashByRoom={flashByRoom}
             />
           )}
 
@@ -279,6 +305,8 @@ export default function AvailabilityCalendar({
               setActiveRoomId={setActiveRoomId}
               onPickWalkIn={onPickWalkIn}
               onDeleteBlock={onDeleteBlock}
+              roomPrices={roomPrices}
+              priceOverrides={priceOverrides}
             />
           )}
 
@@ -449,6 +477,7 @@ export default function AvailabilityCalendar({
 function MonthView({
   rooms, calendar, month, todayISO, onPickWalkIn, onDeleteBlock,
   roomPrices = {}, priceOverrides = {}, onSavePricing, onClearPricing,
+  autopilotMode = "auto", flashByRoom = {},
 }: {
   rooms: Room[];
   calendar: CalendarMap;
@@ -460,6 +489,8 @@ function MonthView({
   priceOverrides?: PriceOverrideMap;
   onSavePricing?: (payload: PricingSavePayload) => Promise<void>;
   onClearPricing?: (args: { roomId: string; date: string }) => Promise<void>;
+  autopilotMode?: AutopilotMode;
+  flashByRoom?: FlashByRoomMap;
 }) {
   // Build the 6-week × 7-day grid leading edge — same algorithm as iOS/
   // Google Calendar (week starts Sunday for India locale parity).
@@ -488,20 +519,12 @@ function MonthView({
   // partner taps "Edit price/qty" → bulk editor opens.
   const [multiMode, setMultiMode] = useState(false);
   const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
-  const [bulkEditor, setBulkEditor] = useState<null | {
+  // v132.3 — unified editor state. dates.length === 1 → single-cell edit
+  // (Reset-to-base shown), dates.length > 1 → bulk edit (room picker shown).
+  const [editor, setEditor] = useState<null | {
     roomId: string;
     dates: string[];
-    mode: "price" | "quantity";
-  }>(null);
-  const [singleEditor, setSingleEditor] = useState<null | {
-    roomId: string;
-    date: string;
-    mode: "price" | "quantity";
-    currentPrice: number | null;     // effective price (override else base)
-    basePrice: number | null;
-    currentQty: number | null;
-    baseQty: number | null;
-    overrideId: string | null;
+    initialTab: "regular" | "floor" | "flash" | "flashFloor" | "quantity";
   }>(null);
 
   function toggleDateInSet(iso: string) {
@@ -610,7 +633,7 @@ function MonthView({
                   if (multiMode) toggleDateInSet(d.iso);
                   else setSelectedISO(d.iso);
                 }}
-                aria-label={`${d.iso} — ${sum.free} of ${sum.total} free${minP != null ? `, from ₹${minP}` : ""}`}
+                aria-label={`${d.iso} — ${sum.free} of ${sum.total} available${minP != null ? `, from ₹${minP}` : ""}`}
               >
                 <div className="mv-cell-top">
                   <span className="mv-day-num">{d.day}</span>
@@ -663,12 +686,11 @@ function MonthView({
                 type="button"
                 className="mv-bulk-btn"
                 onClick={() => {
-                  // Need to pick which room. Open a quick picker via setting bulkEditor with first room as default.
                   if (rooms.length === 0) return;
-                  setBulkEditor({
+                  setEditor({
                     roomId: rooms[0].id,
                     dates: Array.from(selectedSet).sort(),
-                    mode: "price",
+                    initialTab: "floor",
                   });
                 }}
               >💰 Price</button>
@@ -677,10 +699,10 @@ function MonthView({
                 className="mv-bulk-btn"
                 onClick={() => {
                   if (rooms.length === 0) return;
-                  setBulkEditor({
+                  setEditor({
                     roomId: rooms[0].id,
                     dates: Array.from(selectedSet).sort(),
-                    mode: "quantity",
+                    initialTab: "quantity",
                   });
                 }}
               >🔢 Qty</button>
@@ -717,7 +739,7 @@ function MonthView({
                 {rooms.map(r => {
                   const st = statusFor(r.id, selectedDay.iso);
                   const label = st.isFree
-                    ? "Free"
+                    ? "Available"
                     : (SOURCE_STYLE[st.src || "manual"]?.label || "Booked");
                   const eff = priceFor(r.id, selectedDay.iso);
                   const base = roomPrices[r.id]?.basePrice ?? null;
@@ -761,15 +783,10 @@ function MonthView({
                               className="mv-row-edit"
                               title="Edit price or quantity for this date"
                               onClick={() => {
-                                setSingleEditor({
+                                setEditor({
                                   roomId: r.id,
-                                  date: selectedDay.iso,
-                                  mode: "price",
-                                  currentPrice: eff,
-                                  basePrice: base,
-                                  currentQty: qty,
-                                  baseQty: baseQ,
-                                  overrideId: ovr?.id || null,
+                                  dates: [selectedDay.iso],
+                                  initialTab: "floor",
                                 });
                               }}
                             >✏️</button>
@@ -812,74 +829,28 @@ function MonthView({
         document.body
       )}
 
-      {/* Single-row price/qty editor — opened by ✏️ in day-panel rows */}
-      {singleEditor && typeof document !== "undefined" && onSavePricing && createPortal(
+      {/* v132.3 — unified editor: handles single + bulk + 4 prices + qty
+          + autopilot-mode-aware warnings. */}
+      {editor && typeof document !== "undefined" && onSavePricing && createPortal(
         <PricingEditorModal
-          title={`Edit ${rooms.find(r => r.id === singleEditor.roomId)?.type || "Room"}`}
-          subtitle={new Date(singleEditor.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
-          initialMode={singleEditor.mode}
-          currentPrice={singleEditor.currentPrice}
-          basePrice={singleEditor.basePrice}
-          currentQty={singleEditor.currentQty}
-          baseQty={singleEditor.baseQty}
-          canClear={!!singleEditor.overrideId}
-          onClose={() => setSingleEditor(null)}
-          onSave={async ({ floorPrice, quantityOverride }) => {
-            await onSavePricing({
-              items: [{
-                roomId: singleEditor.roomId,
-                date: singleEditor.date,
-                floorPrice,
-                quantityOverride,
-              }],
-            });
-            setSingleEditor(null);
+          rooms={rooms}
+          editor={editor}
+          setEditorRoom={(roomId) => setEditor(s => s ? { ...s, roomId } : s)}
+          roomPrices={roomPrices}
+          priceOverrides={priceOverrides}
+          flashByRoom={flashByRoom}
+          autopilotMode={autopilotMode}
+          calendar={calendar}
+          onClose={() => setEditor(null)}
+          onSave={async (items) => {
+            await onSavePricing({ items });
+            setEditor(null);
+            if (editor.dates.length > 1) exitMultiMode();
           }}
-          onClear={onClearPricing ? async () => {
-            await onClearPricing({ roomId: singleEditor.roomId, date: singleEditor.date });
-            setSingleEditor(null);
+          onClear={onClearPricing && editor.dates.length === 1 ? async () => {
+            await onClearPricing({ roomId: editor.roomId, date: editor.dates[0] });
+            setEditor(null);
           } : undefined}
-        />,
-        document.body
-      )}
-
-      {/* Bulk editor — opened by Price/Qty btns on the multi-select bar */}
-      {bulkEditor && typeof document !== "undefined" && onSavePricing && createPortal(
-        <PricingEditorModal
-          title="Bulk edit"
-          subtitle={`${bulkEditor.dates.length} date${bulkEditor.dates.length === 1 ? "" : "s"} selected`}
-          initialMode={bulkEditor.mode}
-          currentPrice={priceFor(bulkEditor.roomId, bulkEditor.dates[0])}
-          basePrice={roomPrices[bulkEditor.roomId]?.basePrice ?? null}
-          currentQty={qtyFor(bulkEditor.roomId, bulkEditor.dates[0])}
-          baseQty={roomPrices[bulkEditor.roomId]?.baseQty ?? null}
-          canClear={false}
-          roomPicker={
-            rooms.length > 1 ? (
-              <select
-                className="mv-ed-roompick"
-                value={bulkEditor.roomId}
-                onChange={(e) => setBulkEditor(s => s ? { ...s, roomId: e.target.value } : s)}
-              >
-                {rooms.map(r => (
-                  <option key={r.id} value={r.id}>{r.type || r.name || "Room"}</option>
-                ))}
-              </select>
-            ) : null
-          }
-          onClose={() => setBulkEditor(null)}
-          onSave={async ({ floorPrice, quantityOverride }) => {
-            await onSavePricing({
-              items: bulkEditor.dates.map(date => ({
-                roomId: bulkEditor.roomId,
-                date,
-                floorPrice,
-                quantityOverride,
-              })),
-            });
-            setBulkEditor(null);
-            exitMultiMode();
-          }}
         />,
         document.body
       )}
@@ -1289,6 +1260,7 @@ function MonthView({
 function RoomTimelineView({
   rooms, calendar, days, month, todayISO, activeRoomId, setActiveRoomId,
   onPickWalkIn, onDeleteBlock,
+  roomPrices = {}, priceOverrides = {},
 }: {
   rooms: Room[];
   calendar: CalendarMap;
@@ -1299,11 +1271,24 @@ function RoomTimelineView({
   setActiveRoomId: (id: string) => void;
   onPickWalkIn: (args: { roomId: string; fromDate: string; toDate: string }) => void;
   onDeleteBlock: (refId: string) => void;
+  // v132.3 — pricing for the active room (price shown per cell)
+  roomPrices?: RoomPriceMap;
+  priceOverrides?: PriceOverrideMap;
 }) {
   // Detail popover for occupied cells.
   const [popover, setPopover] = useState<{ iso: string; occ: Occupancy } | null>(null);
 
   const room = rooms.find(r => r.id === activeRoomId) || rooms[0];
+
+  // Effective price helper (override else base)
+  function priceFor(iso: string): number | null {
+    const ovr = priceOverrides[`${activeRoomId}|${iso}`];
+    if (ovr && ovr.floorPrice != null) return ovr.floorPrice;
+    return roomPrices[activeRoomId]?.basePrice ?? null;
+  }
+  function fmtPrice(n: number): string {
+    return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : String(n);
+  }
 
   // Pad to start of week + end of week so the grid lines up.
   const padded = useMemo(() => {
@@ -1367,7 +1352,7 @@ function RoomTimelineView({
           {/* Stats strip for selected room */}
           <div className="rv-stats">
             <span className="rv-stat rv-stat-free">
-              <b>{roomStats.free}</b> free
+              <b>{roomStats.free}</b> available
             </span>
             <span className="rv-stat rv-stat-booked">
               <b>{roomStats.booked}</b> booked
@@ -1414,15 +1399,21 @@ function RoomTimelineView({
                     }}
                     aria-label={
                       !d.inMonth ? `${d.iso}`
-                      : (occ ? `${style?.label || "Booked"} on ${d.iso}` : `Free on ${d.iso} — tap to add walk-in`)
+                      : (occ ? `${style?.label || "Booked"} on ${d.iso}` : `Available on ${d.iso} — tap to add walk-in`)
                     }
                   >
                     <span className="rv-day-num">{d.day}</span>
                     {d.inMonth && (
                       <span className="rv-day-label">
-                        {isFree ? "Free" : (style?.label || "Booked")}
+                        {isFree ? "Available" : (style?.label || "Booked")}
                       </span>
                     )}
+                    {d.inMonth && (() => {
+                      const p = priceFor(d.iso);
+                      return p != null ? (
+                        <span className="rv-day-price">₹{fmtPrice(p)}</span>
+                      ) : null;
+                    })()}
                     {occ?.assignedUnitNumber && (
                       <span className="rv-day-unit">#{occ.assignedUnitNumber}</span>
                     )}
@@ -1657,6 +1648,15 @@ function RoomTimelineView({
           letter-spacing: 0.04em;
           color: rgba(31,26,15,0.78);
           line-height: 1.1;
+        }
+        /* v132.3 — price per cell in Room view */
+        .rv-day-price {
+          font-size: 0.62rem;
+          font-weight: 800;
+          color: #6E5430;
+          line-height: 1.05;
+          margin-top: 1px;
+          letter-spacing: 0.01em;
         }
         .rv-day-unit {
           font-size: 0.58rem;
@@ -2551,58 +2551,246 @@ export function BlockDatesSheet({
   );
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════
-// PricingEditorModal — single sheet that handles both "edit price" and
-// "edit quantity" with a tab toggle. Used for both single-cell edits
-// (from day-panel ✏️) and bulk multi-date saves (from the multi-select
-// bottom bar). Mode toggle lets the partner switch between Price and
-// Qty without closing/reopening the modal.
+// PricingEditorModal (v132.3) — unified editor for the four price types
+// + quantity. Used for both single-cell (✏️ in day-panel) and bulk
+// multi-date saves (from the multi-select bottom bar).
+//
+// Five tabs at top:
+//   • 🏷 Regular   — rooms.mrp override (what customer sees as MRP)
+//   • 💰 Floor     — rooms.floorPrice override (minimum bid accepted)
+//   • ⚡ Flash     — flash_deals regular price for this date (override)
+//   • 🔥 Flash Floor — rooms.flashFloorPrice override (flash minimum)
+//   • 🛏 Qty       — room_date_overrides.quantityOverride
+//
+// v132.3 also surfaces:
+//   • the active hotel autopilot mode at the top (info chip)
+//   • smart warnings that fire BEFORE save when partner attempts a
+//     change that breaks business rules (floor > MRP, flash floor >
+//     regular floor, date has confirmed bid, date has active flash
+//     deal, etc.). Warnings list the specific room + dates affected.
+//     User can still "Save anyway" — these are advisory, not blocking.
 // ═══════════════════════════════════════════════════════════════════════
+
+type EditorTab = "regular" | "floor" | "flash" | "flashFloor" | "quantity";
+
+const TAB_DEFS: Array<{ id: EditorTab; emoji: string; label: string }> = [
+  { id: "regular",    emoji: "🏷", label: "Regular"    },
+  { id: "floor",      emoji: "💰", label: "Floor"      },
+  { id: "flash",      emoji: "⚡", label: "Flash"      },
+  { id: "flashFloor", emoji: "🔥", label: "Flash Floor"},
+  { id: "quantity",   emoji: "🛏", label: "Qty"        },
+];
+
+const MODE_INFO: Record<AutopilotMode, { emoji: string; label: string; tone: string }> = {
+  auto:   { emoji: "🤖", label: "Full Autopilot — every tier-eligible bid auto-confirms", tone: "#0c7a4d" },
+  hybrid: { emoji: "⚖️", label: "Hybrid — only premium / strong bidders auto-confirm",  tone: "#7c4f0c" },
+  manual: { emoji: "👤", label: "Manual Review — every bid waits for your approval",      tone: "#1d4ed8" },
+};
+
+type Warning = {
+  level: "warn" | "info";
+  scope: { dates: string[]; roomName: string; flashDealIds?: string[] };
+  message: string;
+};
+
 function PricingEditorModal({
-  title,
-  subtitle,
-  initialMode,
-  currentPrice,
-  basePrice,
-  currentQty,
-  baseQty,
-  canClear,
-  roomPicker,
+  rooms,
+  editor,
+  setEditorRoom,
+  roomPrices,
+  priceOverrides,
+  flashByRoom,
+  autopilotMode,
+  calendar,
   onClose,
   onSave,
   onClear,
 }: {
-  title: string;
-  subtitle: string;
-  initialMode: "price" | "quantity";
-  currentPrice: number | null;
-  basePrice: number | null;
-  currentQty: number | null;
-  baseQty: number | null;
-  canClear: boolean;
-  roomPicker?: React.ReactNode;
+  rooms: Room[];
+  editor: { roomId: string; dates: string[]; initialTab: EditorTab };
+  setEditorRoom: (roomId: string) => void;
+  roomPrices: RoomPriceMap;
+  priceOverrides: PriceOverrideMap;
+  flashByRoom: FlashByRoomMap;
+  autopilotMode: AutopilotMode;
+  calendar: CalendarMap;
   onClose: () => void;
-  onSave: (p: { floorPrice?: number | null; quantityOverride?: number | null }) => Promise<void>;
+  onSave: (items: PricingSavePayload["items"]) => Promise<void>;
   onClear?: () => Promise<void>;
 }) {
-  const [mode, setMode] = useState<"price" | "quantity">(initialMode);
-  const [priceStr, setPriceStr] = useState<string>(currentPrice != null ? String(currentPrice) : "");
-  const [qtyStr, setQtyStr] = useState<string>(currentQty != null ? String(currentQty) : "");
-  const [saving, setSaving] = useState(false);
+  const isSingle = editor.dates.length === 1;
+  const room = rooms.find(r => r.id === editor.roomId);
+  const base = roomPrices[editor.roomId] || { basePrice: null, baseQty: null, mrp: null, baseFlashFloorPrice: null };
+  const ovr0 = isSingle ? priceOverrides[`${editor.roomId}|${editor.dates[0]}`] : null;
+  const flashList = flashByRoom[editor.roomId] || [];
+  const flashFirst = flashList[0] || null;
 
-  async function submit() {
+  const [tab, setTab] = useState<EditorTab>(editor.initialTab);
+  // Live form state — initial values come from override (single) or empty (bulk).
+  const initStr = (n: number | null | undefined) => n != null ? String(n) : "";
+  const [regularStr,    setRegularStr]    = useState(initStr(ovr0?.mrp ?? null));
+  const [floorStr,      setFloorStr]      = useState(initStr(ovr0?.floorPrice ?? null));
+  const [flashStr,      setFlashStr]      = useState(initStr(ovr0?.flashPrice ?? null));
+  const [flashFloorStr, setFlashFloorStr] = useState(initStr(ovr0?.flashFloorPrice ?? null));
+  const [qtyStr,        setQtyStr]        = useState(initStr(ovr0?.quantityOverride ?? null));
+
+  const [saving, setSaving] = useState(false);
+  const [confirmWarnings, setConfirmWarnings] = useState(false); // shows "Save anyway" sheet
+
+  function toNum(s: string): number | null {
+    const t = s.trim();
+    if (t === "") return null;
+    const n = Number(t);
+    return isNaN(n) ? null : n;
+  }
+  const newRegular    = toNum(regularStr);
+  const newFloor      = toNum(floorStr);
+  const newFlash      = toNum(flashStr);
+  const newFlashFloor = toNum(flashFloorStr);
+  const newQty        = toNum(qtyStr);
+
+  // Effective post-save values per price field (used by warning logic).
+  // Falls back to current override → base if user didn't change anything.
+  function effective(field: "regular" | "floor" | "flash" | "flashFloor"): number | null {
+    if (field === "regular") {
+      if (regularStr.trim() !== "") return newRegular;
+      if (ovr0?.mrp != null) return ovr0.mrp;
+      return base.mrp;
+    }
+    if (field === "floor") {
+      if (floorStr.trim() !== "") return newFloor;
+      if (ovr0?.floorPrice != null) return ovr0.floorPrice;
+      return base.basePrice;
+    }
+    if (field === "flash") {
+      if (flashStr.trim() !== "") return newFlash;
+      if (ovr0?.flashPrice != null) return ovr0.flashPrice;
+      return flashFirst?.price ?? null;
+    }
+    if (field === "flashFloor") {
+      if (flashFloorStr.trim() !== "") return newFlashFloor;
+      if (ovr0?.flashFloorPrice != null) return ovr0.flashFloorPrice;
+      return base.baseFlashFloorPrice;
+    }
+    return null;
+  }
+
+  // ── Warning engine ─────────────────────────────────────────────
+  // These are advisory — surfaced before save. Partner can override.
+  const roomName = room?.type || room?.name || "Room";
+  const warnings: Warning[] = useMemo(() => {
+    const out: Warning[] = [];
+    const eR = effective("regular");
+    const eF = effective("floor");
+    const eFl = effective("flash");
+    const eFf = effective("flashFloor");
+
+    // Rule A — Floor > Regular (MRP)
+    if (eR != null && eF != null && eF > eR) {
+      out.push({
+        level: "warn",
+        scope: { dates: editor.dates, roomName },
+        message: `Floor (₹${eF.toLocaleString("en-IN")}) is higher than the regular price (₹${eR.toLocaleString("en-IN")}). Customers won't bid below the public MRP normally — auto-accept windows may not trigger.`,
+      });
+    }
+    // Rule B — Flash floor > Floor
+    if (eF != null && eFf != null && eFf > eF) {
+      out.push({
+        level: "warn",
+        scope: { dates: editor.dates, roomName },
+        message: `Flash floor (₹${eFf.toLocaleString("en-IN")}) is higher than the regular floor (₹${eF.toLocaleString("en-IN")}). Flash deals are meant to discount further than the standard floor.`,
+      });
+    }
+    // Rule C — Flash regular < Flash floor
+    if (eFl != null && eFf != null && eFl < eFf) {
+      out.push({
+        level: "warn",
+        scope: { dates: editor.dates, roomName },
+        message: `Flash regular (₹${eFl.toLocaleString("en-IN")}) is lower than the flash floor (₹${eFf.toLocaleString("en-IN")}). The flash deal would auto-reject all eligible bids.`,
+      });
+    }
+    // Rule D — Any date already has a CONFIRMED booking (bid)
+    const datesWithBooking = editor.dates.filter(d => {
+      const c = calendar[editor.roomId]?.[d];
+      return c?.source === "bid";
+    });
+    if (datesWithBooking.length > 0) {
+      out.push({
+        level: "info",
+        scope: { dates: datesWithBooking, roomName },
+        message: `${datesWithBooking.length} of these date${datesWithBooking.length === 1 ? "" : "s"} already has a confirmed booking. Your override applies to FUTURE bids only; existing bookings are unaffected.`,
+      });
+    }
+    // Rule E — Active flash deal exists for this room (informational on flash tabs)
+    if ((tab === "flash" || tab === "flashFloor") && flashList.length > 0) {
+      out.push({
+        level: "info",
+        scope: {
+          dates: editor.dates,
+          roomName,
+          flashDealIds: flashList.map(f => f.id),
+        },
+        message: `${flashList.length} active flash deal${flashList.length === 1 ? "" : "s"} on this room. Saving here writes a per-date override; the deal itself stays live until its expiry on the deal page.`,
+      });
+    }
+    // Rule F — Autopilot-mode-specific warnings
+    if (autopilotMode === "auto") {
+      // Full autopilot: floor too high could starve auto-accepts
+      if (eF != null && eR != null && eF >= eR * 1.10) {
+        out.push({
+          level: "warn",
+          scope: { dates: editor.dates, roomName },
+          message: `You are in Full Autopilot mode but the floor (₹${eF.toLocaleString("en-IN")}) is ≥110% of MRP. Tier-eligible auto-confirms may never trigger because bids almost never reach this threshold.`,
+        });
+      }
+    }
+    if (autopilotMode === "hybrid") {
+      // Hybrid: very low floor may surrender too many auto-accepts to LOWBALL
+      if (eF != null && eR != null && eF <= eR * 0.40) {
+        out.push({
+          level: "warn",
+          scope: { dates: editor.dates, roomName },
+          message: `You are in Hybrid mode but the floor (₹${eF.toLocaleString("en-IN")}) is ≤40% of MRP. Premium / strong bidders will auto-confirm well below your target margin.`,
+        });
+      }
+    }
+    return out;
+  }, [editor, regularStr, floorStr, flashStr, flashFloorStr, calendar, flashList, tab, autopilotMode, roomName]);
+
+  const hasUserEdits =
+    regularStr.trim() !== initStr(ovr0?.mrp ?? null) ||
+    floorStr.trim() !== initStr(ovr0?.floorPrice ?? null) ||
+    flashStr.trim() !== initStr(ovr0?.flashPrice ?? null) ||
+    flashFloorStr.trim() !== initStr(ovr0?.flashFloorPrice ?? null) ||
+    qtyStr.trim() !== initStr(ovr0?.quantityOverride ?? null);
+
+  function buildItems(): PricingSavePayload["items"] {
+    // Only include fields the partner touched. Empty string = clear (null).
+    const patch: Partial<PricingSavePayload["items"][number]> = {};
+    if (regularStr.trim()    !== "") patch.mrp = newRegular;
+    if (floorStr.trim()      !== "") patch.floorPrice = newFloor;
+    if (flashStr.trim()      !== "") patch.flashPrice = newFlash;
+    if (flashFloorStr.trim() !== "") patch.flashFloorPrice = newFlashFloor;
+    if (qtyStr.trim()        !== "") patch.quantityOverride = newQty;
+    return editor.dates.map(date => ({
+      roomId: editor.roomId,
+      date,
+      ...patch,
+    }));
+  }
+
+  async function attemptSave() {
     if (saving) return;
+    if (!hasUserEdits) { onClose(); return; }
+    if (warnings.some(w => w.level === "warn") && !confirmWarnings) {
+      setConfirmWarnings(true);
+      return;
+    }
     setSaving(true);
     try {
-      if (mode === "price") {
-        const v = priceStr.trim() === "" ? null : Number(priceStr);
-        if (v != null && (isNaN(v) || v < 0)) { alert("Enter a valid price"); setSaving(false); return; }
-        await onSave({ floorPrice: v });
-      } else {
-        const v = qtyStr.trim() === "" ? null : Math.floor(Number(qtyStr));
-        if (v != null && (isNaN(v) || v < 0)) { alert("Enter a valid quantity"); setSaving(false); return; }
-        await onSave({ quantityOverride: v });
-      }
+      await onSave(buildItems());
     } catch (e: any) {
       alert(e?.message || "Save failed");
     } finally {
@@ -2614,86 +2802,174 @@ function PricingEditorModal({
     if (!onClear) return;
     if (!confirm("Remove this override? The date will revert to the base price + quantity.")) return;
     setSaving(true);
-    try { await onClear(); }
-    finally { setSaving(false); }
+    try { await onClear(); } finally { setSaving(false); }
   }
+
+  const datesLabel = isSingle
+    ? new Date(editor.dates[0]).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric" })
+    : `${editor.dates.length} dates · ${new Date(editor.dates[0]).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(editor.dates[editor.dates.length - 1]).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+
+  const mode = MODE_INFO[autopilotMode];
+  const dangerWarnings = warnings.filter(w => w.level === "warn");
+  const infoWarnings   = warnings.filter(w => w.level === "info");
 
   return (
     <div className="ped-backdrop" onClick={onClose}>
       <div className="ped-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="ped-hd">
           <div>
-            <p className="ped-eyebrow">{title}</p>
-            <p className="ped-title">{subtitle}</p>
+            <p className="ped-eyebrow">{isSingle ? `Edit ${roomName}` : "Bulk edit"}</p>
+            <p className="ped-title">{datesLabel}</p>
           </div>
           <button type="button" onClick={onClose} className="ped-close" aria-label="Close">✕</button>
         </div>
 
         <div className="ped-body">
-          {roomPicker && (
+          {/* Autopilot mode chip */}
+          <div className="ped-mode" style={{ color: mode.tone, borderColor: `${mode.tone}66`, background: `${mode.tone}14` }}>
+            <span className="ped-mode-emoji">{mode.emoji}</span>
+            <span className="ped-mode-label">{mode.label}</span>
+          </div>
+
+          {/* Room picker (bulk only, or single with >1 room) */}
+          {!isSingle && rooms.length > 1 && (
             <div className="ped-section">
               <p className="ped-label">Room</p>
-              {roomPicker}
+              <select
+                className="mv-ed-roompick"
+                value={editor.roomId}
+                onChange={(e) => setEditorRoom(e.target.value)}
+              >
+                {rooms.map(r => (
+                  <option key={r.id} value={r.id}>{r.type || r.name || "Room"}</option>
+                ))}
+              </select>
             </div>
           )}
 
-          {/* Mode tabs */}
+          {/* Tabs */}
           <div className="ped-tabs">
-            <button type="button" className={`ped-tab ${mode === "price" ? "ped-tab-on" : ""}`} onClick={() => setMode("price")}>
-              💰 Price
-            </button>
-            <button type="button" className={`ped-tab ${mode === "quantity" ? "ped-tab-on" : ""}`} onClick={() => setMode("quantity")}>
-              🛏 Quantity
-            </button>
+            {TAB_DEFS.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                className={`ped-tab ${tab === t.id ? "ped-tab-on" : ""}`}
+                onClick={() => setTab(t.id)}
+              >
+                <span aria-hidden>{t.emoji}</span>
+                <span>{t.label}</span>
+              </button>
+            ))}
           </div>
 
-          {mode === "price" ? (
+          {/* Active tab content */}
+          {tab === "regular" && (
+            <PriceField
+              label="Regular price (₹ per night)"
+              hint={base.mrp != null ? `Base MRP: ₹${base.mrp.toLocaleString("en-IN")}/night` : "No MRP set on this room"}
+              value={regularStr}
+              onChange={setRegularStr}
+              placeholder={base.mrp != null ? String(base.mrp) : "0"}
+            />
+          )}
+          {tab === "floor" && (
+            <PriceField
+              label="Floor price (minimum bid accepted)"
+              hint={base.basePrice != null ? `Base floor: ₹${base.basePrice.toLocaleString("en-IN")}/night` : "No floor price set on this room"}
+              value={floorStr}
+              onChange={setFloorStr}
+              placeholder={base.basePrice != null ? String(base.basePrice) : "0"}
+            />
+          )}
+          {tab === "flash" && (
+            <PriceField
+              label="Flash deal regular price (₹ per night)"
+              hint={
+                flashFirst?.price != null
+                  ? `Active flash deal sells at ₹${flashFirst.price.toLocaleString("en-IN")}`
+                  : flashList.length === 0
+                    ? "No active flash deal — saving here pre-sets the price for the next one"
+                    : "Active flash deal has no regular price set"
+              }
+              value={flashStr}
+              onChange={setFlashStr}
+              placeholder={flashFirst?.price != null ? String(flashFirst.price) : "0"}
+            />
+          )}
+          {tab === "flashFloor" && (
+            <PriceField
+              label="Flash floor (minimum acceptable inside flash)"
+              hint={base.baseFlashFloorPrice != null ? `Base flash floor: ₹${base.baseFlashFloorPrice.toLocaleString("en-IN")}/night` : "No flash floor set on this room"}
+              value={flashFloorStr}
+              onChange={setFlashFloorStr}
+              placeholder={base.baseFlashFloorPrice != null ? String(base.baseFlashFloorPrice) : "0"}
+            />
+          )}
+          {tab === "quantity" && (
             <div className="ped-section">
-              <p className="ped-label">New floor price (₹ per night)</p>
-              <div className="ped-input-wrap">
-                <span className="ped-prefix">₹</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="ped-input"
-                  value={priceStr}
-                  onChange={(e) => setPriceStr(e.target.value)}
-                  placeholder={basePrice != null ? String(basePrice) : "0"}
-                  autoFocus
-                />
-              </div>
-              {basePrice != null && (
-                <p className="ped-hint">Base price: ₹{basePrice.toLocaleString("en-IN")}/night</p>
-              )}
-            </div>
-          ) : (
-            <div className="ped-section">
-              <p className="ped-label">Available quantity (units for this date)</p>
+              <p className="ped-label">Available quantity for this date</p>
               <input
                 type="number"
                 inputMode="numeric"
                 className="ped-input"
                 value={qtyStr}
                 onChange={(e) => setQtyStr(e.target.value)}
-                placeholder={baseQty != null ? String(baseQty) : "0"}
-                autoFocus
+                placeholder={base.baseQty != null ? String(base.baseQty) : "0"}
               />
-              {baseQty != null && (
-                <p className="ped-hint">Total units configured: {baseQty}</p>
+              <p className="ped-hint">Total units configured: {base.baseQty ?? "—"}</p>
+            </div>
+          )}
+
+          {/* Warnings */}
+          {infoWarnings.length > 0 && (
+            <div className="ped-warns ped-warns-info">
+              {infoWarnings.map((w, i) => (
+                <div key={i} className="ped-warn ped-warn-info">
+                  <span className="ped-warn-icon">ℹ️</span>
+                  <div>
+                    <p className="ped-warn-msg">{w.message}</p>
+                    {w.scope.dates.length > 0 && (
+                      <p className="ped-warn-scope">📅 {w.scope.dates.length} date{w.scope.dates.length === 1 ? "" : "s"} · 🛏 {w.scope.roomName}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {dangerWarnings.length > 0 && (
+            <div className="ped-warns ped-warns-danger">
+              <p className="ped-warns-hd">⚠️ {dangerWarnings.length} rule {dangerWarnings.length === 1 ? "may" : "may"} break — review before save</p>
+              {dangerWarnings.map((w, i) => (
+                <div key={i} className="ped-warn ped-warn-danger">
+                  <span className="ped-warn-icon">⚠️</span>
+                  <div>
+                    <p className="ped-warn-msg">{w.message}</p>
+                    <p className="ped-warn-scope">
+                      📅 {w.scope.dates.length} date{w.scope.dates.length === 1 ? "" : "s"} · 🛏 {w.scope.roomName}
+                      {w.scope.flashDealIds && <> · ⚡ {w.scope.flashDealIds.length} flash deal{w.scope.flashDealIds.length === 1 ? "" : "s"}</>}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {confirmWarnings && (
+                <p className="ped-warns-confirm">
+                  ✓ I've reviewed. Save anyway?
+                </p>
               )}
             </div>
           )}
         </div>
 
         <div className="ped-ft">
-          {canClear && onClear && (
+          {onClear && (
             <button type="button" onClick={clear} disabled={saving} className="ped-clear">
-              ↺ Reset to base
+              ↺ Reset
             </button>
           )}
           <button type="button" onClick={onClose} className="ped-cancel">Cancel</button>
-          <button type="button" onClick={submit} disabled={saving} className="ped-save">
-            {saving ? "Saving…" : "Save"}
+          <button type="button" onClick={attemptSave} disabled={saving} className="ped-save">
+            {saving ? "Saving…" : (dangerWarnings.length > 0 && confirmWarnings ? "Save anyway" : "Save")}
           </button>
         </div>
       </div>
@@ -2706,18 +2982,18 @@ function PricingEditorModal({
           display: flex; align-items: flex-end; justify-content: center;
         }
         .ped-sheet {
-          width: 100%; max-width: 460px;
+          width: 100%; max-width: 520px;
           background: #ffffff;
           color: #1F1A0F;
           border-top-left-radius: 22px; border-top-right-radius: 22px;
           box-shadow: 0 -20px 60px rgba(31,26,15,0.30);
           display: flex; flex-direction: column;
-          max-height: min(90dvh, 640px);
+          max-height: min(92dvh, 760px);
           animation: pedUp 0.24s cubic-bezier(0.3,1,0.3,1) both;
         }
         @media (min-width: 640px) {
           .ped-backdrop { align-items: center; }
-          .ped-sheet { border-radius: 22px; max-height: 80dvh; }
+          .ped-sheet { border-radius: 22px; max-height: 86dvh; }
         }
         @keyframes pedUp { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
@@ -2745,8 +3021,22 @@ function PricingEditorModal({
           cursor: pointer;
         }
 
-        .ped-body { padding: 16px 22px; }
-        .ped-section + .ped-section { margin-top: 14px; }
+        .ped-body { padding: 14px 22px; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+        .ped-mode {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 6px 12px;
+          border: 1px solid;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 600;
+          margin-bottom: 14px;
+        }
+        .ped-mode-emoji { font-size: 0.92rem; line-height: 1; }
+        .ped-mode-label { line-height: 1.2; }
+
+        .ped-section + .ped-section { margin-top: 12px; }
+        .ped-section, .ped-warns + .ped-tabs, .ped-tabs + .ped-section { margin-top: 12px; }
         .ped-label {
           font-size: 0.68rem; font-weight: 700;
           color: #4A3820;
@@ -2755,16 +3045,20 @@ function PricingEditorModal({
         }
 
         .ped-tabs {
-          display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+          display: flex; flex-wrap: wrap; gap: 4px;
           background: #FFFCF6;
           border: 1px solid rgba(232,228,217,0.8);
           border-radius: 12px;
           padding: 4px;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
+        .ped-tabs::-webkit-scrollbar { height: 0; }
         .ped-tab {
-          padding: 10px 12px;
-          font-size: 0.86rem;
+          flex: 1 0 auto;
+          padding: 8px 10px;
+          font-size: 0.74rem;
           font-weight: 700;
           color: #4A3820;
           background: transparent;
@@ -2772,6 +3066,8 @@ function PricingEditorModal({
           border-radius: 8px;
           cursor: pointer;
           font-family: inherit;
+          display: inline-flex; align-items: center; gap: 4px;
+          white-space: nowrap;
           transition: all 0.15s ease;
         }
         .ped-tab:hover { background: rgba(201,166,107,0.10); }
@@ -2799,7 +3095,7 @@ function PricingEditorModal({
         }
         .ped-input {
           flex: 1 1 auto;
-          padding: 12px 12px;
+          padding: 12px;
           background: transparent;
           border: none;
           color: #1F1A0F;
@@ -2826,6 +3122,54 @@ function PricingEditorModal({
           color: #6E5430;
         }
 
+        /* ── Warnings ─────────────────────────────── */
+        .ped-warns { margin-top: 14px; }
+        .ped-warns-hd {
+          font-size: 0.74rem;
+          font-weight: 700;
+          color: #b45309;
+          margin-bottom: 8px;
+        }
+        .ped-warn {
+          display: flex; align-items: flex-start; gap: 8px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          margin-top: 6px;
+        }
+        .ped-warn-icon { font-size: 1rem; line-height: 1.2; flex-shrink: 0; }
+        .ped-warn-msg {
+          font-size: 0.78rem;
+          color: #1F1A0F;
+          line-height: 1.35;
+        }
+        .ped-warn-scope {
+          margin-top: 4px;
+          font-size: 0.68rem;
+          font-weight: 600;
+          color: #6E5430;
+          letter-spacing: 0.01em;
+        }
+        .ped-warn-info {
+          background: rgba(59,130,246,0.10);
+          border: 1px solid rgba(59,130,246,0.22);
+        }
+        .ped-warn-info .ped-warn-msg { color: #1e3a8a; }
+        .ped-warn-info .ped-warn-scope { color: #1d4ed8; }
+        .ped-warn-danger {
+          background: rgba(212,160,21,0.16);
+          border: 1px solid rgba(212,160,21,0.45);
+        }
+        .ped-warns-confirm {
+          margin-top: 10px;
+          padding: 8px 10px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #7c4f0c;
+          background: rgba(212,160,21,0.10);
+          border: 1px dashed rgba(212,160,21,0.5);
+          border-radius: 8px;
+        }
+
         .ped-ft {
           padding: 12px 22px calc(env(safe-area-inset-bottom, 0px) + 14px);
           display: flex; gap: 8px;
@@ -2845,12 +3189,12 @@ function PricingEditorModal({
         }
         .ped-cancel {
           flex: 0 0 auto;
-          padding: 10px 16px;
+          padding: 10px 14px;
           background: transparent;
           color: #4A3820;
           border: 1px solid rgba(110,84,48,0.30);
           border-radius: 10px;
-          font-size: 0.86rem; font-weight: 700;
+          font-size: 0.84rem; font-weight: 700;
           cursor: pointer;
           font-family: inherit;
         }
@@ -2867,6 +3211,77 @@ function PricingEditorModal({
           font-family: inherit;
         }
         .ped-save:disabled, .ped-clear:disabled { opacity: 0.55; cursor: not-allowed; }
+      `}</style>
+    </div>
+  );
+}
+
+// Helper: ₹-prefixed price input (used by Regular / Floor / Flash / Flash Floor tabs).
+function PriceField({
+  label, hint, value, onChange, placeholder,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="pf-section">
+      <p className="pf-label">{label}</p>
+      <div className="pf-input-wrap">
+        <span className="pf-prefix">₹</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          className="pf-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoFocus
+        />
+      </div>
+      <p className="pf-hint">{hint}</p>
+      <style jsx>{`
+        .pf-section {}
+        .pf-label {
+          font-size: 0.68rem; font-weight: 700;
+          color: #4A3820;
+          text-transform: uppercase; letter-spacing: 0.08em;
+          margin-bottom: 8px;
+        }
+        .pf-input-wrap {
+          display: flex; align-items: stretch;
+          background: #FFFCF6;
+          border: 1px solid rgba(110,84,48,0.30);
+          border-radius: 10px;
+          overflow: hidden;
+        }
+        .pf-prefix {
+          padding: 0 12px;
+          font-weight: 700;
+          color: #4A3820;
+          background: rgba(232,228,217,0.45);
+          display: flex; align-items: center;
+        }
+        .pf-input {
+          flex: 1 1 auto;
+          padding: 12px;
+          background: transparent;
+          border: none;
+          color: #1F1A0F;
+          font-size: 1rem;
+          font-weight: 600;
+          outline: none;
+          font-family: inherit;
+          width: 100%;
+          min-width: 0;
+        }
+        .pf-hint {
+          margin-top: 6px;
+          font-size: 0.72rem;
+          color: #6E5430;
+        }
       `}</style>
     </div>
   );
