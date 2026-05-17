@@ -3067,6 +3067,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     //      interleave them into propItems at deterministic-per-session
     //      positions. Same session → same order; next session → fresh
     //      mix because sessionSeed is re-rolled on remount.
+    //
+    // v131.8 — primary dedup is now exact-match on `client_post_id` /
+    // local post id (both share the same `post-<ts>-<rand>` token).
+    // Caption fingerprint kept as a fallback for legacy posts that
+    // pre-date the clientPostId era.
+    const localIds = new Set(userItems.map((u) => String((u.hotel as any).id || "")));
     const fpUser = new Set(
       userItems.map((u) =>
         `${(u.hotel as any)._userPostKind}|${String(u.hotel.description).slice(0, 60)}`
@@ -3074,6 +3080,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     );
     const dedupedProp = propItems.filter((p) => {
       if (!(p.hotel as any)?._isSelf) return true;
+      // Primary: exact match on client_post_id forwarded from the server
+      const cpid = String((p.hotel as any)?._clientPostId || "");
+      if (cpid && localIds.has(cpid)) return false;
+      // Fallback: caption fingerprint (handles legacy posts without clientPostId)
       const fp = `${(p.hotel as any)?._userPostKind || "reel"}|${String(p.hotel.description).slice(0, 60)}`;
       return !fpUser.has(fp);
     });
