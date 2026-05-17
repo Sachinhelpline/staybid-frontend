@@ -282,10 +282,55 @@
   }
 }
 
-@media (min-width: 1440px) {
-  /* On wider desktops, switch hotels grid to 4 columns. */
+/* v132.5 — 4 cols at 1280+ (was: 3 cols until 1440). xl monitors now show
+   33% more hotels above the fold without any wasted side margin. */
+@media (min-width: 1280px) {
   .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* v132.5 — 5 cols at 1536+ (2xl). Wide-screen monitors get full density.
+   Hotel cards stay readable: at 1536px wrapper width ~1280px / 5 = 240px
+   per card after the 20px gaps — still wider than mobile's natural 320px
+   single-column phone width thanks to the denser layout. */
+@media (min-width: 1536px) {
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+/* v132.5 — Sort + star refinement bar (`.sb-hotels-refine`) styling.
+   The native <select> dropdown inside it inherits the page font but
+   browsers still ship a default chrome around <select> options. We
+   tighten the wrapping <label> chip + give the select arrow a custom
+   look so it reads as a single pill, not as an input field. ────────── */
+.sb-hotels-refine select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4 6l4 4 4-4' stroke='%23C9A66B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  background-size: 14px;
+  padding-right: 18px;
+  cursor: pointer;
+}
+.sb-hotels-refine select option {
+  background: var(--bg-card);
+  color: var(--text-base);
+}
+
+@media (min-width: 1024px) {
+  /* Desktop bumps the refinement row's font + padding slightly for
+     better mouse-target sizing. */
+  .sb-hotels-refine button,
+  .sb-hotels-refine label,
+  .sb-hotels-refine select {
+    font-size: 0.78rem !important;
+  }
+  .sb-hotels-refine button {
+    padding: 0.4rem 0.9rem !important;
   }
 }
 
