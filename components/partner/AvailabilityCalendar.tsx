@@ -27,6 +27,7 @@
 // extra field.
 // ═══════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export type Room = {
   id: string;
@@ -47,6 +48,33 @@ export type Occupancy = {
 };
 
 export type CalendarMap = Record<string, Record<string, Occupancy>>; // roomId -> dateISO -> occ
+
+// v132.2 — base room price + quantity (one entry per room)
+export type RoomPriceMap = Record<string, {
+  basePrice: number | null;
+  baseQty:   number | null;
+  mrp:       number | null;
+}>;
+
+// v132.2 — per-date per-room overrides indexed by `${roomId}|${date}`
+export type PriceOverrideMap = Record<string, {
+  id: string;
+  roomId: string;
+  date: string;
+  floorPrice: number | null;
+  quantityOverride: number | null;
+  note: string | null;
+}>;
+
+export type PricingSavePayload = {
+  items: Array<{
+    roomId: string;
+    date: string;
+    floorPrice?: number | null;
+    quantityOverride?: number | null;
+    note?: string | null;
+  }>;
+};
 
 // ─── ISO date helpers (UTC-stable; matches lib/availability.ts) ──────────
 function toISO(d: Date): string {
@@ -84,11 +112,17 @@ type Props = {
   onPickWalkIn: (args: { roomId: string; fromDate: string; toDate: string }) => void;
   onDeleteBlock: (refId: string) => void;
   onOpenBlockSheet: () => void;
+  // v132.2 — pricing
+  roomPrices?: RoomPriceMap;
+  priceOverrides?: PriceOverrideMap;
+  onSavePricing?: (payload: PricingSavePayload) => Promise<void>;
+  onClearPricing?: (args: { roomId: string; date: string }) => Promise<void>;
 };
 
 export default function AvailabilityCalendar({
   rooms, calendar, month, onMonthChange, onRefresh, loading,
   onPickWalkIn, onDeleteBlock, onOpenBlockSheet,
+  roomPrices = {}, priceOverrides = {}, onSavePricing, onClearPricing,
 }: Props) {
   // ── View mode + active room (for Room view) ────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -227,6 +261,10 @@ export default function AvailabilityCalendar({
               todayISO={todayISO}
               onPickWalkIn={onPickWalkIn}
               onDeleteBlock={onDeleteBlock}
+              roomPrices={roomPrices}
+              priceOverrides={priceOverrides}
+              onSavePricing={onSavePricing}
+              onClearPricing={onClearPricing}
             />
           )}
 
@@ -410,6 +448,7 @@ export default function AvailabilityCalendar({
 // ═══════════════════════════════════════════════════════════════════════
 function MonthView({
   rooms, calendar, month, todayISO, onPickWalkIn, onDeleteBlock,
+  roomPrices = {}, priceOverrides = {}, onSavePricing, onClearPricing,
 }: {
   rooms: Room[];
   calendar: CalendarMap;
@@ -417,6 +456,10 @@ function MonthView({
   todayISO: string;
   onPickWalkIn: (args: { roomId: string; fromDate: string; toDate: string }) => void;
   onDeleteBlock: (refId: string) => void;
+  roomPrices?: RoomPriceMap;
+  priceOverrides?: PriceOverrideMap;
+  onSavePricing?: (payload: PricingSavePayload) => Promise<void>;
+  onClearPricing?: (args: { roomId: string; date: string }) => Promise<void>;
 }) {
   // Build the 6-week × 7-day grid leading edge — same algorithm as iOS/
   // Google Calendar (week starts Sunday for India locale parity).
@@ -439,6 +482,38 @@ function MonthView({
   const [selectedISO, setSelectedISO] = useState<string | null>(null);
   const selectedDay = useMemo(() => grid.find(g => g.iso === selectedISO) || null, [grid, selectedISO]);
 
+  // ── v132.2 — multi-select mode + bulk pricing editor ─────────────
+  // When `multiMode` is on, tapping cells toggles them into selectedSet
+  // instead of opening the single-day panel. After picking dates the
+  // partner taps "Edit price/qty" → bulk editor opens.
+  const [multiMode, setMultiMode] = useState(false);
+  const [selectedSet, setSelectedSet] = useState<Set<string>>(new Set());
+  const [bulkEditor, setBulkEditor] = useState<null | {
+    roomId: string;
+    dates: string[];
+    mode: "price" | "quantity";
+  }>(null);
+  const [singleEditor, setSingleEditor] = useState<null | {
+    roomId: string;
+    date: string;
+    mode: "price" | "quantity";
+    currentPrice: number | null;     // effective price (override else base)
+    basePrice: number | null;
+    currentQty: number | null;
+    baseQty: number | null;
+    overrideId: string | null;
+  }>(null);
+
+  function toggleDateInSet(iso: string) {
+    setSelectedSet(prev => {
+      const n = new Set(prev);
+      if (n.has(iso)) n.delete(iso); else n.add(iso);
+      return n;
+    });
+  }
+  function clearSet() { setSelectedSet(new Set()); }
+  function exitMultiMode() { setMultiMode(false); clearSet(); }
+
   function statusFor(roomId: string, iso: string) {
     const cell = calendar[roomId]?.[iso];
     if (!cell) return { src: null as null | string, color: "#a7d046", isFree: true, occ: undefined as Occupancy | undefined };
@@ -451,9 +526,56 @@ function MonthView({
     return { free, total: rooms.length };
   }
 
+  // Resolve effective price for (room, date): override if set, else base.
+  function priceFor(roomId: string, iso: string): number | null {
+    const ovr = priceOverrides[`${roomId}|${iso}`];
+    if (ovr && ovr.floorPrice != null) return ovr.floorPrice;
+    return roomPrices[roomId]?.basePrice ?? null;
+  }
+  function qtyFor(roomId: string, iso: string): number | null {
+    const ovr = priceOverrides[`${roomId}|${iso}`];
+    if (ovr && ovr.quantityOverride != null) return ovr.quantityOverride;
+    return roomPrices[roomId]?.baseQty ?? null;
+  }
+  // Cheapest effective price across all rooms for a given date (display in cell).
+  function dayMinPrice(iso: string): number | null {
+    let min: number | null = null;
+    rooms.forEach(r => {
+      const p = priceFor(r.id, iso);
+      if (p != null && (min == null || p < min)) min = p;
+    });
+    return min;
+  }
+
+  const selectedCount = selectedSet.size;
+  const showPricing = !!onSavePricing;
+
   return (
     <div className="mv-wrap">
-      <p className="mv-tip">💡 Tap any date for the full day breakdown · use <b>📌 Block dates</b> for multi-day holds.</p>
+      <div className="mv-tipbar">
+        {multiMode ? (
+          <p className="mv-tip mv-tip-multi">
+            <b>🎯 Multi-day mode</b> — tap dates to select.
+            {selectedCount > 0 && <> Selected <b>{selectedCount}</b>.</>}
+          </p>
+        ) : (
+          <p className="mv-tip">💡 Tap any date for breakdown · prices shown at bottom of cell · <b>multi-day</b> for bulk edits.</p>
+        )}
+        {showPricing && (
+          multiMode ? (
+            <div className="mv-multi-actions">
+              {selectedCount > 0 && (
+                <button type="button" className="mv-mini-btn mv-mini-clear" onClick={clearSet}>Clear</button>
+              )}
+              <button type="button" className="mv-mini-btn mv-mini-cancel" onClick={exitMultiMode}>✕ Done</button>
+            </div>
+          ) : (
+            <button type="button" className="mv-mini-btn mv-mini-multi" onClick={() => setMultiMode(true)}>
+              📅 Multi-day
+            </button>
+          )
+        )}
+      </div>
 
       <div className="mv-grid-wrap">
         {/* Week-day header */}
@@ -475,14 +597,20 @@ function MonthView({
               pct >= 0.33 ? "#D9BE82" :
               pct > 0     ? "#D49583" :
                             "#9ca3af";
+            const minP = d.inMonth ? dayMinPrice(d.iso) : null;
+            const inSet = selectedSet.has(d.iso);
 
             return (
               <button
                 key={d.iso}
                 type="button"
-                className={`mv-cell ${d.inMonth ? "" : "mv-cell-out"} ${isToday ? "mv-cell-today" : ""} ${isWE ? "mv-cell-we" : ""} ${selectedISO === d.iso ? "mv-cell-on" : ""}`}
-                onClick={() => setSelectedISO(d.iso)}
-                aria-label={`${d.iso} — ${sum.free} of ${sum.total} free`}
+                className={`mv-cell ${d.inMonth ? "" : "mv-cell-out"} ${isToday ? "mv-cell-today" : ""} ${isWE ? "mv-cell-we" : ""} ${(!multiMode && selectedISO === d.iso) ? "mv-cell-on" : ""} ${inSet ? "mv-cell-multi-on" : ""}`}
+                onClick={() => {
+                  if (!d.inMonth) return;
+                  if (multiMode) toggleDateInSet(d.iso);
+                  else setSelectedISO(d.iso);
+                }}
+                aria-label={`${d.iso} — ${sum.free} of ${sum.total} free${minP != null ? `, from ₹${minP}` : ""}`}
               >
                 <div className="mv-cell-top">
                   <span className="mv-day-num">{d.day}</span>
@@ -513,14 +641,61 @@ function MonthView({
                     )}
                   </div>
                 )}
+                {d.inMonth && minP != null && (
+                  <span className="mv-cell-price">₹{minP >= 1000 ? `${(minP / 1000).toFixed(minP % 1000 === 0 ? 0 : 1)}k` : minP}</span>
+                )}
+                {inSet && <span className="mv-cell-check" aria-hidden>✓</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Day-detail panel */}
-      {selectedDay && (
+      {/* Multi-day bottom action bar — shown when at least 1 date picked */}
+      {multiMode && selectedCount > 0 && typeof document !== "undefined" && createPortal(
+        <div className="mv-bulkbar">
+          <div className="mv-bulkbar-inner">
+            <div className="mv-bulkbar-meta">
+              <b>{selectedCount}</b> date{selectedCount === 1 ? "" : "s"} selected
+            </div>
+            <div className="mv-bulkbar-actions">
+              <button
+                type="button"
+                className="mv-bulk-btn"
+                onClick={() => {
+                  // Need to pick which room. Open a quick picker via setting bulkEditor with first room as default.
+                  if (rooms.length === 0) return;
+                  setBulkEditor({
+                    roomId: rooms[0].id,
+                    dates: Array.from(selectedSet).sort(),
+                    mode: "price",
+                  });
+                }}
+              >💰 Price</button>
+              <button
+                type="button"
+                className="mv-bulk-btn"
+                onClick={() => {
+                  if (rooms.length === 0) return;
+                  setBulkEditor({
+                    roomId: rooms[0].id,
+                    dates: Array.from(selectedSet).sort(),
+                    mode: "quantity",
+                  });
+                }}
+              >🔢 Qty</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Day-detail panel — portaled to document.body so the modal's
+          position:fixed anchors to the viewport instead of getting
+          trapped inside the partner page's .fade-up transform
+          containing block (which was leaving the panel below the
+          viewport on mobile, requiring scroll to reveal). */}
+      {selectedDay && typeof document !== "undefined" && createPortal(
         <div className="mv-panel-backdrop" onClick={() => setSelectedISO(null)}>
           <div className="mv-panel" onClick={(e) => e.stopPropagation()}>
             <div className="mv-panel-hd">
@@ -537,13 +712,19 @@ function MonthView({
             </div>
 
             <div className="mv-panel-body">
-              <p className="mv-panel-sub">Per-room status for this day · tap a free row to add a walk-in.</p>
+              <p className="mv-panel-sub">Per-room status for this day · tap a free row for walk-in · tap ✏️ to edit price / qty.</p>
               <div className="mv-rows">
                 {rooms.map(r => {
                   const st = statusFor(r.id, selectedDay.iso);
                   const label = st.isFree
                     ? "Free"
                     : (SOURCE_STYLE[st.src || "manual"]?.label || "Booked");
+                  const eff = priceFor(r.id, selectedDay.iso);
+                  const base = roomPrices[r.id]?.basePrice ?? null;
+                  const qty = qtyFor(r.id, selectedDay.iso);
+                  const baseQ = roomPrices[r.id]?.baseQty ?? null;
+                  const ovr = priceOverrides[`${r.id}|${selectedDay.iso}`];
+                  const hasOverride = !!ovr;
                   return (
                     <div key={r.id} className={`mv-row ${st.isFree ? "mv-row-free" : ""}`}>
                       <span
@@ -561,6 +742,39 @@ function MonthView({
                           {st.occ?.assignedUnitNumber && <> · #{st.occ.assignedUnitNumber}</>}
                           {st.occ?.provider && <> · {st.occ.provider}</>}
                         </p>
+                        {showPricing && (
+                          <div className="mv-row-pricing">
+                            <span className={`mv-row-pchip ${hasOverride && ovr.floorPrice != null ? "mv-row-pchip-ovr" : ""}`}>
+                              💰 {eff != null ? `₹${eff.toLocaleString("en-IN")}` : "—"}
+                              {hasOverride && ovr.floorPrice != null && base != null && eff !== base && (
+                                <s>₹{base.toLocaleString("en-IN")}</s>
+                              )}
+                            </span>
+                            <span className={`mv-row-qchip ${hasOverride && ovr.quantityOverride != null ? "mv-row-qchip-ovr" : ""}`}>
+                              🛏 {qty != null ? qty : "—"} unit{qty === 1 ? "" : "s"}
+                              {hasOverride && ovr.quantityOverride != null && baseQ != null && qty !== baseQ && (
+                                <s>({baseQ})</s>
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              className="mv-row-edit"
+                              title="Edit price or quantity for this date"
+                              onClick={() => {
+                                setSingleEditor({
+                                  roomId: r.id,
+                                  date: selectedDay.iso,
+                                  mode: "price",
+                                  currentPrice: eff,
+                                  basePrice: base,
+                                  currentQty: qty,
+                                  baseQty: baseQ,
+                                  overrideId: ovr?.id || null,
+                                });
+                              }}
+                            >✏️</button>
+                          </div>
+                        )}
                       </div>
                       {st.isFree ? (
                         <button
@@ -594,7 +808,80 @@ function MonthView({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Single-row price/qty editor — opened by ✏️ in day-panel rows */}
+      {singleEditor && typeof document !== "undefined" && onSavePricing && createPortal(
+        <PricingEditorModal
+          title={`Edit ${rooms.find(r => r.id === singleEditor.roomId)?.type || "Room"}`}
+          subtitle={new Date(singleEditor.date).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}
+          initialMode={singleEditor.mode}
+          currentPrice={singleEditor.currentPrice}
+          basePrice={singleEditor.basePrice}
+          currentQty={singleEditor.currentQty}
+          baseQty={singleEditor.baseQty}
+          canClear={!!singleEditor.overrideId}
+          onClose={() => setSingleEditor(null)}
+          onSave={async ({ floorPrice, quantityOverride }) => {
+            await onSavePricing({
+              items: [{
+                roomId: singleEditor.roomId,
+                date: singleEditor.date,
+                floorPrice,
+                quantityOverride,
+              }],
+            });
+            setSingleEditor(null);
+          }}
+          onClear={onClearPricing ? async () => {
+            await onClearPricing({ roomId: singleEditor.roomId, date: singleEditor.date });
+            setSingleEditor(null);
+          } : undefined}
+        />,
+        document.body
+      )}
+
+      {/* Bulk editor — opened by Price/Qty btns on the multi-select bar */}
+      {bulkEditor && typeof document !== "undefined" && onSavePricing && createPortal(
+        <PricingEditorModal
+          title="Bulk edit"
+          subtitle={`${bulkEditor.dates.length} date${bulkEditor.dates.length === 1 ? "" : "s"} selected`}
+          initialMode={bulkEditor.mode}
+          currentPrice={priceFor(bulkEditor.roomId, bulkEditor.dates[0])}
+          basePrice={roomPrices[bulkEditor.roomId]?.basePrice ?? null}
+          currentQty={qtyFor(bulkEditor.roomId, bulkEditor.dates[0])}
+          baseQty={roomPrices[bulkEditor.roomId]?.baseQty ?? null}
+          canClear={false}
+          roomPicker={
+            rooms.length > 1 ? (
+              <select
+                className="mv-ed-roompick"
+                value={bulkEditor.roomId}
+                onChange={(e) => setBulkEditor(s => s ? { ...s, roomId: e.target.value } : s)}
+              >
+                {rooms.map(r => (
+                  <option key={r.id} value={r.id}>{r.type || r.name || "Room"}</option>
+                ))}
+              </select>
+            ) : null
+          }
+          onClose={() => setBulkEditor(null)}
+          onSave={async ({ floorPrice, quantityOverride }) => {
+            await onSavePricing({
+              items: bulkEditor.dates.map(date => ({
+                roomId: bulkEditor.roomId,
+                date,
+                floorPrice,
+                quantityOverride,
+              })),
+            });
+            setBulkEditor(null);
+            exitMultiMode();
+          }}
+        />,
+        document.body
       )}
 
       <style jsx>{`
@@ -606,16 +893,92 @@ function MonthView({
            overflow that was hiding the rightmost column.              */
         .mv-wrap { margin-top: 14px; }
 
+        .mv-tipbar {
+          display: flex; align-items: center; gap: 8px;
+          margin-bottom: 12px; flex-wrap: wrap;
+        }
         .mv-tip {
+          flex: 1 1 auto;
           font-size: 0.72rem;
           color: #6E5430;
           padding: 8px 12px;
           background: rgba(201,166,107,0.14);
           border-radius: 10px;
           border: 1px solid rgba(201,166,107,0.22);
-          margin-bottom: 12px;
+          margin: 0;
+          min-width: 0;
         }
         .mv-tip b { color: #1F1A0F; }
+        .mv-tip-multi {
+          background: rgba(212,160,21,0.16);
+          border-color: rgba(212,160,21,0.35);
+        }
+
+        .mv-mini-btn {
+          flex-shrink: 0;
+          padding: 8px 12px;
+          font-size: 0.74rem;
+          font-weight: 700;
+          border-radius: 10px;
+          cursor: pointer;
+          font-family: inherit;
+          border: 1px solid;
+          transition: transform 0.12s ease, box-shadow 0.15s ease;
+        }
+        .mv-mini-btn:active { transform: scale(0.96); }
+        .mv-mini-multi {
+          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          color: #1F1A0F;
+          border-color: rgba(110,84,48,0.30);
+          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+        }
+        .mv-mini-clear {
+          background: #ffffff;
+          color: #4A3820;
+          border-color: rgba(232,228,217,0.8);
+        }
+        .mv-mini-cancel {
+          background: #4A3820;
+          color: #FFFCF6;
+          border-color: #4A3820;
+        }
+        .mv-multi-actions { display: inline-flex; gap: 6px; }
+
+        /* Multi-select bulk-action sticky bottom bar (portaled) */
+        .mv-bulkbar {
+          position: fixed;
+          left: 0; right: 0; bottom: 0;
+          z-index: 100;
+          background: linear-gradient(180deg, rgba(255,252,246,0.95), #ffffff);
+          backdrop-filter: blur(8px);
+          border-top: 1px solid rgba(232,228,217,0.8);
+          box-shadow: 0 -8px 24px rgba(31,26,15,0.18);
+          padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 10px);
+        }
+        .mv-bulkbar-inner {
+          max-width: 720px;
+          margin: 0 auto;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px;
+        }
+        .mv-bulkbar-meta {
+          font-size: 0.84rem;
+          color: #4A3820;
+        }
+        .mv-bulkbar-meta b { color: #1F1A0F; font-size: 1rem; margin-right: 4px; }
+        .mv-bulkbar-actions { display: flex; gap: 8px; }
+        .mv-bulk-btn {
+          padding: 10px 16px;
+          font-size: 0.84rem; font-weight: 800;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          color: #1F1A0F;
+          border: 1px solid rgba(110,84,48,0.30);
+          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .mv-bulk-btn:active { transform: scale(0.96); }
 
         .mv-grid-wrap {
           background: #FFFCF6;
@@ -728,12 +1091,43 @@ function MonthView({
           color: #6E5430;
           margin-left: 2px;
         }
+
+        /* v132.2 — price label at bottom of every in-month cell */
+        .mv-cell-price {
+          margin-top: auto;
+          font-size: 0.62rem;
+          font-weight: 800;
+          color: #4A3820;
+          line-height: 1;
+          text-align: left;
+          letter-spacing: 0.01em;
+        }
+        /* v132.2 — multi-select highlight + check badge */
+        .mv-cell-multi-on {
+          background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+          box-shadow: inset 0 0 0 2px #C9A66B !important;
+        }
+        .mv-cell-check {
+          position: absolute;
+          top: 4px; right: 4px;
+          width: 18px; height: 18px;
+          border-radius: 999px;
+          background: #4A3820;
+          color: #FFFCF6;
+          font-size: 0.62rem;
+          font-weight: 800;
+          display: inline-flex; align-items: center; justify-content: center;
+        }
+        .mv-cell { position: relative; }
+
         @media (max-width: 480px) {
           .mv-cell { min-height: 68px; padding: 4px 3px 6px; gap: 4px; }
           .mv-day-num { font-size: 0.74rem; }
           .mv-cell-today .mv-day-num { width: 20px; height: 20px; font-size: 0.7rem; }
           .mv-free-pill { font-size: 0.52rem; padding: 0 4px; }
           .mv-chip { max-width: 12px; height: 6px; border-radius: 2px; }
+          .mv-cell-price { font-size: 0.56rem; }
+          .mv-cell-check { width: 16px; height: 16px; top: 2px; right: 2px; font-size: 0.55rem; }
         }
 
         /* ── Detail panel — also self-themed (v132.1) ──────────── */
@@ -820,6 +1214,47 @@ function MonthView({
           color: #6E5430;
         }
         .mv-row-status b { color: #4A3820; }
+
+        /* v132.2 — per-row price + qty chips in the day-detail panel */
+        .mv-row-pricing {
+          display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+          margin-top: 6px;
+        }
+        .mv-row-pchip, .mv-row-qchip {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 3px 8px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #4A3820;
+          background: rgba(232,228,217,0.45);
+          border: 1px solid rgba(232,228,217,0.8);
+          border-radius: 999px;
+        }
+        .mv-row-pchip s, .mv-row-qchip s {
+          font-weight: 500;
+          color: #8B7340;
+          opacity: 0.75;
+          margin-left: 2px;
+        }
+        .mv-row-pchip-ovr, .mv-row-qchip-ovr {
+          background: linear-gradient(135deg, #fef3c7, #fde68a);
+          border-color: #d4a015;
+          color: #7a4f00;
+        }
+        .mv-row-edit {
+          padding: 4px 8px;
+          font-size: 0.84rem;
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
+          border-radius: 8px;
+          cursor: pointer;
+          line-height: 1;
+        }
+        .mv-row-edit:hover {
+          background: rgba(201,166,107,0.18);
+        }
+        .mv-row-edit:active { transform: scale(0.94); }
+
         .mv-row-btn {
           flex-shrink: 0;
           padding: 8px 14px;
@@ -1000,8 +1435,9 @@ function RoomTimelineView({
             </div>
           </div>
 
-          {/* Detail popover for occupied cell */}
-          {popover && (
+          {/* Detail popover for occupied cell — portaled (see Month-view
+              comment above for the .fade-up containing-block reasoning). */}
+          {popover && typeof document !== "undefined" && createPortal(
             <div className="rv-pop-backdrop" onClick={() => setPopover(null)}>
               <div className="rv-pop" onClick={(e) => e.stopPropagation()}>
                 <div className="rv-pop-hd">
@@ -1052,7 +1488,8 @@ function RoomTimelineView({
                   )}
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </>
       )}
@@ -1451,7 +1888,7 @@ function GridView({
         </table>
       </div>
 
-      {popover && (
+      {popover && typeof document !== "undefined" && createPortal(
         <div className="gv-pop-backdrop" onClick={() => setPopover(null)}>
           <div
             className="gv-pop"
@@ -1508,7 +1945,8 @@ function GridView({
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style jsx>{`
@@ -2108,6 +2546,327 @@ export function BlockDatesSheet({
         .bds-submit:hover { box-shadow: 0 6px 18px rgba(201,166,107,0.55); }
         .bds-submit:active { transform: scale(0.98); }
         .bds-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
+      `}</style>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PricingEditorModal — single sheet that handles both "edit price" and
+// "edit quantity" with a tab toggle. Used for both single-cell edits
+// (from day-panel ✏️) and bulk multi-date saves (from the multi-select
+// bottom bar). Mode toggle lets the partner switch between Price and
+// Qty without closing/reopening the modal.
+// ═══════════════════════════════════════════════════════════════════════
+function PricingEditorModal({
+  title,
+  subtitle,
+  initialMode,
+  currentPrice,
+  basePrice,
+  currentQty,
+  baseQty,
+  canClear,
+  roomPicker,
+  onClose,
+  onSave,
+  onClear,
+}: {
+  title: string;
+  subtitle: string;
+  initialMode: "price" | "quantity";
+  currentPrice: number | null;
+  basePrice: number | null;
+  currentQty: number | null;
+  baseQty: number | null;
+  canClear: boolean;
+  roomPicker?: React.ReactNode;
+  onClose: () => void;
+  onSave: (p: { floorPrice?: number | null; quantityOverride?: number | null }) => Promise<void>;
+  onClear?: () => Promise<void>;
+}) {
+  const [mode, setMode] = useState<"price" | "quantity">(initialMode);
+  const [priceStr, setPriceStr] = useState<string>(currentPrice != null ? String(currentPrice) : "");
+  const [qtyStr, setQtyStr] = useState<string>(currentQty != null ? String(currentQty) : "");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (mode === "price") {
+        const v = priceStr.trim() === "" ? null : Number(priceStr);
+        if (v != null && (isNaN(v) || v < 0)) { alert("Enter a valid price"); setSaving(false); return; }
+        await onSave({ floorPrice: v });
+      } else {
+        const v = qtyStr.trim() === "" ? null : Math.floor(Number(qtyStr));
+        if (v != null && (isNaN(v) || v < 0)) { alert("Enter a valid quantity"); setSaving(false); return; }
+        await onSave({ quantityOverride: v });
+      }
+    } catch (e: any) {
+      alert(e?.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function clear() {
+    if (!onClear) return;
+    if (!confirm("Remove this override? The date will revert to the base price + quantity.")) return;
+    setSaving(true);
+    try { await onClear(); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="ped-backdrop" onClick={onClose}>
+      <div className="ped-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="ped-hd">
+          <div>
+            <p className="ped-eyebrow">{title}</p>
+            <p className="ped-title">{subtitle}</p>
+          </div>
+          <button type="button" onClick={onClose} className="ped-close" aria-label="Close">✕</button>
+        </div>
+
+        <div className="ped-body">
+          {roomPicker && (
+            <div className="ped-section">
+              <p className="ped-label">Room</p>
+              {roomPicker}
+            </div>
+          )}
+
+          {/* Mode tabs */}
+          <div className="ped-tabs">
+            <button type="button" className={`ped-tab ${mode === "price" ? "ped-tab-on" : ""}`} onClick={() => setMode("price")}>
+              💰 Price
+            </button>
+            <button type="button" className={`ped-tab ${mode === "quantity" ? "ped-tab-on" : ""}`} onClick={() => setMode("quantity")}>
+              🛏 Quantity
+            </button>
+          </div>
+
+          {mode === "price" ? (
+            <div className="ped-section">
+              <p className="ped-label">New floor price (₹ per night)</p>
+              <div className="ped-input-wrap">
+                <span className="ped-prefix">₹</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="ped-input"
+                  value={priceStr}
+                  onChange={(e) => setPriceStr(e.target.value)}
+                  placeholder={basePrice != null ? String(basePrice) : "0"}
+                  autoFocus
+                />
+              </div>
+              {basePrice != null && (
+                <p className="ped-hint">Base price: ₹{basePrice.toLocaleString("en-IN")}/night</p>
+              )}
+            </div>
+          ) : (
+            <div className="ped-section">
+              <p className="ped-label">Available quantity (units for this date)</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="ped-input"
+                value={qtyStr}
+                onChange={(e) => setQtyStr(e.target.value)}
+                placeholder={baseQty != null ? String(baseQty) : "0"}
+                autoFocus
+              />
+              {baseQty != null && (
+                <p className="ped-hint">Total units configured: {baseQty}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="ped-ft">
+          {canClear && onClear && (
+            <button type="button" onClick={clear} disabled={saving} className="ped-clear">
+              ↺ Reset to base
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="ped-cancel">Cancel</button>
+          <button type="button" onClick={submit} disabled={saving} className="ped-save">
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .ped-backdrop {
+          position: fixed; inset: 0; z-index: 110;
+          background: rgba(31,26,15,0.55);
+          backdrop-filter: blur(4px);
+          display: flex; align-items: flex-end; justify-content: center;
+        }
+        .ped-sheet {
+          width: 100%; max-width: 460px;
+          background: #ffffff;
+          color: #1F1A0F;
+          border-top-left-radius: 22px; border-top-right-radius: 22px;
+          box-shadow: 0 -20px 60px rgba(31,26,15,0.30);
+          display: flex; flex-direction: column;
+          max-height: min(90dvh, 640px);
+          animation: pedUp 0.24s cubic-bezier(0.3,1,0.3,1) both;
+        }
+        @media (min-width: 640px) {
+          .ped-backdrop { align-items: center; }
+          .ped-sheet { border-radius: 22px; max-height: 80dvh; }
+        }
+        @keyframes pedUp { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .ped-hd {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 18px 22px 14px;
+          border-bottom: 1px solid rgba(232,228,217,0.8);
+        }
+        .ped-eyebrow {
+          font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
+          color: #8B6914;
+          text-transform: uppercase;
+        }
+        .ped-title {
+          font-family: "Cormorant Garamond", serif;
+          font-size: 1.35rem; font-weight: 400;
+          color: #1F1A0F;
+          line-height: 1.1; margin-top: 2px;
+        }
+        .ped-close {
+          width: 34px; height: 34px; border-radius: 999px;
+          background: rgba(31,26,15,0.06);
+          border: 1px solid rgba(232,228,217,0.8);
+          color: #4A3820; font-size: 1.1rem;
+          cursor: pointer;
+        }
+
+        .ped-body { padding: 16px 22px; }
+        .ped-section + .ped-section { margin-top: 14px; }
+        .ped-label {
+          font-size: 0.68rem; font-weight: 700;
+          color: #4A3820;
+          text-transform: uppercase; letter-spacing: 0.08em;
+          margin-bottom: 8px;
+        }
+
+        .ped-tabs {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+          background: #FFFCF6;
+          border: 1px solid rgba(232,228,217,0.8);
+          border-radius: 12px;
+          padding: 4px;
+          margin-bottom: 16px;
+        }
+        .ped-tab {
+          padding: 10px 12px;
+          font-size: 0.86rem;
+          font-weight: 700;
+          color: #4A3820;
+          background: transparent;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s ease;
+        }
+        .ped-tab:hover { background: rgba(201,166,107,0.10); }
+        .ped-tab-on {
+          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          color: #1F1A0F;
+          border-color: rgba(110,84,48,0.30);
+          box-shadow: 0 2px 6px rgba(201,166,107,0.30);
+        }
+
+        .ped-input-wrap {
+          display: flex; align-items: center;
+          background: #FFFCF6;
+          border: 1px solid rgba(110,84,48,0.30);
+          border-radius: 10px;
+          overflow: hidden;
+        }
+        .ped-prefix {
+          padding: 0 12px;
+          font-weight: 700;
+          color: #4A3820;
+          background: rgba(232,228,217,0.45);
+          align-self: stretch;
+          display: flex; align-items: center;
+        }
+        .ped-input {
+          flex: 1 1 auto;
+          padding: 12px 12px;
+          background: transparent;
+          border: none;
+          color: #1F1A0F;
+          font-size: 1rem;
+          font-weight: 600;
+          outline: none;
+          font-family: inherit;
+          width: 100%;
+          min-width: 0;
+        }
+        :global(.mv-ed-roompick) {
+          width: 100%;
+          padding: 10px 12px;
+          background: #FFFCF6;
+          border: 1px solid rgba(110,84,48,0.30);
+          border-radius: 10px;
+          color: #1F1A0F;
+          font-size: 0.92rem;
+          font-family: inherit;
+        }
+        .ped-hint {
+          margin-top: 6px;
+          font-size: 0.72rem;
+          color: #6E5430;
+        }
+
+        .ped-ft {
+          padding: 12px 22px calc(env(safe-area-inset-bottom, 0px) + 14px);
+          display: flex; gap: 8px;
+          border-top: 1px solid rgba(232,228,217,0.8);
+          background: #ffffff;
+        }
+        .ped-clear {
+          flex: 0 0 auto;
+          padding: 10px 12px;
+          background: #fef3c7;
+          color: #7c4f0c;
+          border: 1px solid rgba(212,160,21,0.35);
+          border-radius: 10px;
+          font-size: 0.78rem; font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .ped-cancel {
+          flex: 0 0 auto;
+          padding: 10px 16px;
+          background: transparent;
+          color: #4A3820;
+          border: 1px solid rgba(110,84,48,0.30);
+          border-radius: 10px;
+          font-size: 0.86rem; font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .ped-save {
+          flex: 1 1 auto;
+          padding: 12px 18px;
+          background: linear-gradient(135deg, #D9BE82, #C9A66B);
+          color: #1F1A0F;
+          border: 1px solid rgba(110,84,48,0.30);
+          border-radius: 10px;
+          font-size: 0.92rem; font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(201,166,107,0.30);
+          font-family: inherit;
+        }
+        .ped-save:disabled, .ped-clear:disabled { opacity: 0.55; cursor: not-allowed; }
       `}</style>
     </div>
   );
