@@ -20,6 +20,12 @@ import {
 // after the v112.2 merge). Without this, /me showed 0 posts for any
 // user whose sb_token was issued under the old auth path.
 import { normalizeAuthId } from "@/lib/social/auth-helper";
+// v132.10 — Cross-identity bridge. When the direct user_id lookup misses
+// (user authed via Google/FB, then later via phone-OTP), this helper
+// walks phone + email matches across the users table and returns any
+// orphan social_profile that belongs to the same human. Prevents /me
+// from showing 0 posts after an auth-method switch.
+import { findProfileAcrossIdentities } from "@/lib/social/social-profile.service";
 
 const READ = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
@@ -65,11 +71,38 @@ export async function GET(req: NextRequest) {
       },
       TTL_LOOKUPS,
     );
-    const resolved = Array.isArray(profileRows) && profileRows[0]?.id ? String(profileRows[0].id) : "";
+    let resolved = Array.isArray(profileRows) && profileRows[0]?.id ? String(profileRows[0].id) : "";
     if (!resolved) {
-      // No profile yet → no posts. Return empty quickly without a wasted
-      // social_posts scan.
-      return NextResponse.json({ posts: [], nextCursor: null });
+      // v132.10 — Direct user_id miss. Walk phone + email across the
+      // `users` table to catch the multi-auth case (same human signed
+      // up with Google first, now logged in via Phone-OTP — the new
+      // session's user.id won't match the old Firebase-bound profile).
+      // We need the caller's phone + email to do the cross-match.
+      // The fastest source is the `users` row for `authorUserId`.
+      const userRows = await sbCached(
+        `social:user-by-id:${normalized}`,
+        async () => {
+          const r = await fetch(
+            `${SB_URL}/rest/v1/users?id=eq.${encodeURIComponent(normalized)}&select=id,phone,email&limit=1`,
+            { headers: READ, cache: "no-store" }
+          );
+          if (!r.ok) return [];
+          return r.json().catch(() => []);
+        },
+        TTL_LOOKUPS,
+      );
+      const me = Array.isArray(userRows) && userRows[0] ? userRows[0] : null;
+      if (me) {
+        const cross = await findProfileAcrossIdentities({
+          id: normalized, phone: me.phone || null, email: me.email || null,
+        });
+        if (cross?.id) resolved = String(cross.id);
+      }
+      if (!resolved) {
+        // Still no profile → no posts. Return empty quickly without a
+        // wasted social_posts scan.
+        return NextResponse.json({ posts: [], nextCursor: null });
+      }
     }
     authorId = resolved;
   }
