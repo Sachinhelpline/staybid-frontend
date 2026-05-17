@@ -1147,4 +1147,98 @@ body main textarea.input-luxury {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   23. v132.8 — /hotels/[id] DESKTOP 2-COLUMN LAYOUT (sticky right rail)
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile + tablet: the entire hotel detail page is one long flow with the
+   availability picker sandwiched mid-page (after the tabs, before the
+   rooms list). That works on phones — thumb scrolls to it naturally.
+
+   Desktop ≥1280px: the same page becomes a 2-column grid. Everything
+   except `#availability-picker` flows in column 1 (left). The picker
+   moves to column 2 (right rail, 340-380px wide) and `position:
+   sticky`-pins to the viewport top once the user scrolls past its
+   natural position — so dates + guest counters + Book/Negotiate CTAs
+   are always one click away, no matter how far down the room cards
+   or reviews the customer has scrolled.
+
+   Zero JSX changes — pure CSS retrofit. The page already wraps every
+   section as a flat direct child of `.hx-shell > .max-w-6xl > div`, so
+   `:not(#availability-picker)` cleanly forces them into column 1.
+
+   `grid-row: 1 / span 999` puts the picker at the top of column 2 from
+   the moment the page loads (instead of waiting until source-order
+   item #5). The "999" span is harmless — grid creates as many implicit
+   rows as auto-placed siblings require, no more.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1280px) {
+  /* Make the page wrapper a 2-col grid. The max-width is bumped from
+     1152 (Tailwind max-w-6xl) to 1280 so the new right rail doesn't
+     squeeze the room cards in column 1. */
+  .hx-shell > .max-w-6xl {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 340px !important;
+    column-gap: 32px !important;
+    align-items: start !important;
+    max-width: 1280px !important;
+  }
+
+  /* Every direct child of the page wrapper EXCEPT the availability
+     picker flows in column 1. `min-width: 0` prevents long content
+     (hotel name, OTA comparison table) from forcing the grid track
+     wider than 1fr. */
+  .hx-shell > .max-w-6xl > :not(#availability-picker) {
+    grid-column: 1 !important;
+    min-width: 0;
+  }
+
+  /* The availability picker becomes the sticky right rail. Spans all
+     rows of the grid so column 2 stays "owned" by the picker — no
+     phantom empty space at the bottom right of the page. */
+  .hx-shell > .max-w-6xl > #availability-picker {
+    grid-column: 2 !important;
+    grid-row: 1 / span 999 !important;
+    position: sticky !important;
+    top: 88px !important;                       /* below 64px sticky navbar + 24px breathing */
+    align-self: start !important;
+    max-height: calc(100vh - 110px);
+    overflow-x: hidden;                         /* preserve picker's hx-availability::before clip */
+    overflow-y: auto;                           /* scroll inside picker if content is tall */
+    margin-top: 0 !important;                   /* override inline marginBottom:24px from JSX */
+    margin-bottom: 0 !important;
+    width: auto;                                /* let grid track width drive size */
+  }
+
+  /* Slim scrollbar inside the picker so it's discoverable but doesn't
+     fight the cozy parchment palette. */
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar {
+    width: 5px;
+  }
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-thumb {
+    background: rgba(201, 145, 26, 0.30);
+    border-radius: 3px;
+  }
+  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (min-width: 1440px) {
+  /* Wider monitors get a roomier right rail + wider page cap. */
+  .hx-shell > .max-w-6xl {
+    grid-template-columns: minmax(0, 1fr) 380px !important;
+    column-gap: 40px !important;
+    max-width: 1340px !important;
+  }
+}
+
+@media (min-width: 1700px) {
+  /* On true wide-screens cap at 1440 so the page doesn't feel
+     stretched. Right rail can grow a touch more. */
+  .hx-shell > .max-w-6xl {
+    grid-template-columns: minmax(0, 1fr) 400px !important;
+    max-width: 1440px !important;
+  }
+}
+
 /* End v122 desktop layer (v122.6 — all-viewport density pass) */
