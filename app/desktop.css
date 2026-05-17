@@ -1241,4 +1241,101 @@ body main textarea.input-luxury {
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   24. v132.9 — Reel-feed keyboard-help chip (`?` button)
+   ─────────────────────────────────────────────────────────────────────────
+   Tiny floating chip in the bottom-left corner of the reel feed on
+   desktop. Opens the keyboard-shortcuts overlay. Hidden on mobile
+   because the matchMedia guard in the keyboard handler skips the
+   shortcuts entirely below 1024px — surfacing the chip there would
+   be a dead UI element.
+   ───────────────────────────────────────────────────────────────────────── */
+.sb-help-chip {
+  display: none;             /* hidden everywhere by default — desktop @media unmasks it */
+}
+
+@media (min-width: 1024px) {
+  .sb-help-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--bg-elevated, rgba(31, 26, 15, 0.78));
+    color: var(--accent, #C9A66B);
+    border: 1px solid var(--border-strong, rgba(201, 145, 26, 0.28));
+    box-shadow:
+      0 8px 20px rgba(15, 12, 8, 0.18),
+      0 2px 6px rgba(15, 12, 8, 0.10);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    font-weight: 700;
+    font-size: 0.92rem;
+    line-height: 1;
+    z-index: 45;
+    cursor: pointer;
+    opacity: 0.78;
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.3,1.4,.4,1);
+  }
+  .sb-help-chip:hover {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.04);
+  }
+  .sb-help-chip:focus-visible {
+    outline: 2px solid var(--accent, #C9A66B);
+    outline-offset: 2px;
+  }
+}
+
+/* The chip lives on every reel route (/, /discover, /reels) but should
+   NOT appear on traditional pages (/hotels, /bookings, etc.) where the
+   InstagramHotelFeed isn't mounted — so no extra hide gate needed. */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   25. v132.9 — TABLET sweet-spot (768-1023px) polish
+   ─────────────────────────────────────────────────────────────────────────
+   Section 15 already added a couple of tablet-only rules. This block
+   extends them: tablets are big enough for slightly denser layouts
+   without crossing into desktop territory. The viewport range is
+   common on iPad Mini portrait, Galaxy Tab S landscape, foldables.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet: bump hotels-grid gap from the mobile-tight default. */
+  .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
+    gap: 1.25rem !important;
+  }
+
+  /* Sort + star refinement row gets bigger touch targets on tablet —
+     fingers, not mouse, but more horizontal room than phones. */
+  .sb-hotels-refine button,
+  .sb-hotels-refine label,
+  .sb-hotels-refine select {
+    font-size: 0.78rem !important;
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+  .sb-hotels-refine button {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+
+  /* Hotel detail page: bump max-width so the photo gallery + room cards
+     get more horizontal room. Mobile defaults were too cramped on a
+     800-1000px tablet. Single column flow preserved (no 2-col grid). */
+  .hx-shell > .max-w-6xl {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  /* City filter chips on /hotels — slightly bigger on tablet. */
+  .lux-bg .flex.flex-wrap.gap-1\.5 > button {
+    font-size: 0.78rem;
+    padding: 0.45rem 0.85rem;
+  }
+}
+
 /* End v122 desktop layer (v122.6 — all-viewport density pass) */

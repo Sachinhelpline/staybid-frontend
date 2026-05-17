@@ -2906,6 +2906,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  // v132.9 — Keyboard shortcuts help overlay (desktop only). Toggled
+  // by the `?` key or the `?` chip in the corner of the reel feed.
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // ── Saved-set hydration ─────────────────────────────────────────────
   // Fetch the user's existing saves once on mount so the bookmark icon on
@@ -3356,11 +3359,22 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           toggleMute();
           onTrackEvent?.("ig_keyboard_mute", { muted: !isMuted });
           break;
+        case "?":
+          e.preventDefault();
+          setHelpOpen((s) => !s);
+          onTrackEvent?.("ig_keyboard_help_open", {});
+          break;
+        case "Escape":
+          if (helpOpen) {
+            e.preventDefault();
+            setHelpOpen(false);
+          }
+          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeIdx, isMuted, toggleMute, onTrackEvent]);
+  }, [activeIdx, isMuted, toggleMute, onTrackEvent, helpOpen]);
 
   const handleBook = useCallback((h: any) => {
     onTrackEvent?.("ig_click_book", { hotelId: h.id });
@@ -4349,6 +4363,153 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           router.push(url);
         }}
       />
+
+      {/* v132.9 — Desktop keyboard-shortcuts help overlay + tiny `?` chip.
+          Chip is bottom-left, hidden on mobile via `.sb-help-chip` CSS
+          rules in desktop.css §24. Overlay opens via the chip OR via the
+          `?` key handled in the keyboard effect above.
+          Uses inline `position:fixed` instead of Tailwind `.fixed.inset-0`
+          classes so the keyboard handler's modal-check selector doesn't
+          confuse it with a real modal (which would otherwise block the
+          Escape-to-close shortcut).  ─────────────────────────────────── */}
+      <button
+        type="button"
+        className="sb-help-chip"
+        onClick={() => setHelpOpen(true)}
+        aria-label="Show keyboard shortcuts"
+        title="Keyboard shortcuts (?)"
+      >
+        ?
+      </button>
+      {helpOpen && (
+        <div
+          className="sb-help-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(2, 4, 12, 0.78)",
+            backdropFilter: "blur(8px) saturate(140%)",
+            WebkitBackdropFilter: "blur(8px) saturate(140%)",
+            animation: "sbHelpFadeIn 0.22s ease both",
+          }}
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "440px",
+              width: "calc(100% - 32px)",
+              maxHeight: "82vh",
+              overflowY: "auto",
+              background: "var(--bg-elevated, #1a1424)",
+              border: "1px solid var(--border-strong, rgba(201, 145, 26, 0.30))",
+              borderRadius: "22px",
+              padding: "24px 26px",
+              boxShadow: "0 30px 80px -10px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
+              color: "var(--text-base, #fff)",
+              fontFamily: "inherit",
+              animation: "sbHelpScaleIn 0.24s cubic-bezier(0.3, 1, 0.32, 1) both",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div>
+                <p style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent, #C9A66B)", marginBottom: "2px" }}>
+                  Reel feed
+                </p>
+                <h3 style={{ fontSize: "1.15rem", fontWeight: 600, letterSpacing: "-0.01em" }}>
+                  Keyboard shortcuts
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHelpOpen(false)}
+                aria-label="Close"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.8)",
+                  fontSize: "1.05rem",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              {[
+                { keys: ["↓", "j", "PgDn"], label: "Next reel" },
+                { keys: ["↑", "k", "PgUp"], label: "Previous reel" },
+                { keys: ["Home"], label: "Jump to top" },
+                { keys: ["End"], label: "Jump to end" },
+                { keys: ["m"], label: "Toggle mute" },
+                { keys: ["?"], label: "Toggle this help" },
+                { keys: ["Esc"], label: "Close any open overlay" },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "9px 12px",
+                    borderRadius: "10px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: "0.86rem", color: "var(--text-soft, rgba(255,255,255,0.85))" }}>
+                    {row.label}
+                  </span>
+                  <span style={{ display: "flex", gap: "6px" }}>
+                    {row.keys.map((k) => (
+                      <kbd
+                        key={k}
+                        style={{
+                          padding: "3px 8px",
+                          minWidth: "28px",
+                          textAlign: "center",
+                          background: "rgba(255,255,255,0.08)",
+                          border: "1px solid rgba(255,255,255,0.18)",
+                          borderRadius: "6px",
+                          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                          fontSize: "0.72rem",
+                          color: "var(--text-base, #fff)",
+                          boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.2)",
+                        }}
+                      >
+                        {k}
+                      </kbd>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ marginTop: "16px", fontSize: "0.72rem", color: "var(--text-muted, rgba(255,255,255,0.5))", textAlign: "center", letterSpacing: "0.02em" }}>
+              Shortcuts work on desktop only · disabled while typing
+            </p>
+          </div>
+          <style jsx>{`
+            @keyframes sbHelpFadeIn {
+              from { opacity: 0; }
+              to   { opacity: 1; }
+            }
+            @keyframes sbHelpScaleIn {
+              from { opacity: 0; transform: translateY(8px) scale(0.97); }
+              to   { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
+        </div>
+      )}
     </>
   );
 }

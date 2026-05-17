@@ -20,11 +20,42 @@ function HotelList() {
   const [hydrated, setHydrated] = useState(false);
 
   // v132.5 — client-side sort + filter dimensions (live without re-fetch).
-  // `sortBy="default"` keeps the API's natural order; the other 3 options
-  // sort the already-loaded hotels array client-side. `selectedStars` is a
-  // multi-select chip group — empty Set = no filter (all stars shown).
-  const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">("default");
-  const [selectedStars, setSelectedStars] = useState<Set<number>>(new Set());
+  // v132.9 — initial values hydrated from URL `?sort=...&stars=4,5` so
+  // refreshes + shared links preserve refinement state.
+  const initialSort = (() => {
+    const s = searchParams.get("sort");
+    return s === "price-asc" || s === "price-desc" || s === "rating" ? s : "default";
+  })() as "default" | "price-asc" | "price-desc" | "rating";
+  const initialStars = (() => {
+    const raw = searchParams.get("stars");
+    if (!raw) return new Set<number>();
+    const set = new Set<number>();
+    raw.split(",").forEach((p) => {
+      const n = Number(p.trim());
+      if (n === 3 || n === 4 || n === 5) set.add(n);
+    });
+    return set;
+  })();
+  const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">(initialSort);
+  const [selectedStars, setSelectedStars] = useState<Set<number>>(initialStars);
+
+  // v132.9 — Mirror sort + stars into the URL whenever they change so
+  // the page is shareable + survives reloads. Uses replace (not push)
+  // to avoid polluting browser history with every chip toggle.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sortBy === "default") sp.delete("sort"); else sp.set("sort", sortBy);
+    if (selectedStars.size === 0) sp.delete("stars");
+    else {
+      const arr: number[] = [];
+      selectedStars.forEach((s) => arr.push(s));
+      sp.set("stars", arr.sort((a, b) => b - a).join(","));
+    }
+    const qs = sp.toString();
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    router.replace(url, { scroll: false });
+  }, [sortBy, selectedStars, router]);
 
   // Warm up /discover so the ✨ Explore chip swap is instant.
   useEffect(() => {

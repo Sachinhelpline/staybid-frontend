@@ -14,6 +14,7 @@ import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
+import BackToTopButton from "@/components/BackToTopButton";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -3656,6 +3657,10 @@ export default function HotelDetail() {
           </div>
         </div>
       )}
+
+      {/* v132.9 — Floating back-to-top button (desktop only, surfaces
+          after 600px scroll, hides while modals are open) */}
+      <BackToTopButton />
     </div>
   );
 }
