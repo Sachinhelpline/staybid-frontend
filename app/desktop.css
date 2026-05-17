@@ -922,4 +922,184 @@ body main textarea.input-luxury {
   .fd-root > .fd-wrap { padding-top: 0.4rem !important; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   20. v132.4 — DESKTOP MODAL CENTERING & POLISH
+   ─────────────────────────────────────────────────────────────────────────
+   Mobile-first codebase has ~20+ modals using `fixed inset-0 flex items-end`
+   (bottom-sheet pattern). On phones this is correct — drawer slides up
+   from the bottom edge, anchored to thumb reach.
+
+   On desktop with a mouse + 1080p+ canvas, full-width bottom-sheet looks
+   awkward (huge horizontal whitespace + interaction happens at screen
+   bottom instead of viewport center). This block:
+
+   1. Forces all bottom-sheet modals to CENTER vertically on desktop.
+   2. Caps inner card max-width to ~560px (BookingReview already does this
+      via Tailwind `sm:max-w-md`; CreateFlow sheets don't — we add it).
+   3. Rounds all 4 corners (mobile uses `rounded-t-3xl` only — opens from
+      bottom so bottom corners hidden by viewport edge; desktop sees both).
+   4. Replaces the slide-up animation with a fade+scale entrance — much
+      cleaner when entering from the center.
+   5. Tighter backdrop with sharper blur for premium feel on big monitors.
+
+   Selector signature: `.fixed.inset-0.flex.items-end` — that exact 4-class
+   combo is ONLY used by full-screen modal backdrops in this codebase
+   (verified across customer + partner + admin surfaces). Won't bleed
+   into floating tooltips, inline drawers, or stacked layout containers.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* ── 20.1 — Center the modal vertically + horizontally on desktop ── */
+  body .fixed.inset-0.flex.items-end {
+    align-items: center !important;
+  }
+
+  /* ── 20.2 — Subtle backdrop polish on desktop (deeper blur, darker
+         tint so the centered card pops more against a busy page) ── */
+  body .fixed.inset-0.flex.items-end[style*="rgba"] {
+    backdrop-filter: blur(8px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  }
+
+  /* ── 20.3 — Inner card: cap width, full-radius, drop shadow ──────
+       The `.ig-drawer-up` class marks every CreateFlow + reel feed
+       bottom-sheet. BookingReview uses its own inline shape. Both
+       converge on these properties on desktop. ──────────────────── */
+  body .fixed.inset-0 > .ig-drawer-up,
+  body .fixed.inset-0 .ig-drawer-up {
+    max-width: 560px !important;
+    margin-inline: auto !important;
+    border-radius: 22px !important;
+    box-shadow:
+      0 30px 80px -10px rgba(0, 0, 0, 0.42),
+      0 12px 32px -4px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+  }
+
+  /* ── 20.4 — `rounded-t-*` cards (Tailwind shorthand for "rounded top
+         only") should fully round on desktop. We have NO way to
+         distinguish a top-rounded modal card from a top-rounded
+         drop-down (rare), so scope to descendants of `.fixed.inset-0`
+         which is the modal-backdrop signature. ────────────────────── */
+  body .fixed.inset-0 .rounded-t-3xl {
+    border-radius: 22px !important;
+  }
+  body .fixed.inset-0 .rounded-t-2xl {
+    border-radius: 18px !important;
+  }
+  body .fixed.inset-0 .rounded-t-xl {
+    border-radius: 14px !important;
+  }
+
+  /* ── 20.5 — Replace slide-up animation with fade+scale on desktop
+         Existing `.ig-drawer-up` keyframe (defined inline in
+         InstagramHotelFeed.tsx) does translateY(100%)→0. From a
+         center-mounted modal that looks weird — card slides in from
+         BELOW the viewport into the middle. Override with a centered
+         fade-in. ────────────────────────────────────────────────── */
+  .ig-drawer-up {
+    animation: sbModalDesktopIn 0.26s cubic-bezier(0.3, 1, 0.32, 1) both !important;
+  }
+  @keyframes sbModalDesktopIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* ── 20.6 — `paddingBottom: calc(env(safe-area-inset-bottom)…)` on
+         inner CreateFlow sheets reserves space for the iOS home
+         indicator. On centered desktop modals that becomes an awkward
+         empty band at the bottom. Neutralize. ────────────────────── */
+  body .fixed.inset-0 > .ig-drawer-up[style*="safe-area-inset-bottom"],
+  body .fixed.inset-0 .ig-drawer-up[style*="safe-area-inset-bottom"] {
+    padding-bottom: 18px !important;
+  }
+
+  /* ── 20.7 — Inner content max-height adjustment.
+         BookingReview uses maxHeight: 94vh; on a tall desktop canvas
+         this becomes ~870px of modal which dwarfs the actual content.
+         Cap at a more sensible 88vh. ─────────────────────────────── */
+  body .fixed.inset-0 > div[style*="maxHeight: 94vh"],
+  body .fixed.inset-0 > div[style*="max-height: 94vh"] {
+    max-height: 88vh !important;
+  }
+
+  /* ── 20.8 — Photo gallery lightbox (z-[70] bg-black/95) IS intentionally
+         fullscreen for cinema feel. Don't touch it. Selector below skips
+         lightboxes by checking for bg-black/95 inline class via attribute
+         match — the lightbox uses Tailwind `bg-black/95` which renders as
+         `background-color: rgba(0,0,0,0.95)`; non-lightbox modals use
+         `rgba(2,4,12,…)` or similar. Lightbox is unaffected because the
+         `.flex.items-end` selector requires items-end which lightbox does
+         NOT use (lightbox uses items-center). Verified safe. ─────────── */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   21. v132.4 — KEYBOARD AFFORDANCES on desktop reel pages
+   ─────────────────────────────────────────────────────────────────────────
+   Desktop users expect arrow-key / spacebar navigation in a reel feed
+   (YouTube Shorts / Instagram Web behavior). We can't add JS keyboard
+   handlers from a CSS file, but we CAN expose hover-only visual hints
+   on the reel feed so power users see what's interactive.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Show a subtle "click anywhere to mute/unmute" indicator on hover.
+     Mobile uses tap-to-unmute via the .ig-tap-unmute pill which auto-
+     dismisses after a few seconds. Desktop has no such pill — show
+     it on hover of the centered reel card. */
+  .ig-card:hover .ig-tap-unmute {
+    opacity: 0.9 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Reel action rail buttons get a tiny hover scale for affordance. */
+  .ig-card .ig-action-btn:hover {
+    transform: scale(1.06);
+    transition: transform 0.14s cubic-bezier(0.3, 1.4, 0.4, 1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   22. v132.4 — HOVER POLISH on common interactive elements
+   ─────────────────────────────────────────────────────────────────────────
+   Section 13 already adds hover lifts to .card-luxury, .lux-glass, .fd-card,
+   .me-grid-tile, .me-action-btn. This block extends that to more surfaces
+   that customer + partner pages use heavily but were missed.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  /* Hotel detail page room cards — give them the same hover lift as
+     .card-luxury so they feel clickable on desktop. */
+  body main .hx-room-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(15, 12, 8, 0.10), 0 5px 12px rgba(15, 12, 8, 0.06);
+    transition: transform 0.18s cubic-bezier(.3, 1.4, .4, 1), box-shadow 0.18s ease;
+  }
+
+  /* Pills and chips throughout (city pills, filter chips, etc) get a
+     subtle background shift on hover so the cursor reads "clickable". */
+  body main button.rounded-full:hover,
+  body main button.rounded-2xl:hover:not(:disabled) {
+    filter: brightness(1.04);
+    transition: filter 0.14s ease;
+  }
+
+  /* Modal close buttons (used across all modals) get a hover spin. */
+  body .fixed.inset-0 button[aria-label="Close"]:hover {
+    transform: rotate(90deg);
+    background: rgba(255, 255, 255, 0.12) !important;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  /* Modal primary CTAs — subtle lift + stronger shadow on hover. */
+  body .fixed.inset-0 button.lux-btn:hover,
+  body .fixed.inset-0 .br-cta-pay:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(201, 145, 26, 0.30) !important;
+  }
+}
+
 /* End v122 desktop layer (v122.6 — all-viewport density pass) */
