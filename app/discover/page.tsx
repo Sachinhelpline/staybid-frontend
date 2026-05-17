@@ -81,6 +81,17 @@ export default function DiscoverPage() {
         // InstagramHotelFeed can exact-match the local PostsStore's
         // post-* id. Caption-fingerprint dedup was unreliable when tags
         // / display formatting differed between local + server.
+        //
+        // ⚠️ LOAD-BEARING. The 3-step dedup chain is:
+        //   1. Composer sends `clientPostId` to /api/social/posts (CreateFlow)
+        //   2. Server stores it as `client_post_id` on social_posts row
+        //   3. /api/social/feed returns it in the post object (no narrowing)
+        //   4. THIS LINE forwards it as `_clientPostId` onto the Item
+        //   5. InstagramHotelFeed exact-matches it against local id
+        // Remove any of these 5 hops and duplicate reels reappear on the
+        // public feed (home, /discover, /reels). /me is unaffected because
+        // it only renders PostsStore locally — the duplicate is always on
+        // the public surfaces.
         _clientPostId: post.client_post_id || null,
         _userPostKind: String(post.media_type || "reel").toLowerCase(),
         _userPostMime: "",

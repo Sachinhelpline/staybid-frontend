@@ -3072,6 +3072,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     // local post id (both share the same `post-<ts>-<rand>` token).
     // Caption fingerprint kept as a fallback for legacy posts that
     // pre-date the clientPostId era.
+    //
+    // ⚠️ LOAD-BEARING. If you remove the localIds Set or the cpid
+    // exact-match check below, duplicate reels reappear on home /
+    // /discover / /reels (the same upload renders twice — once from
+    // PostsStore, once from /api/social/feed). The exact match is
+    // bulletproof against any caption/tag display drift.
     const localIds = new Set(userItems.map((u) => String((u.hotel as any).id || "")));
     const fpUser = new Set(
       userItems.map((u) =>

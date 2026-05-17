@@ -53,6 +53,12 @@ export async function POST(req: Request) {
   // client_post_id). 1..N rapid POSTs return the same row, fixing the
   // recurring triple-upload bug for good. Fall back to a regular insert
   // when clientPostId is missing (legacy callers).
+  //
+  // ⚠️ v131.8 LOAD-BEARING — the entire reel dedup chain (this insert +
+  // socialPostToItem._clientPostId forwarding in app/discover/page.tsx +
+  // InstagramHotelFeed exact-match dedup) depends on this round-trip.
+  // DO NOT remove client_post_id support without first auditing all 3
+  // surfaces or duplicate reels reappear on home/discover/reels.
   const clientPostId: string | null =
     typeof body.clientPostId === "string" && body.clientPostId.trim()
       ? body.clientPostId.trim().slice(0, 64)
