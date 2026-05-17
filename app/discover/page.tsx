@@ -77,6 +77,11 @@ export default function DiscoverPage() {
         _userPost:    true,
         _isSelf:      isSelf,
         _publicAuthor: a,                          // {username, display_name, user_type, ...}
+        // v131.8 — forward `client_post_id` from server so the dedup in
+        // InstagramHotelFeed can exact-match the local PostsStore's
+        // post-* id. Caption-fingerprint dedup was unreliable when tags
+        // / display formatting differed between local + server.
+        _clientPostId: post.client_post_id || null,
         _userPostKind: String(post.media_type || "reel").toLowerCase(),
         _userPostMime: "",
         _userPostLocation: post.location_name
