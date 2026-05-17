@@ -1,0 +1,17 @@
+[
+  {
+    "_setup": "TWA Digital Asset Links — verifies that THIS website (staybids.in) trusts the Android app to handle its URLs without showing the browser URL bar. Without this file (or with wrong values), Chrome falls back to Custom Tabs chrome (the '× staybids.in [share] [⋮]' bar at the top of the Play Store app). Replace BOTH placeholders below with the values from Google Play Console.",
+    "_how_to_fill": {
+      "package_name": "Find it in Google Play Console → All apps → StayBid → App information → 'Package name'. Common formats: com.staybids.www, in.staybids.app, app.staybids.com.",
+      "sha256_cert_fingerprints": "Google Play Console → Setup → App integrity → App signing key certificate → 'SHA-256 certificate fingerprint'. Copy the value with colons every 2 chars (e.g. AB:CD:EF:01:23:...). If you also self-sign uploads, add BOTH the Play-signing fingerprint AND your upload-key fingerprint to the array — Android accepts either."
+    },
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "REPLACE_WITH_PLAY_STORE_PACKAGE_NAME",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_PLAY_STORE_SHA256_FINGERPRINT"
+      ]
+    }
+  }
+]

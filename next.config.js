@@ -39,5 +39,30 @@ const nextConfig = {
     // into the customer bundle. This makes that mistake free.
     optimizePackageImports: ["firebase", "recharts", "socket.io-client"],
   },
+  // v132.13 — `.well-known/` headers for Trusted Web Activity verification.
+  //
+  // The Play Store app (Bubblewrap/PWA Builder generated TWA) requires
+  // /.well-known/assetlinks.json to verify ownership of staybids.in. If
+  // the file is missing / 404s / serves with wrong Content-Type, Chrome
+  // falls back to Custom Tabs chrome — that's the "× staybids.in [share]
+  // [⋮]" URL bar that re-appeared after the user installed the latest
+  // app from Play Store.
+  //
+  // These headers make the file bulletproof against future CDN/Vercel
+  // config changes: explicit Content-Type, short cache (Play re-verifies
+  // on each install), and CORS open so PWA Builder's online verifier
+  // can fetch it cross-origin.
+  async headers() {
+    return [
+      {
+        source: "/.well-known/:path*",
+        headers: [
+          { key: "Content-Type", value: "application/json; charset=utf-8" },
+          { key: "Cache-Control", value: "public, max-age=300, must-revalidate" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
+        ],
+      },
+    ];
+  },
 };
 module.exports = nextConfig;
