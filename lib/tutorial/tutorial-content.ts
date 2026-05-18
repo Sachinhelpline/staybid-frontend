@@ -206,13 +206,19 @@ export type TourStep = {
 
 type LocalisedSteps = { en: TourStep[]; hi: TourStep[] };
 
-// Home / discover reel feed — 4 steps
+// Home / discover reel feed — 5 steps (v141: added filter chip)
 const HOME_STEPS: LocalisedSteps = {
   en: [
     {
       element: ".fdeal-rail-wrap",
       title: "🔥 Flash Deals",
       description: "Top hotels release massive same-day discounts here. Tap any avatar to grab one.",
+      side: "bottom",
+    },
+    {
+      element: ".ig-filter-chip",
+      title: "🎯 Filter the feed",
+      description: "Switch source (Hotels · Creators · Public) and city. Your feed updates live.",
       side: "bottom",
     },
     {
@@ -239,6 +245,12 @@ const HOME_STEPS: LocalisedSteps = {
       element: ".fdeal-rail-wrap",
       title: "🔥 Flash Deals",
       description: "Top hotels yahaan same-day massive discount dete hain. Tap karo aur grab karo.",
+      side: "bottom",
+    },
+    {
+      element: ".ig-filter-chip",
+      title: "🎯 Feed filter karo",
+      description: "Source (Hotels · Creators · Public) aur city switch karo. Feed live update hoga.",
       side: "bottom",
     },
     {
@@ -287,6 +299,12 @@ const HOTEL_STEPS: LocalisedSteps = {
       side: "right",
     },
     {
+      element: ".hx-ota",
+      title: "📊 vs OTAs",
+      description: "Live comparison with MakeMyTrip / Booking / Agoda — we're always 10-25% cheaper.",
+      side: "top",
+    },
+    {
       element: ".hx-cta-primary",
       title: "Book Now",
       description: "Charged instantly via Razorpay. Booking confirmed in 30 seconds.",
@@ -319,6 +337,12 @@ const HOTEL_STEPS: LocalisedSteps = {
       side: "right",
     },
     {
+      element: ".hx-ota",
+      title: "📊 OTAs se compare",
+      description: "MakeMyTrip / Booking / Agoda se live comparison — hum hamesha 10-25% sasta.",
+      side: "top",
+    },
+    {
       element: ".hx-cta-primary",
       title: "Book Now",
       description: "Razorpay se instant charge. 30 second mein booking confirm.",
@@ -333,7 +357,12 @@ const HOTEL_STEPS: LocalisedSteps = {
   ],
 };
 
-// /bid page (reverse auction) — 4 steps
+// /bid page (reverse auction) — 5 steps (v141: added AI Smart Price step
+// between dates and budget). Tour idx → page step mapping handled by
+// the listener in app/bid/page.tsx via sb:tour-prep event:
+//   idx 0,1 → page step 1 (city + dates visible)
+//   idx 2,3 → page step 3 (AI presets + budget visible)
+//   idx 4   → page step 4 (submit)
 const BID_STEPS: LocalisedSteps = {
   en: [
     {
@@ -349,9 +378,15 @@ const BID_STEPS: LocalisedSteps = {
       side: "top",
     },
     {
+      element: '[data-autonext="presets"]',
+      title: "🤖 AI Smart Price",
+      description: "Max Save · Smart · Instant — AI suggests three budgets based on real demand.",
+      side: "top",
+    },
+    {
       element: '[data-autonext="addons"]',
       title: "3. Your budget",
-      description: "Tell us your max per-night budget. Our AI hints a smart price.",
+      description: "Type your own per-night max OR tap a preset. Lower bid = bigger savings.",
       side: "top",
     },
     {
@@ -375,9 +410,15 @@ const BID_STEPS: LocalisedSteps = {
       side: "top",
     },
     {
+      element: '[data-autonext="presets"]',
+      title: "🤖 AI Smart Price",
+      description: "Max Save · Smart · Instant — AI 3 budget suggest karta hai real demand pe.",
+      side: "top",
+    },
+    {
       element: '[data-autonext="addons"]',
       title: "3. Apna budget",
-      description: "Per-night max budget batao. Hamari AI smart price suggest karegi.",
+      description: "Apna per-night max likho ya preset tap karo. Kam bid = zyada bachat.",
       side: "top",
     },
     {
@@ -485,12 +526,174 @@ const EARN_STEPS: LocalisedSteps = {
   ],
 };
 
+// v141 — Phase 5: booking-funnel tours.
+
+// /hotels listing — explore page — 4 steps
+const EXPLORE_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: 'input[placeholder="Search by hotel name…"]',
+      title: "🔍 Search",
+      description: "Type a hotel name or vibe. Results filter live as you type.",
+      side: "bottom",
+    },
+    {
+      element: '[data-autonext-self="hotels-results"]',
+      title: "📍 City filter",
+      description: "Tap a city chip — feed updates instantly. 'All' shows every city.",
+      side: "bottom",
+    },
+    {
+      element: 'select[aria-label="Sort hotels"]',
+      title: "📊 Sort + ★ filter",
+      description: "Sort by price / rating, multi-select star levels. Combine for the perfect view.",
+      side: "bottom",
+    },
+    {
+      element: '[data-autonext="hotels-results"] > *:first-child',
+      title: "🏨 Hotel card",
+      description: "Each card shows price · score · city rank. Tap to view photos + book.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: 'input[placeholder="Search by hotel name…"]',
+      title: "🔍 Search",
+      description: "Hotel name ya vibe likho. Result live filter hote rahenge.",
+      side: "bottom",
+    },
+    {
+      element: '[data-autonext-self="hotels-results"]',
+      title: "📍 City filter",
+      description: "City chip tap karo — feed turant update hoga. 'All' = saari cities.",
+      side: "bottom",
+    },
+    {
+      element: 'select[aria-label="Sort hotels"]',
+      title: "📊 Sort + ★ filter",
+      description: "Price/rating se sort karo, multi-select stars. Combine kar ke perfect view.",
+      side: "bottom",
+    },
+    {
+      element: '[data-autonext="hotels-results"] > *:first-child',
+      title: "🏨 Hotel card",
+      description: "Har card pe price · score · city rank. Tap karo photos dekho aur book karo.",
+      side: "top",
+    },
+  ],
+};
+
+// /my-bids — bid lifecycle — 4 steps
+const MYBIDS_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".glass-card",
+      title: "💎 Your bid card",
+      description: "Each card shows hotel · room · your bid · status. Real-time updates.",
+      side: "top",
+    },
+    {
+      element: ".glass-card .text-emerald-200, .glass-card .text-amber-200, .glass-card .text-rose-200",
+      title: "🚦 Status",
+      description: "Pending = waiting · Counter = hotel offered new price · Accepted = pay to confirm.",
+      side: "top",
+    },
+    {
+      element: ".glass-card button",
+      title: "Actions",
+      description: "Pay Now to confirm an Accepted bid · Accept Counter when hotel responds.",
+      side: "top",
+    },
+    {
+      element: ".glass-card",
+      title: "⏱ Auto-accept timer",
+      description: "Premium / strong bidders get auto-confirm in 30s. Lowball bids wait for hotel.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".glass-card",
+      title: "💎 Aapki bid card",
+      description: "Har card pe hotel · room · aapki bid · status. Real-time update.",
+      side: "top",
+    },
+    {
+      element: ".glass-card .text-emerald-200, .glass-card .text-amber-200, .glass-card .text-rose-200",
+      title: "🚦 Status",
+      description: "Pending = wait · Counter = hotel ne nayi price di · Accepted = pay karo confirm karo.",
+      side: "top",
+    },
+    {
+      element: ".glass-card button",
+      title: "Actions",
+      description: "Accepted bid pe Pay Now · Counter aaye toh Accept Counter karo.",
+      side: "top",
+    },
+    {
+      element: ".glass-card",
+      title: "⏱ Auto-accept timer",
+      description: "Premium / strong bidders ko 30s mein auto-confirm. Lowball bid hotel wait karega.",
+      side: "top",
+    },
+  ],
+};
+
+// /bookings — confirmed stays — 3 steps
+const BOOKINGS_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".card-luxury",
+      title: "🎫 Your booking",
+      description: "Confirmed stays · check-in details · barcode · map link · phone of the hotel.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💎 StayPoints",
+      description: "Earn 5 points per ₹100 spent. Credited after check-out. Redeem at /points.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💬 Chat with hotel",
+      description: "Early check-in? Room request? Message the hotel directly from your booking.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".card-luxury",
+      title: "🎫 Aapki booking",
+      description: "Confirmed stays · check-in info · barcode · map link · hotel ka phone.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💎 StayPoints",
+      description: "Har ₹100 pe 5 points. Check-out ke baad credit. /points pe redeem karo.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💬 Hotel se chat",
+      description: "Early check-in chahiye? Room request? Hotel ko direct message karo booking se.",
+      side: "top",
+    },
+  ],
+};
+
 export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   home: HOME_STEPS,
   hotel: HOTEL_STEPS,
   bid: BID_STEPS,
   flash: FLASH_STEPS,
   earn: EARN_STEPS,
+  // v141 — booking funnel completion
+  explore: EXPLORE_STEPS,
+  mybids: MYBIDS_STEPS,
+  bookings: BOOKINGS_STEPS,
 };
 
 /** Hook helper — returns the steps array for the given key + current language. */

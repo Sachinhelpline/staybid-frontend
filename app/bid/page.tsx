@@ -223,12 +223,16 @@ export default function BidPage() {
       const detail = (e as CustomEvent).detail || {};
       if (detail.key !== "bid") return;
       const toIdx = detail.toIndex as number;
-      // Tour index → page step:
-      //   0 (city)    → page step 1
-      //   1 (dates)   → page step 1
-      //   2 (budget)  → page step 3 (skip room-type step 2 for tour purpose)
-      //   3 (submit)  → page step 4
-      const targetPageStep = toIdx === 0 || toIdx === 1 ? 1 : toIdx === 2 ? 3 : 4;
+      // Tour index → page step (v141: 5 steps after AI Smart Price added):
+      //   0 (city)            → page step 1
+      //   1 (dates)           → page step 1
+      //   2 (AI Smart Price)  → page step 3 (presets visible)
+      //   3 (budget input)    → page step 3 (same step, scrolls down)
+      //   4 (submit)          → page step 4
+      const targetPageStep =
+        toIdx === 0 || toIdx === 1 ? 1 :
+        toIdx === 2 || toIdx === 3 ? 3 :
+        4;
       setStep((prev) => (prev !== targetPageStep ? targetPageStep : prev));
     };
     const onEnd = (e: Event) => {

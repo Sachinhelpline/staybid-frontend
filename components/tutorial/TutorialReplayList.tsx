@@ -23,12 +23,15 @@ import { LanguageToggle } from "./LanguageToggle";
 type Row = { key: TutorialKey; labelEn: string; labelHi: string; emoji: string; route?: string };
 
 const ROWS: Row[] = [
-  { key: "welcome", emoji: "✨", labelEn: "Welcome story",       labelHi: "Welcome story" },
-  { key: "home",    emoji: "🏠", labelEn: "Home & reels feed",   labelHi: "Home aur reels", route: "/discover" },
-  { key: "hotel",   emoji: "🏨", labelEn: "Hotel detail page",   labelHi: "Hotel detail page", route: "/hotels" },
-  { key: "bid",     emoji: "💰", labelEn: "Reverse auction bid", labelHi: "Reverse auction bid", route: "/bid" },
-  { key: "flash",   emoji: "⚡", labelEn: "Flash Deals",         labelHi: "Flash Deals", route: "/flash-deals" },
-  { key: "earn",    emoji: "💎", labelEn: "Public to Creator",   labelHi: "Public to Creator", route: "/upgrade" },
+  { key: "welcome",  emoji: "✨", labelEn: "Welcome story",         labelHi: "Welcome story" },
+  { key: "home",     emoji: "🏠", labelEn: "Home & reels feed",     labelHi: "Home aur reels", route: "/discover" },
+  { key: "explore",  emoji: "🔎", labelEn: "Explore hotels",        labelHi: "Hotels explore karo", route: "/hotels" },
+  { key: "hotel",    emoji: "🏨", labelEn: "Hotel detail page",     labelHi: "Hotel detail page", route: "/hotels" },
+  { key: "bid",      emoji: "💰", labelEn: "Reverse auction bid",   labelHi: "Reverse auction bid", route: "/bid" },
+  { key: "flash",    emoji: "⚡", labelEn: "Flash Deals",           labelHi: "Flash Deals", route: "/flash-deals" },
+  { key: "mybids",   emoji: "📋", labelEn: "My Bids",               labelHi: "My Bids", route: "/my-bids" },
+  { key: "bookings", emoji: "🎫", labelEn: "Bookings",              labelHi: "Bookings", route: "/bookings" },
+  { key: "earn",     emoji: "💎", labelEn: "Public to Creator",     labelHi: "Public to Creator", route: "/upgrade" },
 ];
 
 type Props = {

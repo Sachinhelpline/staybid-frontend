@@ -55,8 +55,11 @@ export function TutorialHelpButton() {
   const currentTourKey: string | null = (() => {
     if (pathname === "/" || pathname === "/discover") return "home";
     if (pathname.startsWith("/hotels/")) return "hotel";
+    if (pathname === "/hotels") return "explore"; // v141
     if (pathname === "/bid") return "bid";
     if (pathname === "/flash-deals") return "flash";
+    if (pathname === "/my-bids") return "mybids"; // v141
+    if (pathname === "/bookings") return "bookings"; // v141
     if (pathname === "/upgrade") return "earn";
     return null;
   })();

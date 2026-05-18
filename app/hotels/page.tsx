@@ -6,6 +6,9 @@ import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
+// v141 — Phase-5 explore tour. 4 steps: search → city filter →
+// sort+stars → first hotel card.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 function HotelList() {
   const searchParams = useSearchParams();
@@ -15,6 +18,9 @@ function HotelList() {
   const [loading, setLoading] = useState(true);
   const [city, setCity] = useState(searchParams.get("city") || "");
   const [search, setSearch] = useState("");
+  // v141 — Phase 5 — explore tour. Delay 1200ms so the hotel grid
+  // populates before the tour tries to spotlight a hotel card.
+  usePageTour("explore", "explore", { delayMs: 1200 });
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [apiError, setApiError] = useState("");
   const [hydrated, setHydrated] = useState(false);

@@ -35,7 +35,11 @@ export type TutorialKey =
   | "bid"
   | "reels"
   | "flash"
-  | "earn";
+  | "earn"
+  // v141 — Phase 5: booking funnel completion
+  | "explore"   // /hotels listing
+  | "mybids"    // /my-bids
+  | "bookings"; // /bookings
 
 type TutorialCtx = {
   /** Current language preference. Default = device language fallback. */
@@ -96,6 +100,9 @@ const TUTORIAL_KEYS: TutorialKey[] = [
   "reels",
   "flash",
   "earn",
+  "explore",
+  "mybids",
+  "bookings",
 ];
 
 const seenKey = (k: TutorialKey) => `sb_tutorial_${k}_seen`;
@@ -130,6 +137,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     reels: false,
     flash: false,
     earn: false,
+    explore: false,
+    mybids: false,
+    bookings: false,
   });
   const [active, setActive] = useState<TutorialKey | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -220,6 +230,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       setSeenMap({
         welcome: false, home: false, hotel: false,
         bid: false, reels: false, flash: false, earn: false,
+        explore: false, mybids: false, bookings: false,
       });
       setActive(null);
     };
