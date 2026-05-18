@@ -40,7 +40,8 @@ export async function listEligibleBookings(
   primaryUserId: string,
   phone?: string | null
 ): Promise<EligibleBooking[]> {
-  const userIds = await resolveUserIds(primaryUserId, phone);
+  // resolveUserIds() accepts string | undefined; normalize null → undefined.
+  const userIds = await resolveUserIds(primaryUserId, phone ?? undefined);
   if (!userIds.length) return [];
   const inList = userIds.map(encodeURIComponent).join(",");
 
