@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
+// v142 — Phase-6 points tour. 3 steps: balance → redeem CTA → activity.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 const TIER_META: Record<string, { color: string; min: number; max: number }> = {
   silver:   { color: "#94a3b8", min: 0,     max: 9999  },
@@ -22,6 +24,9 @@ export default function PointsPage() {
   const [activeCodesCount, setActiveCodesCount] = useState(0);
   const [walletCreditBalance, setWalletCreditBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  // v142 — Phase 6 points tour. delayMs:1200 so /api/wallet + /api/redemption
+  // populate the cards before fire.
+  usePageTour("points", "points", { delayMs: 1200 });
 
   useEffect(() => {
     if (authLoading) return;

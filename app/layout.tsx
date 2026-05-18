@@ -1,5 +1,5 @@
 ﻿import "./globals.css";
-// v141 — driver.js base CSS (Tutorial Layer 2 spotlight tours). The
+// v142 — driver.js base CSS (Tutorial Layer 2 spotlight tours). The
 // cozy palette overrides live in globals.css after this import.
 import "driver.js/dist/driver.css";
 import type { Metadata, Viewport } from "next";
@@ -166,7 +166,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SoundProvider>
            <FollowProvider>
             <PostsProvider>
-            {/* v141 — Tutorial Layer 1 (Welcome Story) foundation.
+            {/* v142 — Tutorial Layer 1 (Welcome Story) foundation.
                 Provider exposes lang (en/hi), seen-flags, replay API.
                 <WelcomeStory /> auto-fires 1.2s after first launch on
                 customer pages (skips /admin /partner /onboard /auth).
@@ -191,11 +191,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NotificationToast />
             {/* Welcome Story portal-mounted to document.body. */}
             <WelcomeStory />
-            {/* v141 — Floating "?" help button (Tutorial Layer 3).
+            {/* v142 — Floating "?" help button (Tutorial Layer 3).
                 Self-hides on /admin, /partner, /onboard, /auth.
                 Hidden while any tour is actively running. */}
             <TutorialHelpButton />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v141</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v142</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -216,7 +216,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v141-phase5-explore-mybids-bookings-tours";
+var SB_BUILD="v142-phase6-account-creator-support-tours";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

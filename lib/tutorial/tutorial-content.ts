@@ -684,6 +684,328 @@ const BOOKINGS_STEPS: LocalisedSteps = {
   ],
 };
 
+// ── v142 — Phase 6: account + creator hub + support tours ────────────
+
+// /wallet — 3 steps
+const WALLET_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".sb-balance-halo",
+      title: "💰 Wallet balance",
+      description: "Real ₹ refundable to bank. Auto-credited from cancellations + StayBid promos.",
+      side: "bottom",
+    },
+    {
+      element: ".sb-balance-halo + div, .sb-balance-halo ~ div",
+      title: "📊 In & Out",
+      description: "Total credited vs total spent + StayPoints earned across all bookings.",
+      side: "top",
+    },
+    {
+      element: ".sb-tx-row",
+      title: "🧾 Transactions",
+      description: "Every credit + debit with date · reason · linked booking. Always traceable.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".sb-balance-halo",
+      title: "💰 Wallet balance",
+      description: "Real ₹ bank ko refund ho sakte hain. Cancellations + StayBid promo se auto-credit.",
+      side: "bottom",
+    },
+    {
+      element: ".sb-balance-halo + div, .sb-balance-halo ~ div",
+      title: "📊 In & Out",
+      description: "Total credited vs spent + StayPoints — saari bookings ka summary.",
+      side: "top",
+    },
+    {
+      element: ".sb-tx-row",
+      title: "🧾 Transactions",
+      description: "Har credit + debit, date · reason · booking link ke saath. Sab traceable.",
+      side: "top",
+    },
+  ],
+};
+
+// /points — 3 steps
+const POINTS_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "💎 Your StayPoints",
+      description: "Earn 5 points per ₹100 spent on bookings. Credited post check-out.",
+      side: "bottom",
+    },
+    {
+      element: ".card-luxury.sb-card-lift .btn-luxury, .card-luxury.sb-card-lift a[href='/points/redeem']",
+      title: "🎁 Redeem",
+      description: "Convert points to wallet ₹ · coupons · hotel amenities. 1 point = ₹1 cashback.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "📜 Recent activity",
+      description: "See every points credit + debit · linked to specific bookings + redemptions.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "💎 Aapke StayPoints",
+      description: "Har ₹100 spend pe 5 points. Check-out ke baad credit honge.",
+      side: "bottom",
+    },
+    {
+      element: ".card-luxury.sb-card-lift .btn-luxury, .card-luxury.sb-card-lift a[href='/points/redeem']",
+      title: "🎁 Redeem",
+      description: "Points ko wallet ₹ · coupons · hotel amenities mein convert karo. 1 point = ₹1.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "📜 Recent activity",
+      description: "Har points credit + debit · bookings + redemptions se linked.",
+      side: "top",
+    },
+  ],
+};
+
+// /saved — 3 steps
+const SAVED_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".flex.gap-2.mb-6",
+      title: "🗂 Filter tabs",
+      description: "All · Reels · Hotels · Creators · Deals. Quickly browse anything you bookmarked.",
+      side: "bottom",
+    },
+    {
+      element: ".grid.grid-cols-2",
+      title: "🔖 Saved items",
+      description: "Tap any tile to open it. Hover/long-press the ✕ to remove a save.",
+      side: "top",
+    },
+    {
+      element: ".grid.grid-cols-2",
+      title: "💡 Tip",
+      description: "Save anywhere — tap 🔖 on a reel, hotel card, creator profile, or flash deal.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".flex.gap-2.mb-6",
+      title: "🗂 Filter tabs",
+      description: "All · Reels · Hotels · Creators · Deals — sab kuch quick filter kar ke dekho.",
+      side: "bottom",
+    },
+    {
+      element: ".grid.grid-cols-2",
+      title: "🔖 Saved items",
+      description: "Koi bhi tile tap kar ke khol lo. ✕ pe hover/long-press se remove karo.",
+      side: "top",
+    },
+    {
+      element: ".grid.grid-cols-2",
+      title: "💡 Tip",
+      description: "Kahi bhi save karo — reel, hotel card, creator profile, ya flash deal pe 🔖 tap.",
+      side: "top",
+    },
+  ],
+};
+
+// /me — 4 steps (IG-style profile)
+const ME_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".me-avatar-btn",
+      title: "📷 Profile photo",
+      description: "Tap to upload your avatar. Public visible on your reels + comments.",
+      side: "right",
+    },
+    {
+      element: ".me-stats",
+      title: "📊 Your stats",
+      description: "Posts · followers · following. Tap any number to see the full list.",
+      side: "bottom",
+    },
+    {
+      element: ".me-tabs",
+      title: "🗂 Content tabs",
+      description: "Posts (photos + reels you uploaded) · Reels only · Tagged (where you appear).",
+      side: "bottom",
+    },
+    {
+      element: '.me-top-icon[aria-label="Menu"], .me-top-actions button:last-of-type',
+      title: "☰ Menu drawer",
+      description: "Bookings · Wallet · Points · Saved · Theme · Sign out · App tour — all here.",
+      side: "left",
+    },
+  ],
+  hi: [
+    {
+      element: ".me-avatar-btn",
+      title: "📷 Profile photo",
+      description: "Avatar upload karne ke liye tap karo. Aapki reels + comments par dikhega.",
+      side: "right",
+    },
+    {
+      element: ".me-stats",
+      title: "📊 Aapke stats",
+      description: "Posts · followers · following. Number tap karo full list dekhne ke liye.",
+      side: "bottom",
+    },
+    {
+      element: ".me-tabs",
+      title: "🗂 Content tabs",
+      description: "Posts (photos + reels) · sirf Reels · Tagged (jahan aap dikh rahe ho).",
+      side: "bottom",
+    },
+    {
+      element: '.me-top-icon[aria-label="Menu"], .me-top-actions button:last-of-type',
+      title: "☰ Menu drawer",
+      description: "Bookings · Wallet · Points · Saved · Theme · Sign out · App tour — sab yahaan.",
+      side: "left",
+    },
+  ],
+};
+
+// /influencer/dashboard — 4 steps (creator hub)
+const INFLUENCER_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".card-luxury.sb-card-lift.sb-fade-in",
+      title: "👑 Your tier",
+      description: "Tier 1-5 based on bookings driven. Higher tier = bigger commission slab.",
+      side: "bottom",
+    },
+    {
+      element: ".grid.grid-cols-2.md\\:grid-cols-4",
+      title: "📊 KPI grid",
+      description: "Bookings driven · pending payout · GMV · followers. Updated in real-time.",
+      side: "bottom",
+    },
+    {
+      element: 'h3, [class*="KYC"]',
+      title: "🛡 KYC progress",
+      description: "Complete Aadhaar + PAN + bank verification to unlock payouts.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💰 Recent commissions",
+      description: "Every approved commission with hotel · date · attribution source.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".card-luxury.sb-card-lift.sb-fade-in",
+      title: "👑 Aapka tier",
+      description: "Bookings driven ke hisaab se Tier 1-5. Higher tier = bigger commission slab.",
+      side: "bottom",
+    },
+    {
+      element: ".grid.grid-cols-2.md\\:grid-cols-4",
+      title: "📊 KPI grid",
+      description: "Bookings driven · pending payout · GMV · followers. Real-time update.",
+      side: "bottom",
+    },
+    {
+      element: 'h3, [class*="KYC"]',
+      title: "🛡 KYC progress",
+      description: "Aadhaar + PAN + bank verify karo payouts unlock karne ke liye.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "💰 Recent commissions",
+      description: "Har approved commission — hotel · date · attribution source ke saath.",
+      side: "top",
+    },
+  ],
+};
+
+// /verification — 2 steps
+const VERIFY_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "🎥 Stay verification",
+      description: "Record a short video of your room — hotels prove what they promised.",
+      side: "bottom",
+    },
+    {
+      element: ".btn-luxury",
+      title: "Request video",
+      description: "After check-in, hotel sends you a verification link. Pre-stay video also visible.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".card-luxury.sb-card-lift",
+      title: "🎥 Stay verification",
+      description: "Apne room ka short video record karo — hotel ne jo promise kiya wo prove karega.",
+      side: "bottom",
+    },
+    {
+      element: ".btn-luxury",
+      title: "Request video",
+      description: "Check-in ke baad hotel verification link bhejega. Pre-stay video bhi dikhega.",
+      side: "top",
+    },
+  ],
+};
+
+// /complaints — 3 steps
+const COMPLAINTS_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".btn-luxury.sb-shimmer",
+      title: "+ New complaint",
+      description: "Raise issues about bookings · payments · hotel service. Team responds in 24h.",
+      side: "left",
+    },
+    {
+      element: ".card-luxury.sb-card-lift.sb-fade-in",
+      title: "🚀 Faster routes",
+      description: "Bid issue? Check My Bids. Booking? Open the booking. Room mismatch? Record video.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "📜 Your complaints",
+      description: "See status of past complaints + admin replies. Auto-refund triggers on resolution.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".btn-luxury.sb-shimmer",
+      title: "+ Nayi complaint",
+      description: "Bookings · payments · hotel service ki issues raise karo. 24h mein team respond karegi.",
+      side: "left",
+    },
+    {
+      element: ".card-luxury.sb-card-lift.sb-fade-in",
+      title: "🚀 Faster routes",
+      description: "Bid issue? My Bids dekho. Booking? Booking khol ke. Room mismatch? Video record karo.",
+      side: "top",
+    },
+    {
+      element: ".card-luxury",
+      title: "📜 Aapki complaints",
+      description: "Past complaints ke status + admin replies. Resolve hote hi auto-refund.",
+      side: "top",
+    },
+  ],
+};
+
 export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   home: HOME_STEPS,
   hotel: HOTEL_STEPS,
@@ -694,6 +1016,14 @@ export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   explore: EXPLORE_STEPS,
   mybids: MYBIDS_STEPS,
   bookings: BOOKINGS_STEPS,
+  // v142 — account + creator hub + support
+  wallet: WALLET_STEPS,
+  points: POINTS_STEPS,
+  saved: SAVED_STEPS,
+  me: ME_STEPS,
+  influencer: INFLUENCER_STEPS,
+  verify: VERIFY_STEPS,
+  complaints: COMPLAINTS_STEPS,
 };
 
 /** Hook helper — returns the steps array for the given key + current language. */

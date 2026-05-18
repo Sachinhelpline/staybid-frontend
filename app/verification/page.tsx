@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
 import StayFeedbackCard, { isPostCheckout } from "@/components/StayFeedbackCard";
+// v142 — Phase-6 verification tour. 2 steps: bookings list → request video.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 type Booking = {
   id: string; bidId?: string; hotelId: string; hotelName?: string;
@@ -23,6 +25,9 @@ export default function VerificationPage() {
   const { user, token, loading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [tier, setTier] = useState<"silver"|"gold"|"platinum">("silver");
+  // v142 — Phase 6 verification tour. delayMs:1300 so the bookings
+  // list populates from /api/verification/bookings before fire.
+  usePageTour("verify", "verify", { delayMs: 1300 });
   const [statusByBooking, setStatusByBooking] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

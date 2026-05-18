@@ -37,9 +37,17 @@ export type TutorialKey =
   | "flash"
   | "earn"
   // v141 — Phase 5: booking funnel completion
-  | "explore"   // /hotels listing
-  | "mybids"    // /my-bids
-  | "bookings"; // /bookings
+  | "explore"     // /hotels listing
+  | "mybids"      // /my-bids
+  | "bookings"    // /bookings
+  // v142 — Phase 6: account + creator hub + support
+  | "wallet"      // /wallet
+  | "points"      // /points
+  | "saved"       // /saved
+  | "me"          // /me (IG-style profile)
+  | "influencer"  // /influencer/dashboard (creator hub)
+  | "verify"      // /verification
+  | "complaints"; // /complaints
 
 type TutorialCtx = {
   /** Current language preference. Default = device language fallback. */
@@ -103,6 +111,13 @@ const TUTORIAL_KEYS: TutorialKey[] = [
   "explore",
   "mybids",
   "bookings",
+  "wallet",
+  "points",
+  "saved",
+  "me",
+  "influencer",
+  "verify",
+  "complaints",
 ];
 
 const seenKey = (k: TutorialKey) => `sb_tutorial_${k}_seen`;
@@ -140,6 +155,13 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     explore: false,
     mybids: false,
     bookings: false,
+    wallet: false,
+    points: false,
+    saved: false,
+    me: false,
+    influencer: false,
+    verify: false,
+    complaints: false,
   });
   const [active, setActive] = useState<TutorialKey | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -231,6 +253,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         welcome: false, home: false, hotel: false,
         bid: false, reels: false, flash: false, earn: false,
         explore: false, mybids: false, bookings: false,
+        wallet: false, points: false, saved: false, me: false,
+        influencer: false, verify: false, complaints: false,
       });
       setActive(null);
     };

@@ -61,6 +61,14 @@ export function TutorialHelpButton() {
     if (pathname === "/my-bids") return "mybids"; // v141
     if (pathname === "/bookings") return "bookings"; // v141
     if (pathname === "/upgrade") return "earn";
+    // v142 — Phase 6 mappings
+    if (pathname === "/wallet") return "wallet";
+    if (pathname === "/points" || pathname === "/points/redeem") return "points";
+    if (pathname === "/saved") return "saved";
+    if (pathname === "/me") return "me";
+    if (pathname.startsWith("/influencer/dashboard")) return "influencer";
+    if (pathname === "/verification") return "verify";
+    if (pathname === "/complaints") return "complaints";
     return null;
   })();
 

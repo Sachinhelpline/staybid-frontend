@@ -5,6 +5,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { CountUp } from "@/components/CountUp";
+// v142 — Phase-6 wallet tour. 3 steps: balance → in/out → transactions.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 const LEVELS = [
   {
@@ -52,6 +54,9 @@ export default function WalletPage() {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState("");
   const [activeTab, setActiveTab] = useState<"wallet"|"tracker">("wallet");
+  // v142 — Phase 6 wallet tour. delayMs:1300 so balance + transactions
+  // populate from /api/wallet before fire.
+  usePageTour("wallet", "wallet", { delayMs: 1300 });
 
   useEffect(() => {
     if (authLoading) return;
