@@ -4634,3 +4634,262 @@ app/complaints/page.tsx                         # 3 route links stagger + compla
 - **Reel-app surfaces + flash-deals + modals + partner/admin panels untouched** — separate animation systems, intentionally not unified.
 - **Merge sequence verified working** for 3 PRs branched off the same base — the mechanical rebase + force-push + merge pattern is now documented above for the next time multiple animation PRs ship in parallel.
 
+---
+
+## Self-Discovery — 2-Tier System (Pre-Phase-0, 2026-05-18)
+
+This section was added during the Self-Discovery phase mandated by Sachin's "StayBid 2-Tier" master prompt. It captures everything inspected before any tier-system code change. **All findings are read-only inspections of the codebase as of commit `dd7ea91` on branch `claude/staybid-tier-discovery-rhoRK`.** No file was modified during discovery.
+
+### Scope clarification from Sachin (2026-05-18, during Self-Discovery)
+> "abhi jo public user ka use kaishe hai ushko same wahi rakhna hai bas sirf reel upload krne ke liye new add karna hai rule" + "reel matlb content chahe fir wo reel photo ya post kuch bhi ho"
+
+**Translation:** Public user's existing UX stays 100% identical. The ONLY new constraint is on the UPLOAD action for any content type (reel, photo, story). Everything else a public user does today — browse, search, filter, bid, book, like, comment, save, share, follow creators/hotels, wallet operations — continues exactly as before with zero UI or behavior change.
+
+This is a tighter scope than a naive read of the master prompt. Implementation impact:
+- The tier badge UI (Section 3.4) is ADDED next to creator/hotel names but does NOT change anything visible on a PUBLIC user's profile (no "Member" muted pill). PUBLIC users currently render with no badge → keep them with no badge.
+- No tier check on existing buttons (like / comment / follow / save) — public users keep using them freely.
+- The single intercept point: `<CreateFAB onClick={…}>` inside `components/discover/InstagramHotelFeed.tsx` (line 4245). When tapped by a PUBLIC user with no eligible booking + no active location verification, show the upgrade-choice screen instead of opening `<CreateSheet>`.
+- Existing user-uploaded content (the 33 reels currently in `social_posts`) stays live and visible in every feed exactly as today.
+
+### Locked rules from the master prompt (apply to every Phase 0-8 commit)
+- ADDITIVE-ONLY. Never delete or rename anything that already exists. Every new field/route/file/component lives alongside existing ones.
+- EXISTING FLOWS MUST KEEP WORKING. Login, signup, hotel browse/detail, bid create/counter/accept/reject, booking create/list, hotel onboarding, admin functions, wallet, notifications, flash deals, existing reel upload — all unchanged after every phase.
+- EXISTING CREATOR LOGIC STAYS. The two new upgrade paths (Section 4.5 of master prompt) ADD to the existing `influencers.status='pending'→'active'` flow; they do not replace it.
+- NO DESTRUCTIVE COMMANDS. No `DROP`, `TRUNCATE`, `prisma migrate reset`, `db push --force-reset`, no migration-file deletion. Forward-only migrations with descriptive names.
+- No new npm dependency without listing it here first and waiting for Sachin's go.
+- Hinglish in user-facing copy + console hints. English everywhere else (code, commits, this file).
+- Stop at every phase boundary. Wait for explicit "continue" before next phase.
+- **PUBLIC user UX unchanged except for the upload-content gate.** (Per Sachin's clarification above.)
+
+### 2.1 — Repository structure (verified)
+- **One repo, this one.** `/home/user/staybid-frontend`, package name `staybid-customer`, Next.js 14 App Router + TypeScript 5.4 + Tailwind 3.4. No workspace folders, no monorepo, no sub-panels in this tree.
+- **Customer frontend** = entire `app/` tree (customer + admin + partner + influencer + onboard routes all live here).
+- **Admin panel** = `app/admin/*` (same repo, dark-luxury inline styled, sidebar at `components/admin/sidebar.tsx`).
+- **Hotel Partner panel** = `app/partner/*` (same repo). NOTE: Per pre-v137 docs, a separate Vercel deployment `staybid-hotel-panel.vercel.app` from `Sachinhelpline/staybid-hotel-panel` is referenced for outbound "Open Hotel Dashboard" CTAs, but the ACTIVE in-repo panel is `app/partner/*` served from `staybids.in/partner/*`. **Open question: confirm with Sachin which one hosts the new Pending Reviews dashboard.**
+- **Influencer/Creator hub** = `app/influencer/*` (same repo).
+- **Onboarding wizard** = `app/onboard/*` (hotel owner self-signup).
+- **Backend (Railway)** = separate private repo `Sachinhelpline/staybid-Live`, NOT in this tree. URL: `https://staybid-live-production.up.railway.app`. We talk to it via Bearer JWT through `/api/proxy/*` Next.js routes (client) or direct fetch (server).
+- **Database** = Supabase project `uxxhbdqedazpmvbvaosh`. All migrations in `migrations/*.sql` applied via Supabase SQL editor or MCP. PostgREST is the read/write surface for most tables.
+- **Inactive/dead deployments** to skip per CLAUDE.md history (May 2026 cleanup): `staybid-frontend`, `staybid-customer`, `staybid-frontend-vcdb`, `staybid-live-suite`. Plus three legacy panel repos last touched April 2026: `staybid-admin.vercel.app`, `staybid-hotel-panel.vercel.app`, `staybid-agent-panel.vercel.app`. Do NOT push to or touch these.
+
+### 2.2 — Backend (Railway) discovery
+- Entry file NOT in this repo. Sachin's separate `Sachinhelpline/staybid-Live` Railway service exposes the API. Frontend never imports it directly — only HTTP calls.
+- `lib/api.ts` defines `RAILWAY = "https://staybid-live-production.up.railway.app"` and a `request()` helper that routes through `/api/proxy/*` on the client to bypass ISP blocking, or direct on the server.
+- Railway endpoints exercised: `/api/auth/send-otp`, `/api/auth/verify-otp`, `/api/hotels/*`, `/api/bids/*`, `/api/bookings/*`, `/api/wallet/*`, `/api/profile/*`, `/api/referral/*`, `/api/points/*`, `/api/redemption/*`, `/api/partner/hotel/*`, `/api/admin/revenue`, more.
+- ORM in Railway: Prisma 5.22 + PostgreSQL (per CLAUDE.md history). Cannot modify Railway from this repo.
+
+### 2.3 — Frontend stack (verified)
+- Next.js 14 App Router, TypeScript 5.4, Tailwind 3.4 (custom luxury theme + cozy palette CSS vars in `app/globals.css`), Razorpay 2.9, Firebase 12.13, Supabase JS 2.105, SendGrid 8.1, Nodemailer 6.10, Socket.io-client 4.8, Recharts 3.8, Driver.js 1.4 (tutorial system v138-v142).
+- Token storage in `localStorage`:
+  - `sb_token` — customer JWT (HS256 from Railway OR RS256 from Firebase)
+  - `sb_user` — JSON customer user object
+  - `sb_token_type` — `"backend"` or `"firebase"` discriminator (v44 onward)
+  - `sb_partner_token` / `sb_partner_user` — partner side, separate
+  - `sb_admin_token` / `sb_admin_user` — admin side, separate
+- API client `lib/api.ts`. Auth helper `lib/auth.tsx` (`AuthProvider` + `useAuth()`). Tier helper `lib/tier-store.tsx` (`TierProvider` + `useTier()` + `useAccountTier` alias).
+- Bottom navigation: `<BottomDock />` at `components/discover/BottomDock.tsx` — **exactly 5 slots: Home / Reels / Bid / Hotels / You**. **No "Create" slot.** Shown on customer-facing routes, hidden on `/admin/*`, `/partner/*`, `/onboard/*`, `/auth`.
+- Left-edge dialer: `<DialerNav />` at `components/DialerNav.tsx` — 11 base items + conditional Creator + Hotel entries (tier-gated via `useTier`). Hidden on `/`, `/discover`, `/reels`, `/me`, `/saved/posts`, `/admin/*`, `/partner/*`, `/onboard/*`.
+- "+" FAB: `<CreateFAB />` and `<CreateSheet />` exported from `components/discover/CreateFlow.tsx`. **Mounted ONLY inside `components/discover/InstagramHotelFeed.tsx` (line 4245).** The "+" is visible to ANY signed-in user (any tier) while on the reel feed at `/`, `/discover`, `/reels`.
+- **Today there is NO tier gate on the "+" FAB.** Anyone with `sb_token` can open CreateSheet, pick Reel/Photo/Story, fill it, submit. POSTs to `/api/social/posts`, lands in `social_posts`.
+
+### 2.4 — Existing creator/tier system inventory (critical)
+
+#### Two unrelated `Tier` type aliases exist — naming collision
+1. `lib/tier.ts` exports `type Tier = "silver" | "gold" | "platinum"` — CUSTOMER LOYALTY tier driven by total spend (`TIER_THRESHOLDS`). Drives wallet/profile/verification UX.
+2. `lib/tier-store.tsx` exports `type Tier = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN"` — ACCOUNT-ROLE tier used by `TierProvider` to switch menu chrome.
+
+The new spec's tier set (PUBLIC / VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR / CREATOR / HOTEL / ADMIN) overlaps the role tier in NAMES but not in SEMANTICS — see "Naming conflict table" below.
+
+#### Existing role/tier columns in `public.users`
+- `users.tier TEXT NOT NULL DEFAULT 'silver'` (added by `migrations/2026-04-26-video-verification.sql`). **Customer loyalty tier. The new spec's "tier" CANNOT reuse this column.**
+- `users.tier_updated_at TIMESTAMPTZ` (same migration).
+- `users.role TEXT` — plain text, no enum constraint. Default `'CUSTOMER'` set by `ensureUser()` in `lib/sb-server.ts`. Values: `customer`, `admin`, `super_admin`, `agent`, hotel implied. **Not used for creator-vs-public distinction today.**
+- Other confirmed cols: `users.isBlocked`, `users.status`, `users.email`, `users.phone`, `users.name`, `users.createdAt`.
+
+#### Existing creator path — `influencers` table
+- Schema: `migrations/2026-05-03-influencer-tables.sql`. PK `id` ('inf_'+uuid), `user_id` UNIQUE, plus bio/bank/verification columns, `status TEXT DEFAULT 'pending'`, timestamps.
+- Status enum values (lowercase strings in DB): `'pending'`, `'active'`, `'blocked'`.
+- `TierProvider` maps these: `pending → PENDING_CREATOR`, `active → CREATOR`, `blocked → BLOCKED`.
+- Apply path: `/upgrade` → POST `/api/influencer/register` → row inserted with `status='pending'`. Admin approves via `/admin/creators` → PATCH `/api/admin/creators` → `status='active'`.
+- Existing commission engine: `migrations/2026-05-13-commission-rules.sql` + `lib/commission.ts` (slab-based 5/7/10/12% + 3-mo/6-mo loyalty bonuses).
+- Existing referral system: `influencer_referral_codes` + `referral_events` + `bid_attributions` (v94 era).
+
+#### Existing social graph layer — `social_profiles` table (SECOND tier-related table)
+- Schema: `migrations/2026-05-10-social-feed.sql`. One row per (user, profile-type).
+- **Has its own `user_type social_user_type` ENUM with values `'PUBLIC'`, `'CREATOR'`, `'HOTEL'`** — exactly 3 of 6 spec values. ENUM created via `CREATE TYPE social_user_type AS ENUM ('PUBLIC', 'CREATOR', 'HOTEL')`.
+- Also has `is_creator BOOLEAN DEFAULT FALSE` and `is_verified BOOLEAN DEFAULT FALSE` flags.
+- Columns: `id`, `user_id` UNIQUE, `hotel_id` UNIQUE nullable, `creator_id` UNIQUE nullable, `username` UNIQUE, `display_name`, `bio`, `avatar_url`, `cover_url`, `follower_count`, `following_count`, `is_verified`, `is_creator`, `user_type`, timestamps.
+- The follow graph (`social_follows`) keys against `social_profiles.id`. Migration adds a trigger denorming `follower_count`/`following_count`.
+- There is ALSO an older `user_follows` table from `migrations/2026-05-03-social-graph.sql` keyed against `influencers.id` directly. **Two parallel follow systems.** The new tier system needs to declare which is canonical for Section 4.5's "follower count" criterion.
+
+#### Existing content table — `social_posts`
+- Schema: `migrations/2026-05-10-social-feed.sql` + extensions in `2026-05-14-*social-posts-*.sql`.
+- ENUM `social_media_type AS ENUM ('PHOTO', 'REEL', 'STORY')`. **Already has the 3 types.**
+- Columns: `id`, `author_id REFERENCES social_profiles(id)`, `hotel_id` nullable for tagging, `media_type`, `media_url`, `thumbnail_url`, `caption`, `sound_track`, `sound_url`, `sound_owner_id`, `location_name`, `location_lat`, `location_lng`, `view_count`, `like_count`, `comment_count`, `is_active`, `created_at`. Plus v110-v131 additions: `client_post_id`, `filter`, `highlight_key`, edit fields.
+- **No `status` column today.** Posts visible whenever `is_active=TRUE`. The new spec's PENDING_HOTEL_APPROVAL / APPROVED / AUTO_APPROVED / REJECTED / FLAGGED / DELETED state machine does NOT exist on `social_posts`. Three options to add additively: (a) new `social_posts.moderation_status` column with default `'APPROVED'` so existing rows stay visible, (b) new sibling table `social_posts_moderation`, (c) new content table for Community Contributor posts only.
+- **No `booking_id` foreign key on `social_posts`.** Verified Guest's "tie reel to booking" relationship needs a new column or sibling table.
+- **No `verification_method` column.** Same.
+
+#### Existing reel feed component
+- `components/discover/InstagramHotelFeed.tsx` (~4400 lines). Reads `/api/social/feed` + `/api/discover/feed`. Real `social_posts` + synthetic `CREATOR_POOL` (hard-coded 12-entry mock list). User uploads deduped via v131.8 5-hop chain (load-bearing markers).
+- "+" FAB lives here (line 4245). No tier gate today.
+
+#### Existing tier badge UI
+- No dedicated tier-badge React component. Current UI: `social_profiles.is_verified=true` → blue ✓ in `<InstagramHotelFeed>`. `is_creator=true` → gold ✦. `<UpgradeSection>` shows role tier label inline.
+- New spec's 5-style badge requirement (gold pill / blue pill / purple pill+✓ / green pill+building / muted "Member") needs a NEW shared component. **Sachin clarified PUBLIC users keep "no badge" (not even muted "Member") — UX unchanged.**
+
+#### Existing creator pathways (the rule that must stay alive)
+**Only existing pathway:** `/upgrade`-form → `influencers.status='pending'` → admin approval → `status='active'`. No auto-promotion, no follower-count-based upgrade, no view-milestone upgrade today. The new Section 4.5 paths (auto-promote VERIFIED_GUEST→CREATOR + admin-review COMMUNITY_CONTRIBUTOR→CREATOR) are entirely new.
+
+### 2.5 — Deployment, env, SMS, storage
+#### Deployment
+- Customer frontend: Vercel project `staybid-customer-frontend` → `staybids.in`.
+- Backend: Railway. Out of scope.
+- Cron: Vercel cron (2-cap on Hobby — currently `/api/cron/pricing` daily 4:00 AM + `/api/cron/lifecycle` daily 4:05 AM in `vercel.json`) + cron-job.org (referenced for `/api/cron/expire-holds`, `/api/cron/flash-drop`, `/api/cron/feedback-lifecycle` every 15-60 min). **New tier crons go on cron-job.org** (Vercel 2-slot full).
+
+#### Env vars (verified by grep across `lib/` + `app/`)
+Public:
+- `NEXT_PUBLIC_API_URL` (Railway URL)
+- `NEXT_PUBLIC_RAZORPAY_KEY_ID`
+- `NEXT_PUBLIC_FIREBASE_*` (API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID)
+- `NEXT_PUBLIC_SB_IMAGE_TRANSFORM` (Pro plan image transform gate)
+- `NEXT_PUBLIC_ENABLE_PHONE_OTP` (v132.12 gate, default off)
+
+Server-only:
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY` (auto-elevates RLS via `lib/sb-server.ts`)
+- `CRON_SECRET`
+- `JWT_SECRET`
+
+#### Storage buckets (verified)
+- `hotel-images` — public, anon-key write. `lib/supabase.ts uploadImage()`.
+- `social-media` — public, anon-key write. `lib/social/storage-upload.ts` for reels/photos/stories via CreateFlow. Per file comment, `hotel-videos` bucket was REMOVED / never existed.
+- `room-images`, `kyc-documents`, `bank-docs`, `verification-videos` — private kinds via `lib/onboard/storage.ts`.
+
+**Section 4.1's "Video uploaded to whatever storage solution discovered" → Verified Guest reels reuse `social-media`. No new bucket needed.**
+
+#### Logging
+- `lib/admin/audit.ts` `logAdminAction()` writes to `admin_audit_log`. Used by admin panel writes.
+- No centralized customer logger. `console.log` + `notification_queue` inserts for user-visible actions.
+- Tier-system policy: admin-triggered actions → `logAdminAction()`. User/cron actions → console + `notification_queue` row.
+
+#### Auth middleware
+- No Express middleware. Each route imports `userFromReq(req)` (from `lib/sb.ts`) OR `authPayload(req)` + `authUserId(req)` + `resolveUserIds()` (from `lib/sb-server.ts`).
+- Helper extracts `Authorization: Bearer <jwt>`, decodes (no signature verify — Railway does that), returns `{ id, sub, user_id, phone, email, role }`.
+- Dual id resolver `resolveUserIds(primaryId, phone)` returns all `users.id` rows sharing the same human (handles +91-vs-no-prefix).
+- TWO token types: `backend` HS256 / `firebase` RS256. Firebase tokens may lack `phone` — OTP-driven tier flows must guard.
+
+### 2.6 — SMS provider situation (CRITICAL FOR PHASE 3)
+- **MSG91 NOT integrated in this frontend repo.** Only referenced in `docs/MSG91_BACKEND_PASTE.md` (paste-ready for Railway, blocked on DLT template approval per v72 era) and TWO comments in admin notification/email queue routes ("depends on MSG91 + SendGrid/FCM keys"). No SDK import, no HTTP call.
+- **Existing OTP runs through Railway:** `api.sendOtp({phone, delivery: "sms" | "whatsapp"})` → `/api/proxy/api/auth/send-otp` → Railway. Railway internally handles SMS (presumed MSG91 if DLT approved — Sachin to confirm) and WhatsApp.
+- **WhatsApp OTP works** (`/app/auth/page.tsx` has `delivery: "whatsapp"` branch).
+- For Section 4.3 (Location OTP), three Phase-3 options:
+  1. **Add Railway endpoint `/api/auth/send-location-otp`** — Sachin pastes in his other repo. Cleanest, follows existing OTP pattern.
+  2. **Frontend MSG91 helper** — new `lib/sms/msg91.ts` + `MSG91_AUTH_KEY` env var. Bypasses Railway for location OTPs.
+  3. **Reuse existing `/api/auth/send-otp`** with `purpose: "location_verify"` field — needs Railway changes.
+- **Need Sachin's pick.**
+
+### 2.7 — Existing data flow driving the new spec
+#### Booking "completion" criterion (Section 4.1)
+- **No single `bookings.status='COMPLETED'`.** Stays tracked across two tables:
+  - `bookings.status` — Railway direct-book flow. Values: `CONFIRMED`, `CHECKED_IN`, `CHECKED_OUT`, `CANCELLED`.
+  - `bids.status='CHECKED_OUT'` — reverse-auction wins. Partner panel marks at checkout.
+- `app/api/bookings/my/route.ts` merges both for /bookings list.
+- **VERIFIED_GUEST eligibility (90-day completed-stay) proposed rule:** booking is "completed" iff (`bookings.status='CHECKED_OUT'` OR `bids.status='CHECKED_OUT'`) AND `checkOut < NOW()` AND `checkOut > NOW() - INTERVAL '90 days'`. **Confirm with Sachin.**
+- Customer relation: `customerId` on both tables. Always normalize via `resolveUserIds()`.
+
+#### Hotel coordinates (Section 4.3)
+- `hotels.lat DOUBLE PRECISION` + `hotels.lng DOUBLE PRECISION` from `migrations/2026-04-25-onboarding.sql`. Confirmed via `select=lat,lng` in multiple routes.
+- **Not every hotel has them populated.** Legacy rows may be NULL. The location-OTP route MUST reject with a clear error if a hotel has no coords.
+
+#### Wallet & rewards (Section 5.2)
+- `wallet_credits` table exists (`migrations/2026-05-15-redemption-system.sql`). Ledger with `userId`, `amount`, `direction CHECK IN ('CREDIT','DEBIT')`, `source`, `note`, timestamps.
+- Effective balance = `SUM(amount * sign(direction))` from `wallet_credits` + Railway-side wallet rows.
+- Insert row with `source='inspiration_reward'` for tier rewards. Idempotency via unique `(userId, source, reference_id)` partial index — **verify if one exists; otherwise add in Phase 1.**
+
+#### Notifications (Section 4 + 5)
+- `notification_queue` from `migrations/2026-05-03-notifications.sql`. Schema: `id`, `user_id`, `channel TEXT` ∈ {email, sms, whatsapp, in_app}, `template TEXT`, `payload JSONB`, `status` ∈ {pending, sent, failed}, `scheduled_at`, `sent_at`, `error`, `attempts`, `created_at`. INSERT-only from frontend; drainer is in Railway.
+- Phase 6 adds 4-5 new `template` string names that the Railway drainer needs to recognize. **Confirm with Sachin he'll add template handling on Railway side.**
+- In-app toast surface: `<NotificationToast />` mounted in `app/layout.tsx`, fired via `window.dispatchEvent(new CustomEvent("sb:notify", { detail }))`. Helper: `lib/notifications.ts` `notify()`.
+
+### 2.8 — Naming conflict table (new spec vs existing code)
+
+| New-spec value | Already exists? | Where | Conflict resolution recommendation |
+|---|---|---|---|
+| `PUBLIC` | Yes (3 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum, `social_profiles.user_type='PUBLIC'` | **Reuse `'PUBLIC'`.** Same meaning. |
+| `VERIFIED_GUEST` | **No** | — | Add as new value. Two options: extend `social_user_type` enum via `ALTER TYPE ... ADD VALUE 'VERIFIED_GUEST'` (additive, forward-only) OR add a new `users.content_tier` column. Recommend ENUM extension. |
+| `COMMUNITY_CONTRIBUTOR` | **No** | — | Same as VERIFIED_GUEST. ENUM extension. |
+| `CREATOR` | Yes (2 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum, `influencers.status='active'` (mapped) | **Reuse `'CREATOR'`.** |
+| `HOTEL` | Yes (2 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum | **Reuse `'HOTEL'`.** |
+| `ADMIN` | **No** (not in social enum) | `users.role='admin'`, `users.role='super_admin'` | Derive at read time from `users.role`. Don't pollute social enum. |
+
+#### Net plan for the tier dimension
+**Option A (recommended):** Extend `social_user_type` ENUM with two new values (`VERIFIED_GUEST`, `COMMUNITY_CONTRIBUTOR`) via `ALTER TYPE social_user_type ADD VALUE IF NOT EXISTS ...`. Add `social_profiles.tier_promoted_at TIMESTAMPTZ` for audit. Reuse everything else.
+
+**Option B:** Add new `users.content_tier TEXT NOT NULL DEFAULT 'PUBLIC'` column with CHECK constraint, separate from `social_profiles.user_type`. Pros: doesn't touch the enum. Cons: now THREE tier columns on the user (`tier`=loyalty, `role`=customer/admin, `content_tier`=new).
+
+**Need Sachin's pick.** Either is additive-safe.
+
+### 2.9 — Conflicts with master prompt assumptions (explicit list)
+
+1. **"Existing creator-tier rules"** (Section 2.2 of prompt) → Confirmed: `/upgrade` form → `influencers.status='pending'` → admin → `status='active'`. **Stays.** New paths run in parallel.
+2. **"req.user populated by middleware"** (Section 2.2 of prompt) → Next.js App Router has no auto-middleware. Each route manually calls `userFromReq(req)` / `authPayload(req)`. New Phase-2 routes follow this same pattern.
+3. **"MSG91 may already be integrated"** (Section 2.2 of prompt) → NOT integrated in this frontend. Phase 3 decision required.
+4. **"Notification model"** (Section 2.2 of prompt) → `notification_queue` exists but INSERT-only from this frontend; drainer is Railway. Type field is `template` (string), not enum.
+5. **"Hotel coordinates exist"** (Section 4.3) → `hotels.lat` + `hotels.lng` exist but NULLABLE. Must guard.
+6. **"Booking COMPLETED status exists"** (Section 4.1) → Split across `bookings.status='CHECKED_OUT'` and `bids.status='CHECKED_OUT'`. New eligible-bookings endpoint unions both.
+7. **"Tier badge component exists"** (Section 3.4) → Doesn't. Must build new. **Per Sachin: PUBLIC users keep no badge.**
+8. **"Booking confirmation screen exists"** (Section 5.1) → No dedicated page. Post-payment success modal lives inline on `/hotels/[id]/page.tsx`. Inspiration banner placement open.
+
+### 2.10 — Anticipated new dependencies
+None for Phase 0-2. For Phase 3 (SMS OTP), if frontend MSG91 helper path: no new npm dependency (use native `fetch`). Perceptual-hash duplicate video detection (Section 5.4): would need `sharp` or `ffmpeg-wasm`. **Recommend deferring; ship manual moderation flagging instead.** Defer to Sachin.
+
+### 2.11 — Open questions for Sachin (must answer before Phase 0)
+1. **Tier column placement:** Option A (extend `social_user_type` enum) or Option B (new `users.content_tier` column)? Recommend A.
+2. **SMS provider for location OTP:** (a) Railway-side endpoint paste, (b) frontend MSG91 helper, or (c) reuse existing `/api/auth/send-otp` with `purpose` field? Recommend (a).
+3. **Booking completion definition:** confirm the proposed rule (Section 2.7 above) is correct. Stricter version (e.g. payment confirmed + no chargeback)?
+4. **Hotel partner panel target:** `app/partner/*` in this repo OR separate `staybid-hotel-panel.vercel.app`? The new Pending Reviews dashboard needs a home.
+5. **Inspiration banner placement:** post-payment success modal on `/hotels/[id]` OR `/bookings` list page OR both?
+6. **Existing creator flow co-existence:** the `/upgrade` form stays untouched. New auto-promote + admin-review paths are PARALLEL. A user could qualify under all three at once → first to fire wins. Confirm.
+7. **Duplicate video detection (Section 5.4):** ship in Phase 6 OR defer + manual flag UI? Recommend defer.
+8. **`hotel-videos` reference in old CLAUDE.md:** is this bucket live or fully replaced by `social-media`? Confirm.
+9. **Vercel cron 2-cap:** new tier-system crons (auto-approval @ 1h, post-stay nudge @ 1d, view milestone @ 1d, creator-upgrade eval @ 7d) all go on cron-job.org. Confirm.
+10. **Existing user-uploaded content (33+ rows in `social_posts`):** stays visible exactly as today (no retro-tier-tagging). Confirm.
+11. **PUBLIC user existing UX confirmed unchanged** (per Sachin's clarification). Only the upload action gated. Liking / commenting / following / saving / sharing all keep working freely for PUBLIC. **Confirmed.**
+
+### 2.12 — Phase plan tracker (Section 7 of master prompt)
+- [x] **Self-Discovery** — this section. Awaiting Sachin's "go" + answers to Section 2.11.
+- [ ] **Phase 0** — Lock down decisions from Section 2.11; finalize tier dimension in CLAUDE.md.
+- [ ] **Phase 1** — Additive schema migration.
+- [ ] **Phase 2** — Backend (Next.js API) endpoints.
+- [ ] **Phase 3** — SMS OTP wiring per Sachin's pick.
+- [ ] **Phase 4** — Frontend upgrade-choice screen + Verified Guest flow + Community Contributor flow + tier badge + inspiration banner.
+- [ ] **Phase 5** — Hotel approval (Pending Reviews) dashboard.
+- [ ] **Phase 6** — Inspiration cron jobs + reward credit + idempotency + 30-day cap.
+- [ ] **Phase 7** — Creator-upgrade detection (Type A auto, Type B admin-review).
+- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch prep.
+
+### 2.13 — Files anticipated for this migration (populated as phases land)
+- New: migrations files for additive schema (Phase 1, Phase 3, Phase 6)
+- New: ~10-13 API routes under `app/api/me/tier/`, `app/api/social/posts/verified-guest/`, `app/api/social/posts/community/`, `app/api/verify/location/`, `app/api/partner/content/`, `app/api/cron/*` for tier system
+- New: `components/TierBadge.tsx` (Phase 4)
+- New: `components/InspirationBanner.tsx` (Phase 4)
+- New: `app/create/page.tsx` OR `components/CreateUpgradeChoice.tsx` (Phase 4)
+- New: `lib/tier/eligibility.ts`, `lib/tier/haversine.ts` (Phase 2)
+- New: `lib/sms/msg91.ts` (Phase 3, only if option B is chosen)
+- Modified (additive only): `components/discover/InstagramHotelFeed.tsx` — Phase 4 wraps CreateFAB onClick with the upgrade gate; existing render logic stays.
+- Modified (additive): `app/layout.tsx` — SB_BUILD + badge bumped per phase, nothing else.
+
+### 2.14 — Files explicitly NOT owned by this migration
+- `lib/tier.ts` (silver/gold/platinum) — UNTOUCHED.
+- `lib/tier-store.tsx` — UNTOUCHED. (Can be EXTENDED additively to surface new tier; that's a Phase 2 decision.)
+- `lib/commission.ts`, `lib/hotel-score.ts`, `lib/auth.tsx`, `lib/api.ts` — UNTOUCHED unless we ADD new methods (never modify existing).
+- Every existing `/api/*` route — UNTOUCHED.
+- Every existing migration file in `migrations/*.sql` — forward-only.
+- Legacy `staybid-admin`, `staybid-hotel-panel`, `staybid-agent-panel` Vercel projects — out of scope.
+- Railway backend repo `Sachinhelpline/staybid-Live` — out of scope unless Sachin picks SMS option (a).
+
+---
+
+End of Self-Discovery. Awaiting Sachin's `continue` + answers to Section 2.11 questions before starting Phase 0.
+
