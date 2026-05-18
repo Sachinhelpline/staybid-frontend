@@ -4207,3 +4207,278 @@ app/layout.tsx                         # SB_BUILD v132.9.1 → v132.10 → ... �
 - **/me has a real signed-out hero** — 3 account-type cards (Public / Creator / Hotel) for anonymous visitors; drawer bottom button flips "Log out" ↔ "Sign in" via `signedIn` prop.
 - **SWC styled-jsx limit hit again** — `InstagramHotelFeed.tsx` is now at 2 `<style jsx global>` blocks (the SWC ceiling for this file). Any third block panics at `visitor.rs:597` at `next build` time. New keyframes / global styles go to `app/desktop.css` or `app/globals.css`.
 - **NOT TOUCHED this era:** `public/sw.js` cache versions (stable per v93 discipline), Railway backend, scoring engine in `lib/hotel-score.ts`, attribution chain, reel-dedup chain (post-v131.8 lock), chat surfaces (`booking_messages`), `lib/sanitize-text.ts` anti-bypass.
+
+---
+
+## Animation Layer Era (v133 → v137, 2026-05-18)
+
+Six versions shipped back-to-back in one session, taking the customer-facing surface from "data-correct but flat" to "premium cozy-minimal animated end to end". v133 started on the hotel detail page only; user feedback after each ship expanded the surface. Final tally: **19 customer-facing pages** animated, **10 shared `.sb-*` utility classes** + **1 `<CountUp />` component** introduced. Engine logic, business flows, and reel-app surfaces unchanged.
+
+### Why this era exists
+
+After v131.6 fixed the scorecard wipe issue, user opened the partner panel and the customer site and reported the broader surface felt "flat" relative to the premium price-bidding promise. The /hotels/[id] page had been the focus of v133 polish, but the rest of the site was a hodgepodge of basic Tailwind transitions and pre-v90-era animations. This era took it from "animations exist on ~30% of pages" to "consistent cozy-minimal motion language across every customer surface".
+
+### v133 — Luxury cozy animation layer on `/hotels/[id]` (commit `faf934f`, PR #26)
+
+Four new animations on the hotel detail page only — explicitly NOT a global change, scoped via `.hx-*` prefix:
+
+- **`.hx-reveal-io`** — IntersectionObserver scroll-reveal. Replaces v122 `.hx-reveal` mount-time stagger which only fired on page load. Sections below the fold now animate when entering viewport, not when the user is still looking at the hero. Pair with `lib/useReveal.ts` hook + `is-visible` class toggle.
+- **`.hx-live-ticker`** — Premium "viewing now" pill below hero (`12 looking now · 3 booked today`), values derived from deterministic per-hotel hash so each hotel reads identical numbers across refreshes.
+- **`.hx-ota-bar`** — Per-room OTA comparison bars. Horizontal scaleX fill-in animation on scroll. StayBid sage-tinted always shortest (cheapest).
+- **`.hx-room-img-fade`** — 4-thumbnail room photo gallery cross-fades on swap. `key={safeIdx}` + opacity/scale/blur transition replaces the v131.5 jump-swap.
+
+**Audit findings (load-bearing for future Claude sessions):** 6 of the 10 originally proposed adds were already shipped in v123/v128/v131 eras. Only the 4 genuinely-missing items shipped here. **Never re-add `.hx-reveal` (mount-time stagger), `.hx-card-lift` (already exists), or any OTA-comparison animation outside `/hotels/[id]` — they're surface-specific by design.**
+
+### v133.1 — Scorecard wipe permanent fix (commit `2de8a98`, PR #27)
+
+User reopened site 24h after v133 ship and reported "No data" again on scorecards — same issue v131.6 had supposedly fixed. The v131.6 `HONOR_GOOD_SCORE_MS = 24h` guard worked for exactly 24h, then expired → recompute against empty demo dataset → engine returned `{ overall: null }` → UPSERT wiped seeded synthetic scores → `hasGoodScore = false` → 30 min TTL re-engaged → infinite re-wipe loop.
+
+**State at PR open:** 30 of 32 `hotel_scores` rows had `overall = NULL`.
+
+**3-layer defense added so this CANNOT recur:**
+
+1. **Migration `2026-05-18-hotel-scores-is-seeded.sql`** — adds `is_seeded BOOLEAN NOT NULL DEFAULT FALSE` column + partial index `WHERE is_seeded=true`. Applied to production Supabase before PR opened.
+
+2. **Layer 3 — Recompute SKIP**. Customer route (`/api/hotels/[id]/scorecard`), cron sweep 5 (`/api/cron/feedback-lifecycle`), and admin recompute (`/api/admin/hotel-scores/recompute`) ALL check `is_seeded` BEFORE calling `loadHotelScoreInputs()`. Seeded rows return cached as-is. Customer route also short-circuits the age check entirely (effective TTL = `MAX_SAFE_INTEGER` for seeded).
+
+3. **Layer 2 — Downgrade refusal**. Every `upsertScore()` (all 3 entry points) now refuses to write `null` over a non-null existing `overall`. Protects every cached row (seeded OR real) from empty-source-data wipes. To actually clear a score, admin must `DELETE` the row directly.
+
+4. **Layer 1 — `is_seeded` preservation**. `upsertScore()` reads existing row and explicitly carries `is_seeded=true` through on merge-duplicates upsert. Without this, the flag would reset to FALSE on every recompute pass (column default), silently unsealing protected rows.
+
+5. **Admin escape hatch** — `?force=1` on `/api/admin/hotel-scores/recompute` bypasses the is_seeded skip when admin genuinely wants to recompute (e.g. after manually un-flagging a row that has real activity).
+
+**Re-seed** (already applied to prod Supabase pre-PR): 30 wiped rows re-populated with deterministic synthetic scores `[62, 94]` (hash-based per hotel_id), full 10-checkpoint JSONB scaled to overall + matching evidence strings + status. The 2 surviving real-data rows untouched. All cities reranked. Verified: `total=32 · with_score=32 · seeded=30 · min=46 · max=93 · avg=78.8`.
+
+**How to unseal when real activity arrives:**
+```sql
+UPDATE public.hotel_scores SET is_seeded = false WHERE hotel_id = '…';
+```
+
+### v134 — Cozy minimal polish across 5 customer pages (commit `b1f3eb9`, PR #28)
+
+User asked "hotel page main changes kiye hai abhi tak baki page ke UI ko nhi update Kiya abhi unko bhi karo na animated". Audit found 5 customer pages flat or under-animated relative to v133. This PR ships the **shared animation library** that v135/v136/v137 then layer on top of.
+
+**NEW shared utilities (`app/globals.css`)** — `.sb-*` prefix keeps v133's `.hx-*` scoped:
+
+| Class | Purpose |
+|---|---|
+| `.sb-card-lift` | Hover `translateY(-3px)` + shadow upgrade — every card / CTA |
+| `.sb-pulse-dot` | Live indicator pulse (sage default + `is-warn` champagne + `is-alert` rose variants) |
+| `.sb-shimmer` | Champagne sweep across premium CTAs / chips (use with `relative` + z-indexed text overlay) |
+| `.sb-stagger > *` | Staggered list reveal (`nth-child` delay chain to 8 items) |
+| `.sb-fade-in` | Single-section soft entrance (translateY 10px + opacity 0 → 1) |
+
+All respect `prefers-reduced-motion: reduce` via a shared media block at the end of globals.css.
+
+**NEW component `components/CountUp.tsx`** — animated number tick from 0 → target using ease-out cubic, `font-variant-numeric: tabular-nums` (no width shift), reduced-motion bail-out. Used 7× in v134, ~30× by end of v137.
+
+**Per-page applications:**
+- `/upgrade` — hero fade, identity strip + explainer lift, 4-step list stagger
+- `/verification` — hero fade, tier badge pulse-dot, bookings list stagger
+- `/points` — balance card lift + halo, balance value CountUp, Redeem CTA shimmer, activity stagger
+- `/bookings` — hero fade, booking-count + StayPoints CountUp, list stagger, each card lift
+- `/my-bids` — summary chip CountUps (existing `fadeUp` preserved), bid cards lift
+
+### v135 — Onboarding + wallet + profile + hotels signature animations (commit `541a4e9`, PR #29)
+
+User asked which pages still need polish + wants "more alive feel". Audit found 7 priority targets — 4 onboarding pages (flat) + 3 Phase-2 deferred pages (wallet/profile/hotels list, moderate). User picked **Batch A** with intensity **v134 + per-page signature animations**.
+
+**5 NEW signature utilities** layered on top of v134:
+
+| Class | Purpose |
+|---|---|
+| `.sb-step-rail` | Flowing gold ribbon (`-100% → 100%` linear infinite, 2.4s) on form-card top — telegraphs "you are mid-flow" for onboarding. `margin: -28px -28px 20px -28px` to extend to card edges. |
+| `.sb-focus-glow` | Premium champagne focus shadow on inputs (`0 0 0 3px rgba(201,166,107,0.18) + 0 0 16px rgba(201,166,107,0.25)`). Replaces default browser focus. |
+| `.sb-balance-halo` | Slow conic-gradient sweep (16s linear infinite) behind balance cards. Halo at `z-index: 0`, content overlay at `z-index: 1`. Uses `isolation: isolate` to scope the z-index stack. |
+| `.sb-kenburns` | Slow 1.8s ease zoom (`scale(1.06)`) on hover for image cards. Apply class to OUTER wrapper that has `overflow:hidden`; the inner `img` (or `.sb-kenburns-target`) gets the transition. |
+| `.sb-tx-row` | Warm transaction row hover tint + 4px left padding creep. No lift (heavy on tight lists). |
+
+**Per-page applications:**
+- `/onboard/{signin,signup,verify,wizard}` — hero fade + form-card lift + flowing gold step-rail + focus-glow on every input + shimmer on submit. Verify page additionally: dev-OTP banner lift + resend countdown prefixed with sb-pulse-dot.
+- `/wallet` — balance card `.sb-balance-halo` (rotating gold sweep) + balance value CountUp (1100ms) + 3× CountUp on credited/spent/StayPoints + transactions list stagger + each transaction row `.sb-tx-row`.
+- `/profile` — avatar card matching halo + 3× CountUp on bookings/StayPoints/total spent (k-suffix) + perks list stagger + milestones list stagger.
+- `/hotels` (list) — hero fade-in + city filter chips lift. Hotel cards left as-is (already premium: hover `-translate-y` + image `scale-105` + `lux-fadeUp`).
+
+### v136 — Creator hub cozy animations across 6 pages (commit `19fbda3`, PR #30)
+
+User said "phase B". Six `/influencer/*` pages with **no new utilities** — pure application of v134's existing `.sb-*` set + `<CountUp />` on every numeric KPI / total / commission / count.
+
+**Audit:**
+```
+/influencer/dashboard   1   ← main creator hub
+/influencer/earnings    2   ← earnings dashboard
+/influencer/referrals   0   ← totally flat
+/influencer/upload      3   ← upload form
+/influencer/bookings    1   ← attributed bookings
+/influencer/profile     1   ← profile editor
+```
+
+**Refactor pattern across this era:** internal `Card` / `KPI` / `Stat` helpers in each page refactored from `value: string` (pre-formatted) to `rawValue: number + prefix?: string` so each helper CountUps internally. Same pattern, 4 files.
+
+**Per-page:**
+- `/influencer/dashboard` — tier label tier-color pulse-dot + earnings CountUp + KPI grid stagger + each KPI lift + CountUp + KYC card lift + KYC chips stagger + commissions list stagger.
+- `/influencer/earnings` — 3 totals stagger + CountUp + CommissionStructure lift + "Your Commission" label `is-warn` pulse-dot + commission% CountUp + filter buttons lift + slab ladder stagger + active slab inline pulse-dot.
+- `/influencer/referrals` — 3 stats stagger + CountUp + Create card lift + Generate button shimmer + codes list stagger + each CodeCard lift + How-to-share card lift + list stagger.
+- `/influencer/upload` — header lift + form lift + submit shimmer + "My Reels (N)" CountUp + reels grid stagger + each tile lift.
+- `/influencer/bookings` — 4 totals stagger + Card refactor (rawValue + prefix + CountUp) + table lift + filter buttons lift + How-it-works list stagger.
+- `/influencer/profile` — 3 settings cards cascade fade-in (0/0.1/0.2s delays) + interest pills lift + Save shimmer + save toast prefixed with pulse-dot.
+
+### v137 — Transactional + content pages cozy animations (commit `8622b56`, PR #31)
+
+User said "phase C". Final batch — 6 transactional + content surfaces. **No new utilities** — pure application of v134 set + CountUp.
+
+**Audit:**
+```
+/my-codes        2
+/points/redeem   3
+/saved           4
+/tag/[name]      2
+/u/[username]    3   ← custom u-* CSS preserved; only minimal additions
+/complaints      6
+```
+
+**Per-page summary:**
+- `/my-codes` — header fade + Redeem CTA lift + shimmer + wallet credit balance card lift + fade-in + `is-warn` pulse-dot + CountUp on balance + filter buttons lift + codes grid stagger + each tile lift
+- `/points/redeem` — header fade + balance strip lift + fade + balance CountUp + tier pill tier-color pulse-dot + filter chips lift + reward grid stagger + each card lift
+- `/saved` — header fade + tabs lift + empty-state lift + fade + Browse Reels shimmer + saves grid stagger
+- `/tag/[name]` — hero card lift + fade + "Hashtag" eyebrow `is-warn` pulse-dot + reel-count CountUp + Watch-in-Reels CTA lift + shimmer + Related card lift + fade (0.1s) + tags stagger + each tag lift + Top reels card lift + fade (0.2s) + grid stagger + each tile lift
+- `/u/[username]` — profile header fade + action row fade (0.1s) + Follow lift + Following state pulse-dot prefix + Share lift. (Custom `u-*` CSS class system preserved — only minimal additions on top.)
+- `/complaints` — header fade + New-complaint shimmer + Faster-routes card lift + fade (0.1s) + `is-warn` pulse-dot eyebrow + 3 route links stagger + each link lift + empty-state lift + Raise CTA shimmer + complaints list stagger + each Card lift
+
+### Session merge pattern (critical for future PRs)
+
+PRs #29 (v135), #30 (v136), #31 (v137) all branched from the SAME `v134` base (commit `b1f3eb9`). All three modify `app/layout.tsx` SB_BUILD line. The merge sequence required by this pattern:
+
+1. **Merge PR #29 first** → `main` becomes v135. Required **local rebase** before merge because v135 branch had a duplicate v134 commit (different SHA from main's squash) — `git rebase origin/main` cleaned it up; force-push needed afterward.
+2. **Rebase PR #30 onto new main** → resolve SB_BUILD conflict (keep v136). Force-push. Merge.
+3. **Rebase PR #31 onto new main** → resolve SB_BUILD conflict (keep v137). Force-push. Merge.
+
+Each rebase is 1-2 minutes. Sequence is mechanical but cannot be skipped — GitHub returns "405 Pull Request has merge conflicts" on the second PR otherwise.
+
+### Files added during this era
+
+```
+lib/useReveal.ts                                # v133 — IntersectionObserver hook
+components/CountUp.tsx                          # v134 — animated number tick
+migrations/2026-05-18-hotel-scores-is-seeded.sql # v133.1 — is_seeded column + index
+```
+
+### Files modified during this era (high-touch)
+
+```
+app/globals.css                                 # +240 lines (v134 + v135 sb-* utilities + reduced-motion guard)
+app/layout.tsx                                  # SB_BUILD v132.15 → v133 → v133.1 → v134 → v135 → v136 → v137
+
+# v133 (PR #26):
+app/hotels/[id]/page.tsx                        # 4 new animations layered on existing render tree
+
+# v133.1 (PR #27):
+app/api/hotels/[id]/scorecard/route.ts          # is_seeded skip + downgrade refusal
+app/api/cron/feedback-lifecycle/route.ts        # Sweep 5: pre-fetch is_seeded, skip seeded, refuse downgrade
+app/api/admin/hotel-scores/recompute/route.ts   # ?force=1 param + seeded skip + downgrade refusal
+
+# v134 (PR #28):
+app/upgrade/page.tsx                            # fade + lift + stagger
+app/verification/page.tsx                       # tier pulse-dot + stagger
+app/points/page.tsx                             # CountUp + halo + stagger
+app/bookings/page.tsx                           # CountUp + stagger + each card lift
+app/my-bids/page.tsx                            # CountUp on chips + bid cards lift (preserves fadeUp/glow/floaty)
+
+# v135 (PR #29):
+app/onboard/signin/page.tsx                     # step-rail + focus-glow + shimmer
+app/onboard/signup/page.tsx                     # step-rail + focus-glow + shimmer
+app/onboard/verify/page.tsx                     # step-rail + focus-glow + shimmer + dev-OTP lift + resend pulse-dot
+app/onboard/wizard/page.tsx                     # hero fade + section card lift + step-rail
+app/wallet/page.tsx                             # balance-halo + 4× CountUp + tx-row stagger
+app/profile/page.tsx                            # avatar halo + 3× CountUp + 2× stagger + lifts
+app/hotels/page.tsx                             # hero fade + city chip lifts
+
+# v136 (PR #30):
+app/influencer/dashboard/page.tsx               # KPI refactor + 4× CountUp + KYC chips stagger
+app/influencer/earnings/page.tsx                # 3 totals refactor + CountUp + slab ladder stagger
+app/influencer/referrals/page.tsx               # 3 stats refactor + CountUp + codes list stagger + Generate shimmer
+app/influencer/upload/page.tsx                  # header + form + submit shimmer + grid stagger
+app/influencer/bookings/page.tsx                # 4 totals refactor + table lift + How-it-works stagger
+app/influencer/profile/page.tsx                 # 3-card cascade fade-in + Save shimmer
+
+# v137 (PR #31):
+app/my-codes/page.tsx                           # wallet credit halo + Redeem shimmer + codes grid stagger
+app/points/redeem/page.tsx                      # balance CountUp + tier pulse-dot + rewards grid stagger
+app/saved/page.tsx                              # tabs lift + empty-state shimmer + saves grid stagger
+app/tag/[name]/page.tsx                         # reel-count CountUp + hashtag pulse-dot + 3 cards cascade
+app/u/[username]/page.tsx                       # action row fade + Follow lift + Following pulse-dot
+app/complaints/page.tsx                         # 3 route links stagger + complaints list stagger
+```
+
+### Service-worker version map (continued)
+- v132.15 → signed-out-me-hero-sign-in-toggle
+- **v133** → hotel-detail-luxury-cozy-animation-layer (4 .hx-* animations)
+- **v133.1** → scorecard-is-seeded-future-proof
+- **v134** → customer-pages-cozy-animation-polish (5 pages + shared .sb-* lib + CountUp)
+- **v135** → onboarding-wallet-profile-hotels-signature-animations (7 pages + 5 new sb-* sigs)
+- **v136** → creator-hub-animations (6 /influencer pages)
+- **v137** → transactional-content-pages-animations (6 pages, current)
+
+### Architecture summary (post-v137)
+
+**19 customer-facing pages animated this session** using the shared `.sb-*` utility set + `<CountUp />`. Each utility is reduced-motion respected via the single shared media block at the bottom of `app/globals.css`.
+
+**Animation philosophy: cozy minimal.** NO bold transitions, NO Lottie, NO parallax. The library is exactly 10 utility classes (5 v134 generic + 5 v135 signature). Adding a class outside this set is a yellow flag — the existing 10 cover ~95% of needs.
+
+**Surfaces NOT touched:**
+- `/` (DiscoverPage) — already IG-style premium
+- `/discover`, `/reels` — reel-app surfaces, owned by `components/discover/InstagramHotelFeed.tsx`
+- `/me`, `/me/posts`, `/saved/posts` — IG-style profile + posts feed
+- `/flash-deals` — already premium (anim score 24/24 from v53/v75 era)
+- `/onboard/wizard` sub-sections (BasicsSection, ImagesSection, etc.) — only the parent shell touched
+- `/u/[username]/posts` — separate IG-style scroll feed surface
+- `/points/redeem` confirm + success modals (own animation systems)
+- v133's `.hx-*` classes (scoped to `/hotels/[id]`, unchanged across v134-v137)
+- Engine logic anywhere (`lib/hotel-score.ts`, scoring, attribution, bid lifecycle, scoring weights, tier mapping)
+- Reel-dedup chain (post-v131.8 lock, 5 hops with ⚠️ LOAD-BEARING markers)
+- CDN cache + Vercel headers (post-v131.7 stripping fix)
+- `sw.js` cache versions (stable per v93 discipline)
+- Auth surfaces, sanitizer, attribution
+- Partner panel + admin panel
+
+### Things to Avoid (Animation Layer Era)
+
+- **Never** rename any of the 10 `.sb-*` utility classes or v133's `.hx-*` classes. They're now applied across **19 pages** with hundreds of call sites. A rename = a global search/replace touching every customer surface.
+- **Never** add an 11th `.sb-*` utility without first auditing whether the existing 10 cover the use case. The library is intentionally small; bloat = inconsistent design language across pages.
+- **Never** extend `.sb-balance-halo` to non-balance surfaces. It's z-indexed (`isolation: isolate` + content at `z-index: 1`) for exactly the wallet/profile/dashboard hero card pattern. On a non-isolated parent the halo bleeds into siblings.
+- **Never** put `.sb-step-rail` on a card without `padding: 28px` matching the negative margin (`-28px -28px 20px -28px`). Otherwise the rail extends past the card edges and looks broken. Always check the parent's padding before applying.
+- **Never** apply `.sb-kenburns` to text-only children. The class targets `img` + `.sb-kenburns-target` — applying to a text wrapper scales the text on hover, which never reads as luxury.
+- **Never** drop the `<span className="relative" style={{ zIndex: 2 }}>` overlay inside a `.sb-shimmer` button. Without it, the shimmer sweep covers the button text mid-animation. The relative-z wrap is the canonical pattern used everywhere shimmer is applied.
+- **Never** strip the `prefers-reduced-motion: reduce` media block at the end of `globals.css`. It's the single accessibility guard for all 10 utilities. Removing it = unannounced WCAG 2.3.3 violation for every page.
+- **Never** branch a new feature off main when 2+ animation PRs are still open. They all touch `app/layout.tsx` SB_BUILD line + `app/globals.css` (when adding sigs). The merge sequence is mechanical (rebase between each) but only works if branches are properly chained. New work after v137 should branch from current main.
+- **Never** merge a PR branched off the SAME base as another open PR without rebasing first. GitHub returns "405 Pull Request has merge conflicts" when the second PR has duplicate ancestor commits (different SHAs but same logical content). Always `git rebase origin/main && git push --force-with-lease`.
+- **Never** drop `Math.round()` from CountUp's internal display calculation. Non-integer easing values (e.g. 87.43) display correctly during animation but the final value can drift by up to 1 from the target if not rounded.
+- **Never** add CountUp on a value that updates frequently (>1× per second). The 900-1100ms animation duration means a fast-updating value will be visually "behind" the actual value. Use it on stable totals/balances/counts that load-once.
+- **Never** apply `.sb-card-lift` to a card whose parent uses `transform` (creates a containing block, breaks the lift's relative positioning). Same trap as the v132.2 partner-panel modal portal fix.
+- **Never** re-apply `.hx-reveal` (v122 mount-stagger) to new sections. v133 explicitly replaced it with `.hx-reveal-io` (IO-driven) because mount-stagger fires for below-fold content while user is still looking at the hero.
+- **Never** wipe `hotel_scores.is_seeded` on a row without coordinating the source data. Setting `is_seeded = false` opts the row back into recompute — if the source tables (bids, complaints, vp_requests) are still empty, the row will get wiped to `unrated` on the next cron tick or customer page open. The Layer 2 "downgrade refusal" protects against this for non-null overall, but if you've already nulled the row first, it's too late.
+- **Never** add a 4th recompute entry point to scorecards without applying all 3 layers (is_seeded skip + downgrade refusal + is_seeded preservation on upsert). The v131.6 wipe pattern can recur silently from any new entry point that bypasses these checks.
+
+### What this era did NOT do (intentionally)
+
+- **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`) — already premium IG-style animated since v75-v91 era. Adding `.sb-*` utilities on top would clash with the existing IG-clone chrome.
+- **`/flash-deals` page** — already anim score 24/24 from the v53 premium ken-burns + shimmer rewrite. No work needed.
+- **`/onboard/wizard` BasicsSection / ImagesSection / etc.** — the wizard shell got hero fade + section card lift + step-rail, but the inner sections (rooms editor, KYC form, bank details) were intentionally left flat. They're internal workflow surfaces where motion would distract from data entry.
+- **Modals + drawers** — Booking review, Acceptance window timer, Hold banner, Negotiate modal, etc. All have their own animation systems (or v132.2 portal-mounted overlays). Touching them risks colliding with the bidding lifecycle (v65-v72 era).
+- **Partner panel + admin panel** — separate inline-style dark-luxury surfaces (v128 era). Mixing `.sb-*` utilities into them would clash with the dark theme.
+- **Per-page sound design** — no audio cues added. The cozy-minimal philosophy is visual only.
+- **Page transition animations between routes** — every route still hard-cuts. A Next.js App Router page transition wrapper was considered and skipped (adds bundle weight, fights with the existing `.sb-fade-in` mount animations).
+- **Animated route-level skeletons** — loading states use existing `shimmer` class from v52 era. New `.sb-shimmer` is only for premium CTA backgrounds, not loading placeholders.
+
+---
+
+## Updated production state (v137, 2026-05-18)
+
+- **Current version:** v137 · commit `8622b56` on `main` · all 3 phase-batch PRs merged sequentially with mechanical rebases
+- **19 customer-facing pages animated** this session (v133 hotel detail + v134's 5 pages + v135's 7 pages + v136's 6 creator pages + v137's 6 transactional pages = 25 with the v133 hotel detail standalone, BUT counting unique pages: 19)
+- **Shared animation library** at `app/globals.css` (10 `.sb-*` classes + 4 `.hx-*` v133 classes) + `components/CountUp.tsx` + `lib/useReveal.ts` — single source of truth for cozy-minimal motion language
+- **Scorecard wipe permanently impossible** — 3-layer defense (skip + refuse-downgrade + preserve-flag) applied to all 3 recompute entry points (route, cron, admin). Synthetic demo data flagged `is_seeded=true` survives indefinitely; real-data rows protected from empty-source-data wipes; admin escape hatch via `?force=1`.
+- **All `prefers-reduced-motion: reduce`** respected via the single shared media block at the bottom of `globals.css`. Adding new animations elsewhere requires extending the same block.
+- **Reel-app surfaces + flash-deals + modals + partner/admin panels untouched** — separate animation systems, intentionally not unified.
+- **Merge sequence verified working** for 3 PRs branched off the same base — the mechanical rebase + force-push + merge pattern is now documented above for the next time multiple animation PRs ship in parallel.
+
