@@ -22,7 +22,18 @@ const HEADERS = {
   Prefer: "return=representation",
 };
 
-export type UserType = "PUBLIC" | "CREATOR" | "HOTEL";
+// Tier-system additive: the 5-value content tier set lives on social_profiles
+// .user_type. Phase 1 (2026-05-18) extended the Postgres ENUM with two new
+// values (VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR). We widen UserType to match
+// so callers consuming a fresh row from social_profiles don't trip the type
+// checker. Existing callers that compare against PUBLIC | CREATOR | HOTEL
+// keep working — the new values are extra options, never replacements.
+export type UserType =
+  | "PUBLIC"
+  | "VERIFIED_GUEST"
+  | "COMMUNITY_CONTRIBUTOR"
+  | "CREATOR"
+  | "HOTEL";
 
 export type SocialProfile = {
   id: string;
@@ -39,6 +50,10 @@ export type SocialProfile = {
   is_verified: boolean;
   is_creator: boolean;
   user_type: UserType;
+  // Tier-system additive (Phase 1 migration 2026-05-18-tier-system-additive.sql).
+  // Set whenever user_type transitions PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR
+  // / CREATOR. NULL for legacy rows that never went through promotion.
+  tier_promoted_at?: string | null;
   created_at: string;
   updated_at: string;
 };
