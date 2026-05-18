@@ -49,8 +49,17 @@ async function readCached(hotelId: string): Promise<any | null> {
   return rows[0] || null;
 }
 
-async function upsertScore(card: any, cityRank: any, hotelMeta: any) {
-  const body = {
+async function upsertScore(card: any, cityRank: any, hotelMeta: any, existing: any) {
+  // v133.1 — Downgrade protection. If recompute returned null (no source
+  // data) but the existing cached row had a valid score, REFUSE the upsert.
+  // This protects every cached score (seeded OR real) from being silently
+  // wiped by an empty-source-data recompute pass. Combined with the
+  // is_seeded check in the GET handler, this is layer 2 of 3 defenses
+  // against the v131.6 wipe pattern.
+  if ((card.overall == null) && existing && existing.overall != null) {
+    return; // skip — don't downgrade a good score to "unrated"
+  }
+  const body: any = {
     hotel_id: card.hotelId,
     city: hotelMeta?.city || null,
     state: hotelMeta?.state || null,
@@ -69,6 +78,11 @@ async function upsertScore(card: any, cityRank: any, hotelMeta: any) {
     computed_at: card.computedAt,
     updated_at: new Date().toISOString(),
   };
+  // v133.1 — Always preserve the is_seeded flag when present on the row.
+  // Without explicitly carrying it through, the merge-duplicates upsert
+  // would reset it to the column default (FALSE), unsealing protected
+  // synthetic rows.
+  if (existing && existing.is_seeded === true) body.is_seeded = true;
   // PostgREST upsert on conflict
   await fetch(`${SB_URL}/rest/v1/hotel_scores?on_conflict=hotel_id`, {
     method: "POST",
@@ -77,7 +91,37 @@ async function upsertScore(card: any, cityRank: any, hotelMeta: any) {
   }).catch(() => {});
 }
 
-async function recompute(hotelId: string, hotelMeta: any) {
+async function recompute(hotelId: string, hotelMeta: any, cached: any) {
+  // v133.1 — Layer 3 defense: synthetic seeded rows are NEVER recomputed.
+  // The cached row is returned as-is; live source data never gets a chance
+  // to overwrite seeded demo values. Admin can manually flip is_seeded=FALSE
+  // on a row to opt into recompute when real activity arrives.
+  if (cached && cached.is_seeded === true) {
+    return {
+      card: {
+        hotelId,
+        overall: cached.overall === null ? null : Number(cached.overall),
+        status: cached.status,
+        badge: {
+          emoji: cached.badge_emoji,
+          label: cached.badge_label,
+          color: cached.badge_color,
+        },
+        checkpoints: cached.checkpoints || [],
+        totalBookings: cached.total_bookings || 0,
+        totalStayFeedback: cached.total_stay_feedback || 0,
+        totalComplaints: cached.total_complaints || 0,
+        computedAt: cached.computed_at,
+      },
+      cityRank: {
+        rank: cached.rank_in_city,
+        total: cached.total_in_city,
+        percentile:
+          cached.percentile_city === null ? null : Number(cached.percentile_city),
+      },
+    };
+  }
+
   const inputs = await loadHotelScoreInputs(hotelId);
   const card = computeHotelScore(inputs);
 
@@ -111,7 +155,7 @@ async function recompute(hotelId: string, hotelMeta: any) {
     }
   }
 
-  await upsertScore(card, cityRank, hotelMeta);
+  await upsertScore(card, cityRank, hotelMeta, cached);
   return { card, cityRank };
 }
 
@@ -142,9 +186,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // v131.6 — protect good cached scores from being wiped by no-data
     // recompute. If the cached row has a valid score, honour it for 24h.
     const hasGoodScore = row && row.overall != null && Number(row.overall) > 0;
-    const effectiveTTL = hasGoodScore ? HONOR_GOOD_SCORE_MS : REFRESH_AFTER_MS;
+    // v133.1 — Layer 1 defense: seeded rows skip the age check entirely.
+    // The recompute() function ALSO bails out for is_seeded rows (layer 3),
+    // but short-circuiting here avoids even the unnecessary network round-trip
+    // to loadHotelScoreInputs. The whole 24h-honor window pattern from v131.6
+    // is now obsolete for seeded rows — they live forever until explicitly
+    // unsealed via SQL: UPDATE hotel_scores SET is_seeded=false WHERE …
+    const isSeeded = row && row.is_seeded === true;
+    const effectiveTTL = isSeeded
+      ? Number.MAX_SAFE_INTEGER
+      : (hasGoodScore ? HONOR_GOOD_SCORE_MS : REFRESH_AFTER_MS);
     if (!row || age > effectiveTTL) {
-      const out = await recompute(hotelId, hotelMeta);
+      const out = await recompute(hotelId, hotelMeta, row);
       row = {
         hotel_id: hotelId,
         city: hotelMeta.city,

@@ -308,11 +308,43 @@ async function runLifecycle() {
       );
       const hotels: any[] = hotelsRes.ok ? await hotelsRes.json().catch(() => []) : [];
 
+      // v133.1 — Bulk-fetch is_seeded + existing overall for all touched
+      // hotels in ONE query. Used below to (a) skip seeded rows entirely
+      // and (b) refuse to downgrade a non-null overall to null. Without
+      // this pre-fetch the cron would happily overwrite every seeded score
+      // every time a partner placed/updated a bid in their city.
+      const seedRes = await fetch(
+        `${SB_URL}/rest/v1/hotel_scores?hotel_id=in.(${hotelIds.map((id) => encodeURIComponent(id)).join(",")})&select=hotel_id,is_seeded,overall`,
+        { headers: SB_H, cache: "no-store" },
+      );
+      const seedRows: any[] = seedRes.ok ? await seedRes.json().catch(() => []) : [];
+      const seedMap = new Map<string, { is_seeded: boolean; overall: number | null }>();
+      for (const r of seedRows) {
+        seedMap.set(r.hotel_id, {
+          is_seeded: r.is_seeded === true,
+          overall: r.overall === null ? null : Number(r.overall),
+        });
+      }
+
       const touchedCities = new Set<string>();
       for (const h of hotels) {
+        const existing = seedMap.get(h.id);
+        // v133.1 layer 3 — skip seeded rows. Synthetic/demo scores are
+        // never touched by the cron sweep.
+        if (existing?.is_seeded) {
+          if (h.city) touchedCities.add(h.city);
+          continue;
+        }
         try {
           const inputs = await loadHotelScoreInputs(h.id);
           const card = computeHotelScore(inputs);
+          // v133.1 layer 2 — refuse downgrade. If the source data went
+          // empty (e.g. dev DB cleanup) but the cached row still has a
+          // valid score, skip the upsert and keep the good score.
+          if (card.overall == null && existing?.overall != null) {
+            if (h.city) touchedCities.add(h.city);
+            continue;
+          }
           await fetch(`${SB_URL}/rest/v1/hotel_scores?on_conflict=hotel_id`, {
             method: "POST",
             headers: { ...SB_H, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
