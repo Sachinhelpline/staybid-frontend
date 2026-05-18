@@ -243,6 +243,9 @@ function UpgradeCard({
 
   return (
     <div
+      // v139 — data-tour anchor so the Phase-2 spotlight tour for /upgrade
+      // can target each path card independently (creator vs hotel).
+      data-tour={isCreatorCard ? "upgrade-creator" : "upgrade-hotel"}
       className={`card-luxury ${variant === "compact" ? "p-4" : "p-5"} flex flex-col`}
       style={{
         background: alreadyMine

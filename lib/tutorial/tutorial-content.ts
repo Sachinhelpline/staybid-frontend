@@ -386,10 +386,104 @@ const BID_STEPS: LocalisedSteps = {
   ],
 };
 
+// /flash-deals page — 3 steps
+const FLASH_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".fd-ticker",
+      title: "🔴 Live ticker",
+      description: "Real-time count of deals live · hotels in your city · average discount.",
+      side: "bottom",
+    },
+    {
+      element: ".fd-card",
+      title: "⚡ A flash deal",
+      description: "Tap any card to see room types + book. Cheapest guaranteed.",
+      side: "top",
+    },
+    {
+      element: ".fd-cta",
+      title: "Book before midnight",
+      description: "Slots are limited. First booking wins. No bidding here — fixed-price flash.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".fd-ticker",
+      title: "🔴 Live ticker",
+      description: "Real-time count: deals live · apke city ke hotels · avg discount.",
+      side: "bottom",
+    },
+    {
+      element: ".fd-card",
+      title: "⚡ Ek flash deal",
+      description: "Card tap karo room types dekhne ke liye + book karne ke liye. Sasta guaranteed.",
+      side: "top",
+    },
+    {
+      element: ".fd-cta",
+      title: "Midnight se pehle book",
+      description: "Slots kam hain. Pehle book karne wala jeetega. Yahaan bidding nahi — fixed flash price.",
+      side: "top",
+    },
+  ],
+};
+
+// /upgrade page — 3 steps (public → creator / hotel partner earning)
+const EARN_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: '[data-tour="upgrade-creator"]',
+      title: "✨ Become a Creator",
+      description: "Upload hotel reels · earn 5–12% commission on every booking they drive.",
+      side: "right",
+      align: "start",
+    },
+    {
+      element: '[data-tour="upgrade-hotel"]',
+      title: "🏨 Hotel Partner",
+      description: "Own a hotel? List it · accept bids · run flash deals from the partner panel.",
+      side: "left",
+      align: "start",
+    },
+    {
+      element: '[data-tour="upgrade-creator"]',
+      title: "Quick apply",
+      description: "Tap 'Apply as a Creator' — fill 3 fields. Admin approval in 1-2 days.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: '[data-tour="upgrade-creator"]',
+      title: "✨ Creator bano",
+      description: "Hotel reels upload karo · har booking pe 5–12% commission kamao.",
+      side: "right",
+      align: "start",
+    },
+    {
+      element: '[data-tour="upgrade-hotel"]',
+      title: "🏨 Hotel Partner",
+      description: "Hotel hai? List karo · bids accept karo · flash deals chalao partner panel se.",
+      side: "left",
+      align: "start",
+    },
+    {
+      element: '[data-tour="upgrade-creator"]',
+      title: "Quick apply",
+      description: "'Apply as a Creator' tap karo — 3 fields fill karo. Admin 1-2 din mein approve karega.",
+      side: "top",
+    },
+  ],
+};
+
 export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   home: HOME_STEPS,
   hotel: HOTEL_STEPS,
   bid: BID_STEPS,
+  flash: FLASH_STEPS,
+  earn: EARN_STEPS,
 };
 
 /** Hook helper — returns the steps array for the given key + current language. */
