@@ -24,6 +24,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 import { WELCOME_STORY } from "@/lib/tutorial/tutorial-content";
 import { LanguageToggle } from "./LanguageToggle";
+import { WelcomeScene } from "./WelcomeScenes";
 
 const SKIP_PREFIXES = ["/admin", "/partner", "/onboard", "/auth"];
 const REVEAL_DELAY_MS = 1200;
@@ -230,6 +231,10 @@ export function WelcomeStory() {
         </div>
 
         {/* ── Card body ───────────────────────────────────────────── */}
+        {/* v138.1 — Layout: scene poster (240px) at top, headline +
+            body below. Padding-top reserves space for the progress
+            bars + lang chip; padding-bottom reserves space for the
+            Skip/Next action row. */}
         <div
           key={idx}
           style={{
@@ -237,74 +242,64 @@ export function WelcomeStory() {
             inset: 0,
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
             alignItems: "center",
-            padding: "72px 28px 132px 28px",
+            padding: "60px 22px 100px 22px",
             textAlign: "center",
             animation: "sbWelcomeCardIn 0.42s cubic-bezier(.16,.84,.32,1) both",
+            overflow: "hidden",
           }}
         >
-          {/* Halo behind icon */}
+          {/* ── Poster scene (CSS-rendered visual hero) ─────────── */}
           <div
             style={{
-              position: "relative",
-              marginBottom: 28,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: "100%",
+              maxWidth: 360,
+              flex: "0 0 auto",
+              animation: "sbWelcomeSceneIn 0.6s cubic-bezier(.16,.84,.32,1) both",
             }}
           >
-            <span
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: -28,
-                borderRadius: "50%",
-                background: `radial-gradient(circle at 50% 50%, ${card.accent || "var(--cozy-champagne)"}33 0%, transparent 70%)`,
-                animation: "sbWelcomeHalo 3.6s ease-in-out infinite",
-              }}
-            />
-            <span
-              style={{
-                position: "relative",
-                fontSize: 64,
-                lineHeight: 1,
-                display: "inline-block",
-                filter: "drop-shadow(0 6px 16px rgba(201, 166, 107, 0.35))",
-                animation: "sbWelcomeIcon 0.6s cubic-bezier(.16,.84,.32,1) both",
-              }}
-            >
-              {card.icon}
-            </span>
+            <WelcomeScene scene={card.scene} active={active === "welcome"} accent={card.accent} />
           </div>
 
-          <h2
+          {/* ── Copy block ──────────────────────────────────────── */}
+          <div
             style={{
-              margin: 0,
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
-              fontStyle: "italic",
-              fontSize: "clamp(1.6rem, 6vw, 2.1rem)",
-              fontWeight: 600,
-              lineHeight: 1.18,
-              color: "var(--cozy-warm-dark, #1F1A0F)",
-              maxWidth: 320,
+              marginTop: 22,
+              flex: "1 1 auto",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "flex-start",
             }}
           >
-            {card.headline}
-          </h2>
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: "italic",
+                fontSize: "clamp(1.5rem, 5.5vw, 2rem)",
+                fontWeight: 600,
+                lineHeight: 1.18,
+                color: "var(--cozy-warm-dark, #1F1A0F)",
+                maxWidth: 320,
+              }}
+            >
+              {card.headline}
+            </h2>
 
-          <p
-            style={{
-              marginTop: 14,
-              marginBottom: 0,
-              fontSize: "0.98rem",
-              lineHeight: 1.55,
-              color: "var(--cozy-cocoa, #4A3820)",
-              maxWidth: 320,
-            }}
-          >
-            {card.body}
-          </p>
+            <p
+              style={{
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: "0.95rem",
+                lineHeight: 1.5,
+                color: "var(--cozy-cocoa, #4A3820)",
+                maxWidth: 320,
+              }}
+            >
+              {card.body}
+            </p>
+          </div>
 
           <div
             data-tutorial-noop
@@ -398,14 +393,9 @@ export function WelcomeStory() {
             from { opacity: 0; transform: translateY(14px); }
             to   { opacity: 1; transform: translateY(0); }
           }
-          @keyframes sbWelcomeIcon {
-            0%   { opacity: 0; transform: scale(0.7) rotate(-6deg); }
-            60%  { opacity: 1; transform: scale(1.08) rotate(2deg); }
-            100% { opacity: 1; transform: scale(1) rotate(0); }
-          }
-          @keyframes sbWelcomeHalo {
-            0%, 100% { opacity: 0.7; transform: scale(1); }
-            50%      { opacity: 1;   transform: scale(1.12); }
+          @keyframes sbWelcomeSceneIn {
+            0%   { opacity: 0; transform: scale(0.92) translateY(8px); }
+            100% { opacity: 1; transform: scale(1)    translateY(0); }
           }
           @media (prefers-reduced-motion: reduce) {
             .sb-welcome-overlay,

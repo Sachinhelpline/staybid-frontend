@@ -1,4 +1,10 @@
-// v138 — Bilingual tutorial content (Phase 1: Welcome Story).
+// v138.1 — Bilingual tutorial content (Phase 1: Welcome Story).
+//
+// v138.1 changes:
+//   • Card copy MUCH briefer (billboard-style punchier headlines + 1-line body)
+//   • Added `scene` field — points to a CSS-rendered poster scene in
+//     components/tutorial/WelcomeScenes.tsx (visual hero above the text)
+//   • Old emoji-as-hero is retained as fallback when scene === "icon"
 //
 // Single source of truth. Per-page tour content (Phase 2) will be appended
 // to this file under PAGE_TOURS in v139.
@@ -7,18 +13,12 @@
 //   • en (English)  — premium luxury copy, full sentences
 //   • hi (Hinglish) — Hindi conversational with English brand/CTA words mixed
 //     (matches StayBid's user audience — Indian travelers, mixed literacy)
-//
-// Visual policy (WelcomeStory consumes these fields):
-//   • icon     — emoji or short string rendered at 56-72px inside the card
-//   • headline — main heading, 1 line, Cormorant italic
-//   • body     — 1-2 sentences, supporting copy
-//   • accent   — optional CSS color override for emoji halo
-//
-// Adding a 6th card or shuffling order is safe — WelcomeStory loops over
-// this array. Just keep parity between en[] and hi[].
+
+export type WelcomeSceneKey = "welcome" | "bid" | "flash" | "earn" | "explore";
 
 export type WelcomeCard = {
-  icon: string;
+  scene: WelcomeSceneKey;
+  icon: string;       // fallback / accent emoji
   headline: string;
   body: string;
   accent?: string;
@@ -35,33 +35,38 @@ export type WelcomeStoryContent = {
 const WELCOME_EN: WelcomeStoryContent = {
   cards: [
     {
+      scene: "welcome",
       icon: "✨",
       headline: "Welcome to StayBid",
-      body: "India's first reverse-auction hotel platform. Luxury stays, your price.",
+      body: "Luxury stays. Your price.",
       accent: "var(--cozy-champagne)",
     },
     {
+      scene: "bid",
       icon: "💰",
-      headline: "Name your price. Hotels compete.",
-      body: "Place a bid on any hotel — the property accepts, counters, or rejects in real time. You always pay less than booking sites.",
+      headline: "Name your price",
+      body: "Hotels accept or counter — you always save.",
       accent: "var(--cozy-champagne-light)",
     },
     {
+      scene: "flash",
       icon: "⚡",
-      headline: "Flash Deals every night",
-      body: "Hotels release limited-time discounted rooms before midnight. Massive savings, first-come first-served.",
+      headline: "Flash Deals tonight",
+      body: "Big drops, gone by midnight.",
       accent: "#D49583",
     },
     {
+      scene: "earn",
       icon: "💎",
-      headline: "Earn while you stay",
-      body: "Every booking earns StayPoints — redeem as cashback. Refer friends or upload reels to earn commission on every booking they make.",
+      headline: "Stay. Refer. Earn.",
+      body: "Points + commissions on every booking.",
       accent: "var(--cozy-sage)",
     },
     {
+      scene: "explore",
       icon: "🚀",
-      headline: "Let's explore",
-      body: "Swipe through hotel reels, save favourites, and book in one tap. Your perfect stay is one bid away.",
+      headline: "Ready to explore",
+      body: "Swipe. Save. Book in one tap.",
       accent: "var(--cozy-champagne)",
     },
   ],
@@ -74,33 +79,38 @@ const WELCOME_EN: WelcomeStoryContent = {
 const WELCOME_HI: WelcomeStoryContent = {
   cards: [
     {
+      scene: "welcome",
       icon: "✨",
-      headline: "StayBid pe welcome",
-      body: "India ka pehla reverse-auction hotel platform. Luxury stays, aapki keemat pe.",
+      headline: "Welcome StayBid pe",
+      body: "Luxury stay. Aapki price.",
       accent: "var(--cozy-champagne)",
     },
     {
+      scene: "bid",
       icon: "💰",
-      headline: "Apni price batao, hotels compete karenge",
-      body: "Kisi bhi hotel pe bid lagao — hotel turant accept, counter, ya reject karega. Booking sites se hamesha kam paise lagenge.",
+      headline: "Apni price batao",
+      body: "Hotel accept ya counter karega — bachat guaranteed.",
       accent: "var(--cozy-champagne-light)",
     },
     {
+      scene: "flash",
       icon: "⚡",
-      headline: "Roz raat ko Flash Deals",
-      body: "Hotels midnight se pehle limited rooms pe massive discount dete hain. Pehle aao, pehle pao.",
+      headline: "Aaj raat Flash Deals",
+      body: "Massive discount, midnight tak bas.",
       accent: "#D49583",
     },
     {
+      scene: "earn",
       icon: "💎",
-      headline: "Stay karo, paise kamao",
-      body: "Har booking pe StayPoints milte hain — cashback ke jaise use karo. Friends ko refer karo ya hotel reels upload karo — har booking par commission kamao.",
+      headline: "Stay karo. Refer karo. Kamao.",
+      body: "Har booking par points + commission.",
       accent: "var(--cozy-sage)",
     },
     {
+      scene: "explore",
       icon: "🚀",
       headline: "Chalo explore karein",
-      body: "Hotel reels swipe karo, favourites save karo, ek tap se book karo. Aapka perfect stay sirf ek bid door hai.",
+      body: "Swipe karo. Save karo. Ek tap mein book.",
       accent: "var(--cozy-champagne)",
     },
   ],
