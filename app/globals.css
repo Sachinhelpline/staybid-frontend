@@ -3463,3 +3463,123 @@ body.is-reel-page {
     animation: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * v134 — Shared customer-page animation utilities
+ *
+ * Generic classes reused across /upgrade, /verification, /points, /bookings,
+ * /my-bids (the v134 polish batch). Keeps the v133 `.hx-*` classes scoped
+ * to /hotels/[id] while these `.sb-*` classes are page-agnostic.
+ *
+ * Pair `.sb-reveal` + `useReveal()` from lib/useReveal.ts for the same
+ * IntersectionObserver-driven entrance the hotel page uses.
+ *
+ * All animations respect `prefers-reduced-motion`.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* — Card lift on hover (cards, list items, banners). */
+.sb-card-lift {
+  transition:
+    transform 0.28s cubic-bezier(.22, 1, .36, 1),
+    box-shadow 0.28s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+.sb-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 28px -16px rgba(31, 26, 15, 0.18),
+              0 4px 10px -4px rgba(31, 26, 15, 0.10);
+}
+
+/* — Live pulse dot (status pills, "active" indicators). */
+.sb-pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7F9269; /* cozy sage — "alive" feel */
+  box-shadow: 0 0 0 0 rgba(127, 146, 105, 0.55);
+  animation: sb-pulse 1.8s ease-in-out infinite;
+}
+.sb-pulse-dot.is-warn {
+  background: #C9A66B;
+  box-shadow: 0 0 0 0 rgba(201, 166, 107, 0.55);
+}
+.sb-pulse-dot.is-alert {
+  background: #D49583;
+  box-shadow: 0 0 0 0 rgba(212, 149, 131, 0.55);
+}
+@keyframes sb-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(127, 146, 105, 0.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(127, 146, 105, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(127, 146, 105, 0); }
+}
+
+/* — Champagne shimmer sweep (loading + premium chips). */
+.sb-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.sb-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(231, 207, 160, 0.30) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: sb-shimmer-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes sb-shimmer-sweep {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* — Staggered children reveal. Pair with .sb-reveal-list. Up to 8 children. */
+.sb-stagger > * {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: sb-stagger-in 0.5s cubic-bezier(.22, 1, .36, 1) forwards;
+}
+.sb-stagger > *:nth-child(1) { animation-delay: 0.00s; }
+.sb-stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.sb-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.sb-stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.sb-stagger > *:nth-child(5) { animation-delay: 0.24s; }
+.sb-stagger > *:nth-child(6) { animation-delay: 0.30s; }
+.sb-stagger > *:nth-child(7) { animation-delay: 0.36s; }
+.sb-stagger > *:nth-child(n+8) { animation-delay: 0.42s; }
+@keyframes sb-stagger-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* — Soft entrance for a single section (used when not list-staggered). */
+.sb-fade-in {
+  animation: sb-fade-up 0.55s cubic-bezier(.22, 1, .36, 1) backwards;
+}
+@keyframes sb-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* — Reduced-motion respect — disable all sb-* animations. */
+@media (prefers-reduced-motion: reduce) {
+  .sb-card-lift,
+  .sb-pulse-dot,
+  .sb-shimmer::after,
+  .sb-stagger > *,
+  .sb-fade-in {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .sb-card-lift:hover { transform: none !important; }
+}

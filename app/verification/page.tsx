@@ -123,7 +123,7 @@ export default function VerificationPage() {
   return (
     <div className="bg-luxury-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-5 py-10">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 sb-fade-in">
           <div>
             <h1 className="font-display text-3xl text-luxury-900">Requests, Complaints & Verification</h1>
             <p className="text-sm text-luxury-500 mt-1">Hotel-recorded room proofs · raise complaints with video evidence</p>
@@ -132,11 +132,12 @@ export default function VerificationPage() {
             <button
               onClick={() => loadAll(true)}
               disabled={refreshing}
-              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50 sb-card-lift"
               aria-label="Refresh">
               {refreshing ? "Refreshing…" : "↻ Refresh"}
             </button>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${TIER_BADGE[tier]}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${TIER_BADGE[tier]}`}>
+              <span className="sb-pulse-dot is-warn" style={{ background: tier === "platinum" ? "#A855F7" : tier === "gold" ? "#c9911a" : "#94a3b8" }} />
               {tier} member
             </span>
           </div>
@@ -145,14 +146,14 @@ export default function VerificationPage() {
         {err && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
 
         {bookings.length === 0 ? (
-          <div className="card-luxury p-10 text-center">
+          <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center">
             <div className="text-5xl mb-3">🎬</div>
             <div className="font-display text-2xl text-luxury-900">No confirmed bookings yet</div>
             <p className="text-luxury-500 text-sm mt-2">Verification videos are available after a booking is confirmed.</p>
-            <Link href="/hotels" className="btn-luxury mt-5 inline-block">Browse hotels</Link>
+            <Link href="/hotels" className="btn-luxury mt-5 inline-block sb-card-lift">Browse hotels</Link>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 sb-stagger">
             {bookings.map((b) => (
               <BookingCard key={b.id} booking={b} status={statusByBooking[b.id]} tier={tier}
                            onRefresh={async () => {
@@ -193,7 +194,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
   };
 
   return (
-    <div className="card-luxury p-5">
+    <div className="card-luxury sb-card-lift p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-luxury-900">{booking.hotelName || "Hotel"}</div>

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { CountUp } from "@/components/CountUp";
 import { resolvePaidAmount, fetchServerPaid } from "@/lib/paid-amount";
 import {
   readHoldState, removeHoldState, formatHoldCountdown, isHoldExpired,
@@ -375,7 +376,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
   const whatsappNum = phone?.replace(/\D/g, "");
 
   return (
-    <div className="card-luxury overflow-hidden">
+    <div className="card-luxury sb-card-lift overflow-hidden">
       <div className="h-[3px] bg-gradient-to-r from-gold-500 via-amber-300 to-gold-500" />
 
       <div className="p-5">
@@ -728,18 +729,20 @@ export default function BookingsPage() {
     <div className="bg-luxury-50 min-h-screen">
       <div className="max-w-2xl mx-auto px-5 py-12">
 
-        <div className="mb-8">
+        <div className="mb-8 sb-fade-in">
           <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-2">Account</p>
           <h1 className="font-display font-light text-luxury-900" style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)" }}>
             My Bookings
           </h1>
           <div className="flex items-center gap-4 mt-2">
             {bookings.length > 0 && (
-              <p className="text-sm text-luxury-400">{bookings.length} booking{bookings.length !== 1 ? "s" : ""}</p>
+              <p className="text-sm text-luxury-400">
+                <CountUp value={bookings.length} duration={700} /> booking{bookings.length !== 1 ? "s" : ""}
+              </p>
             )}
             {totalPoints > 0 && (
-              <p className="text-xs font-semibold text-gold-600 bg-gold-50 border border-gold-200 px-3 py-1 rounded-full">
-                ⭐ {totalPoints} StayPoints earned
+              <p className="text-xs font-semibold text-gold-600 bg-gold-50 border border-gold-200 px-3 py-1 rounded-full sb-card-lift">
+                ⭐ <CountUp value={totalPoints} duration={900} /> StayPoints earned
               </p>
             )}
           </div>
@@ -755,7 +758,7 @@ export default function BookingsPage() {
           </div>
         )}
 
-        <div className="space-y-5">
+        <div className="space-y-5 sb-stagger">
           {bookings.map((b) => (
             <BookingCard
               key={b.id}

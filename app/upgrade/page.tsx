@@ -25,7 +25,7 @@ export default function UpgradePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50 px-4 py-10">
-        <div className="max-w-md mx-auto card-luxury p-6 text-center">
+        <div className="max-w-md mx-auto card-luxury sb-card-lift sb-fade-in p-6 text-center">
           <p className="text-3xl mb-2">🔒</p>
           <h1 className="font-display text-2xl font-bold text-luxury-900 mb-1">Sign in first</h1>
           <p className="text-luxury-500 text-sm mb-5">
@@ -45,7 +45,7 @@ export default function UpgradePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50 px-4 py-8">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-6">
+        <div className="text-center mb-6 sb-fade-in">
           <p className="text-gold-700 text-xs uppercase tracking-widest font-bold">Upgrade your StayBid</p>
           <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 mt-1">
             How do you want to use StayBid?
@@ -57,7 +57,7 @@ export default function UpgradePage() {
           {/* Logged-in identity strip — phone the application will be
               filed against. So the user (and admin) always know who's
               applying. */}
-          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-luxury-100 border border-luxury-200">
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-luxury-100 border border-luxury-200 sb-card-lift">
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[0.65rem] font-bold"
               style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
               {(user.name || user.phone || "S").slice(0, 2).toUpperCase()}
@@ -71,11 +71,11 @@ export default function UpgradePage() {
         <UpgradeSection variant="full" />
 
         {/* Approval & KYC explainer */}
-        <div className="card-luxury p-5 mt-5">
+        <div className="card-luxury sb-card-lift p-5 mt-5 sb-fade-in" style={{ animationDelay: "0.15s" }}>
           <h3 className="font-bold text-luxury-900 mb-3 flex items-center gap-2">
             <span>🛡️</span> How approval works
           </h3>
-          <ol className="text-luxury-700 text-sm space-y-2.5 pl-1">
+          <ol className="text-luxury-700 text-sm space-y-2.5 pl-1 sb-stagger">
             <li><b>1. Submit application</b> — fill the form for the path you want (Creator or Hotel).</li>
             <li><b>2. KYC review</b> — admin verifies your identity (Aadhaar / PAN for creators · GST &amp; ID proof for hotels). Usually within 24 hours.</li>
             <li><b>3. Active</b> — your account flips to ACTIVE and the new dashboard, revenue and referral tools unlock.</li>
