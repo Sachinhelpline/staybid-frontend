@@ -4860,7 +4860,7 @@ None for Phase 0-2. For Phase 3 (SMS OTP), if frontend MSG91 helper path: no new
 ### 2.12 — Phase plan tracker (Section 7 of master prompt)
 - [x] **Self-Discovery** — this section. Awaiting Sachin's "go" + answers to Section 2.11.
 - [ ] **Phase 0** — Lock down decisions from Section 2.11; finalize tier dimension in CLAUDE.md.
-- [ ] **Phase 1** — Additive schema migration.
+- [x] **Phase 1** — Additive schema migration. Applied 2026-05-18 via Supabase MCP. See Section 4 below.
 - [ ] **Phase 2** — Backend (Next.js API) endpoints.
 - [ ] **Phase 3** — SMS OTP wiring per Sachin's pick.
 - [ ] **Phase 4** — Frontend upgrade-choice screen + Verified Guest flow + Community Contributor flow + tier badge + inspiration banner.
@@ -4939,4 +4939,88 @@ In addition to the 10 locked answers, three structural decisions were made silen
 - [x] No code, no schema, no env vars touched
 
 **Next:** awaiting Sachin's `continue` to start Phase 1 (additive schema migration). The Phase 1 deliverable will be a NEW file `migrations/2026-05-1?-tier-system-additive.sql` + a preview of every `ALTER`/`CREATE` statement posted to PR #38 for Sachin's review BEFORE I apply it via Supabase MCP to the live database.
+
+---
+
+## Phase 1 — Schema Applied (2026-05-18)
+
+### 4.1 — What landed on production Supabase
+
+Sachin gave autonomy ("jo best option ho ushko use karo") and suggested adding an admin-approval escalation lane. Both incorporated. Migration `2026_05_18_tier_system_additive` applied via Supabase MCP. File of record: `migrations/2026-05-18-tier-system-additive.sql` (327 lines).
+
+#### `social_user_type` ENUM extended
+Before: `{PUBLIC, CREATOR, HOTEL}`. After: `{PUBLIC, VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR, CREATOR, HOTEL}`. Order preserved per `AFTER` clauses in `ALTER TYPE`. Existing rows untouched.
+
+#### `social_profiles` — one new column
+- `tier_promoted_at TIMESTAMPTZ` (nullable) — set whenever `user_type` transitions PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR / CREATOR. NULL for the 33+ existing rows.
+
+#### `social_posts` — 15 new columns + 3 new CHECK constraints
+- **`moderation_status TEXT NOT NULL DEFAULT 'APPROVED'`** — CHECK IN 7 values: PENDING_HOTEL_APPROVAL / **PENDING_ADMIN_REVIEW** / APPROVED / AUTO_APPROVED / REJECTED / FLAGGED / DELETED. All 33 existing posts auto-defaulted to APPROVED → zero visibility regression.
+- `booking_id TEXT` (nullable) — Verified Guest tie-back to bookings.id or bids.id.
+- `verification_method TEXT` (nullable) — CHECK IN: booking / location_otp / creator / hotel.
+- Hotel approval bookkeeping: `approved_at`, `approved_by`, `rejected_at`, `rejected_by`, `rejection_reason`, `auto_approved_at`.
+- **Admin approval lane** (Sachin's addition): `admin_reviewed_at`, `admin_reviewed_by`, `admin_review_decision` (CHECK IN approve|reject), `admin_review_notes`, `escalated_to_admin_at`, `escalated_by` (user_id or `'cron'`).
+
+#### NEW `location_verifications` table
+For Community Contributor OTP flow. Columns: id, user_id, hotel_id, device_lat/lng, device_accuracy_m, hotel_lat/lng (snapshotted), distance_m (haversine), status (CHECK IN OTP_SENT/VERIFIED/CONSUMED/EXPIRED/FAILED), otp_hash, otp_sent_at, otp_attempts, verified_at, used_for_post_id, expires_at (default `now() + 15 min`), created_at. 3 indexes including a partial on actively-pending OTPs.
+
+#### NEW `inspiration_nudges` table
+For Section 5 nudge + reward tracking. Columns: id, user_id, booking_id, hotel_id, nudge_type (CHECK IN post_stay_share/view_milestone/first_post_completion), status (CHECK IN SENT/CLICKED/POSTED/REWARDED/EXPIRED), reward_kind, reward_amount_inr, reward_credited_at, reference_post_id, metadata JSONB, created_at, updated_at. UNIQUE idempotency index on `(user_id, COALESCE(booking_id, ''), nudge_type)`. `updated_at` auto-touch trigger via `fn_inspiration_nudges_touch_updated_at()`.
+
+#### `wallet_credit_history` — idempotency unique index
+`uniq_wch_idempotency` UNIQUE partial index on `(user_id, source_type, source_id) WHERE source_id IS NOT NULL`. Pre-flight verified zero duplicates → safe. Phase 6 cron will use this for double-credit prevention.
+
+#### RLS on new tables
+Both `location_verifications` + `inspiration_nudges` get permissive `FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)` policies — matches `2026-05-13-rls-everywhere.sql` precedent.
+
+### 4.2 — Indexes created (11 total)
+- `idx_social_posts_pending_for_hotel` — Pending Reviews dashboard query
+- `idx_social_posts_pending_age` — cron auto-approve sweep
+- `idx_social_posts_pending_admin` — admin Pending Admin Review queue
+- `idx_social_posts_booking` — booking → posts lookup
+- `idx_locv_user_created` — Community Contributor history view
+- `idx_locv_hotel` — hotel-side audit lookups
+- `idx_locv_pending` (partial) — actively-pending OTP lookup
+- `idx_insp_user_created` — user's nudge history
+- `idx_insp_status_type` — cron status/type filter
+- `uniq_insp_user_booking_type` (unique) — nudge idempotency
+- `uniq_wch_idempotency` (unique partial) — wallet credit idempotency
+
+### 4.3 — Verification queries (all passed)
+```sql
+-- ENUM: {PUBLIC, VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR, CREATOR, HOTEL} ✓
+-- social_posts existing default: total=33, approved=33 ✓
+-- New tables exist ✓
+-- All 11 indexes created ✓
+-- All 6 new CHECK constraints in place ✓
+-- RLS ON on both new tables ✓
+```
+
+### 4.4 — Advisor warnings (3 new, all accepted)
+Phase 1 added exactly 3 new warnings from Supabase's security advisor, all matching existing codebase patterns:
+1. `inspiration_nudges_all_anon` RLS allows unrestricted access — matches every other table.
+2. `location_verifications_all_anon` RLS allows unrestricted access — matches every other table.
+3. `fn_inspiration_nudges_touch_updated_at()` has mutable `search_path` — matches every other trigger function.
+
+Fixing these would require rethinking the project-wide anon-permissive access pattern. **Accepted as-is** to stay consistent. Total project advisor count: 127 WARN + 2 INFO (vast majority pre-existing).
+
+### 4.5 — What still needs Phase 2+ to be usable
+
+The schema is in place but no application code touches it yet. The new enum values exist but no row uses them yet (`social_profiles.user_type` for existing rows = whatever it was before Phase 1). The new columns are queryable but no read/write path exists in `app/api/*` yet. Phase 2 brings the routes.
+
+### 4.6 — Updated phase tracker
+- [x] Self-Discovery (commits `3bfb0ef`, original CLAUDE.md append)
+- [x] Phase 0 — Lock decisions (commit `4511d66`)
+- [x] Phase 1 — Schema applied (commits `04af7de` + `cfa542c` + migration applied to Supabase)
+- [ ] **Phase 2** — Next.js API endpoints (~10-13 new routes) ← next on `continue`
+- [ ] Phase 3 — Location OTP wiring (Sachin paste-pending on Railway)
+- [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit (Sachin paste-pending on Railway templates)
+- [ ] Phase 7 — Creator auto-promote + admin-review detection
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 2 — Next.js API endpoints.**
 
