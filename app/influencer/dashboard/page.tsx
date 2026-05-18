@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
+// v142 — Phase-6 creator hub tour. 4 steps: tier → KPIs → KYC → commissions.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 const inr = (n: number) => "₹" + (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
@@ -17,6 +19,9 @@ export default function InfluencerDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [recent, setRecent] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // v142 — Phase 6 creator hub tour. delayMs:1500 so /api/influencer/me +
+  // earnings + recent commissions all populate before fire.
+  usePageTour("influencer", "influencer", { delayMs: 1500 });
 
   useEffect(() => {
     api.getMyInfluencer()

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
+// v142 — Phase-6 saved tour. 3 steps: filter tabs → grid → tip.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 type Tab = "all" | "video" | "hotel" | "influencer" | "deal";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -30,6 +32,9 @@ export default function SavedPage() {
   const [tab, setTab]         = useState<Tab>("all");
   const [saves, setSaves]     = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // v142 — Phase 6 saved tour. delayMs:1300 so /api/discover/saves
+  // populates before fire.
+  usePageTour("saved", "saved", { delayMs: 1300 });
 
   useEffect(() => {
     if (authLoading) return;

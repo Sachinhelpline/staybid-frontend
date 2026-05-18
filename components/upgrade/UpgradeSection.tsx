@@ -243,6 +243,9 @@ function UpgradeCard({
 
   return (
     <div
+      // v139 — data-tour anchor so the Phase-2 spotlight tour for /upgrade
+      // can target each path card independently (creator vs hotel).
+      data-tour={isCreatorCard ? "upgrade-creator" : "upgrade-hotel"}
       className={`card-luxury ${variant === "compact" ? "p-4" : "p-5"} flex flex-col`}
       style={{
         background: alreadyMine
@@ -280,6 +283,11 @@ function UpgradeCard({
       <button
         onClick={onAction}
         disabled={blocked || alreadyMine}
+        // v140.1 — data-tour anchor for the Phase-3 earn tour step 3
+        // (Apply CTA inside the creator card). Distinct from the
+        // card-level data-tour="upgrade-creator" so the tour can
+        // spotlight the button precisely.
+        data-tour={`upgrade-${kind}-apply`}
         className="btn-luxury py-2.5 rounded-xl font-bold mt-auto disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
         {alreadyMine

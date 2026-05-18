@@ -13,6 +13,9 @@ import {
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import BookingChat from "@/components/BookingChat";
 import ModalCloseButton from "@/components/ModalCloseButton";
+// v141 — Phase-5 bookings tour. 3 steps: booking card → StayPoints →
+// chat with hotel.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
   PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
@@ -635,6 +638,9 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading]   = useState(true);
+  // v141 — Phase 5 — bookings tour. delayMs:1400 so /api/bookings/my
+  // populates at least one .card-luxury before fire.
+  usePageTour("bookings", "bookings", { delayMs: 1400 });
 
   useEffect(() => {
     if (authLoading) return;

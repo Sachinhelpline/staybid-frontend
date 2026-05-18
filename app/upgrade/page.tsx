@@ -7,9 +7,17 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
+// v139 — Phase-3 earn tour. 3 steps walk through Creator path + Hotel
+// Partner path + how to apply. Uses data-tour="upgrade-{creator,hotel}"
+// anchors injected on UpgradeCard.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 export default function UpgradePage() {
   const { user, loading: authLoading } = useAuth();
+  // Only fire when user is signed in — UpgradeCard renders behind the
+  // auth gate otherwise. usePageTour internally polls for the selector
+  // so a brief delay during auth hydration is fine.
+  usePageTour("earn", "earn", { delayMs: 1100, manual: !user });
 
   if (authLoading) {
     return (

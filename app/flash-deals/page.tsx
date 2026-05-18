@@ -8,6 +8,8 @@ import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 // v129 — every flash-deal price is a ₹100 multiple. Same rule as the
 // Negotiate slider, /bid presets, and partner counter slider.
 import { snap100 } from "@/lib/price-snap";
+// v139 — Phase-3 flash deals spotlight tour (3 steps: ticker → card → CTA).
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -105,6 +107,9 @@ function FlashDealsContent() {
   const searchParams = useSearchParams();
   const [deals, setDeals]     = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  // v139 — Tutorial Layer 2 — flash deals tour. Delay 1100ms so the
+  // ticker animates in + at least one .fd-card renders before fire.
+  usePageTour("flash", "flash", { delayMs: 1100 });
   const [city, setCity]       = useState(searchParams.get("city") || "");
   const [now, setNow]         = useState(Date.now());
   const [openId, setOpenId]   = useState<string | null>(null);

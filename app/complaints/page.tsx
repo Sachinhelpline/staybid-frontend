@@ -16,6 +16,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import ModalCloseButton from "@/components/ModalCloseButton";
+// v142 — Phase-6 complaints tour. 3 steps: new CTA → faster routes → list.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 type Complaint = {
   id: string;
@@ -78,6 +80,8 @@ function ComplaintsInner() {
   const [list, setList] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
+  // v142 — Phase 6 complaints tour. delayMs:1100.
+  usePageTour("complaints", "complaints", { delayMs: 1100 });
   const prefilledBookingId = params?.get("bookingId") || "";
   const prefilledHotelId   = params?.get("hotelId")   || "";
 

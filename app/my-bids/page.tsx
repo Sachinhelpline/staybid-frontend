@@ -20,6 +20,9 @@ import { CountUp } from "@/components/CountUp";
 // back from the message field as chip pills.
 import { snap100 } from "@/lib/price-snap";
 import { parseAddons } from "@/lib/counter-addons";
+// v141 — Phase-5 my-bids tour. 4 steps: card → status → actions →
+// auto-accept countdown.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
   PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
@@ -45,6 +48,9 @@ export default function MyBidsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [bids, setBids] = useState<any[]>([]);
+  // v141 — Phase 5 — my-bids tour. delayMs:1500 so async bids list
+  // renders at least one .glass-card before fire.
+  usePageTour("mybids", "mybids", { delayMs: 1500 });
   const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");

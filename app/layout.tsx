@@ -1,4 +1,7 @@
 ﻿import "./globals.css";
+// v142 — driver.js base CSS (Tutorial Layer 2 spotlight tours). The
+// cozy palette overrides live in globals.css after this import.
+import "driver.js/dist/driver.css";
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/lib/auth";
 import { TierProvider } from "@/lib/tier-store";
@@ -6,6 +9,9 @@ import { SoundProvider } from "@/lib/sound-store";
 import { FollowProvider } from "@/lib/follow-store";
 import { PostsProvider } from "@/lib/posts-store";
 import { ThemeProvider } from "@/lib/theme-store";
+import { TutorialProvider } from "@/lib/tutorial/tutorial-store";
+import { WelcomeStory } from "@/components/tutorial/WelcomeStory";
+import { TutorialHelpButton } from "@/components/tutorial/TutorialHelpButton";
 import { Navbar } from "@/components/Navbar";
 // DialerNav (left-edge crown wheel) was retired in v80 — the BottomDock
 // now owns primary navigation on every customer-facing page.
@@ -160,6 +166,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SoundProvider>
            <FollowProvider>
             <PostsProvider>
+            {/* v142 — Tutorial Layer 1 (Welcome Story) foundation.
+                Provider exposes lang (en/hi), seen-flags, replay API.
+                <WelcomeStory /> auto-fires 1.2s after first launch on
+                customer pages (skips /admin /partner /onboard /auth).
+                Phase 2 (per-page spotlight tours) + Phase 4 (help "?"
+                button) will plug into the same provider. */}
+            <TutorialProvider>
             <AutoNextMount />
             <ServerStatus />
             <Navbar />
@@ -176,7 +189,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v137</div>
+            {/* Welcome Story portal-mounted to document.body. */}
+            <WelcomeStory />
+            {/* v142 — Floating "?" help button (Tutorial Layer 3).
+                Self-hides on /admin, /partner, /onboard, /auth.
+                Hidden while any tour is actively running. */}
+            <TutorialHelpButton />
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v142</div>
+            </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
           </SoundProvider>
@@ -196,7 +216,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v137-transactional-content-pages-animations";
+var SB_BUILD="v142-phase6-account-creator-support-tours";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
