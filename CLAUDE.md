@@ -5096,7 +5096,7 @@ npx tsc --noEmit --skipLibCheck   # only pre-existing tsconfig deprecation; zero
 - [x] Phase 0 — Lock decisions
 - [x] Phase 1 — Schema applied
 - [x] **Phase 2 — API endpoints** (this section)
-- [ ] Phase 3 — Location OTP Railway wiring ← Sachin paste-pending
+- [x] Phase 3 — Location OTP frontend wiring (paste-ready Railway doc shipped, awaiting Sachin's paste). See Section 6.
 - [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
 - [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
 - [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
@@ -5106,4 +5106,54 @@ npx tsc --noEmit --skipLibCheck   # only pre-existing tsconfig deprecation; zero
 ---
 
 **Awaiting Sachin's `continue` to start Phase 3 — Location OTP wiring.** Phase 3 is the first phase that needs Sachin's hands on the Railway repo: I will produce paste-ready TypeScript handler code for `/api/auth/send-location-otp`. Once pasted + redeployed, the frontend's `/api/verify/location/send-otp` will start dispatching real SMS via MSG91 (or WhatsApp / SendGrid, whichever Sachin's Railway has wired). Until then, dev-mode OTP fallback keeps the Phase 4 frontend usable.
+
+---
+
+## Phase 3 — Location OTP wiring (2026-05-18)
+
+### 6.1 — What landed in this repo
+- **`docs/RAILWAY_LOCATION_OTP_PASTE.md`** — paste-ready TypeScript handler for `Sachinhelpline/staybid-Live` (Railway). Documents: endpoint signature, message template, MSG91-vs-WhatsApp choice, test curl, dev_otp fallback behavior.
+- **`lib/api.ts`** — 5 new client methods added (additive append, zero existing methods touched):
+  - `api.getMyTier()` → `GET /api/me/tier`
+  - `api.getEligibleBookings()` → `GET /api/me/eligible-bookings`
+  - `api.uploadVerifiedGuestPost(data)` → `POST /api/social/posts/verified-guest`
+  - `api.uploadCommunityPost(data)` → `POST /api/social/posts/community`
+  - `api.sendLocationOtp(data)` → `POST /api/verify/location/send-otp`
+  - `api.verifyLocationOtp(data)` → `POST /api/verify/location/verify-otp`
+
+### 6.2 — Frontend behavior in the gap (before Sachin pastes)
+The Phase 2 `/api/verify/location/send-otp` route handles Railway's absence gracefully:
+- Frontend POST → Phase 2 route inserts `location_verifications` row + hashes OTP
+- Phase 2 route forwards `(phone, otp, hotelName)` to Railway `/api/auth/send-location-otp`
+- Railway returns 404 → response includes `"dispatched": false`, `"dispatch_error": "Railway endpoint not yet live"`, AND (in non-production only) `"dev_otp": "<the OTP>"`
+- Phase 4 UI can display the dev_otp for testing OR proceed straight to verify-otp step
+
+In production with no Railway paste: response simply lacks `dev_otp` → user has no path forward → upgrade-choice screen shows "Location verification not yet available" message (Phase 4 will handle this gracefully).
+
+### 6.3 — What Sachin's Railway paste does
+The Railway endpoint is a **stateless dispatcher**. No DB writes. No Redis. No JWT. Body: `{ phone, otp, hotelName }`. Calls existing MSG91 / WhatsApp helper. Returns `{ ok: true }`.
+
+The doc recommends WhatsApp-first (no DLT approval required) with an optional follow-up SMS template (DLT-approved). Once pasted + Railway redeployed, no frontend change required — `dispatched: true` starts flowing in responses automatically.
+
+### 6.4 — Things to avoid for the Railway paste (documented inline in the doc too)
+- Don't store the OTP on Railway. Supabase `location_verifications` already has the SHA-256 hash; verify-OTP doesn't touch Railway at all.
+- Don't re-verify the customer's auth or geofence on Railway. Frontend already did both before forwarding.
+- Don't issue a JWT in the response. This is a dispatcher, not a login endpoint.
+- Don't add Redis throttling. Supabase's `idx_locv_pending` partial index already supports unique-per-pending-OTP semantics.
+
+### 6.5 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Frontend wiring + Railway paste-ready doc (this section)
+- [ ] **Phase 4** — Frontend Create-flow gate + tier badge + inspiration banner ← next on `continue`
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner.** Phase 4 is the first user-visible change in this migration: the `+` FAB in `<InstagramHotelFeed>` will start showing the upgrade-choice screen for PUBLIC users with no eligible booking + no active location verification. Public users with EITHER will tap straight into the CreateSheet flow.
 

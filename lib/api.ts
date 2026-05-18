@@ -338,4 +338,67 @@ export const api = {
 
   getFeedbackState: (bookingId: string) =>
     fetch(`/api/feedback/submit?bookingId=${encodeURIComponent(bookingId)}`).then(r => r.json()),
+
+  // 2-Tier System — Phase 2 endpoints (additive; never replaces existing api methods)
+  getMyTier:               () => direct("/api/me/tier"),
+  getEligibleBookings:     () => direct("/api/me/eligible-bookings"),
+
+  uploadVerifiedGuestPost: (data: {
+    bookingId: string;
+    hotelId: string;
+    mediaType: "PHOTO" | "REEL" | "STORY";
+    mediaUrl: string;
+    thumbnailUrl?: string;
+    caption?: string;
+    soundTrack?: string;
+    soundUrl?: string;
+    locationName?: string;
+    locationLat?: number;
+    locationLng?: number;
+    clientPostId?: string;
+    highlightKey?: string;
+    filter?: string;
+  }) =>
+    direct("/api/social/posts/verified-guest", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  uploadCommunityPost: (data: {
+    hotelId: string;
+    locationVerificationId: string;
+    mediaType: "PHOTO" | "REEL" | "STORY";
+    mediaUrl: string;
+    thumbnailUrl?: string;
+    caption?: string;
+    soundTrack?: string;
+    soundUrl?: string;
+    locationName?: string;
+    locationLat?: number;
+    locationLng?: number;
+    clientPostId?: string;
+    highlightKey?: string;
+    filter?: string;
+  }) =>
+    direct("/api/social/posts/community", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  sendLocationOtp: (data: {
+    hotelId: string;
+    deviceLat: number;
+    deviceLng: number;
+    deviceAccuracyM?: number;
+  }) =>
+    direct("/api/verify/location/send-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  verifyLocationOtp: (data: { verificationId: string; otp: string }) =>
+    direct("/api/verify/location/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
