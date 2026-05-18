@@ -4893,3 +4893,50 @@ None for Phase 0-2. For Phase 3 (SMS OTP), if frontend MSG91 helper path: no new
 
 End of Self-Discovery. Awaiting Sachin's `continue` + answers to Section 2.11 questions before starting Phase 0.
 
+---
+
+## Phase 0 — Locked Decisions (2026-05-18)
+
+Sachin responded `continue` after reviewing the Self-Discovery summary. Without overriding any specific item, this is interpreted as silent acceptance of the recommended defaults from Section 2.11. The decisions below are now **locked** and treated as the source of truth for Phases 1-8. Any later override from Sachin will be added inline below with a dated note.
+
+### 3.1 — Locked answers to Section 2.11
+
+| # | Question | **Locked decision** | Phase that consumes this |
+|---|---|---|---|
+| 1 | Tier dimension placement | **Option A** — extend `social_user_type` ENUM with `VERIFIED_GUEST` + `COMMUNITY_CONTRIBUTOR` via `ALTER TYPE ... ADD VALUE IF NOT EXISTS`. Add `social_profiles.tier_promoted_at TIMESTAMPTZ` for audit. ADMIN derived at read-time from `users.role`. **No new `users.content_tier` column.** | Phase 1 |
+| 2 | Location OTP SMS provider | **Option (a)** — new Railway endpoint `/api/auth/send-location-otp` + `/api/auth/verify-location-otp`. **⚠ SACHIN ACTION PENDING at Phase 3 boundary:** I will hand Sachin paste-ready code for Railway repo. The frontend Phase 2 endpoints will call these via `/api/proxy/*`. | Phase 3 |
+| 3 | Booking "completed" rule | `(bookings.status='CHECKED_OUT' OR bids.status='CHECKED_OUT') AND checkOut < NOW() AND checkOut > NOW() - INTERVAL '90 days'`. Customer normalized via `resolveUserIds()`. No payment-status check (out of scope — Razorpay refunds would not roll back the stay). | Phase 2 |
+| 4 | Pending Reviews dashboard home | **In-repo `app/partner/*`** at `staybids.in/partner/dashboard` (new tab inside existing dashboard). The external `staybid-hotel-panel.vercel.app` is untouched. | Phase 5 |
+| 5 | Inspiration banner placement | **Both surfaces.** (a) Post-payment success modal on `/hotels/[id]` gets a small inline banner. (b) `/bookings` list page gets a persistent dismissible card above the booking list. Both link to the create flow. | Phase 4 |
+| 6 | Existing creator pathway co-existence | **Parallel run confirmed.** The `/upgrade` form-based application (`influencers.status='pending'` → admin approval) stays untouched. New Section 4.5 paths (Type A auto-promote VERIFIED_GUEST → CREATOR, Type B admin-review COMMUNITY_CONTRIBUTOR → CREATOR) run alongside. A user qualifying under multiple paths: **first-to-fire wins**, no merge. | Phase 7 |
+| 7 | Duplicate-video perceptual hash | **Defer.** Phase 6 ships manual-flag UI in the admin Pending Reviews surface only. Auto-dedup via perceptual hash is documented in Phase 8's "future work" section. | Phase 6 |
+| 8 | `hotel-videos` bucket status | **Treat `social-media` as canonical for ALL user-uploaded content.** No code path in this repo currently writes to `hotel-videos`. If Sachin's other tools/scripts still write there, this is independent of the tier system. Phase 2 reuses `social-media`. | Phase 2 |
+| 9 | New 4 tier-system crons on cron-job.org | **Confirmed.** Vercel cron 2-cap remains (`/api/cron/pricing` + `/api/cron/lifecycle`). 4 new crons all go to cron-job.org with `CRON_SECRET` Bearer auth: `/api/cron/auto-approve-content` (hourly), `/api/cron/post-stay-nudge` (daily), `/api/cron/view-milestone-rewards` (daily), `/api/cron/creator-upgrade-eval` (weekly). | Phase 6 + Phase 7 |
+| 10 | Railway-side notification drainer templates | **⚠ SACHIN ACTION PENDING at Phase 6 boundary:** new `template` string names (`tier_promoted`, `content_pending_approval`, `content_approved`, `content_rejected`, `post_stay_nudge`, `view_milestone_reward`, `creator_upgrade_eligible`) need recognition in Railway's notification drainer. I will hand Sachin paste-ready code at Phase 6. Until then, frontend INSERTs into `notification_queue` will queue but not deliver these new templates. | Phase 6 |
+
+### 3.2 — Two items needing Sachin's Railway-repo paste
+
+These are the ONLY two items I cannot complete from this frontend repo. They are clearly flagged so we don't hit surprises mid-phase:
+
+1. **Phase 3 — Railway OTP endpoints.** I will produce paste-ready TypeScript/Express handler code matching the existing `/api/auth/send-otp` + `/api/auth/verify-otp` style. Sachin pastes into `Sachinhelpline/staybid-Live` and redeploys Railway. Frontend Phase 2 has the proxy + UI ready waiting.
+2. **Phase 6 — Railway notification template handlers.** I will produce paste-ready template body strings (EN + Hinglish, SMS + WhatsApp + email channels) keyed by the 7 new `template` strings above. Sachin pastes into the notification drainer in `staybid-Live` and redeploys.
+
+If Sachin cannot or will not paste these at the boundaries, the affected flows will remain queued / unverified, but the rest of the system stays functional.
+
+### 3.3 — Out-of-band decisions made during Phase 0
+
+In addition to the 10 locked answers, three structural decisions were made silently during Self-Discovery that affect Phase 1's schema design. Capturing them here so they don't surprise later:
+
+1. **Two parallel follow tables (`social_follows` vs `user_follows`).** Both stay. Section 4.5 Type A auto-promote uses `social_follows` (newer, denormalized counts) for the "10000 followers" criterion. The older `user_follows` keyed against `influencers.id` is not touched.
+2. **`social_posts.is_active=TRUE` semantics preserved.** New `moderation_status` column ships with default `'APPROVED'` so EVERY existing row stays visible without backfill. The state machine only constrains new VERIFIED_GUEST + COMMUNITY_CONTRIBUTOR uploads.
+3. **PUBLIC user content visibility.** Existing posts in `social_posts` from PUBLIC-tier authors (the 33+ rows from pre-tier era) stay live exactly as today. No retro-tier-tagging. The tier gate applies only to NEW uploads after Phase 4 ships.
+
+### 3.4 — Phase 0 deliverables (this commit)
+
+- [x] CLAUDE.md Self-Discovery section appended (Section 2.x, prior commit `3bfb0ef`)
+- [x] CLAUDE.md Phase 0 locked decisions section appended (this commit)
+- [x] PR #38 opened as DRAFT for review
+- [x] No code, no schema, no env vars touched
+
+**Next:** awaiting Sachin's `continue` to start Phase 1 (additive schema migration). The Phase 1 deliverable will be a NEW file `migrations/2026-05-1?-tier-system-additive.sql` + a preview of every `ALTER`/`CREATE` statement posted to PR #38 for Sachin's review BEFORE I apply it via Supabase MCP to the live database.
+
