@@ -5496,10 +5496,146 @@ Adjust to taste; all three are safe to run more frequently — the idempotency g
 - [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
 - [x] Phase 5 — Moderation dashboards (partner tab + admin page)
 - [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
-- [ ] **Phase 7** — Creator auto-promote + admin-review eval ← next on `continue`
-- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+- [x] Phase 7 — Creator auto-promote + admin-review eval. See Section 10.
+- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch ← next on `continue`
 
 ---
 
 **Awaiting Sachin's `continue` to start Phase 7 — Creator auto-promote + admin-review eval.** Phase 7 will add the 4th cron (`/api/cron/creator-upgrade-eval`, weekly) that detects Type A auto-promote candidates (sustained engagement metrics) + Type B admin-review-required cases (raw follower count etc). Lands the entirely-new auto-promote path alongside the existing `/upgrade` form-based flow (which stays untouched per Phase 0 §3.1 lock).
+
+---
+
+## Phase 7 — Creator Auto-Promote + Admin-Review Eval (2026-05-18)
+
+Phase 7 ships the entirely-new auto-promotion path for VERIFIED_GUEST + COMMUNITY_CONTRIBUTOR users with sustained quality. Existing `/upgrade` form-based creator applications stay untouched — both flows now coexist in the same `influencers` table, distinguished by a new `application_source` column.
+
+### 10.1 — Schema additions (additive migration applied to Supabase)
+
+`migrations/2026-05-18-influencer-application-source.sql` — applied via MCP `apply_migration` on project `uxxhbdqedazpmvbvaosh`:
+
+```
+ALTER TABLE influencers
+  ADD COLUMN application_source TEXT NOT NULL DEFAULT 'form'
+  CHECK IN ('form', 'auto_eval', 'auto_promote');
+
+ALTER TABLE influencers
+  ADD COLUMN auto_eval_data JSONB;
+
+CREATE INDEX idx_influencers_application_source ON influencers
+  (application_source, status, created_at DESC);
+```
+
+Existing 3 rows defaulted to `application_source='form'`. Form-applicants visually identical to pre-Phase-7.
+
+### 10.2 — Cron endpoint added
+
+**`app/api/cron/creator-upgrade-eval/route.ts`** (~280 lines):
+- Fetches social_profiles where user_type ∈ {VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR}
+- Aggregates approved/rejected posts + total_views in the eval window (default 90 days)
+- Filters out users already in `influencers` (any status — form, auto_eval, auto_promote)
+- Categorizes remaining users into Type A or Type B
+
+**Type A — auto-promote criteria (defaults, tunable via env):**
+- `posts_approved >= 5` (CREATOR_AUTO_MIN_POSTS)
+- `posts_rejected == 0` — perfect-quality signal
+- `total_views >= 5000` (CREATOR_AUTO_MIN_VIEWS)
+
+**Type B — admin-review criteria (anyone NOT in Type A who shows engagement):**
+- `posts_approved >= 10` (CREATOR_ADMIN_MIN_POSTS), OR
+- `total_views >= 25000` (CREATOR_ADMIN_MIN_VIEWS), OR
+- `follower_count >= 5000` (CREATOR_ADMIN_MIN_FOLLOWERS)
+
+Hard cap 200 profiles per run. Schedule: weekly on cron-job.org.
+
+### 10.3 — Promotion helpers (`lib/tier/promote.ts`)
+
+Two new exported functions:
+
+**`autoPromoteToCreator(userId, profileId, currentTier, metrics)`** — Type A path:
+1. INSERT influencers row with `status='active'` + `application_source='auto_promote'` + `auto_eval_data: metrics`
+2. PATCH social_profiles → `user_type='CREATOR'` + `tier_promoted_at=NOW()` + `is_creator=true`
+3. Queue `tier_promoted` notification to user
+4. Idempotency: skips silently if influencers row already exists
+
+**`flagForCreatorAdminReview(userId, metrics)`** — Type B path:
+1. INSERT influencers row with `status='pending'` + `application_source='auto_eval'` + `auto_eval_data: metrics`
+2. Does NOT touch social_profiles (waits for admin approve)
+3. Queue `creator_upgrade_eligible` notification to sentinel `user_id='ADMIN'`
+4. Idempotency: same skip-if-exists guard
+
+Both Type A + Type B record the snapshot metrics in `auto_eval_data` JSONB so admin sees exactly WHY this candidate qualified.
+
+### 10.4 — Admin UI surfacing (additive, existing page)
+
+`app/admin/creators/page.tsx`:
+- New badge in the creator-detail drawer: distinguishes `auto_promote` (green, 🤖 icon) from `auto_eval` (amber, ⚠ icon). Form-applicants render exactly as today.
+- New metrics grid below the badge: posts_approved, posts_rejected, total_views, follower_count, approval_rate %, eval_window_days
+
+`app/api/admin/creators/route.ts`:
+- GET query updated to select `application_source` + `auto_eval_data` columns alongside existing fields. PostgREST select-only change, no functional impact for form-applicants.
+
+### 10.5 — Co-existence with existing `/upgrade` form (Phase 0 §3.1 first-to-fire-wins)
+
+- User opens `/upgrade` form, submits → INSERT influencers row with `application_source='form'`, `status='pending'`
+- Phase 7 cron later runs → tries to flag user → skip-if-exists guard returns `reason: "influencer row already exists"`
+- Admin reviews → approves → status='active'
+- Result: clean precedence. The first path that fires wins, the other is a no-op.
+
+If the cron runs BEFORE the user submits the form:
+- Cron auto-promotes → `application_source='auto_promote'`, `status='active'`
+- User later opens `/upgrade` → sees they're already a Creator (TierProvider surfaces it)
+
+### 10.6 — Cron schedule
+
+Vercel cron 2-slot is full + Phase 6 added 3 cron-job.org entries; Phase 7 adds the 4th:
+
+| Endpoint | Schedule | Cron expression (UTC) |
+|---|---|---|
+| `/api/cron/creator-upgrade-eval` | Weekly Sundays 04:00 IST | `30 22 * * 0` |
+
+Run frequency is intentionally conservative — once a week. Promoting to CREATOR is a meaningful trust signal; we'd rather under-promote than over-promote. Sachin can crank to daily later by changing cron-job.org config (no code redeploy needed — idempotency guards mean any frequency is safe).
+
+### 10.7 — Reel-dedup + existing creator engine — both unaffected
+
+- v131.8 reel-dedup chain: Phase 7 cron does NOT touch `social_posts.client_post_id`. Only reads aggregates.
+- Existing `lib/commission.ts` (slab-based 5/7/10/12% commission): Phase 7 inserts `influencers.status='active'` rows that the commission engine treats identically to form-applicants. Auto-promoted creators earn commissions on their referral codes + attributed bookings exactly as form-applicants do.
+- `/influencer/dashboard` + `/influencer/upload` + every creator-hub page: pulls from `influencers` via existing `useTier` / role probe — auto-promoted creators show up automatically.
+
+### 10.8 — Files added / modified
+
+**Added:**
+```
+migrations/2026-05-18-influencer-application-source.sql   # +application_source + auto_eval_data
+app/api/cron/creator-upgrade-eval/route.ts                # weekly cron (Type A + Type B logic)
+```
+
+**Modified (additive only):**
+```
+lib/tier/promote.ts          # +autoPromoteToCreator + flagForCreatorAdminReview helpers
+app/api/admin/creators/route.ts   # +application_source + auto_eval_data in GET select
+app/admin/creators/page.tsx       # +source badge + metrics grid (form-applicants unchanged)
+```
+
+### 10.9 — Verification
+- ✅ Migration applied to production Supabase; existing 3 rows default to `application_source='form'`
+- ✅ Index `idx_influencers_application_source` created
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0
+- ✅ Form-applicant rendering bit-identical to pre-Phase-7 (badge only renders when `application_source !== 'form'`)
+- ✅ Phase 6 idempotency pattern carried into Phase 7 (skip-if-exists guard before INSERT)
+
+### 10.10 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
+- [x] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch ← next on `continue`
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 8 — Smoke tests + rollback notes + soft launch prep.** Phase 8 is the final phase: writes a step-by-step manual smoke-test checklist for every tier-system flow (PUBLIC upload gate, Verified Guest path, hotel approve/reject/escalate, admin approve/reject/flag/delete, cron triggers, reward credits, auto-promote), plus rollback instructions per phase (how to revert Phase 7 schema, Phase 6 cron registrations, Phase 5 sidebar entry, etc.), plus a "ready-for-soft-launch" checklist Sachin can tick before flipping any user-visible feature live.
 
