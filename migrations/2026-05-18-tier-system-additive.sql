@@ -75,12 +75,13 @@ ALTER TABLE public.social_posts
 ALTER TABLE public.social_posts
   ADD CONSTRAINT social_posts_moderation_status_check
   CHECK (moderation_status IN (
-    'PENDING_HOTEL_APPROVAL',
-    'APPROVED',
-    'AUTO_APPROVED',
-    'REJECTED',
-    'FLAGGED',
-    'DELETED'
+    'PENDING_HOTEL_APPROVAL',  -- new upload waiting for hotel partner decision
+    'PENDING_ADMIN_REVIEW',    -- hotel or cron escalated to admin (borderline / dispute)
+    'APPROVED',                -- hotel partner explicitly approved
+    'AUTO_APPROVED',           -- cron auto-approved after hotel timeout
+    'REJECTED',                -- hotel partner or admin rejected
+    'FLAGGED',                 -- post-hoc admin flag (e.g. complaint after publish)
+    'DELETED'                  -- soft delete
   ));
 
 -- Tie the post to the booking that qualified the upload (Verified Guest path)
@@ -123,6 +124,32 @@ ALTER TABLE public.social_posts
 ALTER TABLE public.social_posts
   ADD COLUMN IF NOT EXISTS auto_approved_at TIMESTAMPTZ;
 
+-- Admin-approval escalation lane (Sachin's Phase 1 addition).
+-- A post enters PENDING_ADMIN_REVIEW when either:
+--   (a) the hotel partner explicitly escalates ("not sure, admin dekhe"), OR
+--   (b) the auto-approve cron escalates instead of auto-approving (admin
+--       policy can toggle this per-hotel later).
+-- Admins resolve via approve / reject with optional notes.
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS admin_reviewed_at      TIMESTAMPTZ;
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS admin_reviewed_by      TEXT;  -- users.id of admin
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS admin_review_decision  TEXT;  -- 'approve' | 'reject'
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS admin_review_notes     TEXT;
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS escalated_to_admin_at  TIMESTAMPTZ;
+ALTER TABLE public.social_posts
+  ADD COLUMN IF NOT EXISTS escalated_by           TEXT;  -- users.id (hotel partner or 'cron')
+
+ALTER TABLE public.social_posts
+  DROP CONSTRAINT IF EXISTS social_posts_admin_decision_check;
+ALTER TABLE public.social_posts
+  ADD CONSTRAINT social_posts_admin_decision_check
+  CHECK (admin_review_decision IS NULL
+         OR admin_review_decision IN ('approve', 'reject'));
+
 -- Index for hotel partner's Pending Reviews dashboard
 CREATE INDEX IF NOT EXISTS idx_social_posts_pending_for_hotel
   ON public.social_posts (hotel_id, created_at DESC)
@@ -132,6 +159,11 @@ CREATE INDEX IF NOT EXISTS idx_social_posts_pending_for_hotel
 CREATE INDEX IF NOT EXISTS idx_social_posts_pending_age
   ON public.social_posts (created_at)
   WHERE moderation_status = 'PENDING_HOTEL_APPROVAL';
+
+-- Index for admin's Pending Admin Review queue (cross-hotel)
+CREATE INDEX IF NOT EXISTS idx_social_posts_pending_admin
+  ON public.social_posts (created_at DESC)
+  WHERE moderation_status = 'PENDING_ADMIN_REVIEW';
 
 -- Index for booking → posts lookup (Verified Guest)
 CREATE INDEX IF NOT EXISTS idx_social_posts_booking
