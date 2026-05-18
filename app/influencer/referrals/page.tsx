@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 
 // v96 — Referrals page rebuild.
 // Old version only had a "Copy link" button. Creators kept asking how to
@@ -125,14 +126,17 @@ export default function InfluencerReferralsPage() {
 
   return (
     <div className="space-y-5 relative">
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Codes"       value={String(codes.length)} />
-        <Stat label="Clicks"      value={totalClicks.toLocaleString("en-IN")} />
-        <Stat label="Conversion"  value={cvr} />
+      <div className="grid grid-cols-3 gap-3 sb-stagger">
+        <Stat label="Codes"           rawValue={codes.length} />
+        <Stat label="Clicks"          rawValue={totalClicks} />
+        <Stat label="Conversion"      formatted={cvr} />
       </div>
 
-      <div className="card-luxury p-5">
-        <h2 className="font-bold text-luxury-900 mb-3">Create New Referral Link</h2>
+      <div className="card-luxury sb-card-lift sb-fade-in p-5" style={{ animationDelay: "0.1s" }}>
+        <h2 className="font-bold text-luxury-900 mb-3 inline-flex items-center gap-2">
+          <span className="sb-pulse-dot is-warn" />
+          Create New Referral Link
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           <input value={label} onChange={(e) => setLabel(e.target.value)}
             placeholder="Label (e.g. Instagram Story)" className="input-luxury w-full" />
@@ -140,8 +144,8 @@ export default function InfluencerReferralsPage() {
             placeholder="Hotel ID (optional — leave blank for general)" className="input-luxury w-full" />
         </div>
         <button onClick={create} disabled={creating}
-          className="btn-luxury px-5 py-2.5 rounded-xl font-bold disabled:opacity-50">
-          {creating ? "Creating…" : "Generate Code"}
+          className="btn-luxury sb-shimmer px-5 py-2.5 rounded-xl font-bold disabled:opacity-50 relative">
+          <span className="relative" style={{ zIndex: 2 }}>{creating ? "Creating…" : "Generate Code"}</span>
         </button>
         <p className="text-xs text-luxury-500 mt-2">
           Anyone who clicks your link, visits a hotel page within 30 days, and makes a booking is attributed to you automatically.
@@ -149,9 +153,9 @@ export default function InfluencerReferralsPage() {
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 sb-stagger">
         {codes.length === 0 ? (
-          <div className="card-luxury p-8 text-center text-luxury-500 text-sm">
+          <div className="card-luxury sb-card-lift p-8 text-center text-luxury-500 text-sm">
             No referral codes yet. Generate one above and start sharing.
           </div>
         ) : (
@@ -171,9 +175,9 @@ export default function InfluencerReferralsPage() {
         )}
       </div>
 
-      <div className="card-luxury p-5 bg-gradient-to-br from-luxury-50 to-white border-luxury-100">
+      <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-gradient-to-br from-luxury-50 to-white border-luxury-100" style={{ animationDelay: "0.2s" }}>
         <h3 className="font-bold text-luxury-900 mb-2">How to share</h3>
-        <ul className="text-sm text-luxury-700 space-y-1.5 leading-relaxed">
+        <ul className="text-sm text-luxury-700 space-y-1.5 leading-relaxed sb-stagger">
           <li>📲 <b>Native</b> — opens your phone's share sheet (Instagram, WhatsApp, Messages, Mail, etc.)</li>
           <li>💬 <b>WhatsApp</b> — pre-fills a message you can forward to any contact or group</li>
           <li>📸 <b>Instagram</b> — copies a caption with your link; paste it in your post, story, or bio</li>
@@ -209,7 +213,7 @@ function CodeCard({
   const supportsNative = useMemo(() => typeof navigator !== "undefined" && typeof (navigator as any).share === "function", []);
 
   return (
-    <div className="card-luxury p-4 md:p-5">
+    <div className="card-luxury sb-card-lift p-4 md:p-5">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -259,11 +263,15 @@ function ShareBtn({ onClick, bg, color, border, icon, label }: { onClick: () => 
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, rawValue, formatted }: { label: string; rawValue?: number; formatted?: string }) {
   return (
-    <div className="card-luxury p-4 text-center">
+    <div className="card-luxury sb-card-lift p-4 text-center">
       <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
-      <p className="font-display text-xl md:text-2xl font-bold text-luxury-900 mt-1 leading-none">{value}</p>
+      <p className="font-display text-xl md:text-2xl font-bold text-luxury-900 mt-1 leading-none">
+        {rawValue !== undefined
+          ? <CountUp value={rawValue} duration={900} />
+          : formatted}
+      </p>
     </div>
   );
 }

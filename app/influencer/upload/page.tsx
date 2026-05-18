@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 
 const SB_URL  = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
@@ -163,7 +164,7 @@ export default function UploadPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="card-luxury p-5">
+      <div className="card-luxury sb-card-lift sb-fade-in p-5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-display text-2xl font-bold text-luxury-900">Upload a Reel</h2>
@@ -174,7 +175,7 @@ export default function UploadPage() {
       </div>
 
       {/* Upload form */}
-      <form onSubmit={handleSubmit} className="card-luxury p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="card-luxury sb-card-lift sb-fade-in p-6 space-y-5" style={{ animationDelay: "0.1s" }}>
 
         {/* Video picker */}
         <div
@@ -262,20 +263,20 @@ export default function UploadPage() {
         <button
           type="submit"
           disabled={uploading || !videoFile}
-          className="btn-luxury w-full py-3 text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed">
-          {uploading ? "Uploading…" : "Upload Reel 🚀"}
+          className="btn-luxury sb-shimmer w-full py-3 text-base font-bold disabled:opacity-50 disabled:cursor-not-allowed relative">
+          <span className="relative" style={{ zIndex: 2 }}>{uploading ? "Uploading…" : "Upload Reel 🚀"}</span>
         </button>
       </form>
 
       {/* My uploads */}
       {myVideos.length > 0 && (
-        <div className="card-luxury p-5">
-          <h3 className="font-bold text-luxury-900 mb-4">My Reels ({myVideos.length})</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="card-luxury sb-card-lift p-5">
+          <h3 className="font-bold text-luxury-900 mb-4">My Reels (<CountUp value={myVideos.length} duration={700} />)</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sb-stagger">
             {myVideos.map((v: any) => {
               const badge = STATUS_BADGE[v.verification_status] || STATUS_BADGE.pending;
               return (
-                <div key={v.id} className="relative rounded-xl overflow-hidden bg-luxury-100 aspect-[9/16]">
+                <div key={v.id} className="relative rounded-xl overflow-hidden bg-luxury-100 aspect-[9/16] sb-card-lift">
                   {v.thumbnail_url
                     ? <img src={v.thumbnail_url} alt={v.title || "reel"} className="w-full h-full object-cover" />
                     : <video src={v.s3_url} className="w-full h-full object-cover" muted playsInline />}

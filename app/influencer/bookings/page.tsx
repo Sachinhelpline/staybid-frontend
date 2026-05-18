@@ -6,6 +6,7 @@
 // even before/after the user's influencer row was activated.
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CountUp } from "@/components/CountUp";
 import { api } from "@/lib/api";
 import { SOURCE_ICON, SOURCE_LABEL, SOURCE_COLOR, type AttributionSource } from "@/lib/attribution";
 
@@ -55,19 +56,19 @@ export default function InfluencerBookings() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card label="Bookings driven" value={String(totals.count)} sub={`${totals.count} attributions`} />
-        <Card label="GMV"              value={inr(totals.gmv)}      sub="Total paid by guests" />
-        <Card label="Commission"        value={inr(totals.commission)} accent="text-gold-700" sub="At 12% (Elite: 15%)" />
-        <Card label="Paid out"          value={inr(totals.paid)}     accent="text-emerald-700" sub="Cleared monthly" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sb-stagger">
+        <Card label="Bookings driven" rawValue={totals.count} sub={`${totals.count} attributions`} />
+        <Card label="GMV"              rawValue={totals.gmv}      prefix="₹" sub="Total paid by guests" />
+        <Card label="Commission"       rawValue={totals.commission} prefix="₹" accent="text-gold-700" sub="At 12% (Elite: 15%)" />
+        <Card label="Paid out"         rawValue={totals.paid}     prefix="₹" accent="text-emerald-700" sub="Cleared monthly" />
       </div>
 
-      <div className="card-luxury p-4">
+      <div className="card-luxury sb-card-lift p-4">
         <div className="flex items-center gap-3 mb-3 flex-wrap">
           <h3 className="font-bold text-luxury-900 mr-auto">Attributed bookings</h3>
           {(["all", "ACCEPTED", "PENDING", "COUNTER"] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all sb-card-lift ${
                 filter === f
                   ? "bg-gold-500 text-white border-gold-600"
                   : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
@@ -157,9 +158,9 @@ export default function InfluencerBookings() {
         )}
       </div>
 
-      <div className="card-luxury p-5">
+      <div className="card-luxury sb-card-lift p-5">
         <h3 className="font-bold text-luxury-900 mb-2">How attribution works</h3>
-        <ul className="text-sm text-luxury-600 space-y-1.5 leading-relaxed">
+        <ul className="text-sm text-luxury-600 space-y-1.5 leading-relaxed sb-stagger">
           <li>• Upload a reel and tag a hotel. Viewers who tap <strong>Book Now</strong> or <strong>Bid</strong> from your reel will be attributed to you.</li>
           <li>• Each attributed booking earns 12% commission at the Verified tier and 15% at the Elite tier.</li>
           <li>• Commissions appear here as <span className="text-amber-700 font-bold">pending</span> the moment a guest pays, and flip to <span className="text-emerald-700 font-bold">paid</span> after the monthly payout sweep.</li>
@@ -170,11 +171,13 @@ export default function InfluencerBookings() {
   );
 }
 
-function Card({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: string }) {
+function Card({ label, rawValue, prefix = "", sub, accent }: { label: string; rawValue: number; prefix?: string; sub?: string; accent?: string }) {
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <p className="text-[0.65rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
-      <p className={`font-display text-2xl font-bold mt-1 leading-none ${accent || "text-luxury-900"}`}>{value}</p>
+      <p className={`font-display text-2xl font-bold mt-1 leading-none ${accent || "text-luxury-900"}`}>
+        {prefix}<CountUp value={Number(rawValue) || 0} duration={900} />
+      </p>
       {sub && <p className="text-xs text-luxury-500 mt-1">{sub}</p>}
     </div>
   );

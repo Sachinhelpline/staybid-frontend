@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 
 const inr = (n: number) => "₹" + (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
@@ -44,41 +45,44 @@ export default function InfluencerDashboard() {
   return (
     <div className="space-y-5">
       {/* Hero status card */}
-      <div className="card-luxury p-6 relative overflow-hidden">
+      <div className="card-luxury sb-card-lift sb-fade-in p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-10"
           style={{ background: `radial-gradient(circle, ${tier.color}, transparent 70%)` }} />
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative">
           <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-luxury-500">Tier</p>
+            <p className="text-xs uppercase tracking-widest font-bold text-luxury-500 inline-flex items-center gap-1.5">
+              <span className="sb-pulse-dot" style={{ background: tier.color, boxShadow: `0 0 0 0 ${tier.color}55` }} />
+              Tier
+            </p>
             <p className="font-display text-3xl font-bold" style={{ color: tier.color }}>{tier.label}</p>
             <p className="text-luxury-500 text-sm mt-1">{tier.perks}</p>
           </div>
           <div className="text-right">
             <p className="text-xs uppercase tracking-widest font-bold text-luxury-500">Total Earnings</p>
-            <p className="font-display text-3xl font-bold text-gold-700">{inr(inf.total_earnings)}</p>
+            <p className="font-display text-3xl font-bold text-gold-700">₹<CountUp value={Number(inf.total_earnings) || 0} duration={1100} /></p>
             <p className="text-luxury-500 text-xs mt-1">Status: <span className="font-bold text-luxury-700 uppercase">{inf.status}</span></p>
           </div>
         </div>
       </div>
 
       {/* KPI grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KPI label="This Month" value={inr(stats?.derived?.monthlyCommission ?? 0)} sub={`${stats?.derived?.monthlyBookings ?? 0} bookings`} />
-        <KPI label="Pending Payout" value={inr(stats?.derived?.pendingCommission ?? 0)} sub="Cleared monthly" />
-        <KPI label="All-time Bookings" value={String(stats?.derived?.totalBookings ?? 0)} sub="Attributed to you" />
-        <KPI label="Followers" value={(inf.total_followers || 0).toLocaleString("en-IN")} sub="As declared" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sb-stagger">
+        <KPI label="This Month" rawValue={stats?.derived?.monthlyCommission ?? 0} prefix="₹" sub={`${stats?.derived?.monthlyBookings ?? 0} bookings`} />
+        <KPI label="Pending Payout" rawValue={stats?.derived?.pendingCommission ?? 0} prefix="₹" sub="Cleared monthly" />
+        <KPI label="All-time Bookings" rawValue={stats?.derived?.totalBookings ?? 0} sub="Attributed to you" />
+        <KPI label="Followers" rawValue={inf.total_followers || 0} sub="As declared" />
       </div>
 
       {/* KYC progress */}
-      <div className="card-luxury p-5">
+      <div className="card-luxury sb-card-lift p-5">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-luxury-900">KYC Verification</h3>
-          <span className="text-sm font-semibold text-luxury-600">{kycPct}%</span>
+          <span className="text-sm font-semibold text-luxury-600"><CountUp value={kycPct} duration={800} suffix="%" /></span>
         </div>
         <div className="w-full h-2 bg-luxury-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-gold-500 to-gold-400 transition-all" style={{ width: `${kycPct}%` }} />
+          <div className="h-full bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-700" style={{ width: `${kycPct}%` }} />
         </div>
-        <div className="grid grid-cols-2 gap-3 mt-4">
+        <div className="grid grid-cols-2 gap-3 mt-4 sb-stagger">
           <KycChip label="Aadhaar" done={inf.aadhaar_verified} />
           <KycChip label="PAN" done={inf.pan_verified} />
         </div>
@@ -90,7 +94,7 @@ export default function InfluencerDashboard() {
       </div>
 
       {/* Recent commissions */}
-      <div className="card-luxury p-5">
+      <div className="card-luxury sb-card-lift p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-luxury-900">Recent Commissions</h3>
           <Link href="/influencer/earnings" className="text-xs font-semibold text-gold-700 hover:text-gold-800">View all →</Link>
@@ -100,9 +104,9 @@ export default function InfluencerDashboard() {
             No commissions yet. Share your StayBid profile link to start earning.
           </p>
         ) : (
-          <div className="divide-y divide-luxury-100">
+          <div className="divide-y divide-luxury-100 sb-stagger">
             {recent.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2.5">
+              <div key={c.id} className="flex items-center justify-between py-2.5 transition-colors hover:bg-luxury-50/40">
                 <div className="text-sm">
                   <p className="font-semibold text-luxury-800">Hotel {String(c.hotel_id).slice(0, 8)}</p>
                   <p className="text-xs text-luxury-500">{new Date(c.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
@@ -120,11 +124,13 @@ export default function InfluencerDashboard() {
   );
 }
 
-function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function KPI({ label, rawValue, prefix = "", sub }: { label: string; rawValue: number; prefix?: string; sub?: string }) {
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <p className="text-[0.65rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
-      <p className="font-display text-2xl font-bold text-luxury-900 mt-1 leading-none">{value}</p>
+      <p className="font-display text-2xl font-bold text-luxury-900 mt-1 leading-none">
+        {prefix}<CountUp value={rawValue} duration={1000} />
+      </p>
       {sub && <p className="text-xs text-luxury-500 mt-1">{sub}</p>}
     </div>
   );
@@ -132,7 +138,7 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: string
 
 function KycChip({ label, done }: { label: string; done: boolean }) {
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${done ? "bg-emerald-50 border-emerald-200" : "bg-luxury-50 border-luxury-200"}`}>
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border sb-card-lift ${done ? "bg-emerald-50 border-emerald-200" : "bg-luxury-50 border-luxury-200"}`}>
       <span className="text-lg">{done ? "✅" : "⏳"}</span>
       <div>
         <p className="text-sm font-bold text-luxury-800">{label}</p>

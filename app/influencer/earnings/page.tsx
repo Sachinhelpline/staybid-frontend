@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 
 const inr = (n: number) => "₹" + (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
@@ -56,10 +57,10 @@ export default function InfluencerEarningsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-3">
-        <Card label="Pending" value={inr(totals.pending)} accent="text-amber-700" />
-        <Card label="Paid"    value={inr(totals.paid)}    accent="text-emerald-700" />
-        <Card label="Total"   value={inr(totals.total)}   accent="text-gold-700" />
+      <div className="grid grid-cols-3 gap-3 sb-stagger">
+        <Card label="Pending" rawValue={totals.pending} accent="text-amber-700" />
+        <Card label="Paid"    rawValue={totals.paid}    accent="text-emerald-700" />
+        <Card label="Total"   rawValue={totals.total}   accent="text-gold-700" />
       </div>
 
       {/* v105.2 — Commission Structure: shows live slab + rate + projection */}
@@ -67,10 +68,10 @@ export default function InfluencerEarningsPage() {
         <CommissionStructure data={commission} />
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 sb-fade-in" style={{ animationDelay: "0.15s" }}>
         {(["all", "pending", "paid"] as Filter[]).map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize sb-card-lift ${
               filter === f ? "bg-gold-500 text-white border-gold-600" : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
             }`}>
             {f}
@@ -78,7 +79,7 @@ export default function InfluencerEarningsPage() {
         ))}
       </div>
 
-      <div className="card-luxury p-0 overflow-hidden">
+      <div className="card-luxury sb-card-lift p-0 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-luxury-500 text-sm">Loading…</div>
         ) : list.length === 0 ? (
@@ -122,11 +123,13 @@ export default function InfluencerEarningsPage() {
   );
 }
 
-function Card({ label, value, accent }: { label: string; value: string; accent: string }) {
+function Card({ label, rawValue, accent }: { label: string; rawValue: number; accent: string }) {
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <p className="text-[0.65rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
-      <p className={`font-display text-xl md:text-2xl font-bold mt-1 leading-none ${accent}`}>{value}</p>
+      <p className={`font-display text-xl md:text-2xl font-bold mt-1 leading-none ${accent}`}>
+        ₹<CountUp value={Number(rawValue) || 0} duration={1000} />
+      </p>
     </div>
   );
 }
@@ -143,12 +146,15 @@ function CommissionStructure({ data }: { data: CommissionData }) {
     : -1;
 
   return (
-    <div className="card-luxury p-5 bg-gradient-to-br from-gold-50/30 to-white border-gold-300/40">
+    <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-gradient-to-br from-gold-50/30 to-white border-gold-300/40" style={{ animationDelay: "0.1s" }}>
       <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-widest font-bold text-gold-700">Your Commission</p>
+          <p className="text-[0.65rem] uppercase tracking-widest font-bold text-gold-700 inline-flex items-center gap-1.5">
+            <span className="sb-pulse-dot is-warn" />
+            Your Commission
+          </p>
           <h2 className="font-display text-xl font-bold text-luxury-900 mt-0.5">
-            {snapshot.totalPct.toFixed(0)}% per booking
+            <CountUp value={Math.round(snapshot.totalPct)} duration={900} suffix="% per booking" />
             {snapshot.loyaltyPct > 0 && (
               <span className="text-[0.7rem] font-bold ml-2 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 align-middle">
                 +{snapshot.loyaltyPct}% loyalty
@@ -187,6 +193,7 @@ function CommissionStructure({ data }: { data: CommissionData }) {
       {/* Slab ladder */}
       <div className="space-y-1.5">
         <p className="text-[0.65rem] uppercase tracking-widest font-bold text-luxury-500 mb-1">Slab Ladder</p>
+        <div className="sb-stagger space-y-1.5">
         {slabs.map((s, i) => {
           const isActive = i === currentSlabIndex;
           return (
@@ -204,10 +211,11 @@ function CommissionStructure({ data }: { data: CommissionData }) {
               <span className={`font-mono ${isActive ? "text-gold-900" : "text-luxury-600"}`}>
                 {s.pct}%
               </span>
-              {isActive && <span className="text-[0.6rem] font-bold uppercase text-emerald-700">Active</span>}
+              {isActive && <span className="text-[0.6rem] font-bold uppercase text-emerald-700 inline-flex items-center gap-1"><span className="sb-pulse-dot" />Active</span>}
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Loyalty bonus row */}
