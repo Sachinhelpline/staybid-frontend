@@ -5177,7 +5177,7 @@ the public→content user under Option A.
 - [x] Phase 1 — Schema applied
 - [x] Phase 2 — API endpoints
 - [x] Phase 3 — Frontend wiring + Railway paste-ready doc + feature flag (Option A)
-- [ ] **Phase 4** — Frontend Create-flow gate + tier badge + inspiration banner ← next on `continue`
+- [x] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner. See Section 7.
 - [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
 - [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
 - [ ] Phase 7 — Creator auto-promote + admin-review eval
@@ -5186,4 +5186,95 @@ the public→content user under Option A.
 ---
 
 **Awaiting Sachin's `continue` to start Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner.** Phase 4 is the first user-visible change in this migration: the `+` FAB in `<InstagramHotelFeed>` will start showing the upgrade-choice screen for PUBLIC users with no eligible booking + no active location verification. Public users with EITHER will tap straight into the CreateSheet flow.
+
+---
+
+## Phase 4 — Frontend Create-flow Gate + Tier Badge + Inspiration Banner (2026-05-18)
+
+Phase 4 ships the first user-visible change in the migration. PUBLIC users with no upload eligibility now see the upgrade-choice sheet when they tap the `+` FAB; PUBLIC users with eligible bookings (and any non-PUBLIC tier) keep the existing flow unchanged.
+
+### 7.1 — Components added (3 new files, all under `components/tier/`)
+- **`components/tier/TierBadge.tsx`** — small inline pill, 3 sizes (`xs/sm/md`), glyphOnly mode. Maps 5 non-PUBLIC tiers to glyph + label + color. **PUBLIC renders null** per Sachin's clarification — existing UX unchanged.
+- **`components/tier/InspirationBanner.tsx`** — "Share your trip" nudge. Two variants: `modal` (compact inline, used inside the booking-confirmed success modal) + `card` (full-width sticky, used on `/bookings` list). Per-(user, booking, variant) dismiss via localStorage. Routes into `/discover#create` on tap.
+- **`components/tier/UpgradeChoiceSheet.tsx`** — full upgrade picker. Two cards: Verified Guest (booking-based, ALWAYS interactive when `eligibleBookingsCount > 0`) + Verified Local (location-OTP, **gated by `locationOtpEnabled`**; renders "Coming Soon" pill + disabled when false per Phase 3 Option A). Verified Guest path opens BookingPicker step which fetches `/api/me/eligible-bookings` and lets the user pick a stay.
+
+### 7.2 — Additive edits to existing files
+
+**`components/discover/CreateFlow.tsx`** (3 small additive blocks):
+- New exported type `ComposerTierContext` — discriminated union for the two new paths
+- `<Composer>` gets optional `tierContext` prop; `runUpload` reads it and branches the POST endpoint to `/api/social/posts/verified-guest` or `/api/social/posts/community` when set. When undefined (default), behavior is byte-identical to pre-Phase-4 — same `/api/social/posts` route.
+- `<CreateFlow>` controller gets 3 optional props: `onFabClick` (intercept the + tap), `tierContext` (forward to Composer), `composerOpen` + `composerKind` + `onComposerClose` (controlled-composer mode — lets the parent open Composer directly after the user picks a tier path, skipping the CreateSheet chooser).
+- `runUpload`'s `useCallback` deps array now includes `tierContext` so the captured value stays fresh.
+
+**`components/discover/InstagramHotelFeed.tsx`**:
+- Imports added: `UpgradeChoiceSheet`, `TierContext`, `MyTierResponse`, `ComposerTierContext`.
+- New state: `tierSnapshot`, `upgradeOpen`, `tierContext`, `pickedComposerOpen` — all initialized lazily on first FAB tap.
+- `<CreateFlow>` props extended with `onFabClick` (lazy tier probe + decision), `tierContext`, controlled-composer props, and `onComposerClose` reset.
+- `<UpgradeChoiceSheet>` rendered alongside CreateFlow; on `onPickedContext` it sets `tierContext` and flips `pickedComposerOpen` so the Composer opens directly with booking metadata attached.
+
+**`app/bookings/page.tsx`**: imports `InspirationBanner`, renders `variant="card"` above the bookings list when `bookings.length > 0`. Auto-dismissible via localStorage.
+
+**`app/hotels/[id]/page.tsx`**: imports `InspirationBanner`, renders `variant="modal"` inside the booking-confirmed success modal (line ~3105). Adds a small "Share your stay" CTA right above the existing Close + My Bookings buttons.
+
+### 7.3 — Decision tree (FAB tap)
+
+```
+User taps + FAB
+    ↓
+onFabClick fires
+    ↓
+Has tier snapshot already? → No → fetch /api/me/tier, cache for session
+    ↓
+snap.canUpload === true ?
+    ├── YES (any non-PUBLIC tier, OR PUBLIC with eligible booking,
+    │        OR PUBLIC with active location verification)
+    │   → return void → default open CreateSheet (existing flow)
+    │
+    └── NO (PUBLIC + no eligibility)
+        → setUpgradeOpen(true), return false → CreateSheet stays closed
+        → UpgradeChoiceSheet appears
+            ↓
+        User picks "Verified Guest" → BookingPicker → pick a stay
+            ↓
+        onPickedContext fires with { kind: "verified_guest", hotelId, bookingId }
+            ↓
+        setTierContext({...}), setPickedComposerOpen(true)
+            ↓
+        Composer opens directly (skipping CreateSheet chooser)
+            ↓
+        User picks media → composes → Post
+            ↓
+        runUpload posts to /api/social/posts/verified-guest (NOT /api/social/posts)
+            ↓
+        Phase 2 endpoint validates booking ownership, sets
+        moderation_status='PENDING_HOTEL_APPROVAL', promotes PUBLIC → VERIFIED_GUEST,
+        notifies hotel partner
+```
+
+### 7.4 — What still doesn't surface visually (intentional)
+- **`<TierBadge>` is NOT yet mounted on any reel/profile surface.** The component exists and is import-ready. Phase 5 work on the partner dashboard (Pending Reviews) is a natural place to wire it in alongside; for customer-facing reels it can land in a follow-up cosmetic pass.
+- **Community Contributor (location-OTP) flow.** The Verified Local card is disabled per Phase 3 Option A. UpgradeChoiceSheet shows "Coming Soon" badge. Activation: paste Railway dispatcher + `NEXT_PUBLIC_ENABLE_LOCATION_OTP=1`.
+- **TierProvider integration.** The customer's `lib/tier-store.tsx` PUBLIC/CREATOR/HOTEL semantics are unchanged. Phase 4 reads tier via `/api/me/tier` directly inside the FAB-gate (more accurate than the role-tier provider which doesn't know about VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR). Both providers coexist — TierProvider drives menu chrome; the new probe drives upload gating.
+
+### 7.5 — Verification
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0 (only pre-existing tsconfig deprecation warning)
+- ✅ No existing route, component, or composer state mutated — every change is an additive prop, additive component, or additive JSX block
+- ✅ Existing CreateSheet UX preserved: when `canUpload=true`, the FAB opens CreateSheet exactly as before. tierContext is undefined → POST goes to `/api/social/posts` as today.
+- ✅ Reel-dedup v131.8 chain unbroken — `clientPostId` flow is identical, all 5 hops carry through both legacy and new endpoints.
+
+### 7.6 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + TierBadge + InspirationBanner (this section)
+- [ ] **Phase 5** — Hotel Pending Reviews dashboard + admin Pending Admin Review queue ← next on `continue`
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 5 — Hotel partner Pending Reviews dashboard + admin Pending Admin Review queue.** Phase 5 will surface the moderation queue inside `app/partner/dashboard/*` (new tab) and `app/admin/content/*` (new admin page), wiring the Phase 2 partner + admin moderation endpoints to actual UI.
 
