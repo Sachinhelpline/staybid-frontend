@@ -35,6 +35,9 @@ import { usePosts } from "@/lib/posts-store";
 import { useAuth } from "@/lib/auth";
 import { sanitizeText } from "@/lib/sanitize-text";
 import { ThemeToggle } from "@/components/ThemeToggle";
+// v140 — Tutorial replay list inside the /me drawer. Lets the user
+// re-watch any tour, flip the master kill-switch, and toggle EN/Hinglish.
+import { TutorialReplayList } from "@/components/tutorial/TutorialReplayList";
 // v109 — shared TierProvider context. Same drawer auto-flips when
 // upgrade happens in any tab (storage event) or same-tab via the
 // sb:tier-refresh custom event.
@@ -1239,6 +1242,25 @@ function MoreDrawer({
           {/* v90 — Appearance toggle (single button, flips whole UI). */}
           <li className="me-drawer-theme">
             <ThemeToggle variant="lg" />
+          </li>
+          {/* v140 — App Tour replay list. Lets the user re-watch any
+              tutorial + toggle the master auto-tour switch + flip the
+              tutorial language (EN ⇄ Hinglish). Mounted INSIDE the
+              drawer so the same control surface is reachable from
+              both /me and the floating "?" help button. */}
+          <li className="me-drawer-tutorial">
+            <details className="me-drawer-tutorial-details">
+              <summary className="me-drawer-link me-drawer-tutorial-summary">
+                <DrawerRow
+                  icon="🎓"
+                  label="App Tour"
+                  sub="Replay any walkthrough · EN ⇄ Hinglish"
+                />
+              </summary>
+              <div style={{ padding: "10px 14px 14px 14px" }}>
+                <TutorialReplayList onAfterReplay={onClose} />
+              </div>
+            </details>
           </li>
           <li>
             {/* v132.15 — same button, label flips with auth state.
