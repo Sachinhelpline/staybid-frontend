@@ -192,16 +192,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NotificationToast />
             {/* Welcome Story portal-mounted to document.body. */}
             <WelcomeStory />
-            {/* v143 — Floating "?" help button (Tutorial Layer 3).
+            {/* v144 — Floating "?" help button (Tutorial Layer 3).
                 Self-hides on /admin, /partner, /onboard, /auth.
                 Hidden while any tour is running.
                 Auto-shrinks + fades after 10+ tours seen. */}
             <TutorialHelpButton />
-            {/* v143 — Global listener for imperative triggerTour() calls
+            {/* v144 — Global listener for imperative triggerTour() calls
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v143</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v144</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -222,7 +222,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v143-modal-tours-mature-decay-trigger-api";
+var SB_BUILD="v144-modal-scroll-fix-tiny-transparent-help";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

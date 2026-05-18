@@ -80,9 +80,11 @@ export function TutorialHelpButton() {
   const node = (
     <>
       {/* FAB — bottom-right above BottomDock.
-          v143 polish: smaller (36 → 28px mature), low-opacity champagne
-          tint so it stops competing with primary content. Hover/tap
-          brings full visibility back. */}
+          v144: pure "?" character only — no background, no border, no
+          shadow. Color uses var(--text-base) which auto-flips between
+          dark cocoa (light mode) and cream (dark mode). Default 18px
+          hit area, 14px in mature mode. Hover restores visibility +
+          subtle scale for the discoverability. */}
       <button
         type="button"
         aria-label={isMature ? "Help (compact)" : "Open app tour & help"}
@@ -90,34 +92,26 @@ export function TutorialHelpButton() {
         className={isMature ? "sb-help-fab sb-help-fab--mature" : "sb-help-fab"}
         style={{
           position: "fixed",
-          right: isMature ? 10 : 14,
+          right: isMature ? 8 : 12,
           // BottomDock height is ~64px + safe-area. We sit just above it.
           bottom: "calc(78px + env(safe-area-inset-bottom, 0px))",
           zIndex: 9500,
-          width: isMature ? 28 : 36,
-          height: isMature ? 28 : 36,
+          width: isMature ? 14 : 18,
+          height: isMature ? 14 : 18,
           borderRadius: "50%",
-          border: isMature
-            ? "1px solid rgba(201, 166, 107, 0.32)"
-            : "1px solid rgba(201, 166, 107, 0.42)",
-          background: isMature
-            ? "rgba(255, 252, 246, 0.55)"
-            : "rgba(255, 252, 246, 0.78)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          color: isMature ? "rgba(74, 56, 32, 0.62)" : "var(--cozy-warm-dark, #1F1A0F)",
-          fontWeight: 800,
-          fontSize: isMature ? 13 : 15,
+          border: "none",
+          background: "transparent",
+          color: "var(--text-base, #1F1A0F)",
+          fontWeight: 700,
+          fontSize: isMature ? 11 : 14,
           lineHeight: 1,
           cursor: "pointer",
-          opacity: isMature ? 0.55 : 0.88,
-          boxShadow: isMature
-            ? "0 4px 10px -4px rgba(31, 26, 15, 0.18)"
-            : "0 8px 18px -8px rgba(31, 26, 15, 0.28), inset 0 1px 0 rgba(255,255,255,0.55)",
+          opacity: isMature ? 0.32 : 0.45,
+          padding: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, background 0.18s ease",
+          transition: "transform 0.18s ease, opacity 0.18s ease",
         }}
       >
         ?
@@ -219,20 +213,18 @@ export function TutorialHelpButton() {
       )}
 
       <style>{`
+        /* v144 — Hover restores full opacity + subtle scale so the
+           "?" pops out only when the user moves toward it. Stays a
+           pure character (no background) — keeps screen clean. */
         .sb-help-fab:hover {
           opacity: 1 !important;
-          transform: translateY(-2px) scale(1.05);
-          background: rgba(255, 252, 246, 0.95) !important;
-          color: var(--cozy-warm-dark, #1F1A0F) !important;
-          box-shadow: 0 12px 22px -8px rgba(31, 26, 15, 0.32), inset 0 1px 0 rgba(255,255,255,0.65) !important;
+          transform: scale(1.4);
         }
         .sb-help-fab--mature:hover {
-          /* Hover restores full size + visibility — same target hit-area
-             always remains reachable. */
-          width: 36px !important;
-          height: 36px !important;
-          font-size: 15px !important;
-          border-color: rgba(201, 166, 107, 0.42) !important;
+          /* Mature "?" hover: scale up MORE (since the base 14px is
+             tiny) so the user gets a clear tap target. Still no
+             background — pure character feel. */
+          transform: scale(1.6);
         }
         @keyframes sbHelpFadeIn {
           from { opacity: 0; }

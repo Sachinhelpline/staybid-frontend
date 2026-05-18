@@ -108,11 +108,25 @@ export function usePageTour(
           const start = Date.now();
           const tryMove = () => {
             if (cancelled) return;
-            const found = document.querySelector(targetStep.element);
+            const found = document.querySelector(targetStep.element) as HTMLElement | null;
             const elapsed = Date.now() - start;
             if (found || elapsed > 1200) {
-              if (delta > 0) drv.moveNext();
-              else drv.movePrevious();
+              // v144 — scroll the element's nearest scrollable
+              // ancestor before driver.js measures. Helps page-level
+              // tours where the next step is far below the fold
+              // (e.g. /hotels/[id] .hx-ota deep inside a room card).
+              if (found) {
+                try {
+                  found.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                } catch {}
+                setTimeout(() => {
+                  if (delta > 0) drv.moveNext();
+                  else drv.movePrevious();
+                }, 180);
+              } else {
+                if (delta > 0) drv.moveNext();
+                else drv.movePrevious();
+              }
             } else {
               // Polling at requestAnimationFrame cadence — smooth, no
               // wasted CPU.
