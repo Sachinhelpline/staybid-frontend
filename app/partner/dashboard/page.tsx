@@ -345,14 +345,17 @@ export default function PartnerDashboard() {
         }),
       });
       if (!res.ok) {
-        // v145 — surface the actual backend error instead of a generic
-        // "Action failed". Helps both the user and us debug Railway 4xx /
-        // Supabase schema issues without inspecting Network tab.
+        // v145.1 — surface the actual backend error. Supabase reason first
+        // (most diagnostic), then generic error/message, then HTTP status.
         const errBody = await res.json().catch(() => ({}));
+        const sb = errBody.supabase || "";
         const errMsg =
+          (sb && (() => {
+            try { const j = JSON.parse(sb); return j.message || j.error || sb; }
+            catch { return sb; }
+          })()) ||
           errBody.error ||
           errBody.message ||
-          (errBody.supabase && `Supabase: ${errBody.supabase}`) ||
           `Server error (${res.status})`;
         throw new Error(errMsg);
       }
