@@ -3071,6 +3071,79 @@ app/layout.tsx                              # SB_BUILD + badge bumped per releas
 - **All five patches deployed live** on `staybids.in`. `SB_BUILD=v121.2-kill-duplicate-writer-lazy-firebase`. Vercel build times were all sub-90s; cache names stayed stable (no SW invalidation needed per v93 discipline).
 
 
+## Payments + StayPoints Redemption + Stay-Feedback Lifecycle Era (v125 → v127.2, 2026-05-15/16)
+
+*Documented retrospectively (added during v137 era backfill pass) from git commits `c1accef` through `713b8fe`.*
+
+Eleven versions across two days. Three loose themes — Razorpay payment polish, StayPoints redemption system, and post-stay smiley-feedback lifecycle — landed back-to-back in the same window.
+
+### v125 → v125.3 — Razorpay error surfacing + modals + Menu
+
+- **v125** (`c1accef`) — Kill the generic "Order creation failed" alert. Switched the Razorpay order route from the SDK to REST + surface real backend errors (HTTP status + Razorpay error code) on every checkout path. Added a CTA self-diagnostic that runs a dry order-create on hotel page mount + warns the user before they tap Book if Razorpay env vars are misconfigured.
+- **v125.1** (`69356aa`) — Self-healing keys. If `NEXT_PUBLIC_RAZORPAY_KEY_ID` and `RAZORPAY_KEY_ID` don't match, the order route detects the mismatch + falls back to the server-side key, logs the env drift, and still succeeds instead of 401-ing. Stops env-var mismatches from blocking payments silently.
+- **v125.2** (`c1074c8`) — Bulletproof close button on every booking/success/Razorpay modal + hide the floating BottomDock CTA during success modals so the success toast isn't covered. Added a shared `<ModalCloseButton />` component used by ~9 modals.
+- **v125.3** (`a18a762`) — Customer Menu single source of truth. Desktop Navbar dropdown was diverging from the mobile drawer (different items, different order, different copy). Now both render from a shared `CUSTOMER_MENU_ITEMS` constant.
+
+### v126 → v126.4 — StayPoints redemption + admin live data
+
+- **v126** (`1bddfdc` + tweaks `ee2cb3a` / `4df9608` / `c2198de` / `2b0d520`) — Full StayPoints redemption system. New `/points/redeem` catalog (3 reward types: coupons, wallet credit, hotel amenities), `/my-codes` wallet with QR + faux-barcode + 5-button share rail, end-to-end booking integration via `sb_pending_redemption` so codes apply at checkout. Tables added: `redemption_rules` (catalog), `redemption_codes` (issued codes), `wallet_credits` (₹ balance ledger). Admin sidebar got "🎁 Redemption" entry. Density pass on admin: every box smaller, viewport-height-locked sidebar with visible gold scrollbar.
+- **v126.1** (`0924c44`) — Admin live data wire-up. Hotel commission rules editor + Reports Center (CSV exports for bookings, commissions, redemptions, complaints).
+- **v126.2** (`7bcadc0` + `210ca44`) — Admin dashboard real data + live countdowns + Today filter + clickable KPIs + PDF/Share buttons.
+- **v126.3** (`412943a`) — Verification queue live + flash-deal cron trigger button.
+- **v126.4** (`3fa656f`) — **Critical cron split.** User set up `/api/cron/pricing` on cron-job.org every 15 min — first run at 4:00 AM timed out. Root cause: `/api/cron/pricing` does THREE things in one call (scrape competitors ~50-150s + recalc rooms + drop flash deals) and cron-job.org free tier has 30s timeout. **Fix:** split into two endpoints. **NEW** `/api/cron/flash-drop` skips the slow scrape + recalcs rooms in PARALLEL batches of 5 + drops flash deals; typical runtime 3-8s. **EXISTING** `/api/cron/pricing` unchanged for Vercel daily 4:00 AM (full scrape + recalc + flash drop).
+
+### v127 → v127.2 — Post-checkout smiley feedback lifecycle
+
+- **v127** (`657909b`) — Customer rates 5 smiley checkpoints (room matches video / staff behavior / hygiene / food / staff response) after checkout. Negative checkpoint triggers evidence-video recording. Admin sees smiley grid + hotel verification video + customer evidence video side-by-side in `/admin/complaints`. Schema: 4 additive columns on `complaints` (`feedback JSONB`, `feedbackType`, `verificationRequestId`, `evidenceVideoId`) + 3 indexes. Migration applied live.
+- **v127.1** (`217bade`) — Stay-feedback lifecycle cron (`/api/cron/feedback-lifecycle`). Customer has 48h after checkout to submit; after that, lifecycle cron auto-marks positive + **deletes the hotel's verification video everywhere** (Storage + `vp_videos`). If customer uploads evidence as part of complaint, admin has 14 days to resolve; on resolution evidence files delete immediately. **Only the smiley initials persist long-term** — they power the public aggregated hotel-feedback summary. 4 sweeps per cron invocation (auto-positive, verification-video purge, evidence purge on resolved, resolution escalation). Hourly on cron-job.org. New cleanup library `lib/verify/cleanup.ts`. Customer surface gets live countdown chip. Hotel partner Complaints tab gets inline smiley grid (no notes, no URLs — privacy gated). Public hotel page Reviews tab gets `HotelFeedbackSummary` with Stay Score + 5 checkpoint cards + last 12 sentiment snapshots.
+- **v127.2** (`713b8fe`) — Tighter windows. User spec: 48h feedback → **12h**, 14-day resolution → **48h**. Customer can now raise a stay-feedback complaint **DURING** the stay (before checkout) when the room doesn't match the hotel's verification video. `StayFeedbackCard` accepts `mode = "post_checkout" | "mid_stay"`. Mid-stay mode renders red-tinted card, hides the countdown, uses complaint-framed copy. Legacy `ComplaintTrigger` → `/api/verify/complaint` replaced; new composer routes through `/api/complaints/submit` so the v127.1 lifecycle applies uniformly.
+
+### Files added (this era)
+
+```
+app/points/redeem/page.tsx                          # v126 redemption catalog
+app/my-codes/page.tsx                               # v126 codes wallet (QR + barcode)
+app/api/cron/feedback-lifecycle/route.ts            # v127.1 4-sweep cron
+app/api/cron/flash-drop/route.ts                    # v126.4 fast cron split
+lib/verify/cleanup.ts                               # v127.1 video purge helpers
+components/StayFeedbackCard.tsx                     # v127 + v127.2 mode-aware
+components/HotelFeedbackSummary.tsx                 # v127.1 public Stay Score
+components/ModalCloseButton.tsx                     # v125.2 shared close
+lib/redemption.ts                                   # v126 client helpers
+migrations/2026-05-15-redemption-system.sql         # redemption_rules + codes + wallet_credits
+migrations/2026-05-16-stay-feedback.sql             # 4 cols on complaints
+migrations/2026-05-16-stay-feedback-lifecycle.sql   # idempotency markers
+```
+
+### Service-worker version map (continued)
+
+- v121.2 → kill-duplicate-writer-lazy-firebase
+- **v125** → razorpay-error-surfacing-rest-order
+- **v125.1** → razorpay-self-healing-keys
+- **v125.2** → bulletproof-modal-close-hide-floating-cta
+- **v125.3** → customer-menu-single-source
+- **v126** → staypoints-redemption-codes-wallet
+- **v126.1** → admin-live-data-commission-rules-reports
+- **v126.2** → admin-dashboard-real-data-countdowns
+- **v126.3** → admin-verification-queue-flash-cron-button
+- **v126.4** → cron-flash-drop-split
+- **v127** → post-checkout-smiley-feedback
+- **v127.1** → stay-feedback-lifecycle-4-sweeps
+- **v127.2** → tighter-feedback-windows-mid-stay-complaint
+
+### Things to Avoid (Payments + Redemption + Feedback Era)
+
+- **Never** revert `/api/razorpay/order/route.ts` to using the Razorpay SDK without keeping the REST fallback. The SDK swallows errors; REST surfaces them. Customers hitting "Order creation failed" with no detail is the bug v125 specifically fixed.
+- **Never** strip the v125.1 env-mismatch self-heal from the order route. Production keys drift across redeploys; the fallback to server-side key prevents silent payment failures.
+- **Never** put `/api/cron/pricing` on a cron-job.org schedule shorter than daily. The 30s timeout cannot accommodate the 3-step scrape + recalc + flash-drop. Use `/api/cron/flash-drop` for sub-hourly cadence.
+- **Never** wipe `complaints.feedbackAutoFilled` or `videoCleanedAt`. They're idempotency markers for the v127.1 cron — re-running on already-handled rows would lose the audit trail of when each row was last touched.
+- **Never** show notes or video URLs on the public Stay Score surface. The v127.1 contract is sentiment-only — only the 5 smiley checkpoints + counts. Adding notes leaks customer voice; adding URLs creates discoverability of private evidence.
+- **Never** delete the smiley initials from `complaints.feedback` after resolution. They're the only long-term signal feeding the public Stay Score + future rank graph. Only evidence video files + URLs are purged.
+- **Never** change `mode` on `StayFeedbackCard` from `"post_checkout" | "mid_stay"` to a boolean. The same component drives two different render flows — adding a third mode requires a literal value, never overloading existing ones.
+- **Never** route a new complaint through `/api/verify/complaint` (the v98 legacy endpoint). The v127.2 `/api/complaints/submit` is the canonical path — applies the v127.1 lifecycle uniformly.
+
+---
+
 ## Hotel Performance Scorecard + Live City Rank Era (v128, 2026-05-16)
 
 Single-shot release. Customer asked for "ek score card jo multipal checkpoints par score generate karega out of 100 + ushki rank city main jitne hotels hai un main se" — a luxury, clickable, premium live badge on every hotel that surfaces a 0-100 performance score + competitive rank within the same city. Every checkpoint they listed (bid response speed, room ready, check-in/out punctuality, verification video, smiley feedback, complaint rate + resolution) is wired end-to-end with a couple of additions for completeness.
@@ -3369,6 +3442,85 @@ app/layout.tsx                          # SB_BUILD v128 → v128.1 + badge chip 
 - **Same accessibility contract** — full aria-label with score + rank + city + "Tap for full breakdown", title tooltip, focus-visible outline, reduced-motion respected.
 - **Vercel deployment** `dpl_3TUf3vWzNf6cQyPVGqoa2bp7v9rY` BUILDING from `bfb4561`. Goes READY in ~60-90s + auto-aliased to `staybids.in`.
 - **Visible verification:** badge chip in bottom-right corner reads `v128.1`. `localStorage.sb_build === "v128.1-3d-award-medal-badge"`.
+
+---
+
+## Scorecard Polish + ₹100 Pricing + Hybrid Autopilot Era (v128.2 → v130, 2026-05-16)
+
+*Documented retrospectively (added during v137 era backfill pass) from git commits `c0eb6f7` through `a3a9ac2`.*
+
+Eight versions polishing the v128 Hotel Performance Scorecard + introducing two significant non-scorecard features. v128.2 → v128.7 are all incremental polish on the scorecard surface (badge sizing, modal portal, where to show it, NEW state). v129 introduced ₹100-multiple price snapping across every customer + partner surface + a structured counter-amenities catalog. v130 introduced Hybrid AI Autopilot (per-hotel auto/hybrid/manual mode) + yield pricing (occupancy-driven multiplier) + home flash-rail ₹100 snap fix.
+
+### v128.2 → v128.7 — Scorecard polish chain
+
+- **v128.2** (`c0eb6f7`) — RANK label on the trophy ribbon + Customer Reviews checkpoint (10th checkpoint added to the engine's checkpoint array — pulls from `reviews` table, weighted 5 of 100). Clickable drill-down on every checkpoint card → opens detail view of the underlying data.
+- **v128.3** (`223064b`) — Real-page jumps for Reviews + Feedback drill-down. User feedback: modal drill-down felt cramped + overlapped the page underneath. Replaced with two full standalone routes — `/hotels/[id]/reviews` (5-row clickable star histogram + comment filter) and `/hotels/[id]/feedback` (% positive + 5-cell checkpoint mini-grid + per-guest smiley cards). Both anonymize the customer (guestTag + relative date, no names).
+- **v128.4** (`41662f2`) — "Score" label INSIDE the medal disc (above the number) for symmetry with the "RANK N" trophy ribbon. Legacy aggregate wired: `hotels.totalReviews + avgRating` columns (carrying prior-platform review counts) now also surface on the Reviews page when no verified rows exist yet — big aggregate hero card with prior-platform rating + "No verified StayBid reviews yet · be first" CTA. Badge rolled out to `/flash-deals` cards (card variant) + InstagramHotelFeed reels (compact variant). In-memory CACHE in `HotelScoreBadge` dedupes by hotelId so 10 reels = 10 fetches but each hotel hit only once.
+- **v128.5** (`1570684`) — **Portal-mount the scorecard modal.** `HotelScorecardModal` mounted from inside a flash-deal card was visually CLIPPED by the parent's `overflow: hidden`. Same bug would hit reels (every reel card has transform/filter ancestors creating new stacking contexts). Fix: `createPortal(modal, document.body)` so the modal ALWAYS escapes every parent overflow / transform / filter / contain ancestor. Two-pass mount guards against SSR (`document undefined`). Added gentle "breathing" scale animation on `.hsb` (1.0 ↔ 1.025 over 2.8s) + pulsing tier-tinted ring around the medal disc (radiates outward every 2.4s). Hover pauses both animations + lifts the badge.
+- **v128.6** (`7542926`) — Premium NEW badge + single compact pill. **Issue 1:** "NEW" badge on unrated hotels was a horizontal pill that clashed with the trophy+medal of rated cards on the same `/hotels` list. **Fix:** unrated badge now uses the SAME trophy+medal structure — "✨ NEW" ribbon + centered ✨ sparkle in medal disc (gentle twinkle: scale 1↔1.12 + rotate 0↔8deg every 2.4s). **Issue 2:** compact variant on reels was a stacked trophy+medal taking two visual lines. **Fix:** compact variant is now a SINGLE horizontal pill — `[🥇 Rank 1 · 87 /100]` — sits INSIDE the existing pills flex row so it flex-wraps with ★ 4.2 / LIVE BIDDING / N views. Saves a full line of vertical space.
+- **v128.7** (`a3b6909`) — Bigger fonts + auto-refresh + awaiting hero. (1) Font visibility — score number `1.4 → 1.65rem` default, scales to 2.15rem desktop wide (~18-25% larger). Trophy ribbon text 0.56 → 0.68rem default. Compact pill 0.62 → 0.78rem. Text-shadow added on score num/denom so they read clearly against dark medal disc. (2) Auto-upgrade on data flow: `fetchScorecard()` takes `{force}` opt to bypass the 60s memory cache; new useEffect listens for `visibilitychange + window focus` → refetches when user returns to tab (throttled to once per 8s per hotel). When a hotel transitions unrated → rated, the badge picks it up automatically. (3) NEW badge modal HERO redesigned — was misleading "—/100" + 0 bookings/reviews/complaints (felt broken); now friendly "Awaiting first score" hero with twinkling sparkle + plain-English explanation + 3 milestone pills (📋 First booking · ⭐ First review · 😊 First stay feedback).
+
+### v129 — ₹100-multiple pricing + structured counter amenities (`65313c7`)
+
+Single source of truth in `lib/price-snap.ts` — every customer + partner price-input surface now snaps to a ₹100 multiple:
+
+- AI smart-pricing drag bar on hotel detail Negotiate modal
+- Save Big / Smart / Instant quick chips
+- `/bid` presets + budget input
+- Flash deal price chips
+- Partner counter slider
+
+**Counter offers from hotel partner now use a structured amenity catalog** (`lib/counter-addons.ts`). Free-text "Message to Guest" textarea + customer "Additional requests" textarea **removed** since both were leaking phone/email/WhatsApp through the chat-free anti-bypass surface (v25 rule). Partner picks from a fixed catalog of amenities (free breakfast, late checkout, room upgrade, welcome drink, etc.); customer sees them as chip pills in `/my-bids` counter rendering (handled by `parseAddons()`).
+
+### v130 — Hybrid AI Autopilot + yield pricing + home flash-rail snap (`a3a9ac2`)
+
+Three shipments landing together:
+
+**A1 fix — home flash-deal rail prices.** Home rail prices were rendered un-snapped (showed un-rounded values vs the v129 ₹100-snapped detail page price), AND the Book Now URL passed to the hotel page was un-snapped — producing the "old price showing" bug user reported. Both call sites now snap to ₹100.
+
+**Option B yield — occupancy-driven pricing modulator.** `calculateDynamicPrice()` gains an optional `occupancyRatio` factor (0-1) driving a yield multiplier: empty `<30% → 0.88×`, near-sold-out `>85% → 1.28×`. Output snaps to ₹100 (was ₹50). **Legacy callers that don't pass the ratio see byte-identical pre-v130 behavior.**
+
+**Option 2 — Hybrid AI Autopilot.** Every above-floor unpaid bid (Negotiate + simple Bid on hotel detail page) now schedules a tier-based auto-accept adjusted by the hotel's new `autopilot_mode` column (`auto` / `hybrid` / `manual`). Partners flip the mode from a new card in Profile tab. Customer-facing copy locked to "Hotel will confirm" — **the word "AI" never appears in the bid lifecycle.** Reverse-auction `/bid` page deliberately STAYS manual (multi-hotel broadcast — auto-accept would short-circuit competition). LOWBALL tier still never auto-accepts (v70 contract preserved).
+
+Migration `migrations/2026-05-17-hotel-autopilot-mode.sql` is **idempotent** — column defaults to `'auto'` so production keeps existing behavior until a partner explicitly picks Hybrid or Manual. App code gracefully falls back to `'auto'` if migration hasn't been applied yet.
+
+### Files added (this era)
+
+```
+lib/price-snap.ts                                # v129 single source of truth
+lib/counter-addons.ts                            # v129 structured catalog + parseAddons
+app/hotels/[id]/reviews/page.tsx                 # v128.3 full Reviews page
+app/hotels/[id]/feedback/page.tsx                # v128.3 full Feedback page
+migrations/2026-05-17-hotel-autopilot-mode.sql   # v130 idempotent enum default 'auto'
+```
+
+### Service-worker version map (continued)
+
+- v128.1 → 3d-award-medal-badge
+- **v128.2** → rank-label-reviews-checkpoint-drilldown
+- **v128.3** → reviews-feedback-real-pages
+- **v128.4** → score-label-legacy-aggregate-badge-everywhere
+- **v128.5** → portal-modal-pulsing-live-badge
+- **v128.6** → premium-new-badge-single-compact-pill
+- **v128.7** → bigger-fonts-auto-refresh-awaiting-hero
+- **v129** → ₹100-pricing-structured-counter-amenities
+- **v130** → hybrid-autopilot-yield-flash-snap
+
+### Things to Avoid (Scorecard Polish + Pricing + Autopilot Era)
+
+- **Never** restore the in-modal scorecard drill-down (pre-v128.3 pattern). The full standalone routes (`/hotels/[id]/reviews` and `/hotels/[id]/feedback`) replaced it explicitly because the cramped modal-in-modal felt broken. New drill-downs go to real routes, not modals-in-modals.
+- **Never** revert the v128.5 portal-mount of `HotelScorecardModal`. The modal mounts from inside cards with `overflow: hidden` (flash-deals card) or transform/filter ancestors (reels) — all of which clip a normal-mounted modal. Portal to `document.body` is the only safe pattern.
+- **Never** put a non-trophy-ribbon shape on a hotel-list NEW badge. v128.6 explicitly unified all 4 badge states (👑/💎/⭐/✨) on the SAME trophy+medal structure so card heights stay consistent. A pill-shaped NEW alongside a circular-medal rated card looks broken.
+- **Never** strip the in-memory CACHE in `HotelScoreBadge` (`v128.4`). 10 reels referencing the same hotel = 10 mounts × 1 fetch each = 10 unnecessary Supabase round-trips. The component dedupes by hotelId so each hotel is hit at most once per page load.
+- **Never** raise the v128.7 visibilitychange-refetch throttle below 8s per hotel. Below that, switching tabs rapidly causes a thundering-herd against the scorecard API.
+- **Never** add a price-input surface without going through `lib/price-snap.ts`. Every new bid/booking/flash/counter price MUST round to ₹100 to stay consistent with the v129 single source of truth. The customer + partner expectations are now anchored on ₹100 increments.
+- **Never** restore the free-text "Message to Guest" textarea on the partner counter UI. v129 explicitly killed it because the field was the v25 anti-bypass leak (phone/email/WhatsApp slipping through structured chat-free surfaces). Partners pick from `lib/counter-addons.ts` catalog only.
+- **Never** add a price input on the customer Negotiate surface without snapping to ₹100. The slider already snaps; quick chips snap; manual entry must snap on blur.
+- **Never** ship a customer-facing copy that uses the word "AI" anywhere in the bid lifecycle. v130 locked the language to "Hotel will confirm" — the autopilot mode is invisible to customers by design. Partner-facing copy can say AI/Autopilot freely.
+- **Never** auto-accept a `/bid` (reverse-auction) bid based on `autopilot_mode`. The `/bid` page broadcasts to multiple hotels — auto-accepting on first acceptance would short-circuit competition. Only `/hotels/[id]` Negotiate + simple Bid flows respect autopilot mode.
+- **Never** drop the LOWBALL tier's "never auto-accept" rule when adjusting autopilot mode. Even on `mode='auto'`, LOWBALL bidders get the same "wait for hotel" treatment as on `mode='manual'`. This is the v70 contract preserved.
+- **Never** strip the `occupancyRatio?` from `calculateDynamicPrice()` signature. It's optional precisely so legacy callers stay byte-identical pre-v130. Removing it would silently flip every legacy call to a different price.
+- **Never** apply the v130 autopilot migration in a way that bypasses the idempotent default `'auto'`. Production rows without the column should read as `'auto'` mode (preserves pre-v130 behavior); explicit nulls or different defaults break the upgrade contract.
 
 ---
 
