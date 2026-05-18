@@ -107,6 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "sb_reel_filter_city",   // generic UI pref
         "sb_reel_mute",          // mute pref — better UX to keep
         "sb_reel_gain",          // volume boost pref
+        // v138 — Tutorial device-prefs. Per-section seen-flags
+        // (sb_tutorial_*_seen) are NOT here on purpose — re-login on
+        // a fresh account should re-show the onboarding. But the
+        // language pick and the master kill-switch ARE device-level.
+        "sb_tutorial_lang",      // EN / Hinglish — device pref
+        "sb_tutorial_disabled",  // master "don't ever show tours" toggle
       ]);
       try {
         const keysToClear: string[] = [];
