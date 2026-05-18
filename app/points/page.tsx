@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 
 const TIER_META: Record<string, { color: string; min: number; max: number }> = {
   silver:   { color: "#94a3b8", min: 0,     max: 9999  },
@@ -54,13 +55,16 @@ export default function PointsPage() {
         <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 mb-1">Loyalty Points</h1>
         <p className="text-luxury-500 text-sm mb-5">Earned on every booking. Redeem for discounts.</p>
 
-        <div className="card-luxury p-6 mb-5 relative overflow-hidden">
+        <div className="card-luxury sb-card-lift sb-fade-in p-6 mb-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10"
             style={{ background: `radial-gradient(circle, ${tier.color}, transparent 70%)` }} />
           <div className="relative">
             <p className="text-xs uppercase tracking-widest font-bold text-luxury-500">Balance</p>
-            <p className="font-display text-5xl font-bold text-luxury-900 leading-none mt-1">{fmt(balance)}</p>
-            <p className="text-xs uppercase tracking-widest font-bold mt-3" style={{ color: tier.color }}>
+            <p className="font-display text-5xl font-bold text-luxury-900 leading-none mt-1">
+              <CountUp value={balance} duration={1100} />
+            </p>
+            <p className="text-xs uppercase tracking-widest font-bold mt-3 inline-flex items-center gap-1.5" style={{ color: tier.color }}>
+              <span className="sb-pulse-dot" style={{ background: tier.color, boxShadow: `0 0 0 0 ${tier.color}55` }} />
               {tierKey} Tier
             </p>
 
@@ -80,20 +84,20 @@ export default function PointsPage() {
         {/* Primary CTAs — Redeem + View codes */}
         <div className="grid grid-cols-2 gap-3 mb-3">
           <Link href="/points/redeem"
-            className="rounded-2xl p-4 text-white text-center font-bold text-sm relative overflow-hidden"
+            className="rounded-2xl p-4 text-white text-center font-bold text-sm relative overflow-hidden sb-card-lift sb-shimmer"
             style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", boxShadow: "0 8px 24px rgba(240,180,41,0.35)" }}>
-            <span className="text-base block mb-0.5">✨</span>
-            Redeem Rewards
+            <span className="text-base block mb-0.5 relative" style={{ zIndex: 2 }}>✨</span>
+            <span className="relative" style={{ zIndex: 2 }}>Redeem Rewards</span>
           </Link>
           <Link href="/my-codes"
-            className="rounded-2xl p-4 text-luxury-900 text-center font-bold text-sm relative overflow-hidden border-2 border-luxury-200 bg-white hover:border-gold-300 transition">
+            className="rounded-2xl p-4 text-luxury-900 text-center font-bold text-sm relative overflow-hidden border-2 border-luxury-200 bg-white hover:border-gold-300 transition sb-card-lift">
             <span className="text-base block mb-0.5">🎟️</span>
             My Codes{activeCodesCount > 0 ? ` · ${activeCodesCount}` : ""}
           </Link>
         </div>
         {walletCreditBalance > 0 && (
           <Link href="/wallet"
-            className="block rounded-2xl p-3 mb-3 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition flex items-center justify-between">
+            className="block rounded-2xl p-3 mb-3 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition flex items-center justify-between sb-card-lift">
             <div className="flex items-center gap-2.5">
               <span className="text-xl">💰</span>
               <div>
@@ -101,21 +105,23 @@ export default function PointsPage() {
                 <p className="text-[0.65rem] text-emerald-700">Use at any booking</p>
               </div>
             </div>
-            <p className="font-display text-lg font-bold text-emerald-700">₹{fmt(walletCreditBalance)} →</p>
+            <p className="font-display text-lg font-bold text-emerald-700">
+              ₹<CountUp value={walletCreditBalance} duration={900} /> →
+            </p>
           </Link>
         )}
 
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <Stat label="Lifetime Earned" value={fmt(wallet?.lifetime_earned || 0)} />
-          <Stat label="Lifetime Redeemed" value={fmt(wallet?.lifetime_redeemed || 0)} />
+          <Stat label="Lifetime Earned" value={wallet?.lifetime_earned || 0} />
+          <Stat label="Lifetime Redeemed" value={wallet?.lifetime_redeemed || 0} />
         </div>
 
-        <div className="card-luxury p-5">
+        <div className="card-luxury sb-card-lift p-5">
           <h2 className="font-bold text-luxury-900 mb-3">Recent Activity</h2>
           {recent.length === 0 ? (
             <p className="text-sm text-luxury-500 py-4 text-center">No points activity yet. Make a booking to start earning.</p>
           ) : (
-            <div className="divide-y divide-luxury-100">
+            <div className="divide-y divide-luxury-100 sb-stagger">
               {recent.map((h) => (
                 <div key={h.id} className="flex items-center justify-between py-2.5 text-sm">
                   <div>
@@ -135,11 +141,13 @@ export default function PointsPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <p className="text-[0.65rem] uppercase tracking-widest font-bold text-luxury-500">{label}</p>
-      <p className="font-display text-xl font-bold text-luxury-900 mt-1 leading-none">{value}</p>
+      <p className="font-display text-xl font-bold text-luxury-900 mt-1 leading-none">
+        <CountUp value={value} duration={900} />
+      </p>
     </div>
   );
 }

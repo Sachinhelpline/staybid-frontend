@@ -13,6 +13,7 @@ import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
+import { CountUp } from "@/components/CountUp";
 // v129 — counter amounts snap to ₹100 multiples (same source of truth as the
 // Negotiate slider + partner counter slider). Hotels can ONLY bundle perks
 // from the structured COUNTER_ADDONS catalog — `parseAddons` pulls those
@@ -550,10 +551,12 @@ export default function MyBidsPage() {
               { label: "Accepted", value: acceptedCount, color: "text-emerald-300" },
             ].map((s, i) => (
               <div key={s.label}
-                className="glass-card gold-border-anim rounded-2xl p-4 text-center"
+                className="glass-card gold-border-anim rounded-2xl p-4 text-center sb-card-lift"
                 style={{ animation: `fadeUp 0.5s ease ${i*0.08}s both` }}
               >
-                <p className={`text-3xl font-bold ${s.color}`} style={{ animation: "floaty 3s ease-in-out infinite" }}>{s.value}</p>
+                <p className={`text-3xl font-bold ${s.color}`} style={{ animation: "floaty 3s ease-in-out infinite" }}>
+                  <CountUp value={s.value} duration={900} />
+                </p>
                 <p className="text-[0.62rem] text-white/50 mt-0.5 tracking-[0.2em] uppercase">{s.label}</p>
               </div>
             ))}
@@ -642,7 +645,7 @@ export default function MyBidsPage() {
 
             return (
               <div key={b.id}
-                className={`relative glass-card gold-border-anim rounded-3xl p-5 ${meta.glow}`}
+                className={`relative glass-card gold-border-anim rounded-3xl p-5 sb-card-lift ${meta.glow}`}
                 style={{ animation: `fadeUp 0.45s ease ${idx*0.05}s both` }}
               >
                 {/* Celebration overlay */}
