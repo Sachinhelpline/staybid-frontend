@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 import {
   type RedemptionRule,
   type RedemptionCode,
@@ -117,26 +118,29 @@ export default function RedeemPage() {
       <div className="max-w-5xl mx-auto px-4 pt-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-4 gap-3">
+        <div className="flex items-start justify-between mb-4 gap-3 sb-fade-in">
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-luxury-900 leading-tight">Redeem Rewards</h1>
             <p className="text-luxury-500 text-sm mt-0.5">Turn your StayPoints into real benefits.</p>
           </div>
           <Link href="/my-codes"
-            className="flex items-center gap-1.5 text-xs font-semibold text-luxury-700 border border-luxury-200 px-3 py-2 rounded-xl hover:border-gold-300 hover:text-gold-600 transition whitespace-nowrap shrink-0">
+            className="flex items-center gap-1.5 text-xs font-semibold text-luxury-700 border border-luxury-200 px-3 py-2 rounded-xl hover:border-gold-300 hover:text-gold-600 transition whitespace-nowrap shrink-0 sb-card-lift">
             🎟️ My Codes
           </Link>
         </div>
 
         {/* Balance strip */}
-        <div className="card-luxury p-4 mb-5 relative overflow-hidden">
+        <div className="card-luxury sb-card-lift sb-fade-in p-4 mb-5 relative overflow-hidden" style={{ animationDelay: "0.1s" }}>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-[0.6rem] uppercase tracking-widest font-bold text-luxury-500 mb-1">Your Balance</p>
-              <p className="font-display text-3xl font-bold text-luxury-900 leading-none">{fmt(balance)} <span className="text-base font-semibold text-luxury-400">pts</span></p>
+              <p className="font-display text-3xl font-bold text-luxury-900 leading-none">
+                <CountUp value={balance} duration={1100} /> <span className="text-base font-semibold text-luxury-400">pts</span>
+              </p>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider"
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider sb-card-lift"
               style={{ background: `${TIER_COLOR[userTier]}20`, color: TIER_COLOR[userTier], border: `1px solid ${TIER_COLOR[userTier]}40` }}>
+              <span className="sb-pulse-dot" style={{ background: TIER_COLOR[userTier], boxShadow: `0 0 0 0 ${TIER_COLOR[userTier]}55` }} />
               {userTier === "silver" ? "🥈" : userTier === "gold" ? "🥇" : "💎"} {userTier}
             </div>
           </div>
@@ -151,7 +155,7 @@ export default function RedeemPage() {
             ["amenity", "🏨 Hotel Perks"],
           ] as [string, string][]).map(([k, label]) => (
             <button key={k} onClick={() => setFilterKind(k)}
-              className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border whitespace-nowrap transition ${
+              className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border whitespace-nowrap transition sb-card-lift ${
                 filterKind === k
                   ? "bg-luxury-900 text-white border-luxury-900"
                   : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-300"
@@ -162,7 +166,7 @@ export default function RedeemPage() {
         </div>
 
         {/* Grid */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+        <div className="grid gap-3 sb-stagger" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
           {filtered.map((r) => {
             const m = monthlyCounts[r.id] || 0;
             const v = canUserRedeem({
@@ -177,7 +181,7 @@ export default function RedeemPage() {
                 key={r.id}
                 onClick={() => locked ? null : setConfirmRule(r)}
                 disabled={locked}
-                className={`card-luxury p-4 text-left relative overflow-hidden transition-all ${locked ? "opacity-60" : "hover:shadow-luxury hover:-translate-y-0.5"}`}>
+                className={`card-luxury p-4 text-left relative overflow-hidden transition-all ${locked ? "opacity-60" : "sb-card-lift hover:shadow-luxury"}`}>
                 <div className="flex items-start gap-3 mb-2">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
                     style={{ background: r.kind === "wallet_credit" ? "linear-gradient(135deg,#fbbf24,#f59e0b)" :

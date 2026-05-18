@@ -111,7 +111,7 @@ function ComplaintsInner() {
   return (
     <div className="min-h-screen bg-luxury-50 pb-24">
       <div className="max-w-3xl mx-auto px-5 py-8 sm:py-12">
-        <header className="flex items-start justify-between gap-3 mb-6">
+        <header className="flex items-start justify-between gap-3 mb-6 sb-fade-in">
           <div>
             <h1 className="font-display text-3xl sm:text-4xl text-luxury-900">Complaints & Help</h1>
             <p className="text-sm text-luxury-500 mt-1">
@@ -120,38 +120,41 @@ function ComplaintsInner() {
           </div>
           <button
             onClick={() => setComposerOpen(true)}
-            className="btn-luxury whitespace-nowrap text-sm px-4 py-2.5"
+            className="btn-luxury sb-shimmer whitespace-nowrap text-sm px-4 py-2.5 relative"
           >
-            + New complaint
+            <span className="relative" style={{ zIndex: 2 }}>+ New complaint</span>
           </button>
         </header>
 
         {/* Helpful pointers */}
-        <div className="card-luxury p-4 mb-6 bg-gradient-to-br from-gold-50/60 to-luxury-50/30">
-          <div className="text-xs font-bold text-gold-800 uppercase tracking-wider mb-2">Faster routes</div>
-          <div className="grid sm:grid-cols-3 gap-2 text-sm">
-            <Link href="/my-bids"   className="card-luxury p-3 text-luxury-700 hover:bg-white transition">🎯 Issue with a bid? Check <span className="font-semibold">My Bids</span> first</Link>
-            <Link href="/bookings"  className="card-luxury p-3 text-luxury-700 hover:bg-white transition">📅 Booking trouble? Open the booking in <span className="font-semibold">My Bookings</span></Link>
-            <Link href="/verification" className="card-luxury p-3 text-luxury-700 hover:bg-white transition">🎥 Room mismatch? <span className="font-semibold">Record video evidence</span></Link>
+        <div className="card-luxury sb-card-lift sb-fade-in p-4 mb-6 bg-gradient-to-br from-gold-50/60 to-luxury-50/30" style={{ animationDelay: "0.1s" }}>
+          <div className="text-xs font-bold text-gold-800 uppercase tracking-wider mb-2 inline-flex items-center gap-1.5">
+            <span className="sb-pulse-dot is-warn" />
+            Faster routes
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2 text-sm sb-stagger">
+            <Link href="/my-bids"   className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">🎯 Issue with a bid? Check <span className="font-semibold">My Bids</span> first</Link>
+            <Link href="/bookings"  className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">📅 Booking trouble? Open the booking in <span className="font-semibold">My Bookings</span></Link>
+            <Link href="/verification" className="card-luxury sb-card-lift p-3 text-luxury-700 hover:bg-white transition">🎥 Room mismatch? <span className="font-semibold">Record video evidence</span></Link>
           </div>
         </div>
 
         {loading ? (
           <div className="card-luxury p-10 text-center text-luxury-500 shimmer">Loading your complaints…</div>
         ) : list.length === 0 ? (
-          <div className="card-luxury p-10 text-center">
+          <div className="card-luxury sb-card-lift sb-fade-in p-10 text-center" style={{ animationDelay: "0.15s" }}>
             <div className="text-5xl mb-3">🙌</div>
             <div className="font-display text-xl text-luxury-900 mb-1">No complaints on record</div>
             <p className="text-sm text-luxury-500">If something goes wrong, raise it here and our team takes a look right away.</p>
             <button
               onClick={() => setComposerOpen(true)}
-              className="btn-luxury mt-5 text-sm px-5 py-2.5"
+              className="btn-luxury sb-shimmer mt-5 text-sm px-5 py-2.5 relative"
             >
-              Raise a complaint
+              <span className="relative" style={{ zIndex: 2 }}>Raise a complaint</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 sb-stagger">
             {list.map((c) => <Card key={c.id} c={c} />)}
           </div>
         )}
@@ -176,7 +179,7 @@ function Card({ c }: { c: Complaint }) {
   const adminMsg = c.adminNotes || c.adminNote;
 
   return (
-    <article className="card-luxury p-4 sm:p-5">
+    <article className="card-luxury sb-card-lift p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-2xl leading-none">{t.icon}</span>

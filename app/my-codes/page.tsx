@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { CountUp } from "@/components/CountUp";
 import {
   type RedemptionCode,
   type CodeStatus,
@@ -157,27 +158,30 @@ function MyCodesPage() {
     <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50 pb-24">
       <div className="max-w-3xl mx-auto px-4 pt-6">
 
-        <div className="flex items-start justify-between mb-4 gap-3">
+        <div className="flex items-start justify-between mb-4 gap-3 sb-fade-in">
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-luxury-900 leading-tight">My Codes</h1>
             <p className="text-luxury-500 text-sm mt-0.5">Active coupons, vouchers, and hotel perks.</p>
           </div>
           <Link href="/points/redeem"
-            className="text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-xl text-white whitespace-nowrap shrink-0"
+            className="text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-xl text-white whitespace-nowrap shrink-0 sb-card-lift sb-shimmer relative"
             style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
-            ✨ Redeem
+            <span className="relative" style={{ zIndex: 2 }}>✨ Redeem</span>
           </Link>
         </div>
 
         {/* Wallet credit balance card */}
         {walletCredit && Number(walletCredit.balance_inr) > 0 && (
           <Link href="/wallet"
-            className="block card-luxury p-4 mb-4 relative overflow-hidden text-white"
-            style={{ background: "linear-gradient(135deg,#0a0812,#1a1424)" }}>
+            className="block card-luxury sb-card-lift sb-fade-in p-4 mb-4 relative overflow-hidden text-white"
+            style={{ background: "linear-gradient(135deg,#0a0812,#1a1424)", animationDelay: "0.1s" }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[0.6rem] uppercase tracking-widest font-bold text-gold-400 mb-1">💰 Wallet Credit</p>
-                <p className="font-display text-3xl font-bold leading-none">₹{fmt(walletCredit.balance_inr)}</p>
+                <p className="text-[0.6rem] uppercase tracking-widest font-bold text-gold-400 mb-1 inline-flex items-center gap-1.5">
+                  <span className="sb-pulse-dot is-warn" />
+                  💰 Wallet Credit
+                </p>
+                <p className="font-display text-3xl font-bold leading-none">₹<CountUp value={Number(walletCredit.balance_inr) || 0} duration={1100} /></p>
                 <p className="text-[0.65rem] text-white/60 mt-1">Use at any booking →</p>
               </div>
               <span className="text-3xl opacity-80">→</span>
@@ -194,7 +198,7 @@ function MyCodesPage() {
             ["all", "All"],
           ].map(([k, label]) => (
             <button key={k} onClick={() => setFilter(k as any)}
-              className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border whitespace-nowrap transition ${
+              className={`text-xs font-semibold px-3.5 py-1.5 rounded-full border whitespace-nowrap transition sb-card-lift ${
                 filter === k
                   ? "bg-luxury-900 text-white border-luxury-900"
                   : "bg-white text-luxury-700 border-luxury-200"
@@ -206,7 +210,7 @@ function MyCodesPage() {
 
         {/* List */}
         {filtered.length === 0 ? (
-          <div className="card-luxury p-8 text-center">
+          <div className="card-luxury sb-card-lift sb-fade-in p-8 text-center">
             <p className="text-3xl mb-2">🎁</p>
             <p className="font-bold text-luxury-900">No codes here yet</p>
             <p className="text-sm text-luxury-500 mt-1 mb-4">Redeem your StayPoints for coupons, wallet credit, or hotel perks.</p>
@@ -216,7 +220,7 @@ function MyCodesPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          <div className="grid gap-3 sb-stagger" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
             {filtered.map((c) => {
               const st = statusColor(c.status);
               const expired = c.status === "active" && new Date(c.expires_at).getTime() < Date.now();
@@ -225,7 +229,7 @@ function MyCodesPage() {
               return (
                 <button key={c.id}
                   onClick={() => setOpenCode(c)}
-                  className="card-luxury p-4 text-left relative overflow-hidden transition hover:shadow-luxury">
+                  className="card-luxury sb-card-lift p-4 text-left relative overflow-hidden transition hover:shadow-luxury">
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"

@@ -128,7 +128,7 @@ export default function UserProfilePage() {
       </header>
 
       {/* Profile header */}
-      <section className="u-header">
+      <section className="u-header sb-fade-in">
         <div className="u-avatar-wrap">
           {avatarUrl ? (
             <img src={avatarUrl} alt={displayName} className="u-avatar-img" />
@@ -153,17 +153,17 @@ export default function UserProfilePage() {
         {bio && <p className="u-bio">{bio}</p>}
       </section>
 
-      <section className="u-actions">
+      <section className="u-actions sb-fade-in" style={{ animationDelay: "0.1s" }}>
         <button
           type="button"
-          className={`u-action-btn ${following ? "u-action-secondary" : "u-action-primary"}`}
+          className={`u-action-btn sb-card-lift ${following ? "u-action-secondary" : "u-action-primary"}`}
           onClick={handleFollow}
         >
-          {following ? "Following ✓" : "Follow"}
+          {following ? <><span className="sb-pulse-dot" style={{ marginRight: 6 }} />Following ✓</> : "Follow"}
         </button>
         <button
           type="button"
-          className="u-action-btn"
+          className="u-action-btn sb-card-lift"
           onClick={() => {
             const url = `${window.location.origin}/u/${encodeURIComponent(handle)}`;
             if ((navigator as any).share) (navigator as any).share({ title: displayName, url }).catch(() => {});
