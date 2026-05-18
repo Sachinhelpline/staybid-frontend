@@ -84,11 +84,30 @@ export function TutorialTriggerMount() {
       const startedAt = Date.now();
       const tryMove = () => {
         if (cancelled) return;
-        const found = document.querySelector(targetStep.element);
+        const found = document.querySelector(targetStep.element) as HTMLElement | null;
         const elapsed = Date.now() - startedAt;
         if (found || elapsed > 1200) {
-          if (delta > 0) drv.moveNext();
-          else drv.movePrevious();
+          // v144 — scroll the element's nearest scrollable ancestor
+          // into view BEFORE driver.js measures. Critical for modal/
+          // drawer interiors where driver.js's smoothScroll only
+          // affects the window — which a `position: fixed` modal
+          // ignores. Calling scrollIntoView on the element delegates
+          // to the modal's overflow:auto inner container so the
+          // spotlight lands on a visible target.
+          if (found) {
+            try {
+              found.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+            } catch {}
+            // Brief delay so scroll settles before driver positions
+            // the popover.
+            setTimeout(() => {
+              if (delta > 0) drv.moveNext();
+              else drv.movePrevious();
+            }, 180);
+          } else {
+            if (delta > 0) drv.moveNext();
+            else drv.movePrevious();
+          }
         } else {
           requestAnimationFrame(tryMove);
         }
@@ -98,6 +117,13 @@ export function TutorialTriggerMount() {
 
     const start = () => {
       if (cancelled) return;
+      // v144 — scroll the first step's element into the modal's
+      // visible region before driver.js measures it. See advance()
+      // for the same rationale on subsequent steps.
+      try {
+        const first = document.querySelector(localisedSteps[0].element) as HTMLElement | null;
+        if (first) first.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      } catch {}
       try {
         const drv = driver({
           showProgress: true,
