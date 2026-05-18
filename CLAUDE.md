@@ -5268,8 +5268,8 @@ snap.canUpload === true ?
 - [x] Phase 1 — Schema applied
 - [x] Phase 2 — API endpoints
 - [x] Phase 3 — Location OTP frontend + feature flag (Option A)
-- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + TierBadge + InspirationBanner (this section)
-- [ ] **Phase 5** — Hotel Pending Reviews dashboard + admin Pending Admin Review queue ← next on `continue`
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + TierBadge + InspirationBanner
+- [x] Phase 5 — Hotel Pending Reviews tab + admin Pending Admin Review page. See Section 8.
 - [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
 - [ ] Phase 7 — Creator auto-promote + admin-review eval
 - [ ] Phase 8 — Smoke tests + rollback notes + soft launch
@@ -5277,4 +5277,106 @@ snap.canUpload === true ?
 ---
 
 **Awaiting Sachin's `continue` to start Phase 5 — Hotel partner Pending Reviews dashboard + admin Pending Admin Review queue.** Phase 5 will surface the moderation queue inside `app/partner/dashboard/*` (new tab) and `app/admin/content/*` (new admin page), wiring the Phase 2 partner + admin moderation endpoints to actual UI.
+
+---
+
+## Phase 5 — Moderation Dashboards (2026-05-18)
+
+Phase 5 wires the Phase 2 partner + admin moderation endpoints to visible UI. Pure additive — every existing route, tab, and dashboard surface stays unchanged.
+
+### 8.1 — Files added
+
+**`components/partner/PartnerContentTab.tsx`** (NEW, ~390 lines):
+- Reads `GET /api/partner/content/pending` with `x-partner-token` + `x-partner-hotel-id` headers
+- Lists pending posts as media-cards (110×156 thumbnails) with author handle, `<TierBadge>` for tier, verification-method pill (booking / location_otp), upload time, caption
+- 3 inline actions per post: ✓ Approve / ✕ Reject / ⚠ Escalate to Admin
+- Reject + Escalate open a confirm modal (Reject requires reason, Escalate takes optional notes)
+- Optimistic removal from queue on success; ↻ Refresh button to re-fetch
+
+**`app/admin/content/page.tsx`** (NEW, ~580 lines):
+- Reads `GET /api/admin/content/pending-review` with `x-admin-token` + `x-admin-id` headers
+- Cross-hotel queue (every hotel's escalations land here)
+- Dark-luxury admin styling (matches `/admin/holds`, `/admin/analytics` precedent — inline JSX, no Tailwind utilities)
+- Per-post: media thumbnail, author handle + tier chip, hotel name + city, verification-method label, escalation timestamp + escalated_by (hotel partner / cron)
+- 4 actions: ✓ Approve / ✕ Reject / 🚩 Flag / 🗑 Delete (Reject requires reason; Flag/Delete take optional notes)
+- Every mutation goes through Phase 2 `POST /api/admin/content/[id]` which calls `logAdminAction()` for audit trail
+
+### 8.2 — Files modified (additive only)
+
+**`app/partner/dashboard/page.tsx`**:
+- `tab` state union widened: `+"content"`
+- TABS array: `+ { id:"content", icon:"🖼️", label:"Content Reviews" }` (added between Redeem and Verification)
+- New tab body: `{tab === "content" && hotel?.id && <PartnerContentTab hotelId={hotel.id} />}`
+- Import: `+ PartnerContentTab from "@/components/partner/PartnerContentTab"`
+
+**`components/admin/sidebar.tsx`**:
+- New NAV entry: `+ { href: "/admin/content", label: "Content Reviews", icon: "🖼️" }` between Chat Moderation and Fraud & Security
+
+### 8.3 — Auth patterns used (mirrors existing precedent)
+
+| Surface | Auth | Mirrored from |
+|---|---|---|
+| Partner Content tab | `x-partner-token` + `x-partner-hotel-id` from localStorage | `BookingChat`'s partner branch (v71 era) |
+| Admin Content page | `x-admin-token` + `x-admin-id` from localStorage | `/admin/holds` (v69 era), `/admin/redemption-codes` (v126) |
+
+No new env vars. No new tokens. Every header was already in use somewhere in the codebase.
+
+### 8.4 — TierBadge first visible mount
+
+The `<TierBadge>` component shipped in Phase 4 finds its first visible mount in `PartnerContentTab` — every pending-content row shows the author's tier as an `xs`-size pill next to their handle. Phase 6/8 follow-up work can add more mount sites (reel feed creator chip, profile sheets, etc.). PUBLIC users still render with no badge per the locked rule.
+
+### 8.5 — Decision tree (admin escalation flow)
+
+```
+Hotel partner sees a borderline post in their Content Reviews tab
+    ↓
+Taps "⚠ Escalate to Admin", optionally adds notes
+    ↓
+POST /api/partner/content/[id] { action: "escalate", notes }
+    ↓
+Phase 2 endpoint:
+   - Verifies partner owns the hotel
+   - Updates moderation_status = 'PENDING_ADMIN_REVIEW'
+   - Sets escalated_to_admin_at + escalated_by
+   - Queues 'content_escalated_to_admin' notification with user_id='ADMIN' sentinel
+    ↓
+Admin opens /admin/content (sidebar entry)
+    ↓
+GET /api/admin/content/pending-review returns row, sorted by escalation time
+    ↓
+Admin taps Approve / Reject / Flag / Delete
+    ↓
+POST /api/admin/content/[id] { action, reason?, notes? }
+    ↓
+Phase 2 endpoint:
+   - logAdminAction() writes to admin_audit_log (v98 audit infra)
+   - Updates moderation_status accordingly
+   - Sets admin_reviewed_at + admin_reviewed_by + admin_review_decision + admin_review_notes
+   - Queues notification to author (content_approved / content_rejected / content_flagged / content_deleted)
+    ↓
+Author's existing notification surface picks up the in_app row
+```
+
+### 8.6 — Verification
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0 — only pre-existing tsconfig deprecation warning
+- ✅ Partner dashboard's existing 9 tabs untouched; the 10th (Content Reviews) is a clean append
+- ✅ Admin sidebar's existing 25 entries untouched; Content Reviews inserted between Chat Moderation and Fraud
+- ✅ All Phase 2 routes consumed exactly as designed — partner endpoint scopes to owned hotels via `resolveUserIds()`; admin endpoint stays cross-hotel
+- ✅ Audit trail intact — every admin mutation goes through `logAdminAction()`
+
+### 8.7 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [ ] **Phase 6** — Cron jobs (auto-approve / post-stay nudge / view-milestone reward) + reward credit + Railway notification templates ← next on `continue`
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 6 — Cron jobs + reward credit + Railway notification templates.** Phase 6 is the second Sachin-paste-required phase: I will produce paste-ready Railway template handlers for the 7 new `template` strings the frontend queues into `notification_queue`. Until paste lands, in-app notifications queue but SMS/WhatsApp/email don't deliver. Cron jobs (auto-approve at 1h, post-stay nudge at 1d, view-milestone reward at 1d) live entirely in this frontend's `app/api/cron/` folder on cron-job.org.
 
