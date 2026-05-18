@@ -186,7 +186,7 @@ function HotelList() {
     <div className="max-w-7xl mx-auto px-4 py-4">
 
       {/* ── Compact page header ── */}
-      <div className="mb-3">
+      <div className="mb-3 sb-fade-in">
         <p className="text-[0.6rem] font-semibold tracking-[0.18em] uppercase mb-1" style={{ color: "var(--accent)" }}>Explore</p>
         <h1 className="font-display font-light mb-0.5" style={{ fontSize: "clamp(1.4rem, 4vw, 2.0rem)", color: "var(--text-base)" }}>
           Find Your Perfect Stay
@@ -226,7 +226,7 @@ function HotelList() {
             <button
               key={c}
               onClick={() => setCity(c === "All" ? "" : c)}
-              className="px-3 py-1.5 rounded-full text-[0.74rem] font-semibold transition-all"
+              className="px-3 py-1.5 rounded-full text-[0.74rem] font-semibold transition-all sb-card-lift"
               style={{
                 background: active ? "var(--bg-pill-active)" : "var(--bg-pill)",
                 color: active ? "var(--text-inverse)" : "var(--text-soft)",

@@ -3583,3 +3583,115 @@ body.is-reel-page {
   }
   .sb-card-lift:hover { transform: none !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * v135 — Per-page signature animation utilities (additive to v134's sb-*)
+ *
+ * These add a few page-specific signature moves on top of the generic
+ * v134 .sb-card-lift / .sb-fade-in / .sb-stagger / .sb-pulse-dot / .sb-shimmer.
+ *
+ * Same prefers-reduced-motion media block at bottom kills everything.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* — Onboarding step rail — flowing gold ribbon at top of form cards. */
+.sb-step-rail {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(201, 166, 107, 0.10);
+  border-radius: 999px;
+  margin: -28px -28px 20px -28px; /* extend to card edges */
+}
+.sb-step-rail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, #C9A66B 50%, transparent 100%);
+  animation: sb-step-rail-flow 2.4s linear infinite;
+}
+@keyframes sb-step-rail-flow {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* — Premium focus glow on inputs (OTP fields, identifiers, password). */
+.sb-focus-glow:focus,
+.sb-focus-glow:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(201, 166, 107, 0.18),
+    0 0 16px rgba(201, 166, 107, 0.25);
+  border-color: #C9A66B !important;
+  outline: none;
+}
+
+/* — Balance halo — slow rotating conic gradient behind the wallet balance.
+ *    Pair with z-index: 1 children to keep numbers crisp on top. */
+.sb-balance-halo {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.sb-balance-halo::before {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(201, 166, 107, 0.20) 25%,
+    transparent 50%,
+    rgba(217, 190, 130, 0.16) 75%,
+    transparent 100%
+  );
+  animation: sb-halo-spin 16s linear infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+.sb-balance-halo > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes sb-halo-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* — Ken-Burns slow zoom on hover (hotel cards, photo tiles).
+ *    Apply class to the OUTER wrapper that has overflow:hidden. */
+.sb-kenburns {
+  overflow: hidden;
+}
+.sb-kenburns img,
+.sb-kenburns .sb-kenburns-target {
+  transition: transform 1.8s cubic-bezier(.22, 1, .36, 1);
+  transform-origin: center;
+}
+.sb-kenburns:hover img,
+.sb-kenburns:hover .sb-kenburns-target {
+  transform: scale(1.06);
+}
+
+/* — Transaction row warm-tint hover (lists where lift would feel heavy). */
+.sb-tx-row {
+  transition: background-color 0.22s ease, padding-left 0.22s ease;
+}
+.sb-tx-row:hover {
+  background-color: rgba(201, 166, 107, 0.06);
+  padding-left: 4px;
+}
+
+/* — Reduced-motion respect (same block as v134's `.sb-*` set). */
+@media (prefers-reduced-motion: reduce) {
+  .sb-step-rail::after,
+  .sb-balance-halo::before,
+  .sb-kenburns img,
+  .sb-kenburns .sb-kenburns-target,
+  .sb-tx-row {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+  .sb-focus-glow:focus,
+  .sb-focus-glow:focus-visible {
+    box-shadow: 0 0 0 2px #C9A66B !important;
+  }
+}

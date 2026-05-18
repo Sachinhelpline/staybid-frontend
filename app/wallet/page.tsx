@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
+import { CountUp } from "@/components/CountUp";
 
 const LEVELS = [
   {
@@ -148,13 +149,13 @@ export default function WalletPage() {
       <div className="max-w-xl mx-auto px-5 py-10">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-7">
+        <div className="flex items-center justify-between mb-7 sb-fade-in">
           <div>
             <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-1">Account</p>
             <h1 className="font-display font-light text-luxury-900" style={{ fontSize:"clamp(1.8rem,4vw,2.5rem)" }}>My Wallet</h1>
           </div>
           <Link href="/profile"
-            className="flex items-center gap-1.5 text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-2 rounded-xl hover:border-gold-300 hover:text-gold-600 transition-all">
+            className="flex items-center gap-1.5 text-xs font-semibold text-luxury-500 border border-luxury-200 px-3 py-2 rounded-xl hover:border-gold-300 hover:text-gold-600 transition-all sb-card-lift">
             👤 Profile
           </Link>
         </div>
@@ -166,13 +167,13 @@ export default function WalletPage() {
             spendable balance from their StayPoints. */}
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           <Link href="/points/redeem"
-            className="rounded-2xl p-3 text-white text-center font-bold text-xs relative overflow-hidden"
+            className="rounded-2xl p-3 text-white text-center font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer"
             style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
-            <span className="text-base block mb-0.5">✨</span>
-            Redeem Points
+            <span className="text-base block mb-0.5 relative" style={{ zIndex: 2 }}>✨</span>
+            <span className="relative" style={{ zIndex: 2 }}>Redeem Points</span>
           </Link>
           <Link href="/my-codes"
-            className="rounded-2xl p-3 text-luxury-900 text-center font-bold text-xs border-2 border-luxury-200 bg-white hover:border-gold-300 transition">
+            className="rounded-2xl p-3 text-luxury-900 text-center font-bold text-xs border-2 border-luxury-200 bg-white hover:border-gold-300 transition sb-card-lift">
             <span className="text-base block mb-0.5">🎟️</span>
             My Codes
           </Link>
@@ -181,7 +182,7 @@ export default function WalletPage() {
         {wallet && (
           <>
             {/* ── Balance card ── */}
-            <div className="fu rounded-3xl p-7 mb-5 text-white relative overflow-hidden"
+            <div className="fu sb-balance-halo rounded-3xl p-7 mb-5 text-white relative overflow-hidden"
               style={{ background:"linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}>
               <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none opacity-[0.08]"
                 style={{ background:"radial-gradient(circle,#f0b429 0%,transparent 70%)",transform:"translate(30%,-30%)" }} />
@@ -196,18 +197,18 @@ export default function WalletPage() {
               </div>
 
               <p className="font-display font-light text-white mb-1" style={{ fontSize:"clamp(2.4rem,6vw,3.5rem)" }}>
-                ₹{(wallet.balance ?? 0).toLocaleString("en-IN")}
+                ₹<CountUp value={wallet.balance ?? 0} duration={1100} />
               </p>
               <p className="text-white/40 text-xs tracking-wide">{user?.phone || user?.email}</p>
 
               <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/10">
                 <div>
                   <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Credited</p>
-                  <p className="text-emerald-400 font-semibold text-sm">₹{(wallet.totalCredit ?? 0).toLocaleString("en-IN")}</p>
+                  <p className="text-emerald-400 font-semibold text-sm">₹<CountUp value={wallet.totalCredit ?? 0} duration={900} /></p>
                 </div>
                 <div className="border-x border-white/10 text-center">
                   <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Total Spent</p>
-                  <p className="text-red-400 font-semibold text-sm">₹{totalSpend.toLocaleString("en-IN")}</p>
+                  <p className="text-red-400 font-semibold text-sm">₹<CountUp value={totalSpend} duration={900} /></p>
                 </div>
                 {/* v105 — StayPoints column is now tappable. Drawer's
                     StayPoints entry was removed (redundant with this), so
@@ -221,7 +222,7 @@ export default function WalletPage() {
                   <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">
                     StayPoints <span className="text-gold-400 normal-case ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                   </p>
-                  <p className="text-gold-400 font-semibold text-sm">{totalPoints.toLocaleString()}</p>
+                  <p className="text-gold-400 font-semibold text-sm"><CountUp value={totalPoints} duration={900} /></p>
                 </Link>
               </div>
             </div>
@@ -238,7 +239,7 @@ export default function WalletPage() {
 
             {/* ── Transactions tab ── */}
             {activeTab === "wallet" && (
-              <div className="fu space-y-2">
+              <div className="fu space-y-2 sb-stagger">
                 {(!wallet.transactions || wallet.transactions.length === 0) ? (
                   <div className="text-center py-14">
                     <div className="w-14 h-14 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-3"><span className="text-2xl">💳</span></div>
@@ -249,7 +250,7 @@ export default function WalletPage() {
                   wallet.transactions.map((tx: any, i: number) => {
                     const st = txTypeStyle(tx.type);
                     return (
-                      <div key={tx.id || i} className="card-luxury px-5 py-4 flex items-center justify-between">
+                      <div key={tx.id || i} className="card-luxury sb-tx-row px-5 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${st.icon==="+"?"bg-emerald-50 text-emerald-600":st.icon==="−"?"bg-red-50 text-red-500":"bg-luxury-100 text-luxury-600"}`}>
                             {st.icon}

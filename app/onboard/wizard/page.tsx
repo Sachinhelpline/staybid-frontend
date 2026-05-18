@@ -66,7 +66,7 @@ export default function WizardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 sb-fade-in">
         <div>
           <h1 className="font-display text-3xl text-luxury-900">List your property</h1>
           <p className="text-sm text-luxury-500">Logged in as <span className="font-medium">{user.email || user.phone}</span></p>
@@ -79,7 +79,8 @@ export default function WizardPage() {
 
       <div className="grid md:grid-cols-[280px_1fr] gap-6">
         <Sidebar listing={listing} active={section} setActive={setSection} />
-        <div className="card-luxury p-6 md:p-8">
+        <div className="card-luxury sb-card-lift sb-fade-in p-6 md:p-8" style={{ animationDelay: "0.1s" }}>
+          <div className="sb-step-rail" aria-hidden />
           {section === "basics"  && <BasicsSection listing={listing} onChange={refresh} />}
           {section === "images"  && <ImagesSection listing={listing} onChange={refresh} />}
           {section === "rooms"   && <RoomsSection listing={listing} onChange={refresh} />}

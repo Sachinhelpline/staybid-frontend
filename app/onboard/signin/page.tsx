@@ -30,25 +30,26 @@ function SigninInner() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 sb-fade-in">
         <h1 className="font-display text-4xl text-luxury-900">Welcome back</h1>
         <p className="text-luxury-500 mt-2">Sign in to your StayBid Partner account</p>
       </div>
 
-      <form onSubmit={submit} className="card-luxury p-7 space-y-4">
+      <form onSubmit={submit} className="card-luxury sb-card-lift sb-fade-in p-7 space-y-4" style={{ animationDelay: "0.1s" }}>
+        <div className="sb-step-rail" aria-hidden />
         <Field label="Email or mobile">
           <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@hotel.com or +91…"
-                 className="input-luxury" required />
+                 className="input-luxury sb-focus-glow" required />
         </Field>
         <Field label="Password">
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
-                 className="input-luxury" required />
+                 className="input-luxury sb-focus-glow" required />
         </Field>
 
         {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
 
-        <button disabled={busy} className="btn-luxury w-full disabled:opacity-50">
-          {busy ? "Signing in…" : "Sign in →"}
+        <button disabled={busy} className="btn-luxury sb-shimmer w-full disabled:opacity-50 relative">
+          <span className="relative" style={{ zIndex: 2 }}>{busy ? "Signing in…" : "Sign in →"}</span>
         </button>
 
         <div className="flex items-center justify-between text-sm text-luxury-500 pt-1">
