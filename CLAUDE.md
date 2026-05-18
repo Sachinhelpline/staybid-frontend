@@ -5012,7 +5012,8 @@ The schema is in place but no application code touches it yet. The new enum valu
 - [x] Self-Discovery (commits `3bfb0ef`, original CLAUDE.md append)
 - [x] Phase 0 — Lock decisions (commit `4511d66`)
 - [x] Phase 1 — Schema applied (commits `04af7de` + `cfa542c` + migration applied to Supabase)
-- [ ] **Phase 2** — Next.js API endpoints (~10-13 new routes) ← next on `continue`
+- [x] Phase 2 — Next.js API endpoints (10 new routes + 4 helper libs). See Section 5 below.
+- [ ] **Phase 3** — Location OTP wiring (Sachin paste-pending on Railway) ← next on `continue`
 - [ ] Phase 3 — Location OTP wiring (Sachin paste-pending on Railway)
 - [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
 - [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
@@ -5023,4 +5024,86 @@ The schema is in place but no application code touches it yet. The new enum valu
 ---
 
 **Awaiting Sachin's `continue` to start Phase 2 — Next.js API endpoints.**
+
+---
+
+## Phase 2 — Next.js API Endpoints (2026-05-18)
+
+Phase 2 lands 10 new API routes + 4 new helper libs under `lib/tier/`. Every route is a NEW path — zero existing route or component touched. TypeScript clean (`tsc --noEmit --skipLibCheck` passed). Awaiting Sachin's `continue` to proceed to Phase 3.
+
+### 5.1 — Helper libs added (4 files, all under `lib/tier/`)
+- **`lib/tier/haversine.ts`** — pure great-circle distance. Exports `haversineMeters()`, `isWithinGeofence()`, `LOCATION_OTP_RADIUS_M = 250`.
+- **`lib/tier/types.ts`** — shared TypeScript types: `ContentTier` (6 values), `VerificationMethod`, `ModerationStatus`, `LocationVerificationStatus`, `NudgeType`, `AdminReviewDecision`, `MyTierResponse`.
+- **`lib/tier/eligibility.ts`** — booking + location-verification eligibility. Exports `listEligibleBookings()`, `hasEligibleBookingForHotel()`, `findActiveLocationVerification()`, `countActiveLocationVerifications()`. Unions `bookings.status='CHECKED_OUT'` + `bids.status='CHECKED_OUT'` joined with `bid_requests` for checkOut date. 90-day window enforced.
+- **`lib/tier/promote.ts`** — `maybePromoteToTier()` (idempotent PATCH on `social_profiles.user_type`, never downgrades) + `queueTierPromotionNudge()` (writes to `notification_queue`).
+
+### 5.2 — Customer routes (4 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/me/tier` | GET | Current user's tier + capabilities (`canUpload`, `reason`, `eligibleBookingsCount`, `hasActiveLocationVerification`). Returns `MyTierResponse`. Admin derived from `users.role`. |
+| `/api/me/eligible-bookings` | GET | List of bookings qualifying for Verified Guest path. |
+| `/api/social/posts/verified-guest` | POST | Verified Guest upload tied to a booking. Body: `{ bookingId, hotelId, mediaType, mediaUrl, … }`. Validates booking ownership + checkout window. Sets `moderation_status='PENDING_HOTEL_APPROVAL'` + `verification_method='booking'`. Promotes PUBLIC→VERIFIED_GUEST. Notifies hotel partner. |
+| `/api/social/posts/community` | POST | Community Contributor upload tied to a location-OTP. Body: `{ hotelId, locationVerificationId, mediaType, mediaUrl, … }`. Consumes the `location_verifications` row (`status='CONSUMED'`, `used_for_post_id=post.id`). Sets `moderation_status='PENDING_HOTEL_APPROVAL'` + `verification_method='location_otp'`. Promotes PUBLIC→COMMUNITY_CONTRIBUTOR. Notifies hotel partner. |
+
+Both upload endpoints support the v131.8 `clientPostId` idempotency chain (same dedup pattern as `/api/social/posts`).
+
+### 5.3 — Location OTP routes (2 files — Phase 3 paste-ready)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/verify/location/send-otp` | POST | Body: `{ hotelId, deviceLat, deviceLng, deviceAccuracyM? }`. Haversine check (≤250m). Inserts `location_verifications` row with SHA-256 hashed OTP. **Forwards (phone, otp) to Railway `/api/auth/send-location-otp`** — when that endpoint exists, SMS goes out. Until then (dev mode only) returns `dev_otp` in response so Phase 4 UI can be tested. |
+| `/api/verify/location/verify-otp` | POST | Body: `{ verificationId, otp }`. Compares against stored hash. Bumps `otp_attempts`. After 5 failed attempts → `status='FAILED'` locked. On success → `status='VERIFIED'` + `verified_at=now()`. |
+
+### 5.4 — Partner content moderation (2 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/partner/content/pending` | GET | Hotel partner's "Pending Reviews" queue. Filtered by `moderation_status='PENDING_HOTEL_APPROVAL'`. Scoped to hotels owned by the partner (via `resolveUserIds()` dual-id resolver). Optional `x-partner-hotel-id` header narrows to a single hotel. Side-loads author + hotel name. |
+| `/api/partner/content/[id]` | POST | Body: `{ action: "approve" \| "reject" \| "escalate", reason?, notes? }`. Verifies post belongs to a hotel the partner owns. Only acts when `moderation_status='PENDING_HOTEL_APPROVAL'` (409 otherwise). Notifies author on approve/reject; queues admin notif on escalate. |
+
+### 5.5 — Admin content moderation (2 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/admin/content/pending-review` | GET | Admin queue of every escalated post (`moderation_status='PENDING_ADMIN_REVIEW'`). Cross-hotel. Side-loads author + hotel. Sorted by `escalated_to_admin_at` asc (oldest first). |
+| `/api/admin/content/[id]` | POST | Body: `{ action: "approve" \| "reject" \| "flag" \| "unflag" \| "delete", reason?, notes? }`. Logged via `logAdminAction()` (v98 audit). Sets `admin_reviewed_at/by/decision/notes`. Notifies author on every transition. |
+
+### 5.6 — Auth patterns used
+- **Customer routes** — `socialUserFromReq()` from `lib/social/auth-helper` (accepts both backend HS256 + Firebase RS256 tokens).
+- **Partner routes** — `x-partner-token` header, decoded inline. Hotel ownership verified via `resolveUserIds()` + `hotels.ownerId in.(…)`.
+- **Admin routes** — `adminFromReq()` from `lib/admin/audit` (accepts JWT Bearer OR opaque `adm_…` master-PIN token + `x-admin-*` identity headers).
+
+### 5.7 — Notifications queued (in_app channel)
+Phase 6 will wire Railway-side drainer + add SMS/WhatsApp templates. For now, every action queues an `in_app` notification:
+- `content_pending_approval` → hotel partner on new upload
+- `content_approved` → post author on approve
+- `content_rejected` → post author on reject (with `reason`)
+- `content_escalated_to_admin` → user_id='ADMIN' sentinel (admins listen)
+- `content_flagged` → post author on flag
+- `content_deleted` → post author on delete
+- `tier_promoted` → user on PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR transition
+
+### 5.8 — What stays NULL / unused until later phases
+- All `social_posts.moderation_status` values for the 33+ existing posts → still `'APPROVED'` (Phase 1 default). No backfill.
+- All `social_profiles.user_type='VERIFIED_GUEST' / 'COMMUNITY_CONTRIBUTOR'` → zero rows. Will populate as users actually upload via the new paths.
+- Phase 3 Railway endpoint `/api/auth/send-location-otp` → does not exist yet. `send-otp` route handles the failure gracefully via dev-mode fallback.
+- Phase 6 cron jobs (auto-approve, post-stay nudge, view-milestone reward, creator-upgrade eval) → not built yet. The schema is ready.
+
+### 5.9 — Verification: TypeScript clean
+```bash
+npx tsc --noEmit --skipLibCheck   # only pre-existing tsconfig deprecation; zero Phase 2 errors
+```
+
+### 5.10 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] **Phase 2 — API endpoints** (this section)
+- [ ] Phase 3 — Location OTP Railway wiring ← Sachin paste-pending
+- [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 3 — Location OTP wiring.** Phase 3 is the first phase that needs Sachin's hands on the Railway repo: I will produce paste-ready TypeScript handler code for `/api/auth/send-location-otp`. Once pasted + redeployed, the frontend's `/api/verify/location/send-otp` will start dispatching real SMS via MSG91 (or WhatsApp / SendGrid, whichever Sachin's Railway has wired). Until then, dev-mode OTP fallback keeps the Phase 4 frontend usable.
 
