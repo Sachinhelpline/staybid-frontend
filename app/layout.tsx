@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/lib/theme-store";
 import { TutorialProvider } from "@/lib/tutorial/tutorial-store";
 import { WelcomeStory } from "@/components/tutorial/WelcomeStory";
 import { TutorialHelpButton } from "@/components/tutorial/TutorialHelpButton";
+import { TutorialTriggerMount } from "@/components/tutorial/TutorialTriggerMount";
 import { Navbar } from "@/components/Navbar";
 // DialerNav (left-edge crown wheel) was retired in v80 — the BottomDock
 // now owns primary navigation on every customer-facing page.
@@ -191,11 +192,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NotificationToast />
             {/* Welcome Story portal-mounted to document.body. */}
             <WelcomeStory />
-            {/* v142 — Floating "?" help button (Tutorial Layer 3).
+            {/* v143 — Floating "?" help button (Tutorial Layer 3).
                 Self-hides on /admin, /partner, /onboard, /auth.
-                Hidden while any tour is actively running. */}
+                Hidden while any tour is running.
+                Auto-shrinks + fades after 10+ tours seen. */}
             <TutorialHelpButton />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v142</div>
+            {/* v143 — Global listener for imperative triggerTour() calls
+                from modal/drawer handlers. Fires driver.js using the
+                same polling logic as usePageTour. */}
+            <TutorialTriggerMount />
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v143</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -216,7 +222,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v142-phase6-account-creator-support-tours";
+var SB_BUILD="v143-modal-tours-mature-decay-trigger-api";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

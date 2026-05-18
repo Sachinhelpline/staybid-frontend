@@ -40,6 +40,12 @@ const ROWS: Row[] = [
   { key: "complaints", emoji: "📣", labelEn: "Complaints",            labelHi: "Complaints",          route: "/complaints" },
   { key: "influencer", emoji: "🎬", labelEn: "Creator Hub",           labelHi: "Creator Hub",         route: "/influencer/dashboard" },
   { key: "earn",       emoji: "✨", labelEn: "Become a Creator",      labelHi: "Creator bano",        route: "/upgrade" },
+  // v143 — modal/drawer tours. No `route` because they fire from a
+  // CTA tap inside another page. Replay button just resets the seen
+  // flag — the user has to open the modal again to actually see it.
+  { key: "negotiate",     emoji: "🎯", labelEn: "Negotiate modal",       labelHi: "Negotiate modal" },
+  { key: "bookingReview", emoji: "💳", labelEn: "Pay/Hold options",      labelHi: "Pay/Hold options" },
+  { key: "flashDrawer",   emoji: "⚡", labelEn: "Flash Deal details",    labelHi: "Flash Deal details" },
 ];
 
 type Props = {

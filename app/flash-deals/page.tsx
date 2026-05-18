@@ -10,6 +10,8 @@ import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { snap100 } from "@/lib/price-snap";
 // v139 — Phase-3 flash deals spotlight tour (3 steps: ticker → card → CTA).
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v143 — flash-drawer modal tour triggered on card tap.
+import { useTutorial } from "@/lib/tutorial/tutorial-store";
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -110,6 +112,8 @@ function FlashDealsContent() {
   // v139 — Tutorial Layer 2 — flash deals tour. Delay 1100ms so the
   // ticker animates in + at least one .fd-card renders before fire.
   usePageTour("flash", "flash", { delayMs: 1100 });
+  // v143 — fires when a deal card opens its drawer (see onOpen below).
+  const { triggerTour } = useTutorial();
   const [city, setCity]       = useState(searchParams.get("city") || "");
   const [now, setNow]         = useState(Date.now());
   const [openId, setOpenId]   = useState<string | null>(null);
@@ -260,7 +264,7 @@ function FlashDealsContent() {
                 deal={d}
                 idx={idx}
                 now={now}
-                onOpen={() => setOpenId(d.id)}
+                onOpen={() => { setOpenId(d.id); triggerTour("flashDrawer", { delayMs: 450 }); }}
                 pickedRoomId={pickedUpgrade[d.id] || d.roomId}
                 onPickUpgrade={(rid) => setPickedUpgrade(p => ({ ...p, [d.id]: rid }))}
                 router={router}

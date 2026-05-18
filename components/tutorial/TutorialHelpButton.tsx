@@ -19,7 +19,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { useTutorial } from "@/lib/tutorial/tutorial-store";
+import { useTutorial, TUTORIAL_MATURE_THRESHOLD } from "@/lib/tutorial/tutorial-store";
 import { TutorialReplayList } from "./TutorialReplayList";
 
 const HIDE_PREFIXES = ["/admin", "/partner", "/onboard", "/auth"];
@@ -27,9 +27,14 @@ const HIDE_PREFIXES = ["/admin", "/partner", "/onboard", "/auth"];
 export function TutorialHelpButton() {
   const pathname = usePathname() || "/";
   const router = useRouter();
-  const { hydrated, active, disabled } = useTutorial();
+  const { hydrated, active, disabled, seenCount } = useTutorial();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  // v143 — "is-mature" auto-decay: once the user has marked
+  // TUTORIAL_MATURE_THRESHOLD tours seen (excluding welcome), the
+  // floating ? shrinks + fades. It stays tappable so help is always
+  // one tap away — just no longer competing for screen attention.
+  const isMature = seenCount >= TUTORIAL_MATURE_THRESHOLD;
 
   useEffect(() => {
     setMounted(true);
@@ -74,34 +79,45 @@ export function TutorialHelpButton() {
 
   const node = (
     <>
-      {/* FAB — bottom-right above BottomDock */}
+      {/* FAB — bottom-right above BottomDock.
+          v143 polish: smaller (36 → 28px mature), low-opacity champagne
+          tint so it stops competing with primary content. Hover/tap
+          brings full visibility back. */}
       <button
         type="button"
-        aria-label="Open app tour & help"
+        aria-label={isMature ? "Help (compact)" : "Open app tour & help"}
         onClick={() => setOpen(true)}
-        className="sb-help-fab"
+        className={isMature ? "sb-help-fab sb-help-fab--mature" : "sb-help-fab"}
         style={{
           position: "fixed",
-          right: 14,
+          right: isMature ? 10 : 14,
           // BottomDock height is ~64px + safe-area. We sit just above it.
           bottom: "calc(78px + env(safe-area-inset-bottom, 0px))",
           zIndex: 9500,
-          width: 40,
-          height: 40,
+          width: isMature ? 28 : 36,
+          height: isMature ? 28 : 36,
           borderRadius: "50%",
-          border: "1px solid rgba(201, 166, 107, 0.55)",
-          background: "linear-gradient(135deg, #FFFCF6, #F2EAD8)",
-          color: "var(--cozy-warm-dark, #1F1A0F)",
+          border: isMature
+            ? "1px solid rgba(201, 166, 107, 0.32)"
+            : "1px solid rgba(201, 166, 107, 0.42)",
+          background: isMature
+            ? "rgba(255, 252, 246, 0.55)"
+            : "rgba(255, 252, 246, 0.78)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          color: isMature ? "rgba(74, 56, 32, 0.62)" : "var(--cozy-warm-dark, #1F1A0F)",
           fontWeight: 800,
-          fontSize: 18,
+          fontSize: isMature ? 13 : 15,
           lineHeight: 1,
           cursor: "pointer",
-          boxShadow:
-            "0 10px 22px -8px rgba(31, 26, 15, 0.32), inset 0 1px 0 rgba(255,255,255,0.65)",
+          opacity: isMature ? 0.55 : 0.88,
+          boxShadow: isMature
+            ? "0 4px 10px -4px rgba(31, 26, 15, 0.18)"
+            : "0 8px 18px -8px rgba(31, 26, 15, 0.28), inset 0 1px 0 rgba(255,255,255,0.55)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "transform 0.18s ease, box-shadow 0.18s ease",
+          transition: "transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, background 0.18s ease",
         }}
       >
         ?
@@ -204,8 +220,19 @@ export function TutorialHelpButton() {
 
       <style>{`
         .sb-help-fab:hover {
+          opacity: 1 !important;
           transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 14px 28px -8px rgba(31, 26, 15, 0.42), inset 0 1px 0 rgba(255,255,255,0.75);
+          background: rgba(255, 252, 246, 0.95) !important;
+          color: var(--cozy-warm-dark, #1F1A0F) !important;
+          box-shadow: 0 12px 22px -8px rgba(31, 26, 15, 0.32), inset 0 1px 0 rgba(255,255,255,0.65) !important;
+        }
+        .sb-help-fab--mature:hover {
+          /* Hover restores full size + visibility — same target hit-area
+             always remains reachable. */
+          width: 36px !important;
+          height: 36px !important;
+          font-size: 15px !important;
+          border-color: rgba(201, 166, 107, 0.42) !important;
         }
         @keyframes sbHelpFadeIn {
           from { opacity: 0; }

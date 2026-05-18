@@ -1006,6 +1006,153 @@ const COMPLAINTS_STEPS: LocalisedSteps = {
   ],
 };
 
+// ── v143 — Modal / drawer tours (imperative triggerTour only) ────────
+
+// Negotiate modal on /hotels/[id] — 4 steps. Triggered from openNegotiate().
+const NEGOTIATE_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: '[data-tour="neg-prob"]',
+      title: "🎯 Acceptance probability",
+      description: "Live AI probability that the hotel will accept your bid — updates as you slide.",
+      side: "bottom",
+    },
+    {
+      element: '[data-tour="neg-slider"]',
+      title: "↔ Drag to set price",
+      description: "Snap to ₹100 multiples. Lower bid = bigger savings · higher bid = faster confirm.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="neg-info"]',
+      title: "🤖 Live AI insights",
+      description: "Recent accepted prices · viewers now · stay-points you'll earn — all real-time.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="neg-submit"]',
+      title: "🚀 Submit bid",
+      description: "Bid above floor → instant Razorpay charge. Below floor → hotel reviews + may counter.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: '[data-tour="neg-prob"]',
+      title: "🎯 Acceptance probability",
+      description: "Live AI bata raha hai hotel apki bid accept karega ya nahi — slider ke saath update hota hai.",
+      side: "bottom",
+    },
+    {
+      element: '[data-tour="neg-slider"]',
+      title: "↔ Slider se price set karo",
+      description: "₹100 ke multiples mein snap. Kam bid = zyada bachat · zyada bid = jaldi confirm.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="neg-info"]',
+      title: "🤖 Live AI insights",
+      description: "Recent accepted prices · abhi kitne viewers · kitne stay-points milenge — real-time.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="neg-submit"]',
+      title: "🚀 Submit bid",
+      description: "Floor se upar → instant Razorpay charge. Niche → hotel review karega + counter de sakta hai.",
+      side: "top",
+    },
+  ],
+};
+
+// Booking Review modal — 3 steps. Triggered from BookingReview onMount.
+// Renders identically across /hotels/[id], /my-bids, /bookings.
+const BOOKING_REVIEW_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: '[data-tour="br-pay"]',
+      title: "✨ Pay Full",
+      description: "Charged instantly via Razorpay. Booking confirmed in 30 seconds. StayPoints credited after check-out.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="br-hold"]',
+      title: "🔒 Hold for 24h",
+      description: "Pay a small ₹ hold to lock today's price for 24 hours. Settle the balance whenever you're ready.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="br-payhotel"]',
+      title: "🏨 Pay at Hotel",
+      description: "Online hold today, balance at the front desk on check-in. Hotel keeps your slot reserved.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: '[data-tour="br-pay"]',
+      title: "✨ Pay Full",
+      description: "Razorpay se instant charge. 30 second mein booking confirm. Check-out ke baad StayPoints milenge.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="br-hold"]',
+      title: "🔒 Hold for 24h",
+      description: "Chhota sa ₹ hold pay karo, aaj ki price 24 ghante lock. Baad mein balance settle karo.",
+      side: "top",
+    },
+    {
+      element: '[data-tour="br-payhotel"]',
+      title: "🏨 Pay at Hotel",
+      description: "Online hold aaj, balance check-in pe hotel ke desk pe. Slot reserved rahega.",
+      side: "top",
+    },
+  ],
+};
+
+// Flash Deal drawer on /flash-deals — 3 steps. Triggered from openId set.
+const FLASH_DRAWER_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".fd-drawer-rooms",
+      title: "🛏 Choose your room",
+      description: "Multiple room types at this hotel? Pick the one you want. Sold-out rooms are dimmed.",
+      side: "top",
+    },
+    {
+      element: ".fd-drawer-rules",
+      title: "📜 How this deal works",
+      description: "Fixed flash price · no bidding · limited slots · midnight cut-off. Confirmation in 30 seconds.",
+      side: "top",
+    },
+    {
+      element: ".fd-drawer-cta",
+      title: "⚡ Grab this stay",
+      description: "Razorpay opens · pay · slot is yours. Cheapest guaranteed across all OTAs.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".fd-drawer-rooms",
+      title: "🛏 Apna room chuno",
+      description: "Multiple room types hain? Apni pasand chuno. Sold-out rooms dim ho jate hain.",
+      side: "top",
+    },
+    {
+      element: ".fd-drawer-rules",
+      title: "📜 Yeh deal kaise kaam karta hai",
+      description: "Fixed flash price · bidding nahi · limited slots · midnight cut-off. 30 sec mein confirm.",
+      side: "top",
+    },
+    {
+      element: ".fd-drawer-cta",
+      title: "⚡ Yeh stay grab karo",
+      description: "Razorpay khulega · pay karo · slot apka. Sab OTA se sasta guaranteed.",
+      side: "top",
+    },
+  ],
+};
+
 export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   home: HOME_STEPS,
   hotel: HOTEL_STEPS,
@@ -1024,6 +1171,10 @@ export const PAGE_TOURS: Record<string, LocalisedSteps> = {
   influencer: INFLUENCER_STEPS,
   verify: VERIFY_STEPS,
   complaints: COMPLAINTS_STEPS,
+  // v143 — modal/drawer tours (imperative triggerTour only)
+  negotiate: NEGOTIATE_STEPS,
+  bookingReview: BOOKING_REVIEW_STEPS,
+  flashDrawer: FLASH_DRAWER_STEPS,
 };
 
 /** Hook helper — returns the steps array for the given key + current language. */

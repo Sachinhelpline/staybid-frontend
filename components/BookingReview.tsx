@@ -16,6 +16,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { computeHoldAmount, type HoldTier } from "@/lib/hold-amount";
 import ModalCloseButton from "@/components/ModalCloseButton";
+// v143 — auto-fire the bookingReview modal tour on mount. Triggered
+// once per user (or per session for anonymous). Selectors target the
+// 3 CTAs (br-pay / br-hold / br-payhotel) via data-tour attrs below.
+import { useTutorial } from "@/lib/tutorial/tutorial-store";
 import {
   getPendingRedemption,
   clearPendingRedemption,
@@ -68,6 +72,14 @@ export type BookingReviewProps = {
 
 export default function BookingReview(p: BookingReviewProps) {
   const [busy, setBusy] = useState<"" | "pay" | "hold" | "payhotel">("");
+  // v143 — fire the bookingReview tour on first open. delayMs:550 so
+  // the sticky CTA footer renders + animates in before spotlight.
+  const { triggerTour } = useTutorial();
+  useEffect(() => {
+    triggerTour("bookingReview", { delayMs: 550 });
+    // Only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // v124 — redemption state
   const [couponInput, setCouponInput] = useState("");
@@ -402,7 +414,7 @@ export default function BookingReview(p: BookingReviewProps) {
         <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm p-4 space-y-2.5"
           style={{ boxShadow: "0 -8px 24px -8px rgba(0,0,0,0.12)" }}>
 
-          <button onClick={() => run("pay", p.onPayFull)}
+          <button data-tour="br-pay" onClick={() => run("pay", p.onPayFull)}
             disabled={!!busy}
             className="br-cta-pay w-full py-3.5 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
             style={{
@@ -416,7 +428,7 @@ export default function BookingReview(p: BookingReviewProps) {
           </button>
 
           {(p.holdEnabled !== false && p.onHold && finalAmount > 0) && (
-            <button onClick={() => run("hold", (final, applied) => p.onHold!(holdAmount, final, applied))}
+            <button data-tour="br-hold" onClick={() => run("hold", (final, applied) => p.onHold!(holdAmount, final, applied))}
               disabled={!!busy}
               className="w-full py-3 rounded-2xl font-bold text-sm tracking-wide border-2 disabled:opacity-40 transition-all active:scale-[0.99]"
               style={{
@@ -429,7 +441,7 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
 
           {(p.payAtHotelEnabled && p.onPayAtHotel && finalAmount > 0) && (
-            <button onClick={() => run("payhotel", (final, applied) => p.onPayAtHotel!(holdAmount, final, applied))}
+            <button data-tour="br-payhotel" onClick={() => run("payhotel", (final, applied) => p.onPayAtHotel!(holdAmount, final, applied))}
               disabled={!!busy}
               className="w-full py-2.5 rounded-2xl font-semibold text-xs tracking-wide border disabled:opacity-40 transition-all active:scale-[0.99] text-luxury-700 border-luxury-200 hover:border-luxury-400 bg-luxury-50">
               {busy === "payhotel" ? "⏳ Opening…" : `🏨 Pay ${fmt(holdAmount)} now · Settle balance at hotel`}

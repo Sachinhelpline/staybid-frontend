@@ -19,6 +19,9 @@ import BackToTopButton from "@/components/BackToTopButton";
 // score badge → Book Now → Negotiate). Hook handles skip logic + waits
 // until the first selector (.hx-room-media) renders.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v143 — imperative tour trigger for the Negotiate modal + Booking
+// Review modal that open after a CTA tap.
+import { useTutorial } from "@/lib/tutorial/tutorial-store";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -68,6 +71,8 @@ export default function HotelDetail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, tokenType, login: authLogin } = useAuth();
+  // v143 — modal tour triggers
+  const { triggerTour } = useTutorial();
 
   const [hotel, setHotel]     = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -959,6 +964,10 @@ export default function HotelDetail() {
     setNegIn(globalCheckIn);
     setNegOut(globalCheckOut);
     setNegSuccess(false);
+    // v143 — Fire the negotiate modal tour ~500ms after open so the
+    // SVG ring + slider have rendered. Skip-logic in triggerTour
+    // handles disabled / seen / already-active states gracefully.
+    triggerTour("negotiate", { delayMs: 500 });
   };
 
   // Continue button in the floating picker modal explicitly resumes the user's intent.
@@ -3272,7 +3281,7 @@ export default function HotelDetail() {
 
                   <div className="flex items-center justify-center gap-5">
                     {/* SVG Probability Ring */}
-                    <div className="relative" style={{ width:120, height:120 }}>
+                    <div data-tour="neg-prob" className="relative" style={{ width:120, height:120 }}>
                       <svg width={120} height={120} viewBox="0 0 120 120" style={{ animation:"negRingPulse 2.4s ease-in-out infinite", ["--ring" as any]: prob.track }}>
                         <defs>
                           <linearGradient id="negRingG" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -3309,7 +3318,7 @@ export default function HotelDetail() {
                   </div>
 
                   {/* Slider */}
-                  <div className="mt-5">
+                  <div data-tour="neg-slider" className="mt-5">
                     <input type="range" min={min} max={max} step={PRICE_STEP} value={negAmt}
                       onChange={e => setNegAmt(snapClamp100(Number(e.target.value), min, max))}
                       className="neg-slider2"
@@ -3322,7 +3331,7 @@ export default function HotelDetail() {
                   </div>
 
                   {/* AI Ticker (rotates 4 tips) */}
-                  <div className="mt-4 px-3 py-2 rounded-xl border"
+                  <div data-tour="neg-info" className="mt-4 px-3 py-2 rounded-xl border"
                     style={{ background:"rgba(0,0,0,0.35)", borderColor:"rgba(240,180,41,0.18)" }}>
                     <div className="flex items-center gap-2">
                       <span className="text-[0.55rem] font-bold tracking-widest uppercase neg-gold-text shrink-0">🤖 Live AI</span>
@@ -3415,7 +3424,7 @@ export default function HotelDetail() {
                 )}
 
                 {/* Submit */}
-                <button onClick={handleNegotiate} disabled={negLoading || !negIn || !negOut || negIn >= negOut}
+                <button data-tour="neg-submit" onClick={handleNegotiate} disabled={negLoading || !negIn || !negOut || negIn >= negOut}
                   className="neg-cta-shimmer w-full py-4 rounded-2xl font-extrabold text-base tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
                   style={{
                     background: isInstant

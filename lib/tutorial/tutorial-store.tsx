@@ -47,7 +47,16 @@ export type TutorialKey =
   | "me"          // /me (IG-style profile)
   | "influencer"  // /influencer/dashboard (creator hub)
   | "verify"      // /verification
-  | "complaints"; // /complaints
+  | "complaints"  // /complaints
+  // v143 — modal/drawer flows (imperative triggerTour only)
+  | "negotiate"     // Negotiate modal on /hotels/[id]
+  | "bookingReview" // BookingReview modal (Pay Full / Hold / Pay-at-Hotel)
+  | "flashDrawer";  // Flash Deal drawer on /flash-deals
+
+/** v143 — Threshold for the "?" help button's mature-decay. Once the
+ * user has marked this many tours seen (excluding welcome), the
+ * floating ? auto-shrinks + fades but stays tappable. */
+export const TUTORIAL_MATURE_THRESHOLD = 10;
 
 type TutorialCtx = {
   /** Current language preference. Default = device language fallback. */
@@ -80,6 +89,20 @@ type TutorialCtx = {
   /** Replay any tour even if seen (for /me drawer "Replay" buttons). */
   replayTour: (key: TutorialKey) => void;
 
+  /** v143 — Imperative trigger for modal/drawer flows. Called from
+   * handlers AFTER the modal opens. The actual driver.js firing is
+   * driven by usePendingTrigger() mounted in the layout. */
+  triggerTour: (key: TutorialKey, opts?: { delayMs?: number; force?: boolean }) => void;
+
+  /** v143 — Internal: pending imperative trigger that usePendingTrigger
+   * watches. Not for direct consumer use. */
+  pendingTrigger: { key: TutorialKey; opts: { delayMs?: number; force?: boolean } } | null;
+  clearPendingTrigger: () => void;
+
+  /** v143 — Count of seen tours (excluding welcome). Drives the
+   * floating ? button's mature-decay state at TUTORIAL_MATURE_THRESHOLD. */
+  seenCount: number;
+
   /** Has the provider hydrated from localStorage yet? Prevents SSR flash. */
   hydrated: boolean;
 };
@@ -97,6 +120,10 @@ const TutorialContext = createContext<TutorialCtx>({
   setActive: () => {},
   startTour: () => {},
   replayTour: () => {},
+  triggerTour: () => {},
+  pendingTrigger: null,
+  clearPendingTrigger: () => {},
+  seenCount: 0,
   hydrated: false,
 });
 
@@ -118,6 +145,9 @@ const TUTORIAL_KEYS: TutorialKey[] = [
   "influencer",
   "verify",
   "complaints",
+  "negotiate",
+  "bookingReview",
+  "flashDrawer",
 ];
 
 const seenKey = (k: TutorialKey) => `sb_tutorial_${k}_seen`;
@@ -162,7 +192,14 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     influencer: false,
     verify: false,
     complaints: false,
+    negotiate: false,
+    bookingReview: false,
+    flashDrawer: false,
   });
+  // v143 — Imperative trigger queue for modal/drawer tours.
+  const [pendingTrigger, setPendingTrigger] = useState<
+    { key: TutorialKey; opts: { delayMs?: number; force?: boolean } } | null
+  >(null);
   const [active, setActive] = useState<TutorialKey | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -255,8 +292,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         explore: false, mybids: false, bookings: false,
         wallet: false, points: false, saved: false, me: false,
         influencer: false, verify: false, complaints: false,
+        negotiate: false, bookingReview: false, flashDrawer: false,
       });
       setActive(null);
+      setPendingTrigger(null);
     };
     window.addEventListener("sb:logout", onLogout);
     return () => window.removeEventListener("sb:logout", onLogout);
@@ -329,6 +368,33 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     setActive(k);
   }, [resetSeen]);
 
+  // v143 — Imperative trigger for modal/drawer tours. Sets pending
+  // state that usePendingTrigger (mounted in layout) picks up and
+  // fires via driver.js. Identical skip-logic to startTour but
+  // works AFTER the modal mount instead of waiting for page-mount.
+  const triggerTour = useCallback(
+    (k: TutorialKey, opts?: { delayMs?: number; force?: boolean }) => {
+      if (!hydrated) return;
+      if (disabled && !opts?.force) return;
+      if (!opts?.force && seenMap[k]) return;
+      if (active) return; // welcome story or another tour running
+      setPendingTrigger({ key: k, opts: opts || {} });
+    },
+    [hydrated, disabled, seenMap, active],
+  );
+
+  const clearPendingTrigger = useCallback(() => {
+    setPendingTrigger(null);
+  }, []);
+
+  // v143 — Count of seen tours (excluding welcome which is one-time
+  // app overview and shouldn't gate the help button's decay). Drives
+  // the floating ? button's "is-mature" CSS state.
+  const seenCount = TUTORIAL_KEYS.reduce((acc, k) => {
+    if (k === "welcome") return acc;
+    return seenMap[k] ? acc + 1 : acc;
+  }, 0);
+
   return (
     <TutorialContext.Provider
       value={{
@@ -337,6 +403,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         isSeen, markSeen, resetSeen, resetAllSeen,
         active, setActive,
         startTour, replayTour,
+        triggerTour, pendingTrigger, clearPendingTrigger,
+        seenCount,
         hydrated,
       }}
     >
