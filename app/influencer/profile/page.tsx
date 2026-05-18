@@ -63,7 +63,7 @@ export default function InfluencerProfilePage() {
 
   return (
     <div className="space-y-5">
-      <div className="card-luxury p-6">
+      <div className="card-luxury sb-card-lift sb-fade-in p-6">
         <h2 className="font-bold text-luxury-900 mb-4">Public Profile</h2>
         <label className="block text-xs font-bold text-luxury-700 uppercase tracking-wider mb-1.5">Bio</label>
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={400}
@@ -83,14 +83,14 @@ export default function InfluencerProfilePage() {
         </div>
       </div>
 
-      <div className="card-luxury p-6">
+      <div className="card-luxury sb-card-lift sb-fade-in p-6" style={{ animationDelay: "0.1s" }}>
         <h2 className="font-bold text-luxury-900 mb-3">Interests</h2>
         <div className="flex flex-wrap gap-2">
           {INTEREST_OPTIONS.map((i) => {
             const on = interests.includes(i);
             return (
               <button key={i} type="button" onClick={() => toggleInterest(i)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all sb-card-lift ${
                   on ? "bg-gold-500 text-white border-gold-600" : "bg-white text-luxury-700 border-luxury-200 hover:border-gold-400"
                 }`}>{i}</button>
             );
@@ -98,7 +98,7 @@ export default function InfluencerProfilePage() {
         </div>
       </div>
 
-      <div className="card-luxury p-6">
+      <div className="card-luxury sb-card-lift sb-fade-in p-6" style={{ animationDelay: "0.2s" }}>
         <h2 className="font-bold text-luxury-900 mb-3">Payout Bank</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Bank name" className="input-luxury w-full" />
@@ -110,12 +110,12 @@ export default function InfluencerProfilePage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 sb-fade-in" style={{ animationDelay: "0.3s" }}>
         <button onClick={save} disabled={saving}
-          className="btn-luxury px-6 py-3 rounded-xl font-bold disabled:opacity-50">
-          {saving ? "Saving…" : "Save Changes"}
+          className="btn-luxury sb-shimmer px-6 py-3 rounded-xl font-bold disabled:opacity-50 relative">
+          <span className="relative" style={{ zIndex: 2 }}>{saving ? "Saving…" : "Save Changes"}</span>
         </button>
-        {msg && <span className="text-sm font-semibold text-luxury-700">{msg}</span>}
+        {msg && <span className="text-sm font-semibold text-luxury-700 inline-flex items-center gap-1.5"><span className="sb-pulse-dot" />{msg}</span>}
       </div>
     </div>
   );
