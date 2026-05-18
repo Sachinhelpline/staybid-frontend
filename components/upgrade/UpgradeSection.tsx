@@ -283,6 +283,11 @@ function UpgradeCard({
       <button
         onClick={onAction}
         disabled={blocked || alreadyMine}
+        // v140.1 — data-tour anchor for the Phase-3 earn tour step 3
+        // (Apply CTA inside the creator card). Distinct from the
+        // card-level data-tour="upgrade-creator" so the tour can
+        // spotlight the button precisely.
+        data-tour={`upgrade-${kind}-apply`}
         className="btn-luxury py-2.5 rounded-xl font-bold mt-auto disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
         {alreadyMine

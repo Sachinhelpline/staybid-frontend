@@ -210,6 +210,41 @@ export default function BidPage() {
   // [data-autonext="..."] selectors from the bx-section flow.
   usePageTour("bid", "bid");
 
+  // v140.1 — /bid is step-gated (city/dates at step=1, room type at
+  // step=2, budget at step=3, submit at step=4). The tour selectors
+  // for budget + submit don't exist in the DOM at page step=1. Listen
+  // for sb:tour-prep events from usePageTour and bump the page state
+  // so the next selector renders before driver.js spotlights it.
+  // sb:tour-end resets the page back to step=1 so the user can
+  // actually fill the form after the tour.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onPrep = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.key !== "bid") return;
+      const toIdx = detail.toIndex as number;
+      // Tour index → page step:
+      //   0 (city)    → page step 1
+      //   1 (dates)   → page step 1
+      //   2 (budget)  → page step 3 (skip room-type step 2 for tour purpose)
+      //   3 (submit)  → page step 4
+      const targetPageStep = toIdx === 0 || toIdx === 1 ? 1 : toIdx === 2 ? 3 : 4;
+      setStep((prev) => (prev !== targetPageStep ? targetPageStep : prev));
+    };
+    const onEnd = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.key !== "bid") return;
+      // Reset to start of the actual bid flow.
+      setStep(1);
+    };
+    window.addEventListener("sb:tour-prep", onPrep);
+    window.addEventListener("sb:tour-end", onEnd);
+    return () => {
+      window.removeEventListener("sb:tour-prep", onPrep);
+      window.removeEventListener("sb:tour-end", onEnd);
+    };
+  }, []);
+
   const [form, setForm] = useState({
     city:           "",
     checkIn:        "",

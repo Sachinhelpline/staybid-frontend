@@ -262,14 +262,17 @@ const HOME_STEPS: LocalisedSteps = {
   ],
 };
 
-// Hotel detail page — 5 steps
+// Hotel detail page — 5 steps. v140.1 — reordered to follow natural
+// top-down visual order (Score Card sits high under the hero ribbon;
+// Photos + CTAs are inside room cards further down). Old order caused
+// up-down-up scroll jumps; new order scrolls smoothly down once.
 const HOTEL_STEPS: LocalisedSteps = {
   en: [
     {
-      element: ".hx-room-media",
-      title: "📸 Photo gallery",
-      description: "Real verified photos from the property. Tap to view full-screen.",
-      side: "right",
+      element: ".hsb",
+      title: "🏆 Score Card",
+      description: "Detailed score out of 100 + city rank. Tap for the full 10-checkpoint breakdown.",
+      side: "bottom",
     },
     {
       element: "#availability-picker",
@@ -278,10 +281,10 @@ const HOTEL_STEPS: LocalisedSteps = {
       side: "top",
     },
     {
-      element: ".hsb",
-      title: "🏆 Score Card",
-      description: "Detailed score out of 100 + city rank. Tap for the full 10-checkpoint breakdown.",
-      side: "left",
+      element: ".hx-room-media",
+      title: "📸 Real photos",
+      description: "Verified photos from the property. Tap to view full-screen.",
+      side: "right",
     },
     {
       element: ".hx-cta-primary",
@@ -298,10 +301,10 @@ const HOTEL_STEPS: LocalisedSteps = {
   ],
   hi: [
     {
-      element: ".hx-room-media",
-      title: "📸 Photo gallery",
-      description: "Property ki real verified photos. Full-screen ke liye tap karo.",
-      side: "right",
+      element: ".hsb",
+      title: "🏆 Score Card",
+      description: "100 mein se detailed score + city rank. 10-checkpoint breakdown ke liye tap karo.",
+      side: "bottom",
     },
     {
       element: "#availability-picker",
@@ -310,10 +313,10 @@ const HOTEL_STEPS: LocalisedSteps = {
       side: "top",
     },
     {
-      element: ".hsb",
-      title: "🏆 Score Card",
-      description: "100 mein se detailed score + city rank. 10-checkpoint breakdown ke liye tap karo.",
-      side: "left",
+      element: ".hx-room-media",
+      title: "📸 Real photos",
+      description: "Property ki verified photos. Full-screen ke liye tap karo.",
+      side: "right",
     },
     {
       element: ".hx-cta-primary",
@@ -448,7 +451,11 @@ const EARN_STEPS: LocalisedSteps = {
       align: "start",
     },
     {
-      element: '[data-tour="upgrade-creator"]',
+      // v140.1 — target the Apply button itself (data-tour added on the
+      // UpgradeCard CTA in v140.1). Previously this re-pointed at the
+      // creator card again which highlighted the whole card twice in a
+      // row — confusing UX. Now it spotlights the actual button.
+      element: '[data-tour="upgrade-creator-apply"]',
       title: "Quick apply",
       description: "Tap 'Apply as a Creator' — fill 3 fields. Admin approval in 1-2 days.",
       side: "top",
@@ -470,7 +477,7 @@ const EARN_STEPS: LocalisedSteps = {
       align: "start",
     },
     {
-      element: '[data-tour="upgrade-creator"]',
+      element: '[data-tour="upgrade-creator-apply"]',
       title: "Quick apply",
       description: "'Apply as a Creator' tap karo — 3 fields fill karo. Admin 1-2 din mein approve karega.",
       side: "top",

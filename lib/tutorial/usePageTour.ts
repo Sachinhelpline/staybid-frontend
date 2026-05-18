@@ -77,6 +77,51 @@ export function usePageTour(
     const start = () => {
       if (cancelled) return;
       try {
+        // v140.1 — step-gated page support.
+        // Some pages (notably /bid) render different sections based on
+        // an internal `step` state. When the tour points at a selector
+        // that's NOT in the DOM at the current page state, driver.js
+        // shows the popover floating mid-screen with no spotlight.
+        // Fix: before EACH transition (Next or Prev), we dispatch a
+        // `sb:tour-prep` event with { key, toIndex, nextElement }. The
+        // page listens, advances its internal state to make the next
+        // selector available, and React re-renders. We then poll for
+        // the element to mount (max ~1.2s) before calling moveNext()
+        // or movePrevious() so driver.js actually finds it.
+        const advance = (drv: any, delta: 1 | -1) => {
+          const currentIdx = typeof drv.getActiveIndex === "function" ? (drv.getActiveIndex() ?? 0) : 0;
+          const targetIdx = currentIdx + delta;
+          const targetStep = localisedSteps[targetIdx];
+          if (!targetStep) {
+            if (delta > 0) drv.moveNext();
+            else drv.movePrevious();
+            return;
+          }
+          try {
+            window.dispatchEvent(new CustomEvent("sb:tour-prep", {
+              detail: { key, fromIndex: currentIdx, toIndex: targetIdx, nextElement: targetStep.element },
+            }));
+          } catch {}
+          // Wait one render cycle for the page to react, then poll for
+          // the element. Hard cap at ~1.2s so a missing element never
+          // wedges the tour.
+          const start = Date.now();
+          const tryMove = () => {
+            if (cancelled) return;
+            const found = document.querySelector(targetStep.element);
+            const elapsed = Date.now() - start;
+            if (found || elapsed > 1200) {
+              if (delta > 0) drv.moveNext();
+              else drv.movePrevious();
+            } else {
+              // Polling at requestAnimationFrame cadence — smooth, no
+              // wasted CPU.
+              requestAnimationFrame(tryMove);
+            }
+          };
+          setTimeout(tryMove, 30);
+        };
+
         const drv = driver({
           showProgress: true,
           animate: true,
@@ -99,9 +144,25 @@ export function usePageTour(
               align: s.align || "center",
             },
           })),
+          // v140.1 — intercept Next/Prev so we can prep step-gated
+          // pages before moving. If a page's listener doesn't update
+          // anything (most pages won't), the polling falls through
+          // immediately and we move normally.
+          onNextClick: (_el, _step, { driver: drv }) => {
+            advance(drv, 1);
+          },
+          onPrevClick: (_el, _step, { driver: drv }) => {
+            advance(drv, -1);
+          },
           onDestroyed: () => {
             markSeen(key);
             setActive(null);
+            // v140.1 — broadcast tour-end so step-gated pages (like
+            // /bid) can reset to their initial step for the user to
+            // actually fill the form.
+            try {
+              window.dispatchEvent(new CustomEvent("sb:tour-end", { detail: { key } }));
+            } catch {}
             driverRef.current = null;
           },
           onCloseClick: () => {

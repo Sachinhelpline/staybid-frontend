@@ -1,25 +1,31 @@
 "use client";
 // v138 — Tutorial system foundation.
+// v140.1 — auth-aware seen-flag policy.
 //
 // Single source of truth for the 3-layer onboarding system:
-//   Layer 1: Welcome Story (one-time, first launch)        — Phase 1 (current)
+//   Layer 1: Welcome Story (one-time, first launch)        — Phase 1
 //   Layer 2: Per-page spotlight tours (driver.js)          — Phase 2
 //   Layer 3: Floating "?" help button (always-on replay)   — Phase 4
 //
-// The provider exposes:
-//   • language (en | hi) with persistent localStorage backing
-//   • per-section seen-flags (welcome, home, hotel, bid, reels, flash, earn)
-//   • master kill-switch (sb_tutorial_disabled)
-//   • markSeen / resetSeen / startTour / replayAll helpers
+// v140.1 — auth-aware "seen" rule per user spec:
+//   • Anonymous users → tour shows on every NEW SESSION (fresh tab/
+//     window). Within a session, in-memory state prevents repeat fire
+//     when navigating back to the same page.
+//   • Signed-in users → tour shows ONCE, then marked seen in
+//     localStorage. Survives refreshes + tab close.
+//   • Sign-in transition → any session-seen flags from the anonymous
+//     phase are promoted to localStorage so users don't re-see tours
+//     they already dismissed pre-login.
 //
-// Persistence keys (per CLAUDE.md v132.14 logout contract):
+// Persistence keys:
 //   sb_tutorial_lang        — KEEP across logout (device pref)
 //   sb_tutorial_disabled    — KEEP across logout (device pref)
-//   sb_tutorial_<key>_seen  — cleared on logout (next account = fresh tour)
-//
-// The two device-pref keys are added to lib/auth.tsx KEEP allow-list in v138.
+//   sb_tutorial_<key>_seen  — localStorage (signed-in only).
+//                              Cleared on logout (next account = fresh tours).
+// (No persistent key for anonymous users — tour always fires next session.)
 
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import { useAuth } from "@/lib/auth";
 
 export type TutorialLang = "en" | "hi";
 export type TutorialKey =
@@ -109,6 +115,11 @@ function detectInitialLang(): TutorialLang {
 }
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
+  // v140.1 — depend on auth to gate persistence. We import inside the
+  // module (no circular risk; auth never imports tutorial-store).
+  const { user } = useAuth();
+  const prevUserRef = useRef<typeof user>(null);
+
   const [lang, setLangState] = useState<TutorialLang>("en");
   const [disabled, setDisabledState] = useState<boolean>(false);
   const [seenMap, setSeenMap] = useState<Record<TutorialKey, boolean>>({
@@ -124,19 +135,57 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   // ── Hydrate from localStorage once on mount ────────────────────────────
+  // For anonymous users we DELIBERATELY skip reading localStorage so the
+  // tour fires fresh each session. (sessionStorage is read instead to
+  // dedup within the same tab.) For signed-in users we read localStorage
+  // as before.
   useEffect(() => {
     try {
       setLangState(detectInitialLang());
       setDisabledState(localStorage.getItem("sb_tutorial_disabled") === "1");
       const nextSeen = { ...seenMap };
+      const isSignedIn = !!user;
       TUTORIAL_KEYS.forEach((k) => {
-        nextSeen[k] = localStorage.getItem(seenKey(k)) === "1";
+        if (isSignedIn) {
+          nextSeen[k] = localStorage.getItem(seenKey(k)) === "1";
+        } else {
+          // Anonymous: only same-session dedup via sessionStorage.
+          nextSeen[k] = sessionStorage.getItem(`${seenKey(k)}_session`) === "1";
+        }
       });
       setSeenMap(nextSeen);
     } catch {}
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── v140.1 — Sign-in transition: promote any session-seen flags to
+  // localStorage so the user doesn't re-see tours they already dismissed
+  // pre-login. Triggered the moment user goes from null → signed in.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const wasAnon = !prevUserRef.current;
+    const isNowSignedIn = !!user;
+    if (wasAnon && isNowSignedIn) {
+      try {
+        const nextSeen = { ...seenMap };
+        TUTORIAL_KEYS.forEach((k) => {
+          const sessionFlag = sessionStorage.getItem(`${seenKey(k)}_session`) === "1";
+          const lsFlag      = localStorage.getItem(seenKey(k)) === "1";
+          // Use either source — whichever says "seen" wins. Promote to LS.
+          const seen = sessionFlag || lsFlag;
+          if (seen) {
+            localStorage.setItem(seenKey(k), "1");
+            nextSeen[k] = true;
+          } else {
+            nextSeen[k] = false;
+          }
+        });
+        setSeenMap(nextSeen);
+      } catch {}
+    }
+    prevUserRef.current = user;
+  }, [user]);
 
   // ── Cross-tab sync: language + disabled flag ───────────────────────────
   useEffect(() => {
@@ -195,12 +244,25 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
 
   const markSeen = useCallback((k: TutorialKey) => {
     setSeenMap((prev) => ({ ...prev, [k]: true }));
-    try { localStorage.setItem(seenKey(k), "1"); } catch {}
-  }, []);
+    try {
+      if (user) {
+        // Signed-in → persist forever
+        localStorage.setItem(seenKey(k), "1");
+      } else {
+        // Anonymous → session-only dedup so tour doesn't repeat within
+        // the same tab when user navigates back to a previously-seen
+        // page. Next session (new tab/refresh) → tour fires again.
+        sessionStorage.setItem(`${seenKey(k)}_session`, "1");
+      }
+    } catch {}
+  }, [user]);
 
   const resetSeen = useCallback((k: TutorialKey) => {
     setSeenMap((prev) => ({ ...prev, [k]: false }));
-    try { localStorage.removeItem(seenKey(k)); } catch {}
+    try {
+      localStorage.removeItem(seenKey(k));
+      sessionStorage.removeItem(`${seenKey(k)}_session`);
+    } catch {}
   }, []);
 
   const resetAllSeen = useCallback(() => {
@@ -210,7 +272,10 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     }, {} as Record<TutorialKey, boolean>);
     setSeenMap(cleared);
     try {
-      TUTORIAL_KEYS.forEach((k) => localStorage.removeItem(seenKey(k)));
+      TUTORIAL_KEYS.forEach((k) => {
+        localStorage.removeItem(seenKey(k));
+        sessionStorage.removeItem(`${seenKey(k)}_session`);
+      });
     } catch {}
   }, []);
 
