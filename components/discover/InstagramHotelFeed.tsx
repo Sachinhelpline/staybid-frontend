@@ -24,8 +24,13 @@ import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
 import { usePosts } from "@/lib/posts-store";
 import { applyGain, resumeAudio } from "@/lib/audio-amplifier";
-import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack, filterCssFor as filterCssForId } from "@/components/discover/CreateFlow";
+import { CreateFlow, AudioPicker, ProfilePhotoEditor, type AudioTrack, filterCssFor as filterCssForId, type ComposerTierContext } from "@/components/discover/CreateFlow";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+// Phase 4 tier-system gate — PUBLIC users with no upload eligibility
+// are routed to UpgradeChoiceSheet on FAB tap, instead of the default
+// CreateSheet. See onFabClick handler below.
+import UpgradeChoiceSheet, { type TierContext } from "@/components/tier/UpgradeChoiceSheet";
+import type { MyTierResponse } from "@/lib/tier/types";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
@@ -2910,6 +2915,20 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // by the `?` key or the `?` chip in the corner of the reel feed.
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // ─── Phase 4 tier-system Create-flow gate ─────────────────────────
+  // Reads /api/me/tier to decide whether a + FAB tap opens the upgrade-
+  // choice sheet (PUBLIC user with no eligibility) or the default
+  // CreateSheet. Tier snapshot is fetched lazily — first FAB tap pays
+  // the cost. Once we have a snapshot, it's reused for the session.
+  const [tierSnapshot, setTierSnapshot] = useState<MyTierResponse | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [tierContext, setTierContext] = useState<ComposerTierContext | undefined>(undefined);
+  // Controlled-composer mode: when the user picks a tier path inside
+  // UpgradeChoiceSheet, we set this to "reel" (or kind from picker) so
+  // the Composer opens directly, skipping the CreateSheet chooser. We
+  // pass open + kind down via the new controlled props on <CreateFlow>.
+  const [pickedComposerOpen, setPickedComposerOpen] = useState(false);
+
   // ── Saved-set hydration ─────────────────────────────────────────────
   // Fetch the user's existing saves once on mount so the bookmark icon on
   // each reel reflects PRIOR state (was always defaulting to "not saved",
@@ -4241,9 +4260,47 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       />
 
       {/* + Plus button (Create flow) — Instagram-style, available on every
-          reel screen so user can post from anywhere. */}
+          reel screen so user can post from anywhere.
+          Phase 4 tier-system: onFabClick intercepts the tap. PUBLIC users
+          with canUpload=false see UpgradeChoiceSheet instead of CreateSheet.
+          tierContext + controlled-composer props let UpgradeChoiceSheet
+          hand back into the Composer directly with booking metadata. */}
       <CreateFlow
         sanitize={sanitizeComment}
+        onFabClick={async () => {
+          try {
+            // Cache the tier snapshot for the session — fetch only when
+            // we don't already have one. Saves a roundtrip on subsequent
+            // FAB taps within the same page view.
+            let snap = tierSnapshot;
+            if (!snap) {
+              snap = (await api.getMyTier()) as MyTierResponse;
+              setTierSnapshot(snap);
+            }
+            // If user can upload (non-PUBLIC OR PUBLIC with eligible
+            // bookings/location verification), let CreateFlow open the
+            // default CreateSheet as today. tierContext stays undefined
+            // → /api/social/posts route used as before.
+            if (snap?.canUpload) {
+              setTierContext(undefined);
+              return; // void → default-open behavior
+            }
+            // Otherwise, intercept: show UpgradeChoiceSheet.
+            setUpgradeOpen(true);
+            return false;
+          } catch {
+            // If tier probe fails, fail open (don't block uploads on
+            // network errors — better UX than a stuck FAB).
+            return;
+          }
+        }}
+        tierContext={tierContext}
+        composerOpen={pickedComposerOpen || undefined}
+        composerKind={pickedComposerOpen ? "reel" : undefined}
+        onComposerClose={() => {
+          setPickedComposerOpen(false);
+          setTierContext(undefined);
+        }}
         onPosted={(p) => {
           // v121.2 — ROOT CAUSE FIX for the "one upload → two server rows"
           // duplicate bug the user just diagnosed.
@@ -4280,6 +4337,37 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
             root.scrollTo({ top: 0, behavior: "smooth" });
             setActiveIdx(0);
           }, 100);
+        }}
+      />
+      {/* Phase 4 — Tier-system upgrade-choice sheet. Mounted alongside
+          CreateFlow; UpgradeChoiceSheet handles its own portaling +
+          backdrop, so visual stacking is independent. */}
+      <UpgradeChoiceSheet
+        open={upgradeOpen}
+        tier={tierSnapshot}
+        onClose={() => setUpgradeOpen(false)}
+        onPickedContext={(ctx: TierContext) => {
+          // Translate the picker output into the Composer's tier-context
+          // shape (both shapes happen to be identical right now, but the
+          // explicit map keeps the boundary clean if either evolves).
+          if (ctx.kind === "verified_guest") {
+            setTierContext({
+              kind: "verified_guest",
+              hotelId: ctx.hotelId,
+              bookingId: ctx.bookingId,
+            });
+          } else {
+            setTierContext({
+              kind: "community_contributor",
+              hotelId: ctx.hotelId,
+              locationVerificationId: ctx.locationVerificationId,
+            });
+          }
+          setUpgradeOpen(false);
+          // Skip the CreateSheet chooser — open Composer directly. Reel
+          // is the default kind; the user can switch inside the Composer
+          // if their first instinct was Photo or Story.
+          setPickedComposerOpen(true);
         }}
       />
       {/* ── Inline Edit-post sheet — caption + tags only. Media replace

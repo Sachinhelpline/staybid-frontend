@@ -32,7 +32,10 @@ export async function GET(req: NextRequest) {
   // (TEXT IDs, no FK constraint). Instead we do influencers + users in
   // parallel and merge in JS.
   let query =
-    "influencers?select=id,user_id,bio,location,total_followers,interests,bank_name,bank_account_number,ifsc_code,aadhaar_verified,pan_verified,verification_tier,status,total_earnings,created_at,updated_at&order=created_at.desc&limit=300";
+    // Phase 7 — application_source + auto_eval_data added so admin sees
+    // cron-driven candidates (auto_promote / auto_eval) alongside form
+    // applicants. Default for legacy rows: 'form'.
+    "influencers?select=id,user_id,bio,location,total_followers,interests,bank_name,bank_account_number,ifsc_code,aadhaar_verified,pan_verified,verification_tier,status,total_earnings,created_at,updated_at,application_source,auto_eval_data&order=created_at.desc&limit=300";
   if (ALLOWED_STATUSES.has(status)) {
     query += `&status=eq.${status}`;
   }

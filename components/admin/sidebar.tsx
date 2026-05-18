@@ -16,6 +16,8 @@ const NAV = [
   { href: "/admin/holds", label: "Active Holds", icon: "⏱" },
   { href: "/admin/analytics", label: "Bid Analytics", icon: "📊" },
   { href: "/admin/messages", label: "Chat Moderation", icon: "💬" },
+  // Phase 5 tier-system — escalated content moderation queue
+  { href: "/admin/content", label: "Content Reviews", icon: "🖼️" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
   { href: "/admin/commission-rules", label: "Creator Commission", icon: "✨" },

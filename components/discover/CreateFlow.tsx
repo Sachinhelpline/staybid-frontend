@@ -1884,13 +1884,27 @@ export function CoverFramePicker({
 }
 
 // ─── Composer (the multi-step compose modal) ─────────────────────────────
+// Tier-system Phase 4 additive: a `tierContext` prop pipes through to
+// runUpload, which routes the final POST to /api/social/posts/verified-guest
+// or /api/social/posts/community when set. When undefined (the existing
+// path), the POST still targets /api/social/posts exactly as before.
+export type ComposerTierContext =
+  | { kind: "verified_guest"; hotelId: string; bookingId: string }
+  | {
+      kind: "community_contributor";
+      hotelId: string;
+      locationVerificationId: string;
+    };
+
 export function Composer({
-  open, kind, onClose, onPosted, sanitize,
+  open, kind, onClose, onPosted, sanitize, tierContext,
 }: {
   open: boolean;
   kind: ContentKind;
   onClose: () => void;
   onPosted: (post: UserPost) => void;
+  /** Phase 4 tier-system routing context. Undefined = legacy behavior. */
+  tierContext?: ComposerTierContext;
   /**
    * Caption sanitizer hook — caller supplies the same anti-bypass guard
    * used elsewhere so phone/email/social-handle leaks are scrubbed before
@@ -2306,7 +2320,26 @@ export function Composer({
         }
       }
 
-      const r = await fetch("/api/social/posts", {
+      // Tier-system Phase 4 additive: route the POST based on tierContext.
+      // When undefined (overwhelming majority of uploads), behavior is byte-
+      // identical to pre-Phase-4 — POST hits /api/social/posts as it always has.
+      // When set, POST hits the verified-guest or community endpoint with
+      // booking_id / locationVerificationId already validated by Phase 2.
+      // Hotel id is forced from tierContext (overrides post.taggedHotel) so
+      // a user can't decouple their content from the booking they verified.
+      let postEndpoint = "/api/social/posts";
+      const extraBody: Record<string, any> = {};
+      if (tierContext?.kind === "verified_guest") {
+        postEndpoint = "/api/social/posts/verified-guest";
+        extraBody.hotelId = tierContext.hotelId;
+        extraBody.bookingId = tierContext.bookingId;
+      } else if (tierContext?.kind === "community_contributor") {
+        postEndpoint = "/api/social/posts/community";
+        extraBody.hotelId = tierContext.hotelId;
+        extraBody.locationVerificationId = tierContext.locationVerificationId;
+      }
+
+      const r = await fetch(postEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
         body: JSON.stringify({
@@ -2317,12 +2350,13 @@ export function Composer({
           caption:       post.caption,
           soundTrack:    post.audio?.name || undefined,
           soundUrl,
-          hotelId:       post.taggedHotel?.id || undefined,
+          hotelId:       extraBody.hotelId || post.taggedHotel?.id || undefined,
           locationName:  post.location?.name  || undefined,
           locationLat:   typeof post.location?.lat === "number" ? post.location.lat : undefined,
           locationLng:   typeof post.location?.lng === "number" ? post.location.lng : undefined,
           highlightKey:  post.highlight?.key || undefined,
           filter:        post.filter || undefined,
+          ...extraBody,
         }),
       });
       setUploadProgress(98);
@@ -2352,7 +2386,9 @@ export function Composer({
     // cheap; we only INVOKE it once per Post click via post()/retry().
     // v120.1 — `updatePost` no longer used inside runUpload (the caller
     // commits the final entry via addPost). Removed from deps.
-  }, [overlays]);
+    // Phase 4 tier-system: tierContext drives the POST endpoint + extra
+    // body fields. Must be in deps so a freshly-passed context is used.
+  }, [overlays, tierContext]);
 
   // Holds the most recently attempted post payload so the Retry button can
   // re-run runUpload without losing the user's selections.
@@ -4022,29 +4058,68 @@ export function Composer({
 }
 
 // ─── Combined controller — hosts FAB + sheets together ───────────────────
+// Phase 4 tier-system additive props (both optional — legacy callers
+// unaffected):
+//   - onFabClick: lets the parent intercept the + button tap. Return
+//     false (sync or async) to suppress the default CreateSheet open.
+//     Used by InstagramHotelFeed to route PUBLIC users with no upload
+//     eligibility into UpgradeChoiceSheet instead.
+//   - tierContext: forwarded to Composer.runUpload, switches the POST
+//     endpoint to /api/social/posts/verified-guest or /community when
+//     set. When undefined (default), legacy /api/social/posts is used.
+//   - composerOpen / onComposerClose: optional controlled mode for
+//     parents that need to open the composer programmatically (skipping
+//     the FAB + CreateSheet chooser) AFTER the user picks a tier path.
 export function CreateFlow({
   onPosted, sanitize,
+  onFabClick, tierContext,
+  composerOpen, composerKind, onComposerClose,
 }: {
   onPosted?: (post: UserPost) => void;
   sanitize?: (s: string) => { clean: string; blocked: boolean };
+  onFabClick?: () => boolean | void | Promise<boolean | void>;
+  tierContext?: ComposerTierContext;
+  composerOpen?: boolean;
+  composerKind?: ContentKind;
+  onComposerClose?: () => void;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [composer, setComposer] = useState<{ open: boolean; kind: ContentKind }>({ open: false, kind: "reel" });
 
+  const handleFabClick = async () => {
+    if (onFabClick) {
+      const result = await onFabClick();
+      // Convention: return false ONLY to suppress the default open.
+      // void (no return) keeps default-open behavior — matches "fire and
+      // forget" callers that don't want to gate.
+      if (result === false) return;
+    }
+    setSheetOpen(true);
+  };
+
+  // Resolve effective composer state — controlled (parent-driven) wins.
+  const compOpen = composerOpen ?? composer.open;
+  const compKind = composerKind ?? composer.kind;
+  const closeComposer = () => {
+    setComposer({ open: false, kind: "reel" });
+    onComposerClose?.();
+  };
+
   return (
     <>
-      <CreateFAB onClick={() => setSheetOpen(true)} />
+      <CreateFAB onClick={handleFabClick} />
       <CreateSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onPick={(kind) => { setSheetOpen(false); setComposer({ open: true, kind }); }}
       />
       <Composer
-        open={composer.open}
-        kind={composer.kind}
-        onClose={() => setComposer({ open: false, kind: "reel" })}
-        onPosted={(p) => { setComposer({ open: false, kind: "reel" }); onPosted?.(p); }}
+        open={compOpen}
+        kind={compKind}
+        onClose={closeComposer}
+        onPosted={(p) => { closeComposer(); onPosted?.(p); }}
         sanitize={sanitize}
+        tierContext={tierContext}
       />
     </>
   );

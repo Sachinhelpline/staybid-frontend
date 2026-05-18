@@ -7,6 +7,8 @@ import BookingChat from "@/components/BookingChat";
 import { api } from "@/lib/api";
 // v113 — premium availability calendar + bulk block-dates sheet.
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
+// Phase 5 tier-system — Pending content reviews queue (auth: x-partner-token)
+import PartnerContentTab from "@/components/partner/PartnerContentTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -115,7 +117,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"redeem"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"redeem"|"content"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -794,6 +796,10 @@ export default function PartnerDashboard() {
     { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
     // v124 — StayPoints redemption fulfilment (scan / enter coupon at check-in)
     { id:"redeem", icon:"🎟️", label:"Redeem Codes" },
+    // Phase 5 (tier-system) — Pending content moderation queue. Hotel
+    // partner approves / rejects / escalates user-uploaded reels & photos
+    // tagged to their property. Reads /api/partner/content/pending.
+    { id:"content", icon:"🖼️", label:"Content Reviews" },
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
@@ -2200,6 +2206,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ REDEEM (v124) ══════════════ */}
         {tab === "redeem" && hotel?.id && (
           <PartnerRedeemTab hotelId={hotel.id} />
+        )}
+
+        {/* ══════════════ CONTENT REVIEWS (Phase 5 tier-system) ══════════════ */}
+        {tab === "content" && hotel?.id && (
+          <PartnerContentTab hotelId={hotel.id} />
         )}
 
         {/* ══════════════ PROFILE ══════════════ */}

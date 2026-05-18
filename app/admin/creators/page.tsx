@@ -265,6 +265,77 @@ export default function AdminCreators() {
           <Field label="Total earnings" value={`₹${Number(selected.total_earnings || 0).toLocaleString("en-IN")}`} />
           <Field label="Submitted" value={selected.created_at ? new Date(selected.created_at).toLocaleString("en-IN") : "—"} />
 
+          {/* Phase 7 — Application source badge + auto-eval metrics. Only
+              renders for cron-driven candidates (application_source !== 'form').
+              Form-applicants stay visually identical to pre-Phase-7. */}
+          {selected.application_source && selected.application_source !== "form" && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                background:
+                  selected.application_source === "auto_promote"
+                    ? "rgba(46,204,113,0.08)"
+                    : "rgba(240,160,48,0.08)",
+                borderRadius: 10,
+                border:
+                  selected.application_source === "auto_promote"
+                    ? "1px solid rgba(46,204,113,0.25)"
+                    : "1px solid rgba(240,160,48,0.25)",
+              }}
+            >
+              <div
+                style={{
+                  color:
+                    selected.application_source === "auto_promote"
+                      ? "#2ECC71"
+                      : "#F0A030",
+                  fontSize: 11,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                  marginBottom: 8,
+                  fontWeight: 700,
+                }}
+              >
+                {selected.application_source === "auto_promote"
+                  ? "🤖 Auto-promoted by cron"
+                  : "⚠ Flagged by cron — admin review"}
+              </div>
+              {selected.auto_eval_data && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Approved posts: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{selected.auto_eval_data.posts_approved ?? "—"}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Rejected: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{selected.auto_eval_data.posts_rejected ?? "—"}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Total views: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{Number(selected.auto_eval_data.total_views ?? 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Followers: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{Number(selected.auto_eval_data.follower_count ?? 0).toLocaleString("en-IN")}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Approval rate: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>
+                      {selected.auto_eval_data.approval_rate != null
+                        ? `${Math.round(selected.auto_eval_data.approval_rate * 100)}%`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: "#8A8FA8" }}>Window: </span>
+                    <span style={{ color: "#E8EAF0", fontWeight: 600 }}>{selected.auto_eval_data.eval_window_days ?? "—"} days</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginTop: 12, padding: 12, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ color: "#8A8FA8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Bio</div>
             <div style={{ color: "#E8EAF0", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>

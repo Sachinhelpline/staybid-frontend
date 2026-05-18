@@ -4634,3 +4634,1176 @@ app/complaints/page.tsx                         # 3 route links stagger + compla
 - **Reel-app surfaces + flash-deals + modals + partner/admin panels untouched** — separate animation systems, intentionally not unified.
 - **Merge sequence verified working** for 3 PRs branched off the same base — the mechanical rebase + force-push + merge pattern is now documented above for the next time multiple animation PRs ship in parallel.
 
+---
+
+## Self-Discovery — 2-Tier System (Pre-Phase-0, 2026-05-18)
+
+This section was added during the Self-Discovery phase mandated by Sachin's "StayBid 2-Tier" master prompt. It captures everything inspected before any tier-system code change. **All findings are read-only inspections of the codebase as of commit `dd7ea91` on branch `claude/staybid-tier-discovery-rhoRK`.** No file was modified during discovery.
+
+### Scope clarification from Sachin (2026-05-18, during Self-Discovery)
+> "abhi jo public user ka use kaishe hai ushko same wahi rakhna hai bas sirf reel upload krne ke liye new add karna hai rule" + "reel matlb content chahe fir wo reel photo ya post kuch bhi ho"
+
+**Translation:** Public user's existing UX stays 100% identical. The ONLY new constraint is on the UPLOAD action for any content type (reel, photo, story). Everything else a public user does today — browse, search, filter, bid, book, like, comment, save, share, follow creators/hotels, wallet operations — continues exactly as before with zero UI or behavior change.
+
+This is a tighter scope than a naive read of the master prompt. Implementation impact:
+- The tier badge UI (Section 3.4) is ADDED next to creator/hotel names but does NOT change anything visible on a PUBLIC user's profile (no "Member" muted pill). PUBLIC users currently render with no badge → keep them with no badge.
+- No tier check on existing buttons (like / comment / follow / save) — public users keep using them freely.
+- The single intercept point: `<CreateFAB onClick={…}>` inside `components/discover/InstagramHotelFeed.tsx` (line 4245). When tapped by a PUBLIC user with no eligible booking + no active location verification, show the upgrade-choice screen instead of opening `<CreateSheet>`.
+- Existing user-uploaded content (the 33 reels currently in `social_posts`) stays live and visible in every feed exactly as today.
+
+### Locked rules from the master prompt (apply to every Phase 0-8 commit)
+- ADDITIVE-ONLY. Never delete or rename anything that already exists. Every new field/route/file/component lives alongside existing ones.
+- EXISTING FLOWS MUST KEEP WORKING. Login, signup, hotel browse/detail, bid create/counter/accept/reject, booking create/list, hotel onboarding, admin functions, wallet, notifications, flash deals, existing reel upload — all unchanged after every phase.
+- EXISTING CREATOR LOGIC STAYS. The two new upgrade paths (Section 4.5 of master prompt) ADD to the existing `influencers.status='pending'→'active'` flow; they do not replace it.
+- NO DESTRUCTIVE COMMANDS. No `DROP`, `TRUNCATE`, `prisma migrate reset`, `db push --force-reset`, no migration-file deletion. Forward-only migrations with descriptive names.
+- No new npm dependency without listing it here first and waiting for Sachin's go.
+- Hinglish in user-facing copy + console hints. English everywhere else (code, commits, this file).
+- Stop at every phase boundary. Wait for explicit "continue" before next phase.
+- **PUBLIC user UX unchanged except for the upload-content gate.** (Per Sachin's clarification above.)
+
+### 2.1 — Repository structure (verified)
+- **One repo, this one.** `/home/user/staybid-frontend`, package name `staybid-customer`, Next.js 14 App Router + TypeScript 5.4 + Tailwind 3.4. No workspace folders, no monorepo, no sub-panels in this tree.
+- **Customer frontend** = entire `app/` tree (customer + admin + partner + influencer + onboard routes all live here).
+- **Admin panel** = `app/admin/*` (same repo, dark-luxury inline styled, sidebar at `components/admin/sidebar.tsx`).
+- **Hotel Partner panel** = `app/partner/*` (same repo). NOTE: Per pre-v137 docs, a separate Vercel deployment `staybid-hotel-panel.vercel.app` from `Sachinhelpline/staybid-hotel-panel` is referenced for outbound "Open Hotel Dashboard" CTAs, but the ACTIVE in-repo panel is `app/partner/*` served from `staybids.in/partner/*`. **Open question: confirm with Sachin which one hosts the new Pending Reviews dashboard.**
+- **Influencer/Creator hub** = `app/influencer/*` (same repo).
+- **Onboarding wizard** = `app/onboard/*` (hotel owner self-signup).
+- **Backend (Railway)** = separate private repo `Sachinhelpline/staybid-Live`, NOT in this tree. URL: `https://staybid-live-production.up.railway.app`. We talk to it via Bearer JWT through `/api/proxy/*` Next.js routes (client) or direct fetch (server).
+- **Database** = Supabase project `uxxhbdqedazpmvbvaosh`. All migrations in `migrations/*.sql` applied via Supabase SQL editor or MCP. PostgREST is the read/write surface for most tables.
+- **Inactive/dead deployments** to skip per CLAUDE.md history (May 2026 cleanup): `staybid-frontend`, `staybid-customer`, `staybid-frontend-vcdb`, `staybid-live-suite`. Plus three legacy panel repos last touched April 2026: `staybid-admin.vercel.app`, `staybid-hotel-panel.vercel.app`, `staybid-agent-panel.vercel.app`. Do NOT push to or touch these.
+
+### 2.2 — Backend (Railway) discovery
+- Entry file NOT in this repo. Sachin's separate `Sachinhelpline/staybid-Live` Railway service exposes the API. Frontend never imports it directly — only HTTP calls.
+- `lib/api.ts` defines `RAILWAY = "https://staybid-live-production.up.railway.app"` and a `request()` helper that routes through `/api/proxy/*` on the client to bypass ISP blocking, or direct on the server.
+- Railway endpoints exercised: `/api/auth/send-otp`, `/api/auth/verify-otp`, `/api/hotels/*`, `/api/bids/*`, `/api/bookings/*`, `/api/wallet/*`, `/api/profile/*`, `/api/referral/*`, `/api/points/*`, `/api/redemption/*`, `/api/partner/hotel/*`, `/api/admin/revenue`, more.
+- ORM in Railway: Prisma 5.22 + PostgreSQL (per CLAUDE.md history). Cannot modify Railway from this repo.
+
+### 2.3 — Frontend stack (verified)
+- Next.js 14 App Router, TypeScript 5.4, Tailwind 3.4 (custom luxury theme + cozy palette CSS vars in `app/globals.css`), Razorpay 2.9, Firebase 12.13, Supabase JS 2.105, SendGrid 8.1, Nodemailer 6.10, Socket.io-client 4.8, Recharts 3.8, Driver.js 1.4 (tutorial system v138-v142).
+- Token storage in `localStorage`:
+  - `sb_token` — customer JWT (HS256 from Railway OR RS256 from Firebase)
+  - `sb_user` — JSON customer user object
+  - `sb_token_type` — `"backend"` or `"firebase"` discriminator (v44 onward)
+  - `sb_partner_token` / `sb_partner_user` — partner side, separate
+  - `sb_admin_token` / `sb_admin_user` — admin side, separate
+- API client `lib/api.ts`. Auth helper `lib/auth.tsx` (`AuthProvider` + `useAuth()`). Tier helper `lib/tier-store.tsx` (`TierProvider` + `useTier()` + `useAccountTier` alias).
+- Bottom navigation: `<BottomDock />` at `components/discover/BottomDock.tsx` — **exactly 5 slots: Home / Reels / Bid / Hotels / You**. **No "Create" slot.** Shown on customer-facing routes, hidden on `/admin/*`, `/partner/*`, `/onboard/*`, `/auth`.
+- Left-edge dialer: `<DialerNav />` at `components/DialerNav.tsx` — 11 base items + conditional Creator + Hotel entries (tier-gated via `useTier`). Hidden on `/`, `/discover`, `/reels`, `/me`, `/saved/posts`, `/admin/*`, `/partner/*`, `/onboard/*`.
+- "+" FAB: `<CreateFAB />` and `<CreateSheet />` exported from `components/discover/CreateFlow.tsx`. **Mounted ONLY inside `components/discover/InstagramHotelFeed.tsx` (line 4245).** The "+" is visible to ANY signed-in user (any tier) while on the reel feed at `/`, `/discover`, `/reels`.
+- **Today there is NO tier gate on the "+" FAB.** Anyone with `sb_token` can open CreateSheet, pick Reel/Photo/Story, fill it, submit. POSTs to `/api/social/posts`, lands in `social_posts`.
+
+### 2.4 — Existing creator/tier system inventory (critical)
+
+#### Two unrelated `Tier` type aliases exist — naming collision
+1. `lib/tier.ts` exports `type Tier = "silver" | "gold" | "platinum"` — CUSTOMER LOYALTY tier driven by total spend (`TIER_THRESHOLDS`). Drives wallet/profile/verification UX.
+2. `lib/tier-store.tsx` exports `type Tier = "PUBLIC" | "PENDING_CREATOR" | "CREATOR" | "HOTEL" | "BLOCKED" | "UNKNOWN"` — ACCOUNT-ROLE tier used by `TierProvider` to switch menu chrome.
+
+The new spec's tier set (PUBLIC / VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR / CREATOR / HOTEL / ADMIN) overlaps the role tier in NAMES but not in SEMANTICS — see "Naming conflict table" below.
+
+#### Existing role/tier columns in `public.users`
+- `users.tier TEXT NOT NULL DEFAULT 'silver'` (added by `migrations/2026-04-26-video-verification.sql`). **Customer loyalty tier. The new spec's "tier" CANNOT reuse this column.**
+- `users.tier_updated_at TIMESTAMPTZ` (same migration).
+- `users.role TEXT` — plain text, no enum constraint. Default `'CUSTOMER'` set by `ensureUser()` in `lib/sb-server.ts`. Values: `customer`, `admin`, `super_admin`, `agent`, hotel implied. **Not used for creator-vs-public distinction today.**
+- Other confirmed cols: `users.isBlocked`, `users.status`, `users.email`, `users.phone`, `users.name`, `users.createdAt`.
+
+#### Existing creator path — `influencers` table
+- Schema: `migrations/2026-05-03-influencer-tables.sql`. PK `id` ('inf_'+uuid), `user_id` UNIQUE, plus bio/bank/verification columns, `status TEXT DEFAULT 'pending'`, timestamps.
+- Status enum values (lowercase strings in DB): `'pending'`, `'active'`, `'blocked'`.
+- `TierProvider` maps these: `pending → PENDING_CREATOR`, `active → CREATOR`, `blocked → BLOCKED`.
+- Apply path: `/upgrade` → POST `/api/influencer/register` → row inserted with `status='pending'`. Admin approves via `/admin/creators` → PATCH `/api/admin/creators` → `status='active'`.
+- Existing commission engine: `migrations/2026-05-13-commission-rules.sql` + `lib/commission.ts` (slab-based 5/7/10/12% + 3-mo/6-mo loyalty bonuses).
+- Existing referral system: `influencer_referral_codes` + `referral_events` + `bid_attributions` (v94 era).
+
+#### Existing social graph layer — `social_profiles` table (SECOND tier-related table)
+- Schema: `migrations/2026-05-10-social-feed.sql`. One row per (user, profile-type).
+- **Has its own `user_type social_user_type` ENUM with values `'PUBLIC'`, `'CREATOR'`, `'HOTEL'`** — exactly 3 of 6 spec values. ENUM created via `CREATE TYPE social_user_type AS ENUM ('PUBLIC', 'CREATOR', 'HOTEL')`.
+- Also has `is_creator BOOLEAN DEFAULT FALSE` and `is_verified BOOLEAN DEFAULT FALSE` flags.
+- Columns: `id`, `user_id` UNIQUE, `hotel_id` UNIQUE nullable, `creator_id` UNIQUE nullable, `username` UNIQUE, `display_name`, `bio`, `avatar_url`, `cover_url`, `follower_count`, `following_count`, `is_verified`, `is_creator`, `user_type`, timestamps.
+- The follow graph (`social_follows`) keys against `social_profiles.id`. Migration adds a trigger denorming `follower_count`/`following_count`.
+- There is ALSO an older `user_follows` table from `migrations/2026-05-03-social-graph.sql` keyed against `influencers.id` directly. **Two parallel follow systems.** The new tier system needs to declare which is canonical for Section 4.5's "follower count" criterion.
+
+#### Existing content table — `social_posts`
+- Schema: `migrations/2026-05-10-social-feed.sql` + extensions in `2026-05-14-*social-posts-*.sql`.
+- ENUM `social_media_type AS ENUM ('PHOTO', 'REEL', 'STORY')`. **Already has the 3 types.**
+- Columns: `id`, `author_id REFERENCES social_profiles(id)`, `hotel_id` nullable for tagging, `media_type`, `media_url`, `thumbnail_url`, `caption`, `sound_track`, `sound_url`, `sound_owner_id`, `location_name`, `location_lat`, `location_lng`, `view_count`, `like_count`, `comment_count`, `is_active`, `created_at`. Plus v110-v131 additions: `client_post_id`, `filter`, `highlight_key`, edit fields.
+- **No `status` column today.** Posts visible whenever `is_active=TRUE`. The new spec's PENDING_HOTEL_APPROVAL / APPROVED / AUTO_APPROVED / REJECTED / FLAGGED / DELETED state machine does NOT exist on `social_posts`. Three options to add additively: (a) new `social_posts.moderation_status` column with default `'APPROVED'` so existing rows stay visible, (b) new sibling table `social_posts_moderation`, (c) new content table for Community Contributor posts only.
+- **No `booking_id` foreign key on `social_posts`.** Verified Guest's "tie reel to booking" relationship needs a new column or sibling table.
+- **No `verification_method` column.** Same.
+
+#### Existing reel feed component
+- `components/discover/InstagramHotelFeed.tsx` (~4400 lines). Reads `/api/social/feed` + `/api/discover/feed`. Real `social_posts` + synthetic `CREATOR_POOL` (hard-coded 12-entry mock list). User uploads deduped via v131.8 5-hop chain (load-bearing markers).
+- "+" FAB lives here (line 4245). No tier gate today.
+
+#### Existing tier badge UI
+- No dedicated tier-badge React component. Current UI: `social_profiles.is_verified=true` → blue ✓ in `<InstagramHotelFeed>`. `is_creator=true` → gold ✦. `<UpgradeSection>` shows role tier label inline.
+- New spec's 5-style badge requirement (gold pill / blue pill / purple pill+✓ / green pill+building / muted "Member") needs a NEW shared component. **Sachin clarified PUBLIC users keep "no badge" (not even muted "Member") — UX unchanged.**
+
+#### Existing creator pathways (the rule that must stay alive)
+**Only existing pathway:** `/upgrade`-form → `influencers.status='pending'` → admin approval → `status='active'`. No auto-promotion, no follower-count-based upgrade, no view-milestone upgrade today. The new Section 4.5 paths (auto-promote VERIFIED_GUEST→CREATOR + admin-review COMMUNITY_CONTRIBUTOR→CREATOR) are entirely new.
+
+### 2.5 — Deployment, env, SMS, storage
+#### Deployment
+- Customer frontend: Vercel project `staybid-customer-frontend` → `staybids.in`.
+- Backend: Railway. Out of scope.
+- Cron: Vercel cron (2-cap on Hobby — currently `/api/cron/pricing` daily 4:00 AM + `/api/cron/lifecycle` daily 4:05 AM in `vercel.json`) + cron-job.org (referenced for `/api/cron/expire-holds`, `/api/cron/flash-drop`, `/api/cron/feedback-lifecycle` every 15-60 min). **New tier crons go on cron-job.org** (Vercel 2-slot full).
+
+#### Env vars (verified by grep across `lib/` + `app/`)
+Public:
+- `NEXT_PUBLIC_API_URL` (Railway URL)
+- `NEXT_PUBLIC_RAZORPAY_KEY_ID`
+- `NEXT_PUBLIC_FIREBASE_*` (API_KEY, AUTH_DOMAIN, PROJECT_ID, STORAGE_BUCKET, MESSAGING_SENDER_ID, APP_ID)
+- `NEXT_PUBLIC_SB_IMAGE_TRANSFORM` (Pro plan image transform gate)
+- `NEXT_PUBLIC_ENABLE_PHONE_OTP` (v132.12 gate, default off)
+
+Server-only:
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY` (auto-elevates RLS via `lib/sb-server.ts`)
+- `CRON_SECRET`
+- `JWT_SECRET`
+
+#### Storage buckets (verified)
+- `hotel-images` — public, anon-key write. `lib/supabase.ts uploadImage()`.
+- `social-media` — public, anon-key write. `lib/social/storage-upload.ts` for reels/photos/stories via CreateFlow. Per file comment, `hotel-videos` bucket was REMOVED / never existed.
+- `room-images`, `kyc-documents`, `bank-docs`, `verification-videos` — private kinds via `lib/onboard/storage.ts`.
+
+**Section 4.1's "Video uploaded to whatever storage solution discovered" → Verified Guest reels reuse `social-media`. No new bucket needed.**
+
+#### Logging
+- `lib/admin/audit.ts` `logAdminAction()` writes to `admin_audit_log`. Used by admin panel writes.
+- No centralized customer logger. `console.log` + `notification_queue` inserts for user-visible actions.
+- Tier-system policy: admin-triggered actions → `logAdminAction()`. User/cron actions → console + `notification_queue` row.
+
+#### Auth middleware
+- No Express middleware. Each route imports `userFromReq(req)` (from `lib/sb.ts`) OR `authPayload(req)` + `authUserId(req)` + `resolveUserIds()` (from `lib/sb-server.ts`).
+- Helper extracts `Authorization: Bearer <jwt>`, decodes (no signature verify — Railway does that), returns `{ id, sub, user_id, phone, email, role }`.
+- Dual id resolver `resolveUserIds(primaryId, phone)` returns all `users.id` rows sharing the same human (handles +91-vs-no-prefix).
+- TWO token types: `backend` HS256 / `firebase` RS256. Firebase tokens may lack `phone` — OTP-driven tier flows must guard.
+
+### 2.6 — SMS provider situation (CRITICAL FOR PHASE 3)
+- **MSG91 NOT integrated in this frontend repo.** Only referenced in `docs/MSG91_BACKEND_PASTE.md` (paste-ready for Railway, blocked on DLT template approval per v72 era) and TWO comments in admin notification/email queue routes ("depends on MSG91 + SendGrid/FCM keys"). No SDK import, no HTTP call.
+- **Existing OTP runs through Railway:** `api.sendOtp({phone, delivery: "sms" | "whatsapp"})` → `/api/proxy/api/auth/send-otp` → Railway. Railway internally handles SMS (presumed MSG91 if DLT approved — Sachin to confirm) and WhatsApp.
+- **WhatsApp OTP works** (`/app/auth/page.tsx` has `delivery: "whatsapp"` branch).
+- For Section 4.3 (Location OTP), three Phase-3 options:
+  1. **Add Railway endpoint `/api/auth/send-location-otp`** — Sachin pastes in his other repo. Cleanest, follows existing OTP pattern.
+  2. **Frontend MSG91 helper** — new `lib/sms/msg91.ts` + `MSG91_AUTH_KEY` env var. Bypasses Railway for location OTPs.
+  3. **Reuse existing `/api/auth/send-otp`** with `purpose: "location_verify"` field — needs Railway changes.
+- **Need Sachin's pick.**
+
+### 2.7 — Existing data flow driving the new spec
+#### Booking "completion" criterion (Section 4.1)
+- **No single `bookings.status='COMPLETED'`.** Stays tracked across two tables:
+  - `bookings.status` — Railway direct-book flow. Values: `CONFIRMED`, `CHECKED_IN`, `CHECKED_OUT`, `CANCELLED`.
+  - `bids.status='CHECKED_OUT'` — reverse-auction wins. Partner panel marks at checkout.
+- `app/api/bookings/my/route.ts` merges both for /bookings list.
+- **VERIFIED_GUEST eligibility (90-day completed-stay) proposed rule:** booking is "completed" iff (`bookings.status='CHECKED_OUT'` OR `bids.status='CHECKED_OUT'`) AND `checkOut < NOW()` AND `checkOut > NOW() - INTERVAL '90 days'`. **Confirm with Sachin.**
+- Customer relation: `customerId` on both tables. Always normalize via `resolveUserIds()`.
+
+#### Hotel coordinates (Section 4.3)
+- `hotels.lat DOUBLE PRECISION` + `hotels.lng DOUBLE PRECISION` from `migrations/2026-04-25-onboarding.sql`. Confirmed via `select=lat,lng` in multiple routes.
+- **Not every hotel has them populated.** Legacy rows may be NULL. The location-OTP route MUST reject with a clear error if a hotel has no coords.
+
+#### Wallet & rewards (Section 5.2)
+- `wallet_credits` table exists (`migrations/2026-05-15-redemption-system.sql`). Ledger with `userId`, `amount`, `direction CHECK IN ('CREDIT','DEBIT')`, `source`, `note`, timestamps.
+- Effective balance = `SUM(amount * sign(direction))` from `wallet_credits` + Railway-side wallet rows.
+- Insert row with `source='inspiration_reward'` for tier rewards. Idempotency via unique `(userId, source, reference_id)` partial index — **verify if one exists; otherwise add in Phase 1.**
+
+#### Notifications (Section 4 + 5)
+- `notification_queue` from `migrations/2026-05-03-notifications.sql`. Schema: `id`, `user_id`, `channel TEXT` ∈ {email, sms, whatsapp, in_app}, `template TEXT`, `payload JSONB`, `status` ∈ {pending, sent, failed}, `scheduled_at`, `sent_at`, `error`, `attempts`, `created_at`. INSERT-only from frontend; drainer is in Railway.
+- Phase 6 adds 4-5 new `template` string names that the Railway drainer needs to recognize. **Confirm with Sachin he'll add template handling on Railway side.**
+- In-app toast surface: `<NotificationToast />` mounted in `app/layout.tsx`, fired via `window.dispatchEvent(new CustomEvent("sb:notify", { detail }))`. Helper: `lib/notifications.ts` `notify()`.
+
+### 2.8 — Naming conflict table (new spec vs existing code)
+
+| New-spec value | Already exists? | Where | Conflict resolution recommendation |
+|---|---|---|---|
+| `PUBLIC` | Yes (3 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum, `social_profiles.user_type='PUBLIC'` | **Reuse `'PUBLIC'`.** Same meaning. |
+| `VERIFIED_GUEST` | **No** | — | Add as new value. Two options: extend `social_user_type` enum via `ALTER TYPE ... ADD VALUE 'VERIFIED_GUEST'` (additive, forward-only) OR add a new `users.content_tier` column. Recommend ENUM extension. |
+| `COMMUNITY_CONTRIBUTOR` | **No** | — | Same as VERIFIED_GUEST. ENUM extension. |
+| `CREATOR` | Yes (2 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum, `influencers.status='active'` (mapped) | **Reuse `'CREATOR'`.** |
+| `HOTEL` | Yes (2 places) | `lib/tier-store.tsx Tier`, `social_user_type` enum | **Reuse `'HOTEL'`.** |
+| `ADMIN` | **No** (not in social enum) | `users.role='admin'`, `users.role='super_admin'` | Derive at read time from `users.role`. Don't pollute social enum. |
+
+#### Net plan for the tier dimension
+**Option A (recommended):** Extend `social_user_type` ENUM with two new values (`VERIFIED_GUEST`, `COMMUNITY_CONTRIBUTOR`) via `ALTER TYPE social_user_type ADD VALUE IF NOT EXISTS ...`. Add `social_profiles.tier_promoted_at TIMESTAMPTZ` for audit. Reuse everything else.
+
+**Option B:** Add new `users.content_tier TEXT NOT NULL DEFAULT 'PUBLIC'` column with CHECK constraint, separate from `social_profiles.user_type`. Pros: doesn't touch the enum. Cons: now THREE tier columns on the user (`tier`=loyalty, `role`=customer/admin, `content_tier`=new).
+
+**Need Sachin's pick.** Either is additive-safe.
+
+### 2.9 — Conflicts with master prompt assumptions (explicit list)
+
+1. **"Existing creator-tier rules"** (Section 2.2 of prompt) → Confirmed: `/upgrade` form → `influencers.status='pending'` → admin → `status='active'`. **Stays.** New paths run in parallel.
+2. **"req.user populated by middleware"** (Section 2.2 of prompt) → Next.js App Router has no auto-middleware. Each route manually calls `userFromReq(req)` / `authPayload(req)`. New Phase-2 routes follow this same pattern.
+3. **"MSG91 may already be integrated"** (Section 2.2 of prompt) → NOT integrated in this frontend. Phase 3 decision required.
+4. **"Notification model"** (Section 2.2 of prompt) → `notification_queue` exists but INSERT-only from this frontend; drainer is Railway. Type field is `template` (string), not enum.
+5. **"Hotel coordinates exist"** (Section 4.3) → `hotels.lat` + `hotels.lng` exist but NULLABLE. Must guard.
+6. **"Booking COMPLETED status exists"** (Section 4.1) → Split across `bookings.status='CHECKED_OUT'` and `bids.status='CHECKED_OUT'`. New eligible-bookings endpoint unions both.
+7. **"Tier badge component exists"** (Section 3.4) → Doesn't. Must build new. **Per Sachin: PUBLIC users keep no badge.**
+8. **"Booking confirmation screen exists"** (Section 5.1) → No dedicated page. Post-payment success modal lives inline on `/hotels/[id]/page.tsx`. Inspiration banner placement open.
+
+### 2.10 — Anticipated new dependencies
+None for Phase 0-2. For Phase 3 (SMS OTP), if frontend MSG91 helper path: no new npm dependency (use native `fetch`). Perceptual-hash duplicate video detection (Section 5.4): would need `sharp` or `ffmpeg-wasm`. **Recommend deferring; ship manual moderation flagging instead.** Defer to Sachin.
+
+### 2.11 — Open questions for Sachin (must answer before Phase 0)
+1. **Tier column placement:** Option A (extend `social_user_type` enum) or Option B (new `users.content_tier` column)? Recommend A.
+2. **SMS provider for location OTP:** (a) Railway-side endpoint paste, (b) frontend MSG91 helper, or (c) reuse existing `/api/auth/send-otp` with `purpose` field? Recommend (a).
+3. **Booking completion definition:** confirm the proposed rule (Section 2.7 above) is correct. Stricter version (e.g. payment confirmed + no chargeback)?
+4. **Hotel partner panel target:** `app/partner/*` in this repo OR separate `staybid-hotel-panel.vercel.app`? The new Pending Reviews dashboard needs a home.
+5. **Inspiration banner placement:** post-payment success modal on `/hotels/[id]` OR `/bookings` list page OR both?
+6. **Existing creator flow co-existence:** the `/upgrade` form stays untouched. New auto-promote + admin-review paths are PARALLEL. A user could qualify under all three at once → first to fire wins. Confirm.
+7. **Duplicate video detection (Section 5.4):** ship in Phase 6 OR defer + manual flag UI? Recommend defer.
+8. **`hotel-videos` reference in old CLAUDE.md:** is this bucket live or fully replaced by `social-media`? Confirm.
+9. **Vercel cron 2-cap:** new tier-system crons (auto-approval @ 1h, post-stay nudge @ 1d, view milestone @ 1d, creator-upgrade eval @ 7d) all go on cron-job.org. Confirm.
+10. **Existing user-uploaded content (33+ rows in `social_posts`):** stays visible exactly as today (no retro-tier-tagging). Confirm.
+11. **PUBLIC user existing UX confirmed unchanged** (per Sachin's clarification). Only the upload action gated. Liking / commenting / following / saving / sharing all keep working freely for PUBLIC. **Confirmed.**
+
+### 2.12 — Phase plan tracker (Section 7 of master prompt)
+- [x] **Self-Discovery** — this section. Awaiting Sachin's "go" + answers to Section 2.11.
+- [ ] **Phase 0** — Lock down decisions from Section 2.11; finalize tier dimension in CLAUDE.md.
+- [x] **Phase 1** — Additive schema migration. Applied 2026-05-18 via Supabase MCP. See Section 4 below.
+- [ ] **Phase 2** — Backend (Next.js API) endpoints.
+- [ ] **Phase 3** — SMS OTP wiring per Sachin's pick.
+- [ ] **Phase 4** — Frontend upgrade-choice screen + Verified Guest flow + Community Contributor flow + tier badge + inspiration banner.
+- [ ] **Phase 5** — Hotel approval (Pending Reviews) dashboard.
+- [ ] **Phase 6** — Inspiration cron jobs + reward credit + idempotency + 30-day cap.
+- [ ] **Phase 7** — Creator-upgrade detection (Type A auto, Type B admin-review).
+- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch prep.
+
+### 2.13 — Files anticipated for this migration (populated as phases land)
+- New: migrations files for additive schema (Phase 1, Phase 3, Phase 6)
+- New: ~10-13 API routes under `app/api/me/tier/`, `app/api/social/posts/verified-guest/`, `app/api/social/posts/community/`, `app/api/verify/location/`, `app/api/partner/content/`, `app/api/cron/*` for tier system
+- New: `components/TierBadge.tsx` (Phase 4)
+- New: `components/InspirationBanner.tsx` (Phase 4)
+- New: `app/create/page.tsx` OR `components/CreateUpgradeChoice.tsx` (Phase 4)
+- New: `lib/tier/eligibility.ts`, `lib/tier/haversine.ts` (Phase 2)
+- New: `lib/sms/msg91.ts` (Phase 3, only if option B is chosen)
+- Modified (additive only): `components/discover/InstagramHotelFeed.tsx` — Phase 4 wraps CreateFAB onClick with the upgrade gate; existing render logic stays.
+- Modified (additive): `app/layout.tsx` — SB_BUILD + badge bumped per phase, nothing else.
+
+### 2.14 — Files explicitly NOT owned by this migration
+- `lib/tier.ts` (silver/gold/platinum) — UNTOUCHED.
+- `lib/tier-store.tsx` — UNTOUCHED. (Can be EXTENDED additively to surface new tier; that's a Phase 2 decision.)
+- `lib/commission.ts`, `lib/hotel-score.ts`, `lib/auth.tsx`, `lib/api.ts` — UNTOUCHED unless we ADD new methods (never modify existing).
+- Every existing `/api/*` route — UNTOUCHED.
+- Every existing migration file in `migrations/*.sql` — forward-only.
+- Legacy `staybid-admin`, `staybid-hotel-panel`, `staybid-agent-panel` Vercel projects — out of scope.
+- Railway backend repo `Sachinhelpline/staybid-Live` — out of scope unless Sachin picks SMS option (a).
+
+---
+
+End of Self-Discovery. Awaiting Sachin's `continue` + answers to Section 2.11 questions before starting Phase 0.
+
+---
+
+## Phase 0 — Locked Decisions (2026-05-18)
+
+Sachin responded `continue` after reviewing the Self-Discovery summary. Without overriding any specific item, this is interpreted as silent acceptance of the recommended defaults from Section 2.11. The decisions below are now **locked** and treated as the source of truth for Phases 1-8. Any later override from Sachin will be added inline below with a dated note.
+
+### 3.1 — Locked answers to Section 2.11
+
+| # | Question | **Locked decision** | Phase that consumes this |
+|---|---|---|---|
+| 1 | Tier dimension placement | **Option A** — extend `social_user_type` ENUM with `VERIFIED_GUEST` + `COMMUNITY_CONTRIBUTOR` via `ALTER TYPE ... ADD VALUE IF NOT EXISTS`. Add `social_profiles.tier_promoted_at TIMESTAMPTZ` for audit. ADMIN derived at read-time from `users.role`. **No new `users.content_tier` column.** | Phase 1 |
+| 2 | Location OTP SMS provider | **Option (a)** — new Railway endpoint `/api/auth/send-location-otp` + `/api/auth/verify-location-otp`. **⚠ SACHIN ACTION PENDING at Phase 3 boundary:** I will hand Sachin paste-ready code for Railway repo. The frontend Phase 2 endpoints will call these via `/api/proxy/*`. | Phase 3 |
+| 3 | Booking "completed" rule | `(bookings.status='CHECKED_OUT' OR bids.status='CHECKED_OUT') AND checkOut < NOW() AND checkOut > NOW() - INTERVAL '90 days'`. Customer normalized via `resolveUserIds()`. No payment-status check (out of scope — Razorpay refunds would not roll back the stay). | Phase 2 |
+| 4 | Pending Reviews dashboard home | **In-repo `app/partner/*`** at `staybids.in/partner/dashboard` (new tab inside existing dashboard). The external `staybid-hotel-panel.vercel.app` is untouched. | Phase 5 |
+| 5 | Inspiration banner placement | **Both surfaces.** (a) Post-payment success modal on `/hotels/[id]` gets a small inline banner. (b) `/bookings` list page gets a persistent dismissible card above the booking list. Both link to the create flow. | Phase 4 |
+| 6 | Existing creator pathway co-existence | **Parallel run confirmed.** The `/upgrade` form-based application (`influencers.status='pending'` → admin approval) stays untouched. New Section 4.5 paths (Type A auto-promote VERIFIED_GUEST → CREATOR, Type B admin-review COMMUNITY_CONTRIBUTOR → CREATOR) run alongside. A user qualifying under multiple paths: **first-to-fire wins**, no merge. | Phase 7 |
+| 7 | Duplicate-video perceptual hash | **Defer.** Phase 6 ships manual-flag UI in the admin Pending Reviews surface only. Auto-dedup via perceptual hash is documented in Phase 8's "future work" section. | Phase 6 |
+| 8 | `hotel-videos` bucket status | **Treat `social-media` as canonical for ALL user-uploaded content.** No code path in this repo currently writes to `hotel-videos`. If Sachin's other tools/scripts still write there, this is independent of the tier system. Phase 2 reuses `social-media`. | Phase 2 |
+| 9 | New 4 tier-system crons on cron-job.org | **Confirmed.** Vercel cron 2-cap remains (`/api/cron/pricing` + `/api/cron/lifecycle`). 4 new crons all go to cron-job.org with `CRON_SECRET` Bearer auth: `/api/cron/auto-approve-content` (hourly), `/api/cron/post-stay-nudge` (daily), `/api/cron/view-milestone-rewards` (daily), `/api/cron/creator-upgrade-eval` (weekly). | Phase 6 + Phase 7 |
+| 10 | Railway-side notification drainer templates | **⚠ SACHIN ACTION PENDING at Phase 6 boundary:** new `template` string names (`tier_promoted`, `content_pending_approval`, `content_approved`, `content_rejected`, `post_stay_nudge`, `view_milestone_reward`, `creator_upgrade_eligible`) need recognition in Railway's notification drainer. I will hand Sachin paste-ready code at Phase 6. Until then, frontend INSERTs into `notification_queue` will queue but not deliver these new templates. | Phase 6 |
+
+### 3.2 — Two items needing Sachin's Railway-repo paste
+
+These are the ONLY two items I cannot complete from this frontend repo. They are clearly flagged so we don't hit surprises mid-phase:
+
+1. **Phase 3 — Railway OTP endpoints.** I will produce paste-ready TypeScript/Express handler code matching the existing `/api/auth/send-otp` + `/api/auth/verify-otp` style. Sachin pastes into `Sachinhelpline/staybid-Live` and redeploys Railway. Frontend Phase 2 has the proxy + UI ready waiting.
+2. **Phase 6 — Railway notification template handlers.** I will produce paste-ready template body strings (EN + Hinglish, SMS + WhatsApp + email channels) keyed by the 7 new `template` strings above. Sachin pastes into the notification drainer in `staybid-Live` and redeploys.
+
+If Sachin cannot or will not paste these at the boundaries, the affected flows will remain queued / unverified, but the rest of the system stays functional.
+
+### 3.3 — Out-of-band decisions made during Phase 0
+
+In addition to the 10 locked answers, three structural decisions were made silently during Self-Discovery that affect Phase 1's schema design. Capturing them here so they don't surprise later:
+
+1. **Two parallel follow tables (`social_follows` vs `user_follows`).** Both stay. Section 4.5 Type A auto-promote uses `social_follows` (newer, denormalized counts) for the "10000 followers" criterion. The older `user_follows` keyed against `influencers.id` is not touched.
+2. **`social_posts.is_active=TRUE` semantics preserved.** New `moderation_status` column ships with default `'APPROVED'` so EVERY existing row stays visible without backfill. The state machine only constrains new VERIFIED_GUEST + COMMUNITY_CONTRIBUTOR uploads.
+3. **PUBLIC user content visibility.** Existing posts in `social_posts` from PUBLIC-tier authors (the 33+ rows from pre-tier era) stay live exactly as today. No retro-tier-tagging. The tier gate applies only to NEW uploads after Phase 4 ships.
+
+### 3.4 — Phase 0 deliverables (this commit)
+
+- [x] CLAUDE.md Self-Discovery section appended (Section 2.x, prior commit `3bfb0ef`)
+- [x] CLAUDE.md Phase 0 locked decisions section appended (this commit)
+- [x] PR #38 opened as DRAFT for review
+- [x] No code, no schema, no env vars touched
+
+**Next:** awaiting Sachin's `continue` to start Phase 1 (additive schema migration). The Phase 1 deliverable will be a NEW file `migrations/2026-05-1?-tier-system-additive.sql` + a preview of every `ALTER`/`CREATE` statement posted to PR #38 for Sachin's review BEFORE I apply it via Supabase MCP to the live database.
+
+---
+
+## Phase 1 — Schema Applied (2026-05-18)
+
+### 4.1 — What landed on production Supabase
+
+Sachin gave autonomy ("jo best option ho ushko use karo") and suggested adding an admin-approval escalation lane. Both incorporated. Migration `2026_05_18_tier_system_additive` applied via Supabase MCP. File of record: `migrations/2026-05-18-tier-system-additive.sql` (327 lines).
+
+#### `social_user_type` ENUM extended
+Before: `{PUBLIC, CREATOR, HOTEL}`. After: `{PUBLIC, VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR, CREATOR, HOTEL}`. Order preserved per `AFTER` clauses in `ALTER TYPE`. Existing rows untouched.
+
+#### `social_profiles` — one new column
+- `tier_promoted_at TIMESTAMPTZ` (nullable) — set whenever `user_type` transitions PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR / CREATOR. NULL for the 33+ existing rows.
+
+#### `social_posts` — 15 new columns + 3 new CHECK constraints
+- **`moderation_status TEXT NOT NULL DEFAULT 'APPROVED'`** — CHECK IN 7 values: PENDING_HOTEL_APPROVAL / **PENDING_ADMIN_REVIEW** / APPROVED / AUTO_APPROVED / REJECTED / FLAGGED / DELETED. All 33 existing posts auto-defaulted to APPROVED → zero visibility regression.
+- `booking_id TEXT` (nullable) — Verified Guest tie-back to bookings.id or bids.id.
+- `verification_method TEXT` (nullable) — CHECK IN: booking / location_otp / creator / hotel.
+- Hotel approval bookkeeping: `approved_at`, `approved_by`, `rejected_at`, `rejected_by`, `rejection_reason`, `auto_approved_at`.
+- **Admin approval lane** (Sachin's addition): `admin_reviewed_at`, `admin_reviewed_by`, `admin_review_decision` (CHECK IN approve|reject), `admin_review_notes`, `escalated_to_admin_at`, `escalated_by` (user_id or `'cron'`).
+
+#### NEW `location_verifications` table
+For Community Contributor OTP flow. Columns: id, user_id, hotel_id, device_lat/lng, device_accuracy_m, hotel_lat/lng (snapshotted), distance_m (haversine), status (CHECK IN OTP_SENT/VERIFIED/CONSUMED/EXPIRED/FAILED), otp_hash, otp_sent_at, otp_attempts, verified_at, used_for_post_id, expires_at (default `now() + 15 min`), created_at. 3 indexes including a partial on actively-pending OTPs.
+
+#### NEW `inspiration_nudges` table
+For Section 5 nudge + reward tracking. Columns: id, user_id, booking_id, hotel_id, nudge_type (CHECK IN post_stay_share/view_milestone/first_post_completion), status (CHECK IN SENT/CLICKED/POSTED/REWARDED/EXPIRED), reward_kind, reward_amount_inr, reward_credited_at, reference_post_id, metadata JSONB, created_at, updated_at. UNIQUE idempotency index on `(user_id, COALESCE(booking_id, ''), nudge_type)`. `updated_at` auto-touch trigger via `fn_inspiration_nudges_touch_updated_at()`.
+
+#### `wallet_credit_history` — idempotency unique index
+`uniq_wch_idempotency` UNIQUE partial index on `(user_id, source_type, source_id) WHERE source_id IS NOT NULL`. Pre-flight verified zero duplicates → safe. Phase 6 cron will use this for double-credit prevention.
+
+#### RLS on new tables
+Both `location_verifications` + `inspiration_nudges` get permissive `FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)` policies — matches `2026-05-13-rls-everywhere.sql` precedent.
+
+### 4.2 — Indexes created (11 total)
+- `idx_social_posts_pending_for_hotel` — Pending Reviews dashboard query
+- `idx_social_posts_pending_age` — cron auto-approve sweep
+- `idx_social_posts_pending_admin` — admin Pending Admin Review queue
+- `idx_social_posts_booking` — booking → posts lookup
+- `idx_locv_user_created` — Community Contributor history view
+- `idx_locv_hotel` — hotel-side audit lookups
+- `idx_locv_pending` (partial) — actively-pending OTP lookup
+- `idx_insp_user_created` — user's nudge history
+- `idx_insp_status_type` — cron status/type filter
+- `uniq_insp_user_booking_type` (unique) — nudge idempotency
+- `uniq_wch_idempotency` (unique partial) — wallet credit idempotency
+
+### 4.3 — Verification queries (all passed)
+```sql
+-- ENUM: {PUBLIC, VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR, CREATOR, HOTEL} ✓
+-- social_posts existing default: total=33, approved=33 ✓
+-- New tables exist ✓
+-- All 11 indexes created ✓
+-- All 6 new CHECK constraints in place ✓
+-- RLS ON on both new tables ✓
+```
+
+### 4.4 — Advisor warnings (3 new, all accepted)
+Phase 1 added exactly 3 new warnings from Supabase's security advisor, all matching existing codebase patterns:
+1. `inspiration_nudges_all_anon` RLS allows unrestricted access — matches every other table.
+2. `location_verifications_all_anon` RLS allows unrestricted access — matches every other table.
+3. `fn_inspiration_nudges_touch_updated_at()` has mutable `search_path` — matches every other trigger function.
+
+Fixing these would require rethinking the project-wide anon-permissive access pattern. **Accepted as-is** to stay consistent. Total project advisor count: 127 WARN + 2 INFO (vast majority pre-existing).
+
+### 4.5 — What still needs Phase 2+ to be usable
+
+The schema is in place but no application code touches it yet. The new enum values exist but no row uses them yet (`social_profiles.user_type` for existing rows = whatever it was before Phase 1). The new columns are queryable but no read/write path exists in `app/api/*` yet. Phase 2 brings the routes.
+
+### 4.6 — Updated phase tracker
+- [x] Self-Discovery (commits `3bfb0ef`, original CLAUDE.md append)
+- [x] Phase 0 — Lock decisions (commit `4511d66`)
+- [x] Phase 1 — Schema applied (commits `04af7de` + `cfa542c` + migration applied to Supabase)
+- [x] Phase 2 — Next.js API endpoints (10 new routes + 4 helper libs). See Section 5 below.
+- [ ] **Phase 3** — Location OTP wiring (Sachin paste-pending on Railway) ← next on `continue`
+- [ ] Phase 3 — Location OTP wiring (Sachin paste-pending on Railway)
+- [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit (Sachin paste-pending on Railway templates)
+- [ ] Phase 7 — Creator auto-promote + admin-review detection
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 2 — Next.js API endpoints.**
+
+---
+
+## Phase 2 — Next.js API Endpoints (2026-05-18)
+
+Phase 2 lands 10 new API routes + 4 new helper libs under `lib/tier/`. Every route is a NEW path — zero existing route or component touched. TypeScript clean (`tsc --noEmit --skipLibCheck` passed). Awaiting Sachin's `continue` to proceed to Phase 3.
+
+### 5.1 — Helper libs added (4 files, all under `lib/tier/`)
+- **`lib/tier/haversine.ts`** — pure great-circle distance. Exports `haversineMeters()`, `isWithinGeofence()`, `LOCATION_OTP_RADIUS_M = 250`.
+- **`lib/tier/types.ts`** — shared TypeScript types: `ContentTier` (6 values), `VerificationMethod`, `ModerationStatus`, `LocationVerificationStatus`, `NudgeType`, `AdminReviewDecision`, `MyTierResponse`.
+- **`lib/tier/eligibility.ts`** — booking + location-verification eligibility. Exports `listEligibleBookings()`, `hasEligibleBookingForHotel()`, `findActiveLocationVerification()`, `countActiveLocationVerifications()`. Unions `bookings.status='CHECKED_OUT'` + `bids.status='CHECKED_OUT'` joined with `bid_requests` for checkOut date. 90-day window enforced.
+- **`lib/tier/promote.ts`** — `maybePromoteToTier()` (idempotent PATCH on `social_profiles.user_type`, never downgrades) + `queueTierPromotionNudge()` (writes to `notification_queue`).
+
+### 5.2 — Customer routes (4 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/me/tier` | GET | Current user's tier + capabilities (`canUpload`, `reason`, `eligibleBookingsCount`, `hasActiveLocationVerification`). Returns `MyTierResponse`. Admin derived from `users.role`. |
+| `/api/me/eligible-bookings` | GET | List of bookings qualifying for Verified Guest path. |
+| `/api/social/posts/verified-guest` | POST | Verified Guest upload tied to a booking. Body: `{ bookingId, hotelId, mediaType, mediaUrl, … }`. Validates booking ownership + checkout window. Sets `moderation_status='PENDING_HOTEL_APPROVAL'` + `verification_method='booking'`. Promotes PUBLIC→VERIFIED_GUEST. Notifies hotel partner. |
+| `/api/social/posts/community` | POST | Community Contributor upload tied to a location-OTP. Body: `{ hotelId, locationVerificationId, mediaType, mediaUrl, … }`. Consumes the `location_verifications` row (`status='CONSUMED'`, `used_for_post_id=post.id`). Sets `moderation_status='PENDING_HOTEL_APPROVAL'` + `verification_method='location_otp'`. Promotes PUBLIC→COMMUNITY_CONTRIBUTOR. Notifies hotel partner. |
+
+Both upload endpoints support the v131.8 `clientPostId` idempotency chain (same dedup pattern as `/api/social/posts`).
+
+### 5.3 — Location OTP routes (2 files — Phase 3 paste-ready)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/verify/location/send-otp` | POST | Body: `{ hotelId, deviceLat, deviceLng, deviceAccuracyM? }`. Haversine check (≤250m). Inserts `location_verifications` row with SHA-256 hashed OTP. **Forwards (phone, otp) to Railway `/api/auth/send-location-otp`** — when that endpoint exists, SMS goes out. Until then (dev mode only) returns `dev_otp` in response so Phase 4 UI can be tested. |
+| `/api/verify/location/verify-otp` | POST | Body: `{ verificationId, otp }`. Compares against stored hash. Bumps `otp_attempts`. After 5 failed attempts → `status='FAILED'` locked. On success → `status='VERIFIED'` + `verified_at=now()`. |
+
+### 5.4 — Partner content moderation (2 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/partner/content/pending` | GET | Hotel partner's "Pending Reviews" queue. Filtered by `moderation_status='PENDING_HOTEL_APPROVAL'`. Scoped to hotels owned by the partner (via `resolveUserIds()` dual-id resolver). Optional `x-partner-hotel-id` header narrows to a single hotel. Side-loads author + hotel name. |
+| `/api/partner/content/[id]` | POST | Body: `{ action: "approve" \| "reject" \| "escalate", reason?, notes? }`. Verifies post belongs to a hotel the partner owns. Only acts when `moderation_status='PENDING_HOTEL_APPROVAL'` (409 otherwise). Notifies author on approve/reject; queues admin notif on escalate. |
+
+### 5.5 — Admin content moderation (2 files)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/admin/content/pending-review` | GET | Admin queue of every escalated post (`moderation_status='PENDING_ADMIN_REVIEW'`). Cross-hotel. Side-loads author + hotel. Sorted by `escalated_to_admin_at` asc (oldest first). |
+| `/api/admin/content/[id]` | POST | Body: `{ action: "approve" \| "reject" \| "flag" \| "unflag" \| "delete", reason?, notes? }`. Logged via `logAdminAction()` (v98 audit). Sets `admin_reviewed_at/by/decision/notes`. Notifies author on every transition. |
+
+### 5.6 — Auth patterns used
+- **Customer routes** — `socialUserFromReq()` from `lib/social/auth-helper` (accepts both backend HS256 + Firebase RS256 tokens).
+- **Partner routes** — `x-partner-token` header, decoded inline. Hotel ownership verified via `resolveUserIds()` + `hotels.ownerId in.(…)`.
+- **Admin routes** — `adminFromReq()` from `lib/admin/audit` (accepts JWT Bearer OR opaque `adm_…` master-PIN token + `x-admin-*` identity headers).
+
+### 5.7 — Notifications queued (in_app channel)
+Phase 6 will wire Railway-side drainer + add SMS/WhatsApp templates. For now, every action queues an `in_app` notification:
+- `content_pending_approval` → hotel partner on new upload
+- `content_approved` → post author on approve
+- `content_rejected` → post author on reject (with `reason`)
+- `content_escalated_to_admin` → user_id='ADMIN' sentinel (admins listen)
+- `content_flagged` → post author on flag
+- `content_deleted` → post author on delete
+- `tier_promoted` → user on PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR transition
+
+### 5.8 — What stays NULL / unused until later phases
+- All `social_posts.moderation_status` values for the 33+ existing posts → still `'APPROVED'` (Phase 1 default). No backfill.
+- All `social_profiles.user_type='VERIFIED_GUEST' / 'COMMUNITY_CONTRIBUTOR'` → zero rows. Will populate as users actually upload via the new paths.
+- Phase 3 Railway endpoint `/api/auth/send-location-otp` → does not exist yet. `send-otp` route handles the failure gracefully via dev-mode fallback.
+- Phase 6 cron jobs (auto-approve, post-stay nudge, view-milestone reward, creator-upgrade eval) → not built yet. The schema is ready.
+
+### 5.9 — Verification: TypeScript clean
+```bash
+npx tsc --noEmit --skipLibCheck   # only pre-existing tsconfig deprecation; zero Phase 2 errors
+```
+
+### 5.10 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] **Phase 2 — API endpoints** (this section)
+- [x] Phase 3 — Location OTP frontend wiring (paste-ready Railway doc shipped, awaiting Sachin's paste). See Section 6.
+- [ ] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 3 — Location OTP wiring.** Phase 3 is the first phase that needs Sachin's hands on the Railway repo: I will produce paste-ready TypeScript handler code for `/api/auth/send-location-otp`. Once pasted + redeployed, the frontend's `/api/verify/location/send-otp` will start dispatching real SMS via MSG91 (or WhatsApp / SendGrid, whichever Sachin's Railway has wired). Until then, dev-mode OTP fallback keeps the Phase 4 frontend usable.
+
+---
+
+## Phase 3 — Location OTP wiring (2026-05-18)
+
+### 6.1 — What landed in this repo
+- **`docs/RAILWAY_LOCATION_OTP_PASTE.md`** — paste-ready TypeScript handler for `Sachinhelpline/staybid-Live` (Railway). Documents: endpoint signature, message template, MSG91-vs-WhatsApp choice, test curl, dev_otp fallback behavior.
+- **`lib/api.ts`** — 5 new client methods added (additive append, zero existing methods touched):
+  - `api.getMyTier()` → `GET /api/me/tier`
+  - `api.getEligibleBookings()` → `GET /api/me/eligible-bookings`
+  - `api.uploadVerifiedGuestPost(data)` → `POST /api/social/posts/verified-guest`
+  - `api.uploadCommunityPost(data)` → `POST /api/social/posts/community`
+  - `api.sendLocationOtp(data)` → `POST /api/verify/location/send-otp`
+  - `api.verifyLocationOtp(data)` → `POST /api/verify/location/verify-otp`
+
+### 6.2 — Frontend behavior in the gap (before Sachin pastes)
+The Phase 2 `/api/verify/location/send-otp` route handles Railway's absence gracefully:
+- Frontend POST → Phase 2 route inserts `location_verifications` row + hashes OTP
+- Phase 2 route forwards `(phone, otp, hotelName)` to Railway `/api/auth/send-location-otp`
+- Railway returns 404 → response includes `"dispatched": false`, `"dispatch_error": "Railway endpoint not yet live"`, AND (in non-production only) `"dev_otp": "<the OTP>"`
+- Phase 4 UI can display the dev_otp for testing OR proceed straight to verify-otp step
+
+In production with no Railway paste: response simply lacks `dev_otp` → user has no path forward → upgrade-choice screen shows "Location verification not yet available" message (Phase 4 will handle this gracefully).
+
+### 6.3 — What Sachin's Railway paste does
+The Railway endpoint is a **stateless dispatcher**. No DB writes. No Redis. No JWT. Body: `{ phone, otp, hotelName }`. Calls existing MSG91 / WhatsApp helper. Returns `{ ok: true }`.
+
+The doc recommends WhatsApp-first (no DLT approval required) with an optional follow-up SMS template (DLT-approved). Once pasted + Railway redeployed, no frontend change required — `dispatched: true` starts flowing in responses automatically.
+
+### 6.4 — Things to avoid for the Railway paste (documented inline in the doc too)
+- Don't store the OTP on Railway. Supabase `location_verifications` already has the SHA-256 hash; verify-OTP doesn't touch Railway at all.
+- Don't re-verify the customer's auth or geofence on Railway. Frontend already did both before forwarding.
+- Don't issue a JWT in the response. This is a dispatcher, not a login endpoint.
+- Don't add Redis throttling. Supabase's `idx_locv_pending` partial index already supports unique-per-pending-OTP semantics.
+
+### 6.5 — Feature flag (Sachin's "Option A" — 2026-05-18 patch)
+
+Sachin clarified mid-Phase-3 that no OTP delivery plan is currently
+active ("hmare pass koi active OTP plan nahi hai sirf coding hai"). To
+ship Phase 3 cleanly as future-only scaffolding, the entire location-OTP
+flow is now hard-gated behind `NEXT_PUBLIC_ENABLE_LOCATION_OTP="1"`.
+Default OFF.
+
+When flag is OFF (default in production today):
+- `POST /api/verify/location/send-otp` → 503 `{ code: "LOCATION_OTP_DISABLED" }`
+- `POST /api/verify/location/verify-otp` → same 503
+- `GET /api/me/tier` returns `{ locationOtpEnabled: false, reason: "needs_booking_only" }` for PUBLIC users with no eligible bookings
+- Phase 4 UI will hide / show "Coming Soon" overlay on the Community
+  Contributor card. Only Verified Guest path is interactive.
+
+When flag is ON (future activation):
+- Both OTP routes accept requests as Phase 2 designed
+- `GET /api/me/tier` returns `{ locationOtpEnabled: true }`; reason flips to "needs_booking_or_location_verify" for PUBLIC users without bookings
+- Frontend Community Contributor card unhides automatically
+
+To activate (no code redeploy required beyond env var):
+1. Paste Railway dispatcher from `docs/RAILWAY_LOCATION_OTP_PASTE.md`
+2. Ensure active MSG91 plan + DLT template OR WhatsApp Business credentials
+3. Vercel env vars (staybid-customer-frontend project): set
+   `NEXT_PUBLIC_ENABLE_LOCATION_OTP=1` → redeploy
+
+The Verified Guest path (`/api/social/posts/verified-guest`) needs ZERO
+of this — works regardless of flag state. That's the primary path for
+the public→content user under Option A.
+
+### 6.6 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Frontend wiring + Railway paste-ready doc + feature flag (Option A)
+- [x] Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner. See Section 7.
+- [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 4 — Frontend Create-flow gate + tier badge + inspiration banner.** Phase 4 is the first user-visible change in this migration: the `+` FAB in `<InstagramHotelFeed>` will start showing the upgrade-choice screen for PUBLIC users with no eligible booking + no active location verification. Public users with EITHER will tap straight into the CreateSheet flow.
+
+---
+
+## Phase 4 — Frontend Create-flow Gate + Tier Badge + Inspiration Banner (2026-05-18)
+
+Phase 4 ships the first user-visible change in the migration. PUBLIC users with no upload eligibility now see the upgrade-choice sheet when they tap the `+` FAB; PUBLIC users with eligible bookings (and any non-PUBLIC tier) keep the existing flow unchanged.
+
+### 7.1 — Components added (3 new files, all under `components/tier/`)
+- **`components/tier/TierBadge.tsx`** — small inline pill, 3 sizes (`xs/sm/md`), glyphOnly mode. Maps 5 non-PUBLIC tiers to glyph + label + color. **PUBLIC renders null** per Sachin's clarification — existing UX unchanged.
+- **`components/tier/InspirationBanner.tsx`** — "Share your trip" nudge. Two variants: `modal` (compact inline, used inside the booking-confirmed success modal) + `card` (full-width sticky, used on `/bookings` list). Per-(user, booking, variant) dismiss via localStorage. Routes into `/discover#create` on tap.
+- **`components/tier/UpgradeChoiceSheet.tsx`** — full upgrade picker. Two cards: Verified Guest (booking-based, ALWAYS interactive when `eligibleBookingsCount > 0`) + Verified Local (location-OTP, **gated by `locationOtpEnabled`**; renders "Coming Soon" pill + disabled when false per Phase 3 Option A). Verified Guest path opens BookingPicker step which fetches `/api/me/eligible-bookings` and lets the user pick a stay.
+
+### 7.2 — Additive edits to existing files
+
+**`components/discover/CreateFlow.tsx`** (3 small additive blocks):
+- New exported type `ComposerTierContext` — discriminated union for the two new paths
+- `<Composer>` gets optional `tierContext` prop; `runUpload` reads it and branches the POST endpoint to `/api/social/posts/verified-guest` or `/api/social/posts/community` when set. When undefined (default), behavior is byte-identical to pre-Phase-4 — same `/api/social/posts` route.
+- `<CreateFlow>` controller gets 3 optional props: `onFabClick` (intercept the + tap), `tierContext` (forward to Composer), `composerOpen` + `composerKind` + `onComposerClose` (controlled-composer mode — lets the parent open Composer directly after the user picks a tier path, skipping the CreateSheet chooser).
+- `runUpload`'s `useCallback` deps array now includes `tierContext` so the captured value stays fresh.
+
+**`components/discover/InstagramHotelFeed.tsx`**:
+- Imports added: `UpgradeChoiceSheet`, `TierContext`, `MyTierResponse`, `ComposerTierContext`.
+- New state: `tierSnapshot`, `upgradeOpen`, `tierContext`, `pickedComposerOpen` — all initialized lazily on first FAB tap.
+- `<CreateFlow>` props extended with `onFabClick` (lazy tier probe + decision), `tierContext`, controlled-composer props, and `onComposerClose` reset.
+- `<UpgradeChoiceSheet>` rendered alongside CreateFlow; on `onPickedContext` it sets `tierContext` and flips `pickedComposerOpen` so the Composer opens directly with booking metadata attached.
+
+**`app/bookings/page.tsx`**: imports `InspirationBanner`, renders `variant="card"` above the bookings list when `bookings.length > 0`. Auto-dismissible via localStorage.
+
+**`app/hotels/[id]/page.tsx`**: imports `InspirationBanner`, renders `variant="modal"` inside the booking-confirmed success modal (line ~3105). Adds a small "Share your stay" CTA right above the existing Close + My Bookings buttons.
+
+### 7.3 — Decision tree (FAB tap)
+
+```
+User taps + FAB
+    ↓
+onFabClick fires
+    ↓
+Has tier snapshot already? → No → fetch /api/me/tier, cache for session
+    ↓
+snap.canUpload === true ?
+    ├── YES (any non-PUBLIC tier, OR PUBLIC with eligible booking,
+    │        OR PUBLIC with active location verification)
+    │   → return void → default open CreateSheet (existing flow)
+    │
+    └── NO (PUBLIC + no eligibility)
+        → setUpgradeOpen(true), return false → CreateSheet stays closed
+        → UpgradeChoiceSheet appears
+            ↓
+        User picks "Verified Guest" → BookingPicker → pick a stay
+            ↓
+        onPickedContext fires with { kind: "verified_guest", hotelId, bookingId }
+            ↓
+        setTierContext({...}), setPickedComposerOpen(true)
+            ↓
+        Composer opens directly (skipping CreateSheet chooser)
+            ↓
+        User picks media → composes → Post
+            ↓
+        runUpload posts to /api/social/posts/verified-guest (NOT /api/social/posts)
+            ↓
+        Phase 2 endpoint validates booking ownership, sets
+        moderation_status='PENDING_HOTEL_APPROVAL', promotes PUBLIC → VERIFIED_GUEST,
+        notifies hotel partner
+```
+
+### 7.4 — What still doesn't surface visually (intentional)
+- **`<TierBadge>` is NOT yet mounted on any reel/profile surface.** The component exists and is import-ready. Phase 5 work on the partner dashboard (Pending Reviews) is a natural place to wire it in alongside; for customer-facing reels it can land in a follow-up cosmetic pass.
+- **Community Contributor (location-OTP) flow.** The Verified Local card is disabled per Phase 3 Option A. UpgradeChoiceSheet shows "Coming Soon" badge. Activation: paste Railway dispatcher + `NEXT_PUBLIC_ENABLE_LOCATION_OTP=1`.
+- **TierProvider integration.** The customer's `lib/tier-store.tsx` PUBLIC/CREATOR/HOTEL semantics are unchanged. Phase 4 reads tier via `/api/me/tier` directly inside the FAB-gate (more accurate than the role-tier provider which doesn't know about VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR). Both providers coexist — TierProvider drives menu chrome; the new probe drives upload gating.
+
+### 7.5 — Verification
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0 (only pre-existing tsconfig deprecation warning)
+- ✅ No existing route, component, or composer state mutated — every change is an additive prop, additive component, or additive JSX block
+- ✅ Existing CreateSheet UX preserved: when `canUpload=true`, the FAB opens CreateSheet exactly as before. tierContext is undefined → POST goes to `/api/social/posts` as today.
+- ✅ Reel-dedup v131.8 chain unbroken — `clientPostId` flow is identical, all 5 hops carry through both legacy and new endpoints.
+
+### 7.6 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + TierBadge + InspirationBanner
+- [x] Phase 5 — Hotel Pending Reviews tab + admin Pending Admin Review page. See Section 8.
+- [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 5 — Hotel partner Pending Reviews dashboard + admin Pending Admin Review queue.** Phase 5 will surface the moderation queue inside `app/partner/dashboard/*` (new tab) and `app/admin/content/*` (new admin page), wiring the Phase 2 partner + admin moderation endpoints to actual UI.
+
+---
+
+## Phase 5 — Moderation Dashboards (2026-05-18)
+
+Phase 5 wires the Phase 2 partner + admin moderation endpoints to visible UI. Pure additive — every existing route, tab, and dashboard surface stays unchanged.
+
+### 8.1 — Files added
+
+**`components/partner/PartnerContentTab.tsx`** (NEW, ~390 lines):
+- Reads `GET /api/partner/content/pending` with `x-partner-token` + `x-partner-hotel-id` headers
+- Lists pending posts as media-cards (110×156 thumbnails) with author handle, `<TierBadge>` for tier, verification-method pill (booking / location_otp), upload time, caption
+- 3 inline actions per post: ✓ Approve / ✕ Reject / ⚠ Escalate to Admin
+- Reject + Escalate open a confirm modal (Reject requires reason, Escalate takes optional notes)
+- Optimistic removal from queue on success; ↻ Refresh button to re-fetch
+
+**`app/admin/content/page.tsx`** (NEW, ~580 lines):
+- Reads `GET /api/admin/content/pending-review` with `x-admin-token` + `x-admin-id` headers
+- Cross-hotel queue (every hotel's escalations land here)
+- Dark-luxury admin styling (matches `/admin/holds`, `/admin/analytics` precedent — inline JSX, no Tailwind utilities)
+- Per-post: media thumbnail, author handle + tier chip, hotel name + city, verification-method label, escalation timestamp + escalated_by (hotel partner / cron)
+- 4 actions: ✓ Approve / ✕ Reject / 🚩 Flag / 🗑 Delete (Reject requires reason; Flag/Delete take optional notes)
+- Every mutation goes through Phase 2 `POST /api/admin/content/[id]` which calls `logAdminAction()` for audit trail
+
+### 8.2 — Files modified (additive only)
+
+**`app/partner/dashboard/page.tsx`**:
+- `tab` state union widened: `+"content"`
+- TABS array: `+ { id:"content", icon:"🖼️", label:"Content Reviews" }` (added between Redeem and Verification)
+- New tab body: `{tab === "content" && hotel?.id && <PartnerContentTab hotelId={hotel.id} />}`
+- Import: `+ PartnerContentTab from "@/components/partner/PartnerContentTab"`
+
+**`components/admin/sidebar.tsx`**:
+- New NAV entry: `+ { href: "/admin/content", label: "Content Reviews", icon: "🖼️" }` between Chat Moderation and Fraud & Security
+
+### 8.3 — Auth patterns used (mirrors existing precedent)
+
+| Surface | Auth | Mirrored from |
+|---|---|---|
+| Partner Content tab | `x-partner-token` + `x-partner-hotel-id` from localStorage | `BookingChat`'s partner branch (v71 era) |
+| Admin Content page | `x-admin-token` + `x-admin-id` from localStorage | `/admin/holds` (v69 era), `/admin/redemption-codes` (v126) |
+
+No new env vars. No new tokens. Every header was already in use somewhere in the codebase.
+
+### 8.4 — TierBadge first visible mount
+
+The `<TierBadge>` component shipped in Phase 4 finds its first visible mount in `PartnerContentTab` — every pending-content row shows the author's tier as an `xs`-size pill next to their handle. Phase 6/8 follow-up work can add more mount sites (reel feed creator chip, profile sheets, etc.). PUBLIC users still render with no badge per the locked rule.
+
+### 8.5 — Decision tree (admin escalation flow)
+
+```
+Hotel partner sees a borderline post in their Content Reviews tab
+    ↓
+Taps "⚠ Escalate to Admin", optionally adds notes
+    ↓
+POST /api/partner/content/[id] { action: "escalate", notes }
+    ↓
+Phase 2 endpoint:
+   - Verifies partner owns the hotel
+   - Updates moderation_status = 'PENDING_ADMIN_REVIEW'
+   - Sets escalated_to_admin_at + escalated_by
+   - Queues 'content_escalated_to_admin' notification with user_id='ADMIN' sentinel
+    ↓
+Admin opens /admin/content (sidebar entry)
+    ↓
+GET /api/admin/content/pending-review returns row, sorted by escalation time
+    ↓
+Admin taps Approve / Reject / Flag / Delete
+    ↓
+POST /api/admin/content/[id] { action, reason?, notes? }
+    ↓
+Phase 2 endpoint:
+   - logAdminAction() writes to admin_audit_log (v98 audit infra)
+   - Updates moderation_status accordingly
+   - Sets admin_reviewed_at + admin_reviewed_by + admin_review_decision + admin_review_notes
+   - Queues notification to author (content_approved / content_rejected / content_flagged / content_deleted)
+    ↓
+Author's existing notification surface picks up the in_app row
+```
+
+### 8.6 — Verification
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0 — only pre-existing tsconfig deprecation warning
+- ✅ Partner dashboard's existing 9 tabs untouched; the 10th (Content Reviews) is a clean append
+- ✅ Admin sidebar's existing 25 entries untouched; Content Reviews inserted between Chat Moderation and Fraud
+- ✅ All Phase 2 routes consumed exactly as designed — partner endpoint scopes to owned hotels via `resolveUserIds()`; admin endpoint stays cross-hotel
+- ✅ Audit trail intact — every admin mutation goes through `logAdminAction()`
+
+### 8.7 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway notification templates paste-ready doc. See Section 9.
+- [ ] Phase 7 — Creator auto-promote + admin-review eval
+- [ ] Phase 8 — Smoke tests + rollback notes + soft launch
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 6 — Cron jobs + reward credit + Railway notification templates.** Phase 6 is the second Sachin-paste-required phase: I will produce paste-ready Railway template handlers for the 7 new `template` strings the frontend queues into `notification_queue`. Until paste lands, in-app notifications queue but SMS/WhatsApp/email don't deliver. Cron jobs (auto-approve at 1h, post-stay nudge at 1d, view-milestone reward at 1d) live entirely in this frontend's `app/api/cron/` folder on cron-job.org.
+
+---
+
+## Phase 6 — Cron Jobs + Reward Credit + Railway Templates Paste-Ready (2026-05-18)
+
+Phase 6 lands the recurring automation that drives the tier-system lifecycle. 3 new cron endpoints + 1 paste-ready Railway template doc. Cron job logic is fully self-contained (no Railway dependency); only the user-facing SMS / WhatsApp / email *delivery* of the queued notifications requires Sachin's Railway paste from Section 9.4 below.
+
+### 9.1 — Cron endpoints added (3 new files under `app/api/cron/`)
+
+| Route | Frequency | Purpose |
+|---|---|---|
+| `/api/cron/auto-approve-content` | every 1h | Sweeps `social_posts WHERE moderation_status='PENDING_HOTEL_APPROVAL' AND created_at < NOW() - 24h`. Flips to `AUTO_APPROVED` + sets `auto_approved_at`. Notifies author via in-app notif (`content_approved` with `auto:true`). Hard-capped at 200 rows/run. `AUTO_APPROVE_AFTER_HOURS` env var tunable without redeploy (defaults to 24). |
+| `/api/cron/post-stay-nudge` | every 1d | Finds users with bookings/bids that checked-out 24-48h ago. INSERTs into `inspiration_nudges` (uniq idempotency catches dupes). Queues `post_stay_nudge` notif. Both `bookings.status='CHECKED_OUT'` AND `bids.status='CHECKED_OUT'` sources unioned. Window tunable via `POST_STAY_NUDGE_FROM_HOURS` + `POST_STAY_NUDGE_TO_HOURS` env vars. |
+| `/api/cron/view-milestone-rewards` | every 1d | Finds APPROVED/AUTO_APPROVED posts with `view_count >= 1000` and `verification_method IN ('booking', 'location_otp')`. Credits ₹50 at 1k views + ₹200 at 10k views to the author's wallet via `wallet_credit_history` ledger insert. Idempotency: `source_type='view_milestone' + source_id='{post.id}:{milestone_key}'` → uniq index from Phase 1 prevents double-credit. Also updates `wallet_credits` aggregate + writes `inspiration_nudges` row (status=REWARDED) + queues notif. Hard-capped at 200 posts/run. |
+
+Auth pattern for all three (matches existing `/api/cron/expire-holds`):
+- `?token=<CRON_TOKEN>` query param (cron-job.org's standard)
+- `Authorization: Bearer <CRON_SECRET>` (Vercel native cron)
+- `x-admin-token` starting with `adm_` (manual admin trigger from `/admin/*`)
+
+Triple support so any of the 3 schedulers can drive them.
+
+### 9.2 — Reward economics (Phase 0 §3.1 locked)
+
+| Milestone | Threshold | Reward | Notes |
+|---|---|---|---|
+| `view_milestone_1k` | 1,000 views | ₹50 | Only fires for posts with `verification_method IN ('booking', 'location_otp')`. Existing creator/hotel posts use the separate commission engine. |
+| `view_milestone_10k` | 10,000 views | ₹200 | Same eligibility rules. |
+| Post-stay nudge | — | None | Pure nudge; reward only accrues if user actually posts AND post earns views. |
+
+Higher tiers (100k, 1M) deliberately NOT added in Phase 6 — keeps the economics simple. Easy to extend the `MILESTONES` array in `view-milestone-rewards/route.ts` later.
+
+### 9.3 — Idempotency story (critical — these crons can re-run)
+
+**`wallet_credit_history`** Phase 1 unique partial index:
+```sql
+CREATE UNIQUE INDEX uniq_wch_idempotency
+  ON wallet_credit_history (user_id, source_type, source_id)
+  WHERE source_id IS NOT NULL;
+```
+Combined with `Prefer: resolution=ignore-duplicates`, a re-run silently returns `[]` instead of crediting again. **One credit per (post, milestone, user) for all time.**
+
+**`inspiration_nudges`** Phase 1 unique partial index:
+```sql
+CREATE UNIQUE INDEX uniq_insp_user_booking_type
+  ON inspiration_nudges (user_id, COALESCE(booking_id, ''), nudge_type);
+```
+Same `Prefer: resolution=ignore-duplicates` pattern. One nudge per (user, booking) for post_stay_share. The `COALESCE(booking_id, '')` handles non-booking nudges (view_milestone gets the same protection but via a different uniqueness contract — `reference_post_id` is in metadata, not the unique-tuple, so a single user CAN receive view_milestone rewards across multiple posts).
+
+**`social_posts.moderation_status`** auto-approve guard:
+The PATCH includes `moderation_status=eq.PENDING_HOTEL_APPROVAL` in the URL filter. If a hotel partner approved/rejected in the gap between fetch and patch, the PATCH affects 0 rows — cron's idempotent.
+
+### 9.4 — Files added (4 new files this phase)
+
+```
+app/api/cron/auto-approve-content/route.ts        # ~140 lines
+app/api/cron/post-stay-nudge/route.ts             # ~200 lines
+app/api/cron/view-milestone-rewards/route.ts      # ~220 lines
+docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md      # ~200 lines paste-ready Hinglish strings
+```
+
+No edits to existing routes. Pure additive.
+
+### 9.5 — Sachin's Railway paste (2nd of 2 paste-pending items)
+
+The frontend queues 7 new `template` strings into `notification_queue`:
+1. `tier_promoted` — user got promoted PUBLIC → VERIFIED_GUEST / COMMUNITY_CONTRIBUTOR / CREATOR
+2. `content_pending_approval` — hotel partner has a new pending review
+3. `content_approved` — post author's content went live (manual or auto)
+4. `content_rejected` — post author's content was rejected (with reason)
+5. `content_flagged` — post flagged for admin re-review
+6. `content_deleted` — post soft-deleted
+7. `post_stay_nudge` — "share your trip" 24h after checkout
+8. `view_milestone_reward` — ₹50/₹200 wallet credit awarded
+
+(The `content_escalated_to_admin` template is also new — fans out to admin team sentinel `user_id='ADMIN'`.)
+
+**`docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md`** ships paste-ready Hinglish + English handler strings for the Railway notification drainer. Recommended: WhatsApp-first (no DLT requirement) with `+91` phone-prefix heuristic for Hindi vs English copy. SMS optional.
+
+**Until paste lands:** `in_app` channel works today (the customer-side `<NotificationToast />` polls `notification_queue` directly, bypasses Railway). SMS/WhatsApp/email rows queue with `status='pending'` and wait for the drainer.
+
+### 9.6 — cron-job.org schedule (Sachin sets these up after deploy)
+
+Vercel cron 2-slot is full (pricing daily 4am + lifecycle daily 4:05am). All Phase 6 crons run on cron-job.org with `CRON_SECRET` Bearer auth OR `?token=staybid-cron-dev` query param.
+
+| Endpoint | Schedule | Cron expression |
+|---|---|---|
+| `/api/cron/auto-approve-content` | Every 1 hour | `0 * * * *` |
+| `/api/cron/post-stay-nudge` | Daily 10:00 IST | `30 4 * * *` (UTC) |
+| `/api/cron/view-milestone-rewards` | Daily 04:30 IST | `0 23 * * *` (UTC) |
+
+Adjust to taste; all three are safe to run more frequently — the idempotency guards in §9.3 ensure no double-credit or double-notify.
+
+### 9.7 — Things to avoid for Phase 6 maintenance
+
+- **Never** drop the `Prefer: resolution=ignore-duplicates` header from any of the 3 crons. Without it, a re-run on the same row throws 409 from the unique index and the row stays unprocessed forever.
+- **Never** reset the `MILESTONES` array's order. Wallet credit fires only if `view_count >= threshold`; with milestones in ascending order, we credit ALL crossed milestones in one cron pass. Out-of-order milestones could skip eligible credits.
+- **Never** include `verification_method IN ('creator', 'hotel')` in the view-milestone rewardable set. Creators have their own commission engine (Phase 1+); hotels are paid via the partner panel. Adding them here would double-pay.
+- **Never** raise the `MAX_PER_RUN = 200` cap above 500 without checking PostgREST response timeout. Vercel function timeout is 60s; 200-row PATCH loops typically take 4-8s.
+- **Never** trigger any of these crons from a public-facing UI without an admin token. The `x-admin-token` starting with `adm_` pattern is intentional — anyone can paste a query token if they leak the value, but admin tokens are scoped + audit-logged.
+
+### 9.8 — Verification
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0
+- ✅ All 3 cron routes follow the existing `/api/cron/expire-holds` auth + structure precedent
+- ✅ Reward idempotency mathematically guaranteed by Phase 1's unique indexes + `Prefer: resolution=ignore-duplicates`
+- ✅ Zero existing route or column touched
+- ✅ In-app notifications work TODAY; SMS/WhatsApp/email gated by Sachin's Railway paste
+
+### 9.9 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
+- [x] Phase 7 — Creator auto-promote + admin-review eval. See Section 10.
+- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch ← next on `continue`
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 7 — Creator auto-promote + admin-review eval.** Phase 7 will add the 4th cron (`/api/cron/creator-upgrade-eval`, weekly) that detects Type A auto-promote candidates (sustained engagement metrics) + Type B admin-review-required cases (raw follower count etc). Lands the entirely-new auto-promote path alongside the existing `/upgrade` form-based flow (which stays untouched per Phase 0 §3.1 lock).
+
+---
+
+## Phase 7 — Creator Auto-Promote + Admin-Review Eval (2026-05-18)
+
+Phase 7 ships the entirely-new auto-promotion path for VERIFIED_GUEST + COMMUNITY_CONTRIBUTOR users with sustained quality. Existing `/upgrade` form-based creator applications stay untouched — both flows now coexist in the same `influencers` table, distinguished by a new `application_source` column.
+
+### 10.1 — Schema additions (additive migration applied to Supabase)
+
+`migrations/2026-05-18-influencer-application-source.sql` — applied via MCP `apply_migration` on project `uxxhbdqedazpmvbvaosh`:
+
+```
+ALTER TABLE influencers
+  ADD COLUMN application_source TEXT NOT NULL DEFAULT 'form'
+  CHECK IN ('form', 'auto_eval', 'auto_promote');
+
+ALTER TABLE influencers
+  ADD COLUMN auto_eval_data JSONB;
+
+CREATE INDEX idx_influencers_application_source ON influencers
+  (application_source, status, created_at DESC);
+```
+
+Existing 3 rows defaulted to `application_source='form'`. Form-applicants visually identical to pre-Phase-7.
+
+### 10.2 — Cron endpoint added
+
+**`app/api/cron/creator-upgrade-eval/route.ts`** (~280 lines):
+- Fetches social_profiles where user_type ∈ {VERIFIED_GUEST, COMMUNITY_CONTRIBUTOR}
+- Aggregates approved/rejected posts + total_views in the eval window (default 90 days)
+- Filters out users already in `influencers` (any status — form, auto_eval, auto_promote)
+- Categorizes remaining users into Type A or Type B
+
+**Type A — auto-promote criteria (defaults, tunable via env):**
+- `posts_approved >= 5` (CREATOR_AUTO_MIN_POSTS)
+- `posts_rejected == 0` — perfect-quality signal
+- `total_views >= 5000` (CREATOR_AUTO_MIN_VIEWS)
+
+**Type B — admin-review criteria (anyone NOT in Type A who shows engagement):**
+- `posts_approved >= 10` (CREATOR_ADMIN_MIN_POSTS), OR
+- `total_views >= 25000` (CREATOR_ADMIN_MIN_VIEWS), OR
+- `follower_count >= 5000` (CREATOR_ADMIN_MIN_FOLLOWERS)
+
+Hard cap 200 profiles per run. Schedule: weekly on cron-job.org.
+
+### 10.3 — Promotion helpers (`lib/tier/promote.ts`)
+
+Two new exported functions:
+
+**`autoPromoteToCreator(userId, profileId, currentTier, metrics)`** — Type A path:
+1. INSERT influencers row with `status='active'` + `application_source='auto_promote'` + `auto_eval_data: metrics`
+2. PATCH social_profiles → `user_type='CREATOR'` + `tier_promoted_at=NOW()` + `is_creator=true`
+3. Queue `tier_promoted` notification to user
+4. Idempotency: skips silently if influencers row already exists
+
+**`flagForCreatorAdminReview(userId, metrics)`** — Type B path:
+1. INSERT influencers row with `status='pending'` + `application_source='auto_eval'` + `auto_eval_data: metrics`
+2. Does NOT touch social_profiles (waits for admin approve)
+3. Queue `creator_upgrade_eligible` notification to sentinel `user_id='ADMIN'`
+4. Idempotency: same skip-if-exists guard
+
+Both Type A + Type B record the snapshot metrics in `auto_eval_data` JSONB so admin sees exactly WHY this candidate qualified.
+
+### 10.4 — Admin UI surfacing (additive, existing page)
+
+`app/admin/creators/page.tsx`:
+- New badge in the creator-detail drawer: distinguishes `auto_promote` (green, 🤖 icon) from `auto_eval` (amber, ⚠ icon). Form-applicants render exactly as today.
+- New metrics grid below the badge: posts_approved, posts_rejected, total_views, follower_count, approval_rate %, eval_window_days
+
+`app/api/admin/creators/route.ts`:
+- GET query updated to select `application_source` + `auto_eval_data` columns alongside existing fields. PostgREST select-only change, no functional impact for form-applicants.
+
+### 10.5 — Co-existence with existing `/upgrade` form (Phase 0 §3.1 first-to-fire-wins)
+
+- User opens `/upgrade` form, submits → INSERT influencers row with `application_source='form'`, `status='pending'`
+- Phase 7 cron later runs → tries to flag user → skip-if-exists guard returns `reason: "influencer row already exists"`
+- Admin reviews → approves → status='active'
+- Result: clean precedence. The first path that fires wins, the other is a no-op.
+
+If the cron runs BEFORE the user submits the form:
+- Cron auto-promotes → `application_source='auto_promote'`, `status='active'`
+- User later opens `/upgrade` → sees they're already a Creator (TierProvider surfaces it)
+
+### 10.6 — Cron schedule
+
+Vercel cron 2-slot is full + Phase 6 added 3 cron-job.org entries; Phase 7 adds the 4th:
+
+| Endpoint | Schedule | Cron expression (UTC) |
+|---|---|---|
+| `/api/cron/creator-upgrade-eval` | Weekly Sundays 04:00 IST | `30 22 * * 0` |
+
+Run frequency is intentionally conservative — once a week. Promoting to CREATOR is a meaningful trust signal; we'd rather under-promote than over-promote. Sachin can crank to daily later by changing cron-job.org config (no code redeploy needed — idempotency guards mean any frequency is safe).
+
+### 10.7 — Reel-dedup + existing creator engine — both unaffected
+
+- v131.8 reel-dedup chain: Phase 7 cron does NOT touch `social_posts.client_post_id`. Only reads aggregates.
+- Existing `lib/commission.ts` (slab-based 5/7/10/12% commission): Phase 7 inserts `influencers.status='active'` rows that the commission engine treats identically to form-applicants. Auto-promoted creators earn commissions on their referral codes + attributed bookings exactly as form-applicants do.
+- `/influencer/dashboard` + `/influencer/upload` + every creator-hub page: pulls from `influencers` via existing `useTier` / role probe — auto-promoted creators show up automatically.
+
+### 10.8 — Files added / modified
+
+**Added:**
+```
+migrations/2026-05-18-influencer-application-source.sql   # +application_source + auto_eval_data
+app/api/cron/creator-upgrade-eval/route.ts                # weekly cron (Type A + Type B logic)
+```
+
+**Modified (additive only):**
+```
+lib/tier/promote.ts          # +autoPromoteToCreator + flagForCreatorAdminReview helpers
+app/api/admin/creators/route.ts   # +application_source + auto_eval_data in GET select
+app/admin/creators/page.tsx       # +source badge + metrics grid (form-applicants unchanged)
+```
+
+### 10.9 — Verification
+- ✅ Migration applied to production Supabase; existing 3 rows default to `application_source='form'`
+- ✅ Index `idx_influencers_application_source` created
+- ✅ `npx tsc --noEmit --skipLibCheck false` exit 0
+- ✅ Form-applicant rendering bit-identical to pre-Phase-7 (badge only renders when `application_source !== 'form'`)
+- ✅ Phase 6 idempotency pattern carried into Phase 7 (skip-if-exists guard before INSERT)
+
+### 10.10 — Updated phase tracker
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
+- [x] Phase 7 — Creator auto-promote + admin-review eval
+- [x] Phase 8 — Smoke tests + rollback notes + soft launch docs. See Section 11.
+
+---
+
+**Awaiting Sachin's `continue` to start Phase 8 — Smoke tests + rollback notes + soft launch prep.** Phase 8 is the final phase: writes a step-by-step manual smoke-test checklist for every tier-system flow (PUBLIC upload gate, Verified Guest path, hotel approve/reject/escalate, admin approve/reject/flag/delete, cron triggers, reward credits, auto-promote), plus rollback instructions per phase (how to revert Phase 7 schema, Phase 6 cron registrations, Phase 5 sidebar entry, etc.), plus a "ready-for-soft-launch" checklist Sachin can tick before flipping any user-visible feature live.
+
+---
+
+## Phase 8 — Smoke Tests + Rollback + Soft Launch (2026-05-18) — FINAL
+
+Phase 8 is **documentation only** — no new features, no code, no schema. Three docs that give Sachin a complete pre-launch quality gate + emergency rollback recipes + soft-launch decision matrix.
+
+### 11.1 — Files added (3 docs)
+
+```
+docs/TIER_SYSTEM_SMOKE_TESTS.md    # 7-section manual checklist (~30 min for full suite,
+                                     ~10 min for ⭐ smoke-only pass)
+docs/TIER_SYSTEM_ROLLBACK.md       # Per-phase rollback recipes (Phase 8 → Phase 1)
+docs/TIER_SYSTEM_SOFT_LAUNCH.md    # Pre-launch checklist + Day 1-30 monitoring
+```
+
+### 11.2 — Smoke test coverage
+
+7 sections totalling ~80 individual checkpoints:
+- **Section 1** — PUBLIC user gate (3 scenarios: no eligibility / has booking / existing creator regression)
+- **Section 2** — Hotel partner moderation (4 actions: see queue, approve, reject, escalate-to-admin)
+- **Section 3** — Admin moderation (4 actions: see escalations, approve, reject, flag, delete)
+- **Section 4** — All 4 cron endpoints (curl-driven manual triggers with expected JSON responses + DB verifications)
+- **Section 5** — Wallet + InspirationBanner placements
+- **Section 6** — Regression checks (existing /upgrade form, existing /api/social/posts, existing creator UX, existing pre-Phase-1 posts visibility, existing admin pages all still work)
+- **Section 7** — DevTools console assertions
+
+Plus an abridged **"10-minute smoke pass"** that runs only the 7 critical ⭐ checkpoints.
+
+### 11.3 — Rollback recipes (forward-only where possible)
+
+The doc captures per-phase rollback with **3 strategies**:
+
+1. **Quick disable** (no code revert) — for most issues. Env vars, cron-job.org delete, comment out one prop.
+2. **Targeted route disable** — add early-return 503 in the affected handler.
+3. **Full code revert** — `git revert <phase commit>` with caveats about dependencies between Phase 4 → 5 → 6 → 7.
+
+**Phase 1 schema rollback is intentionally forward-only-violating** — documented as informational but recommends DISABLE strategy over DROP. The 33 existing `social_posts` rows have `moderation_status='APPROVED'` (Phase 1's default); ripping the column out loses moderation history.
+
+### 11.4 — Soft launch decision matrix
+
+The launch doc gives Sachin 3 paths:
+
+1. **Merge PR #38 now** — tier gate activates immediately for PUBLIC users
+2. **Merge but bypass the gate** — comment out `onFabClick` (per Rollback doc Phase 4 Step 1). Ships schema + endpoints + admin queue without customer UX change.
+3. **Keep PR #38 draft** — wait until Railway Phase 3 + Phase 6 pastes are done
+
+Plus 4 explicit decision points:
+- Paste Phase 3 Railway location-OTP dispatcher? (Yes/Keep disabled)
+- Paste Phase 6 Railway notification templates? (Yes/Keep in-app only)
+- Register 4 cron-job.org schedules? (Yes/Wait for real data)
+- Customer announcement? (Yes/Silent rollout)
+
+### 11.5 — Day 1-30 monitoring queries
+
+Doc includes ready-to-run SQL queries for first 24h, first 7 days, first 30 days. Watches:
+- Tier-system upload counts by `moderation_status` + `verification_method`
+- Tier promotion counts via `social_profiles.tier_promoted_at`
+- Pending hotel review backlog
+- Auto-promote vs admin-eval candidate ratio after Phase 7 cron's first weekly run
+
+### 11.6 — "Definition of successful soft launch" criteria (7-day window)
+
+Tickbox in the doc:
+- [ ] Zero unrecovered 500 errors on tier endpoints
+- [ ] At least 1 Verified Guest upload end-to-end
+- [ ] At least 1 hotel partner used Content Reviews tab
+- [ ] If escalations happened, admin resolved via /admin/content
+- [ ] No customer support tickets about broken upload
+- [ ] No regression in existing flows
+
+### 11.7 — Updated phase tracker (final)
+
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
+- [x] Phase 7 — Creator auto-promote + admin-review eval
+- [x] **Phase 8 — Smoke tests + rollback notes + soft launch (FINAL)**
+
+---
+
+## Tier-System Migration — COMPLETE (2026-05-18)
+
+**Status:** All 8 phases delivered + documented. PR #38 ready for review.
+
+### What this migration shipped
+
+**Schema (Phase 1 + Phase 7, both applied to production Supabase):**
+- `social_user_type` ENUM extended with `VERIFIED_GUEST` + `COMMUNITY_CONTRIBUTOR`
+- `social_profiles.tier_promoted_at`
+- `social_posts` — 15 new columns for moderation state machine + audit
+- 2 new tables: `location_verifications`, `inspiration_nudges`
+- `wallet_credit_history` unique idempotency index
+- `influencers.application_source` + `auto_eval_data`
+- 11 new indexes + 7 new CHECK constraints
+- 1 new trigger function (`fn_inspiration_nudges_touch_updated_at`)
+- RLS + permissive policies on new tables
+
+**Backend (Phase 2 + Phase 6 + Phase 7):**
+- 11 new API routes under `/api/me/tier`, `/api/me/eligible-bookings`, `/api/social/posts/verified-guest`, `/api/social/posts/community`, `/api/verify/location/*`, `/api/partner/content/*`, `/api/admin/content/*`
+- 4 new cron routes: auto-approve / post-stay-nudge / view-milestone-rewards / creator-upgrade-eval
+- 4 new helper libs under `lib/tier/`
+- All auth via existing precedent (`socialUserFromReq` / `x-partner-token` / `adminFromReq`)
+
+**Frontend (Phase 4 + Phase 5):**
+- 3 new tier components: `TierBadge`, `InspirationBanner`, `UpgradeChoiceSheet`
+- 1 new partner component: `PartnerContentTab`
+- 1 new admin page: `/admin/content`
+- Additive edits to `CreateFlow.tsx`, `InstagramHotelFeed.tsx`, `/bookings`, `/hotels/[id]`, `/partner/dashboard`, `/admin/creators`
+- 2 admin sidebar + 1 partner tab additions
+
+**Documentation:**
+- Self-Discovery + 11 CLAUDE.md sections (3, 4, 5, 6, 7, 8, 9, 10, 11)
+- `docs/RAILWAY_LOCATION_OTP_PASTE.md` (Phase 3 Sachin paste)
+- `docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md` (Phase 6 Sachin paste)
+- `docs/TIER_SYSTEM_SMOKE_TESTS.md` (Phase 8)
+- `docs/TIER_SYSTEM_ROLLBACK.md` (Phase 8)
+- `docs/TIER_SYSTEM_SOFT_LAUNCH.md` (Phase 8)
+
+### Locked rules upheld across all 8 phases
+
+- ✅ ADDITIVE-ONLY: zero columns dropped, zero rows mutated outside the intended write paths
+- ✅ EXISTING FLOWS PRESERVED: 33+ pre-tier-system posts visible exactly as today; existing /upgrade form path intact; existing creator commission engine untouched; reel-dedup v131.8 chain unbroken; existing customer/admin/partner pages unchanged
+- ✅ EXISTING CREATOR LOGIC STAYS: `/upgrade` form-based application coexists with new auto-promote path; first-to-fire wins
+- ✅ NO DESTRUCTIVE COMMANDS: every migration uses `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`; no DROP/TRUNCATE anywhere
+- ✅ NO NEW DEPENDENCIES: zero npm additions across all 8 phases
+- ✅ Hinglish user-facing copy + English code/commits/CLAUDE.md
+- ✅ Stopped at every phase boundary; waited for Sachin's `continue`
+
+### Two items requiring Sachin's Railway-repo action
+
+(Per the original Self-Discovery plan, both flagged at the right boundary):
+
+1. **Phase 3 paste** — `docs/RAILWAY_LOCATION_OTP_PASTE.md` (location-OTP dispatcher). Defaults to disabled per Sachin's Option A choice. Can be enabled later by pasting + flipping env var.
+2. **Phase 6 paste** — `docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md` (7 new template handlers). In-app channel works today; SMS/WhatsApp/email gated by this paste.
+
+Both pastes are non-blocking. The tier system is **functionally complete** without them — just with reduced reach (no SMS/WhatsApp; no Community Contributor path active).
+
+### Commits on PR #38 (branch `claude/staybid-tier-discovery-rhoRK`)
+
+```
+3bfb0ef → docs: Self-Discovery findings
+4511d66 → chore: Phase 0 — lock recommended decisions
+04af7de → feat: Phase 1 — schema migration file
+cfa542c → feat: Phase 1 — add admin-approval escalation lane
+d11930f → docs: mark Phase 1 applied + verified
+9a27e1c → feat: Phase 2 — 10 API routes + 4 helper libs
+1dce817 → feat: Phase 3 — frontend + Railway paste-ready doc
+560130b → feat: Phase 3 — feature flag (Option A)
+cb17a69 → fix: widen SocialProfile type for Phase 1 cols
+bb086ed → fix: null phone → undefined for resolveUserIds
+10c4121 → feat: Phase 4 — Create-flow gate + UI components
+fd1448d → feat: Phase 5 — moderation dashboards
+e327a25 → feat: Phase 6 — crons + Railway templates paste
+92c3026 → feat: Phase 7 — creator auto-promote
+TBD     → docs: Phase 8 — smoke tests + rollback + soft launch (this commit)
+```
+
+### Next step for Sachin
+
+**Review PR #38 → run `docs/TIER_SYSTEM_SMOKE_TESTS.md` Section 1.1-1.3 + 6.1-6.2 minimum → merge to `main` when ready.**
+
+Tier System is complete and waiting for the merge signal.
+

@@ -2,6 +2,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+// Phase 4 tier-system — Inspiration nudge embedded in the booking-confirmed
+// success modal. Self-dismissing per (user, hotel) via localStorage.
+import InspirationBanner from "@/components/tier/InspirationBanner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
@@ -3101,7 +3104,16 @@ export default function HotelDetail() {
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">🎉</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">Booking Confirmed!</h3>
             <p className="text-luxury-400 text-sm mb-6">Your booking at <span className="font-semibold text-luxury-700">{hotel.name}</span> is confirmed.</p>
-            <div className="flex gap-3">
+            {/* Phase 4 tier-system — Inspiration banner inside the success
+                modal. Dismiss state is keyed off the hotel id so the same
+                user doesn't see the same nudge twice for the same trip. */}
+            <InspirationBanner
+              variant="modal"
+              hotelId={hotel.id}
+              hotelName={hotel.name}
+              bookingId={hotel.id}
+            />
+            <div className="flex gap-3 mt-4">
               <button onClick={() => setBnRoom(null)} className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm">Close</button>
               <Link href="/bookings" className="flex-1 py-3 rounded-2xl btn-luxury text-sm text-center">My Bookings</Link>
             </div>

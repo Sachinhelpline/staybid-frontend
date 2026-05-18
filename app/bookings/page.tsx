@@ -13,6 +13,9 @@ import {
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import BookingChat from "@/components/BookingChat";
 import ModalCloseButton from "@/components/ModalCloseButton";
+// Phase 4 tier-system — "Share your trip" nudge shown to users who have
+// at least one booking. Self-dismisses on tap, persistence via localStorage.
+import InspirationBanner from "@/components/tier/InspirationBanner";
 // v141 — Phase-5 bookings tour. 3 steps: booking card → StayPoints →
 // chat with hotel.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -753,6 +756,19 @@ export default function BookingsPage() {
             )}
           </div>
         </div>
+
+        {/* Phase 4 tier-system — Inspiration banner. Only renders when
+            the user has at least one booking (so we have something to
+            inspire them about). Dismissible per-(user, banner-variant)
+            via localStorage. Routes into /discover#create on tap. */}
+        {bookings.length > 0 && (
+          <InspirationBanner
+            variant="card"
+            bookingId={bookings[0]?.id}
+            hotelId={bookings[0]?.hotelId}
+            hotelName={bookings[0]?.hotel?.name}
+          />
+        )}
 
         {bookings.length === 0 && (
           <div className="text-center py-24">
