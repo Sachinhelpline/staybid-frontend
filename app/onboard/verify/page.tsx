@@ -56,7 +56,7 @@ function VerifyInner() {
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 sb-fade-in">
         <h1 className="font-display text-4xl text-luxury-900">Verify & set password</h1>
         <p className="text-luxury-500 mt-2">
           We sent a 6-digit code to <span className="font-semibold text-luxury-800">{identifier}</span>
@@ -64,33 +64,35 @@ function VerifyInner() {
       </div>
 
       {devOtp && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm">
+        <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm sb-card-lift sb-fade-in">
           <div className="font-semibold">Dev mode (no real email/SMS configured)</div>
           <div className="mt-1">Your one-time code: <span className="font-mono text-lg font-bold tracking-wider">{devOtp}</span></div>
           <div className="text-xs text-amber-700 mt-1">This banner disappears automatically once SendGrid / SMS keys are added to Vercel.</div>
         </div>
       )}
 
-      <form onSubmit={submit} className="card-luxury p-7 space-y-4">
+      <form onSubmit={submit} className="card-luxury sb-card-lift sb-fade-in p-7 space-y-4" style={{ animationDelay: "0.1s" }}>
+        <div className="sb-step-rail" aria-hidden />
         <Field label="6-digit code">
           <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                  placeholder="123456" maxLength={6}
-                 className="input-luxury text-center text-2xl tracking-[0.5em] font-bold" required />
+                 className="input-luxury sb-focus-glow text-center text-2xl tracking-[0.5em] font-bold" required />
         </Field>
         <Field label="Choose a password">
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                  placeholder="Min 6 characters"
-                 className="input-luxury" required />
+                 className="input-luxury sb-focus-glow" required />
         </Field>
 
         {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
         {info && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">{info}</div>}
 
-        <button disabled={busy || !code || password.length < 6} className="btn-luxury w-full disabled:opacity-50">
-          {busy ? "Verifying…" : "Verify & continue →"}
+        <button disabled={busy || !code || password.length < 6} className="btn-luxury sb-shimmer w-full disabled:opacity-50 relative">
+          <span className="relative" style={{ zIndex: 2 }}>{busy ? "Verifying…" : "Verify & continue →"}</span>
         </button>
 
-        <div className="text-center text-sm">
+        <div className="text-center text-sm flex items-center justify-center gap-2">
+          {secsLeft > 0 && <span className="sb-pulse-dot is-warn" aria-hidden />}
           <button type="button" onClick={resend} disabled={secsLeft > 0}
                   className={secsLeft > 0 ? "text-luxury-400" : "text-gold-700 font-medium"}>
             {secsLeft > 0 ? `Resend code in ${secsLeft}s` : "Resend code"}

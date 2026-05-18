@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
+import { CountUp } from "@/components/CountUp";
 
 const LEVELS = [
   {
@@ -111,7 +112,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto px-4 py-10 space-y-5">
 
         {/* ── Avatar + level card ── */}
-        <div className="fade-up rounded-3xl overflow-hidden shadow-luxury"
+        <div className="fade-up sb-balance-halo rounded-3xl overflow-hidden shadow-luxury"
           style={{ background:"linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}>
           <div className="px-7 pt-8 pb-7">
             <div className="flex items-start justify-between mb-6">
@@ -126,7 +127,7 @@ export default function ProfilePage() {
               </div>
               {/* Level badge */}
               <div className="text-right">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold tracking-widest uppercase badge-animate"
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold tracking-widest uppercase badge-animate sb-card-lift"
                   style={{ background: level.gradient }}>
                   {level.icon} {level.name}
                 </div>
@@ -146,15 +147,15 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <div className="text-center">
-                    <p className="text-white font-bold text-xl">{bookingCount}</p>
+                    <p className="text-white font-bold text-xl"><CountUp value={bookingCount} duration={900} /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">Bookings</p>
                   </div>
                   <div className="text-center border-x border-white/10">
-                    <p className="text-gold-400 font-bold text-xl">{stayPoints.toLocaleString()}</p>
+                    <p className="text-gold-400 font-bold text-xl"><CountUp value={stayPoints} duration={1100} /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">StayPoints</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-white font-bold text-xl">₹{(totalSpend/1000).toFixed(0)}k</p>
+                    <p className="text-white font-bold text-xl">₹<CountUp value={Math.round(totalSpend/1000)} duration={900} suffix="k" /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">Total Spent</p>
                   </div>
                 </>
@@ -311,11 +312,11 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Membership perks ── */}
-        <div className="fade-up bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.18s" }}>
+        <div className="fade-up sb-card-lift bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.18s" }}>
           <h3 className="font-semibold text-luxury-900 text-base mb-4 tracking-tight">
             {level.icon} {level.name} Member Perks
           </h3>
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 sb-stagger">
             {level.perks.map((perk, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
@@ -370,9 +371,9 @@ export default function ProfilePage() {
         )}
 
         {/* ── All milestones ── */}
-        <div className="fade-up bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.3s" }}>
+        <div className="fade-up sb-card-lift bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.3s" }}>
           <h3 className="font-semibold text-luxury-900 text-base mb-4 tracking-tight">🎯 Reward Milestones</h3>
-          <div className="space-y-3">
+          <div className="space-y-3 sb-stagger">
             {MILESTONES.map((m, i) => {
               const achieved = totalSpend >= m.at;
               return (
