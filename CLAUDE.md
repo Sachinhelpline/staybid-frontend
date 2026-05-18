@@ -5633,9 +5633,177 @@ app/admin/creators/page.tsx       # +source badge + metrics grid (form-applicant
 - [x] Phase 5 — Moderation dashboards (partner tab + admin page)
 - [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
 - [x] Phase 7 — Creator auto-promote + admin-review eval
-- [ ] **Phase 8** — Smoke tests + rollback notes + soft launch ← next on `continue`
+- [x] Phase 8 — Smoke tests + rollback notes + soft launch docs. See Section 11.
 
 ---
 
 **Awaiting Sachin's `continue` to start Phase 8 — Smoke tests + rollback notes + soft launch prep.** Phase 8 is the final phase: writes a step-by-step manual smoke-test checklist for every tier-system flow (PUBLIC upload gate, Verified Guest path, hotel approve/reject/escalate, admin approve/reject/flag/delete, cron triggers, reward credits, auto-promote), plus rollback instructions per phase (how to revert Phase 7 schema, Phase 6 cron registrations, Phase 5 sidebar entry, etc.), plus a "ready-for-soft-launch" checklist Sachin can tick before flipping any user-visible feature live.
+
+---
+
+## Phase 8 — Smoke Tests + Rollback + Soft Launch (2026-05-18) — FINAL
+
+Phase 8 is **documentation only** — no new features, no code, no schema. Three docs that give Sachin a complete pre-launch quality gate + emergency rollback recipes + soft-launch decision matrix.
+
+### 11.1 — Files added (3 docs)
+
+```
+docs/TIER_SYSTEM_SMOKE_TESTS.md    # 7-section manual checklist (~30 min for full suite,
+                                     ~10 min for ⭐ smoke-only pass)
+docs/TIER_SYSTEM_ROLLBACK.md       # Per-phase rollback recipes (Phase 8 → Phase 1)
+docs/TIER_SYSTEM_SOFT_LAUNCH.md    # Pre-launch checklist + Day 1-30 monitoring
+```
+
+### 11.2 — Smoke test coverage
+
+7 sections totalling ~80 individual checkpoints:
+- **Section 1** — PUBLIC user gate (3 scenarios: no eligibility / has booking / existing creator regression)
+- **Section 2** — Hotel partner moderation (4 actions: see queue, approve, reject, escalate-to-admin)
+- **Section 3** — Admin moderation (4 actions: see escalations, approve, reject, flag, delete)
+- **Section 4** — All 4 cron endpoints (curl-driven manual triggers with expected JSON responses + DB verifications)
+- **Section 5** — Wallet + InspirationBanner placements
+- **Section 6** — Regression checks (existing /upgrade form, existing /api/social/posts, existing creator UX, existing pre-Phase-1 posts visibility, existing admin pages all still work)
+- **Section 7** — DevTools console assertions
+
+Plus an abridged **"10-minute smoke pass"** that runs only the 7 critical ⭐ checkpoints.
+
+### 11.3 — Rollback recipes (forward-only where possible)
+
+The doc captures per-phase rollback with **3 strategies**:
+
+1. **Quick disable** (no code revert) — for most issues. Env vars, cron-job.org delete, comment out one prop.
+2. **Targeted route disable** — add early-return 503 in the affected handler.
+3. **Full code revert** — `git revert <phase commit>` with caveats about dependencies between Phase 4 → 5 → 6 → 7.
+
+**Phase 1 schema rollback is intentionally forward-only-violating** — documented as informational but recommends DISABLE strategy over DROP. The 33 existing `social_posts` rows have `moderation_status='APPROVED'` (Phase 1's default); ripping the column out loses moderation history.
+
+### 11.4 — Soft launch decision matrix
+
+The launch doc gives Sachin 3 paths:
+
+1. **Merge PR #38 now** — tier gate activates immediately for PUBLIC users
+2. **Merge but bypass the gate** — comment out `onFabClick` (per Rollback doc Phase 4 Step 1). Ships schema + endpoints + admin queue without customer UX change.
+3. **Keep PR #38 draft** — wait until Railway Phase 3 + Phase 6 pastes are done
+
+Plus 4 explicit decision points:
+- Paste Phase 3 Railway location-OTP dispatcher? (Yes/Keep disabled)
+- Paste Phase 6 Railway notification templates? (Yes/Keep in-app only)
+- Register 4 cron-job.org schedules? (Yes/Wait for real data)
+- Customer announcement? (Yes/Silent rollout)
+
+### 11.5 — Day 1-30 monitoring queries
+
+Doc includes ready-to-run SQL queries for first 24h, first 7 days, first 30 days. Watches:
+- Tier-system upload counts by `moderation_status` + `verification_method`
+- Tier promotion counts via `social_profiles.tier_promoted_at`
+- Pending hotel review backlog
+- Auto-promote vs admin-eval candidate ratio after Phase 7 cron's first weekly run
+
+### 11.6 — "Definition of successful soft launch" criteria (7-day window)
+
+Tickbox in the doc:
+- [ ] Zero unrecovered 500 errors on tier endpoints
+- [ ] At least 1 Verified Guest upload end-to-end
+- [ ] At least 1 hotel partner used Content Reviews tab
+- [ ] If escalations happened, admin resolved via /admin/content
+- [ ] No customer support tickets about broken upload
+- [ ] No regression in existing flows
+
+### 11.7 — Updated phase tracker (final)
+
+- [x] Self-Discovery
+- [x] Phase 0 — Lock decisions
+- [x] Phase 1 — Schema applied
+- [x] Phase 2 — API endpoints
+- [x] Phase 3 — Location OTP frontend + feature flag (Option A)
+- [x] Phase 4 — Create-flow gate + UpgradeChoiceSheet + InspirationBanner + TierBadge
+- [x] Phase 5 — Moderation dashboards (partner tab + admin page)
+- [x] Phase 6 — Cron jobs + reward credit + Railway templates paste-ready
+- [x] Phase 7 — Creator auto-promote + admin-review eval
+- [x] **Phase 8 — Smoke tests + rollback notes + soft launch (FINAL)**
+
+---
+
+## Tier-System Migration — COMPLETE (2026-05-18)
+
+**Status:** All 8 phases delivered + documented. PR #38 ready for review.
+
+### What this migration shipped
+
+**Schema (Phase 1 + Phase 7, both applied to production Supabase):**
+- `social_user_type` ENUM extended with `VERIFIED_GUEST` + `COMMUNITY_CONTRIBUTOR`
+- `social_profiles.tier_promoted_at`
+- `social_posts` — 15 new columns for moderation state machine + audit
+- 2 new tables: `location_verifications`, `inspiration_nudges`
+- `wallet_credit_history` unique idempotency index
+- `influencers.application_source` + `auto_eval_data`
+- 11 new indexes + 7 new CHECK constraints
+- 1 new trigger function (`fn_inspiration_nudges_touch_updated_at`)
+- RLS + permissive policies on new tables
+
+**Backend (Phase 2 + Phase 6 + Phase 7):**
+- 11 new API routes under `/api/me/tier`, `/api/me/eligible-bookings`, `/api/social/posts/verified-guest`, `/api/social/posts/community`, `/api/verify/location/*`, `/api/partner/content/*`, `/api/admin/content/*`
+- 4 new cron routes: auto-approve / post-stay-nudge / view-milestone-rewards / creator-upgrade-eval
+- 4 new helper libs under `lib/tier/`
+- All auth via existing precedent (`socialUserFromReq` / `x-partner-token` / `adminFromReq`)
+
+**Frontend (Phase 4 + Phase 5):**
+- 3 new tier components: `TierBadge`, `InspirationBanner`, `UpgradeChoiceSheet`
+- 1 new partner component: `PartnerContentTab`
+- 1 new admin page: `/admin/content`
+- Additive edits to `CreateFlow.tsx`, `InstagramHotelFeed.tsx`, `/bookings`, `/hotels/[id]`, `/partner/dashboard`, `/admin/creators`
+- 2 admin sidebar + 1 partner tab additions
+
+**Documentation:**
+- Self-Discovery + 11 CLAUDE.md sections (3, 4, 5, 6, 7, 8, 9, 10, 11)
+- `docs/RAILWAY_LOCATION_OTP_PASTE.md` (Phase 3 Sachin paste)
+- `docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md` (Phase 6 Sachin paste)
+- `docs/TIER_SYSTEM_SMOKE_TESTS.md` (Phase 8)
+- `docs/TIER_SYSTEM_ROLLBACK.md` (Phase 8)
+- `docs/TIER_SYSTEM_SOFT_LAUNCH.md` (Phase 8)
+
+### Locked rules upheld across all 8 phases
+
+- ✅ ADDITIVE-ONLY: zero columns dropped, zero rows mutated outside the intended write paths
+- ✅ EXISTING FLOWS PRESERVED: 33+ pre-tier-system posts visible exactly as today; existing /upgrade form path intact; existing creator commission engine untouched; reel-dedup v131.8 chain unbroken; existing customer/admin/partner pages unchanged
+- ✅ EXISTING CREATOR LOGIC STAYS: `/upgrade` form-based application coexists with new auto-promote path; first-to-fire wins
+- ✅ NO DESTRUCTIVE COMMANDS: every migration uses `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS`; no DROP/TRUNCATE anywhere
+- ✅ NO NEW DEPENDENCIES: zero npm additions across all 8 phases
+- ✅ Hinglish user-facing copy + English code/commits/CLAUDE.md
+- ✅ Stopped at every phase boundary; waited for Sachin's `continue`
+
+### Two items requiring Sachin's Railway-repo action
+
+(Per the original Self-Discovery plan, both flagged at the right boundary):
+
+1. **Phase 3 paste** — `docs/RAILWAY_LOCATION_OTP_PASTE.md` (location-OTP dispatcher). Defaults to disabled per Sachin's Option A choice. Can be enabled later by pasting + flipping env var.
+2. **Phase 6 paste** — `docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md` (7 new template handlers). In-app channel works today; SMS/WhatsApp/email gated by this paste.
+
+Both pastes are non-blocking. The tier system is **functionally complete** without them — just with reduced reach (no SMS/WhatsApp; no Community Contributor path active).
+
+### Commits on PR #38 (branch `claude/staybid-tier-discovery-rhoRK`)
+
+```
+3bfb0ef → docs: Self-Discovery findings
+4511d66 → chore: Phase 0 — lock recommended decisions
+04af7de → feat: Phase 1 — schema migration file
+cfa542c → feat: Phase 1 — add admin-approval escalation lane
+d11930f → docs: mark Phase 1 applied + verified
+9a27e1c → feat: Phase 2 — 10 API routes + 4 helper libs
+1dce817 → feat: Phase 3 — frontend + Railway paste-ready doc
+560130b → feat: Phase 3 — feature flag (Option A)
+cb17a69 → fix: widen SocialProfile type for Phase 1 cols
+bb086ed → fix: null phone → undefined for resolveUserIds
+10c4121 → feat: Phase 4 — Create-flow gate + UI components
+fd1448d → feat: Phase 5 — moderation dashboards
+e327a25 → feat: Phase 6 — crons + Railway templates paste
+92c3026 → feat: Phase 7 — creator auto-promote
+TBD     → docs: Phase 8 — smoke tests + rollback + soft launch (this commit)
+```
+
+### Next step for Sachin
+
+**Review PR #38 → run `docs/TIER_SYSTEM_SMOKE_TESTS.md` Section 1.1-1.3 + 6.1-6.2 minimum → merge to `main` when ready.**
+
+Tier System is complete and waiting for the merge signal.
 
