@@ -180,3 +180,221 @@ export const TUTORIAL_DRAWER_COPY = {
     disableLabel: "Sab tour band karo",
   },
 };
+
+// ── v139: Per-page spotlight tours (Layer 2) ─────────────────────────
+// Each tour is an ordered array of TourStep objects keyed by a stable
+// CSS selector (existing class / id on the page — we deliberately AVOID
+// adding data-tour attributes so onboarding lives entirely in this file
+// and never bloats page JSX).
+//
+// The usePageTour hook polls for the FIRST step's element for ~1.5s
+// before firing. If the selector doesn't exist (e.g. page in an empty
+// state, A/B variant) the tour is skipped silently.
+
+export type TourStep = {
+  /** CSS selector — must match an element rendered on the page. */
+  element: string;
+  /** Step heading — short. */
+  title: string;
+  /** Step body — 1 line ideal, 2 max. */
+  description: string;
+  /** Popover position relative to highlighted element. Default "bottom". */
+  side?: "top" | "right" | "bottom" | "left";
+  /** Popover alignment. Default "center". */
+  align?: "start" | "center" | "end";
+};
+
+type LocalisedSteps = { en: TourStep[]; hi: TourStep[] };
+
+// Home / discover reel feed — 4 steps
+const HOME_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".fdeal-rail-wrap",
+      title: "🔥 Flash Deals",
+      description: "Top hotels release massive same-day discounts here. Tap any avatar to grab one.",
+      side: "bottom",
+    },
+    {
+      element: ".ig-card",
+      title: "👆 Reel feed",
+      description: "Swipe up / down to browse hotels. Each reel is a real verified property.",
+      side: "left",
+    },
+    {
+      element: ".ig-cta-book",
+      title: "Book Now",
+      description: "Pay the listed price and confirm instantly. Always cheaper than OTAs.",
+      side: "left",
+    },
+    {
+      element: ".ig-cta-bid",
+      title: "Or Bid Your Price",
+      description: "Name what you'd pay — the hotel accepts, counters, or rejects in real time.",
+      side: "left",
+    },
+  ],
+  hi: [
+    {
+      element: ".fdeal-rail-wrap",
+      title: "🔥 Flash Deals",
+      description: "Top hotels yahaan same-day massive discount dete hain. Tap karo aur grab karo.",
+      side: "bottom",
+    },
+    {
+      element: ".ig-card",
+      title: "👆 Reel feed",
+      description: "Up / down swipe karo hotels browse karne ke liye. Har reel verified property hai.",
+      side: "left",
+    },
+    {
+      element: ".ig-cta-book",
+      title: "Book Now",
+      description: "Listed price pe pay karo aur instant confirm. Hamesha OTA se sasta.",
+      side: "left",
+    },
+    {
+      element: ".ig-cta-bid",
+      title: "Ya Apni Price Bid Karo",
+      description: "Apni price batao — hotel turant accept, counter, ya reject karega.",
+      side: "left",
+    },
+  ],
+};
+
+// Hotel detail page — 5 steps
+const HOTEL_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: ".hx-room-media",
+      title: "📸 Photo gallery",
+      description: "Real verified photos from the property. Tap to view full-screen.",
+      side: "right",
+    },
+    {
+      element: "#availability-picker",
+      title: "📅 Pick dates first",
+      description: "Set check-in / check-out + guests. Room prices update for your stay.",
+      side: "top",
+    },
+    {
+      element: ".hsb",
+      title: "🏆 Score Card",
+      description: "Detailed score out of 100 + city rank. Tap for the full 10-checkpoint breakdown.",
+      side: "left",
+    },
+    {
+      element: ".hx-cta-primary",
+      title: "Book Now",
+      description: "Charged instantly via Razorpay. Booking confirmed in 30 seconds.",
+      side: "top",
+    },
+    {
+      element: ".hx-cta-secondary",
+      title: "Or Negotiate",
+      description: "Bid below the listed price — hotel may accept or counter your offer.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: ".hx-room-media",
+      title: "📸 Photo gallery",
+      description: "Property ki real verified photos. Full-screen ke liye tap karo.",
+      side: "right",
+    },
+    {
+      element: "#availability-picker",
+      title: "📅 Pehle dates set karo",
+      description: "Check-in / check-out + guests. Room prices apke stay ke liye update honge.",
+      side: "top",
+    },
+    {
+      element: ".hsb",
+      title: "🏆 Score Card",
+      description: "100 mein se detailed score + city rank. 10-checkpoint breakdown ke liye tap karo.",
+      side: "left",
+    },
+    {
+      element: ".hx-cta-primary",
+      title: "Book Now",
+      description: "Razorpay se instant charge. 30 second mein booking confirm.",
+      side: "top",
+    },
+    {
+      element: ".hx-cta-secondary",
+      title: "Ya Negotiate karo",
+      description: "Listed price se kam bid karo — hotel accept ya counter karega.",
+      side: "top",
+    },
+  ],
+};
+
+// /bid page (reverse auction) — 4 steps
+const BID_STEPS: LocalisedSteps = {
+  en: [
+    {
+      element: '[data-autonext="destination"]',
+      title: "1. Pick city",
+      description: "Choose where you want to stay. Your bid goes to all hotels in this city.",
+      side: "top",
+    },
+    {
+      element: '[data-autonext="dates"]',
+      title: "2. Set dates",
+      description: "Check-in + check-out. Hotels see your dates while bidding.",
+      side: "top",
+    },
+    {
+      element: '[data-autonext="addons"]',
+      title: "3. Your budget",
+      description: "Tell us your max per-night budget. Our AI hints a smart price.",
+      side: "top",
+    },
+    {
+      element: ".bx-launch-btn",
+      title: "🚀 Submit",
+      description: "Hotels respond in My Bids — check back in 10-15 minutes.",
+      side: "top",
+    },
+  ],
+  hi: [
+    {
+      element: '[data-autonext="destination"]',
+      title: "1. City chuno",
+      description: "Kahaan stay karna hai. Aapki bid us city ke saare hotels ko jayegi.",
+      side: "top",
+    },
+    {
+      element: '[data-autonext="dates"]',
+      title: "2. Dates batao",
+      description: "Check-in + check-out. Hotels apki dates ke liye bid karenge.",
+      side: "top",
+    },
+    {
+      element: '[data-autonext="addons"]',
+      title: "3. Apna budget",
+      description: "Per-night max budget batao. Hamari AI smart price suggest karegi.",
+      side: "top",
+    },
+    {
+      element: ".bx-launch-btn",
+      title: "🚀 Submit",
+      description: "Hotels My Bids mein respond karenge. 10-15 minute mein check karo.",
+      side: "top",
+    },
+  ],
+};
+
+export const PAGE_TOURS: Record<string, LocalisedSteps> = {
+  home: HOME_STEPS,
+  hotel: HOTEL_STEPS,
+  bid: BID_STEPS,
+};
+
+/** Hook helper — returns the steps array for the given key + current language. */
+export function useLocalisedSteps(key: string, lang: "en" | "hi"): TourStep[] | null {
+  const bucket = PAGE_TOURS[key];
+  if (!bucket) return null;
+  return bucket[lang] || bucket.en || null;
+}

@@ -3695,3 +3695,151 @@ body.is-reel-page {
     box-shadow: 0 0 0 2px #C9A66B !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   v139 — driver.js cozy theme overrides (Tutorial Layer 2).
+   driver.js default theme is pure-white popovers on a dark overlay.
+   We re-skin to the cozy cream + champagne palette so the spotlight
+   tour matches the rest of the customer surface. Scoped via the
+   `popoverClass: "sb-driver-popover"` config in usePageTour.
+   ───────────────────────────────────────────────────────────────────── */
+.driver-overlay {
+  /* Slightly warmer than pure black so the bright cream popover doesn't
+     read as a stark white card on void black */
+  fill: rgba(15, 12, 8, 0.62) !important;
+}
+
+.sb-driver-popover.driver-popover {
+  background: linear-gradient(160deg, #FFFCF6 0%, #FAF5EB 100%) !important;
+  border: 1px solid rgba(201, 166, 107, 0.32) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 20px 50px -16px rgba(31, 26, 15, 0.45),
+    0 4px 10px -2px rgba(31, 26, 15, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  padding: 18px 18px 14px 18px !important;
+  max-width: 320px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+.sb-driver-popover .driver-popover-title {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+  line-height: 1.2 !important;
+  color: var(--cozy-warm-dark, #1F1A0F) !important;
+  margin: 0 0 6px 0 !important;
+  padding-right: 24px !important; /* leave room for close X */
+}
+
+.sb-driver-popover .driver-popover-description {
+  color: var(--cozy-cocoa, #4A3820) !important;
+  font-size: 0.92rem !important;
+  line-height: 1.48 !important;
+  margin: 0 0 14px 0 !important;
+}
+
+.sb-driver-popover .driver-popover-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-top: 8px !important;
+}
+
+.sb-driver-popover .driver-popover-progress-text {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.10em !important;
+  color: var(--cozy-cocoa-soft, #6E5430) !important;
+  text-transform: uppercase !important;
+}
+
+.sb-driver-popover .driver-popover-navigation-btns {
+  display: flex !important;
+  gap: 6px !important;
+}
+
+.sb-driver-popover .driver-popover-prev-btn,
+.sb-driver-popover .driver-popover-next-btn {
+  appearance: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease !important;
+  text-shadow: none !important;
+}
+.sb-driver-popover .driver-popover-prev-btn {
+  background: transparent !important;
+  color: var(--cozy-cocoa, #4A3820) !important;
+  border: 1px solid rgba(201, 166, 107, 0.32) !important;
+}
+.sb-driver-popover .driver-popover-prev-btn:hover {
+  background: rgba(201, 166, 107, 0.08) !important;
+}
+.sb-driver-popover .driver-popover-next-btn {
+  background: linear-gradient(135deg, #E7CFA0, #D9BE82, #C9A66B) !important;
+  color: #1F1A0F !important;
+  box-shadow:
+    0 8px 18px -6px rgba(201, 166, 107, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
+}
+.sb-driver-popover .driver-popover-next-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow:
+    0 10px 22px -6px rgba(201, 166, 107, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+.sb-driver-popover .driver-popover-close-btn {
+  appearance: none !important;
+  border: none !important;
+  background: rgba(201, 166, 107, 0.12) !important;
+  color: var(--cozy-cocoa, #4A3820) !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  font-size: 1.1rem !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  top: 12px !important;
+  right: 12px !important;
+}
+.sb-driver-popover .driver-popover-close-btn:hover {
+  background: rgba(201, 166, 107, 0.22) !important;
+}
+
+/* Arrow recoloured to match popover surface */
+.sb-driver-popover .driver-popover-arrow-side-top.driver-popover-arrow      { border-top-color: #FAF5EB !important; }
+.sb-driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow   { border-bottom-color: #FFFCF6 !important; }
+.sb-driver-popover .driver-popover-arrow-side-left.driver-popover-arrow     { border-left-color: #FFFCF6 !important; }
+.sb-driver-popover .driver-popover-arrow-side-right.driver-popover-arrow    { border-right-color: #FFFCF6 !important; }
+
+/* Dark mode parity */
+[data-theme="dark"] .driver-overlay { fill: rgba(7, 5, 2, 0.78) !important; }
+[data-theme="dark"] .sb-driver-popover.driver-popover {
+  background: linear-gradient(160deg, #2B2415 0%, #1F1A0F 100%) !important;
+  border: 1px solid rgba(201, 166, 107, 0.38) !important;
+}
+[data-theme="dark"] .sb-driver-popover .driver-popover-title { color: #F5EFE0 !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-description { color: #D6C9AE !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-prev-btn { color: #D6C9AE !important; border-color: rgba(201, 166, 107, 0.32) !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-arrow-side-top.driver-popover-arrow    { border-top-color: #1F1A0F !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #2B2415 !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-arrow-side-left.driver-popover-arrow   { border-left-color: #2B2415 !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-arrow-side-right.driver-popover-arrow  { border-right-color: #2B2415 !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-close-btn { background: rgba(201, 166, 107, 0.18) !important; color: #D6C9AE !important; }
+[data-theme="dark"] .sb-driver-popover .driver-popover-progress-text { color: rgba(213, 200, 175, 0.62) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-driver-popover.driver-popover { transition: none !important; }
+  .sb-driver-popover .driver-popover-next-btn:hover { transform: none !important; }
+}

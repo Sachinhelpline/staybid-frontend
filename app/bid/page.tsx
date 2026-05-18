@@ -32,6 +32,9 @@ import { scrollToAutoNext } from "@/lib/auto-next-scroll";
 // helpers power the Negotiate modal slider + partner counter slider so a
 // preset / drag / type-in input all land on the same indivisible billing unit.
 import { snap100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+// v139 — auto-fires the 4-step reverse-auction tour on first visit.
+// Hook waits until [data-autonext="destination"] renders.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -201,6 +204,11 @@ export default function BidPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
+
+  // v139 — Tutorial Layer 2 — reverse-auction page tour. 4 steps walk
+  // through city → dates → budget → submit. Uses existing
+  // [data-autonext="..."] selectors from the bx-section flow.
+  usePageTour("bid", "bid");
 
   const [form, setForm] = useState({
     city:           "",

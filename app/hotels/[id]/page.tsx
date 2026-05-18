@@ -15,6 +15,10 @@ import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import BackToTopButton from "@/components/BackToTopButton";
+// v139 — per-page tutorial spotlight tour (5 steps: photos → picker →
+// score badge → Book Now → Negotiate). Hook handles skip logic + waits
+// until the first selector (.hx-room-media) renders.
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 import { computeHoldAmount, holdExpiresAt, saveHoldState } from "@/lib/hold-amount";
 import { computeBidderScore, type BidderScore } from "@/lib/bidder-score";
 import { notify } from "@/lib/notifications";
@@ -67,6 +71,13 @@ export default function HotelDetail() {
 
   const [hotel, setHotel]     = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // v139 — Tutorial Layer 2. Slightly longer delay (1400ms) because
+  // hotel detail data loads from /api/hotels/[id] async — rooms +
+  // photos + score badge all need to be in the DOM before the tour
+  // can spotlight them. usePageTour polls for the first selector for
+  // ~1.5s on top of the delay so this is a generous floor.
+  usePageTour("hotel", "hotel", { delayMs: 1400 });
 
   // Flash deal URL params
   const dealId       = searchParams.get("dealId");

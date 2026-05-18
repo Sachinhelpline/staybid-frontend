@@ -11,6 +11,9 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { track, getSignals, initTracking, markViewed } from "@/lib/track";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
+// v139 — auto-fires the per-page spotlight tour on first visit. Hook
+// handles all skip logic internally (disabled / seen / welcome-active).
+import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v107 — switched from `next/dynamic` to a static import. The dynamic
 // version was adding a real JS-chunk waterfall on cold start: page.js
 // finished → THEN browser started fetching the feed chunk → THEN render.
@@ -250,6 +253,11 @@ export default function DiscoverPage() {
   // body class lock + best-effort requestFullscreen on first touch.
   // Replaces the older 100dvh-only approach that was flaky on Android.
   useReelFullscreen();
+  // v139 — Tutorial Layer 2 — home tour. Fires on first visit ~900ms
+  // after mount (gives the reel feed + flash-deal rail time to render).
+  // Tour selectors are STABLE existing classes (.fdeal-rail-wrap,
+  // .ig-card, .ig-cta-book, .ig-cta-bid) — zero DOM changes needed.
+  usePageTour("home", "home");
 
   // Record hotel_view + markViewed when active card changes
   useEffect(() => {
