@@ -21,11 +21,28 @@ const HEADERS = {
 
 const MAX_OTP_ATTEMPTS = 5;
 
+// Phase 3 feature flag (must match send-otp route). When OFF, no OTP
+// would have been issued in the first place, but we still guard the
+// verify path so a stale OTP from a previous flag-on window doesn't
+// leak through.
+const LOCATION_OTP_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_LOCATION_OTP === "1";
+
 function hashOtp(otp: string): string {
   return createHash("sha256").update(otp).digest("hex");
 }
 
 export async function POST(req: Request) {
+  if (!LOCATION_OTP_ENABLED) {
+    return NextResponse.json(
+      {
+        error: "Location verification is not yet available",
+        code: "LOCATION_OTP_DISABLED",
+      },
+      { status: 503 }
+    );
+  }
+
   const user = socialUserFromReq(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -19,6 +19,13 @@ import type { ContentTier, MyTierResponse } from "@/lib/tier/types";
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
+// Phase 3 feature flag — mirrors the OTP routes. When OFF (default), the
+// upgrade-choice UI in Phase 4 hides the Community Contributor card and
+// the `reason` field below signals "verified_guest_only" instead of the
+// hybrid "needs_booking_or_location_verify" hint.
+const LOCATION_OTP_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_LOCATION_OTP === "1";
+
 export async function GET(req: Request) {
   const user = socialUserFromReq(req);
   if (!user) {
@@ -48,9 +55,14 @@ export async function GET(req: Request) {
   let tier: ContentTier = (profile?.user_type as ContentTier) || "PUBLIC";
   if (role === "admin" || role === "super_admin") tier = "ADMIN";
 
+  // When location-OTP is disabled, skip the count query entirely — even
+  // if stale VERIFIED rows linger from a previous flag-on window, we
+  // shouldn't surface them to the UI.
   const [eligible, activeLocCount] = await Promise.all([
     listEligibleBookings(user.id, user.phone),
-    countActiveLocationVerifications(user.id),
+    LOCATION_OTP_ENABLED
+      ? countActiveLocationVerifications(user.id)
+      : Promise.resolve(0),
   ]);
 
   // Capability decision tree
@@ -62,12 +74,14 @@ export async function GET(req: Request) {
   } else if (eligible.length > 0) {
     canUpload = true;
     reason = "verified_guest_eligible";
-  } else if (activeLocCount > 0) {
+  } else if (LOCATION_OTP_ENABLED && activeLocCount > 0) {
     canUpload = true;
     reason = "community_contributor_eligible";
   } else {
     canUpload = false;
-    reason = "needs_booking_or_location_verify";
+    reason = LOCATION_OTP_ENABLED
+      ? "needs_booking_or_location_verify"
+      : "needs_booking_only"; // Community Contributor card hidden in this state
   }
 
   const resp: MyTierResponse = {
@@ -77,6 +91,7 @@ export async function GET(req: Request) {
     eligibleBookingsCount: eligible.length,
     hasActiveLocationVerification: activeLocCount > 0,
     promotedAt: profile?.tier_promoted_at || null,
+    locationOtpEnabled: LOCATION_OTP_ENABLED,
   };
   return NextResponse.json(resp);
 }

@@ -5141,12 +5141,42 @@ The doc recommends WhatsApp-first (no DLT approval required) with an optional fo
 - Don't issue a JWT in the response. This is a dispatcher, not a login endpoint.
 - Don't add Redis throttling. Supabase's `idx_locv_pending` partial index already supports unique-per-pending-OTP semantics.
 
-### 6.5 — Updated phase tracker
+### 6.5 — Feature flag (Sachin's "Option A" — 2026-05-18 patch)
+
+Sachin clarified mid-Phase-3 that no OTP delivery plan is currently
+active ("hmare pass koi active OTP plan nahi hai sirf coding hai"). To
+ship Phase 3 cleanly as future-only scaffolding, the entire location-OTP
+flow is now hard-gated behind `NEXT_PUBLIC_ENABLE_LOCATION_OTP="1"`.
+Default OFF.
+
+When flag is OFF (default in production today):
+- `POST /api/verify/location/send-otp` → 503 `{ code: "LOCATION_OTP_DISABLED" }`
+- `POST /api/verify/location/verify-otp` → same 503
+- `GET /api/me/tier` returns `{ locationOtpEnabled: false, reason: "needs_booking_only" }` for PUBLIC users with no eligible bookings
+- Phase 4 UI will hide / show "Coming Soon" overlay on the Community
+  Contributor card. Only Verified Guest path is interactive.
+
+When flag is ON (future activation):
+- Both OTP routes accept requests as Phase 2 designed
+- `GET /api/me/tier` returns `{ locationOtpEnabled: true }`; reason flips to "needs_booking_or_location_verify" for PUBLIC users without bookings
+- Frontend Community Contributor card unhides automatically
+
+To activate (no code redeploy required beyond env var):
+1. Paste Railway dispatcher from `docs/RAILWAY_LOCATION_OTP_PASTE.md`
+2. Ensure active MSG91 plan + DLT template OR WhatsApp Business credentials
+3. Vercel env vars (staybid-customer-frontend project): set
+   `NEXT_PUBLIC_ENABLE_LOCATION_OTP=1` → redeploy
+
+The Verified Guest path (`/api/social/posts/verified-guest`) needs ZERO
+of this — works regardless of flag state. That's the primary path for
+the public→content user under Option A.
+
+### 6.6 — Updated phase tracker
 - [x] Self-Discovery
 - [x] Phase 0 — Lock decisions
 - [x] Phase 1 — Schema applied
 - [x] Phase 2 — API endpoints
-- [x] Phase 3 — Frontend wiring + Railway paste-ready doc (this section)
+- [x] Phase 3 — Frontend wiring + Railway paste-ready doc + feature flag (Option A)
 - [ ] **Phase 4** — Frontend Create-flow gate + tier badge + inspiration banner ← next on `continue`
 - [ ] Phase 5 — Hotel Pending Reviews dashboard + admin Pending Admin Review queue
 - [ ] Phase 6 — Cron jobs + reward credit + Railway notification templates

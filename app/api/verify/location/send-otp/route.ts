@@ -32,6 +32,13 @@ const HEADERS = {
 
 const RAILWAY = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
+// Phase 3 feature flag. Default OFF — frontend Phase 4 hides the Community
+// Contributor card unless this is "1". Flip once Railway OTP dispatcher is
+// pasted + an active OTP delivery plan (MSG91 / WhatsApp Business) exists.
+// Mirror of v132.12's NEXT_PUBLIC_ENABLE_PHONE_OTP pattern.
+const LOCATION_OTP_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_LOCATION_OTP === "1";
+
 function hashOtp(otp: string): string {
   return createHash("sha256").update(otp).digest("hex");
 }
@@ -41,6 +48,21 @@ function generateOtp(): string {
 }
 
 export async function POST(req: Request) {
+  // Hard-gate the entire flow behind the feature flag. Without an active
+  // SMS/WhatsApp delivery plan + Railway dispatcher, no OTP will reach the
+  // user, so returning 503 here is honest. Frontend reads the error code
+  // to render "Coming soon" on the Community Contributor card.
+  if (!LOCATION_OTP_ENABLED) {
+    return NextResponse.json(
+      {
+        error: "Location verification is not yet available",
+        code: "LOCATION_OTP_DISABLED",
+        hint: "Use the booking-based Verified Guest path instead",
+      },
+      { status: 503 }
+    );
+  }
+
   const user = socialUserFromReq(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

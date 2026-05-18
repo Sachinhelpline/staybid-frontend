@@ -61,4 +61,12 @@ export type MyTierResponse = {
   eligibleBookingsCount: number;
   hasActiveLocationVerification: boolean;
   promotedAt: string | null; // ISO timestamp or null
+  /**
+   * v132.12-style feature flag for Phase 3 location-OTP. Default false
+   * (NEXT_PUBLIC_ENABLE_LOCATION_OTP env var not set). When false, the
+   * upgrade-choice UI hides / disables the Community Contributor card.
+   * Flip env var to "1" once Railway dispatcher is pasted and an OTP
+   * delivery plan (MSG91 / WhatsApp Business) is active.
+   */
+  locationOtpEnabled: boolean;
 };
