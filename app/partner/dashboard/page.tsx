@@ -14,6 +14,10 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
 // through that box). See lib/counter-addons.ts for the rationale.
 import { COUNTER_ADDONS, serializeAddons } from "@/lib/counter-addons";
+// v145 — guest's actual preferred bid (below-floor cases) lives in the
+// message token "Guest's preferred price: ₹X/night…", not in bid.amount.
+// Partner panel was showing floor (b.amount) as the bid → "price clashing".
+import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
 // v130 — Hybrid AI Autopilot (Option 2). Partner picks how aggressive the
 // AI is on their inventory: auto / hybrid / manual. See lib/autopilot.ts
 // for the customer-side resolver + lib/bidder-score.ts for the tier rules.
@@ -45,6 +49,19 @@ function getPartnerUser() {
   try { return JSON.parse(localStorage.getItem("sb_partner_user") || "null"); } catch { return null; }
 }
 function fmtCur(n: number) { return "₹" + Math.round(n).toLocaleString("en-IN"); }
+// v145 — Customer's ACTUAL preferred bid. Below-floor bids are stored in DB
+// at floorPrice (Railway rejects below-floor inserts) so bid.amount === floor;
+// the customer's real wish lives in bid.message as "Guest's preferred price: ₹X".
+// Use this everywhere we display "what the guest bid".
+function customerBidOf(b: any): number {
+  const fromMsg = extractCustomerBidFromMessage(b?.message);
+  return Math.round(fromMsg || b?.amount || 0);
+}
+// The system floor (what the bid is stored at). Same as bid.amount on
+// below-floor cases; equals the room's floorPrice otherwise.
+function floorOf(b: any): number {
+  return Math.round(b?.amount || 0);
+}
 function fmtDate(s: string) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -327,7 +344,18 @@ export default function PartnerDashboard() {
           addons: bidAction === "counter" ? counterAddons : [],
         }),
       });
-      if (!res.ok) throw new Error("Action failed");
+      if (!res.ok) {
+        // v145 — surface the actual backend error instead of a generic
+        // "Action failed". Helps both the user and us debug Railway 4xx /
+        // Supabase schema issues without inspecting Network tab.
+        const errBody = await res.json().catch(() => ({}));
+        const errMsg =
+          errBody.error ||
+          errBody.message ||
+          (errBody.supabase && `Supabase: ${errBody.supabase}`) ||
+          `Server error (${res.status})`;
+        throw new Error(errMsg);
+      }
       setBidActDone(true);
       // Refresh bids
       const bRes = await fetch("/api/partner/bids", { headers: { Authorization: `Bearer ${token}` } });
@@ -783,6 +811,32 @@ export default function PartnerDashboard() {
         .btn-gold:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation:fadeUp 0.3s ease-out both; }
+        /* v145 — premium counter slider thumb (gold halo, larger drag target).
+           Track is rendered by sibling divs; the <input> itself is transparent
+           so the colored zones underneath show through. */
+        .counter-range { -webkit-appearance: none; appearance: none; background: transparent; height: 28px; }
+        .counter-range:focus { outline: none; }
+        .counter-range::-webkit-slider-runnable-track { background: transparent; height: 10px; border-radius: 999px; }
+        .counter-range::-moz-range-track { background: transparent; height: 10px; border-radius: 999px; }
+        .counter-range::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 22px; height: 22px; border-radius: 999px;
+          background: linear-gradient(135deg, #fef3c7 0%, #f0b429 60%, #c9911a 100%);
+          border: 2px solid #fff;
+          box-shadow: 0 0 0 2px rgba(201,145,26,0.32), 0 4px 10px rgba(201,145,26,0.45);
+          cursor: grab; margin-top: -6px; transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .counter-range::-moz-range-thumb {
+          width: 22px; height: 22px; border-radius: 999px;
+          background: linear-gradient(135deg, #fef3c7 0%, #f0b429 60%, #c9911a 100%);
+          border: 2px solid #fff;
+          box-shadow: 0 0 0 2px rgba(201,145,26,0.32), 0 4px 10px rgba(201,145,26,0.45);
+          cursor: grab; transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .counter-range:hover::-webkit-slider-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(201,145,26,0.40), 0 6px 14px rgba(201,145,26,0.55); }
+        .counter-range:hover::-moz-range-thumb { transform: scale(1.1); box-shadow: 0 0 0 3px rgba(201,145,26,0.40), 0 6px 14px rgba(201,145,26,0.55); }
+        .counter-range:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
+        .counter-range:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.15); }
       `}</style>
 
       {/* ── Partner Navbar ─────────────────────────────────────────────── */}
@@ -1060,10 +1114,10 @@ export default function PartnerDashboard() {
                           <p className="text-sm font-semibold text-luxury-900 truncate">{b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-400">{fmtDate(b.checkIn || b.createdAt)}</p>
                         </div>
-                        <p className="font-bold text-luxury-900 flex-shrink-0">{fmtCur(b.amount)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
+                        <p className="font-bold text-luxury-900 flex-shrink-0">{fmtCur(customerBidOf(b))}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
                         <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
                         {b.status === "PENDING" && (
-                          <button onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(b.amount || 0))); setCounterAddons([]);}}
+                          <button onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(customerBidOf(b)))); setCounterAddons([]);}}
                             className="flex-shrink-0 btn-gold text-xs px-3 py-1.5">Respond</button>
                         )}
                       </div>
@@ -1126,9 +1180,27 @@ export default function PartnerDashboard() {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="font-bold text-luxury-900 text-lg">{fmtCur(b.amount)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
-                          {nights > 1 && <p className="text-xs text-emerald-600 font-semibold">{fmtCur(b.amount*nights)} total</p>}
-                          <span className={`inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
+                          {/* v145 — show CUSTOMER's actual preferred bid (from
+                              message), not the stored floor. Floor shown
+                              below as a secondary "system min" chip when it
+                              differs from the bid. */}
+                          {(() => {
+                            const guestBid = customerBidOf(b);
+                            const floor = floorOf(b);
+                            const isBelowFloor = guestBid < floor;
+                            return (
+                              <>
+                                <p className="font-bold text-luxury-900 text-lg">{fmtCur(guestBid)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
+                                {nights > 1 && <p className="text-xs text-emerald-600 font-semibold">{fmtCur(guestBid * nights)} total</p>}
+                                {isBelowFloor && (
+                                  <p className="text-[0.6rem] text-amber-600 mt-0.5 font-semibold" title="System floor — Railway stored the bid at floor; the guest's real wish is the price above.">
+                                    Floor: {fmtCur(floor)}
+                                  </p>
+                                )}
+                                <span className={`inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -1167,7 +1239,7 @@ export default function PartnerDashboard() {
 
                       {b.status === "PENDING" && (
                         <button
-                          onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(b.amount || 0))); setCounterAddons([]);}}
+                          onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(customerBidOf(b)))); setCounterAddons([]);}}
                           className="btn-gold w-full py-2.5 text-sm mt-1">
                           Respond to Bid →
                         </button>
@@ -2241,21 +2313,35 @@ export default function PartnerDashboard() {
       </div>
 
       {/* ══════════════ BID ACTION MODAL ══════════════ */}
+      {/* v145 — responsive shell: mobile bottom-sheet (full width, rounded-top,
+          drag indicator), tablet+laptop centered (max-w-lg), desktop wide
+          (max-w-2xl). Max-h locked to viewport with internal scroll so the
+          sticky header + sticky Send CTA always stay in view. */}
       {selectedBid && !bidActDone && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
           onClick={() => setSelectedBid(null)}>
-          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+          <div className="bg-white w-full sm:max-w-lg lg:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
             onClick={e => e.stopPropagation()}>
-            <div className="bg-luxury-900 px-6 py-4 flex items-center justify-between">
+            {/* Mobile drag-indicator pill (purely visual — modal closes via X/backdrop). */}
+            <div className="sm:hidden flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-luxury-200" />
+            </div>
+            <div className="bg-luxury-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div>
                 <p className="text-xs font-bold text-white/50 uppercase tracking-widest">Respond to Bid</p>
                 <p className="text-white font-semibold text-lg">{selectedBid.room?.type || "Room"}</p>
-                <p className="text-white/50 text-sm">{fmtCur(selectedBid.amount)}/night · {selectedBid.guests || 2} guests</p>
+                <p className="text-white/50 text-sm">
+                  Guest bid: <span className="text-white font-semibold">{fmtCur(customerBidOf(selectedBid))}</span>/night
+                  {floorOf(selectedBid) > customerBidOf(selectedBid) && (
+                    <span className="ml-1.5 text-amber-300/80">· Floor {fmtCur(floorOf(selectedBid))}</span>
+                  )}
+                  <span className="ml-1.5 text-white/40">· {selectedBid.guests || 2} guests</span>
+                </p>
               </div>
-              <button onClick={() => setSelectedBid(null)} className="text-white/50 hover:text-white text-2xl">✕</button>
+              <button onClick={() => setSelectedBid(null)} className="text-white/50 hover:text-white text-2xl flex-shrink-0">✕</button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {/* Action choice */}
               <div className="grid grid-cols-3 gap-2">
                 {([
@@ -2274,86 +2360,201 @@ export default function PartnerDashboard() {
               </div>
 
               {bidAction === "counter" && (() => {
-                // v129 — counter price is a ₹100-multiple draggable slider that
-                // mirrors the customer Negotiate arena. Lower bound is the
-                // guest's bid (we never counter BELOW what they offered);
-                // upper bound is +50 % of guest bid (capped sensible). Three
-                // quick-pick chips: 💰 Match · ⭐ Smart · ⚡ Premium.
-                const guest = snap100(selectedBid.amount || 0);
-                const minCt = Math.max(PRICE_MIN, guest);
-                const maxCt = Math.max(ceil100(guest * 1.5), minCt + PRICE_STEP * 5);
-                const currentVal = snapClamp100(counterAmt || guest, minCt, maxCt);
-                const chips = [
-                  { label: "💰 Match",   pct: 1.00, sub: "Accept guest price" },
-                  { label: "⭐ Smart",   pct: 1.15, sub: "Win-win" },
-                  { label: "⚡ Premium", pct: 1.30, sub: "Top counter" },
+                // v145 — premium counter arena.
+                //
+                // Anchors:
+                //   • guestBid  = customer's ACTUAL preferred bid (from message
+                //                 token, falling back to b.amount for normal
+                //                 above-floor bids).
+                //   • floor     = system floor (b.amount; equals room floor on
+                //                 above-floor bids, equals floor on below-floor
+                //                 bids — Railway stores them at floor).
+                //   • Slider range = [guestBid, max(floor*1.5, guestBid + 5×step)].
+                //   • Track is rendered in 2-3 colored zones so the partner
+                //     SEES at a glance where their counter sits:
+                //       rose  zone  guestBid → floor   (sweetheart / below-floor)
+                //       gold  zone  floor    → floor*1.2  (smart counter, sweet spot)
+                //       sage  zone  floor*1.2 → max      (premium counter)
+                //   • AI suggestion = midpoint of guestBid & (floor*1.10) — the
+                //     "meets in the middle, slight margin" recommendation.
+                const guestBid = snap100(customerBidOf(selectedBid));
+                const floor    = snap100(floorOf(selectedBid));
+                const minCt    = Math.max(PRICE_MIN, Math.min(guestBid, floor));
+                const maxCt    = Math.max(ceil100(Math.max(floor, guestBid) * 1.5), minCt + PRICE_STEP * 5);
+                const currentVal = snapClamp100(counterAmt || guestBid, minCt, maxCt);
+                const aiSuggest  = snapClamp100((guestBid + Math.max(floor, guestBid) * 1.10) / 2, minCt, maxCt);
+                const premium    = snapClamp100(Math.max(floor, guestBid) * 1.20, minCt, maxCt);
+
+                // Position helpers for zone-tinted track (% along [minCt, maxCt]).
+                const pct = (n: number) => Math.max(0, Math.min(100, ((n - minCt) / Math.max(1, maxCt - minCt)) * 100));
+                const floorPct   = pct(floor);
+                const premiumPct = pct(premium);
+                const currentPct = pct(currentVal);
+
+                // Margin vs guest bid (informational — green when above, rose when at/below).
+                const margin = currentVal - guestBid;
+                const marginPct = guestBid > 0 ? Math.round((margin / guestBid) * 100) : 0;
+
+                // Match probability (heuristic): closer to guest bid → higher.
+                const matchProb = (() => {
+                  if (currentVal <= guestBid) return 98;
+                  if (currentVal <= floor)    return 80 - Math.round(((currentVal - guestBid) / Math.max(1, floor - guestBid)) * 25);
+                  if (currentVal <= premium)  return 55 - Math.round(((currentVal - floor)    / Math.max(1, premium - floor))    * 25);
+                  return Math.max(8, 30 - Math.round(((currentVal - premium) / Math.max(1, maxCt - premium)) * 22));
+                })();
+
+                const probColor =
+                  matchProb >= 75 ? { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" } :
+                  matchProb >= 45 ? { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   dot: "bg-amber-500"   } :
+                                    { bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200",    dot: "bg-rose-500"    };
+
+                const chips: { label: string; amt: number; sub: string }[] = [
+                  { label: "❤️ Match guest", amt: guestBid,  sub: "Sweetheart" },
+                  { label: "⭐ AI smart",    amt: aiSuggest, sub: "Recommended" },
+                  { label: "⚡ Premium",     amt: premium,   sub: "Top margin" },
                 ];
+
                 return (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">Your Counter Price</label>
-                      <span className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest">Steps of ₹{PRICE_STEP}</span>
+                    {/* Premium header: arena vibe + live probability chip. */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest">⚡ Counter Pricing Arena</p>
+                        <p className="text-[0.6rem] text-luxury-500 mt-0.5">Drag the gold dot · steps of ₹{PRICE_STEP}</p>
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-[0.65rem] font-bold px-2.5 py-1 rounded-full border ${probColor.bg} ${probColor.text} ${probColor.border}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${probColor.dot} animate-pulse`} />
+                        {matchProb}% match
+                      </div>
                     </div>
 
-                    {/* Slider value display + Indian-locale */}
-                    <div className="rounded-2xl p-4 mb-3 bg-gradient-to-br from-amber-50 to-luxury-50 border border-amber-200">
-                      <div className="flex items-baseline justify-between">
-                        <div>
-                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Counter at</p>
-                          <p className="text-2xl font-extrabold text-luxury-900">{fmtCur(currentVal)}<span className="text-xs font-medium text-luxury-400 ml-1">/night</span></p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Guest bid</p>
-                          <p className="text-sm font-bold text-luxury-700">{fmtCur(guest)}</p>
-                          <p className="text-[0.55rem] text-luxury-400">
-                            {currentVal > guest
-                              ? `+${fmtCur(currentVal - guest)} above`
-                              : currentVal === guest
-                                ? "matches"
-                                : `−${fmtCur(guest - currentVal)} below`}
+                    {/* Hero counter card — current value + guest bid + margin. */}
+                    <div className="rounded-2xl p-4 mb-4 bg-gradient-to-br from-amber-50 via-luxury-50 to-white border border-amber-200 shadow-sm">
+                      <div className="flex items-end justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Your counter</p>
+                          <p className="text-3xl font-extrabold text-luxury-900 leading-none">
+                            {fmtCur(currentVal)}<span className="text-xs font-medium text-luxury-400 ml-1">/night</span>
                           </p>
+                          <p className="text-[0.65rem] font-semibold mt-1.5">
+                            {margin > 0   ? <span className="text-emerald-700">+{fmtCur(margin)} above guest ({marginPct > 0 ? `+${marginPct}%` : `${marginPct}%`})</span> :
+                             margin === 0 ? <span className="text-amber-700">matches guest's wish</span> :
+                                            <span className="text-rose-700">−{fmtCur(-margin)} below guest (sweetheart)</span>}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest">Guest bid</p>
+                          <p className="text-base font-bold text-luxury-700">{fmtCur(guestBid)}</p>
+                          {floor !== guestBid && (
+                            <p className="text-[0.55rem] text-amber-600 mt-0.5">Floor {fmtCur(floor)}</p>
+                          )}
                         </div>
                       </div>
 
-                      {/* Draggable slider */}
-                      <input
-                        type="range"
-                        min={minCt}
-                        max={maxCt}
-                        step={PRICE_STEP}
-                        value={currentVal}
-                        onChange={(e) => setCounterAmt(String(snapClamp100(Number(e.target.value), minCt, maxCt)))}
-                        className="w-full mt-3 accent-amber-500"
-                        aria-label="Counter price slider"
-                      />
-                      <div className="flex justify-between mt-1 text-[0.55rem] text-luxury-400 font-mono">
+                      {/* Zone-tinted slider track with floor + premium markers.
+                          - Rose (sweetheart)   : minCt → floor
+                          - Gold (smart)        : floor → premium
+                          - Sage (premium)      : premium → maxCt
+                          - Floor marker (▼)
+                          - AI suggested marker (◆) */}
+                      <div className="relative mt-4 mb-1 select-none">
+                        {/* Track background (3-zone gradient). */}
+                        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full overflow-hidden bg-luxury-100"
+                          style={{
+                            background: `linear-gradient(to right,
+                              rgba(244,176,164,0.35) 0%,
+                              rgba(244,176,164,0.35) ${floorPct}%,
+                              rgba(245,191,107,0.55) ${floorPct}%,
+                              rgba(245,191,107,0.55) ${premiumPct}%,
+                              rgba(157,173,143,0.45) ${premiumPct}%,
+                              rgba(157,173,143,0.45) 100%)`,
+                          }}
+                        />
+                        {/* Filled portion up to current value (gold gradient on top). */}
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full pointer-events-none"
+                          style={{
+                            width: `${currentPct}%`,
+                            background: "linear-gradient(90deg, #C9A66B 0%, #D9BE82 60%, #E7CFA0 100%)",
+                            boxShadow: "0 1px 3px rgba(201,166,107,0.45) inset",
+                          }}
+                        />
+                        {/* Floor marker (only when floor sits inside slider range). */}
+                        {floor > minCt && floor < maxCt && (
+                          <div className="absolute -top-4 -translate-x-1/2 pointer-events-none" style={{ left: `${floorPct}%` }}>
+                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-amber-600 mx-auto" />
+                            <p className="text-[0.5rem] font-bold text-amber-700 -mt-0.5 whitespace-nowrap text-center">Floor</p>
+                          </div>
+                        )}
+                        {/* AI suggestion marker. */}
+                        {aiSuggest > minCt && aiSuggest < maxCt && (
+                          <div className="absolute -bottom-5 -translate-x-1/2 pointer-events-none" style={{ left: `${pct(aiSuggest)}%` }}>
+                            <p className="text-[0.5rem] font-bold text-emerald-700 whitespace-nowrap text-center">◆ AI</p>
+                          </div>
+                        )}
+                        {/* The actual draggable range input — transparent, sits on top. */}
+                        <input
+                          type="range"
+                          min={minCt}
+                          max={maxCt}
+                          step={PRICE_STEP}
+                          value={currentVal}
+                          onChange={(e) => setCounterAmt(String(snapClamp100(Number(e.target.value), minCt, maxCt)))}
+                          className="relative w-full h-6 cursor-grab active:cursor-grabbing appearance-none bg-transparent counter-range"
+                          aria-label="Counter price slider"
+                          aria-valuemin={minCt}
+                          aria-valuemax={maxCt}
+                          aria-valuenow={currentVal}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-4 text-[0.55rem] text-luxury-400 font-mono">
                         <span>{fmtCur(minCt)}</span>
                         <span>{fmtCur(maxCt)}</span>
                       </div>
                     </div>
 
-                    {/* Quick-pick chips */}
-                    <div className="grid grid-cols-3 gap-2 mb-3">
+                    {/* Quick-pick chips — Match guest · AI smart · Premium. */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
                       {chips.map((c) => {
-                        const amt = snapClamp100(guest * c.pct, minCt, maxCt);
+                        const amt = c.amt;
                         const active = currentVal === amt;
                         return (
                           <button
                             key={c.label}
                             type="button"
                             onClick={() => setCounterAmt(String(amt))}
-                            className={`rounded-xl p-2 text-center border-2 transition-all ${
+                            className={`rounded-xl p-2.5 text-center border-2 transition-all ${
                               active
-                                ? "bg-amber-50 border-amber-400 shadow-sm scale-[1.02]"
-                                : "bg-white border-luxury-200 hover:border-amber-300"
+                                ? "bg-amber-50 border-amber-400 shadow-md scale-[1.03]"
+                                : "bg-white border-luxury-200 hover:border-amber-300 hover:scale-[1.01]"
                             }`}
                           >
                             <p className={`text-[0.62rem] font-bold ${active ? "text-amber-700" : "text-luxury-600"}`}>{c.label}</p>
-                            <p className={`text-xs font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
+                            <p className={`text-sm font-extrabold mt-0.5 ${active ? "text-amber-900" : "text-luxury-800"}`}>{fmtCur(amt)}</p>
                             <p className={`text-[0.5rem] mt-0.5 ${active ? "text-amber-600" : "text-luxury-400"}`}>{c.sub}</p>
                           </button>
                         );
                       })}
+                    </div>
+
+                    {/* Manual ₹ stepper — for partners who want exact control. */}
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setCounterAmt(String(snapClamp100(currentVal - PRICE_STEP, minCt, maxCt)))}
+                        disabled={currentVal <= minCt}
+                        className="w-9 h-9 rounded-full bg-luxury-50 hover:bg-luxury-100 disabled:opacity-30 disabled:cursor-not-allowed border border-luxury-200 text-luxury-700 font-bold transition-all">
+                        −
+                      </button>
+                      <div className="px-3 py-1.5 rounded-lg bg-luxury-50 border border-luxury-100 min-w-[7rem] text-center">
+                        <p className="text-xs font-extrabold text-luxury-800">{fmtCur(currentVal)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCounterAmt(String(snapClamp100(currentVal + PRICE_STEP, minCt, maxCt)))}
+                        disabled={currentVal >= maxCt}
+                        className="w-9 h-9 rounded-full bg-luxury-50 hover:bg-luxury-100 disabled:opacity-30 disabled:cursor-not-allowed border border-luxury-200 text-luxury-700 font-bold transition-all">
+                        +
+                      </button>
                     </div>
 
                     {/* v129 — Structured complimentary-amenity catalog.
@@ -2423,11 +2624,14 @@ export default function PartnerDashboard() {
                     + decline are status flips; in-stay chat opens AFTER
                     booking confirms (see /partner/dashboard Booking modal
                     BookingChat — gated to status ≥ ACCEPTED per v25 + v71). */}
+            </div>
 
+            {/* Sticky footer — Send CTA stays visible regardless of scroll. */}
+            <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm px-5 sm:px-6 py-3 flex-shrink-0">
               <button onClick={submitBidAction} disabled={bidActLoading || (bidAction==="counter" && !counterAmt)}
-                className="btn-gold w-full py-3 text-sm">
+                className="btn-gold w-full py-3 text-sm shadow-md">
                 {bidActLoading ? "Sending…" :
-                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(snap100(selectedBid.amount))}/night` :
+                  bidAction==="accept"  ? `✅ Accept at ${fmtCur(customerBidOf(selectedBid))}/night` :
                   bidAction==="counter" ? `💬 Send Counter: ${counterAmt ? fmtCur(snap100(counterAmt)) : "—"}/night${counterAddons.length ? ` + ${counterAddons.length} perk${counterAddons.length>1?"s":""}` : ""}` :
                   "❌ Decline Bid"}
               </button>
