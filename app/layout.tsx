@@ -162,7 +162,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SoundProvider>
            <FollowProvider>
             <PostsProvider>
-            {/* v138.1 — Tutorial Layer 1 (Welcome Story) foundation.
+            {/* v138.2 — Tutorial Layer 1 (Welcome Story) foundation.
                 Provider exposes lang (en/hi), seen-flags, replay API.
                 <WelcomeStory /> auto-fires 1.2s after first launch on
                 customer pages (skips /admin /partner /onboard /auth).
@@ -185,9 +185,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
-            {/* v138.1 — Welcome Story portal-mounted to document.body. */}
+            {/* v138.2 — Welcome Story portal-mounted to document.body. */}
             <WelcomeStory />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v138.1</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v138.2</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -208,7 +208,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v138.1-welcome-story-poster-scenes";
+var SB_BUILD="v138.2-welcome-6cards-bid3step-compare-scorecard";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

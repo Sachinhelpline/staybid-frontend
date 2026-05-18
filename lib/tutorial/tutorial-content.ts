@@ -1,20 +1,25 @@
-// v138.1 — Bilingual tutorial content (Phase 1: Welcome Story).
+// v138.2 — Bilingual tutorial content (Phase 1: Welcome Story).
 //
-// v138.1 changes:
-//   • Card copy MUCH briefer (billboard-style punchier headlines + 1-line body)
-//   • Added `scene` field — points to a CSS-rendered poster scene in
-//     components/tutorial/WelcomeScenes.tsx (visual hero above the text)
-//   • Old emoji-as-hero is retained as fallback when scene === "icon"
+// v138.2 changes:
+//   • 5 cards → 6 cards (adds OTA compare + Score Card cards per user spec)
+//   • Each body is now a SINGLE crisp line (was 1-2 sentences)
+//   • Old "bid" scene (price stack) → renamed "compare" (used for Card 4)
+//   • New "bid" scene (3-step process) for Card 3 (reverse auction)
+//   • New "score" scene (medal + rank) for Card 5
 //
-// Single source of truth. Per-page tour content (Phase 2) will be appended
-// to this file under PAGE_TOURS in v139.
+// Mapping → poster scene:
+//   1. welcome — brand wordmark + sparkles
+//   2. flash   — lightning + countdown + LIVE
+//   3. bid     — 3 step pills (city → dates → budget) + AI chip
+//   4. compare — 4-OTA price bar stack with stay·bid winning
+//   5. score   — medal disc with rank ribbon + checkpoint dots
+//   6. earn    — fan of 3 mini cards
 //
 // Translation policy:
-//   • en (English)  — premium luxury copy, full sentences
+//   • en (English)  — premium luxury copy
 //   • hi (Hinglish) — Hindi conversational with English brand/CTA words mixed
-//     (matches StayBid's user audience — Indian travelers, mixed literacy)
 
-export type WelcomeSceneKey = "welcome" | "bid" | "flash" | "earn" | "explore";
+export type WelcomeSceneKey = "welcome" | "flash" | "bid" | "compare" | "score" | "earn";
 
 export type WelcomeCard = {
   scene: WelcomeSceneKey;
@@ -38,36 +43,43 @@ const WELCOME_EN: WelcomeStoryContent = {
       scene: "welcome",
       icon: "✨",
       headline: "Welcome to StayBid",
-      body: "Luxury stays. Your price.",
+      body: "Verified hotels · Score cards · 3 ways to book.",
       accent: "var(--cozy-champagne)",
-    },
-    {
-      scene: "bid",
-      icon: "💰",
-      headline: "Name your price",
-      body: "Hotels accept or counter — you always save.",
-      accent: "var(--cozy-champagne-light)",
     },
     {
       scene: "flash",
       icon: "⚡",
-      headline: "Flash Deals tonight",
-      body: "Big drops, gone by midnight.",
+      headline: "Flash Deal of the Day",
+      body: "Last-minute. Cheapest guaranteed. First come, first served.",
       accent: "#D49583",
+    },
+    {
+      scene: "bid",
+      icon: "💰",
+      headline: "Bid your price",
+      body: "3 steps: city · dates · budget. Hotels compete for you.",
+      accent: "var(--cozy-champagne-light)",
+    },
+    {
+      scene: "compare",
+      icon: "📊",
+      headline: "Cheaper than every OTA",
+      body: "Live compare. 10–20% off guaranteed. Then negotiate further.",
+      accent: "var(--cozy-champagne)",
+    },
+    {
+      scene: "score",
+      icon: "🏆",
+      headline: "Real Score Cards",
+      body: "Forget fake reviews. Detailed score + city rank for every hotel.",
+      accent: "var(--cozy-champagne-light)",
     },
     {
       scene: "earn",
       icon: "💎",
-      headline: "Stay. Refer. Earn.",
-      body: "Points + commissions on every booking.",
+      headline: "You earn too",
+      body: "Share content · 5–12% commission · or refer friends.",
       accent: "var(--cozy-sage)",
-    },
-    {
-      scene: "explore",
-      icon: "🚀",
-      headline: "Ready to explore",
-      body: "Swipe. Save. Book in one tap.",
-      accent: "var(--cozy-champagne)",
     },
   ],
   skipLabel: "Skip",
@@ -82,36 +94,43 @@ const WELCOME_HI: WelcomeStoryContent = {
       scene: "welcome",
       icon: "✨",
       headline: "Welcome StayBid pe",
-      body: "Luxury stay. Aapki price.",
+      body: "Verified hotels · Score cards · 3 tareeke book karne ke.",
       accent: "var(--cozy-champagne)",
+    },
+    {
+      scene: "flash",
+      icon: "⚡",
+      headline: "Aaj ka Flash Deal",
+      body: "Last-minute. Sasta guaranteed. Pehle aao, pehle pao.",
+      accent: "#D49583",
     },
     {
       scene: "bid",
       icon: "💰",
       headline: "Apni price batao",
-      body: "Hotel accept ya counter karega — bachat guaranteed.",
+      body: "3 steps: city · dates · budget. Hotels compete karenge.",
       accent: "var(--cozy-champagne-light)",
     },
     {
-      scene: "flash",
-      icon: "⚡",
-      headline: "Aaj raat Flash Deals",
-      body: "Massive discount, midnight tak bas.",
-      accent: "#D49583",
+      scene: "compare",
+      icon: "📊",
+      headline: "Har OTA se sasta",
+      body: "Live compare. 10–20% sasta guaranteed. Phir bhi negotiate karo.",
+      accent: "var(--cozy-champagne)",
+    },
+    {
+      scene: "score",
+      icon: "🏆",
+      headline: "Real Score Cards",
+      body: "Fake reviews bhulo. Har hotel ka detailed score + city rank.",
+      accent: "var(--cozy-champagne-light)",
     },
     {
       scene: "earn",
       icon: "💎",
-      headline: "Stay karo. Refer karo. Kamao.",
-      body: "Har booking par points + commission.",
+      headline: "Aap bhi kamao",
+      body: "Content daalo · 5–12% commission · ya refer karo.",
       accent: "var(--cozy-sage)",
-    },
-    {
-      scene: "explore",
-      icon: "🚀",
-      headline: "Chalo explore karein",
-      body: "Swipe karo. Save karo. Ek tap mein book.",
-      accent: "var(--cozy-champagne)",
     },
   ],
   skipLabel: "Skip",
