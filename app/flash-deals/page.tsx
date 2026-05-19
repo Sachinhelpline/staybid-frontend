@@ -163,7 +163,16 @@ function FlashDealsContent() {
     return () => clearInterval(t);
   }, [city, hydrated]);
 
-  const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
+  // v159.3 — icon + label pairs matching /hotels CITY_PILLS.
+  const cities: Array<{ key: string; label: string; icon: string }> = [
+    { key: "",          label: "All",       icon: "🏔" },
+    { key: "Mussoorie", label: "Mussoorie", icon: "⛰️" },
+    { key: "Dhanaulti", label: "Dhanaulti", icon: "🌲" },
+    { key: "Rishikesh", label: "Rishikesh", icon: "🕉" },
+    { key: "Shimla",    label: "Shimla",    icon: "🌨" },
+    { key: "Manali",    label: "Manali",    icon: "🏂" },
+    { key: "Dehradun",  label: "Dehradun",  icon: "🌳" },
+  ];
 
   /* Live stats strip ------------------------------------------------------- */
   const stats = useMemo(() => {
@@ -181,6 +190,26 @@ function FlashDealsContent() {
 
   const open = deals.find(d => d.id === openId) || null;
 
+  // v159.3 — Sort dimension. Default "discount" matches Sachin's "biggest
+  // savings first" intent. Other modes keep the same rail-less grid but
+  // re-rank the dense card list so user can scan by price / time.
+  const [sortBy, setSortBy] = useState<"discount" | "price-asc" | "ending">("discount");
+  const sortedDeals = useMemo(() => {
+    const cloned = [...deals];
+    if (sortBy === "discount") {
+      cloned.sort((a, b) => (b.discount || 0) - (a.discount || 0));
+    } else if (sortBy === "price-asc") {
+      cloned.sort((a, b) => (a.aiPrice || 0) - (b.aiPrice || 0));
+    } else if (sortBy === "ending") {
+      cloned.sort((a, b) => {
+        const ta = a.validUntil ? new Date(a.validUntil).getTime() : Infinity;
+        const tb = b.validUntil ? new Date(b.validUntil).getTime() : Infinity;
+        return ta - tb;
+      });
+    }
+    return cloned;
+  }, [deals, sortBy]);
+
   return (
     <div className="fd-root">
       <FdStyles />
@@ -188,61 +217,80 @@ function FlashDealsContent() {
       {/* Animated mesh background */}
       <div className="fd-bg-mesh" aria-hidden />
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="fd-hero">
-        <div className="fd-eyebrow">
+      {/* v159.3 — Slim sticky chrome. City pills + refine row only.
+          Hero (title + sub + stats) moved into body below. */}
+      <div className="fd-sticky">
+        <div className="fd-sticky-inner">
+          <div className="fd-cities" data-autonext-self="fd-results">
+            {cities.map((c) => {
+              const active = (c.key === "" && !city) || c.key === city;
+              return (
+                <button
+                  key={c.key || "all"}
+                  type="button"
+                  onClick={() => {
+                    setCity(c.key);
+                    try { localStorage.setItem("sb_city", c.key); } catch {}
+                  }}
+                  className={`fd-cat ${active ? "fd-cat-active" : ""}`}
+                  aria-pressed={active}
+                >
+                  <span className="fd-cat-icon" aria-hidden="true">{c.icon}</span>
+                  <span className="fd-cat-label">{c.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="fd-refine">
+            <label className="fd-refine-chip">
+              <span className="fd-refine-eyebrow">Sort</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="fd-refine-select"
+                aria-label="Sort flash deals"
+              >
+                <option value="discount">Biggest discount</option>
+                <option value="price-asc">Price · low → high</option>
+                <option value="ending">Ending soonest</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* v159.3 — Slim hero inside body. Scrolls away with cards. */}
+      <header className="fd-hero-slim sb-fade-in">
+        <div className="fd-hero-eyebrow">
           <span className="fd-dot-live" />
           <span>Live · Same-Day · AI Curated</span>
-          <span className="fd-dot-live" />
         </div>
-
-        <h1 className="fd-title">
+        <h1 className="fd-hero-title">
           Flash <span className="fd-title-gold">Deals</span>
+          <span className="fd-hero-count">
+            {loading
+              ? "· loading…"
+              : `· ${stats.dealsLive} deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+          </span>
         </h1>
-        <p className="fd-sub">
+        <p className="fd-hero-sub">
           One headline price per hotel · upgrade rooms when free · midnight reset.
         </p>
-
-        {/* Live ticker chips */}
-        <div className="fd-ticker">
-          <div className="fd-chip">
-            <span className="fd-chip-dot live" />
-            <span className="fd-chip-val"><CountUp value={stats.dealsLive} /></span>
-            <span className="fd-chip-lbl">deals live</span>
-          </div>
-          <div className="fd-chip">
-            <span className="fd-chip-emoji">🏨</span>
-            <span className="fd-chip-val"><CountUp value={stats.hotelsHot} /></span>
-            <span className="fd-chip-lbl">hotels</span>
-          </div>
-          <div className="fd-chip">
-            <span className="fd-chip-emoji">⚡</span>
-            <span className="fd-chip-val"><CountUp value={stats.avgDisc} />%</span>
-            <span className="fd-chip-lbl">avg off</span>
-          </div>
-          <div className="fd-chip gold">
-            <span className="fd-chip-emoji">💰</span>
-            <span className="fd-chip-val">₹<CountUp value={stats.totalSaving} /></span>
-            <span className="fd-chip-lbl">savings today</span>
-          </div>
+        <div className="fd-hero-stats">
+          <span className="fd-stat">
+            <span className="fd-stat-dot" />
+            <CountUp value={stats.dealsLive} /> live
+          </span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.hotelsHot} /> hotels</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.avgDisc} />% avg off</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat fd-stat-gold">
+            ₹<CountUp value={stats.totalSaving} /> saved today
+          </span>
         </div>
-      </div>
-
-      {/* ── City filter pills — v122.3: tap auto-scrolls to results ──── */}
-      <div className="fd-cities" data-autonext-self="fd-results">
-        {cities.map((c) => {
-          const active = (c === "All" && !city) || c === city;
-          return (
-            <button
-              key={c}
-              onClick={() => setCity(c === "All" ? "" : c)}
-              className={`fd-city ${active ? "active" : ""}`}
-            >
-              {c}
-            </button>
-          );
-        })}
-      </div>
+      </header>
 
       {/* ── Deals grid — v122.3 auto-scroll target ──────────────────── */}
       <div className="fd-grid-wrap" data-autonext="fd-results">
@@ -256,9 +304,9 @@ function FlashDealsContent() {
           </div>
         )}
 
-        {!loading && deals.length > 0 && (
+        {!loading && sortedDeals.length > 0 && (
           <div className="fd-grid">
-            {deals.map((d, idx) => (
+            {sortedDeals.map((d, idx) => (
               <DealCard
                 key={d.id}
                 deal={d}
@@ -680,26 +728,23 @@ function FdStyles() {
         100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
       }
 
-      /* v89 — Compact hero: padding 60→14px top, 28→10px bottom, so the
-         deal cards start visible above the fold on every device. */
-      .fd-hero {
-        position: relative;
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 14px 16px 10px;
-        z-index: 1;
+      /* v159.3 — Slim sticky chrome: city pills + refine row only.
+         Hero moved into body. Sticky height ~96px mobile (was hero+cats
+         combined ~360px). */
+      .fd-sticky {
+        position: sticky; top: 0; z-index: 30;
+        background: color-mix(in srgb, var(--cozy-cream-100, #FAF5EB) 92%, transparent);
+        backdrop-filter: saturate(160%) blur(12px);
+        -webkit-backdrop-filter: saturate(160%) blur(12px);
+        border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
       }
-      .fd-eyebrow {
-        display: inline-flex; align-items: center; gap: 8px;
-        color: var(--cozy-champagne, #C9A66B);
-        font-size: 0.58rem; font-weight: 700;
-        letter-spacing: 0.20em; text-transform: uppercase; margin-bottom: 4px;
+      .fd-sticky-inner {
+        max-width: 1480px; margin: 0 auto;
+        padding: 6px 14px 4px;
       }
-      .fd-eyebrow > span:not(.fd-dot-live) {
-        background: linear-gradient(90deg, #D9BE82, #C9A66B);
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
+      @media (min-width: 640px)  { .fd-sticky-inner { padding: 8px 22px 6px; } }
+      @media (min-width: 1024px) { .fd-sticky-inner { padding: 10px 32px 8px; } }
+
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
         background: #ff3859; box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.6);
@@ -711,15 +756,43 @@ function FdStyles() {
         100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
       }
 
-      /* v89 — Compact title + cozy palette */
-      .fd-title {
+      /* v159.3 — Slim hero inside body. Scrolls away with content. */
+      .fd-hero-slim {
+        position: relative; z-index: 1;
+        max-width: 1480px; margin: 0 auto;
+        padding: 12px 16px 10px;
+      }
+      @media (min-width: 640px)  { .fd-hero-slim { padding: 16px 22px 12px; } }
+      @media (min-width: 1024px) { .fd-hero-slim { padding: 22px 32px 16px; } }
+      .fd-hero-eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        color: var(--cozy-champagne, #C9A66B);
+        font-size: 0.58rem; font-weight: 700;
+        letter-spacing: 0.20em; text-transform: uppercase;
+        margin: 0 0 4px;
+      }
+      .fd-hero-eyebrow > span:not(.fd-dot-live) {
+        background: linear-gradient(90deg, #D9BE82, #C9A66B);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .fd-hero-title {
         font-family: 'Cormorant Garamond', 'Syne', serif;
         font-weight: 400;
-        font-size: clamp(1.6rem, 4vw, 2.4rem);
-        line-height: 1.05;
+        font-size: clamp(1.2rem, 3.4vw, 1.95rem);
+        line-height: 1.15;
         margin: 0 0 4px;
         color: var(--cozy-warm-dark, #1F1A0F);
+        display: inline-flex; align-items: baseline; flex-wrap: wrap;
+        gap: 0.35em;
       }
+      .fd-hero-count {
+        font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
+        font-size: 0.74rem; font-weight: 500;
+        color: var(--cozy-cocoa-soft, #6E5430);
+        letter-spacing: 0.005em;
+      }
+      @media (min-width: 1024px) { .fd-hero-count { font-size: 0.84rem; } }
       .fd-title-gold {
         background: linear-gradient(90deg, #D9BE82, #C9A66B, #9C7E48, #C9A66B, #D9BE82);
         background-size: 200% 100%;
@@ -732,75 +805,132 @@ function FdStyles() {
         0%   { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
       }
-      .fd-sub {
+      .fd-hero-sub {
         color: var(--cozy-cocoa-soft, #6E5430);
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         max-width: 540px;
-        margin: 0 0 10px;
+        margin: 0 0 8px;
+        line-height: 1.4;
       }
-
-      /* v89 — Cozy chips + tighter ticker */
-      .fd-ticker {
-        display: flex; flex-wrap: wrap; gap: 6px;
+      @media (min-width: 1024px) { .fd-hero-sub { font-size: 0.82rem; } }
+      /* Inline stat strip — dot-separated, no chunky chips. v159.3 premium. */
+      .fd-hero-stats {
+        display: inline-flex; flex-wrap: wrap; align-items: center;
+        gap: 6px; font-size: 0.7rem; color: var(--cozy-cocoa-soft, #6E5430);
       }
-      .fd-chip {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 5px 10px;
-        background: var(--cozy-cream-50, #FFFCF6);
-        border: 1px solid var(--cozy-taupe, #E8DCC8);
-        border-radius: 999px;
-        backdrop-filter: blur(8px);
-        font-size: 0.72rem;
+      .fd-stat { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 600; }
+      .fd-stat-gold {
+        color: var(--cozy-cocoa, #4A3820);
+        background: linear-gradient(135deg, rgba(201,166,107,0.18), rgba(201,166,107,0.06));
+        padding: 2px 7px; border-radius: 999px;
+        border: 1px solid rgba(201,166,107,0.30);
       }
-      .fd-chip.gold {
-        background: linear-gradient(135deg, rgba(201,166,107,0.22), rgba(201,166,107,0.08));
-        border-color: rgba(201,166,107,0.45);
-      }
-      .fd-chip-dot {
+      .fd-stat-sep { color: var(--cozy-taupe, #C8B891); }
+      .fd-stat-dot {
         width: 6px; height: 6px; border-radius: 50%;
         background: var(--cozy-sage, #9DAD8F);
         box-shadow: 0 0 6px rgba(157, 173, 143, 0.6);
         animation: fdPulse 1.8s infinite;
       }
-      .fd-chip-val { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 700; }
-      .fd-chip-lbl { color: var(--cozy-cocoa-soft, #6E5430); }
-      .fd-chip-emoji { font-size: 0.78rem; }
+      @media (min-width: 1024px) { .fd-hero-stats { font-size: 0.78rem; } }
 
-      /* v89 — Compact cities row */
+      /* v159.3 — Category pills Airbnb-true. No boxed bg on inactive,
+         active gets a thin champagne underline. Mirrors /hotels v159.2. */
       .fd-cities {
-        position: relative; z-index: 1;
-        max-width: 1280px; margin: 0 auto;
-        padding: 8px 16px 12px;
-        display: flex; flex-wrap: wrap; gap: 6px;
+        display: flex; gap: 2px;
+        overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+        padding: 2px 0 4px; margin: 0;
+        scroll-snap-type: x proximity;
       }
-      .fd-city {
-        padding: 5px 12px;
+      .fd-cities::-webkit-scrollbar { display: none; }
+      .fd-cat {
+        flex: 0 0 auto;
+        display: inline-flex; flex-direction: column;
+        align-items: center; justify-content: flex-end;
+        gap: 1px;
+        min-width: 54px;
+        padding: 4px 8px 6px;
+        background: transparent; border: 0; border-radius: 0;
+        cursor: pointer;
+        color: var(--cozy-cocoa-soft, #6E5430);
+        opacity: 0.62;
+        transition: opacity 0.18s ease, color 0.18s ease;
+        scroll-snap-align: start;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+      }
+      .fd-cat-icon {
+        font-size: 1.05rem; line-height: 1;
+        filter: saturate(0.4) brightness(0.95);
+        transition: filter 0.18s ease, transform 0.18s ease;
+      }
+      .fd-cat-label {
+        font-size: 0.58rem; font-weight: 600; letter-spacing: 0.01em;
+        white-space: nowrap; color: inherit;
+      }
+      .fd-cat:hover { opacity: 0.88; color: var(--cozy-cocoa, #4A3820); }
+      .fd-cat:hover .fd-cat-icon { filter: saturate(0.8); }
+      .fd-cat-active { color: var(--cozy-warm-dark, #1F1A0F); opacity: 1; }
+      .fd-cat-active .fd-cat-icon { filter: none; transform: scale(1.04); }
+      .fd-cat-active::after {
+        content: "";
+        position: absolute; left: 18%; right: 18%; bottom: -1px;
+        height: 2px; border-radius: 2px;
+        background: var(--cozy-warm-dark, #1F1A0F);
+        box-shadow: 0 0 0 0.5px var(--cozy-warm-dark, #1F1A0F);
+      }
+      @media (min-width: 768px) {
+        .fd-cat { min-width: 64px; padding: 6px 12px 8px; }
+        .fd-cat-icon { font-size: 1.2rem; }
+        .fd-cat-label { font-size: 0.66rem; }
+      }
+
+      /* Refine row — slim sort chip. Mirrors /hotels v159.2. */
+      .fd-refine {
+        display: flex; flex-wrap: wrap; align-items: center;
+        gap: 5px; padding-top: 4px;
+      }
+      .fd-refine-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px; height: 25px;
         background: var(--cozy-cream-50, #FFFCF6);
         border: 1px solid var(--cozy-taupe, #E8DCC8);
         border-radius: 999px;
         color: var(--cozy-cocoa, #4A3820);
-        font-size: 0.74rem; font-weight: 500;
-        cursor: pointer;
-        transition: all 0.22s ease;
+        font-size: 0.66rem; font-weight: 500;
       }
-      .fd-city:hover { border-color: rgba(201,166,107,0.55); }
-      .fd-city.active {
-        background: linear-gradient(135deg, #D9BE82, #C9A66B);
-        border-color: rgba(110, 84, 48, 0.45); color: var(--cozy-warm-dark);
-        font-weight: 700;
-        box-shadow: 0 4px 12px rgba(201,166,107,0.32);
+      .fd-refine-eyebrow { opacity: 0.7; font-size: 0.64rem; }
+      .fd-refine-select {
+        background: transparent; border: 0; outline: none;
+        font-size: 0.66rem; font-weight: 600;
+        color: var(--cozy-warm-dark, #1F1A0F);
+        font-family: inherit; cursor: pointer; padding-right: 2px;
+      }
+      @media (min-width: 1024px) {
+        .fd-refine { gap: 6px; }
+        .fd-refine-chip { height: 28px; font-size: 0.72rem; padding-left: 11px; padding-right: 11px; }
+        .fd-refine-select { font-size: 0.72rem; }
+        .fd-refine-eyebrow { font-size: 0.7rem; }
       }
 
-      /* Grid */
+      /* Grid — v159.3 responsive: 1 / 2 / 3 / 4 / 5 cols across breakpoints.
+         Mobile keeps 1 col so the dense card chrome (countdown ring + LIVE
+         pill + room picker + meter) stays legible. */
       .fd-grid-wrap {
         position: relative; z-index: 1;
-        max-width: 1280px; margin: 0 auto;
-        padding: 0 20px 80px;
+        max-width: 1480px; margin: 0 auto;
+        padding: 0 16px 80px;
       }
+      @media (min-width: 640px)  { .fd-grid-wrap { padding: 0 22px 88px; } }
+      @media (min-width: 1024px) { .fd-grid-wrap { padding: 0 32px 96px; } }
       .fd-grid {
-        display: grid; gap: 18px;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        display: grid; gap: 14px;
+        grid-template-columns: 1fr;
       }
+      @media (min-width: 640px)  { .fd-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+      @media (min-width: 1024px) { .fd-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
+      @media (min-width: 1280px) { .fd-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+      @media (min-width: 1536px) { .fd-grid { grid-template-columns: repeat(5, 1fr); gap: 22px; } }
 
       /* v91 — Card uses theme tokens: cream surface in light mode, warm
          cocoa in dark. Champagne accent on hover stays brand-consistent. */
@@ -825,9 +955,14 @@ function FdStyles() {
         from { opacity: 0; transform: translateY(22px); }
         to   { opacity: 1; transform: translateY(0); }
       }
+      /* v159.3 — Image height responsive. Mobile is wider in 1-col grid so
+         keep aspect-ratio shorter; tablet+ stays similar. */
       .fd-img-wrap {
-        position: relative; height: 200px; overflow: hidden; background: #0d0d1a;
+        position: relative; height: 168px; overflow: hidden; background: #0d0d1a;
       }
+      @media (min-width: 640px)  { .fd-img-wrap { height: 180px; } }
+      @media (min-width: 1024px) { .fd-img-wrap { height: 192px; } }
+      @media (min-width: 1280px) { .fd-img-wrap { height: 200px; } }
       .fd-img {
         width: 100%; height: 100%; object-fit: cover;
         transform: scale(1.05);
@@ -936,27 +1071,32 @@ function FdStyles() {
         0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.4; }
       }
 
-      /* Body */
-      .fd-body { padding: 14px 16px 16px; }
+      /* Body — v159.3 tighter on mobile. */
+      .fd-body { padding: 11px 13px 12px; }
+      @media (min-width: 640px)  { .fd-body { padding: 13px 14px 14px; } }
+      @media (min-width: 1024px) { .fd-body { padding: 14px 16px 16px; } }
       .fd-hotel-row {
         display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 10px; margin-bottom: 8px;
+        gap: 8px; margin-bottom: 6px;
       }
+      @media (min-width: 1024px) { .fd-hotel-row { gap: 10px; margin-bottom: 8px; } }
       .fd-hotel-row-left {
         flex: 1 1 auto; min-width: 0;
         display: flex; flex-direction: column; gap: 2px;
       }
       .fd-hotel-name {
-        font-size: 0.95rem; font-weight: 600; color: var(--text-base);
+        font-size: 0.86rem; font-weight: 600; color: var(--text-base);
         margin: 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        letter-spacing: -0.005em;
       }
-      /* v128.4 — Flash deal scorecard badge slot. flex-shrink:0 so the
-         medal never gets squeezed; click stops propagation to the card. */
-      .fd-score-slot { flex-shrink: 0; align-self: flex-start; }
-      @media (max-width: 480px) {
-        .fd-hotel-row { gap: 8px; }
-      }
+      @media (min-width: 1024px) { .fd-hotel-name { font-size: 0.95rem; } }
+      /* v128.4 — Flash deal scorecard badge slot. v159.3 — scaled down on
+         small cards so the medal reads as a corner accent. */
+      .fd-score-slot { flex-shrink: 0; align-self: flex-start; transform: scale(0.78); transform-origin: top right; }
+      @media (min-width: 1024px) { .fd-score-slot { transform: scale(0.92); } }
+      @media (min-width: 1280px) { .fd-score-slot { transform: scale(1); } }
+      @media (max-width: 480px) { .fd-hotel-row { gap: 6px; } }
       /* v92 — Star + room type + slots use theme accent (champagne) so
          they read on both cream + cocoa surfaces. The bright #f0b429
          original gold disappeared on cream. */
