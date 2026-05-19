@@ -18,7 +18,7 @@
 // Adding a new language: extend the STRINGS table below. Each key must
 // map to all 5 message types or the lookup falls back to Hinglish.
 
-type LocaleKey = "hi" | "en" | "es" | "fr" | "ar";
+export type LocaleKey = "hi" | "en" | "es" | "fr" | "ar";
 
 type Messages = {
   welcomeAI: string;

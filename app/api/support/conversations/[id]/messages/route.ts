@@ -13,7 +13,8 @@ import {
   shouldShortCircuitEscalate,
 } from "@/lib/support/ai-agent";
 import { notifyTeamOfEscalation } from "@/lib/support/notify-team";
-import { t } from "@/lib/support/i18n";
+import { t, detectLocale } from "@/lib/support/i18n";
+import { fallbackBotReply } from "@/lib/support/fallback-bot";
 import type {
   SupportConversation,
   SupportEscalationReason,
@@ -182,24 +183,61 @@ async function runAIPath(
     };
   }
 
-  // AI disabled → escalate silently to agent queue
+  // AI disabled → try fallback intent bot FIRST. Real Claude is preferred
+  // when ANTHROPIC_API_KEY is set, but the fallback handles common
+  // queries (greetings, bid help, booking status, wallet, deals, points)
+  // even without any API key. Only escalates when fallback can't match.
   if (!isAIEnabled()) {
+    const locale = detectLocale(conv.metadata?.locale || null);
+    const fb = fallbackBotReply(userText, locale);
+
+    if (fb.matched && !fb.shouldEscalate) {
+      const aiMsg = await insertMessage({
+        conversationId: conv.id,
+        sender: "ai",
+        senderId: null,
+        senderName: "StayBid Assistant",
+        body: fb.reply,
+        aiModel: "fallback-intent",
+        aiConfidence: fb.confidence,
+        aiShouldEscalate: false,
+      });
+      return {
+        message: aiMsg,
+        conversationPatch: {
+          last_message_at: new Date().toISOString(),
+          last_message_sender: "ai",
+          ai_message_count: conv.ai_message_count + 1,
+          user_unread_count: conv.user_unread_count + 1,
+        },
+      };
+    }
+
+    // Fallback didn't match OR matched but flagged for escalation
+    // (refund / cancel / tech). Send the matched response (if any) then escalate.
+    const bodyText = fb.matched ? fb.reply : strings.aiDisabledAck;
     const ack = await insertMessage({
       conversationId: conv.id,
-      sender: "system",
+      sender: fb.matched ? "ai" : "system",
       senderId: null,
-      senderName: "StayBid",
-      body: strings.aiDisabledAck,
+      senderName: fb.matched ? "StayBid Assistant" : "StayBid",
+      body: bodyText,
+      aiModel: fb.matched ? "fallback-intent" : null,
+      aiConfidence: fb.matched ? fb.confidence : null,
+      aiShouldEscalate: true,
     });
     return {
       message: ack,
       conversationPatch: {
         status: "escalated" as SupportStatus,
-        escalation_reason: "ai_disabled" as SupportEscalationReason,
+        escalation_reason: fb.matched
+          ? "specific_intent" as SupportEscalationReason
+          : "ai_disabled" as SupportEscalationReason,
         escalated_at: new Date().toISOString(),
         last_message_at: new Date().toISOString(),
-        last_message_sender: "system",
+        last_message_sender: fb.matched ? "ai" : "system",
         agent_unread_count: conv.agent_unread_count + 1,
+        ai_message_count: fb.matched ? conv.ai_message_count + 1 : conv.ai_message_count,
       },
     };
   }

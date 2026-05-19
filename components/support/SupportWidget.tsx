@@ -66,6 +66,30 @@ function getAnonId(): string {
   return id;
 }
 
+type LangKey = "hi" | "en" | "es" | "fr" | "ar";
+
+const LANG_OPTIONS: Array<{ key: LangKey; flag: string; label: string }> = [
+  { key: "hi", flag: "🇮🇳", label: "Hinglish" },
+  { key: "en", flag: "🇺🇸", label: "English" },
+  { key: "es", flag: "🇪🇸", label: "Español" },
+  { key: "fr", flag: "🇫🇷", label: "Français" },
+  { key: "ar", flag: "🇸🇦", label: "العربية" },
+];
+
+function getStoredLang(): LangKey {
+  if (typeof window === "undefined") return "hi";
+  const saved = localStorage.getItem("sb_support_lang");
+  if (saved && ["hi", "en", "es", "fr", "ar"].includes(saved)) return saved as LangKey;
+  // Auto-detect from browser
+  const nav = navigator.language.toLowerCase();
+  if (nav.startsWith("hi") || nav.includes("-in")) return "hi";
+  if (nav.startsWith("ar")) return "ar";
+  if (nav.startsWith("es")) return "es";
+  if (nav.startsWith("fr")) return "fr";
+  if (nav.startsWith("en")) return "en";
+  return "hi";
+}
+
 function authHeaders(token: string | null): Record<string, string> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
   if (token) h.Authorization = `Bearer ${token}`;
@@ -88,6 +112,18 @@ export default function SupportWidget() {
   // Tracks whether we've already attempted to claim the anon chats for
   // this signed-in session — once claimed, this widget doesn't retry.
   const claimedRef = useRef<boolean>(false);
+  // Language picker state — persists to localStorage
+  const [lang, setLang] = useState<LangKey>("hi");
+  const [langOpen, setLangOpen] = useState(false);
+  useEffect(() => {
+    setLang(getStoredLang());
+  }, []);
+  function changeLang(next: LangKey) {
+    setLang(next);
+    if (typeof window !== "undefined") localStorage.setItem("sb_support_lang", next);
+    setLangOpen(false);
+  }
+  const currentLang = LANG_OPTIONS.find((o) => o.key === lang) || LANG_OPTIONS[0];
 
   if (shouldHide(pathname)) return null;
 
@@ -174,7 +210,9 @@ export default function SupportWidget() {
         body: JSON.stringify({
           metadata: {
             pageUrl: typeof window !== "undefined" ? window.location.pathname : null,
-            locale: typeof navigator !== "undefined" ? navigator.language : null,
+            // Send picked language as a locale string i18n.detectLocale
+            // can parse (en-US, hi-IN, es-ES, fr-FR, ar-SA).
+            locale: ({ hi: "hi-IN", en: "en-US", es: "es-ES", fr: "fr-FR", ar: "ar-SA" })[lang],
           },
         }),
       });
@@ -241,21 +279,56 @@ export default function SupportWidget() {
                     ←
                   </button>
                 )}
-                <div>
+                <div className="sb-support-avatar" aria-hidden>
+                  <span className="sb-support-avatar-emoji">🎧</span>
+                  <span className="sb-support-avatar-dot" />
+                </div>
+                <div className="sb-support-titleblock">
                   <div className="sb-support-title">StayBid Support</div>
                   <div className="sb-support-subtitle">
-                    {view === "chat" ? "Live chat" : "Hum madad ke liye yahaan hain"}
+                    {view === "chat" ? "Live chat" : "We're here to help 24/7"}
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={closeWidget}
-                className="sb-support-close"
-                aria-label="Close"
-              >
-                ✕
-              </button>
+              <div className="sb-support-header-right">
+                <div className="sb-support-lang-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setLangOpen((p) => !p)}
+                    className="sb-support-lang-btn"
+                    aria-label={`Language: ${currentLang.label}`}
+                    title={currentLang.label}
+                  >
+                    <span className="sb-support-lang-flag">{currentLang.flag}</span>
+                    <span className="sb-support-lang-code">{lang.toUpperCase()}</span>
+                    <span className="sb-support-lang-arrow">▾</span>
+                  </button>
+                  {langOpen && (
+                    <div className="sb-support-lang-menu">
+                      {LANG_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => changeLang(opt.key)}
+                          className={`sb-support-lang-item ${opt.key === lang ? "is-active" : ""}`}
+                        >
+                          <span className="sb-support-lang-flag">{opt.flag}</span>
+                          <span>{opt.label}</span>
+                          {opt.key === lang && <span className="sb-support-lang-check">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeWidget}
+                  className="sb-support-close"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
             </header>
 
             {view === "list" ? (
@@ -337,15 +410,23 @@ export default function SupportWidget() {
           z-index: 9999;
           right: max(16px, env(safe-area-inset-right, 0px));
           bottom: calc(160px + env(safe-area-inset-bottom, 0px));
-          width: min(380px, calc(100vw - 24px));
-          height: min(620px, calc(100vh - 220px));
-          background: var(--bg-card, #FFFCF6);
-          border-radius: 18px;
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
-          box-shadow: 0 24px 60px -8px rgba(31, 26, 15, 0.4);
+          width: min(420px, calc(100vw - 24px));
+          height: min(680px, calc(100vh - 220px));
+          background: #FFFCF6;
+          border-radius: 22px;
+          border: 1px solid rgba(201, 166, 107, 0.28);
+          box-shadow:
+            0 32px 64px -12px rgba(31, 26, 15, 0.45),
+            0 14px 32px -8px rgba(139, 105, 20, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.55);
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          animation: sbSupportPanelIn 0.24s cubic-bezier(.4, .8, .3, 1.1) both;
+        }
+        @keyframes sbSupportPanelIn {
+          from { opacity: 0; transform: translateY(10px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         @media (max-width: 480px) {
           .sb-support-panel {
@@ -354,48 +435,163 @@ export default function SupportWidget() {
             bottom: 84px;
             width: auto;
             height: calc(100vh - 110px);
+            border-radius: 20px;
           }
         }
 
         .sb-support-header {
           flex: 0 0 auto;
-          padding: 12px 14px;
+          padding: 14px 14px 12px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 10px;
           background: linear-gradient(180deg, #FFFCF6 0%, #FAF5EB 100%);
           border-bottom: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          position: relative;
+        }
+        .sb-support-header::after {
+          content: "";
+          position: absolute;
+          left: 14px;
+          right: 14px;
+          bottom: -1px;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(201, 166, 107, 0.45), transparent);
         }
         .sb-support-header-left {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          min-width: 0;
+          flex: 1;
+        }
+        .sb-support-header-right {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex: 0 0 auto;
+        }
+        .sb-support-avatar {
+          position: relative;
+          width: 38px;
+          height: 38px;
+          flex: 0 0 auto;
+          border-radius: 50%;
+          background: linear-gradient(140deg, #E7CFA0, #C9A66B 60%, #8B6914);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px -2px rgba(139, 105, 20, 0.35), inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+        .sb-support-avatar-emoji {
+          font-size: 18px;
+          line-height: 1;
+          filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+        }
+        .sb-support-avatar-dot {
+          position: absolute;
+          right: -1px;
+          bottom: -1px;
+          width: 11px;
+          height: 11px;
+          border-radius: 50%;
+          background: #7F9269;
+          border: 2px solid #FFFCF6;
+          box-shadow: 0 0 0 0 rgba(127, 146, 105, 0.4);
+          animation: sbSupportAvatarPulse 2s ease-in-out infinite;
+        }
+        @keyframes sbSupportAvatarPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(127, 146, 105, 0.55); }
+          50% { box-shadow: 0 0 0 4px rgba(127, 146, 105, 0); }
         }
         .sb-support-back {
           background: transparent;
           border: none;
-          font-size: 20px;
+          font-size: 18px;
           line-height: 1;
-          padding: 4px 8px;
+          padding: 6px 8px;
           cursor: pointer;
           color: var(--text-base, #1F1A0F);
-          border-radius: 6px;
+          border-radius: 8px;
+          flex: 0 0 auto;
         }
         .sb-support-back:hover { background: rgba(0, 0, 0, 0.04); }
+        .sb-support-titleblock { min-width: 0; flex: 1; }
         .sb-support-title {
           font-family: "Cormorant Garamond", serif;
           font-style: italic;
-          font-size: 18px;
+          font-size: 19px;
           font-weight: 600;
           color: var(--text-base, #1F1A0F);
-          line-height: 1.1;
+          line-height: 1.15;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .sb-support-subtitle {
           font-size: 11px;
           color: var(--text-muted, #6E5430);
           margin-top: 1px;
         }
+        .sb-support-lang-wrap {
+          position: relative;
+        }
+        .sb-support-lang-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(201, 166, 107, 0.12);
+          border: 1px solid rgba(201, 166, 107, 0.35);
+          color: var(--text-base, #1F1A0F);
+          padding: 5px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .sb-support-lang-btn:hover {
+          background: rgba(201, 166, 107, 0.22);
+          border-color: rgba(201, 166, 107, 0.55);
+        }
+        .sb-support-lang-flag { font-size: 13px; line-height: 1; }
+        .sb-support-lang-code { letter-spacing: 0.04em; }
+        .sb-support-lang-arrow { font-size: 9px; opacity: 0.65; }
+        .sb-support-lang-menu {
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          background: #FFFCF6;
+          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          border-radius: 10px;
+          box-shadow: 0 12px 32px -6px rgba(31, 26, 15, 0.25);
+          padding: 4px;
+          z-index: 10;
+          min-width: 160px;
+          animation: sbSupportLangIn 0.16s ease-out both;
+        }
+        @keyframes sbSupportLangIn {
+          from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .sb-support-lang-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 10px;
+          background: transparent;
+          border: none;
+          font-size: 13px;
+          color: var(--text-base, #1F1A0F);
+          cursor: pointer;
+          border-radius: 7px;
+          text-align: left;
+        }
+        .sb-support-lang-item:hover { background: rgba(201, 166, 107, 0.10); }
+        .sb-support-lang-item.is-active { background: rgba(201, 166, 107, 0.18); font-weight: 600; }
+        .sb-support-lang-check { margin-left: auto; color: #8B6914; font-size: 13px; }
         .sb-support-close {
           background: transparent;
           border: none;
@@ -404,6 +600,7 @@ export default function SupportWidget() {
           cursor: pointer;
           color: var(--text-muted, #6E5430);
           border-radius: 6px;
+          flex: 0 0 auto;
         }
         .sb-support-close:hover { background: rgba(0, 0, 0, 0.04); color: var(--text-base, #1F1A0F); }
       `}</style>
@@ -833,7 +1030,7 @@ function ChatView({
           onClick={send}
           disabled={!input.trim() || sending || !!isLocked}
         >
-          {sending ? "…" : "Send"}
+          {sending ? "…" : "➤"}
         </button>
       </div>
 
@@ -905,47 +1102,56 @@ function ChatView({
         .sb-support-msg-agent,
         .sb-support-msg-system { justify-content: flex-start; }
         .sb-support-bubble {
-          max-width: 78%;
-          padding: 8px 11px;
-          border-radius: 14px;
-          font-size: 13.5px;
-          line-height: 1.45;
+          max-width: 80%;
+          padding: 10px 14px;
+          border-radius: 18px;
+          font-size: 14px;
+          line-height: 1.5;
           white-space: pre-wrap;
           word-wrap: break-word;
+          animation: sbBubbleIn 0.22s ease-out both;
+          box-shadow: 0 1px 2px rgba(31, 26, 15, 0.05);
+        }
+        @keyframes sbBubbleIn {
+          from { opacity: 0; transform: translateY(4px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .sb-support-bubble-user {
-          background: linear-gradient(140deg, #C9A66B, #B89149);
+          background: linear-gradient(140deg, #D9BE82, #C9A66B 55%, #8B6914);
           color: #fff;
-          border-bottom-right-radius: 4px;
+          border-bottom-right-radius: 6px;
+          text-shadow: 0 1px 0 rgba(0,0,0,0.05);
         }
         .sb-support-bubble-ai {
           background: #fff;
           color: var(--text-base, #1F1A0F);
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.12));
-          border-bottom-left-radius: 4px;
+          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          border-bottom-left-radius: 6px;
         }
         .sb-support-bubble-agent {
-          background: #ECF1E5;
+          background: linear-gradient(140deg, #F0F4E8, #E0EAD0);
           color: var(--text-base, #1F1A0F);
           border: 1px solid rgba(127, 146, 105, 0.32);
-          border-bottom-left-radius: 4px;
+          border-bottom-left-radius: 6px;
         }
         .sb-support-bubble-system {
-          background: rgba(201, 166, 107, 0.14);
+          background: linear-gradient(140deg, rgba(201, 166, 107, 0.16), rgba(201, 166, 107, 0.08));
           color: var(--text-muted, #6E5430);
-          font-size: 12px;
+          border: 1px solid rgba(201, 166, 107, 0.22);
+          font-size: 12.5px;
           font-style: italic;
           text-align: center;
           max-width: 92%;
           margin: 0 auto;
+          border-radius: 14px;
         }
         .sb-support-msg-sender {
           font-size: 10px;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 2px;
-          opacity: 0.7;
+          letter-spacing: 0.06em;
+          margin-bottom: 4px;
+          opacity: 0.72;
         }
 
         .sb-support-typing {
@@ -968,36 +1174,52 @@ function ChatView({
           flex: 0 0 auto;
           display: flex;
           gap: 8px;
-          padding: 10px 12px;
-          background: var(--bg-card, #FFFCF6);
-          border-top: 1px solid var(--border-soft, rgba(184, 134, 11, 0.12));
+          padding: 12px 14px;
+          background: linear-gradient(180deg, #FFFCF6 0%, #FAF5EB 100%);
+          border-top: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
+          align-items: center;
         }
         .sb-support-chat-input input {
           flex: 1;
-          padding: 10px 12px;
-          border-radius: 22px;
-          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.18));
-          font-size: 13px;
-          background: var(--bg-input, #FFFCF6);
+          min-width: 0;
+          padding: 11px 14px;
+          border-radius: 24px;
+          border: 1px solid var(--border-soft, rgba(184, 134, 11, 0.22));
+          font-size: 14px;
+          background: #fff;
           color: var(--text-base, #1F1A0F);
           outline: none;
+          transition: all 0.18s ease;
+        }
+        .sb-support-chat-input input::placeholder {
+          color: rgba(110, 84, 48, 0.55);
         }
         .sb-support-chat-input input:focus {
           border-color: #C9A66B;
-          box-shadow: 0 0 0 3px rgba(201, 166, 107, 0.18);
+          box-shadow: 0 0 0 3px rgba(201, 166, 107, 0.18), 0 0 14px rgba(201, 166, 107, 0.22);
         }
         .sb-support-chat-input button {
-          padding: 0 16px;
-          border-radius: 22px;
+          flex: 0 0 auto;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
           border: none;
-          background: linear-gradient(140deg, #C9A66B, #8B6914);
+          background: linear-gradient(140deg, #D9BE82, #C9A66B 55%, #8B6914);
           color: #fff;
-          font-weight: 600;
-          font-size: 13px;
+          font-weight: 700;
+          font-size: 14px;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 10px -2px rgba(139, 105, 20, 0.35), inset 0 1px 0 rgba(255,255,255,0.4);
+          transition: transform 0.15s ease;
+        }
+        .sb-support-chat-input button:hover:not(:disabled) {
+          transform: translateY(-1px) scale(1.04);
         }
         .sb-support-chat-input button:disabled {
-          opacity: 0.4;
+          opacity: 0.35;
           cursor: not-allowed;
         }
         .sb-support-chat-close-btn {
