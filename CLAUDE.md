@@ -5807,3 +5807,269 @@ TBD     → docs: Phase 8 — smoke tests + rollback + soft launch (this commit)
 
 Tier System is complete and waiting for the merge signal.
 
+
+---
+
+## Hybrid AI + Human Customer Support Era (v146 → v158, 2026-05-18 to 2026-05-19)
+
+13 versions across two days building, debugging, and polishing the StayBid in-house customer support system. Three-tier model: AI bot (Groq Llama 3.3 70B free tier or Anthropic Claude Haiku 4.5) → smart escalation → human agents (admin + dedicated `/agent` panel). End-to-end: floating widget on customer surface, list + full-page chat for agents, AI status diagnostics, voice (push-to-talk + premium TTS), 5-language i18n, auto-handover, schema in production Supabase. Build commit `f6b4c34` on main, badge `v158`.
+
+### Architecture summary
+
+```
+Customer surface (floating 💬 widget, mounted globally in app/layout.tsx)
+    ↓
+POST /api/support/conversations            ← create new chat with subject category
+POST /api/support/conversations/:id/messages
+    ↓
+runAIPath:
+  1. shouldShortCircuitEscalate (immediate human-request / safety keywords only)
+  2. respondToMessage (provider router)
+       → Groq (free) → Anthropic (paid) → throw → fallback bot regex match
+  3. Auto-handover: if conv was agent_active/escalated but agent silent >5 min,
+     flip back to ai_active so AI keeps user company
+    ↓
+support_messages + support_conversations rows
+    ↓
+Agent surface (TWO entry points):
+  • /admin/support       → admins (master PIN auth)
+  • /agent               → dedicated support_agent role (phone OTP auth)
+    ↓
+List view → click conversation → /admin/support/[id] OR /agent/[id]
+    ↓
+Full-page chat: thread + composer + customer context rail with
+   category-aware focus card (Booking/Bid/Payment/Refund/Wallet/etc.)
+```
+
+### Per-version highlights
+
+| Version | Highlight | Files added |
+|---|---|---|
+| **v146** | Initial hybrid AI + agent system | `migrations/2026-05-19-support-system.sql`, 5 lib files, 8 API routes, `components/support/SupportWidget.tsx`, `app/admin/support/page.tsx` |
+| **v146.1** | Welcome system message + browser notification on agent reply | — |
+| **v146.2** | Team email alerts (SendGrid) + auto-resolve idle cron + admin desktop notif | `lib/support/notify-team.ts`, `app/api/cron/support-auto-resolve/route.ts` |
+| **v146.3** | Cross-device anon claim + agent metrics dashboard + Slack/Telegram webhooks + 5-language system message i18n | `app/api/support/claim-anon/route.ts`, `app/api/admin/support/metrics/route.ts`, `app/admin/support/metrics/page.tsx`, `lib/support/i18n.ts` |
+| **v146.4** | Fix `[...Set]` spread → `Array.from(Set)` (downlevelIteration trap, third occurrence of v94/v132.9.1 era trap) | — |
+| **v147** | Dedicated `/agent` panel — phone OTP login, slim 3-entry sidebar, agent topbar with avatar + role badge | `app/agent/login/page.tsx`, `app/agent/layout.tsx`, `app/agent/page.tsx`, `app/agent/metrics/page.tsx`, `app/api/agent/check-role/route.ts`, `components/agent/sidebar.tsx`, `components/agent/topbar.tsx`, `components/support/SupportInbox.tsx` (shared), `components/support/SupportMetrics.tsx` (shared) |
+| **v147.1** | `/api/agent/check-role` picks BEST role across multi-row phone match (Dual User ID trap from v44 era) | — |
+| **v148** | Smart fallback intent bot (14 intents × 5 languages, free without API key) + language picker chip in header + premium widget UI polish | `lib/support/fallback-bot.ts` |
+| **v148.1** | **CRASH FIX** — SupportWidget hooks-order violation (early return between hooks broke homepage on route change) | — |
+| **v149** | AI fallback bot now fires on `ai_active` start status (was blocked by escalated default) + per-message `lang` body field + strict `detectLocale` (was matching `en-IN` as Hindi) + English default + pre-chat 8-category subject picker + admin inbox UI polish | — |
+| **v150** | Full widget i18n table (every customer-side label localized in 5 languages) + dedicated full-page admin/agent chat routes (`/admin/support/[id]`, `/agent/[id]`) + inbox refactored to list-only view with card grid | `lib/support/widget-strings.ts`, `components/support/SupportChatPage.tsx`, `app/admin/support/[id]/page.tsx`, `app/agent/[id]/page.tsx` |
+| **v151** | 3D animated FAB (half size, layered shadows, pulsing ring, rotating sheen, responsive 36-44px) + bulletproof auto-scroll with "↓ new" pill when user scrolled up + category-aware focus card in agent context rail with admin-page quick links | — |
+| **v152** | **Groq + Llama 3.3 70B** free-tier AI integration. Provider router auto-picks Groq-first; `SUPPORT_AI_PREFER=anthropic` flips priority. Saves Sachin from paying Anthropic credits. | `lib/support/groq-agent.ts` |
+| **v153** | AI status badge on admin chat (`/api/admin/support/ai-status`) + smart fallback (real AI fails → try fallback bot before escalating) + bigger desktop widget (480×740 → 540×800) + centered admin thread (max-width 900px) | `app/api/admin/support/ai-status/route.ts` |
+| **v154** | WhatsApp-style continuous chat layout — bubbles tighter (5px gap, 7/11 padding), composer bg matches scroll (no "two boxes"), timestamp inside bubble, tail-corner radius | — |
+| **v155** | Narrow short-circuit list — removed "refund", "chargeback", "fraud", "scam", "court", "legal" so AI handles them WITH a useful policy reply (then escalates per system prompt). Only emergency intents still short-circuit. | — |
+| **v156** | URL bar overlap fix on mobile (top safe-area inset + 70px buffer) + NEW "⚡ Test AI" button in admin chat top bar (`/api/admin/support/ai-test`) with provider-specific actionable error hints + expanded fallback bot patterns (Hinglish payment queries) | `app/api/admin/support/ai-test/route.ts` |
+| **v157** | Per-message language autodetect (Devanagari + Arabic scripts + 60-word Hinglish dictionary) → AI replies in user's actual language even when locale picker disagrees + voice (Web Speech API: 🎤 mic input, 🔊 voice output toggle) + auto AI handover (agent silent >5 min → AI takes over next user message) | `lib/support/lang-detect.ts` |
+| **v157.1** | **PROD BUILD FIX** — `payment_debit` added to `IntentKey` union (forgot in v156, blocked v156+v157 prod deploys, mobile users stuck on v155) | — |
+| **v158** | Push-to-talk mic — HOLD pointer-down → continuous recognition → RELEASE pointer-up → auto-send (no manual send tap). Pointer-leave/cancel = abort. Premium voice selection — picks Natural/Neural/Premium/Google voices over default robotic TTS. | — |
+
+### Schema (applied to live Supabase project `uxxhbdqedazpmvbvaosh`)
+
+**Migration:** `migrations/2026-05-19-support-system.sql` — applied via MCP `apply_migration` at v146 ship time. No further schema changes through v158.
+
+```sql
+-- ENUMs
+CREATE TYPE support_status AS ENUM (
+  'ai_active', 'escalated', 'agent_active', 'resolved', 'closed'
+);
+CREATE TYPE support_sender AS ENUM ('user', 'ai', 'agent', 'system');
+CREATE TYPE support_escalation_reason AS ENUM (
+  'user_request', 'low_confidence', 'sentiment_negative',
+  'specific_intent', 'ai_disabled', 'agent_manual'
+);
+
+-- support_conversations — one row per chat session
+-- Cols: id (sc_<uuid>), user_id, anonymous_id, status, subject,
+--       assigned_agent_id/name, escalation_reason, escalated_at,
+--       resolved_at/by, last_message_at/sender,
+--       user_unread_count, agent_unread_count,
+--       ai_message_count, agent_message_count, user_message_count,
+--       metadata JSONB, created_at, updated_at
+-- 6 indexes (user, anon partial, queue, assigned partial)
+-- RLS enabled with all_anon_all permissive policy
+
+-- support_messages — every message in every conversation
+-- Cols: id (sm_<uuid>), conversation_id FK, sender, sender_id/name,
+--       body, ai_suggested, ai_model, ai_tokens_in/out,
+--       ai_confidence, ai_should_escalate, attachments JSONB,
+--       read_at, created_at
+-- 2 indexes (conv+created_at, unread partial)
+-- RLS enabled with all_anon_all permissive policy
+
+-- Trigger: fn_supconv_touch_updated_at on support_conversations UPDATE
+```
+
+### AI provider router (`lib/support/ai-agent.ts`)
+
+```ts
+isAIEnabled() = isGroqEnabled() || isAnthropicEnabled()
+
+respondToMessage(opts):
+  Default order: Groq → Anthropic   (Groq-first because FREE tier)
+  Override:      SUPPORT_AI_PREFER=anthropic → flips
+  Tries preferred first, falls back to alternate on error,
+  throws if neither configured (caller catches → fallback bot)
+```
+
+Both providers receive the SAME structured output instruction. Both return `{ reply, confidence, shouldEscalate, escalationReason }`. Anthropic uses prompt caching on the KB block; Groq doesn't support caching but is fast enough that it doesn't matter.
+
+Each call also injects:
+1. `SUPPORT_KB` from `lib/support/knowledge.ts` (long system prompt with rules + KB)
+2. `userContextBlock` — per-user context (name, tier, booking count, active bid count, wallet balance)
+3. **`langInstructionForAI(detectMessageLang(userText))`** (v157+) — forces the model to reply in the user's actual message language
+
+### Customer widget behavior matrix
+
+| Trigger | Outcome |
+|---|---|
+| User opens widget, no auth | Anonymous session via `localStorage.sb_support_anon_id` |
+| User signs in, has anon chats | `/api/support/claim-anon` migrates anon conv → user_id |
+| User starts new chat | 8-category subject picker → conversation created with `subject = label` + `metadata.category = key` |
+| User types message | AI runs (Groq → Anthropic → fallback bot → escalate) |
+| User says "refund kab tak aayega" | v157+ detects Hinglish, AI replies in Hinglish with policy + escalates |
+| User says "agent chahiye" / "emergency" | Short-circuit (no AI delay) → direct escalate |
+| User holds 🎤 mic | v158 push-to-talk: continuous recognition, release auto-sends |
+| User toggles 🔊 | v157 voice-out: AI/agent replies spoken via premium-picked browser voice |
+| Agent silent >5 min | v157 auto-handover: AI takes over user's next message |
+
+### Things to avoid (Hybrid Support Era)
+
+- **Never** declare a new intent in `lib/support/fallback-bot.ts` `INTENTS` array without also adding the key to the `IntentKey` union type. v157.1 was a urgent prod fix because v156 added `payment_debit` to the array but not the union — local `tsc --noEmit` missed it (tsconfig `target=ES5` deprecation short-circuits), Vercel `next build` caught it.
+- **Never** put `[...mySet]` or `for..of map.keys()` in this codebase. tsconfig lacks `downlevelIteration`. Use `Array.from(set)` / `Array.from(map.keys())`. Documented since v94, bit again in v132.9.1 and v146.4.
+- **Never** call `respondToMessage` outside `runAIPath` in the messages route. The catch-then-try-fallback-bot pattern is the bulletproof flow — calling Groq/Anthropic directly elsewhere bypasses fallback safety net.
+- **Never** put an early `return null;` between React hook calls in `SupportWidget`. v148.1 was an urgent prod fix because v148 added 3 hooks before an existing `if (shouldHide) return null;` — the hook count changed between renders → "Rendered fewer hooks than expected" → page crash. ALL hooks must run unconditionally; gate render at JSX level.
+- **Never** mount the SupportWidget anywhere except in `app/layout.tsx`. It auto-hides on `/admin`, `/partner`, `/agent`, `/onboard`, `/auth`, and reel-app surfaces (`/`, `/discover`, `/reels`, `/me`, etc.). Mounting elsewhere breaks the hide-gate logic.
+- **Never** widen the `ESCALATION_KEYWORDS` short-circuit list back to include "refund", "chargeback", "fraud", "scam", "cheat", "court", "legal". v155 explicitly removed them so AI can answer with a useful policy + escalate per its system prompt. Pre-v155 short-circuit meant customers got a generic "team will reach out" message with zero useful info.
+- **Never** rely on conversation's `metadata.locale` alone for AI reply language. The `detectMessageLang()` heuristic on each user's CURRENT message text is the truth. Users often write in romanized Hindi (Hinglish) on an English-default device — locale says EN but they want Hinglish back.
+- **Never** start a new conversation with `startStatus="escalated"` when AI isn't configured. v149 fixed this — fallback intent bot can handle initial messages even without ANTHROPIC_API_KEY / GROQ_API_KEY. Setting `startStatus="ai_active"` always means the fallback path can engage. Pre-v149 blocked the fallback bot from ever firing.
+- **Never** route customer messages through the inline split-pane chat in SupportInbox. v150 deprecated it — full-page chat at `/admin/support/[id]` and `/agent/[id]` is the canonical UX. The inline split was too cramped for agent replies (user feedback).
+- **Never** call `applyGain` or audio amplification on speech synthesis utterances. Browser TTS is consumed directly via `speechSynthesis.speak(utter)`. Routing through Web Audio causes silence on iOS Safari (same trap as the reels feed audio in v82).
+- **Never** schedule the auto-resolve cron at higher than hourly frequency. The `support_conversations` table grows over time; expensive idle-conv sweeps. Daily is the documented cadence.
+- **Never** add a third AI provider without extending `ai-agent.ts` router pattern. Current shape: try-preferred → catch → try-alternate → throw → caller-uses-fallback. Adding a third needs careful placement to avoid increasing per-message latency.
+- **Never** flip `voiceOut` default to `true`. It's opt-in by design — autoplaying speech surprises users + violates Chrome autoplay policies (would silently fail without user gesture anyway).
+- **Never** restore the simple `onClick={listening ? stop : start}` mic UX. v158 deliberately switched to push-to-talk (pointerDown/pointerUp) because click-toggle was clunky — required manual send tap after speaking. PTT auto-sends on release.
+
+### Environment variables (recap)
+
+Production env vars Sachin needs to manage:
+
+```
+ANTHROPIC_API_KEY=sk-ant-api03-...   # OPTIONAL — Anthropic Claude (paid)
+GROQ_API_KEY=gsk_...                  # OPTIONAL — Groq Llama 3.3 (FREE)
+                                       # If neither set → fallback intent bot only
+
+SUPPORT_AI_PREFER=anthropic           # OPTIONAL — flip priority order
+
+SUPPORT_ALERT_EMAILS=ops@x.com,...    # OPTIONAL — escalation email recipients
+SUPPORT_SLACK_WEBHOOK_URL=https://... # OPTIONAL — Slack webhook
+SUPPORT_TELEGRAM_BOT_TOKEN=...        # OPTIONAL — Telegram bot
+SUPPORT_TELEGRAM_CHAT_ID=...          # OPTIONAL — Telegram target
+
+SUPPORT_AUTO_RESOLVE_AI_HOURS=48      # OPTIONAL — idle ai_active threshold
+SUPPORT_AUTO_RESOLVE_QUEUE_HOURS=72   # OPTIONAL
+SUPPORT_AUTO_RESOLVE_AGENT_HOURS=48   # OPTIONAL
+SUPPORT_AI_HANDOVER_AFTER_MIN=5       # OPTIONAL — v157 auto-handover threshold
+
+CRON_SECRET=staybid-cron-dev          # required for cron-job.org token
+SENDGRID_API_KEY=...                  # existing (used by escalation emails)
+```
+
+### Cron schedule (cron-job.org)
+
+| URL | Schedule | Purpose |
+|---|---|---|
+| `https://staybids.in/api/cron/support-auto-resolve?token=staybid-cron-dev` | Daily 4:00 AM IST | Auto-resolve idle conversations |
+
+(Vercel cron 2-slot is full; this lives on cron-job.org alongside the v68+ era support crons.)
+
+### Files added (this era)
+
+```
+migrations/2026-05-19-support-system.sql           # schema + ENUMs + indexes + RLS
+lib/support/types.ts                                # SupportConversation, SupportMessage, etc.
+lib/support/knowledge.ts                            # SUPPORT_KB system prompt + canned replies
+lib/support/ai-agent.ts                             # Anthropic + provider router
+lib/support/agent-auth.ts                           # admin/super_admin/support_agent resolver
+lib/support/repo.ts                                 # Supabase CRUD helpers
+lib/support/i18n.ts                                 # 5-language system messages
+lib/support/widget-strings.ts                       # 5-language customer widget labels (v150)
+lib/support/notify-team.ts                          # email + Slack + Telegram fan-out (v146.2-v146.3)
+lib/support/fallback-bot.ts                         # 14 intents × 5 languages (v148, v156 expanded)
+lib/support/groq-agent.ts                           # Groq Llama 3.3 integration (v152)
+lib/support/lang-detect.ts                          # script + Hinglish word detection (v157)
+
+app/api/support/conversations/route.ts              # POST create + GET list
+app/api/support/conversations/[id]/route.ts         # GET single + PATCH close
+app/api/support/conversations/[id]/messages/route.ts # POST send (AI path) + GET poll
+app/api/support/conversations/[id]/escalate/route.ts # POST escalate to human
+app/api/support/claim-anon/route.ts                 # v146.3 — cross-device anon migration
+
+app/api/admin/support/conversations/route.ts        # agent list w/ filters
+app/api/admin/support/conversations/[id]/route.ts   # agent: take/release/resolve actions
+app/api/admin/support/conversations/[id]/messages/route.ts # agent reply
+app/api/admin/support/suggest/route.ts              # AI-suggested reply
+app/api/admin/support/metrics/route.ts              # v146.3 — KPIs + charts data
+app/api/admin/support/ai-status/route.ts            # v153 — provider config diagnostic
+app/api/admin/support/ai-test/route.ts              # v156 — live AI test endpoint
+
+app/api/agent/check-role/route.ts                   # v147 — phone-based role check
+
+app/api/cron/support-auto-resolve/route.ts          # v146.2 — daily idle sweep
+
+components/support/SupportWidget.tsx                # global floating customer widget (mounted in layout)
+components/support/SupportInbox.tsx                 # shared inbox list (admin + agent)
+components/support/SupportMetrics.tsx               # shared metrics dashboard
+components/support/SupportChatPage.tsx              # v150 — shared full-page chat
+
+components/agent/sidebar.tsx                        # v147 — slim 3-entry agent nav
+components/agent/topbar.tsx                         # v147 — agent identity + logout
+
+app/admin/support/page.tsx                          # admin inbox (uses SupportInbox)
+app/admin/support/metrics/page.tsx                  # admin metrics (uses SupportMetrics)
+app/admin/support/[id]/page.tsx                     # v150 — admin full-page chat
+
+app/agent/login/page.tsx                            # v147 — phone OTP login
+app/agent/layout.tsx                                # v147 — auth-gated shell
+app/agent/page.tsx                                  # v147 — agent inbox (uses SupportInbox)
+app/agent/metrics/page.tsx                          # v147 — agent metrics
+app/agent/[id]/page.tsx                             # v150 — agent full-page chat
+```
+
+### Files modified (this era — major touches outside the support tree)
+
+```
+app/layout.tsx           # mounts <SupportWidget />; SB_BUILD v146 → v158 + badge
+components/Navbar.tsx
+components/discover/BottomDock.tsx
+components/DialerNav.tsx
+components/BackChip.tsx
+components/ServerStatus.tsx
+                         # all added /agent to their hide-gate prefix lists in v147
+
+components/admin/sidebar.tsx
+                         # added "Support Inbox" entry in v146
+```
+
+### Production state (v158, 2026-05-19)
+
+- **Current version:** v158 · commit `f6b4c34` on `main`
+- **Schema:** live on Supabase project `uxxhbdqedazpmvbvaosh`. `support_conversations` + `support_messages` + 3 ENUMs + 8 indexes + 2 RLS policies + 1 trigger
+- **AI provider:** Groq (`GROQ_API_KEY` env var) → routes to Llama 3.3 70B Versatile. Anthropic optional fallback.
+- **Customer widget:** mounted globally, hides on admin/partner/agent/onboard/auth + reel-app surfaces. Floating 🎤 push-to-talk + 🔊 voice-out + 🌐 language picker.
+- **Agent panel:** `/agent/login` (phone OTP) + `/agent` (inbox) + `/agent/[id]` (full-page chat) + `/agent/metrics`.
+- **Admin panel:** `/admin/support` (inbox) + `/admin/support/[id]` (full-page chat with ⚡ Test AI button) + `/admin/support/metrics`.
+- **Cron-job.org:** `/api/cron/support-auto-resolve` daily 4 AM IST.
+- **Languages:** EN, HI (Devanagari), Hinglish-Romanized (script-detected via `lib/support/lang-detect.ts`), ES, FR, AR.
+
+### Pending decisions / future work (post-v158)
+
+- **Premium voice TTS** — current browser `speechSynthesis` still robotic on desktop. ElevenLabs ($5/mo) or OpenAI tts-1 would give ChatGPT-quality output. Deferred until user confirms upgrade.
+- **Full ChatGPT-style voice mode** — continuous listening with silence-detection auto-submit (vs current push-to-talk). Bigger UX change, deferred.
+- **Twilio / WhatsApp Business integration** — currently support is in-widget only. Customers could text WhatsApp number → same AI + agent flow. Big infra work.
+- **MSG91 for SMS OTP on agent login** — currently uses Railway's WhatsApp OTP flow. SMS as backup would need Railway-side paste documented in `docs/MSG91_BACKEND_PASTE.md`.
+- **Hot-reload of `ANTHROPIC_API_KEY` / `GROQ_API_KEY`** — currently requires Vercel redeploy on env var change. Could add fetch-from-Supabase-secret pattern but adds complexity.
+- **Conversation export** — admin can't yet download a CSV/PDF of a conversation. Would help refund disputes.
+- **Bulk-resolve UI** — currently admin must resolve one conversation at a time. Multi-select would speed cleanup.
