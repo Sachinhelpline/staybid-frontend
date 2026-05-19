@@ -119,18 +119,22 @@ const STRINGS: Record<LocaleKey, Messages> = {
 };
 
 export function detectLocale(input: string | null | undefined): LocaleKey {
-  if (!input) return "hi";
+  if (!input) return "en";
   const lower = input.toLowerCase();
   // navigator.language returns "en-US", "fr-FR", "ar-EG", "es-ES", "hi-IN"
-  if (lower.startsWith("hi") || lower.includes("in")) return "hi";
+  // Use STRICT prefix matching — earlier `.includes("in")` matched en-IN
+  // and silently routed English-IN browsers to Hinglish. That was bug #2
+  // in the v149 batch.
+  if (lower.startsWith("hi")) return "hi";
   if (lower.startsWith("ar")) return "ar";
   if (lower.startsWith("es")) return "es";
   if (lower.startsWith("fr")) return "fr";
   if (lower.startsWith("en")) return "en";
-  return "hi";
+  return "en"; // Default: English (was "hi")
 }
 
 export function t(locale: LocaleKey | string | null | undefined): Messages {
-  const key = typeof locale === "string" ? detectLocale(locale) : "hi";
-  return STRINGS[key] || STRINGS.hi;
+  if (!locale) return STRINGS.en;
+  const key = typeof locale === "string" ? detectLocale(locale) : "en";
+  return STRINGS[key] || STRINGS.en;
 }
