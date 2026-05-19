@@ -79,6 +79,10 @@ export type SupportInboxProps = {
   metricsHref: string; // e.g. "/admin/support/metrics" or "/agent/metrics"
   /** Hide the page-level topbar — caller already provides one (true for /agent). */
   hidePageTopbar?: boolean;
+  /** v150 — base for "open chat" link. Conversation card clicks navigate to
+   *  `${chatHrefBase}/${id}` (e.g. "/admin/support" or "/agent"). This
+   *  replaced the cramped inline split-pane that users couldn't reply in. */
+  chatHrefBase: string;
 };
 
 function buildHeaders(tokenKey: string, userKey: string): Record<string, string> {
@@ -98,6 +102,7 @@ export default function SupportInbox({
   userKey,
   metricsHref,
   hidePageTopbar = false,
+  chatHrefBase,
 }: SupportInboxProps) {
   const [view, setView] = useState<View>("queue");
   const [search, setSearch] = useState("");
@@ -215,73 +220,64 @@ export default function SupportInbox({
         </div>
       )}
 
-      <div style={styles.body}>
-        <aside style={styles.sidebar}>
+      {/* v150 — list-only view. Conversation card click navigates to
+          dedicated full-page chat (/admin/support/[id] or /agent/[id]).
+          The old inline split-pane was too cramped for replies. */}
+      <div style={styles.bodyListOnly}>
+        <div style={styles.listOnlyHeader}>
           <input
             type="text"
             placeholder="Search subject / user id…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
+            style={styles.searchInputWide}
           />
-          <div style={styles.listScroll}>
-            {loadingList ? (
-              <div style={styles.empty}>Loading…</div>
-            ) : conversations.length === 0 ? (
-              <div style={styles.empty}>Koi conversation nahi {view === "queue" ? "queue mein" : ""}.</div>
-            ) : (
-              conversations.map((c) => (
-                <button
+          <div style={styles.listOnlyCount}>
+            {loadingList ? "…" : `${conversations.length} conversation${conversations.length === 1 ? "" : "s"}`}
+          </div>
+        </div>
+        <div style={styles.listOnlyScroll}>
+          {loadingList ? (
+            <div style={styles.empty}>Loading…</div>
+          ) : conversations.length === 0 ? (
+            <div style={styles.empty}>
+              <div style={{ fontSize: 38, marginBottom: 10 }}>📭</div>
+              <div>No conversations {view === "queue" ? "in queue" : "in this view"}.</div>
+            </div>
+          ) : (
+            <div style={styles.cardGrid}>
+              {conversations.map((c) => (
+                <Link
                   key={c.id}
-                  type="button"
-                  onClick={() => setSelectedId(c.id)}
-                  style={{
-                    ...styles.convItem,
-                    ...(selectedId === c.id ? styles.convItemActive : {}),
-                  }}
+                  href={`${chatHrefBase}/${c.id}`}
+                  style={styles.convCard}
                 >
-                  <div style={styles.convItemHeader}>
+                  <div style={styles.convCardTop}>
                     <StatusPill status={c.status} />
                     {c.agent_unread_count > 0 && (
                       <span style={styles.unreadBadge}>{c.agent_unread_count}</span>
                     )}
                   </div>
-                  <div style={styles.convItemSubject}>
+                  <div style={styles.convCardSubject}>
                     {c.subject || "(no subject)"}
                   </div>
-                  <div style={styles.convItemMeta}>
-                    {c.user_id ? `user ${c.user_id.slice(0, 10)}…` : `anon`}
+                  <div style={styles.convCardMeta}>
+                    {c.user_id ? `user ${c.user_id.slice(0, 12)}…` : `anonymous`}
                     {" · "}
                     {timeAgo(c.last_message_at)}
                     {c.escalation_reason ? ` · ${c.escalation_reason}` : ""}
                   </div>
                   {c.assigned_agent_name && (
-                    <div style={styles.convItemAgent}>
+                    <div style={styles.convCardAgent}>
                       🎫 {c.assigned_agent_name}
                     </div>
                   )}
-                </button>
-              ))
-            )}
-          </div>
-        </aside>
-
-        <main style={styles.main}>
-          {selectedId ? (
-            <ConversationDetail
-              key={selectedId}
-              conversationId={selectedId}
-              headers={headers}
-              userKey={userKey}
-              onAfterAction={loadList}
-            />
-          ) : (
-            <div style={styles.placeholder}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
-              <div>Select a conversation to view + reply</div>
+                  <div style={styles.convCardArrow}>Open ›</div>
+                </Link>
+              ))}
             </div>
           )}
-        </main>
+        </div>
       </div>
     </div>
   );
@@ -777,6 +773,95 @@ const styles: Record<string, React.CSSProperties> = {
     borderColor: "rgba(212, 175, 55, 0.4)",
   },
   body: { flex: 1, display: "flex", overflow: "hidden" },
+  // v150 — list-only inbox view (no inline split-pane)
+  bodyListOnly: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    background: "#07080C",
+  },
+  listOnlyHeader: {
+    flex: "0 0 auto",
+    padding: "14px 22px",
+    background: "#0F1117",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    display: "flex",
+    gap: 14,
+    alignItems: "center",
+  },
+  searchInputWide: {
+    flex: 1,
+    padding: "10px 14px",
+    background: "#151820",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    color: "#E8EAF0",
+    fontSize: 13.5,
+    outline: "none",
+  },
+  listOnlyCount: {
+    flex: "0 0 auto",
+    fontSize: 12,
+    color: "#8A8FA8",
+    fontWeight: 600,
+  },
+  listOnlyScroll: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "20px 22px 28px",
+  },
+  cardGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    gap: 14,
+  },
+  convCard: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    padding: "16px 18px 14px",
+    background: "#151820",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 14,
+    color: "#E8EAF0",
+    textDecoration: "none",
+    transition: "transform 0.15s ease, border-color 0.15s ease, background 0.15s ease",
+    position: "relative",
+  },
+  convCardTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  convCardSubject: {
+    fontSize: 15,
+    color: "#E8EAF0",
+    fontWeight: 700,
+    lineHeight: 1.35,
+    paddingRight: 30,
+  },
+  convCardMeta: {
+    fontSize: 12,
+    color: "#8A8FA8",
+    lineHeight: 1.45,
+  },
+  convCardAgent: {
+    fontSize: 11.5,
+    color: "#7BA361",
+    fontWeight: 600,
+    marginTop: 2,
+  },
+  convCardArrow: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#D4AF37",
+    opacity: 0.45,
+    letterSpacing: 0.06,
+  },
   sidebar: {
     width: 360,
     flex: "0 0 360px",

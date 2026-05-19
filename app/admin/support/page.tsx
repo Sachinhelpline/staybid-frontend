@@ -8,6 +8,7 @@ export default function AdminSupportPage() {
       tokenKey="sb_admin_token"
       userKey="sb_admin_user"
       metricsHref="/admin/support/metrics"
+      chatHrefBase="/admin/support"
     />
   );
 }

@@ -8,6 +8,7 @@ export default function AgentInboxPage() {
       tokenKey="sb_agent_token"
       userKey="sb_agent_user"
       metricsHref="/agent/metrics"
+      chatHrefBase="/agent"
       hidePageTopbar
     />
   );
