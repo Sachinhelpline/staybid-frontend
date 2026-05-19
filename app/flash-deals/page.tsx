@@ -713,14 +713,14 @@ function FdStyles() {
         100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
       }
 
-      /* v159.5 — Slim sticky chrome: city pills + refine. Solid bg
-         (was 92% w/ backdrop-blur — scrolling content ghosted through).
-         Hero sits ABOVE this sticky and scrolls away first. */
+      /* v159.6 — Sticky reads as distinct floating layer: cream-50
+         (slight elevation vs cream-100 hero bg) + champagne-tinted edge
+         + stronger drop-shadow. Solid bg, no backdrop-blur. */
       .fd-sticky {
         position: sticky; top: 0; z-index: 30;
-        background: var(--cozy-cream-100, #FAF5EB);
-        border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
-        box-shadow: 0 6px 14px -10px rgba(31, 26, 15, 0.18);
+        background: var(--cozy-cream-50, #FFFCF6);
+        border-bottom: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 28%, var(--cozy-taupe, #E8DCC8));
+        box-shadow: 0 8px 18px -8px rgba(31, 26, 15, 0.20);
       }
       .fd-sticky-inner {
         max-width: 1480px; margin: 0 auto;
@@ -837,25 +837,27 @@ function FdStyles() {
         padding: 4px 8px 6px;
         background: transparent; border: 0; border-radius: 0;
         cursor: pointer;
+        /* v159.6 — color-based dimming, NOT opacity. Matches /hotels
+           .hxr-cat treatment so inactive cats read as solid muted text
+           on the solid sticky bg, not as washed-out semi-transparent. */
         color: var(--cozy-cocoa-soft, #6E5430);
-        opacity: 0.62;
-        transition: opacity 0.18s ease, color 0.18s ease;
+        transition: color 0.18s ease;
         scroll-snap-align: start;
         -webkit-tap-highlight-color: transparent;
         position: relative;
       }
       .fd-cat-icon {
         font-size: 1.05rem; line-height: 1;
-        filter: saturate(0.4) brightness(0.95);
+        filter: saturate(0.35) brightness(0.92);
         transition: filter 0.18s ease, transform 0.18s ease;
       }
       .fd-cat-label {
         font-size: 0.58rem; font-weight: 600; letter-spacing: 0.01em;
         white-space: nowrap; color: inherit;
       }
-      .fd-cat:hover { opacity: 0.88; color: var(--cozy-cocoa, #4A3820); }
-      .fd-cat:hover .fd-cat-icon { filter: saturate(0.8); }
-      .fd-cat-active { color: var(--cozy-warm-dark, #1F1A0F); opacity: 1; }
+      .fd-cat:hover { color: var(--cozy-cocoa, #4A3820); }
+      .fd-cat:hover .fd-cat-icon { filter: saturate(0.75); }
+      .fd-cat-active { color: var(--cozy-warm-dark, #1F1A0F); }
       .fd-cat-active .fd-cat-icon { filter: none; transform: scale(1.04); }
       .fd-cat-active::after {
         content: "";

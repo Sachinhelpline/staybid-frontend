@@ -3859,18 +3859,18 @@ body.is-reel-page {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Sticky top — sits just below the hero. v159.5: solid background
-   (was 92% with backdrop-blur) — the blur leaked scrolling content
-   through visually, causing the hero text to ghost over the sticky
-   chrome. Solid bg + soft drop-shadow gives a clean lift without the
-   ghost. The hero now lives ABOVE this sticky and scrolls away first. */
+/* Sticky top — sits just below the hero. v159.6: bumped to bg-card
+   (slight elevation vs bg-page) + crisp 1px champagne-tinted border +
+   a stronger drop-shadow so the sticky reads as a distinct floating
+   layer above the body, not as a wash of the same color. Solid bg
+   (was backdrop-blur in pre-v159.5) so no ghost-through. */
 .hxr-sticky {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--bg-page);
-  border-bottom: 1px solid var(--border-soft);
-  box-shadow: 0 6px 14px -10px rgba(31, 26, 15, 0.18);
+  background: var(--bg-card);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-soft));
+  box-shadow: 0 8px 18px -8px rgba(31, 26, 15, 0.20);
 }
 /* v159.2 — Sticky inner shrunk ~60% on mobile. Total height now ~125px
    (was ~330px including hero). The hero moved into the body. */
@@ -4021,9 +4021,13 @@ body.is-reel-page {
   border: 0;
   border-radius: 0;
   cursor: pointer;
+  /* v159.6 — color-based dimming, NOT opacity. Opacity was making the
+     whole button (icon + label) translucent on the cream sticky bg, so
+     it read as "content bleeding through". Now: full-opacity label in
+     muted color + desaturated icon = Airbnb-true inactive look without
+     any see-through feel. */
   color: var(--text-muted);
-  opacity: 0.62;
-  transition: opacity 0.18s ease, color 0.18s ease;
+  transition: color 0.18s ease;
   scroll-snap-align: start;
   -webkit-tap-highlight-color: transparent;
   position: relative;
@@ -4031,7 +4035,7 @@ body.is-reel-page {
 .hxr-cat-icon {
   font-size: 1.05rem;
   line-height: 1;
-  filter: saturate(0.4) brightness(0.95);
+  filter: saturate(0.35) brightness(0.92);
   transition: filter 0.18s ease, transform 0.18s ease;
 }
 .hxr-cat-label {
@@ -4041,12 +4045,9 @@ body.is-reel-page {
   white-space: nowrap;
   color: inherit;
 }
-.hxr-cat:hover { opacity: 0.88; color: var(--text-soft); }
-.hxr-cat:hover .hxr-cat-icon { filter: saturate(0.8); }
-.hxr-cat-active {
-  color: var(--text-base);
-  opacity: 1;
-}
+.hxr-cat:hover { color: var(--text-soft); }
+.hxr-cat:hover .hxr-cat-icon { filter: saturate(0.75); }
+.hxr-cat-active { color: var(--text-base); }
 .hxr-cat-active .hxr-cat-icon { filter: none; transform: scale(1.04); }
 /* Underline — thin champagne stroke. The "premium" hallmark. */
 .hxr-cat-active::after {
