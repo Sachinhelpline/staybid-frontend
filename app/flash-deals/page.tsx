@@ -432,96 +432,82 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
         </div>
       </div>
 
-      {/* Body */}
+      {/* Body — v159.4 Airbnb-compact: tight name+score row, single meta
+          line, slim upgrade chips, horizontal price+CTA row. No dead
+          vertical gaps from a tall medal column. */}
       <div className="fd-body">
-        <div className="fd-hotel-row">
-          <div className="fd-hotel-row-left">
-            <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
-            {deal.hotel?.starRating ? (
-              <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
-            ) : null}
-          </div>
-          {/* v128.4 — Performance scorecard badge (clickable). Card variant
-              fits the flash-deal layout; tapping opens the same modal as
-              on hotel detail page. */}
+        {/* Row 1 — Hotel name (truncates) + compact score pill (inline) */}
+        <div className="fd-name-row">
+          <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
           {deal.hotelId ? (
-            <div className="fd-score-slot" onClick={(e) => e.stopPropagation()}>
+            <div className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
               <HotelScoreBadge
                 hotelId={deal.hotelId}
                 hotelName={deal.hotel?.name}
-                variant="card"
+                variant="compact"
               />
             </div>
           ) : null}
         </div>
-        <div className="fd-rt-row">
+
+        {/* Row 2 — stars + room type + capacity + units left, all inline */}
+        <div className="fd-meta-line">
+          {deal.hotel?.starRating ? (
+            <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+          ) : null}
+          <span className="fd-meta-sep">·</span>
           <span className="fd-room-type">{showType}</span>
-          <span className="fd-room-cap">· sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
+          <span className="fd-meta-sep">·</span>
+          <span className="fd-room-cap">sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
+          <span className="fd-meta-sep">·</span>
+          <span className={`fd-slots-pill ${leftSlots <= 2 ? "urgent" : ""} ${sold ? "soldout" : ""}`}>
+            {sold ? "Sold out" : `${leftSlots} of ${totalSlots} left`}
+          </span>
         </div>
 
-        {/* Slot meter */}
-        <div className="fd-slots">
-          <div className="fd-slots-text">
-            <span className={`fd-slots-left ${leftSlots <= 2 ? "urgent" : ""}`}>
-              {sold ? "Sold out" : `${leftSlots} left tonight`}
-            </span>
-            <span className="fd-slots-of">
-              {bookedSlots}/{totalSlots} booked
-            </span>
-          </div>
-          <div className="fd-slots-bar">
-            <div className={`fd-slots-fill ${leftSlots <= 2 ? "urgent" : ""}`} style={{ width: `${fillPct}%` }} />
-            <div className="fd-slots-shimmer" />
-          </div>
-        </div>
-
-        {/* Upgrade chips (inline) */}
+        {/* Upgrade chips — slim horizontal row, no big wrapper box */}
         {deal.upgrades.length > 0 && (
-          <div className="fd-up-wrap" onClick={(e) => e.stopPropagation()}>
-            <div className="fd-up-label">
-              <span>✨ Upgrade your room</span>
-              <span className="fd-up-count">{deal.roomTypesAvailable} types available</span>
-            </div>
-            <div className="fd-up-chips">
+          <div className="fd-up-row" onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
+              onClick={() => onPickUpgrade(deal.roomId)}
+            >
+              <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
+              <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
+            </button>
+            {deal.upgrades.slice(0, 3).map(u => (
               <button
-                className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
-                onClick={() => onPickUpgrade(deal.roomId)}
+                key={u.roomId}
+                className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
+                disabled={!u.available}
+                onClick={() => u.available && onPickUpgrade(u.roomId)}
               >
-                <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
-                <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
+                <span className="fd-up-chip-type">{u.type}</span>
+                <span className="fd-up-chip-delta">
+                  {u.available
+                    ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
+                    : "Sold"}
+                </span>
               </button>
-              {deal.upgrades.slice(0, 3).map(u => (
-                <button
-                  key={u.roomId}
-                  className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
-                  disabled={!u.available}
-                  onClick={() => u.available && onPickUpgrade(u.roomId)}
-                >
-                  <span className="fd-up-chip-type">{u.type}</span>
-                  <span className="fd-up-chip-delta">
-                    {u.available
-                      ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
-                      : "Sold"}
-                  </span>
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         )}
 
-        {/* Price + CTA */}
+        {/* Price + CTA — horizontal row, no dividers */}
         <div className="fd-price-row">
           <div className="fd-price-block">
-            {showFloor > showAiPrice && (
-              <p className="fd-price-strike">{fmtINR(showFloor)}</p>
-            )}
-            <p className="fd-price-now">
-              {fmtINR(showAiPrice)}
+            <div className="fd-price-line">
+              {showFloor > showAiPrice && (
+                <span className="fd-price-strike">{fmtINR(showFloor)}</span>
+              )}
+              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
               <span className="fd-price-unit">/night</span>
-            </p>
-            <p className="fd-price-save">
-              You save {fmtINR(Math.max(0, showFloor - showAiPrice))}
-            </p>
+            </div>
+            {showFloor > showAiPrice && (
+              <p className="fd-price-save">
+                Save {fmtINR(Math.max(0, showFloor - showAiPrice))}
+              </p>
+            )}
           </div>
           <button
             className={`fd-cta ${sold ? "sold" : ""}`}
@@ -529,8 +515,6 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             onClick={(e) => {
               e.stopPropagation();
               if (sold) return;
-              // v129 — same snap as the drawer Grab Now path. The hotel page
-              // re-snaps defensively when it reads `dealPrice` back in.
               const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
               router.push(url);
             }}
@@ -764,8 +748,12 @@ function FdStyles() {
       }
       @media (min-width: 640px)  { .fd-hero-slim { padding: 16px 22px 12px; } }
       @media (min-width: 1024px) { .fd-hero-slim { padding: 22px 32px 16px; } }
+      /* v159.4 — block-level eyebrow + title so they don't share a row
+         (v159.3 inline-flex bug → "LIVE · SAME-DAY · AI CURATED" overlapping
+         "Flash Deals · 32 deals" inline on the same baseline). */
       .fd-hero-eyebrow {
-        display: inline-flex; align-items: center; gap: 8px;
+        display: flex; align-items: center; gap: 8px;
+        width: fit-content;
         color: var(--cozy-champagne, #C9A66B);
         font-size: 0.58rem; font-weight: 700;
         letter-spacing: 0.20em; text-transform: uppercase;
@@ -783,7 +771,7 @@ function FdStyles() {
         line-height: 1.15;
         margin: 0 0 4px;
         color: var(--cozy-warm-dark, #1F1A0F);
-        display: inline-flex; align-items: baseline; flex-wrap: wrap;
+        display: flex; align-items: baseline; flex-wrap: wrap;
         gap: 0.35em;
       }
       .fd-hero-count {
@@ -1164,7 +1152,7 @@ function FdStyles() {
       .fd-up-chip {
         flex-shrink: 0;
         display: flex; flex-direction: column; align-items: flex-start;
-        padding: 6px 10px;
+        padding: 4px 9px 5px;
         background: var(--bg-pill);
         border: 1px solid var(--border-soft);
         border-radius: 10px;
@@ -1186,35 +1174,115 @@ function FdStyles() {
       }
       .fd-up-chip.soldout .fd-up-chip-delta { color: #c87878; }
 
-      /* Price + CTA — v92 theme-aware divider */
+      /* v159.4 — Airbnb-compact card body. Replaces .fd-hotel-row,
+         .fd-rt-row, .fd-slots, .fd-up-wrap with denser single-row rows.
+         Old classes still exist in CSS but are no longer rendered. */
+      .fd-name-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; margin-bottom: 4px;
+      }
+      .fd-hotel-name {
+        flex: 1 1 auto; min-width: 0;
+        font-size: 0.92rem; font-weight: 600; color: var(--text-base);
+        margin: 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        letter-spacing: -0.005em;
+      }
+      @media (min-width: 1024px) { .fd-hotel-name { font-size: 1rem; } }
+      /* Inline score chip — uses HotelScoreBadge variant="compact" which
+         renders as a ~30px horizontal pill. Scaled down slightly so it
+         reads as a corner accent next to the title. */
+      .fd-score-inline {
+        flex: 0 0 auto;
+        transform: scale(0.78);
+        transform-origin: right center;
+      }
+      @media (min-width: 1024px) { .fd-score-inline { transform: scale(0.86); } }
+      @media (min-width: 1280px) { .fd-score-inline { transform: scale(0.92); } }
+
+      /* Meta line — stars · room · capacity · units left, all inline */
+      .fd-meta-line {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 5px; margin: 0 0 10px;
+        font-size: 0.74rem; line-height: 1.2;
+      }
+      .fd-meta-line .fd-stars {
+        color: var(--accent, #C9A66B); font-size: 0.7rem; letter-spacing: 0.04em;
+      }
+      .fd-meta-sep { color: var(--text-muted); opacity: 0.6; }
+      .fd-meta-line .fd-room-type {
+        color: var(--accent, #C9A66B); font-weight: 700; font-size: 0.72rem;
+      }
+      .fd-meta-line .fd-room-cap {
+        color: var(--text-muted); font-size: 0.72rem;
+      }
+      /* Units-left as a tiny pill — green when plenty, amber when ≤2 */
+      .fd-slots-pill {
+        display: inline-flex; align-items: center;
+        padding: 2px 8px; border-radius: 999px;
+        font-size: 0.66rem; font-weight: 600;
+        background: color-mix(in srgb, var(--cozy-sage, #9DAD8F) 22%, var(--bg-card));
+        color: var(--cozy-warm-dark, #1F1A0F);
+        border: 1px solid color-mix(in srgb, var(--cozy-sage, #9DAD8F) 40%, transparent);
+      }
+      .fd-slots-pill.urgent {
+        background: color-mix(in srgb, #d49583 22%, var(--bg-card));
+        border-color: color-mix(in srgb, #d49583 50%, transparent);
+        color: #8d4f3f;
+      }
+      .fd-slots-pill.soldout {
+        background: var(--accent-soft); color: var(--text-muted);
+        border-color: var(--border-soft);
+      }
+
+      /* Upgrade row — slim chips, no boxed wrapper. */
+      .fd-up-row {
+        display: flex; gap: 6px; overflow-x: auto;
+        scrollbar-width: none; margin: 0 0 10px;
+        padding: 2px 0;
+      }
+      .fd-up-row::-webkit-scrollbar { display: none; }
+
+      /* Price + CTA — v159.4 horizontal, no divider, super tight. */
       .fd-price-row {
         display: flex; align-items: flex-end; justify-content: space-between;
-        padding-top: 14px;
-        border-top: 1px solid var(--border-soft);
+        gap: 10px;
+      }
+      .fd-price-block {
+        flex: 1 1 auto; min-width: 0;
+        display: flex; flex-direction: column;
+      }
+      .fd-price-line {
+        display: flex; align-items: baseline; gap: 4px;
+        flex-wrap: wrap;
       }
       .fd-price-strike {
         color: var(--text-muted); font-size: 0.7rem;
-        text-decoration: line-through; margin: 0 0 1px;
+        text-decoration: line-through;
       }
       .fd-price-now {
-        color: var(--text-base); font-size: 1.4rem; font-weight: 800; line-height: 1;
-        margin: 0;
+        color: var(--text-base); font-size: 1.15rem; font-weight: 800; line-height: 1;
+        letter-spacing: -0.01em;
       }
-      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; margin-left: 4px; }
+      @media (min-width: 1024px) { .fd-price-now { font-size: 1.3rem; } }
+      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
       .fd-price-save {
-        margin: 4px 0 0; color: rgba(46,204,113,0.85);
-        font-size: 0.6rem; font-weight: 600;
+        margin: 2px 0 0; color: var(--cozy-sage, #5d7a52);
+        font-size: 0.6rem; font-weight: 700;
       }
       .fd-cta {
-        padding: 10px 18px;
+        flex: 0 0 auto;
+        padding: 9px 16px;
         background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
-        color: #0a0814; font-size: 0.78rem; font-weight: 800;
-        border: none; border-radius: 12px;
+        color: #0a0814; font-size: 0.74rem; font-weight: 800;
+        border: none; border-radius: 11px;
         cursor: pointer;
-        box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+        box-shadow: 0 6px 16px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
         transition: all 0.2s ease;
         letter-spacing: 0.02em;
+        white-space: nowrap;
       }
+      @media (min-width: 1024px) { .fd-cta { padding: 10px 18px; font-size: 0.78rem; } }
       .fd-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
       .fd-cta.sold {
         background: var(--accent-soft); color: var(--text-muted);
