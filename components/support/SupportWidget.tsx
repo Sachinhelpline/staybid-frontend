@@ -84,8 +84,35 @@ export default function SupportWidget() {
   // Track previous unread to detect TRANSITIONS (0→N) and avoid spamming
   // notifications on every refresh.
   const prevUnreadRef = useRef<number>(-1);
+  // Tracks whether we've already attempted to claim the anon chats for
+  // this signed-in session — once claimed, this widget doesn't retry.
+  const claimedRef = useRef<boolean>(false);
 
   if (shouldHide(pathname)) return null;
+
+  // Anon chats → user chats migration. Fires once when user signs in
+  // AND the device has an anonymous_id from a prior anonymous session.
+  useEffect(() => {
+    if (!user || !token || claimedRef.current) return;
+    if (typeof window === "undefined") return;
+    const anonId = localStorage.getItem("sb_support_anon_id");
+    if (!anonId) return;
+    claimedRef.current = true;
+    fetch("/api/support/claim-anon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ anonymousId: anonId }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && j.claimed > 0 && open) {
+          // Refresh the list view so the user immediately sees their
+          // claimed chats.
+          fetchConversations();
+        }
+      })
+      .catch(() => {});
+  }, [user, token, open]);
 
   // Lazy-load conversation list when widget opens
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
   patchConversation,
 } from "@/lib/support/repo";
 import { isAIEnabled } from "@/lib/support/ai-agent";
+import { t } from "@/lib/support/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +69,8 @@ export async function POST(req: NextRequest) {
   });
 
   // Seed a welcome system message so the chat doesn't open empty.
-  const welcomeBody = isAIEnabled()
-    ? "👋 Aap StayBid Support se baat kar rahe hain. Booking, bid, payment — kuch bhi pucho. Agar human team chahiye, neeche \"Talk to human\" button hai."
-    : "👋 Aap StayBid Support se baat kar rahe hain. Apna sawaal likhein — team kuch hi minutes mein reply karegi.";
+  const strings = t(body?.metadata?.locale || null);
+  const welcomeBody = isAIEnabled() ? strings.welcomeAI : strings.welcomeQueue;
 
   await insertMessage({
     conversationId: conv.id,

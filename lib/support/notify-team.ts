@@ -80,6 +80,120 @@ export async function notifyTeamOfEscalation(opts: {
       // fire-and-forget — never block escalation flow on email failure
     }
   }
+
+  // Slack + Telegram run in parallel with email so a slow / failing channel
+  // doesn't delay the others. All graceful-degrade on missing env vars.
+  void Promise.all([
+    notifySlack(opts, reasonLabel, customerLabel, adminUrl).catch(() => {}),
+    notifyTelegram(opts, reasonLabel, customerLabel, adminUrl).catch(() => {}),
+  ]);
+}
+
+async function notifySlack(
+  opts: {
+    conversation: SupportConversation;
+    reason: SupportEscalationReason;
+    lastUserMessage: string;
+    customerName?: string | null;
+    customerPhone?: string | null;
+  },
+  reasonLabel: string,
+  customerLabel: string,
+  adminUrl: string
+): Promise<void> {
+  const webhookUrl = (process.env.SUPPORT_SLACK_WEBHOOK_URL || "").trim();
+  if (!webhookUrl) return;
+
+  const blocks = [
+    {
+      type: "header",
+      text: { type: "plain_text", text: "🎧 New support escalation" },
+    },
+    {
+      type: "section",
+      fields: [
+        { type: "mrkdwn", text: `*Customer:*\n${customerLabel.slice(0, 64)}` },
+        { type: "mrkdwn", text: `*Reason:*\n${reasonLabel}` },
+        {
+          type: "mrkdwn",
+          text: `*Phone:*\n${opts.customerPhone || "—"}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Subject:*\n${(opts.conversation.subject || "(no subject)").slice(0, 64)}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `> ${opts.lastUserMessage.slice(0, 500).replace(/\n+/g, " ")}`,
+      },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Open Support Inbox" },
+          url: adminUrl,
+          style: "primary",
+        },
+      ],
+    },
+  ];
+
+  await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: `New escalation: ${customerLabel}`, blocks }),
+  });
+}
+
+async function notifyTelegram(
+  opts: {
+    conversation: SupportConversation;
+    reason: SupportEscalationReason;
+    lastUserMessage: string;
+    customerName?: string | null;
+    customerPhone?: string | null;
+  },
+  reasonLabel: string,
+  customerLabel: string,
+  adminUrl: string
+): Promise<void> {
+  const botToken = (process.env.SUPPORT_TELEGRAM_BOT_TOKEN || "").trim();
+  const chatId = (process.env.SUPPORT_TELEGRAM_CHAT_ID || "").trim();
+  if (!botToken || !chatId) return;
+
+  const phoneLine = opts.customerPhone ? `\n📱 ${escapeTelegramMd(opts.customerPhone)}` : "";
+  const subjectLine = opts.conversation.subject
+    ? `\n💬 ${escapeTelegramMd(opts.conversation.subject)}`
+    : "";
+
+  const text =
+    `🎧 *New support escalation*\n\n` +
+    `*Customer:* ${escapeTelegramMd(customerLabel)}${phoneLine}${subjectLine}\n` +
+    `*Reason:* ${escapeTelegramMd(reasonLabel)}\n\n` +
+    `_${escapeTelegramMd(opts.lastUserMessage.slice(0, 400))}_\n\n` +
+    `[Open Inbox →](${adminUrl})`;
+
+  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "MarkdownV2",
+      disable_web_page_preview: true,
+    }),
+  });
+}
+
+function escapeTelegramMd(s: string): string {
+  // Telegram MarkdownV2 reserved chars need backslash-escaping.
+  return s.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, "\\$1");
 }
 
 const REASON_LABEL: Record<SupportEscalationReason, string> = {

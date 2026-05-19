@@ -13,6 +13,7 @@ import {
   shouldShortCircuitEscalate,
 } from "@/lib/support/ai-agent";
 import { notifyTeamOfEscalation } from "@/lib/support/notify-team";
+import { t } from "@/lib/support/i18n";
 import type {
   SupportConversation,
   SupportEscalationReason,
@@ -152,6 +153,8 @@ async function runAIPath(
   userId: string | null,
   senderName: string | null
 ): Promise<{ message: any; conversationPatch: Partial<SupportConversation> }> {
+  const strings = t(conv.metadata?.locale || null);
+
   // Short-circuit: explicit "human agent" keyword OR refund/legal intent
   const shortCircuit = shouldShortCircuitEscalate(userText);
   if (shortCircuit.escalate) {
@@ -162,8 +165,8 @@ async function runAIPath(
       senderName: "StayBid",
       body:
         shortCircuit.reason === "specific_intent"
-          ? "Yeh ek financial / specific request hai — team aapse turant baat karegi. 🤝"
-          : "Bilkul — human team se connect kar rahe hain. Kuch hi minutes mein wapas message aayega. 🤝",
+          ? strings.shortCircuitFinancial
+          : strings.shortCircuitUser,
     });
     return {
       message: aiAck,
@@ -186,7 +189,7 @@ async function runAIPath(
       sender: "system",
       senderId: null,
       senderName: "StayBid",
-      body: "Aapka message support team tak pahunch gaya hai. Hum jaldi reply karenge — usually 5-10 minutes.",
+      body: strings.aiDisabledAck,
     });
     return {
       message: ack,
@@ -230,7 +233,7 @@ async function runAIPath(
       sender: "system",
       senderId: null,
       senderName: "StayBid",
-      body: "Ek minute — team aapse direct baat karegi.",
+      body: strings.aiFailureAck,
     });
     return {
       message: ack,

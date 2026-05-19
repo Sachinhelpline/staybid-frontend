@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb-server";
+import { t } from "@/lib/support/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ async function run(): Promise<NextResponse> {
 
   let resolvedCount = 0;
   for (const conv of all) {
-    const ok = await resolveOne(conv.id, conv.status);
+    const ok = await resolveOne(conv.id, conv.status, conv.metadata);
     if (ok) resolvedCount += 1;
   }
 
@@ -95,11 +96,11 @@ async function run(): Promise<NextResponse> {
 async function fetchCandidates(
   status: "ai_active" | "escalated" | "agent_active",
   cutoffIso: string
-): Promise<Array<{ id: string; status: string }>> {
+): Promise<Array<{ id: string; status: string; metadata: any }>> {
   const params = [
     `status=eq.${status}`,
     `last_message_at=lt.${encodeURIComponent(cutoffIso)}`,
-    "select=id,status",
+    "select=id,status,metadata",
     "limit=200",
   ];
   const r = await fetch(
@@ -110,8 +111,13 @@ async function fetchCandidates(
   return r.json();
 }
 
-async function resolveOne(id: string, fromStatus: string): Promise<boolean> {
-  // 1. Insert auto-close system message
+async function resolveOne(
+  id: string,
+  fromStatus: string,
+  metadata?: any
+): Promise<boolean> {
+  // 1. Insert auto-close system message (localized from conv metadata.locale)
+  const strings = t(metadata?.locale || null);
   await fetch(`${SB_URL}/rest/v1/support_messages`, {
     method: "POST",
     headers: SB_H,
@@ -119,8 +125,7 @@ async function resolveOne(id: string, fromStatus: string): Promise<boolean> {
       conversation_id: id,
       sender: "system",
       sender_name: "StayBid",
-      body:
-        "Yeh chat 48h se idle thi — automatically resolve kar diya hai. Agar koi naya issue ho, naya chat shuru kar dijiye. ✨",
+      body: strings.autoResolved,
     }),
   }).catch(() => {});
 

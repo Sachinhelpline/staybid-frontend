@@ -7,6 +7,7 @@ import {
   patchConversation,
 } from "@/lib/support/repo";
 import { notifyTeamOfEscalation } from "@/lib/support/notify-team";
+import { t } from "@/lib/support/i18n";
 import type {
   SupportConversation,
   SupportEscalationReason,
@@ -44,12 +45,13 @@ export async function POST(
 
   const reason = (body?.reason || "user_request") as SupportEscalationReason;
 
+  const strings = t(conv.metadata?.locale || null);
   await insertMessage({
     conversationId: conv.id,
     sender: "system",
     senderId: null,
     senderName: "StayBid",
-    body: "Human team se connect kar rahe hain. Kuch hi minutes mein wapas message aayega. 🤝",
+    body: strings.escalationAck,
   });
 
   const patch: Partial<SupportConversation> = {

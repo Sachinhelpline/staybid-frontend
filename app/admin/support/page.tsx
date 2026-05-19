@@ -8,6 +8,7 @@
 // matching the existing /admin/messages and /admin/holds pattern.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { CANNED_REPLIES } from "@/lib/support/knowledge";
 import { notify } from "@/lib/notifications";
 
@@ -172,6 +173,12 @@ export default function AdminSupportPage() {
               {label}
             </button>
           ))}
+          <Link
+            href="/admin/support/metrics"
+            style={{ ...styles.viewTab, textDecoration: "none", marginLeft: 8 }}
+          >
+            📊 Metrics
+          </Link>
         </div>
       </header>
 
