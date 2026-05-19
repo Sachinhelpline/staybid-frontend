@@ -3859,15 +3859,18 @@ body.is-reel-page {
   padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Sticky top — sits just below the navbar */
+/* Sticky top — sits just below the hero. v159.5: solid background
+   (was 92% with backdrop-blur) — the blur leaked scrolling content
+   through visually, causing the hero text to ghost over the sticky
+   chrome. Solid bg + soft drop-shadow gives a clean lift without the
+   ghost. The hero now lives ABOVE this sticky and scrolls away first. */
 .hxr-sticky {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: color-mix(in srgb, var(--bg-page) 92%, transparent);
-  backdrop-filter: saturate(160%) blur(12px);
-  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  background: var(--bg-page);
   border-bottom: 1px solid var(--border-soft);
+  box-shadow: 0 6px 14px -10px rgba(31, 26, 15, 0.18);
 }
 /* v159.2 — Sticky inner shrunk ~60% on mobile. Total height now ~125px
    (was ~330px including hero). The hero moved into the body. */
@@ -3879,38 +3882,56 @@ body.is-reel-page {
 @media (min-width: 640px) { .hxr-sticky-inner { padding: 8px 22px 6px; } }
 @media (min-width: 1024px) { .hxr-sticky-inner { padding: 10px 32px 8px; } }
 
-/* v159.2 — Slim hero. Lives inside body, scrolls away with the rails. */
-.hxr-hero-slim { margin: 4px 0 12px; }
-@media (min-width: 1024px) { .hxr-hero-slim { margin: 8px 0 18px; } }
+/* v159.5 — Single-line hero. Lives ABOVE the sticky so it scrolls
+   away cleanly on first scroll. Eyebrow · italic title · count, all
+   on one row, premium Cormorant emphasis in the middle. Total height
+   ~22px on mobile (was ~50px stacked) — exactly half. */
+.hxr-hero-slim {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 8px 16px 6px;
+}
+@media (min-width: 640px)  { .hxr-hero-slim { padding: 12px 24px 8px; } }
+@media (min-width: 1024px) { .hxr-hero-slim { padding: 16px 32px 10px; } }
+.hxr-hero-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  line-height: 1.25;
+}
 .hxr-hero-eyebrow {
-  margin: 0 0 2px;
-  font-size: 0.58rem;
+  font-size: 0.5rem;
   font-weight: 700;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--accent);
 }
 .hxr-hero-title {
-  margin: 0;
   font-family: var(--font-display, "Cormorant Garamond"), serif;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  font-size: clamp(1.2rem, 3.4vw, 1.85rem);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 0.95rem;
   color: var(--text-base);
-  line-height: 1.15;
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.4em;
+  letter-spacing: -0.005em;
 }
 .hxr-hero-count {
   font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--text-muted);
   letter-spacing: 0.005em;
 }
-@media (min-width: 1024px) { .hxr-hero-count { font-size: 0.82rem; } }
+.hxr-hero-dot { color: var(--text-muted); opacity: 0.5; }
+@media (min-width: 1024px) {
+  .hxr-hero-eyebrow { font-size: 0.6rem; }
+  .hxr-hero-title   { font-size: 1.2rem; }
+  .hxr-hero-count   { font-size: 0.85rem; }
+}
+@media (min-width: 1280px) {
+  .hxr-hero-title { font-size: 1.4rem; }
+}
 
 /* Search pill — slim. v159.2: height ~40px mobile, ~46px desktop. */
 .hxr-search {

@@ -217,8 +217,42 @@ function FlashDealsContent() {
       {/* Animated mesh background */}
       <div className="fd-bg-mesh" aria-hidden />
 
-      {/* v159.3 — Slim sticky chrome. City pills + refine row only.
-          Hero (title + sub + stats) moved into body below. */}
+      {/* v159.5 — Hero ABOVE sticky. Single-line: eyebrow · italic title ·
+          count. Scrolls away cleanly on first scroll. Half the height of
+          the v159.3 stacked block (~22px vs ~50px on mobile). */}
+      <header className="fd-hero-slim sb-fade-in">
+        <p className="fd-hero-line">
+          <span className="fd-dot-live" aria-hidden="true" />
+          <span className="fd-hero-eyebrow">Live · Same-Day · AI</span>
+          <span className="fd-hero-dot" aria-hidden="true">·</span>
+          <span className="fd-hero-title">
+            Flash <span className="fd-title-gold">Deals</span>
+          </span>
+          <span className="fd-hero-dot" aria-hidden="true">·</span>
+          <span className="fd-hero-count">
+            {loading
+              ? "loading…"
+              : `${stats.dealsLive} deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+          </span>
+        </p>
+        {/* Mini stat strip — keeps the headline numbers above-fold but as
+            a tiny secondary row, not a full hero block. */}
+        <div className="fd-hero-stats">
+          <span className="fd-stat-dot" />
+          <span className="fd-stat"><CountUp value={stats.dealsLive} /> live</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.hotelsHot} /> hotels</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.avgDisc} />% off</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat fd-stat-gold">
+            ₹<CountUp value={stats.totalSaving} /> saved
+          </span>
+        </div>
+      </header>
+
+      {/* v159.5 — Slim sticky chrome: city pills + refine. Solid background
+          (no backdrop-blur leak). Hero above scrolls away first. */}
       <div className="fd-sticky">
         <div className="fd-sticky-inner">
           <div className="fd-cities" data-autonext-self="fd-results">
@@ -258,39 +292,6 @@ function FlashDealsContent() {
           </div>
         </div>
       </div>
-
-      {/* v159.3 — Slim hero inside body. Scrolls away with cards. */}
-      <header className="fd-hero-slim sb-fade-in">
-        <div className="fd-hero-eyebrow">
-          <span className="fd-dot-live" />
-          <span>Live · Same-Day · AI Curated</span>
-        </div>
-        <h1 className="fd-hero-title">
-          Flash <span className="fd-title-gold">Deals</span>
-          <span className="fd-hero-count">
-            {loading
-              ? "· loading…"
-              : `· ${stats.dealsLive} deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
-          </span>
-        </h1>
-        <p className="fd-hero-sub">
-          One headline price per hotel · upgrade rooms when free · midnight reset.
-        </p>
-        <div className="fd-hero-stats">
-          <span className="fd-stat">
-            <span className="fd-stat-dot" />
-            <CountUp value={stats.dealsLive} /> live
-          </span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat"><CountUp value={stats.hotelsHot} /> hotels</span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat"><CountUp value={stats.avgDisc} />% avg off</span>
-          <span className="fd-stat-sep">·</span>
-          <span className="fd-stat fd-stat-gold">
-            ₹<CountUp value={stats.totalSaving} /> saved today
-          </span>
-        </div>
-      </header>
 
       {/* ── Deals grid — v122.3 auto-scroll target ──────────────────── */}
       <div className="fd-grid-wrap" data-autonext="fd-results">
@@ -712,15 +713,14 @@ function FdStyles() {
         100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
       }
 
-      /* v159.3 — Slim sticky chrome: city pills + refine row only.
-         Hero moved into body. Sticky height ~96px mobile (was hero+cats
-         combined ~360px). */
+      /* v159.5 — Slim sticky chrome: city pills + refine. Solid bg
+         (was 92% w/ backdrop-blur — scrolling content ghosted through).
+         Hero sits ABOVE this sticky and scrolls away first. */
       .fd-sticky {
         position: sticky; top: 0; z-index: 30;
-        background: color-mix(in srgb, var(--cozy-cream-100, #FAF5EB) 92%, transparent);
-        backdrop-filter: saturate(160%) blur(12px);
-        -webkit-backdrop-filter: saturate(160%) blur(12px);
+        background: var(--cozy-cream-100, #FAF5EB);
         border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
+        box-shadow: 0 6px 14px -10px rgba(31, 26, 15, 0.18);
       }
       .fd-sticky-inner {
         max-width: 1480px; margin: 0 auto;
@@ -740,87 +740,84 @@ function FdStyles() {
         100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
       }
 
-      /* v159.3 — Slim hero inside body. Scrolls away with content. */
+      /* v159.5 — Single-line hero ABOVE the sticky. Scrolls away first.
+         Total height ~22px on mobile (vs ~140px stacked block in v159.3).
+         Tiny stat strip lives just under the title as a secondary row. */
       .fd-hero-slim {
         position: relative; z-index: 1;
         max-width: 1480px; margin: 0 auto;
-        padding: 12px 16px 10px;
+        padding: 8px 16px 6px;
       }
-      @media (min-width: 640px)  { .fd-hero-slim { padding: 16px 22px 12px; } }
-      @media (min-width: 1024px) { .fd-hero-slim { padding: 22px 32px 16px; } }
-      /* v159.4 — block-level eyebrow + title so they don't share a row
-         (v159.3 inline-flex bug → "LIVE · SAME-DAY · AI CURATED" overlapping
-         "Flash Deals · 32 deals" inline on the same baseline). */
+      @media (min-width: 640px)  { .fd-hero-slim { padding: 12px 22px 8px; } }
+      @media (min-width: 1024px) { .fd-hero-slim { padding: 16px 32px 10px; } }
+      .fd-hero-line {
+        display: flex; align-items: baseline; flex-wrap: wrap;
+        gap: 6px; margin: 0;
+        line-height: 1.25;
+      }
       .fd-hero-eyebrow {
-        display: flex; align-items: center; gap: 8px;
-        width: fit-content;
-        color: var(--cozy-champagne, #C9A66B);
-        font-size: 0.58rem; font-weight: 700;
-        letter-spacing: 0.20em; text-transform: uppercase;
-        margin: 0 0 4px;
-      }
-      .fd-hero-eyebrow > span:not(.fd-dot-live) {
+        font-size: 0.5rem; font-weight: 700;
+        letter-spacing: 0.22em; text-transform: uppercase;
         background: linear-gradient(90deg, #D9BE82, #C9A66B);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
       }
       .fd-hero-title {
         font-family: 'Cormorant Garamond', 'Syne', serif;
-        font-weight: 400;
-        font-size: clamp(1.2rem, 3.4vw, 1.95rem);
+        font-weight: 500;
+        font-style: italic;
+        font-size: 0.95rem;
         line-height: 1.15;
-        margin: 0 0 4px;
         color: var(--cozy-warm-dark, #1F1A0F);
-        display: flex; align-items: baseline; flex-wrap: wrap;
-        gap: 0.35em;
+        letter-spacing: -0.005em;
       }
       .fd-hero-count {
         font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
-        font-size: 0.74rem; font-weight: 500;
+        font-size: 0.7rem; font-weight: 500;
         color: var(--cozy-cocoa-soft, #6E5430);
         letter-spacing: 0.005em;
       }
-      @media (min-width: 1024px) { .fd-hero-count { font-size: 0.84rem; } }
+      .fd-hero-dot { color: var(--cozy-cocoa-soft, #6E5430); opacity: 0.5; }
       .fd-title-gold {
         background: linear-gradient(90deg, #D9BE82, #C9A66B, #9C7E48, #C9A66B, #D9BE82);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: fdShine 4s linear infinite;
-        font-style: italic; font-weight: 600;
       }
       @keyframes fdShine {
         0%   { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
       }
-      .fd-hero-sub {
-        color: var(--cozy-cocoa-soft, #6E5430);
-        font-size: 0.76rem;
-        max-width: 540px;
-        margin: 0 0 8px;
-        line-height: 1.4;
+      @media (min-width: 1024px) {
+        .fd-hero-eyebrow { font-size: 0.6rem; }
+        .fd-hero-title   { font-size: 1.2rem; }
+        .fd-hero-count   { font-size: 0.82rem; }
       }
-      @media (min-width: 1024px) { .fd-hero-sub { font-size: 0.82rem; } }
-      /* Inline stat strip — dot-separated, no chunky chips. v159.3 premium. */
+      @media (min-width: 1280px) {
+        .fd-hero-title { font-size: 1.4rem; }
+      }
+      /* Stat strip — secondary tiny row under the title line. */
       .fd-hero-stats {
         display: inline-flex; flex-wrap: wrap; align-items: center;
-        gap: 6px; font-size: 0.7rem; color: var(--cozy-cocoa-soft, #6E5430);
+        gap: 5px; margin-top: 4px;
+        font-size: 0.66rem; color: var(--cozy-cocoa-soft, #6E5430);
       }
       .fd-stat { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 600; }
       .fd-stat-gold {
         color: var(--cozy-cocoa, #4A3820);
         background: linear-gradient(135deg, rgba(201,166,107,0.18), rgba(201,166,107,0.06));
-        padding: 2px 7px; border-radius: 999px;
+        padding: 1px 7px; border-radius: 999px;
         border: 1px solid rgba(201,166,107,0.30);
       }
-      .fd-stat-sep { color: var(--cozy-taupe, #C8B891); }
+      .fd-stat-sep { color: var(--cozy-taupe, #C8B891); opacity: 0.7; }
       .fd-stat-dot {
         width: 6px; height: 6px; border-radius: 50%;
         background: var(--cozy-sage, #9DAD8F);
         box-shadow: 0 0 6px rgba(157, 173, 143, 0.6);
         animation: fdPulse 1.8s infinite;
       }
-      @media (min-width: 1024px) { .fd-hero-stats { font-size: 0.78rem; } }
+      @media (min-width: 1024px) { .fd-hero-stats { font-size: 0.74rem; } }
 
       /* v159.3 — Category pills Airbnb-true. No boxed bg on inactive,
          active gets a thin champagne underline. Mirrors /hotels v159.2. */

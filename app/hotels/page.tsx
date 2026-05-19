@@ -391,10 +391,29 @@ function HotelList() {
   // ───────────────────────── Render ─────────────────────────
   return (
     <div className="hxr-page lux-bg">
-      {/* Sticky header — slim: search + categories + refine only. v159.2:
-          hero text moved into the body (below sticky) so the persistent
-          chrome shrinks to ~1/4 its prior footprint without sacrificing
-          density or premium feel. */}
+      {/* v159.5 — Hero ABOVE sticky. Scrolls away cleanly on first scroll
+          so it doesn't bleed through the sticky chrome on scroll-up.
+          Single-line layout (eyebrow · italic title · count) is half the
+          height of the v159.2 stacked block. */}
+      <header className="hxr-hero-slim sb-fade-in">
+        <p className="hxr-hero-line">
+          <span className="hxr-hero-eyebrow">Explore</span>
+          <span className="hxr-hero-dot" aria-hidden="true">·</span>
+          <span className="hxr-hero-title">Find Your Perfect Stay</span>
+          <span className="hxr-hero-dot" aria-hidden="true">·</span>
+          <span className="hxr-hero-count">
+            {loading
+              ? "loading…"
+              : inSearchMode
+                ? `${displayHotels.length} match`
+                : `${total} stay${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+          </span>
+        </p>
+      </header>
+
+      {/* Sticky header — slim: search + categories + refine only. v159.5:
+          background is solid (no backdrop-blur leak) and sits below the
+          hero so the scroll story is hero-away → sticky-stuck. */}
       <div className="hxr-sticky">
         <div className="hxr-sticky-inner">
           {/* Search pill */}
@@ -488,22 +507,6 @@ function HotelList() {
 
       {/* Body */}
       <div className="hxr-body" data-autonext="hotels-results">
-        {/* v159.2 — Slim hero. Lives inside the body so it scrolls away
-            with the rails. Sticky chrome above is purely functional. */}
-        <header className="hxr-hero-slim sb-fade-in">
-          <p className="hxr-hero-eyebrow">Explore</p>
-          <h1 className="hxr-hero-title">
-            Find Your Perfect Stay
-            <span className="hxr-hero-count">
-              {loading
-                ? "Searching…"
-                : inSearchMode
-                  ? `· ${displayHotels.length} match`
-                  : `· ${total} stay${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
-            </span>
-          </h1>
-        </header>
-
         {/* Loading skeleton */}
         {loading && (
           <div className="hxr-skel-rail" aria-hidden="true">
@@ -792,6 +795,15 @@ export default function HotelsPage() {
     <Suspense
       fallback={
         <div className="hxr-page lux-bg">
+          <header className="hxr-hero-slim">
+            <p className="hxr-hero-line">
+              <span className="hxr-hero-eyebrow">Explore</span>
+              <span className="hxr-hero-dot" aria-hidden="true">·</span>
+              <span className="hxr-hero-title">Find Your Perfect Stay</span>
+              <span className="hxr-hero-dot" aria-hidden="true">·</span>
+              <span className="hxr-hero-count">loading…</span>
+            </p>
+          </header>
           <div className="hxr-sticky">
             <div className="hxr-sticky-inner">
               <div className="hxr-search">
@@ -803,10 +815,6 @@ export default function HotelsPage() {
             </div>
           </div>
           <div className="hxr-body">
-            <header className="hxr-hero-slim">
-              <p className="hxr-hero-eyebrow">Explore</p>
-              <h1 className="hxr-hero-title">Find Your Perfect Stay <span className="hxr-hero-count">· Loading…</span></h1>
-            </header>
             <div className="hxr-skel-rail" aria-hidden="true">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="hxr-skel-card">
