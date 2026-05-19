@@ -656,44 +656,46 @@ function HotelList() {
           </div>
         )}
 
-        {/* v159.8 — Pending bookings card (Continue your booking). Surfaces
-            user's most recent active bids above all rails. Only renders
-            for authenticated users with active bids. */}
+        {/* v159.10 — Pending bookings, Airbnb-style. Single big card per
+            row, text on left + thumbnail with slight peek-overflow on
+            right. Multi-card variant becomes a horizontal scroller. */}
         {!loading && !apiError && pendingBids.length > 0 && (
           <div className="hxr-pending">
-            <div className="hxr-pending-head">
-              <h2 className="hxr-pending-title">Continue your booking</h2>
-              <Link href="/my-bids" className="hxr-pending-link">View all →</Link>
-            </div>
-            <div className="hxr-pending-cards">
+            <div className="hxr-pending-scroller">
               {pendingBids.map((bid: any) => {
                 const hotelName = bid?.hotel?.name || "Your hotel";
+                const hotelCity = bid?.hotel?.city || "";
                 const hotelImg  = bid?.hotel?.images?.[0] || "";
-                const statusLabel = bid.status === "ACCEPTED" ? "✓ Accepted · complete payment"
-                  : bid.status === "COUNTER" ? "Hotel countered · review offer"
-                  : "Waiting for hotel response";
+                const statusLine = bid.status === "ACCEPTED"
+                  ? "Complete your payment"
+                  : bid.status === "COUNTER"
+                    ? "Hotel countered · review offer"
+                    : "Continue your booking";
+                const subtitle = (bid?.request?.checkIn && bid?.request?.checkOut)
+                  ? `${fmtShort(bid.request.checkIn)} – ${fmtShort(bid.request.checkOut)}${bid?.request?.guests ? ` · ${bid.request.guests} guest${bid.request.guests !== 1 ? "s" : ""}` : ""}`
+                  : (hotelCity ? `Stay in ${hotelCity}` : "");
                 return (
                   <Link
                     key={bid.id}
                     href={`/my-bids#${bid.id}`}
                     className="hxr-pending-card"
                   >
-                    {hotelImg ? (
-                      <img src={sbImage(hotelImg, SB_IMG_CARD)} alt={hotelName} className="hxr-pending-img" loading="lazy" />
-                    ) : (
-                      <div className="hxr-pending-img hxr-pending-img-fallback">🏨</div>
-                    )}
-                    <div className="hxr-pending-body">
-                      <p className="hxr-pending-status">{statusLabel}</p>
-                      <p className="hxr-pending-name">{hotelName}</p>
-                      {(bid?.request?.checkIn && bid?.request?.checkOut) && (
+                    <div className="hxr-pending-text">
+                      <h3 className="hxr-pending-title">{statusLine} for {hotelName}</h3>
+                      {subtitle && (
                         <p className="hxr-pending-meta">
-                          {fmtShort(bid.request.checkIn)} – {fmtShort(bid.request.checkOut)}
-                          {bid?.amount ? ` · ₹${Number(bid.amount).toLocaleString("en-IN")}` : ""}
+                          {subtitle}
+                          <span className="hxr-pending-arrow" aria-hidden="true"> ›</span>
                         </p>
                       )}
                     </div>
-                    <span className="hxr-pending-arrow" aria-hidden="true">›</span>
+                    <div className="hxr-pending-imgwrap" aria-hidden="true">
+                      {hotelImg ? (
+                        <img src={sbImage(hotelImg, SB_IMG_CARD)} alt="" className="hxr-pending-img" loading="lazy" />
+                      ) : (
+                        <div className="hxr-pending-img hxr-pending-img-fallback">🏨</div>
+                      )}
+                    </div>
                   </Link>
                 );
               })}
@@ -788,6 +790,58 @@ function HotelList() {
                     <button type="button" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
                   )}
                 </div>
+                {/* v159.10 — Live suggestions as the user types. Filters
+                    the already-loaded hotels list by name/city/area; no
+                    extra API hit. Tap a suggestion → navigate straight
+                    to the hotel detail page (with current dates/guests). */}
+                {search.trim().length >= 1 && (() => {
+                  const q = search.trim().toLowerCase();
+                  const matches = hotels
+                    .filter((h: any) => {
+                      const name = String(h?.name || "").toLowerCase();
+                      const hcity = String(h?.city || "").toLowerCase();
+                      const area = getHotelArea(h?.city, h?.lat, h?.lng) || "";
+                      return name.includes(q) || hcity.includes(q) || area.toLowerCase().includes(q);
+                    })
+                    .slice(0, 5);
+                  if (!matches.length) {
+                    return (
+                      <p className="hxr-sheet-empty">
+                        No hotels match “{search}”. Try a different name or city.
+                      </p>
+                    );
+                  }
+                  return (
+                    <ul className="hxr-sheet-suggest" role="list">
+                      {matches.map((h: any) => {
+                        const img = h.images?.[0];
+                        const area = getHotelArea(h.city, h.lat, h.lng);
+                        return (
+                          <li key={h.id} role="listitem">
+                            <Link
+                              href={`/hotels/${h.id}${searchUrlParams || ""}`}
+                              onClick={() => setSearchOpen(false)}
+                              className="hxr-sheet-suggest-row"
+                            >
+                              {img ? (
+                                <img src={sbImage(img, SB_IMG_CARD)} alt="" className="hxr-sheet-suggest-img" loading="lazy" />
+                              ) : (
+                                <span className="hxr-sheet-suggest-img hxr-sheet-suggest-img-fallback" aria-hidden="true">🏨</span>
+                              )}
+                              <span className="hxr-sheet-suggest-text">
+                                <span className="hxr-sheet-suggest-name">{h.name}</span>
+                                <span className="hxr-sheet-suggest-meta">
+                                  📍 {area ? `${area}, ` : ""}{h.city}
+                                </span>
+                              </span>
+                              <span className="hxr-sheet-suggest-arrow" aria-hidden="true">›</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  );
+                })()}
                 <div className="hxr-sheet-cities">
                   {CITY_PILLS.map((c) => {
                     const active = c.key === city;

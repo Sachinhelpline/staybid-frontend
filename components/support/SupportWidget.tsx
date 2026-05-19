@@ -129,6 +129,71 @@ export default function SupportWidget() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [unreadTotal, setUnreadTotal] = useState(0);
+
+  // v159.10 — Draggable FAB. User asked: the floating support button
+  // overlaps the Kids +/- stepper in the SearchSheet's Who section.
+  // Solution: let the user drag it anywhere on screen + persist position.
+  // Position is left/top in viewport px when set; null means default
+  // (right: 14, bottom: 96 from the .sb-support-fab CSS rule).
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number; moved: boolean }>(
+    { startX: 0, startY: 0, startLeft: 0, startTop: 0, moved: false }
+  );
+  const fabRef = useRef<HTMLButtonElement>(null);
+
+  // Hydrate stored position
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sb_support_fab_pos");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p?.x === "number" && typeof p?.y === "number") setFabPos(p);
+      }
+    } catch {}
+  }, []);
+
+  const onFabPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (open) return;
+    const el = e.currentTarget;
+    el.setPointerCapture(e.pointerId);
+    const rect = el.getBoundingClientRect();
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      moved: false,
+    };
+  };
+  const onFabPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    // Only treat as drag once user moves more than 6 px (so a still-tap
+    // still opens the chat panel as before).
+    if (!dragRef.current.moved && Math.abs(dx) + Math.abs(dy) < 6) return;
+    dragRef.current.moved = true;
+    const el = e.currentTarget;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const margin = 8;
+    let newLeft = dragRef.current.startLeft + dx;
+    let newTop = dragRef.current.startTop + dy;
+    newLeft = Math.max(margin, Math.min(window.innerWidth - w - margin, newLeft));
+    newTop = Math.max(margin, Math.min(window.innerHeight - h - margin, newTop));
+    setFabPos({ x: newLeft, y: newTop });
+  };
+  const onFabPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    if (dragRef.current.moved) {
+      // Drag end: persist position so it survives refreshes + page nav
+      try { localStorage.setItem("sb_support_fab_pos", JSON.stringify(fabPos)); } catch {}
+    } else {
+      // Pure tap → toggle the chat panel (default behaviour)
+      setOpen((p) => !p);
+    }
+  };
   // Track previous unread to detect TRANSITIONS (0→N) and avoid spamming
   // notifications on every refresh.
   const prevUnreadRef = useRef<number>(-1);
@@ -305,12 +370,29 @@ export default function SupportWidget() {
 
   return (
     <>
-      {/* FAB */}
+      {/* v159.10 — Draggable FAB. pointerdown captures, pointermove
+          updates position once threshold crossed, pointerup commits
+          (drag → persist) OR fires the open toggle (tap). */}
       <button
+        ref={fabRef}
         type="button"
-        aria-label="Open support chat"
-        onClick={() => setOpen((p) => !p)}
+        aria-label="Open support chat — drag to move"
         className="sb-support-fab"
+        onPointerDown={onFabPointerDown}
+        onPointerMove={onFabPointerMove}
+        onPointerUp={onFabPointerUp}
+        onPointerCancel={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        }}
+        style={fabPos ? {
+          right: "auto",
+          bottom: "auto",
+          left: `${fabPos.x}px`,
+          top: `${fabPos.y}px`,
+          touchAction: "none",
+        } : { touchAction: "none" }}
       >
         <span className="sb-support-fab-icon" aria-hidden>
           {open ? "✕" : "💬"}

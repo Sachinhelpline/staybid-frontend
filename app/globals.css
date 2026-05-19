@@ -3855,12 +3855,7 @@ body.is-reel-page {
    All colors via theme tokens so light ⇄ dark flip in v90 works.
    ───────────────────────────────────────────────────────────── */
 
-.hxr-page {
-  min-height: 100vh;
-  background: var(--bg-page);
-  /* leave room above the BottomDock so the last rail isn't clipped */
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-}
+/* .hxr-page rules live in the v159.10 block below (consolidated). */
 
 /* Sticky top — sits just below the hero. v159.6: bumped to bg-card
    (slight elevation vs bg-page) + crisp 1px champagne-tinted border +
@@ -3885,17 +3880,24 @@ body.is-reel-page {
 @media (min-width: 640px) { .hxr-sticky-inner { padding: 8px 22px 6px; } }
 @media (min-width: 1024px) { .hxr-sticky-inner { padding: 10px 32px 8px; } }
 
-/* v159.5 — Single-line hero. Lives ABOVE the sticky so it scrolls
-   away cleanly on first scroll. Eyebrow · italic title · count, all
-   on one row, premium Cormorant emphasis in the middle. Total height
-   ~22px on mobile (was ~50px stacked) — exactly half. */
+/* v159.10 — Hero hugs the navbar (was leaving ~80px of unexplained
+   cream gap before the EXPLORE text; cause was browser margin
+   collapse + the `.sb-fade-in` animation backwards-mode flicker).
+   Padding now 2/4 mobile, 4/6 desktop. Page has explicit
+   padding-top:0 so no wrapper-collapse offsets. */
+.hxr-page {
+  min-height: 100vh;
+  background: var(--bg-page);
+  padding-top: 0;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
 .hxr-hero-slim {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 8px 16px 6px;
+  padding: 2px 16px 4px;
 }
-@media (min-width: 640px)  { .hxr-hero-slim { padding: 12px 24px 8px; } }
-@media (min-width: 1024px) { .hxr-hero-slim { padding: 16px 32px 10px; } }
+@media (min-width: 640px)  { .hxr-hero-slim { padding: 4px 24px 6px; } }
+@media (min-width: 1024px) { .hxr-hero-slim { padding: 8px 32px 8px; } }
 .hxr-hero-line {
   display: flex;
   align-items: baseline;
@@ -4592,80 +4594,110 @@ body.is-reel-page {
   font-size: 0.9rem;
 }
 
-/* Pending bookings card — surfaces ACCEPTED/PENDING/COUNTER bids above
-   the rails. Single full-width Airbnb-style "Continue your booking". */
-.hxr-pending { margin-bottom: 22px; }
-.hxr-pending-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 10px; padding: 0 2px;
+/* v159.10 — Pending bookings (Airbnb "Continue your booking" pattern).
+   Single big card per row, multi-card becomes a peeked horizontal
+   scroller. Bold title on left + small subtitle + arrow, image with
+   ~80×80 px thumb on right with slight peek-overflow tilt. */
+.hxr-pending { margin: 6px 0 18px; }
+.hxr-pending-scroller {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin: 0 -16px;
+  padding: 4px 16px 12px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
-.hxr-pending-title {
-  margin: 0;
-  font-family: var(--font-display, "Cormorant Garamond"), serif;
-  font-weight: 500;
-  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
-  color: var(--text-base);
-}
-.hxr-pending-link {
-  font-size: 0.74rem; font-weight: 600;
-  color: var(--accent);
-  text-decoration: none;
-}
-.hxr-pending-cards {
-  display: flex; flex-direction: column; gap: 10px;
-}
-@media (min-width: 768px) { .hxr-pending-cards { flex-direction: row; flex-wrap: wrap; } }
+.hxr-pending-scroller::-webkit-scrollbar { display: none; }
+@media (min-width: 640px) { .hxr-pending-scroller { margin: 0 -24px; padding-left: 24px; padding-right: 24px; } }
+@media (min-width: 1024px) { .hxr-pending-scroller { margin: 0 -32px; padding-left: 32px; padding-right: 32px; } }
 .hxr-pending-card {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px;
+  flex: 0 0 auto;
+  width: clamp(280px, 86vw, 460px);
+  scroll-snap-align: start;
+  display: flex; align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
   background: var(--bg-card);
   border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  box-shadow: var(--shadow-soft);
+  border-radius: 18px;
+  box-shadow:
+    0 6px 18px -8px rgba(31, 26, 15, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-decoration: none;
   color: inherit;
-  transition: transform 0.18s ease, border-color 0.18s ease;
-  flex: 1 1 280px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   min-width: 0;
+}
+@media (min-width: 768px) {
+  .hxr-pending-card { width: clamp(360px, 60vw, 540px); padding: 18px 20px; }
 }
 .hxr-pending-card:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-soft));
+  box-shadow:
+    0 10px 24px -8px rgba(31, 26, 15, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-soft));
+}
+.hxr-pending-text {
+  flex: 1 1 auto; min-width: 0;
+}
+.hxr-pending-title {
+  margin: 0 0 4px;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: var(--text-base);
+  letter-spacing: -0.005em;
+  /* clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (min-width: 768px) { .hxr-pending-title { font-size: 1.15rem; } }
+.hxr-pending-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: inline-flex; align-items: center; gap: 2px;
+}
+.hxr-pending-arrow {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+/* Image right side — slight tilt for the Airbnb "peek" feel. */
+.hxr-pending-imgwrap {
+  position: relative;
+  flex: 0 0 auto;
+  width: 88px; height: 88px;
+}
+.hxr-pending-imgwrap::before {
+  content: "";
+  position: absolute;
+  inset: -3px -6px -6px 4px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  transform: rotate(4deg);
+  z-index: 0;
 }
 .hxr-pending-img {
-  flex: 0 0 auto;
-  width: 64px; height: 64px;
-  border-radius: 12px;
+  position: relative;
+  width: 88px; height: 88px;
+  border-radius: 14px;
   object-fit: cover;
   background: var(--accent-soft);
+  z-index: 1;
+  box-shadow: 0 4px 10px -4px rgba(31, 26, 15, 0.24);
 }
 .hxr-pending-img-fallback {
   display: grid; place-items: center;
-  font-size: 1.4rem; opacity: 0.5;
-}
-.hxr-pending-body { flex: 1 1 auto; min-width: 0; }
-.hxr-pending-status {
-  margin: 0 0 2px;
-  font-size: 0.6rem; font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-.hxr-pending-name {
-  margin: 0;
-  font-size: 0.9rem; font-weight: 600;
-  color: var(--text-base);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.hxr-pending-meta {
-  margin: 2px 0 0;
-  font-size: 0.72rem; color: var(--text-muted);
-}
-.hxr-pending-arrow {
-  flex: 0 0 auto;
-  font-size: 1.3rem;
-  color: var(--text-muted);
-  padding-right: 4px;
+  font-size: 1.8rem; opacity: 0.5;
 }
 
 /* ───────── SearchSheet modal — Airbnb-style "Where / When / Who" ───────── */
@@ -5090,4 +5122,57 @@ body.is-reel-page {
 .hx-hero-swipe-dot-active {
   background: #FAF5EB;
   transform: scale(1.35);
+}
+
+/* v159.10 — Live suggestion list inside SearchSheet "Where?" section. */
+.hxr-sheet-suggest {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+  display: flex; flex-direction: column;
+  gap: 2px;
+}
+.hxr-sheet-suggest-row {
+  display: flex; align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.16s ease;
+}
+.hxr-sheet-suggest-row:hover { background: var(--accent-soft); }
+.hxr-sheet-suggest-img {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+.hxr-sheet-suggest-img-fallback {
+  display: grid; place-items: center;
+  font-size: 1.1rem; opacity: 0.5;
+}
+.hxr-sheet-suggest-text {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.hxr-sheet-suggest-name {
+  font-size: 0.86rem; font-weight: 600;
+  color: var(--text-base);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hxr-sheet-suggest-meta {
+  font-size: 0.7rem; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hxr-sheet-suggest-arrow {
+  font-size: 1.1rem; color: var(--text-muted);
+  font-weight: 600;
+}
+.hxr-sheet-empty {
+  margin: 6px 4px 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
