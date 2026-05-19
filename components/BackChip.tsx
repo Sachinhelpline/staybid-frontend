@@ -30,6 +30,7 @@ export function BackChip() {
     pathname.startsWith("/u/") ||            // v110: /u/[handle] + /u/[handle]/posts own their headers
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
+    pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/auth");
   if (hidden) return null;
