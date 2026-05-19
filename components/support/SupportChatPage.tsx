@@ -448,39 +448,54 @@ function Bubble({ m }: { m: Message }) {
     : isAgent ? "#4A6633"
     : "#5E4A20";
   return (
-    <div style={{ display: "flex", justifyContent: align, marginBottom: 10 }}>
+    /* v154 — WhatsApp-style tighter bubbles. 5px gap (was 10),
+       smaller padding (was 12/16 → 8/12), more rounded corners
+       (was 14 → 16), no border (just background). Tail effect via
+       different bottom-radius on user vs agent side. */
+    <div style={{ display: "flex", justifyContent: align, marginBottom: 5 }}>
       <div
         style={{
-          maxWidth: "82%",
+          maxWidth: "78%",
           background: bg,
-          border: `1px solid ${border}`,
           color: "#E8EAF0",
-          padding: "12px 16px",
-          borderRadius: 14,
+          padding: "7px 11px",
+          borderRadius: 16,
+          borderBottomRightRadius: isUser ? 4 : 16,
+          borderBottomLeftRadius: isUser || isSystem ? 16 : 4,
           fontSize: 14,
-          lineHeight: 1.55,
+          lineHeight: 1.45,
           whiteSpace: "pre-wrap",
           fontStyle: isSystem ? "italic" : "normal",
           opacity: isSystem ? 0.85 : 1,
+          boxShadow: "0 1px 1px rgba(0,0,0,0.2)",
         }}
       >
+        {!isUser && (
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              opacity: 0.7,
+              marginBottom: 2,
+              color: isAI ? "#D4AF37" : isAgent ? "#7BA361" : "#A89674",
+            }}
+          >
+            {m.sender_name || m.sender}
+          </div>
+        )}
+        {m.body}
         <div
           style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: 0.05,
-            opacity: 0.75,
-            marginBottom: 5,
-            color: isAI ? "#D4AF37" : isAgent ? "#7BA361" : isUser ? "#82B2DD" : "#A89674",
+            fontSize: 9.5,
+            opacity: 0.5,
+            marginTop: 3,
+            textAlign: isUser ? "right" : "left",
+            color: "#8A8FA8",
           }}
         >
-          {m.sender_name || m.sender}
-          {m.ai_confidence != null && ` · conf ${m.ai_confidence}`}
-          {" · "}
           {timeAgo(m.created_at)}
+          {m.ai_confidence != null && ` · ${m.ai_confidence}`}
         </div>
-        {m.body}
       </div>
     </div>
   );
@@ -908,14 +923,15 @@ const S: Record<string, React.CSSProperties> = {
     minWidth: 0,
     overflow: "hidden",
   },
+  // v154 — WhatsApp-style tighter chat layout
   threadHeader: {
     flex: "0 0 auto",
-    padding: "16px 26px 14px",
+    padding: "10px 22px 9px",
     background: "#0F1117",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   },
   subjectLine: {
-    fontSize: 17,
+    fontSize: 14.5,
     fontWeight: 700,
     color: "#E8EAF0",
     display: "flex",
@@ -941,7 +957,7 @@ const S: Record<string, React.CSSProperties> = {
   scroll: {
     flex: 1,
     overflowY: "auto",
-    padding: "20px 26px 24px",
+    padding: "12px 16px 4px",
     background: "#07080C",
     position: "relative",
     scrollBehavior: "smooth",
@@ -971,14 +987,17 @@ const S: Record<string, React.CSSProperties> = {
     letterSpacing: 0.05,
     zIndex: 5,
   },
+  // v154 — WhatsApp-style composer: same dark bg as scroll (continuous
+   // surface), no thick top border separator, tighter padding so chat
+   // and composer feel like one unit instead of two boxes.
   composer: {
     flex: "0 0 auto",
-    padding: 22,
-    background: "#0F1117",
-    borderTop: "1px solid rgba(255,255,255,0.07)",
+    padding: "10px 16px 14px",
+    background: "#07080C",
+    borderTop: "1px solid rgba(255,255,255,0.04)",
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 8,
   },
   composerTools: {
     display: "flex",
@@ -1031,16 +1050,18 @@ const S: Record<string, React.CSSProperties> = {
     textAlign: "left",
     fontSize: 12,
   },
+  // v154 — Tighter composer. 90px minHeight (was 140 — too tall, ate
+  // chat space). Background matches a chat-input look (not a form input).
   composerInput: {
     width: "100%",
-    minHeight: 140,
+    minHeight: 90,
     background: "#151820",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 12,
-    padding: "14px 16px",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 14,
+    padding: "12px 14px",
     color: "#E8EAF0",
-    fontSize: 14.5,
-    lineHeight: 1.55,
+    fontSize: 14,
+    lineHeight: 1.5,
     fontFamily: "inherit",
     resize: "vertical",
     outline: "none",
