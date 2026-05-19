@@ -137,6 +137,18 @@ export default function HotelDetail() {
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
 
+  // v159 — Recently viewed tracker. Push current hotel id to front of
+  // `sb_recent_viewed_hotels` localStorage (max 12). Read by /hotels rails.
+  useEffect(() => {
+    if (typeof window === "undefined" || !id) return;
+    try {
+      const raw = localStorage.getItem("sb_recent_viewed_hotels");
+      const prev: string[] = raw ? JSON.parse(raw) : [];
+      const next = [String(id), ...prev.filter((x) => String(x) !== String(id))].slice(0, 12);
+      localStorage.setItem("sb_recent_viewed_hotels", JSON.stringify(next));
+    } catch {}
+  }, [id]);
+
   // v124.2 — Hide the floating "Check availability" mobile pill when ANY
   // in-page primary CTA is visible. Real-device feedback: pill sat ON TOP
   // of the in-page "Book Now / Negotiate" row when scrolled to the bottom.
