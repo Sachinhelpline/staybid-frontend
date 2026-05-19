@@ -20,6 +20,7 @@ import { BottomDock } from "@/components/discover/BottomDock";
 import { BackChip } from "@/components/BackChip";
 import { ServerStatus } from "@/components/ServerStatus";
 import NotificationToast from "@/components/NotificationToast";
+import SupportWidget from "@/components/support/SupportWidget";
 // v122.3 — installs the global auto-next-scroll delegate so EVERY
 // CTA carrying `data-autonext-target="<key>"` smoothly scrolls the
 // matching `[data-autonext="<key>"]` section into view on click. No
@@ -190,6 +191,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 dispatched via lib/notifications.ts notify(). Used by
                 AcceptedBidTimer + bid-status polling in My Bids. */}
             <NotificationToast />
+            {/* v146 — Hybrid AI + agent support widget. Floating bubble,
+                self-hides on admin/partner/onboard/auth + reel-app surfaces. */}
+            <SupportWidget />
             {/* Welcome Story portal-mounted to document.body. */}
             <WelcomeStory />
             {/* v144 — Floating "?" help button (Tutorial Layer 3).
@@ -201,7 +205,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v145.1</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v146</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -222,7 +226,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v145.1-bids-hotel-message-column-supabase-error-detail";
+var SB_BUILD="v146-hybrid-ai-agent-support-system";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
