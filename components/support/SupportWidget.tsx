@@ -403,51 +403,156 @@ export default function SupportWidget() {
       )}
 
       <style jsx global>{`
+        /* v151 — 3D animated responsive FAB.
+           - Size cut roughly in half (56 → 32/36/40 across breakpoints)
+           - Layered radial highlight gives 3D depth (top-left light source)
+           - Outer pulse ring breathes (2.4s infinite)
+           - Inner conic-gradient shimmer rotates slowly (8s infinite)
+           - Idle bounce 4s cycle for "live" feel
+           - Hover: scale + lift + shadow upgrade
+        */
         .sb-support-fab {
           position: fixed;
-          right: max(16px, env(safe-area-inset-right, 0px));
+          right: max(14px, env(safe-area-inset-right, 0px));
           bottom: calc(96px + env(safe-area-inset-bottom, 0px));
           z-index: 9998;
-          width: 56px;
-          height: 56px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           border: none;
-          background: linear-gradient(140deg, #C9A66B, #8B6914);
+          /* 3D base: radial highlight + linear undercoat */
+          background:
+            radial-gradient(circle at 30% 25%, rgba(255,255,255,0.55), rgba(255,255,255,0) 55%),
+            linear-gradient(155deg, #E7CFA0 0%, #C9A66B 45%, #8B6914 100%);
           color: #fff;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 22px;
+          font-size: 15px;
+          line-height: 1;
           box-shadow:
-            0 6px 18px -4px rgba(31, 26, 15, 0.45),
-            0 2px 6px -1px rgba(31, 26, 15, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
+            /* Outer ambient drop */
+            0 10px 22px -6px rgba(31, 26, 15, 0.45),
+            0 4px 8px -2px rgba(31, 26, 15, 0.28),
+            /* Outer rim ring */
+            0 0 0 1px rgba(184, 134, 11, 0.32),
+            /* Inner top highlight */
+            inset 0 1px 0 rgba(255, 255, 255, 0.55),
+            /* Inner bottom shadow */
+            inset 0 -2px 4px rgba(31, 26, 15, 0.25);
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+          animation: sbFabBreathe 4s ease-in-out infinite;
+          overflow: visible;
+          isolation: isolate;
         }
-        .sb-support-fab:hover { transform: translateY(-2px); }
-        .sb-support-fab-icon { line-height: 1; }
+        .sb-support-fab::before {
+          /* Live pulsing ring */
+          content: "";
+          position: absolute;
+          inset: -3px;
+          border-radius: 50%;
+          border: 2px solid rgba(212, 175, 55, 0.55);
+          opacity: 0;
+          animation: sbFabPulse 2.4s ease-out infinite;
+          pointer-events: none;
+        }
+        .sb-support-fab::after {
+          /* Rotating conic shimmer overlay */
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            rgba(255, 255, 255, 0.20) 60deg,
+            transparent 120deg,
+            transparent 240deg,
+            rgba(255, 255, 255, 0.12) 300deg,
+            transparent 360deg
+          );
+          mix-blend-mode: screen;
+          animation: sbFabSheen 8s linear infinite;
+          pointer-events: none;
+        }
+        @keyframes sbFabBreathe {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50%      { transform: translateY(-1px) scale(1.04); }
+        }
+        @keyframes sbFabPulse {
+          0%   { opacity: 0.7; transform: scale(1); }
+          70%  { opacity: 0; transform: scale(1.55); }
+          100% { opacity: 0; transform: scale(1.55); }
+        }
+        @keyframes sbFabSheen {
+          to { transform: rotate(360deg); }
+        }
+        .sb-support-fab:hover {
+          transform: translateY(-3px) scale(1.1);
+          box-shadow:
+            0 14px 30px -6px rgba(31, 26, 15, 0.55),
+            0 6px 12px -2px rgba(31, 26, 15, 0.35),
+            0 0 0 1px rgba(184, 134, 11, 0.45),
+            inset 0 1px 0 rgba(255, 255, 255, 0.65),
+            inset 0 -2px 4px rgba(31, 26, 15, 0.25);
+          animation-play-state: paused;
+        }
+        .sb-support-fab-icon {
+          line-height: 1;
+          position: relative;
+          z-index: 2;
+          filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25));
+        }
         .sb-support-fab-badge {
           position: absolute;
-          top: -2px;
-          right: -2px;
-          min-width: 20px;
-          height: 20px;
-          padding: 0 6px;
-          background: #D49583;
+          top: -3px;
+          right: -3px;
+          min-width: 16px;
+          height: 16px;
+          padding: 0 4px;
+          background: linear-gradient(140deg, #FF6B7A, #D49583);
           color: #fff;
-          border-radius: 10px;
-          border: 2px solid #FAF5EB;
-          font-size: 11px;
-          font-weight: 700;
+          border-radius: 999px;
+          border: 1.5px solid #FFFCF6;
+          font-size: 9.5px;
+          font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 3;
+          box-shadow: 0 2px 4px rgba(212, 86, 95, 0.4);
         }
-
+        @media (prefers-reduced-motion: reduce) {
+          .sb-support-fab,
+          .sb-support-fab::before,
+          .sb-support-fab::after { animation: none; }
+        }
+        /* Tablet: 600-1023px */
+        @media (min-width: 600px) {
+          .sb-support-fab {
+            width: 38px;
+            height: 38px;
+            font-size: 16px;
+            right: max(18px, env(safe-area-inset-right, 0px));
+          }
+        }
+        /* Laptop / Desktop: ≥1024px */
         @media (min-width: 1024px) {
           .sb-support-fab {
+            width: 40px;
+            height: 40px;
+            font-size: 17px;
             bottom: max(24px, env(safe-area-inset-bottom, 0px));
+            right: 22px;
+          }
+        }
+        /* Wide desktop: ≥1440px — a hair bigger for visibility */
+        @media (min-width: 1440px) {
+          .sb-support-fab {
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
           }
         }
 
