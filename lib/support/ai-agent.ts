@@ -214,14 +214,27 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
-// Cheap heuristic gates that run BEFORE we even call the API.
-// These short-circuit obvious cases and save tokens.
+// v155 — Short-circuit list NARROWED. Only true-emergency intents
+// bypass the AI now. Previously "refund", "chargeback", "fraud",
+// "scam", "court", "legal" all bypassed AI → customer got canned
+// "team will reach out" message even when AI could have given a
+// helpful policy answer first. Now AI runs for these queries and
+// its system prompt instructs it to escalate AFTER giving useful
+// info (e.g. for refund: "Razorpay refunds take 5-7 days, share your
+// booking ID and our team will follow up").
+//
+// What STILL bypasses AI:
+//   - Explicit human request: "agent", "human", "person", "manager",
+//     "kisi se baat", "insaan", "real person"
+//   - Safety emergencies: "emergency", "injury", "hurt", "poisoning",
+//     "police" — these need IMMEDIATE human, no AI delay
 const ESCALATION_KEYWORDS = [
+  // Explicit human request (no AI delay needed)
   "agent", "human", "person", "manager",
   "kisi se baat", "insaan", "real person",
-  "refund", "chargeback", "fraud", "scam", "cheat",
-  "police", "court", "legal",
+  // Safety + life emergencies (NEVER delay with AI)
   "emergency", "injury", "hurt", "poisoning",
+  "police",
 ];
 
 export function shouldShortCircuitEscalate(text: string): {
@@ -231,10 +244,6 @@ export function shouldShortCircuitEscalate(text: string): {
   const t = text.toLowerCase();
   for (const kw of ESCALATION_KEYWORDS) {
     if (t.includes(kw)) {
-      if (kw === "refund" || kw === "chargeback" || kw === "fraud" || kw === "scam" || kw === "cheat" ||
-          kw === "police" || kw === "court" || kw === "legal") {
-        return { escalate: true, reason: "specific_intent" };
-      }
       return { escalate: true, reason: "user_request" };
     }
   }
