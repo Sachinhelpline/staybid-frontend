@@ -102,6 +102,59 @@ function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent:
   );
 }
 
+/* v159.7 — Real-timer digit cell. When the value changes, the old digit
+   slides UP and out while the new digit rolls UP into place — like a
+   scoreboard / airport flap-board. Only the digits that actually change
+   animate, so the seconds tick visibly every 1s but the tens / minutes /
+   hours stay still until they cross their threshold. Premium feel. */
+function TimerDigit({ value }: { value: number | string }) {
+  const v = String(value);
+  const [prev, setPrev] = useState(v);
+  const [rolling, setRolling] = useState(false);
+
+  useEffect(() => {
+    if (v !== prev && !rolling) {
+      setRolling(true);
+      const t = setTimeout(() => {
+        setPrev(v);
+        setRolling(false);
+      }, 320);
+      return () => clearTimeout(t);
+    }
+    // If digit changes while still rolling (super-fast updates) just
+    // settle on the new value without queuing.
+    if (v !== prev && rolling) {
+      setPrev(v);
+    }
+  }, [v, prev, rolling]);
+
+  return (
+    <span className={`td-cell ${rolling ? "td-rolling" : ""}`} aria-hidden="true">
+      <span className="td-out">{prev}</span>
+      <span className="td-in">{v}</span>
+    </span>
+  );
+}
+
+/* Convenience — render "HH:MM:SS" with each digit animated. */
+function TimerDigits({ hrs, mins, secs }: { hrs: number; mins: number; secs: number }) {
+  const hh = pad2(hrs);
+  const mm = pad2(mins);
+  const ss = pad2(secs);
+  return (
+    <>
+      <TimerDigit value={hh[0]} />
+      <TimerDigit value={hh[1]} />
+      <span className="td-sep">:</span>
+      <TimerDigit value={mm[0]} />
+      <TimerDigit value={mm[1]} />
+      <span className="td-sep">:</span>
+      <TimerDigit value={ss[0]} />
+      <TimerDigit value={ss[1]} />
+    </>
+  );
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 function FlashDealsContent() {
@@ -419,14 +472,12 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </div>
         </div>
 
-        {/* Countdown ring (bottom-right) */}
+        {/* Countdown ring (bottom-right) — v159.7 real-timer digit rolls */}
         <div className="fd-ring-wrap">
           <CountdownRing pctRemaining={pctRemaining} urgent={urgent} />
           <div className="fd-ring-time">
-            <span className={urgent ? "urgent" : ""}>
-              {pad2(hrs)}<span className="fd-ring-sep">:</span>
-              {pad2(mins)}<span className="fd-ring-sep">:</span>
-              {pad2(secs)}
+            <span className={`fd-ring-digits ${urgent ? "urgent" : ""}`} aria-label={`Ends in ${pad2(hrs)}:${pad2(mins)}:${pad2(secs)}`}>
+              <TimerDigits hrs={hrs} mins={mins} secs={secs} />
             </span>
             <span className="fd-ring-lbl">ends</span>
           </div>
@@ -570,7 +621,9 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }:
             <div className="fd-drawer-eyebrow">
               <span className="fd-dot-live" />
               <span>LIVE FLASH DEAL</span>
-              <span>· ends {pad2(hrs)}:{pad2(mins)}:{pad2(secs)}</span>
+              <span className="fd-drawer-timer">
+                · ends&nbsp;<TimerDigits hrs={hrs} mins={mins} secs={secs} />
+              </span>
             </div>
             <h2>{deal.hotel?.name || "Hotel"}</h2>
             <p>{deal.city} · {deal.hotel?.starRating ? "★".repeat(deal.hotel.starRating) : ""}</p>
@@ -1046,9 +1099,12 @@ function FdStyles() {
         font-family: 'Menlo', 'Consolas', monospace;
         color: #F5EFE0;
       }
-      .fd-ring-time > span:first-child { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
-      .fd-ring-time > span:first-child.urgent { color: #ff9aaa; animation: fdBlink 1.2s infinite; }
-      .fd-ring-sep { animation: fdBlink 1s infinite; }
+      .fd-ring-digits {
+        font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
+        display: inline-flex; align-items: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .fd-ring-digits.urgent { color: #ff9aaa; }
       .fd-ring-lbl {
         font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
         color: rgba(245, 239, 224, 0.72); text-transform: uppercase;
@@ -1056,6 +1112,57 @@ function FdStyles() {
       }
       @keyframes fdBlink {
         0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.4; }
+      }
+
+      /* v159.7 — Real-timer digit roll. Each digit cell is a fixed-width
+         box with overflow:hidden; the OLD digit and NEW digit live
+         stacked vertically (out at top:0, in at top:100% — initially
+         hidden below the cell). On change, both translate up by 100%
+         simultaneously → old slides out the top, new slides into place.
+         Premium scoreboard / airport-flap feel. */
+      .td-cell {
+        display: inline-block;
+        position: relative;
+        overflow: hidden;
+        width: 0.62em;
+        height: 1em;
+        line-height: 1;
+        vertical-align: baseline;
+        font-feature-settings: "tnum" 1;
+      }
+      .td-out, .td-in {
+        display: block;
+        position: absolute;
+        left: 0; right: 0;
+        text-align: center;
+        will-change: transform;
+      }
+      .td-out { top: 0; }
+      .td-in  { top: 100%; }
+      .td-rolling .td-out {
+        animation: tdRollUp 0.32s cubic-bezier(.45,0,.25,1) forwards;
+      }
+      .td-rolling .td-in {
+        animation: tdRollUp 0.32s cubic-bezier(.45,0,.25,1) forwards;
+      }
+      @keyframes tdRollUp {
+        from { transform: translateY(0);    opacity: 1; }
+        45%  { opacity: 0.92; }
+        to   { transform: translateY(-100%); opacity: 1; }
+      }
+      .td-sep {
+        display: inline-block;
+        width: 0.32em;
+        text-align: center;
+        opacity: 0.65;
+        animation: fdBlink 1.05s ease-in-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .td-rolling .td-out,
+        .td-rolling .td-in { animation: none; }
+        .td-rolling .td-out { transform: translateY(-100%); }
+        .td-rolling .td-in  { transform: translateY(-100%); }
+        .td-sep { animation: none; opacity: 1; }
       }
 
       /* Body — v159.3 tighter on mobile. */
