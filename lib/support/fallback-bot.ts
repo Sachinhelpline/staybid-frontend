@@ -27,6 +27,7 @@ type IntentKey =
   | "checkin_checkout"
   | "cancel_booking"
   | "refund"
+  | "payment_debit"   // v156 — added but forgot to update union → v157 build failed
   | "tech_issue"
   | "login_issue"
   | "general_help";
