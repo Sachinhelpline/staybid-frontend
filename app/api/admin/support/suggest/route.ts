@@ -20,7 +20,10 @@ export async function POST(req: NextRequest) {
 
   if (!isAIEnabled()) {
     return NextResponse.json(
-      { error: "ai_disabled", reason: "ANTHROPIC_API_KEY not configured" },
+      {
+        error: "ai_disabled",
+        reason: "Neither GROQ_API_KEY nor ANTHROPIC_API_KEY is configured on Vercel. Add one (Groq is free at console.groq.com) and redeploy.",
+      },
       { status: 503 }
     );
   }

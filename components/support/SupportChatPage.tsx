@@ -15,6 +15,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CANNED_REPLIES } from "@/lib/support/knowledge";
 
+type AIStatus = {
+  enabled: boolean;
+  activeProvider: "groq" | "anthropic" | "fallback_only";
+  activeModel: string | null;
+};
+
 type SupportSender = "user" | "ai" | "agent" | "system";
 type SupportStatus = "ai_active" | "escalated" | "agent_active" | "resolved" | "closed";
 
@@ -98,11 +104,19 @@ export default function SupportChatPage({
   const sinceRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // v151 — track scroll position to decide whether to auto-scroll on new
-  // messages. If user manually scrolled up to read history, we DON'T
-  // force-scroll on every incoming message — we surface a "↓ new" pill
-  // instead so they can choose to jump down.
+  // messages.
   const wasAtBottomRef = useRef<boolean>(true);
   const [hasNewBelow, setHasNewBelow] = useState(false);
+  // v153 — AI provider status badge so admin/agent can verify setup
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/support/ai-status", { headers: headers() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setAiStatus(j))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const headers = () => buildHeaders(tokenKey, userKey);
 
@@ -273,9 +287,12 @@ export default function SupportChatPage({
     <div style={S.root}>
       {/* Top bar */}
       <header style={S.topbar}>
-        <Link href={backHref} style={S.backLink}>
-          ← Back to inbox
-        </Link>
+        <div style={S.topbarLeft}>
+          <Link href={backHref} style={S.backLink}>
+            ← Back to inbox
+          </Link>
+          {aiStatus && <AIBadge status={aiStatus} />}
+        </div>
         <div style={S.topbarRight}>
           <StatusPill status={conv.status} />
           {!conv.assigned_agent_id && !locked && (
@@ -319,7 +336,12 @@ export default function SupportChatPage({
           </div>
 
           <div ref={scrollRef} onScroll={handleScroll} style={S.scroll}>
-            {messages.map((m) => <Bubble key={m.id} m={m} />)}
+            {/* v153 — center the thread in a max-width column so long
+                desktops don't have message bubbles floating tiny in a
+                vast empty space. */}
+            <div style={S.threadInner}>
+              {messages.map((m) => <Bubble key={m.id} m={m} />)}
+            </div>
             {hasNewBelow && (
               <button
                 type="button"
@@ -429,7 +451,7 @@ function Bubble({ m }: { m: Message }) {
     <div style={{ display: "flex", justifyContent: align, marginBottom: 10 }}>
       <div
         style={{
-          maxWidth: "72%",
+          maxWidth: "82%",
           background: bg,
           border: `1px solid ${border}`,
           color: "#E8EAF0",
@@ -716,6 +738,49 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function AIBadge({ status }: { status: AIStatus }) {
+  if (!status.enabled) {
+    return (
+      <span
+        style={{
+          background: "rgba(255, 71, 87, 0.16)",
+          color: "#FF7878",
+          fontSize: 10.5,
+          fontWeight: 700,
+          padding: "4px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255, 71, 87, 0.4)",
+          textTransform: "uppercase",
+          letterSpacing: 0.05,
+        }}
+        title="No AI provider configured. Add GROQ_API_KEY (free at console.groq.com) or ANTHROPIC_API_KEY to Vercel env vars."
+      >
+        ⚠ AI off
+      </span>
+    );
+  }
+  const isGroq = status.activeProvider === "groq";
+  const color = isGroq ? "#7BA361" : "#D4AF37";
+  return (
+    <span
+      style={{
+        background: `${color}22`,
+        color,
+        fontSize: 10.5,
+        fontWeight: 700,
+        padding: "4px 10px",
+        borderRadius: 999,
+        border: `1px solid ${color}55`,
+        textTransform: "uppercase",
+        letterSpacing: 0.05,
+      }}
+      title={`Using ${status.activeProvider} (${status.activeModel || "unknown model"})`}
+    >
+      🤖 AI: {status.activeProvider}
+    </span>
+  );
+}
+
 function StatusPill({ status }: { status: SupportStatus }) {
   const map: Record<SupportStatus, [string, string]> = {
     ai_active: ["#D4AF37", "AI"],
@@ -783,6 +848,11 @@ const S: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 10,
+  },
+  topbarLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
   },
   backLink: {
     color: "#8A8FA8",
@@ -875,6 +945,12 @@ const S: Record<string, React.CSSProperties> = {
     background: "#07080C",
     position: "relative",
     scrollBehavior: "smooth",
+  },
+  threadInner: {
+    maxWidth: 900,
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
   },
   newBelowPill: {
     position: "sticky",
