@@ -4075,8 +4075,9 @@ body.is-reel-page {
 @media (min-width: 640px) { .hxr-body { padding: 22px 24px 32px; } }
 @media (min-width: 1024px) { .hxr-body { padding: 26px 32px 40px; } }
 
-.hxr-rails { display: flex; flex-direction: column; gap: 28px; }
-@media (min-width: 1024px) { .hxr-rails { gap: 38px; } }
+.hxr-rails { display: flex; flex-direction: column; gap: 22px; }
+@media (min-width: 640px) { .hxr-rails { gap: 28px; } }
+@media (min-width: 1024px) { .hxr-rails { gap: 36px; } }
 
 /* Rail head */
 .hxr-rail-section { position: relative; }
@@ -4133,13 +4134,13 @@ body.is-reel-page {
 /* The actual horizontal-scroll list */
 .hxr-rail {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding: 4px 0 14px;
+  padding: 4px 0 10px;
   margin: 0 -16px;
   padding-left: 16px;
   padding-right: 16px;
@@ -4147,10 +4148,10 @@ body.is-reel-page {
 }
 .hxr-rail::-webkit-scrollbar { display: none; }
 @media (min-width: 640px) {
-  .hxr-rail { gap: 16px; margin: 0 -24px; padding-left: 24px; padding-right: 24px; }
+  .hxr-rail { gap: 14px; margin: 0 -24px; padding-left: 24px; padding-right: 24px; }
 }
 @media (min-width: 1024px) {
-  .hxr-rail { gap: 18px; margin: 0 -32px; padding-left: 32px; padding-right: 32px; }
+  .hxr-rail { gap: 18px; margin: 0 -32px; padding-left: 32px; padding-right: 32px; padding-bottom: 14px; }
 }
 .hxr-rail-end { flex: 0 0 8px; }
 
@@ -4168,31 +4169,36 @@ body.is-reel-page {
 .hxr-card:hover { transform: translateY(-3px); }
 .hxr-card:active { transform: scale(0.985); }
 
-/* Rail card responsive widths — peek-of-next on every breakpoint */
+/* Rail card responsive widths — peek-of-next on every breakpoint.
+   v159.1 — tightened: mobile shows ~2 cards, desktop ~5-6. */
 .hxr-card-rail {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  width: clamp(220px, 72vw, 290px);
+  width: clamp(150px, 44vw, 210px);
 }
-@media (min-width: 480px) { .hxr-card-rail { width: clamp(220px, 58vw, 290px); } }
-@media (min-width: 640px) { .hxr-card-rail { width: clamp(220px, 42vw, 290px); } }
-@media (min-width: 768px) { .hxr-card-rail { width: clamp(220px, 33vw, 280px); } }
-@media (min-width: 1024px) { .hxr-card-rail { width: clamp(240px, 24vw, 280px); } }
-@media (min-width: 1280px) { .hxr-card-rail { width: clamp(250px, 19vw, 280px); } }
-@media (min-width: 1536px) { .hxr-card-rail { width: clamp(250px, 16vw, 280px); } }
+@media (min-width: 480px) { .hxr-card-rail { width: clamp(160px, 38vw, 220px); } }
+@media (min-width: 640px) { .hxr-card-rail { width: clamp(180px, 30vw, 230px); } }
+@media (min-width: 768px) { .hxr-card-rail { width: clamp(200px, 25vw, 240px); } }
+@media (min-width: 1024px) { .hxr-card-rail { width: clamp(220px, 21vw, 260px); } }
+@media (min-width: 1280px) { .hxr-card-rail { width: clamp(230px, 17.5vw, 270px); } }
+@media (min-width: 1536px) { .hxr-card-rail { width: clamp(240px, 14.5vw, 280px); } }
 
 /* Grid card width — flex with grid auto-fit */
 .hxr-card-grid { width: 100%; }
 
-/* Card image */
+/* Card image — aspect ratio shifts by breakpoint so the image is
+   tighter on mobile (square = shorter card) and gradually portrait
+   on tablet+ where the card is narrower. v159.1. */
 .hxr-card-imgwrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  border-radius: 16px;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
   overflow: hidden;
   background: var(--accent-soft);
 }
+@media (min-width: 640px) { .hxr-card-imgwrap { aspect-ratio: 5 / 6; border-radius: 15px; } }
+@media (min-width: 1024px) { .hxr-card-imgwrap { aspect-ratio: 4 / 5; border-radius: 16px; } }
 .hxr-card-img {
   width: 100%;
   height: 100%;
@@ -4210,13 +4216,13 @@ body.is-reel-page {
   opacity: 0.4;
 }
 
-/* Badge top-left */
+/* Badge top-left — tighter on mobile to fit small cards. v159.1. */
 .hxr-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  padding: 5px 10px;
-  font-size: 0.7rem;
+  top: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   border-radius: 999px;
@@ -4225,10 +4231,13 @@ body.is-reel-page {
   border: 1px solid var(--border-soft);
   box-shadow: 0 2px 8px -4px rgba(31, 26, 15, 0.25);
   z-index: 2;
-  max-width: calc(100% - 60px);
+  max-width: calc(100% - 48px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+@media (min-width: 768px) {
+  .hxr-badge { top: 10px; left: 10px; padding: 5px 10px; font-size: 0.7rem; }
 }
 .hxr-badge-flash {
   background: linear-gradient(135deg, #C9A66B, #D9BE82);
@@ -4244,13 +4253,13 @@ body.is-reel-page {
   color: var(--text-base);
 }
 
-/* Heart top-right */
+/* Heart top-right — slightly smaller on mobile cards. v159.1. */
 .hxr-heart {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
+  top: 4px;
+  right: 4px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   border: 0;
   background: transparent;
@@ -4263,21 +4272,32 @@ body.is-reel-page {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
   transition: transform 0.18s ease, color 0.18s ease;
 }
+@media (min-width: 768px) {
+  .hxr-heart { top: 8px; right: 8px; width: 36px; height: 36px; }
+}
+.hxr-heart svg { width: 18px; height: 18px; }
+@media (min-width: 768px) { .hxr-heart svg { width: 20px; height: 20px; } }
 .hxr-heart:hover { transform: scale(1.08); }
 .hxr-heart:active { transform: scale(0.92); }
 .hxr-heart-on { color: var(--cozy-rose, #D49583); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
 
-/* Score chip bottom-right of image */
+/* Score chip bottom-right of image — scaled down on rail cards so it
+   reads as a corner accent, not a banner. Full size on grid + detail. */
 .hxr-score-chip {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
+  bottom: 6px;
+  right: 6px;
   z-index: 2;
   pointer-events: auto;
+  transform: scale(0.74);
+  transform-origin: bottom right;
 }
+@media (min-width: 640px)  { .hxr-score-chip { transform: scale(0.82); bottom: 8px; right: 8px; } }
+@media (min-width: 1024px) { .hxr-score-chip { transform: scale(0.9); } }
+.hxr-card-grid .hxr-score-chip { transform: scale(0.86); }
+@media (min-width: 1024px) { .hxr-card-grid .hxr-score-chip { transform: scale(1); } }
 
-/* Card info */
-.hxr-card-info { padding: 10px 4px 4px; }
+/* Card info (padding handled by v159.1 responsive block below) */
 .hxr-card-row1 {
   display: flex;
   align-items: baseline;
@@ -4286,7 +4306,7 @@ body.is-reel-page {
 }
 .hxr-card-name {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.83rem;
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--text-base);
@@ -4296,60 +4316,72 @@ body.is-reel-page {
   min-width: 0;
   flex: 1 1 auto;
 }
+@media (min-width: 1024px) { .hxr-card-name { font-size: 0.92rem; } }
 .hxr-card-rating {
   flex: 0 0 auto;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-base);
   white-space: nowrap;
 }
+@media (min-width: 1024px) { .hxr-card-rating { font-size: 0.78rem; } }
 .hxr-card-loc {
   margin: 2px 0 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+@media (min-width: 1024px) { .hxr-card-loc { font-size: 0.78rem; } }
 .hxr-card-price {
-  margin: 6px 0 0;
-  font-size: 0.84rem;
+  margin: 5px 0 0;
+  font-size: 0.78rem;
   color: var(--text-soft);
   display: flex;
   align-items: baseline;
   gap: 4px;
   flex-wrap: wrap;
 }
+@media (min-width: 1024px) { .hxr-card-price { font-size: 0.84rem; } }
 .hxr-card-amount {
   font-weight: 700;
   color: var(--text-base);
   letter-spacing: -0.005em;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
+@media (min-width: 1024px) { .hxr-card-amount { font-size: 0.95rem; } }
 .hxr-card-amount-flash {
   color: var(--accent);
 }
-.hxr-card-per { color: var(--text-muted); font-size: 0.78rem; }
-.hxr-card-strike { color: var(--text-muted); font-size: 0.74rem; text-decoration: line-through; margin-right: 2px; }
+.hxr-card-per { color: var(--text-muted); font-size: 0.72rem; }
+.hxr-card-strike { color: var(--text-muted); font-size: 0.7rem; text-decoration: line-through; margin-right: 2px; }
 
-/* Grid view */
-.hxr-grid-wrap { display: flex; flex-direction: column; gap: 16px; }
+/* Tighter card-info padding on mobile so the card height stays close
+   to the image height. v159.1. */
+.hxr-card-info { padding: 8px 2px 4px; }
+@media (min-width: 640px)  { .hxr-card-info { padding: 9px 3px 4px; } }
+@media (min-width: 1024px) { .hxr-card-info { padding: 10px 4px 4px; } }
+
+/* Grid view — 2 cols on mobile by default (Airbnb pattern), scaling up. */
+.hxr-grid-wrap { display: flex; flex-direction: column; gap: 14px; }
 .hxr-grid-title {
   margin: 0;
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-weight: 500;
-  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  font-size: clamp(1.15rem, 3vw, 1.6rem);
   color: var(--text-base);
 }
 .hxr-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: 1fr;
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);   /* mobile default — 2 cols */
 }
-@media (min-width: 560px)  { .hxr-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
-@media (min-width: 900px)  { .hxr-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
-@media (min-width: 1200px) { .hxr-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
-@media (min-width: 1536px) { .hxr-grid { grid-template-columns: repeat(5, 1fr); gap: 22px; } }
+@media (min-width: 560px)  { .hxr-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
+@media (min-width: 768px)  { .hxr-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+@media (min-width: 1024px) { .hxr-grid { grid-template-columns: repeat(4, 1fr); gap: 18px; } }
+@media (min-width: 1280px) { .hxr-grid { grid-template-columns: repeat(5, 1fr); gap: 20px; } }
+@media (min-width: 1536px) { .hxr-grid { grid-template-columns: repeat(6, 1fr); gap: 22px; } }
 
 /* Skeleton */
 .hxr-skel-rail {
