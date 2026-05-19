@@ -1698,15 +1698,18 @@ export default function HotelDetail() {
           flashDealActive={!!(dealId && dealPrice)}
         />
 
-        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon ── */}
+        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon.
+            v159.9 — Tightened from marginTop:14 → 8 + gap 16 → 12 +
+            sub-text leading shrunk so the block hugs the stats ribbon
+            above + the description below. Halves the air around it. */}
         <div
           className="hx-reveal"
           style={{
-            marginTop: 14,
+            marginTop: 8,
             display: "flex",
             justifyContent: "flex-start",
             flexWrap: "wrap",
-            gap: 16,
+            gap: 12,
             alignItems: "center",
           }}
         >
@@ -1720,34 +1723,36 @@ export default function HotelDetail() {
               flex: "1 1 200px",
               minWidth: 0,
               color: "var(--text-soft, #4a3820)",
-              fontSize: "0.78rem",
-              lineHeight: 1.45,
+              fontSize: "0.74rem",
+              lineHeight: 1.35,
             }}
           >
             <div
               style={{
                 fontFamily: "var(--font-display, 'Cormorant Garamond'), serif",
                 fontStyle: "italic",
-                fontSize: "1rem",
+                fontSize: "0.96rem",
                 color: "var(--text-base, #1f1a0f)",
                 fontWeight: 600,
               }}
             >
               StayBid Performance Scorecard
             </div>
-            <div style={{ marginTop: 3 }}>
-              Live score across 10 checkpoints + city rank. Tap the medal for the full breakdown.
+            <div style={{ marginTop: 2 }}>
+              Live score · 10 checkpoints · city rank. Tap medal for breakdown.
             </div>
           </div>
         </div>
 
-        {/* ── Two-column page grid (sticky rail on desktop ≥1100px) ── */}
-        <div className="hx-page-grid" style={{ marginTop: "22px" }}>
+        {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
+            — marginTop 22 → 10 so the About section follows the medal
+            block tightly instead of leaving a chunk of dead space. */}
+        <div className="hx-page-grid" style={{ marginTop: "10px" }}>
           <div>
 
-        {/* ── Description ── */}
+        {/* ── Description — v159.9 tight section rhythm. */}
         {hotel.description && (
-          <div className="hx-reveal" style={{ marginTop: "8px" }}>
+          <div className="hx-reveal" style={{ marginTop: "2px" }}>
             <div className="hx-section-h">
               <span className="hx-section-h-label">About</span>
               <span className="hx-section-h-rule" />

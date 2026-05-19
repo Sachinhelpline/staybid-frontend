@@ -8,7 +8,7 @@
  *
  * Tap any tile to open the full lightbox at that index.
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 type Props = {
   name: string;
@@ -59,8 +59,66 @@ export default function HotelHero({
     e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length];
   };
 
+  // v159.9 — Live photo counter for the mobile swipe carousel. Read the
+  // scrollLeft + clientWidth on every scroll tick to figure out which
+  // slide is centered, then update the "N / total" overlay.
+  const swipeRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => {
+    const el = swipeRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth || 1;
+      const idx = Math.round(el.scrollLeft / w);
+      setActiveIdx(Math.max(0, Math.min(all.length - 1, idx)));
+    };
+    el.addEventListener("scroll", update, { passive: true });
+    return () => el.removeEventListener("scroll", update);
+  }, [all.length]);
+
   return (
     <div className="hx-reveal">
+      {/* v159.9 — Mobile-only full-bleed swipe carousel. Shows EVERY hotel
+          photo as a snap slide. Counter overlay tracks the active index
+          live. Tap any slide → opens the full lightbox at that index.
+          Hidden on tablet+ where the mosaic below takes over. */}
+      <div className="hx-hero-swipe-wrap">
+        <div className="hx-hero-swipe" ref={swipeRef} role="region" aria-label={`${name} photo carousel`}>
+          {all.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              className="hx-hero-swipe-slide"
+              onClick={() => onOpenGallery(i)}
+              aria-label={`View photo ${i + 1} of ${all.length}`}
+            >
+              <img
+                src={src}
+                alt={`${name} — view ${i + 1}`}
+                className="hx-hero-swipe-img"
+                onError={onErr(i)}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? ("high" as any) : undefined}
+              />
+            </button>
+          ))}
+        </div>
+        {trustBadge && (
+          <span className="hx-hero-swipe-pill">✓ Verified Stay</span>
+        )}
+        <span className="hx-hero-swipe-counter" aria-live="polite">
+          {activeIdx + 1} / {all.length}
+        </span>
+        <div className="hx-hero-swipe-dots" aria-hidden="true">
+          {all.slice(0, Math.min(8, all.length)).map((_, i) => (
+            <span
+              key={i}
+              className={`hx-hero-swipe-dot ${i === activeIdx ? "hx-hero-swipe-dot-active" : ""}`}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="hx-mosaic" role="region" aria-label={`${name} photo gallery`}>
         {/* HERO — content-aware: 4:3 on mobile, fills 2 rows on desktop */}
         <div

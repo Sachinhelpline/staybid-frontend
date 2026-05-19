@@ -1089,9 +1089,11 @@ body.is-reel-page {
   position: relative;
 }
 
-/* ─── Editorial mosaic gallery ──────────────────────────────────── */
+/* ─── Editorial mosaic gallery. v159.9 — Hidden on mobile; the new
+   .hx-hero-swipe-wrap full-bleed carousel owns the small-screen
+   first view. Mosaic re-appears at ≥768px. */
 .hx-mosaic {
-  display: grid;
+  display: none;
   grid-template-columns: 1fr;
   grid-template-rows: auto;
   gap: 8px;
@@ -1377,12 +1379,13 @@ body.is-reel-page {
 }
 .hx-stat-pill-accent .hx-stat-pill-value { color: var(--cozy-cocoa); }
 
-/* ─── Section heading with shimmer accent ───────────────────────── */
+/* ─── Section heading with shimmer accent. v159.9: tightened from
+   30/18 → 18/10 so adjacent sections hug closer (Airbnb-style rhythm). */
 .hx-section-h {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 30px 0 18px;
+  gap: 10px;
+  margin: 18px 0 10px;
 }
 .hx-section-h-label {
   display: inline-flex;
@@ -4945,3 +4948,146 @@ body.is-reel-page {
   box-shadow: 0 8px 20px -6px rgba(31, 26, 15, 0.38);
 }
 .hxr-sheet-apply:active { transform: scale(0.97); }
+
+/* ─────────────────────────────────────────────────────────────
+   v159.9 — Compact rail variant (Recently viewed / Trending)
+   Half-height square cards matching Airbnb's "Recently viewed"
+   rail pattern. Hides price + score chip to keep info minimal.
+   ───────────────────────────────────────────────────────────── */
+.hxr-rail-compact .hxr-card-compact {
+  width: clamp(128px, 30vw, 168px);
+}
+@media (min-width: 640px)  { .hxr-rail-compact .hxr-card-compact { width: clamp(136px, 24vw, 170px); } }
+@media (min-width: 1024px) { .hxr-rail-compact .hxr-card-compact { width: clamp(150px, 16vw, 190px); } }
+@media (min-width: 1280px) { .hxr-rail-compact .hxr-card-compact { width: clamp(160px, 13vw, 200px); } }
+
+.hxr-card-compact .hxr-card-imgwrap {
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+}
+.hxr-card-compact .hxr-card-info { padding: 8px 2px 2px; }
+.hxr-card-compact .hxr-card-name { font-size: 0.78rem; }
+.hxr-card-compact .hxr-card-rating { font-size: 0.68rem; }
+.hxr-card-compact .hxr-card-loc {
+  font-size: 0.68rem;
+  margin-top: 1px;
+}
+.hxr-card-compact .hxr-card-price { display: none; }
+.hxr-card-compact .hxr-score-chip { display: none; }
+.hxr-card-compact .hxr-badge {
+  top: 6px; left: 6px;
+  padding: 2px 6px;
+  font-size: 0.54rem;
+}
+.hxr-card-compact .hxr-heart {
+  top: 2px; right: 2px;
+  width: 26px; height: 26px;
+}
+.hxr-card-compact .hxr-heart svg { width: 14px; height: 14px; }
+
+/* Tighter rail header above a compact rail so the half-height cards
+   read as a "tighter row" rather than a normal-rail-with-small-cards. */
+.hxr-rail-compact .hxr-rail-head { margin-bottom: 8px; }
+.hxr-rail-compact .hxr-rail-title { font-size: clamp(1.05rem, 2.2vw, 1.35rem); }
+
+/* ─────────────────────────────────────────────────────────────
+   v159.9 — Mobile full-bleed photo swipe carousel for hotel detail.
+   Owns the first-view ABOVE the fold on phones. Slides snap one-per-
+   viewport, counter overlay + dot indicator update on scroll, tap any
+   slide opens the existing lightbox at that index.
+   ───────────────────────────────────────────────────────────── */
+.hx-hero-swipe-wrap {
+  position: relative;
+  /* Break out of page padding so the swipe is edge-to-edge. The page
+     wrapper uses ~16-24px side padding; -16px margin reverses that. */
+  margin: 0 -16px;
+  background: var(--cozy-warm-dark, #1F1A0F);
+  overflow: hidden;
+}
+@media (min-width: 640px) { .hx-hero-swipe-wrap { margin: 0 -22px; } }
+@media (min-width: 768px) { .hx-hero-swipe-wrap { display: none; } }
+.hx-hero-swipe {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+}
+.hx-hero-swipe::-webkit-scrollbar { display: none; }
+.hx-hero-swipe-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  height: 100%;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: block;
+}
+.hx-hero-swipe-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hx-hero-swipe-pill {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 14px;
+  z-index: 2;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, #D9BE82, #C9A66B);
+  color: var(--cozy-warm-dark, #1F1A0F);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px -4px rgba(31, 26, 15, 0.4);
+}
+.hx-hero-swipe-counter {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 2;
+  padding: 4px 10px;
+  background: rgba(15, 12, 8, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FAF5EB;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.hx-hero-swipe-dots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  background: rgba(15, 12, 8, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 999px;
+}
+.hx-hero-swipe-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(245, 239, 224, 0.45);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.hx-hero-swipe-dot-active {
+  background: #FAF5EB;
+  transform: scale(1.35);
+}

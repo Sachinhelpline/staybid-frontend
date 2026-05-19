@@ -82,56 +82,36 @@ function CountUp({ value, duration = 900 }: { value: number; duration?: number }
   return <>{v.toLocaleString("en-IN")}</>;
 }
 
-/* Circular countdown ring --------------------------------------------------- */
+/* Circular countdown ring — v159.9: 52 → 38 px, slimmer 2.4 stroke. */
 function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent: boolean }) {
-  const r = 22;
+  const r = 16;
   const c = 2 * Math.PI * r;
   const dash = (pctRemaining / 100) * c;
   return (
-    <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
-      <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3" />
+    <svg width="38" height="38" viewBox="0 0 38 38" style={{ flexShrink: 0 }}>
+      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="2.4" />
       <circle
-        cx="26" cy="26" r={r} fill="none"
+        cx="19" cy="19" r={r} fill="none"
         stroke={urgent ? "#ff3859" : "#f0b429"}
-        strokeWidth="3" strokeLinecap="round"
+        strokeWidth="2.4" strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
-        transform="rotate(-90 26 26)"
-        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px #ff3859)" : "drop-shadow(0 0 6px #f0b429)" }}
+        transform="rotate(-90 19 19)"
+        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 5px #ff3859)" : "drop-shadow(0 0 5px #f0b429)" }}
       />
     </svg>
   );
 }
 
-/* v159.7 — Real-timer digit cell. When the value changes, the old digit
-   slides UP and out while the new digit rolls UP into place — like a
-   scoreboard / airport flap-board. Only the digits that actually change
-   animate, so the seconds tick visibly every 1s but the tens / minutes /
-   hours stay still until they cross their threshold. Premium feel. */
+/* v159.7 — Real-timer digit cell. v159.9 — Simplified to key-based
+   animation: when value prop changes, React unmounts the old span and
+   mounts a fresh .td-anim element with the new value. The new element
+   rolls UP from below into place. No dual-render stack, no risk of
+   "double separator" artifacts on rapid ticks, no stale state. */
 function TimerDigit({ value }: { value: number | string }) {
   const v = String(value);
-  const [prev, setPrev] = useState(v);
-  const [rolling, setRolling] = useState(false);
-
-  useEffect(() => {
-    if (v !== prev && !rolling) {
-      setRolling(true);
-      const t = setTimeout(() => {
-        setPrev(v);
-        setRolling(false);
-      }, 320);
-      return () => clearTimeout(t);
-    }
-    // If digit changes while still rolling (super-fast updates) just
-    // settle on the new value without queuing.
-    if (v !== prev && rolling) {
-      setPrev(v);
-    }
-  }, [v, prev, rolling]);
-
   return (
-    <span className={`td-cell ${rolling ? "td-rolling" : ""}`} aria-hidden="true">
-      <span className="td-out">{prev}</span>
-      <span className="td-in">{v}</span>
+    <span className="td-cell">
+      <span className="td-anim" key={v}>{v}</span>
     </span>
   );
 }
@@ -1086,83 +1066,89 @@ function FdStyles() {
       }
       .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #C9A66B); }
 
+      /* v159.9 — Shrunk + premium glass timer chip. Was 52px ring + chunky
+         8/12 padding on a dark glass pill. Now: 38px ring, tighter 3/10
+         padding, softer warm-cocoa gradient bg with subtle champagne
+         outline so it reads as a luxe accent on the photo instead of a
+         heavy badge. */
       .fd-ring-wrap {
-        position: absolute; bottom: 10px; right: 12px; z-index: 2;
-        display: flex; align-items: center; gap: 8px;
-        background: rgba(15, 12, 8, 0.60); backdrop-filter: blur(8px);
+        position: absolute; bottom: 8px; right: 8px; z-index: 2;
+        display: flex; align-items: center; gap: 6px;
+        background:
+          linear-gradient(135deg, rgba(31, 26, 15, 0.78), rgba(20, 16, 10, 0.92));
+        backdrop-filter: blur(10px) saturate(140%);
+        -webkit-backdrop-filter: blur(10px) saturate(140%);
         border-radius: 999px;
-        padding: 4px 12px 4px 4px;
-        border: 1px solid rgba(217, 190, 130, 0.20);
+        padding: 3px 11px 3px 3px;
+        border: 1px solid rgba(217, 190, 130, 0.28);
+        box-shadow:
+          0 6px 18px -8px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 246, 226, 0.10);
       }
+      .fd-ring-wrap > svg { width: 38px !important; height: 38px !important; }
       .fd-ring-time {
         display: flex; flex-direction: column; line-height: 1;
         font-family: 'Menlo', 'Consolas', monospace;
         color: #F5EFE0;
       }
       .fd-ring-digits {
-        font-size: 0.85rem; font-weight: 700; letter-spacing: 0.04em;
+        font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
         display: inline-flex; align-items: center;
         font-variant-numeric: tabular-nums;
+        color: #F5EFE0;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.4);
       }
       .fd-ring-digits.urgent { color: #ff9aaa; }
       .fd-ring-lbl {
-        font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
-        color: rgba(245, 239, 224, 0.72); text-transform: uppercase;
-        margin-top: 2px;
+        font-size: 0.46rem; font-weight: 700; letter-spacing: 0.22em;
+        color: rgba(217, 190, 130, 0.78); text-transform: uppercase;
+        margin-top: 1px;
+      }
+      /* Drawer header timer — same digit-cell rules apply via .td-cell. */
+      .fd-drawer-timer {
+        display: inline-flex; align-items: center;
+        font-variant-numeric: tabular-nums;
       }
       @keyframes fdBlink {
         0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.4; }
       }
 
-      /* v159.7 — Real-timer digit roll. Each digit cell is a fixed-width
-         box with overflow:hidden; the OLD digit and NEW digit live
-         stacked vertically (out at top:0, in at top:100% — initially
-         hidden below the cell). On change, both translate up by 100%
-         simultaneously → old slides out the top, new slides into place.
-         Premium scoreboard / airport-flap feel. */
+      /* v159.9 — Real-timer digit roll, simplified. Each digit lives in
+         a fixed-width overflow:hidden cell. When value changes the
+         <span> remounts (via React key) and its tdRollIn animation
+         plays once: starts shifted DOWN + faded, settles at center.
+         Premium scoreboard pop. No stacked dual-render → no risk of
+         old+new digit ghosting visible side-by-side. */
       .td-cell {
         display: inline-block;
-        position: relative;
         overflow: hidden;
-        width: 0.62em;
+        width: 0.58em;
         height: 1em;
         line-height: 1;
         vertical-align: baseline;
         font-feature-settings: "tnum" 1;
       }
-      .td-out, .td-in {
+      .td-anim {
         display: block;
-        position: absolute;
-        left: 0; right: 0;
         text-align: center;
-        will-change: transform;
+        animation: tdRollIn 0.32s cubic-bezier(.32,.7,.3,1) both;
+        will-change: transform, opacity;
       }
-      .td-out { top: 0; }
-      .td-in  { top: 100%; }
-      .td-rolling .td-out {
-        animation: tdRollUp 0.32s cubic-bezier(.45,0,.25,1) forwards;
-      }
-      .td-rolling .td-in {
-        animation: tdRollUp 0.32s cubic-bezier(.45,0,.25,1) forwards;
-      }
-      @keyframes tdRollUp {
-        from { transform: translateY(0);    opacity: 1; }
-        45%  { opacity: 0.92; }
-        to   { transform: translateY(-100%); opacity: 1; }
+      @keyframes tdRollIn {
+        from { transform: translateY(55%); opacity: 0; }
+        45%  { opacity: 0.85; }
+        to   { transform: translateY(0);   opacity: 1; }
       }
       .td-sep {
         display: inline-block;
-        width: 0.32em;
+        width: 0.22em;
         text-align: center;
-        opacity: 0.65;
+        opacity: 0.7;
         animation: fdBlink 1.05s ease-in-out infinite;
       }
       @media (prefers-reduced-motion: reduce) {
-        .td-rolling .td-out,
-        .td-rolling .td-in { animation: none; }
-        .td-rolling .td-out { transform: translateY(-100%); }
-        .td-rolling .td-in  { transform: translateY(-100%); }
-        .td-sep { animation: none; opacity: 1; }
+        .td-anim { animation: none; }
+        .td-sep  { animation: none; opacity: 1; }
       }
 
       /* Body — v159.3 tighter on mobile. */

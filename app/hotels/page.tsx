@@ -391,7 +391,7 @@ function HotelList() {
   // ───────────────────────── Rails ─────────────────────────
   // We always build from `filteredHotels` so star-filter is honoured.
   // (sort doesn't change rail composition — each rail has its own sort.)
-  type Rail = { key: string; title: string; icon?: string; eyebrow?: string; items: any[] };
+  type Rail = { key: string; title: string; icon?: string; eyebrow?: string; items: any[]; compact?: boolean };
 
   const rails: Rail[] = useMemo(() => {
     if (!filteredHotels.length) return [];
@@ -404,7 +404,8 @@ function HotelList() {
     if (recentIds.length) {
       const map = new Map(filteredHotels.map((h: any) => [String(h.id), h]));
       const items = recentIds.map((id) => map.get(String(id))).filter(Boolean);
-      if (items.length) out.push({ key: "recent", title: "Recently viewed", icon: "🕘", items });
+      // v159.9 — compact half-height tiles (Airbnb "Recently viewed" pattern)
+      if (items.length) out.push({ key: "recent", title: "Recently viewed", icon: "🕘", items, compact: true });
     } else {
       const seeded = [...filteredHotels]
         .sort((a: any, b: any) => (Number(b.avgRating) || 0) - (Number(a.avgRating) || 0))
@@ -416,6 +417,7 @@ function HotelList() {
           icon: "✨",
           eyebrow: "Picks the community is loving right now",
           items: seeded,
+          compact: true,
         });
       }
     }
@@ -964,7 +966,7 @@ function RailSection({
   savedSet,
   searchUrlParams,
 }: {
-  rail: { key: string; title: string; icon?: string; eyebrow?: string; items: any[] };
+  rail: { key: string; title: string; icon?: string; eyebrow?: string; items: any[]; compact?: boolean };
   onHeart: (e: React.MouseEvent, h: any) => void;
   savedSet: Set<string>;
   searchUrlParams?: string;
@@ -1002,7 +1004,7 @@ function RailSection({
   };
 
   return (
-    <section className="hxr-rail-section">
+    <section className={`hxr-rail-section ${rail.compact ? "hxr-rail-compact" : ""}`}>
       <header className="hxr-rail-head">
         <div className="hxr-rail-head-text">
           <h2 className="hxr-rail-title">
@@ -1034,7 +1036,15 @@ function RailSection({
       </header>
       <div className="hxr-rail" ref={scrollRef} role="list">
         {rail.items.map((h: any) => (
-          <CardLink key={`${rail.key}-${h.id}`} h={h} variant="rail" onHeart={onHeart} savedSet={savedSet} searchUrlParams={searchUrlParams} />
+          <CardLink
+            key={`${rail.key}-${h.id}`}
+            h={h}
+            variant="rail"
+            onHeart={onHeart}
+            savedSet={savedSet}
+            searchUrlParams={searchUrlParams}
+            compact={rail.compact}
+          />
         ))}
         {/* Bleed pad so the last card snaps cleanly to the right edge */}
         <div className="hxr-rail-end" aria-hidden="true" />
@@ -1050,12 +1060,14 @@ function CardLink({
   onHeart,
   savedSet,
   searchUrlParams,
+  compact,
 }: {
   h: any;
   variant: "rail" | "grid";
   onHeart: (e: React.MouseEvent, h: any) => void;
   savedSet: Set<string>;
   searchUrlParams?: string;
+  compact?: boolean;
 }) {
   const { minPrice, showFlash } = h._minPrice !== undefined
     ? { minPrice: h._minPrice, showFlash: h._showFlash }
@@ -1070,7 +1082,7 @@ function CardLink({
     <Link
       role="listitem"
       href={`/hotels/${h.id}${searchUrlParams || ""}`}
-      className={`hxr-card ${variant === "rail" ? "hxr-card-rail" : "hxr-card-grid"}`}
+      className={`hxr-card ${variant === "rail" ? "hxr-card-rail" : "hxr-card-grid"} ${compact ? "hxr-card-compact" : ""}`}
     >
       <div className="hxr-card-imgwrap">
         {h.images?.[0] ? (
