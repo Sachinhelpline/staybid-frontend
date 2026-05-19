@@ -69,6 +69,180 @@ const sampleReviews = [
   { id:"s3", rating:5, comment:"Worth every rupee! Negotiated a great price through StayBid and the experience exceeded all expectations.", createdAt:"2026-01-10", guestName:"Anita K." },
 ];
 
+/* v159.11 — Room photo swipe carousel. Replaces the static <img> +
+   thumbnail-tap-to-swap pattern with a horizontal scroll-snap container
+   showing ALL room photos full-bleed.
+   v159.12 — Cleaned up: removed the 4-thumbnail strip + "N / total"
+   counter per Sachin's "sirf scroll kaafi hai" feedback. Just swipe.
+   Added mouse-drag support so laptop users can grab + drag like an
+   iPhone touch swipe. */
+function RoomSwipeMedia({
+  roomId,
+  roomName,
+  images,
+  activeIdx,
+  onActiveIdxChange,
+}: {
+  roomId: string;
+  roomName: string;
+  images: string[];
+  activeIdx: number;
+  onActiveIdxChange: (idx: number) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pausedUntilRef = useRef(0);
+
+  // Sync activeIdx when user swipes by reading scrollLeft / clientWidth.
+  // Throttled via rAF so rapid scrolls don't dispatch many state updates.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || images.length <= 1) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const w = el.clientWidth || 1;
+        const idx = Math.round(el.scrollLeft / w);
+        const clamped = Math.max(0, Math.min(images.length - 1, idx));
+        if (clamped !== activeIdx) onActiveIdxChange(clamped);
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [activeIdx, images.length, onActiveIdxChange]);
+
+  // v159.13 — Auto-scroll. Cycle 1 slide every 5.5 s; pause for 8 s
+  // after any user touchstart/pointerdown/wheel; resume after. Loops
+  // back to first slide. Matches HotelHero auto-scroll behavior but
+  // with a slightly slower cadence so room photos breathe.
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const onUserPoke = () => { pausedUntilRef.current = Date.now() + 8000; };
+    el.addEventListener("touchstart", onUserPoke, { passive: true });
+    el.addEventListener("pointerdown", onUserPoke);
+    el.addEventListener("wheel", onUserPoke, { passive: true });
+    const tick = window.setInterval(() => {
+      if (!el) return;
+      if (Date.now() < pausedUntilRef.current) return;
+      const w = el.clientWidth || 1;
+      const maxScroll = el.scrollWidth - w;
+      let nextLeft = el.scrollLeft + w;
+      if (nextLeft > maxScroll - 6) nextLeft = 0;
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }, 5500);
+    return () => {
+      window.clearInterval(tick);
+      el.removeEventListener("touchstart", onUserPoke);
+      el.removeEventListener("pointerdown", onUserPoke);
+      el.removeEventListener("wheel", onUserPoke);
+    };
+  }, [images.length]);
+
+  // v159.12 — Mouse drag-to-scroll for desktop. Native scroll-snap-x
+  // works for trackpad swipe + wheel, but doesn't accept a click+drag
+  // gesture from a mouse. This handler captures the pointer, translates
+  // dx into scrollLeft live, then on release lets the snap engine pull
+  // the closest slide into view. Touch pointers (pointerType === touch)
+  // are skipped so the native iOS / Android swipe stays untouched.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || images.length <= 1) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startScroll = el.scrollLeft;
+    el.style.scrollBehavior = "auto"; // disable smooth during drag
+    el.style.cursor = "grabbing";
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      el.scrollLeft = startScroll - dx;
+    };
+    const onUp = () => {
+      el.style.scrollBehavior = "smooth";
+      el.style.cursor = "";
+      try { el.releasePointerCapture(e.pointerId); } catch {}
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
+
+  return (
+    <>
+      <div
+        className="hx-room-swipe"
+        ref={scrollRef}
+        role="region"
+        aria-label={`${roomName} photos`}
+        onPointerDown={onPointerDown}
+      >
+        {images.map((img, idx) => (
+          <div key={idx} className="hx-room-swipe-slide" aria-label={`Photo ${idx + 1} of ${images.length}`}>
+            <img
+              src={img}
+              alt={`${roomName} — view ${idx + 1}`}
+              className="hx-room-swipe-img hx-room-media-img"
+              loading={idx === 0 ? "eager" : "lazy"}
+              draggable={false}
+              onError={(e: any) => {
+                if (!e.target.dataset.fallbackTried) {
+                  e.target.dataset.fallbackTried = "1";
+                  e.target.src = `https://picsum.photos/seed/sb-fallback-${roomId}-${idx}/800/600`;
+                }
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="hx-room-media-grad" />
+      {/* v159.13 — Desktop ‹›  arrows so mouse users don't have to
+          rely on drag-to-pan (CSS hides at hover:none / mobile). */}
+      {images.length > 1 && (
+        <>
+          <button
+            type="button"
+            className="hx-room-arrow hx-room-arrow-prev"
+            aria-label="Previous photo"
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const el = scrollRef.current; if (!el) return;
+              const w = el.clientWidth || 1;
+              let nx = el.scrollLeft - w;
+              if (nx < -2) nx = el.scrollWidth - w;
+              el.scrollTo({ left: nx, behavior: "smooth" });
+              pausedUntilRef.current = Date.now() + 8000;
+            }}
+          >‹</button>
+          <button
+            type="button"
+            className="hx-room-arrow hx-room-arrow-next"
+            aria-label="Next photo"
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const el = scrollRef.current; if (!el) return;
+              const w = el.clientWidth || 1;
+              const maxScroll = el.scrollWidth - w;
+              let nx = el.scrollLeft + w;
+              if (nx > maxScroll - 2) nx = 0;
+              el.scrollTo({ left: nx, behavior: "smooth" });
+              pausedUntilRef.current = Date.now() + 8000;
+            }}
+          >›</button>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function HotelDetail() {
   const { id } = useParams();
   const router = useRouter();
@@ -136,6 +310,18 @@ export default function HotelDetail() {
   // review screen shows complete trip details + lets user choose
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
+
+  // v159 — Recently viewed tracker. Push current hotel id to front of
+  // `sb_recent_viewed_hotels` localStorage (max 12). Read by /hotels rails.
+  useEffect(() => {
+    if (typeof window === "undefined" || !id) return;
+    try {
+      const raw = localStorage.getItem("sb_recent_viewed_hotels");
+      const prev: string[] = raw ? JSON.parse(raw) : [];
+      const next = [String(id), ...prev.filter((x) => String(x) !== String(id))].slice(0, 12);
+      localStorage.setItem("sb_recent_viewed_hotels", JSON.stringify(next));
+    } catch {}
+  }, [id]);
 
   // v124.2 — Hide the floating "Check availability" mobile pill when ANY
   // in-page primary CTA is visible. Real-device feedback: pill sat ON TOP
@@ -243,6 +429,25 @@ export default function HotelDetail() {
   const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
   const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
   const globalTotalGuests = globalAdults + globalChildren + globalKids;
+
+  // v159.8 — Hydrate from URL params passed by the /hotels SearchSheet
+  // (or directly bookmarked). One-time on mount; subsequent picker edits
+  // on this page override these. URL params are the SOURCE of truth on
+  // first paint so the picker arrives pre-filled with the search state.
+  useEffect(() => {
+    const sp = searchParams;
+    const ci = sp.get("checkIn");
+    const co = sp.get("checkOut");
+    const ad = sp.get("adults");
+    const ch = sp.get("children");
+    const kd = sp.get("kids");
+    if (ci) setGlobalCheckIn(ci);
+    if (co) setGlobalCheckOut(co);
+    if (ad) setGlobalAdults(Math.max(1, Math.min(8, Number(ad) || 2)));
+    if (ch) setGlobalChildren(Math.max(0, Math.min(6, Number(ch) || 0)));
+    if (kd) setGlobalKids(Math.max(0, Math.min(6, Number(kd) || 0)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const globalNights = (globalCheckIn && globalCheckOut)
     ? Math.max(1, Math.ceil((new Date(globalCheckOut).getTime() - new Date(globalCheckIn).getTime()) / 86400000))
     : 0;
@@ -1549,7 +1754,7 @@ export default function HotelDetail() {
 
   return (
     <div className="hx-shell">
-      <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
 
         {/* ── Toolbar — Back chip + crumb ── */}
         <div className="hx-toolbar">
@@ -1667,15 +1872,18 @@ export default function HotelDetail() {
           flashDealActive={!!(dealId && dealPrice)}
         />
 
-        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon ── */}
+        {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon.
+            v159.9 — Tightened from marginTop:14 → 8 + gap 16 → 12 +
+            sub-text leading shrunk so the block hugs the stats ribbon
+            above + the description below. Halves the air around it. */}
         <div
           className="hx-reveal"
           style={{
-            marginTop: 14,
+            marginTop: 8,
             display: "flex",
             justifyContent: "flex-start",
             flexWrap: "wrap",
-            gap: 16,
+            gap: 12,
             alignItems: "center",
           }}
         >
@@ -1689,34 +1897,36 @@ export default function HotelDetail() {
               flex: "1 1 200px",
               minWidth: 0,
               color: "var(--text-soft, #4a3820)",
-              fontSize: "0.78rem",
-              lineHeight: 1.45,
+              fontSize: "0.74rem",
+              lineHeight: 1.35,
             }}
           >
             <div
               style={{
                 fontFamily: "var(--font-display, 'Cormorant Garamond'), serif",
                 fontStyle: "italic",
-                fontSize: "1rem",
+                fontSize: "0.96rem",
                 color: "var(--text-base, #1f1a0f)",
                 fontWeight: 600,
               }}
             >
               StayBid Performance Scorecard
             </div>
-            <div style={{ marginTop: 3 }}>
-              Live score across 10 checkpoints + city rank. Tap the medal for the full breakdown.
+            <div style={{ marginTop: 2 }}>
+              Live score · 10 checkpoints · city rank. Tap medal for breakdown.
             </div>
           </div>
         </div>
 
-        {/* ── Two-column page grid (sticky rail on desktop ≥1100px) ── */}
-        <div className="hx-page-grid" style={{ marginTop: "22px" }}>
+        {/* ── Two-column page grid (sticky rail on desktop ≥1100px). v159.9
+            — marginTop 22 → 10 so the About section follows the medal
+            block tightly instead of leaving a chunk of dead space. */}
+        <div className="hx-page-grid" style={{ marginTop: "10px" }}>
           <div>
 
-        {/* ── Description ── */}
+        {/* ── Description — v159.9 tight section rhythm. */}
         {hotel.description && (
-          <div className="hx-reveal" style={{ marginTop: "8px" }}>
+          <div className="hx-reveal" style={{ marginTop: "2px" }}>
             <div className="hx-section-h">
               <span className="hx-section-h-label">About</span>
               <span className="hx-section-h-rule" />
@@ -2223,7 +2433,10 @@ export default function HotelDetail() {
               >
                 <div className="hx-room-body">
 
-                {/* ── Room Image gallery (4 photos: bed / interior / bathroom / view) ── */}
+                {/* ── Room Image gallery — v159.11 swipe carousel (was static
+                    image + thumbnail-tap-to-swap). All photos visible
+                    one-per-viewport, snap-x scroll, counter overlay,
+                    thumbnails still work as quick-jump shortcuts. ── */}
                 <div className="hx-room-media">
                   {(() => {
                     const roomImages: string[] = Array.isArray(r.images) && r.images.length > 0
@@ -2231,44 +2444,14 @@ export default function HotelDetail() {
                       : [roomImg];
                     const activeIdx = roomImgIdx[r.id] ?? 0;
                     const safeIdx = Math.min(activeIdx, roomImages.length - 1);
-                    const PHOTO_LABELS = ["Room", "Interior", "Bathroom", "View"];
                     return (
-                      <>
-                        <img
-                          key={safeIdx /* v133 — forces remount on thumb swap so fade-in animation replays */}
-                          src={roomImages[safeIdx]}
-                          alt={r.name || r.type}
-                          className="hx-room-media-img hx-room-img-fade"
-                          onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-fallback-" + r.id + "/800/600"; }}
-                          loading="lazy"
-                        />
-                        <div className="hx-room-media-grad" />
-                        {/* Thumbnail strip — tap to swap main image */}
-                        {roomImages.length > 1 && (
-                          <div className="hx-room-thumbs" onClick={(e) => e.stopPropagation()}>
-                            {roomImages.slice(0, 4).map((img, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                className={`hx-room-thumb ${idx === safeIdx ? "is-active" : ""}`}
-                                onClick={(ev) => {
-                                  ev.preventDefault();
-                                  ev.stopPropagation();
-                                  setRoomImgIdx((prev) => ({ ...prev, [r.id]: idx }));
-                                }}
-                                aria-label={`Show ${PHOTO_LABELS[idx] || `photo ${idx + 1}`}`}
-                              >
-                                <img
-                                  src={img}
-                                  alt=""
-                                  loading="lazy"
-                                  onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-thumb-" + r.id + "-" + idx + "/200/150"; }}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <RoomSwipeMedia
+                        roomId={String(r.id)}
+                        roomName={r.name || r.type || "Room"}
+                        images={roomImages}
+                        activeIdx={safeIdx}
+                        onActiveIdxChange={(idx) => setRoomImgIdx((prev) => ({ ...prev, [r.id]: idx }))}
+                      />
                     );
                   })()}
 

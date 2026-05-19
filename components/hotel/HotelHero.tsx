@@ -8,7 +8,7 @@
  *
  * Tap any tile to open the full lightbox at that index.
  */
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 
 type Props = {
   name: string;
@@ -59,8 +59,125 @@ export default function HotelHero({
     e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length];
   };
 
+  // v159.9 — Live photo counter for the mobile swipe carousel.
+  // v159.12 — Plus auto-scroll: cycle 1 slide every 4.5 s, pause for
+  // 6 s after any user touch/pointer interaction, then resume. Loops
+  // back to slide 0 after the last. iPhone-style smooth easing via the
+  // native scroll-snap engine.
+  const swipeRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const pausedUntilRef = useRef(0);
+  useEffect(() => {
+    const el = swipeRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth || 1;
+      const idx = Math.round(el.scrollLeft / w);
+      setActiveIdx(Math.max(0, Math.min(all.length - 1, idx)));
+    };
+    el.addEventListener("scroll", update, { passive: true });
+    return () => el.removeEventListener("scroll", update);
+  }, [all.length]);
+  useEffect(() => {
+    if (all.length <= 1) return;
+    const el = swipeRef.current;
+    if (!el) return;
+    const onUserPoke = () => { pausedUntilRef.current = Date.now() + 6000; };
+    el.addEventListener("touchstart", onUserPoke, { passive: true });
+    el.addEventListener("pointerdown", onUserPoke);
+    el.addEventListener("wheel", onUserPoke, { passive: true });
+    const tick = window.setInterval(() => {
+      if (!el) return;
+      if (Date.now() < pausedUntilRef.current) return;
+      const w = el.clientWidth || 1;
+      const maxScroll = el.scrollWidth - w;
+      let nextLeft = el.scrollLeft + w;
+      if (nextLeft > maxScroll - 6) nextLeft = 0; // loop back to first
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }, 4500);
+    return () => {
+      window.clearInterval(tick);
+      el.removeEventListener("touchstart", onUserPoke);
+      el.removeEventListener("pointerdown", onUserPoke);
+      el.removeEventListener("wheel", onUserPoke);
+    };
+  }, [all.length]);
+
   return (
     <div className="hx-reveal">
+      {/* v159.9 — Mobile-only full-bleed swipe carousel. Shows EVERY hotel
+          photo as a snap slide. Counter overlay tracks the active index
+          live. Tap any slide → opens the full lightbox at that index.
+          Hidden on tablet+ where the mosaic below takes over. */}
+      <div className="hx-hero-swipe-wrap">
+        <div className="hx-hero-swipe" ref={swipeRef} role="region" aria-label={`${name} photo carousel`}>
+          {all.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              className="hx-hero-swipe-slide"
+              onClick={() => onOpenGallery(i)}
+              aria-label={`View photo ${i + 1} of ${all.length}`}
+            >
+              <img
+                src={src}
+                alt={`${name} — view ${i + 1}`}
+                className="hx-hero-swipe-img"
+                onError={onErr(i)}
+                loading={i === 0 ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? ("high" as any) : undefined}
+              />
+            </button>
+          ))}
+        </div>
+        {trustBadge && (
+          <span className="hx-hero-swipe-pill">✓ Verified Stay</span>
+        )}
+        {/* v159.12 — Counter pill removed per Sachin's "sirf scroll kaafi
+            hai" — dots alone signal "where am I" without an explicit
+            "N / total" label that the user said was extra chrome. */}
+        <div className="hx-hero-swipe-dots" aria-hidden="true">
+          {all.slice(0, Math.min(8, all.length)).map((_, i) => (
+            <span
+              key={i}
+              className={`hx-hero-swipe-dot ${i === activeIdx ? "hx-hero-swipe-dot-active" : ""}`}
+            />
+          ))}
+        </div>
+        {/* v159.13 — Desktop arrow buttons (CSS hides them on mobile).
+            Mouse drag isn't always discoverable, so explicit ‹ › buttons
+            give laptop users a clear way to advance the carousel. */}
+        <button
+          type="button"
+          className="hx-hero-swipe-arrow hx-hero-swipe-arrow-prev"
+          aria-label="Previous photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            const el = swipeRef.current; if (!el) return;
+            const w = el.clientWidth || 1;
+            let nx = el.scrollLeft - w;
+            if (nx < -2) nx = el.scrollWidth - w; // loop to last
+            el.scrollTo({ left: nx, behavior: "smooth" });
+            pausedUntilRef.current = Date.now() + 6000;
+          }}
+        >‹</button>
+        <button
+          type="button"
+          className="hx-hero-swipe-arrow hx-hero-swipe-arrow-next"
+          aria-label="Next photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            const el = swipeRef.current; if (!el) return;
+            const w = el.clientWidth || 1;
+            const maxScroll = el.scrollWidth - w;
+            let nx = el.scrollLeft + w;
+            if (nx > maxScroll - 2) nx = 0; // loop to first
+            el.scrollTo({ left: nx, behavior: "smooth" });
+            pausedUntilRef.current = Date.now() + 6000;
+          }}
+        >›</button>
+      </div>
+
       <div className="hx-mosaic" role="region" aria-label={`${name} photo gallery`}>
         {/* HERO — content-aware: 4:3 on mobile, fills 2 rows on desktop */}
         <div

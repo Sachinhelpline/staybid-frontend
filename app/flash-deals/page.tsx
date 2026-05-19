@@ -82,23 +82,56 @@ function CountUp({ value, duration = 900 }: { value: number; duration?: number }
   return <>{v.toLocaleString("en-IN")}</>;
 }
 
-/* Circular countdown ring --------------------------------------------------- */
+/* Circular countdown ring — v159.9: 52 → 38 px, slimmer 2.4 stroke. */
 function CountdownRing({ pctRemaining, urgent }: { pctRemaining: number; urgent: boolean }) {
-  const r = 22;
+  const r = 16;
   const c = 2 * Math.PI * r;
   const dash = (pctRemaining / 100) * c;
   return (
-    <svg width="52" height="52" viewBox="0 0 52 52" style={{ flexShrink: 0 }}>
-      <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3" />
+    <svg width="38" height="38" viewBox="0 0 38 38" style={{ flexShrink: 0 }}>
+      <circle cx="19" cy="19" r={r} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="2.4" />
       <circle
-        cx="26" cy="26" r={r} fill="none"
+        cx="19" cy="19" r={r} fill="none"
         stroke={urgent ? "#ff3859" : "#f0b429"}
-        strokeWidth="3" strokeLinecap="round"
+        strokeWidth="2.4" strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
-        transform="rotate(-90 26 26)"
-        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 6px #ff3859)" : "drop-shadow(0 0 6px #f0b429)" }}
+        transform="rotate(-90 19 19)"
+        style={{ transition: "stroke-dasharray 700ms cubic-bezier(.4,.0,.2,1)", filter: urgent ? "drop-shadow(0 0 5px #ff3859)" : "drop-shadow(0 0 5px #f0b429)" }}
       />
     </svg>
+  );
+}
+
+/* v159.7 — Real-timer digit cell. v159.9 — Simplified to key-based
+   animation: when value prop changes, React unmounts the old span and
+   mounts a fresh .td-anim element with the new value. The new element
+   rolls UP from below into place. No dual-render stack, no risk of
+   "double separator" artifacts on rapid ticks, no stale state. */
+function TimerDigit({ value }: { value: number | string }) {
+  const v = String(value);
+  return (
+    <span className="td-cell">
+      <span className="td-anim" key={v}>{v}</span>
+    </span>
+  );
+}
+
+/* Convenience — render "HH:MM:SS" with each digit animated. */
+function TimerDigits({ hrs, mins, secs }: { hrs: number; mins: number; secs: number }) {
+  const hh = pad2(hrs);
+  const mm = pad2(mins);
+  const ss = pad2(secs);
+  return (
+    <>
+      <TimerDigit value={hh[0]} />
+      <TimerDigit value={hh[1]} />
+      <span className="td-sep">:</span>
+      <TimerDigit value={mm[0]} />
+      <TimerDigit value={mm[1]} />
+      <span className="td-sep">:</span>
+      <TimerDigit value={ss[0]} />
+      <TimerDigit value={ss[1]} />
+    </>
   );
 }
 
@@ -163,7 +196,16 @@ function FlashDealsContent() {
     return () => clearInterval(t);
   }, [city, hydrated]);
 
-  const cities = ["All", "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
+  // v159.3 — icon + label pairs matching /hotels CITY_PILLS.
+  const cities: Array<{ key: string; label: string; icon: string }> = [
+    { key: "",          label: "All",       icon: "🏔" },
+    { key: "Mussoorie", label: "Mussoorie", icon: "⛰️" },
+    { key: "Dhanaulti", label: "Dhanaulti", icon: "🌲" },
+    { key: "Rishikesh", label: "Rishikesh", icon: "🕉" },
+    { key: "Shimla",    label: "Shimla",    icon: "🌨" },
+    { key: "Manali",    label: "Manali",    icon: "🏂" },
+    { key: "Dehradun",  label: "Dehradun",  icon: "🌳" },
+  ];
 
   /* Live stats strip ------------------------------------------------------- */
   const stats = useMemo(() => {
@@ -181,6 +223,26 @@ function FlashDealsContent() {
 
   const open = deals.find(d => d.id === openId) || null;
 
+  // v159.3 — Sort dimension. Default "discount" matches Sachin's "biggest
+  // savings first" intent. Other modes keep the same rail-less grid but
+  // re-rank the dense card list so user can scan by price / time.
+  const [sortBy, setSortBy] = useState<"discount" | "price-asc" | "ending">("discount");
+  const sortedDeals = useMemo(() => {
+    const cloned = [...deals];
+    if (sortBy === "discount") {
+      cloned.sort((a, b) => (b.discount || 0) - (a.discount || 0));
+    } else if (sortBy === "price-asc") {
+      cloned.sort((a, b) => (a.aiPrice || 0) - (b.aiPrice || 0));
+    } else if (sortBy === "ending") {
+      cloned.sort((a, b) => {
+        const ta = a.validUntil ? new Date(a.validUntil).getTime() : Infinity;
+        const tb = b.validUntil ? new Date(b.validUntil).getTime() : Infinity;
+        return ta - tb;
+      });
+    }
+    return cloned;
+  }, [deals, sortBy]);
+
   return (
     <div className="fd-root">
       <FdStyles />
@@ -188,60 +250,80 @@ function FlashDealsContent() {
       {/* Animated mesh background */}
       <div className="fd-bg-mesh" aria-hidden />
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="fd-hero">
-        <div className="fd-eyebrow">
-          <span className="fd-dot-live" />
-          <span>Live · Same-Day · AI Curated</span>
-          <span className="fd-dot-live" />
-        </div>
-
-        <h1 className="fd-title">
-          Flash <span className="fd-title-gold">Deals</span>
-        </h1>
-        <p className="fd-sub">
-          One headline price per hotel · upgrade rooms when free · midnight reset.
+      {/* v159.5 — Hero ABOVE sticky. Single-line: eyebrow · italic title ·
+          count. Scrolls away cleanly on first scroll. Half the height of
+          the v159.3 stacked block (~22px vs ~50px on mobile). */}
+      <header className="fd-hero-slim sb-fade-in">
+        <p className="fd-hero-line">
+          <span className="fd-dot-live" aria-hidden="true" />
+          <span className="fd-hero-eyebrow">Live · Same-Day · AI</span>
+          <span className="fd-hero-dot" aria-hidden="true">·</span>
+          <span className="fd-hero-title">
+            Flash <span className="fd-title-gold">Deals</span>
+          </span>
+          <span className="fd-hero-dot" aria-hidden="true">·</span>
+          <span className="fd-hero-count">
+            {loading
+              ? "loading…"
+              : `${stats.dealsLive} deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+          </span>
         </p>
+        {/* Mini stat strip — keeps the headline numbers above-fold but as
+            a tiny secondary row, not a full hero block. */}
+        <div className="fd-hero-stats">
+          <span className="fd-stat-dot" />
+          <span className="fd-stat"><CountUp value={stats.dealsLive} /> live</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.hotelsHot} /> hotels</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat"><CountUp value={stats.avgDisc} />% off</span>
+          <span className="fd-stat-sep">·</span>
+          <span className="fd-stat fd-stat-gold">
+            ₹<CountUp value={stats.totalSaving} /> saved
+          </span>
+        </div>
+      </header>
 
-        {/* Live ticker chips */}
-        <div className="fd-ticker">
-          <div className="fd-chip">
-            <span className="fd-chip-dot live" />
-            <span className="fd-chip-val"><CountUp value={stats.dealsLive} /></span>
-            <span className="fd-chip-lbl">deals live</span>
+      {/* v159.5 — Slim sticky chrome: city pills + refine. Solid background
+          (no backdrop-blur leak). Hero above scrolls away first. */}
+      <div className="fd-sticky">
+        <div className="fd-sticky-inner">
+          <div className="fd-cities" data-autonext-self="fd-results">
+            {cities.map((c) => {
+              const active = (c.key === "" && !city) || c.key === city;
+              return (
+                <button
+                  key={c.key || "all"}
+                  type="button"
+                  onClick={() => {
+                    setCity(c.key);
+                    try { localStorage.setItem("sb_city", c.key); } catch {}
+                  }}
+                  className={`fd-cat ${active ? "fd-cat-active" : ""}`}
+                  aria-pressed={active}
+                >
+                  <span className="fd-cat-icon" aria-hidden="true">{c.icon}</span>
+                  <span className="fd-cat-label">{c.label}</span>
+                </button>
+              );
+            })}
           </div>
-          <div className="fd-chip">
-            <span className="fd-chip-emoji">🏨</span>
-            <span className="fd-chip-val"><CountUp value={stats.hotelsHot} /></span>
-            <span className="fd-chip-lbl">hotels</span>
-          </div>
-          <div className="fd-chip">
-            <span className="fd-chip-emoji">⚡</span>
-            <span className="fd-chip-val"><CountUp value={stats.avgDisc} />%</span>
-            <span className="fd-chip-lbl">avg off</span>
-          </div>
-          <div className="fd-chip gold">
-            <span className="fd-chip-emoji">💰</span>
-            <span className="fd-chip-val">₹<CountUp value={stats.totalSaving} /></span>
-            <span className="fd-chip-lbl">savings today</span>
+          <div className="fd-refine">
+            <label className="fd-refine-chip">
+              <span className="fd-refine-eyebrow">Sort</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="fd-refine-select"
+                aria-label="Sort flash deals"
+              >
+                <option value="discount">Biggest discount</option>
+                <option value="price-asc">Price · low → high</option>
+                <option value="ending">Ending soonest</option>
+              </select>
+            </label>
           </div>
         </div>
-      </div>
-
-      {/* ── City filter pills — v122.3: tap auto-scrolls to results ──── */}
-      <div className="fd-cities" data-autonext-self="fd-results">
-        {cities.map((c) => {
-          const active = (c === "All" && !city) || c === city;
-          return (
-            <button
-              key={c}
-              onClick={() => setCity(c === "All" ? "" : c)}
-              className={`fd-city ${active ? "active" : ""}`}
-            >
-              {c}
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Deals grid — v122.3 auto-scroll target ──────────────────── */}
@@ -256,9 +338,9 @@ function FlashDealsContent() {
           </div>
         )}
 
-        {!loading && deals.length > 0 && (
+        {!loading && sortedDeals.length > 0 && (
           <div className="fd-grid">
-            {deals.map((d, idx) => (
+            {sortedDeals.map((d, idx) => (
               <DealCard
                 key={d.id}
                 deal={d}
@@ -370,110 +452,94 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           </div>
         </div>
 
-        {/* Countdown ring (bottom-right) */}
+        {/* Countdown ring (bottom-right) — v159.7 real-timer digit rolls */}
         <div className="fd-ring-wrap">
           <CountdownRing pctRemaining={pctRemaining} urgent={urgent} />
           <div className="fd-ring-time">
-            <span className={urgent ? "urgent" : ""}>
-              {pad2(hrs)}<span className="fd-ring-sep">:</span>
-              {pad2(mins)}<span className="fd-ring-sep">:</span>
-              {pad2(secs)}
+            <span className={`fd-ring-digits ${urgent ? "urgent" : ""}`} aria-label={`Ends in ${pad2(hrs)}:${pad2(mins)}:${pad2(secs)}`}>
+              <TimerDigits hrs={hrs} mins={mins} secs={secs} />
             </span>
             <span className="fd-ring-lbl">ends</span>
           </div>
         </div>
       </div>
 
-      {/* Body */}
+      {/* Body — v159.4 Airbnb-compact: tight name+score row, single meta
+          line, slim upgrade chips, horizontal price+CTA row. No dead
+          vertical gaps from a tall medal column. */}
       <div className="fd-body">
-        <div className="fd-hotel-row">
-          <div className="fd-hotel-row-left">
-            <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
-            {deal.hotel?.starRating ? (
-              <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
-            ) : null}
-          </div>
-          {/* v128.4 — Performance scorecard badge (clickable). Card variant
-              fits the flash-deal layout; tapping opens the same modal as
-              on hotel detail page. */}
+        {/* Row 1 — Hotel name (truncates) + compact score pill (inline) */}
+        <div className="fd-name-row">
+          <h3 className="fd-hotel-name">{deal.hotel?.name || "Hotel"}</h3>
           {deal.hotelId ? (
-            <div className="fd-score-slot" onClick={(e) => e.stopPropagation()}>
+            <div className="fd-score-inline" onClick={(e) => e.stopPropagation()}>
               <HotelScoreBadge
                 hotelId={deal.hotelId}
                 hotelName={deal.hotel?.name}
-                variant="card"
+                variant="compact"
               />
             </div>
           ) : null}
         </div>
-        <div className="fd-rt-row">
+
+        {/* Row 2 — stars + room type + capacity + units left, all inline */}
+        <div className="fd-meta-line">
+          {deal.hotel?.starRating ? (
+            <span className="fd-stars">{"★".repeat(deal.hotel.starRating)}</span>
+          ) : null}
+          <span className="fd-meta-sep">·</span>
           <span className="fd-room-type">{showType}</span>
-          <span className="fd-room-cap">· sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
+          <span className="fd-meta-sep">·</span>
+          <span className="fd-room-cap">sleeps {pickedUp?.capacity || deal.room?.capacity || 2}</span>
+          <span className="fd-meta-sep">·</span>
+          <span className={`fd-slots-pill ${leftSlots <= 2 ? "urgent" : ""} ${sold ? "soldout" : ""}`}>
+            {sold ? "Sold out" : `${leftSlots} of ${totalSlots} left`}
+          </span>
         </div>
 
-        {/* Slot meter */}
-        <div className="fd-slots">
-          <div className="fd-slots-text">
-            <span className={`fd-slots-left ${leftSlots <= 2 ? "urgent" : ""}`}>
-              {sold ? "Sold out" : `${leftSlots} left tonight`}
-            </span>
-            <span className="fd-slots-of">
-              {bookedSlots}/{totalSlots} booked
-            </span>
-          </div>
-          <div className="fd-slots-bar">
-            <div className={`fd-slots-fill ${leftSlots <= 2 ? "urgent" : ""}`} style={{ width: `${fillPct}%` }} />
-            <div className="fd-slots-shimmer" />
-          </div>
-        </div>
-
-        {/* Upgrade chips (inline) */}
+        {/* Upgrade chips — slim horizontal row, no big wrapper box */}
         {deal.upgrades.length > 0 && (
-          <div className="fd-up-wrap" onClick={(e) => e.stopPropagation()}>
-            <div className="fd-up-label">
-              <span>✨ Upgrade your room</span>
-              <span className="fd-up-count">{deal.roomTypesAvailable} types available</span>
-            </div>
-            <div className="fd-up-chips">
+          <div className="fd-up-row" onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
+              onClick={() => onPickUpgrade(deal.roomId)}
+            >
+              <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
+              <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
+            </button>
+            {deal.upgrades.slice(0, 3).map(u => (
               <button
-                className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
-                onClick={() => onPickUpgrade(deal.roomId)}
+                key={u.roomId}
+                className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
+                disabled={!u.available}
+                onClick={() => u.available && onPickUpgrade(u.roomId)}
               >
-                <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
-                <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
+                <span className="fd-up-chip-type">{u.type}</span>
+                <span className="fd-up-chip-delta">
+                  {u.available
+                    ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
+                    : "Sold"}
+                </span>
               </button>
-              {deal.upgrades.slice(0, 3).map(u => (
-                <button
-                  key={u.roomId}
-                  className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
-                  disabled={!u.available}
-                  onClick={() => u.available && onPickUpgrade(u.roomId)}
-                >
-                  <span className="fd-up-chip-type">{u.type}</span>
-                  <span className="fd-up-chip-delta">
-                    {u.available
-                      ? (u.extraPerNight > 0 ? `+${fmtINR(u.extraPerNight)}` : fmtINR(u.dealPrice))
-                      : "Sold"}
-                  </span>
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         )}
 
-        {/* Price + CTA */}
+        {/* Price + CTA — horizontal row, no dividers */}
         <div className="fd-price-row">
           <div className="fd-price-block">
-            {showFloor > showAiPrice && (
-              <p className="fd-price-strike">{fmtINR(showFloor)}</p>
-            )}
-            <p className="fd-price-now">
-              {fmtINR(showAiPrice)}
+            <div className="fd-price-line">
+              {showFloor > showAiPrice && (
+                <span className="fd-price-strike">{fmtINR(showFloor)}</span>
+              )}
+              <span className="fd-price-now">{fmtINR(showAiPrice)}</span>
               <span className="fd-price-unit">/night</span>
-            </p>
-            <p className="fd-price-save">
-              You save {fmtINR(Math.max(0, showFloor - showAiPrice))}
-            </p>
+            </div>
+            {showFloor > showAiPrice && (
+              <p className="fd-price-save">
+                Save {fmtINR(Math.max(0, showFloor - showAiPrice))}
+              </p>
+            )}
           </div>
           <button
             className={`fd-cta ${sold ? "sold" : ""}`}
@@ -481,8 +547,6 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             onClick={(e) => {
               e.stopPropagation();
               if (sold) return;
-              // v129 — same snap as the drawer Grab Now path. The hotel page
-              // re-snaps defensively when it reads `dealPrice` back in.
               const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
               router.push(url);
             }}
@@ -537,7 +601,9 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }:
             <div className="fd-drawer-eyebrow">
               <span className="fd-dot-live" />
               <span>LIVE FLASH DEAL</span>
-              <span>· ends {pad2(hrs)}:{pad2(mins)}:{pad2(secs)}</span>
+              <span className="fd-drawer-timer">
+                · ends&nbsp;<TimerDigits hrs={hrs} mins={mins} secs={secs} />
+              </span>
             </div>
             <h2>{deal.hotel?.name || "Hotel"}</h2>
             <p>{deal.city} · {deal.hotel?.starRating ? "★".repeat(deal.hotel.starRating) : ""}</p>
@@ -680,26 +746,22 @@ function FdStyles() {
         100% { transform: translate3d(-2%, 1%, 0) scale(1.05); }
       }
 
-      /* v89 — Compact hero: padding 60→14px top, 28→10px bottom, so the
-         deal cards start visible above the fold on every device. */
-      .fd-hero {
-        position: relative;
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 14px 16px 10px;
-        z-index: 1;
+      /* v159.6 — Sticky reads as distinct floating layer: cream-50
+         (slight elevation vs cream-100 hero bg) + champagne-tinted edge
+         + stronger drop-shadow. Solid bg, no backdrop-blur. */
+      .fd-sticky {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--cozy-cream-50, #FFFCF6);
+        border-bottom: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 28%, var(--cozy-taupe, #E8DCC8));
+        box-shadow: 0 8px 18px -8px rgba(31, 26, 15, 0.20);
       }
-      .fd-eyebrow {
-        display: inline-flex; align-items: center; gap: 8px;
-        color: var(--cozy-champagne, #C9A66B);
-        font-size: 0.58rem; font-weight: 700;
-        letter-spacing: 0.20em; text-transform: uppercase; margin-bottom: 4px;
+      .fd-sticky-inner {
+        max-width: 1480px; margin: 0 auto;
+        padding: 6px 14px 4px;
       }
-      .fd-eyebrow > span:not(.fd-dot-live) {
-        background: linear-gradient(90deg, #D9BE82, #C9A66B);
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
+      @media (min-width: 640px)  { .fd-sticky-inner { padding: 8px 22px 6px; } }
+      @media (min-width: 1024px) { .fd-sticky-inner { padding: 10px 32px 8px; } }
+
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
         background: #ff3859; box-shadow: 0 0 0 0 rgba(255, 56, 89, 0.6);
@@ -711,96 +773,184 @@ function FdStyles() {
         100% { box-shadow: 0 0 0 0 rgba(255, 56, 89, 0); }
       }
 
-      /* v89 — Compact title + cozy palette */
-      .fd-title {
-        font-family: 'Cormorant Garamond', 'Syne', serif;
-        font-weight: 400;
-        font-size: clamp(1.6rem, 4vw, 2.4rem);
-        line-height: 1.05;
-        margin: 0 0 4px;
-        color: var(--cozy-warm-dark, #1F1A0F);
+      /* v159.5 — Single-line hero ABOVE the sticky. Scrolls away first.
+         Total height ~22px on mobile (vs ~140px stacked block in v159.3).
+         Tiny stat strip lives just under the title as a secondary row. */
+      .fd-hero-slim {
+        position: relative; z-index: 1;
+        max-width: 1480px; margin: 0 auto;
+        padding: 8px 16px 6px;
       }
+      @media (min-width: 640px)  { .fd-hero-slim { padding: 12px 22px 8px; } }
+      @media (min-width: 1024px) { .fd-hero-slim { padding: 16px 32px 10px; } }
+      .fd-hero-line {
+        display: flex; align-items: baseline; flex-wrap: wrap;
+        gap: 6px; margin: 0;
+        line-height: 1.25;
+      }
+      .fd-hero-eyebrow {
+        font-size: 0.5rem; font-weight: 700;
+        letter-spacing: 0.22em; text-transform: uppercase;
+        background: linear-gradient(90deg, #D9BE82, #C9A66B);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .fd-hero-title {
+        font-family: 'Cormorant Garamond', 'Syne', serif;
+        font-weight: 500;
+        font-style: italic;
+        font-size: 0.95rem;
+        line-height: 1.15;
+        color: var(--cozy-warm-dark, #1F1A0F);
+        letter-spacing: -0.005em;
+      }
+      .fd-hero-count {
+        font-family: var(--font-body, "DM Sans"), system-ui, sans-serif;
+        font-size: 0.7rem; font-weight: 500;
+        color: var(--cozy-cocoa-soft, #6E5430);
+        letter-spacing: 0.005em;
+      }
+      .fd-hero-dot { color: var(--cozy-cocoa-soft, #6E5430); opacity: 0.5; }
       .fd-title-gold {
         background: linear-gradient(90deg, #D9BE82, #C9A66B, #9C7E48, #C9A66B, #D9BE82);
         background-size: 200% 100%;
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: fdShine 4s linear infinite;
-        font-style: italic; font-weight: 600;
       }
       @keyframes fdShine {
         0%   { background-position: 0% 50%; }
         100% { background-position: 200% 50%; }
       }
-      .fd-sub {
-        color: var(--cozy-cocoa-soft, #6E5430);
-        font-size: 0.78rem;
-        max-width: 540px;
-        margin: 0 0 10px;
+      @media (min-width: 1024px) {
+        .fd-hero-eyebrow { font-size: 0.6rem; }
+        .fd-hero-title   { font-size: 1.2rem; }
+        .fd-hero-count   { font-size: 0.82rem; }
       }
-
-      /* v89 — Cozy chips + tighter ticker */
-      .fd-ticker {
-        display: flex; flex-wrap: wrap; gap: 6px;
+      @media (min-width: 1280px) {
+        .fd-hero-title { font-size: 1.4rem; }
       }
-      .fd-chip {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 5px 10px;
-        background: var(--cozy-cream-50, #FFFCF6);
-        border: 1px solid var(--cozy-taupe, #E8DCC8);
-        border-radius: 999px;
-        backdrop-filter: blur(8px);
-        font-size: 0.72rem;
+      /* Stat strip — secondary tiny row under the title line. */
+      .fd-hero-stats {
+        display: inline-flex; flex-wrap: wrap; align-items: center;
+        gap: 5px; margin-top: 4px;
+        font-size: 0.66rem; color: var(--cozy-cocoa-soft, #6E5430);
       }
-      .fd-chip.gold {
-        background: linear-gradient(135deg, rgba(201,166,107,0.22), rgba(201,166,107,0.08));
-        border-color: rgba(201,166,107,0.45);
+      .fd-stat { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 600; }
+      .fd-stat-gold {
+        color: var(--cozy-cocoa, #4A3820);
+        background: linear-gradient(135deg, rgba(201,166,107,0.18), rgba(201,166,107,0.06));
+        padding: 1px 7px; border-radius: 999px;
+        border: 1px solid rgba(201,166,107,0.30);
       }
-      .fd-chip-dot {
+      .fd-stat-sep { color: var(--cozy-taupe, #C8B891); opacity: 0.7; }
+      .fd-stat-dot {
         width: 6px; height: 6px; border-radius: 50%;
         background: var(--cozy-sage, #9DAD8F);
         box-shadow: 0 0 6px rgba(157, 173, 143, 0.6);
         animation: fdPulse 1.8s infinite;
       }
-      .fd-chip-val { color: var(--cozy-warm-dark, #1F1A0F); font-weight: 700; }
-      .fd-chip-lbl { color: var(--cozy-cocoa-soft, #6E5430); }
-      .fd-chip-emoji { font-size: 0.78rem; }
+      @media (min-width: 1024px) { .fd-hero-stats { font-size: 0.74rem; } }
 
-      /* v89 — Compact cities row */
+      /* v159.3 — Category pills Airbnb-true. No boxed bg on inactive,
+         active gets a thin champagne underline. Mirrors /hotels v159.2. */
       .fd-cities {
-        position: relative; z-index: 1;
-        max-width: 1280px; margin: 0 auto;
-        padding: 8px 16px 12px;
-        display: flex; flex-wrap: wrap; gap: 6px;
+        display: flex; gap: 2px;
+        overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+        padding: 2px 0 4px; margin: 0;
+        scroll-snap-type: x proximity;
       }
-      .fd-city {
-        padding: 5px 12px;
+      .fd-cities::-webkit-scrollbar { display: none; }
+      .fd-cat {
+        flex: 0 0 auto;
+        display: inline-flex; flex-direction: column;
+        align-items: center; justify-content: flex-end;
+        gap: 1px;
+        min-width: 54px;
+        padding: 4px 8px 6px;
+        background: transparent; border: 0; border-radius: 0;
+        cursor: pointer;
+        /* v159.6 — color-based dimming, NOT opacity. Matches /hotels
+           .hxr-cat treatment so inactive cats read as solid muted text
+           on the solid sticky bg, not as washed-out semi-transparent. */
+        color: var(--cozy-cocoa-soft, #6E5430);
+        transition: color 0.18s ease;
+        scroll-snap-align: start;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+      }
+      .fd-cat-icon {
+        font-size: 1.05rem; line-height: 1;
+        filter: saturate(0.35) brightness(0.92);
+        transition: filter 0.18s ease, transform 0.18s ease;
+      }
+      .fd-cat-label {
+        font-size: 0.58rem; font-weight: 600; letter-spacing: 0.01em;
+        white-space: nowrap; color: inherit;
+      }
+      .fd-cat:hover { color: var(--cozy-cocoa, #4A3820); }
+      .fd-cat:hover .fd-cat-icon { filter: saturate(0.75); }
+      .fd-cat-active { color: var(--cozy-warm-dark, #1F1A0F); }
+      .fd-cat-active .fd-cat-icon { filter: none; transform: scale(1.04); }
+      .fd-cat-active::after {
+        content: "";
+        position: absolute; left: 18%; right: 18%; bottom: -1px;
+        height: 2px; border-radius: 2px;
+        background: var(--cozy-warm-dark, #1F1A0F);
+        box-shadow: 0 0 0 0.5px var(--cozy-warm-dark, #1F1A0F);
+      }
+      @media (min-width: 768px) {
+        .fd-cat { min-width: 64px; padding: 6px 12px 8px; }
+        .fd-cat-icon { font-size: 1.2rem; }
+        .fd-cat-label { font-size: 0.66rem; }
+      }
+
+      /* Refine row — slim sort chip. Mirrors /hotels v159.2. */
+      .fd-refine {
+        display: flex; flex-wrap: wrap; align-items: center;
+        gap: 5px; padding-top: 4px;
+      }
+      .fd-refine-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px; height: 25px;
         background: var(--cozy-cream-50, #FFFCF6);
         border: 1px solid var(--cozy-taupe, #E8DCC8);
         border-radius: 999px;
         color: var(--cozy-cocoa, #4A3820);
-        font-size: 0.74rem; font-weight: 500;
-        cursor: pointer;
-        transition: all 0.22s ease;
+        font-size: 0.66rem; font-weight: 500;
       }
-      .fd-city:hover { border-color: rgba(201,166,107,0.55); }
-      .fd-city.active {
-        background: linear-gradient(135deg, #D9BE82, #C9A66B);
-        border-color: rgba(110, 84, 48, 0.45); color: var(--cozy-warm-dark);
-        font-weight: 700;
-        box-shadow: 0 4px 12px rgba(201,166,107,0.32);
+      .fd-refine-eyebrow { opacity: 0.7; font-size: 0.64rem; }
+      .fd-refine-select {
+        background: transparent; border: 0; outline: none;
+        font-size: 0.66rem; font-weight: 600;
+        color: var(--cozy-warm-dark, #1F1A0F);
+        font-family: inherit; cursor: pointer; padding-right: 2px;
+      }
+      @media (min-width: 1024px) {
+        .fd-refine { gap: 6px; }
+        .fd-refine-chip { height: 28px; font-size: 0.72rem; padding-left: 11px; padding-right: 11px; }
+        .fd-refine-select { font-size: 0.72rem; }
+        .fd-refine-eyebrow { font-size: 0.7rem; }
       }
 
-      /* Grid */
+      /* Grid — v159.3 responsive: 1 / 2 / 3 / 4 / 5 cols across breakpoints.
+         Mobile keeps 1 col so the dense card chrome (countdown ring + LIVE
+         pill + room picker + meter) stays legible. */
       .fd-grid-wrap {
         position: relative; z-index: 1;
-        max-width: 1280px; margin: 0 auto;
-        padding: 0 20px 80px;
+        max-width: 1480px; margin: 0 auto;
+        padding: 0 16px 80px;
       }
+      @media (min-width: 640px)  { .fd-grid-wrap { padding: 0 22px 88px; } }
+      @media (min-width: 1024px) { .fd-grid-wrap { padding: 0 32px 96px; } }
       .fd-grid {
-        display: grid; gap: 18px;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        display: grid; gap: 14px;
+        grid-template-columns: 1fr;
       }
+      @media (min-width: 640px)  { .fd-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+      @media (min-width: 1024px) { .fd-grid { grid-template-columns: repeat(3, 1fr); gap: 18px; } }
+      @media (min-width: 1280px) { .fd-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
+      @media (min-width: 1536px) { .fd-grid { grid-template-columns: repeat(5, 1fr); gap: 22px; } }
 
       /* v91 — Card uses theme tokens: cream surface in light mode, warm
          cocoa in dark. Champagne accent on hover stays brand-consistent. */
@@ -825,9 +975,14 @@ function FdStyles() {
         from { opacity: 0; transform: translateY(22px); }
         to   { opacity: 1; transform: translateY(0); }
       }
+      /* v159.3 — Image height responsive. Mobile is wider in 1-col grid so
+         keep aspect-ratio shorter; tablet+ stays similar. */
       .fd-img-wrap {
-        position: relative; height: 200px; overflow: hidden; background: #0d0d1a;
+        position: relative; height: 168px; overflow: hidden; background: #0d0d1a;
       }
+      @media (min-width: 640px)  { .fd-img-wrap { height: 180px; } }
+      @media (min-width: 1024px) { .fd-img-wrap { height: 192px; } }
+      @media (min-width: 1280px) { .fd-img-wrap { height: 200px; } }
       .fd-img {
         width: 100%; height: 100%; object-fit: cover;
         transform: scale(1.05);
@@ -911,52 +1066,117 @@ function FdStyles() {
       }
       .fd-loc-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cozy-champagne, #C9A66B); }
 
+      /* v159.9 — Shrunk + premium glass timer chip. Was 52px ring + chunky
+         8/12 padding on a dark glass pill. Now: 38px ring, tighter 3/10
+         padding, softer warm-cocoa gradient bg with subtle champagne
+         outline so it reads as a luxe accent on the photo instead of a
+         heavy badge. */
       .fd-ring-wrap {
-        position: absolute; bottom: 10px; right: 12px; z-index: 2;
-        display: flex; align-items: center; gap: 8px;
-        background: rgba(15, 12, 8, 0.60); backdrop-filter: blur(8px);
+        position: absolute; bottom: 8px; right: 8px; z-index: 2;
+        display: flex; align-items: center; gap: 6px;
+        background:
+          linear-gradient(135deg, rgba(31, 26, 15, 0.78), rgba(20, 16, 10, 0.92));
+        backdrop-filter: blur(10px) saturate(140%);
+        -webkit-backdrop-filter: blur(10px) saturate(140%);
         border-radius: 999px;
-        padding: 4px 12px 4px 4px;
-        border: 1px solid rgba(217, 190, 130, 0.20);
+        padding: 3px 11px 3px 3px;
+        border: 1px solid rgba(217, 190, 130, 0.28);
+        box-shadow:
+          0 6px 18px -8px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 246, 226, 0.10);
       }
+      .fd-ring-wrap > svg { width: 38px !important; height: 38px !important; }
       .fd-ring-time {
         display: flex; flex-direction: column; line-height: 1;
         font-family: 'Menlo', 'Consolas', monospace;
         color: #F5EFE0;
       }
-      .fd-ring-time > span:first-child { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; }
-      .fd-ring-time > span:first-child.urgent { color: #ff9aaa; animation: fdBlink 1.2s infinite; }
-      .fd-ring-sep { animation: fdBlink 1s infinite; }
+      .fd-ring-digits {
+        font-size: 0.78rem; font-weight: 700; letter-spacing: 0.02em;
+        display: inline-flex; align-items: center;
+        font-variant-numeric: tabular-nums;
+        color: #F5EFE0;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      }
+      .fd-ring-digits.urgent { color: #ff9aaa; }
       .fd-ring-lbl {
-        font-size: 0.52rem; font-weight: 600; letter-spacing: 0.18em;
-        color: rgba(245, 239, 224, 0.72); text-transform: uppercase;
-        margin-top: 2px;
+        font-size: 0.46rem; font-weight: 700; letter-spacing: 0.22em;
+        color: rgba(217, 190, 130, 0.78); text-transform: uppercase;
+        margin-top: 1px;
+      }
+      /* Drawer header timer — same digit-cell rules apply via .td-cell. */
+      .fd-drawer-timer {
+        display: inline-flex; align-items: center;
+        font-variant-numeric: tabular-nums;
       }
       @keyframes fdBlink {
         0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.4; }
       }
 
-      /* Body */
-      .fd-body { padding: 14px 16px 16px; }
+      /* v159.9 — Real-timer digit roll, simplified. Each digit lives in
+         a fixed-width overflow:hidden cell. When value changes the
+         <span> remounts (via React key) and its tdRollIn animation
+         plays once: starts shifted DOWN + faded, settles at center.
+         Premium scoreboard pop. No stacked dual-render → no risk of
+         old+new digit ghosting visible side-by-side. */
+      .td-cell {
+        display: inline-block;
+        overflow: hidden;
+        width: 0.58em;
+        height: 1em;
+        line-height: 1;
+        vertical-align: baseline;
+        font-feature-settings: "tnum" 1;
+      }
+      .td-anim {
+        display: block;
+        text-align: center;
+        animation: tdRollIn 0.32s cubic-bezier(.32,.7,.3,1) both;
+        will-change: transform, opacity;
+      }
+      @keyframes tdRollIn {
+        from { transform: translateY(55%); opacity: 0; }
+        45%  { opacity: 0.85; }
+        to   { transform: translateY(0);   opacity: 1; }
+      }
+      .td-sep {
+        display: inline-block;
+        width: 0.22em;
+        text-align: center;
+        opacity: 0.7;
+        animation: fdBlink 1.05s ease-in-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .td-anim { animation: none; }
+        .td-sep  { animation: none; opacity: 1; }
+      }
+
+      /* Body — v159.3 tighter on mobile. */
+      .fd-body { padding: 11px 13px 12px; }
+      @media (min-width: 640px)  { .fd-body { padding: 13px 14px 14px; } }
+      @media (min-width: 1024px) { .fd-body { padding: 14px 16px 16px; } }
       .fd-hotel-row {
         display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 10px; margin-bottom: 8px;
+        gap: 8px; margin-bottom: 6px;
       }
+      @media (min-width: 1024px) { .fd-hotel-row { gap: 10px; margin-bottom: 8px; } }
       .fd-hotel-row-left {
         flex: 1 1 auto; min-width: 0;
         display: flex; flex-direction: column; gap: 2px;
       }
       .fd-hotel-name {
-        font-size: 0.95rem; font-weight: 600; color: var(--text-base);
+        font-size: 0.86rem; font-weight: 600; color: var(--text-base);
         margin: 0;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        letter-spacing: -0.005em;
       }
-      /* v128.4 — Flash deal scorecard badge slot. flex-shrink:0 so the
-         medal never gets squeezed; click stops propagation to the card. */
-      .fd-score-slot { flex-shrink: 0; align-self: flex-start; }
-      @media (max-width: 480px) {
-        .fd-hotel-row { gap: 8px; }
-      }
+      @media (min-width: 1024px) { .fd-hotel-name { font-size: 0.95rem; } }
+      /* v128.4 — Flash deal scorecard badge slot. v159.3 — scaled down on
+         small cards so the medal reads as a corner accent. */
+      .fd-score-slot { flex-shrink: 0; align-self: flex-start; transform: scale(0.78); transform-origin: top right; }
+      @media (min-width: 1024px) { .fd-score-slot { transform: scale(0.92); } }
+      @media (min-width: 1280px) { .fd-score-slot { transform: scale(1); } }
+      @media (max-width: 480px) { .fd-hotel-row { gap: 6px; } }
       /* v92 — Star + room type + slots use theme accent (champagne) so
          they read on both cream + cocoa surfaces. The bright #f0b429
          original gold disappeared on cream. */
@@ -1024,7 +1244,7 @@ function FdStyles() {
       .fd-up-chip {
         flex-shrink: 0;
         display: flex; flex-direction: column; align-items: flex-start;
-        padding: 6px 10px;
+        padding: 4px 9px 5px;
         background: var(--bg-pill);
         border: 1px solid var(--border-soft);
         border-radius: 10px;
@@ -1046,35 +1266,115 @@ function FdStyles() {
       }
       .fd-up-chip.soldout .fd-up-chip-delta { color: #c87878; }
 
-      /* Price + CTA — v92 theme-aware divider */
+      /* v159.4 — Airbnb-compact card body. Replaces .fd-hotel-row,
+         .fd-rt-row, .fd-slots, .fd-up-wrap with denser single-row rows.
+         Old classes still exist in CSS but are no longer rendered. */
+      .fd-name-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; margin-bottom: 4px;
+      }
+      .fd-hotel-name {
+        flex: 1 1 auto; min-width: 0;
+        font-size: 0.92rem; font-weight: 600; color: var(--text-base);
+        margin: 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        letter-spacing: -0.005em;
+      }
+      @media (min-width: 1024px) { .fd-hotel-name { font-size: 1rem; } }
+      /* Inline score chip — uses HotelScoreBadge variant="compact" which
+         renders as a ~30px horizontal pill. Scaled down slightly so it
+         reads as a corner accent next to the title. */
+      .fd-score-inline {
+        flex: 0 0 auto;
+        transform: scale(0.78);
+        transform-origin: right center;
+      }
+      @media (min-width: 1024px) { .fd-score-inline { transform: scale(0.86); } }
+      @media (min-width: 1280px) { .fd-score-inline { transform: scale(0.92); } }
+
+      /* Meta line — stars · room · capacity · units left, all inline */
+      .fd-meta-line {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 5px; margin: 0 0 10px;
+        font-size: 0.74rem; line-height: 1.2;
+      }
+      .fd-meta-line .fd-stars {
+        color: var(--accent, #C9A66B); font-size: 0.7rem; letter-spacing: 0.04em;
+      }
+      .fd-meta-sep { color: var(--text-muted); opacity: 0.6; }
+      .fd-meta-line .fd-room-type {
+        color: var(--accent, #C9A66B); font-weight: 700; font-size: 0.72rem;
+      }
+      .fd-meta-line .fd-room-cap {
+        color: var(--text-muted); font-size: 0.72rem;
+      }
+      /* Units-left as a tiny pill — green when plenty, amber when ≤2 */
+      .fd-slots-pill {
+        display: inline-flex; align-items: center;
+        padding: 2px 8px; border-radius: 999px;
+        font-size: 0.66rem; font-weight: 600;
+        background: color-mix(in srgb, var(--cozy-sage, #9DAD8F) 22%, var(--bg-card));
+        color: var(--cozy-warm-dark, #1F1A0F);
+        border: 1px solid color-mix(in srgb, var(--cozy-sage, #9DAD8F) 40%, transparent);
+      }
+      .fd-slots-pill.urgent {
+        background: color-mix(in srgb, #d49583 22%, var(--bg-card));
+        border-color: color-mix(in srgb, #d49583 50%, transparent);
+        color: #8d4f3f;
+      }
+      .fd-slots-pill.soldout {
+        background: var(--accent-soft); color: var(--text-muted);
+        border-color: var(--border-soft);
+      }
+
+      /* Upgrade row — slim chips, no boxed wrapper. */
+      .fd-up-row {
+        display: flex; gap: 6px; overflow-x: auto;
+        scrollbar-width: none; margin: 0 0 10px;
+        padding: 2px 0;
+      }
+      .fd-up-row::-webkit-scrollbar { display: none; }
+
+      /* Price + CTA — v159.4 horizontal, no divider, super tight. */
       .fd-price-row {
         display: flex; align-items: flex-end; justify-content: space-between;
-        padding-top: 14px;
-        border-top: 1px solid var(--border-soft);
+        gap: 10px;
+      }
+      .fd-price-block {
+        flex: 1 1 auto; min-width: 0;
+        display: flex; flex-direction: column;
+      }
+      .fd-price-line {
+        display: flex; align-items: baseline; gap: 4px;
+        flex-wrap: wrap;
       }
       .fd-price-strike {
         color: var(--text-muted); font-size: 0.7rem;
-        text-decoration: line-through; margin: 0 0 1px;
+        text-decoration: line-through;
       }
       .fd-price-now {
-        color: var(--text-base); font-size: 1.4rem; font-weight: 800; line-height: 1;
-        margin: 0;
+        color: var(--text-base); font-size: 1.15rem; font-weight: 800; line-height: 1;
+        letter-spacing: -0.01em;
       }
-      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; margin-left: 4px; }
+      @media (min-width: 1024px) { .fd-price-now { font-size: 1.3rem; } }
+      .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
       .fd-price-save {
-        margin: 4px 0 0; color: rgba(46,204,113,0.85);
-        font-size: 0.6rem; font-weight: 600;
+        margin: 2px 0 0; color: var(--cozy-sage, #5d7a52);
+        font-size: 0.6rem; font-weight: 700;
       }
       .fd-cta {
-        padding: 10px 18px;
+        flex: 0 0 auto;
+        padding: 9px 16px;
         background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
-        color: #0a0814; font-size: 0.78rem; font-weight: 800;
-        border: none; border-radius: 12px;
+        color: #0a0814; font-size: 0.74rem; font-weight: 800;
+        border: none; border-radius: 11px;
         cursor: pointer;
-        box-shadow: 0 8px 22px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+        box-shadow: 0 6px 16px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
         transition: all 0.2s ease;
         letter-spacing: 0.02em;
+        white-space: nowrap;
       }
+      @media (min-width: 1024px) { .fd-cta { padding: 10px 18px; font-size: 0.78rem; } }
       .fd-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(240,180,41,0.5), inset 0 1px 0 rgba(255,255,255,0.5); }
       .fd-cta.sold {
         background: var(--accent-soft); color: var(--text-muted);

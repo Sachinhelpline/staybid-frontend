@@ -103,12 +103,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
 
-        {/* ── Critical CSS — inlined so users see a dark background + spinner
-            within ~50ms of first byte. No FOUC, no white flash. The body
-            background is the same #07060e as the reel feed so the transition
-            into /discover feels seamless. */}
+        {/* ── Critical CSS — inlined so users see the cozy cream/dark
+            backdrop within ~50ms of first byte. v159.7: body bg flipped
+            from hardcoded #07060e (dark navy, only correct for /discover)
+            to the cozy palette default. Light is cream; dark theme rules
+            below match what globals.css sets via [data-theme="dark"].
+            Reel pages add `.is-reel-page` and re-blacken to #000 in their
+            own rules. */}
         <style dangerouslySetInnerHTML={{__html: `
-          html,body{margin:0;padding:0;background:#07060e;color:#f0eee2;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+          html,body{margin:0;padding:0;background:#FAF5EB;color:#1F1A0F;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+          html[data-theme="dark"],html[data-theme="dark"] body{background:#0F0C08;color:#E8DCC8}
+          html.is-reel-page,html.is-reel-page body{background:#000;color:#f0eee2}
           body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
           .sb-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07060e;z-index:0;pointer-events:none}
           .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(240,180,41,0.18);border-top-color:#f0b429;animation:sbSpin .8s linear infinite}
@@ -205,7 +210,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v158</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v159.13</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -226,7 +231,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v158-support-push-to-talk-premium-voice";
+var SB_BUILD="v159.13-photo-tour-everywhere-auto-scroll-arrows-wider-shell";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
