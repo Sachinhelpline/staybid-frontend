@@ -84,12 +84,22 @@ function decode(token: string): any {
 }
 
 async function fetchUser(query: { id?: string; phoneVariants?: string[] }): Promise<any | null> {
-  let url = `${SB_URL}/rest/v1/users?select=id,phone,name,email,role&limit=1`;
+  // Highest-priority role wins when multiple rows match (common case:
+  // same human has +91 variant AND no-prefix variant on different user
+  // rows with different roles — see CLAUDE.md "Dual User ID Fix").
+  const ROLE_RANK: Record<string, number> = {
+    super_admin: 4,
+    admin: 3,
+    support_agent: 2,
+    agent: 1,
+  };
+
+  let url = `${SB_URL}/rest/v1/users?select=id,phone,name,email,role`;
   if (query.id) {
-    url += `&id=eq.${encodeURIComponent(query.id)}`;
+    url += `&id=eq.${encodeURIComponent(query.id)}&limit=1`;
   } else if (query.phoneVariants && query.phoneVariants.length > 0) {
     const inList = query.phoneVariants.map((v) => `"${v}"`).join(",");
-    url += `&phone=in.(${encodeURIComponent(inList)})`;
+    url += `&phone=in.(${encodeURIComponent(inList)})&limit=10`;
   } else {
     return null;
   }
@@ -98,5 +108,12 @@ async function fetchUser(query: { id?: string; phoneVariants?: string[] }): Prom
   });
   if (!r.ok) return null;
   const rows = (await r.json()) as any[];
-  return Array.isArray(rows) ? rows[0] : null;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  // Pick row with highest agent-allowed role
+  const sorted = rows.slice().sort((a, b) => {
+    const ra = ROLE_RANK[String(a?.role || "").toLowerCase()] ?? -1;
+    const rb = ROLE_RANK[String(b?.role || "").toLowerCase()] ?? -1;
+    return rb - ra;
+  });
+  return sorted[0];
 }
