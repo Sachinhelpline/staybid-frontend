@@ -210,7 +210,7 @@ export async function fetchUserContextForAI(userId: string): Promise<{
   bookingCount: number;
   activeBidCount: number;
 }> {
-  const [userRow, bookingCount, bidCount] = await Promise.all([
+  const [userRow, bookingCount, activeBidCount] = await Promise.all([
     fetch(
       `${SB_URL}/rest/v1/users?id=eq.${encodeURIComponent(userId)}&select=name,tier&limit=1`,
       { headers: SB_H }
