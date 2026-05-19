@@ -71,9 +71,11 @@ const sampleReviews = [
 
 /* v159.11 — Room photo swipe carousel. Replaces the static <img> +
    thumbnail-tap-to-swap pattern with a horizontal scroll-snap container
-   showing ALL room photos full-bleed. User can swipe between slides
-   OR tap a thumbnail to scroll directly to it. Counter "N / total"
-   overlays bottom-right. Mirrors the hero swipe behavior from v159.9. */
+   showing ALL room photos full-bleed.
+   v159.12 — Cleaned up: removed the 4-thumbnail strip + "N / total"
+   counter per Sachin's "sirf scroll kaafi hai" feedback. Just swipe.
+   Added mouse-drag support so laptop users can grab + drag like an
+   iPhone touch swipe. */
 function RoomSwipeMedia({
   roomId,
   roomName,
@@ -112,16 +114,47 @@ function RoomSwipeMedia({
     };
   }, [activeIdx, images.length, onActiveIdxChange]);
 
-  const scrollToIdx = useCallback((idx: number) => {
+  // v159.12 — Mouse drag-to-scroll for desktop. Native scroll-snap-x
+  // works for trackpad swipe + wheel, but doesn't accept a click+drag
+  // gesture from a mouse. This handler captures the pointer, translates
+  // dx into scrollLeft live, then on release lets the snap engine pull
+  // the closest slide into view. Touch pointers (pointerType === touch)
+  // are skipped so the native iOS / Android swipe stays untouched.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || images.length <= 1) return;
     const el = scrollRef.current;
     if (!el) return;
-    const w = el.clientWidth || 1;
-    el.scrollTo({ left: idx * w, behavior: "smooth" });
-  }, []);
+    el.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startScroll = el.scrollLeft;
+    el.style.scrollBehavior = "auto"; // disable smooth during drag
+    el.style.cursor = "grabbing";
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      el.scrollLeft = startScroll - dx;
+    };
+    const onUp = () => {
+      el.style.scrollBehavior = "smooth";
+      el.style.cursor = "";
+      try { el.releasePointerCapture(e.pointerId); } catch {}
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
 
   return (
     <>
-      <div className="hx-room-swipe" ref={scrollRef} role="region" aria-label={`${roomName} photos`}>
+      <div
+        className="hx-room-swipe"
+        ref={scrollRef}
+        role="region"
+        aria-label={`${roomName} photos`}
+        onPointerDown={onPointerDown}
+      >
         {images.map((img, idx) => (
           <div key={idx} className="hx-room-swipe-slide" aria-label={`Photo ${idx + 1} of ${images.length}`}>
             <img
@@ -129,6 +162,7 @@ function RoomSwipeMedia({
               alt={`${roomName} — view ${idx + 1}`}
               className="hx-room-swipe-img hx-room-media-img"
               loading={idx === 0 ? "eager" : "lazy"}
+              draggable={false}
               onError={(e: any) => {
                 if (!e.target.dataset.fallbackTried) {
                   e.target.dataset.fallbackTried = "1";
@@ -140,42 +174,6 @@ function RoomSwipeMedia({
         ))}
       </div>
       <div className="hx-room-media-grad" />
-      {images.length > 1 && (
-        <>
-          <span className="hx-room-counter" aria-live="polite">
-            {Math.min(images.length, activeIdx + 1)} / {images.length}
-          </span>
-          {/* Thumbnail strip — taps scroll the swipe to that slide. */}
-          <div className="hx-room-thumbs" onClick={(e) => e.stopPropagation()}>
-            {images.slice(0, 4).map((img, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`hx-room-thumb ${idx === activeIdx ? "is-active" : ""}`}
-                onClick={(ev) => {
-                  ev.preventDefault();
-                  ev.stopPropagation();
-                  onActiveIdxChange(idx);
-                  scrollToIdx(idx);
-                }}
-                aria-label={`Show photo ${idx + 1}`}
-              >
-                <img
-                  src={img}
-                  alt=""
-                  loading="lazy"
-                  onError={(e: any) => {
-                    if (!e.target.dataset.fallbackTried) {
-                      e.target.dataset.fallbackTried = "1";
-                      e.target.src = `https://picsum.photos/seed/sb-thumb-${roomId}-${idx}/200/150`;
-                    }
-                  }}
-                />
-              </button>
-            ))}
-          </div>
-        </>
-      )}
     </>
   );
 }

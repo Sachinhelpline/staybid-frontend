@@ -59,11 +59,14 @@ export default function HotelHero({
     e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length];
   };
 
-  // v159.9 — Live photo counter for the mobile swipe carousel. Read the
-  // scrollLeft + clientWidth on every scroll tick to figure out which
-  // slide is centered, then update the "N / total" overlay.
+  // v159.9 — Live photo counter for the mobile swipe carousel.
+  // v159.12 — Plus auto-scroll: cycle 1 slide every 4.5 s, pause for
+  // 6 s after any user touch/pointer interaction, then resume. Loops
+  // back to slide 0 after the last. iPhone-style smooth easing via the
+  // native scroll-snap engine.
   const swipeRef = useRef<HTMLDivElement>(null);
   const [activeIdx, setActiveIdx] = useState(0);
+  const pausedUntilRef = useRef(0);
   useEffect(() => {
     const el = swipeRef.current;
     if (!el) return;
@@ -74,6 +77,30 @@ export default function HotelHero({
     };
     el.addEventListener("scroll", update, { passive: true });
     return () => el.removeEventListener("scroll", update);
+  }, [all.length]);
+  useEffect(() => {
+    if (all.length <= 1) return;
+    const el = swipeRef.current;
+    if (!el) return;
+    const onUserPoke = () => { pausedUntilRef.current = Date.now() + 6000; };
+    el.addEventListener("touchstart", onUserPoke, { passive: true });
+    el.addEventListener("pointerdown", onUserPoke);
+    el.addEventListener("wheel", onUserPoke, { passive: true });
+    const tick = window.setInterval(() => {
+      if (!el) return;
+      if (Date.now() < pausedUntilRef.current) return;
+      const w = el.clientWidth || 1;
+      const maxScroll = el.scrollWidth - w;
+      let nextLeft = el.scrollLeft + w;
+      if (nextLeft > maxScroll - 6) nextLeft = 0; // loop back to first
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }, 4500);
+    return () => {
+      window.clearInterval(tick);
+      el.removeEventListener("touchstart", onUserPoke);
+      el.removeEventListener("pointerdown", onUserPoke);
+      el.removeEventListener("wheel", onUserPoke);
+    };
   }, [all.length]);
 
   return (
@@ -106,9 +133,9 @@ export default function HotelHero({
         {trustBadge && (
           <span className="hx-hero-swipe-pill">✓ Verified Stay</span>
         )}
-        <span className="hx-hero-swipe-counter" aria-live="polite">
-          {activeIdx + 1} / {all.length}
-        </span>
+        {/* v159.12 — Counter pill removed per Sachin's "sirf scroll kaafi
+            hai" — dots alone signal "where am I" without an explicit
+            "N / total" label that the user said was extra chrome. */}
         <div className="hx-hero-swipe-dots" aria-hidden="true">
           {all.slice(0, Math.min(8, all.length)).map((_, i) => (
             <span

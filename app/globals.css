@@ -1103,6 +1103,7 @@ body.is-reel-page {
 }
 @media (min-width: 768px) {
   .hx-mosaic {
+    display: grid;
     grid-template-columns: 2fr 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 10px;
@@ -5196,7 +5197,11 @@ body.is-reel-page {
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  cursor: grab; /* v159.12 — desktop drag-to-pan hint */
+  user-select: none;
 }
+.hx-room-swipe:active { cursor: grabbing; }
+@media (hover: none) { .hx-room-swipe { cursor: default; } }
 .hx-room-swipe::-webkit-scrollbar { display: none; }
 .hx-room-swipe-slide {
   flex: 0 0 100%;
@@ -5237,4 +5242,60 @@ body.is-reel-page {
   border-radius: 999px;
   letter-spacing: 0.02em;
   pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   v159.12 — Desktop premium pass.
+   1. Nav chips: shrink + tighten on ≥1024 px so the top bar reads
+      as a slim luxury strip instead of chunky buttons.
+   2. Hero: tighter font + less padding on ≥1024 px.
+   3. Rail cards: smaller widths so 6+ stay visible per row on
+      laptop and 7-8 on desktop wide.
+   ───────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  /* Navbar — premium slim chips */
+  .nav3d-bar > div { height: 56px !important; }
+  .nav3d-chip {
+    padding: 5px 10px !important;
+    font-size: 0.7rem !important;
+    border-radius: 10px !important;
+    letter-spacing: 0.01em !important;
+  }
+  .nav3d-chip span:not([class]) { font-size: inherit !important; }
+  /* Hero shrink on laptop+ */
+  .hxr-hero-slim { padding: 4px 32px 4px; }
+  .hxr-hero-title { font-size: 1.05rem; }
+  .hxr-hero-eyebrow { font-size: 0.55rem; }
+  .hxr-hero-count { font-size: 0.74rem; }
+  /* Non-compact rail cards — 5-6 per row on laptop */
+  .hxr-card-rail { width: clamp(180px, 17vw, 220px); }
+  /* Compact rail cards — 6-7 per row on laptop */
+  .hxr-rail-compact .hxr-card-compact { width: clamp(120px, 12vw, 155px); }
+}
+@media (min-width: 1280px) {
+  /* Non-compact: 6-7 per row */
+  .hxr-card-rail { width: clamp(180px, 14vw, 220px); }
+  /* Compact: 8 per row */
+  .hxr-rail-compact .hxr-card-compact { width: clamp(125px, 10vw, 160px); }
+}
+@media (min-width: 1536px) {
+  /* Non-compact: 7-8 per row */
+  .hxr-card-rail { width: clamp(180px, 11.5vw, 220px); }
+  /* Compact: 9-10 per row */
+  .hxr-rail-compact .hxr-card-compact { width: clamp(130px, 8.5vw, 170px); }
+}
+
+/* SS3 fix — Right-side empty band on the hotel detail page.
+   .hx-page-grid splits left content + sticky right rail. On ≥1100 px
+   the right rail is fixed-width which left a huge empty band when
+   the sticky's height was less than the left column's. Tighten the
+   grid + cap the rail's max-width so it visually anchors right
+   instead of leaving acres of blank space on either side. */
+@media (min-width: 1100px) {
+  .hx-page-grid { gap: 24px !important; }
+  .hx-page-grid > div:first-child { min-width: 0; }
+  /* The sticky rail is the SECOND immediate child. Cap its width so
+     the gap between the rail and the page edge reads as a deliberate
+     margin, not as dead space. */
+  .hx-page-grid > div:last-child { max-width: 340px !important; }
 }
