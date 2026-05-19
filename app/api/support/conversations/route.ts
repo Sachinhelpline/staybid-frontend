@@ -53,24 +53,30 @@ export async function POST(req: NextRequest) {
     ensureUser(userId, payload.phone, payload.name).catch(() => {});
   }
 
+  // v149 bug fix: ALWAYS start as ai_active so the fallback intent bot
+  // (lib/support/fallback-bot.ts) can handle initial messages even when
+  // ANTHROPIC_API_KEY is missing. Pre-v149 we set startStatus=escalated
+  // when isAIEnabled()=false, which blocked runAIPath from ever running
+  // and silenced the fallback bot entirely.
   const conv = await createConversation({
     userId,
     anonymousId: anonId,
-    subject: (body.subject || "").toString().slice(0, 200) || null,
+    // v149 — accepts a `category` from the new pre-chat subject picker.
+    subject: (body.subject || body.category || "").toString().slice(0, 200) || null,
     metadata: {
       pageUrl: body?.metadata?.pageUrl || null,
       locale: body?.metadata?.locale || null,
       userAgent: body?.metadata?.userAgent || null,
       tier: body?.metadata?.tier || null,
+      category: body?.category || null,
     },
-    // Start state depends on AI availability — without API key we don't
-    // pretend AI is active.
-    startStatus: isAIEnabled() ? "ai_active" : "escalated",
+    startStatus: "ai_active",
   });
 
   // Seed a welcome system message so the chat doesn't open empty.
+  // Always use welcomeAI — fallback bot covers when real Claude is off.
   const strings = t(body?.metadata?.locale || null);
-  const welcomeBody = isAIEnabled() ? strings.welcomeAI : strings.welcomeQueue;
+  const welcomeBody = strings.welcomeAI;
 
   await insertMessage({
     conversationId: conv.id,

@@ -61,6 +61,21 @@ export async function POST(
 
   const senderName = payload?.name || null;
 
+  // v149 — accept per-message language override so picker changes take
+  // effect IMMEDIATELY without forcing a new conversation. The lang is
+  // sent as ISO code (en, hi, es, fr, ar) or full locale (en-US, hi-IN).
+  // If sent, we update conv.metadata.locale so future messages + cron
+  // (auto-resolve) replies also use the new language.
+  const lang: string | null = body?.lang ? String(body.lang) : null;
+  let convLocale = conv.metadata?.locale || null;
+  if (lang && lang !== convLocale) {
+    convLocale = lang;
+    // Patch metadata in-place — write to remote conv too so it persists.
+    const newMeta = { ...(conv.metadata || {}), locale: lang };
+    await patchConversation(conv.id, { metadata: newMeta } as any);
+    conv.metadata = newMeta;
+  }
+
   // 1. Persist user message
   const userMsg = await insertMessage({
     conversationId: conv.id,

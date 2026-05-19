@@ -77,18 +77,40 @@ const LANG_OPTIONS: Array<{ key: LangKey; flag: string; label: string }> = [
 ];
 
 function getStoredLang(): LangKey {
-  if (typeof window === "undefined") return "hi";
+  // v149 — Default is now ENGLISH (was Hinglish). Hindi only when the
+  // browser is explicitly hi-* (not en-IN). User can still pick any
+  // language from the header chip.
+  if (typeof window === "undefined") return "en";
   const saved = localStorage.getItem("sb_support_lang");
   if (saved && ["hi", "en", "es", "fr", "ar"].includes(saved)) return saved as LangKey;
-  // Auto-detect from browser
+  // Auto-detect from browser — STRICT prefix only (en-IN must NOT become hi)
   const nav = navigator.language.toLowerCase();
-  if (nav.startsWith("hi") || nav.includes("-in")) return "hi";
+  if (nav.startsWith("hi")) return "hi";
   if (nav.startsWith("ar")) return "ar";
   if (nav.startsWith("es")) return "es";
   if (nav.startsWith("fr")) return "fr";
-  if (nav.startsWith("en")) return "en";
-  return "hi";
+  return "en";
 }
+
+// v149 — Pre-chat subject picker. The user picks one category which is
+// saved as the conversation subject + as metadata.category. Agents see it
+// in their inbox; future routing can target subject-specific agents.
+type Category = {
+  key: string;
+  label: string;
+  icon: string;
+  hint: string;
+};
+const CATEGORIES: Category[] = [
+  { key: "booking", label: "Booking", icon: "🏨", hint: "Confirm, modify, status" },
+  { key: "bid", label: "Bid / Negotiate", icon: "🎟️", hint: "Counter, lifecycle, slots" },
+  { key: "payment", label: "Payment", icon: "💳", hint: "Card, UPI, failed payment" },
+  { key: "refund", label: "Refund", icon: "💰", hint: "Cancellations + chargebacks" },
+  { key: "wallet_points", label: "Wallet / Points", icon: "⭐", hint: "StayPoints + balance" },
+  { key: "tech", label: "Technical Issue", icon: "🔧", hint: "App / login / loading" },
+  { key: "hotel_info", label: "Hotel Info", icon: "📍", hint: "Amenities, photos, reviews" },
+  { key: "other", label: "Other", icon: "💬", hint: "Something else" },
+];
 
 function authHeaders(token: string | null): Record<string, string> {
   const h: Record<string, string> = { "Content-Type": "application/json" };
@@ -102,7 +124,7 @@ export default function SupportWidget() {
   const pathname = usePathname();
   const { user, token } = useAuth();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"list" | "chat">("list");
+  const [view, setView] = useState<"list" | "subject" | "chat">("list");
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [unreadTotal, setUnreadTotal] = useState(0);
@@ -209,16 +231,25 @@ export default function SupportWidget() {
     } catch {}
   }
 
-  async function startNewChat() {
+  // v149 — Start chat is now a 2-step flow:
+  //   1. User taps "New chat" → opens subject picker
+  //   2. User picks a category → calls /api/support/conversations
+  //      with { subject, category } → opens chat view with seeded welcome
+  function startNewChat() {
+    setView("subject");
+  }
+
+  async function createConvWithCategory(cat: Category) {
     try {
       const r = await fetch("/api/support/conversations", {
         method: "POST",
         headers: authHeaders(token),
         body: JSON.stringify({
+          subject: cat.label,
+          category: cat.key,
           metadata: {
             pageUrl: typeof window !== "undefined" ? window.location.pathname : null,
-            // Send picked language as a locale string i18n.detectLocale
-            // can parse (en-US, hi-IN, es-ES, fr-FR, ar-SA).
+            // Send picked language as ISO locale string.
             locale: ({ hi: "hi-IN", en: "en-US", es: "es-ES", fr: "fr-FR", ar: "ar-SA" })[lang],
           },
         }),
@@ -348,10 +379,16 @@ export default function SupportWidget() {
                 onStartNew={startNewChat}
                 signedIn={!!user}
               />
+            ) : view === "subject" ? (
+              <SubjectPicker
+                onPick={createConvWithCategory}
+                onCancel={() => setView("list")}
+              />
             ) : activeId ? (
               <ChatView
                 conversationId={activeId}
                 token={token}
+                lang={lang}
                 onClosed={backToList}
               />
             ) : null}
@@ -618,6 +655,122 @@ export default function SupportWidget() {
   );
 }
 
+// ─── v149 Subject picker (pre-chat) ────────────────────────
+function SubjectPicker({
+  onPick,
+  onCancel,
+}: {
+  onPick: (cat: Category) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="sb-support-subjects">
+      <div className="sb-support-subjects-title">What's your question about?</div>
+      <div className="sb-support-subjects-sub">
+        Pick a category — helps us connect you to the right person faster.
+      </div>
+      <div className="sb-support-subjects-grid">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.key}
+            type="button"
+            onClick={() => onPick(cat)}
+            className="sb-support-subject-btn"
+          >
+            <span className="sb-support-subject-icon">{cat.icon}</span>
+            <span className="sb-support-subject-label">{cat.label}</span>
+            <span className="sb-support-subject-hint">{cat.hint}</span>
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={onCancel} className="sb-support-subject-cancel">
+        ← Back
+      </button>
+      <style jsx global>{`
+        .sb-support-subjects {
+          flex: 1 1 auto;
+          overflow-y: auto;
+          padding: 18px 16px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .sb-support-subjects-title {
+          font-family: "Cormorant Garamond", serif;
+          font-style: italic;
+          font-size: 19px;
+          font-weight: 600;
+          color: var(--text-base, #1F1A0F);
+        }
+        .sb-support-subjects-sub {
+          font-size: 12px;
+          color: var(--text-muted, #6E5430);
+          line-height: 1.5;
+          margin-top: -6px;
+        }
+        .sb-support-subjects-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 6px;
+        }
+        @media (max-width: 380px) {
+          .sb-support-subjects-grid { grid-template-columns: 1fr; }
+        }
+        .sb-support-subject-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+          background: linear-gradient(160deg, #FFFCF6 0%, #F8EFDA 100%);
+          border: 1px solid rgba(201, 166, 107, 0.32);
+          border-radius: 14px;
+          padding: 14px 14px 12px;
+          cursor: pointer;
+          text-align: left;
+          color: var(--text-base, #1F1A0F);
+          transition: all 0.18s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        .sb-support-subject-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 18px -6px rgba(139, 105, 20, 0.30);
+          border-color: rgba(201, 166, 107, 0.55);
+        }
+        .sb-support-subject-icon {
+          font-size: 24px;
+          line-height: 1;
+          margin-bottom: 4px;
+        }
+        .sb-support-subject-label {
+          font-weight: 700;
+          font-size: 13.5px;
+          letter-spacing: 0.01em;
+        }
+        .sb-support-subject-hint {
+          font-size: 11px;
+          color: var(--text-muted, #6E5430);
+          line-height: 1.35;
+        }
+        .sb-support-subject-cancel {
+          margin-top: auto;
+          align-self: flex-start;
+          background: transparent;
+          border: none;
+          color: var(--text-muted, #6E5430);
+          font-size: 12px;
+          padding: 8px 4px;
+          cursor: pointer;
+        }
+        .sb-support-subject-cancel:hover {
+          color: var(--text-base, #1F1A0F);
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── Conversation list view ────────────────────────────────
 function ConversationList({
   conversations,
@@ -776,10 +929,12 @@ function ConversationList({
 function ChatView({
   conversationId,
   token,
+  lang,
   onClosed,
 }: {
   conversationId: string;
   token: string | null;
+  lang: LangKey;
   onClosed: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -887,7 +1042,13 @@ function ChatView({
         {
           method: "POST",
           headers: authHeaders(token),
-          body: JSON.stringify({ body: text }),
+          // v149 — send the picked language per message so server can
+          // route to fallback bot / Claude in the right language even if
+          // user changes the picker mid-conversation.
+          body: JSON.stringify({
+            body: text,
+            lang: ({ hi: "hi-IN", en: "en-US", es: "es-ES", fr: "fr-FR", ar: "ar-SA" })[lang],
+          }),
         }
       );
       if (r.ok) {
