@@ -280,13 +280,43 @@ async function runAIPath(
       },
     });
   } catch (e: any) {
-    // AI failed — escalate to agent so user isn't blocked
+    // v153 — Real AI failed (bad key, rate limit, network). Don't give
+    // up yet — try the regex fallback bot which handles common intents
+    // offline. Only escalate if fallback ALSO can't match.
+    const fbLocale = detectLocale(conv.metadata?.locale || null);
+    const fb = fallbackBotReply(userText, fbLocale);
+
+    if (fb.matched && !fb.shouldEscalate) {
+      const fbMsg = await insertMessage({
+        conversationId: conv.id,
+        sender: "ai",
+        senderId: null,
+        senderName: "StayBid Assistant",
+        body: fb.reply,
+        aiModel: "fallback-intent-after-ai-fail",
+        aiConfidence: fb.confidence,
+        aiShouldEscalate: false,
+      });
+      return {
+        message: fbMsg,
+        conversationPatch: {
+          last_message_at: new Date().toISOString(),
+          last_message_sender: "ai",
+          ai_message_count: conv.ai_message_count + 1,
+          user_unread_count: conv.user_unread_count + 1,
+        },
+      };
+    }
+
+    // Neither real AI nor fallback bot worked — escalate to agent.
     const ack = await insertMessage({
       conversationId: conv.id,
-      sender: "system",
+      sender: fb.matched ? "ai" : "system",
       senderId: null,
-      senderName: "StayBid",
-      body: strings.aiFailureAck,
+      senderName: fb.matched ? "StayBid Assistant" : "StayBid",
+      body: fb.matched ? fb.reply : strings.aiFailureAck,
+      aiModel: fb.matched ? "fallback-intent-after-ai-fail" : null,
+      aiConfidence: fb.matched ? fb.confidence : null,
     });
     return {
       message: ack,
@@ -295,8 +325,9 @@ async function runAIPath(
         escalation_reason: "low_confidence" as SupportEscalationReason,
         escalated_at: new Date().toISOString(),
         last_message_at: new Date().toISOString(),
-        last_message_sender: "system",
+        last_message_sender: fb.matched ? "ai" : "system",
         agent_unread_count: conv.agent_unread_count + 1,
+        ai_message_count: fb.matched ? conv.ai_message_count + 1 : conv.ai_message_count,
       },
     };
   }

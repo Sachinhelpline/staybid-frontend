@@ -596,6 +596,24 @@ export default function SupportWidget() {
             border-radius: 20px;
           }
         }
+        /* v153 — bigger widget on laptop / desktop. User reported window
+           feels small on desktop. Now scales up with screen real estate. */
+        @media (min-width: 1024px) {
+          .sb-support-panel {
+            width: 480px;
+            height: 740px;
+            max-height: calc(100vh - 80px);
+            bottom: 80px;
+            right: 22px;
+          }
+        }
+        @media (min-width: 1440px) {
+          .sb-support-panel {
+            width: 540px;
+            height: 800px;
+            max-height: calc(100vh - 80px);
+          }
+        }
 
         .sb-support-header {
           flex: 0 0 auto;
