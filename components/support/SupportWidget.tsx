@@ -138,6 +138,22 @@ export default function SupportWidget() {
   // Language picker state — persists to localStorage
   const [lang, setLang] = useState<LangKey>("hi");
   const [langOpen, setLangOpen] = useState(false);
+  // v157 — voice output toggle: when on, AI/agent messages are spoken
+  // aloud via SpeechSynthesis on arrival. Persisted to localStorage.
+  const [voiceOut, setVoiceOut] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setVoiceOut(localStorage.getItem("sb_support_voice_out") === "1");
+  }, []);
+  function toggleVoiceOut() {
+    const next = !voiceOut;
+    setVoiceOut(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sb_support_voice_out", next ? "1" : "0");
+      // Cancel any in-flight speech when turning off
+      if (!next && "speechSynthesis" in window) speechSynthesis.cancel();
+    }
+  }
   useEffect(() => {
     setLang(getStoredLang());
   }, []);
@@ -335,6 +351,17 @@ export default function SupportWidget() {
                 </div>
               </div>
               <div className="sb-support-header-right">
+                {/* v157 — Voice-out toggle */}
+                <button
+                  type="button"
+                  onClick={toggleVoiceOut}
+                  className="sb-support-voice-btn"
+                  aria-label={voiceOut ? "Disable voice replies" : "Enable voice replies"}
+                  title={voiceOut ? "Voice replies ON — tap to mute" : "Voice replies OFF — tap to enable"}
+                  style={{ color: voiceOut ? "#7F9269" : undefined }}
+                >
+                  {voiceOut ? "🔊" : "🔇"}
+                </button>
                 <div className="sb-support-lang-wrap">
                   <button
                     type="button"
@@ -395,6 +422,7 @@ export default function SupportWidget() {
                 token={token}
                 lang={lang}
                 s={s}
+                voiceOut={voiceOut}
                 onClosed={backToList}
               />
             ) : null}
@@ -774,6 +802,45 @@ export default function SupportWidget() {
         .sb-support-lang-item:hover { background: rgba(201, 166, 107, 0.10); }
         .sb-support-lang-item.is-active { background: rgba(201, 166, 107, 0.18); font-weight: 600; }
         .sb-support-lang-check { margin-left: auto; color: #8B6914; font-size: 13px; }
+        /* v157 — Voice-out toggle button (header) */
+        .sb-support-voice-btn {
+          background: transparent;
+          border: none;
+          font-size: 16px;
+          padding: 5px 9px;
+          cursor: pointer;
+          color: var(--text-muted, #6E5430);
+          border-radius: 8px;
+          line-height: 1;
+        }
+        .sb-support-voice-btn:hover { background: rgba(0,0,0,0.04); }
+        /* v157 — Mic button (chat input) */
+        .sb-support-mic-btn {
+          flex: 0 0 auto;
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          border: 1px solid rgba(201, 166, 107, 0.4);
+          background: rgba(201, 166, 107, 0.10);
+          color: #8B6914;
+          font-size: 16px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.18s ease;
+        }
+        .sb-support-mic-btn:hover { background: rgba(201, 166, 107, 0.18); }
+        .sb-support-mic-btn.is-listening {
+          background: linear-gradient(140deg, #D49583, #C97058);
+          color: #fff;
+          border-color: rgba(212, 86, 95, 0.6);
+          animation: sbMicPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes sbMicPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(212, 86, 95, 0.4); }
+          50%      { box-shadow: 0 0 0 8px rgba(212, 86, 95, 0); }
+        }
         .sb-support-close {
           background: transparent;
           border: none;
@@ -1068,12 +1135,14 @@ function ChatView({
   token,
   lang,
   s,
+  voiceOut,
   onClosed,
 }: {
   conversationId: string;
   token: string | null;
   lang: LangKey;
   s: ReturnType<typeof wstr>;
+  voiceOut: boolean;
   onClosed: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1084,6 +1153,80 @@ function ChatView({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [aiTyping, setAiTyping] = useState(false);
+  // v157 — voice recognition (speech-to-text). Uses browser-native
+  // Web Speech API — free, no API key. Chrome/Safari/Edge supported.
+  // Firefox doesn't support; mic button just hides there.
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  // Track last spoken message id so we don't repeat speak on poll.
+  const lastSpokenIdRef = useRef<string | null>(null);
+
+  // Map widget lang → BCP-47 locale tag for speech APIs.
+  const speechLocale = (
+    { hi: "hi-IN", en: "en-US", es: "es-ES", fr: "fr-FR", ar: "ar-SA" } as const
+  )[lang];
+
+  // Speak new AI / agent / system messages when voiceOut is on.
+  useEffect(() => {
+    if (!voiceOut || messages.length === 0) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const last = messages[messages.length - 1];
+    if (last.sender === "user") return; // don't echo user's own messages
+    if (lastSpokenIdRef.current === last.id) return;
+    lastSpokenIdRef.current = last.id;
+    try {
+      const utter = new SpeechSynthesisUtterance(last.body);
+      utter.lang = speechLocale;
+      utter.rate = 1.02;
+      utter.pitch = 1.0;
+      // Cancel any in-flight speech before starting a new one
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utter);
+    } catch {}
+  }, [messages, voiceOut, speechLocale]);
+
+  // Init mic recognition once
+  function startListening() {
+    if (typeof window === "undefined") return;
+    const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      alert("Voice input not supported in this browser. Try Chrome / Safari / Edge.");
+      return;
+    }
+    try {
+      const r = new SR();
+      r.lang = speechLocale;
+      r.continuous = false;
+      r.interimResults = true;
+      r.maxAlternatives = 1;
+      let final = "";
+      r.onresult = (e: any) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i += 1) {
+          const piece = e.results[i][0].transcript;
+          if (e.results[i].isFinal) final += piece;
+          else interim += piece;
+        }
+        setInput((prev) => (final || interim).trim() || prev);
+      };
+      r.onerror = () => setListening(false);
+      r.onend = () => setListening(false);
+      r.start();
+      recognitionRef.current = r;
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  }
+  function stopListening() {
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+    setListening(false);
+  }
+  const supportsMic =
+    typeof window !== "undefined" &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   const [escalating, setEscalating] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const sinceRef = useRef<string | null>(null);
@@ -1331,10 +1474,24 @@ function ChatView({
               send();
             }
           }}
-          placeholder={placeholder}
+          placeholder={listening ? "Listening…" : placeholder}
           disabled={!!isLocked || sending}
           maxLength={4000}
         />
+        {/* v157 — Mic button (Web Speech API). Hidden when browser
+            doesn't support speech recognition (Firefox). */}
+        {supportsMic && (
+          <button
+            type="button"
+            onClick={listening ? stopListening : startListening}
+            disabled={!!isLocked || sending}
+            className={`sb-support-mic-btn ${listening ? "is-listening" : ""}`}
+            aria-label={listening ? "Stop listening" : "Voice input"}
+            title={listening ? "Tap to stop" : "Tap and speak"}
+          >
+            {listening ? "⏹" : "🎤"}
+          </button>
+        )}
         <button
           type="button"
           onClick={send}
