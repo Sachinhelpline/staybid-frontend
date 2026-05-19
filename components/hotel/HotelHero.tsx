@@ -144,6 +144,38 @@ export default function HotelHero({
             />
           ))}
         </div>
+        {/* v159.13 — Desktop arrow buttons (CSS hides them on mobile).
+            Mouse drag isn't always discoverable, so explicit ‹ › buttons
+            give laptop users a clear way to advance the carousel. */}
+        <button
+          type="button"
+          className="hx-hero-swipe-arrow hx-hero-swipe-arrow-prev"
+          aria-label="Previous photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            const el = swipeRef.current; if (!el) return;
+            const w = el.clientWidth || 1;
+            let nx = el.scrollLeft - w;
+            if (nx < -2) nx = el.scrollWidth - w; // loop to last
+            el.scrollTo({ left: nx, behavior: "smooth" });
+            pausedUntilRef.current = Date.now() + 6000;
+          }}
+        >‹</button>
+        <button
+          type="button"
+          className="hx-hero-swipe-arrow hx-hero-swipe-arrow-next"
+          aria-label="Next photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            const el = swipeRef.current; if (!el) return;
+            const w = el.clientWidth || 1;
+            const maxScroll = el.scrollWidth - w;
+            let nx = el.scrollLeft + w;
+            if (nx > maxScroll - 2) nx = 0; // loop to first
+            el.scrollTo({ left: nx, behavior: "smooth" });
+            pausedUntilRef.current = Date.now() + 6000;
+          }}
+        >›</button>
       </div>
 
       <div className="hx-mosaic" role="region" aria-label={`${name} photo gallery`}>

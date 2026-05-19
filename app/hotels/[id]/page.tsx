@@ -90,6 +90,7 @@ function RoomSwipeMedia({
   onActiveIdxChange: (idx: number) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pausedUntilRef = useRef(0);
 
   // Sync activeIdx when user swipes by reading scrollLeft / clientWidth.
   // Throttled via rAF so rapid scrolls don't dispatch many state updates.
@@ -113,6 +114,35 @@ function RoomSwipeMedia({
       if (raf) cancelAnimationFrame(raf);
     };
   }, [activeIdx, images.length, onActiveIdxChange]);
+
+  // v159.13 — Auto-scroll. Cycle 1 slide every 5.5 s; pause for 8 s
+  // after any user touchstart/pointerdown/wheel; resume after. Loops
+  // back to first slide. Matches HotelHero auto-scroll behavior but
+  // with a slightly slower cadence so room photos breathe.
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const onUserPoke = () => { pausedUntilRef.current = Date.now() + 8000; };
+    el.addEventListener("touchstart", onUserPoke, { passive: true });
+    el.addEventListener("pointerdown", onUserPoke);
+    el.addEventListener("wheel", onUserPoke, { passive: true });
+    const tick = window.setInterval(() => {
+      if (!el) return;
+      if (Date.now() < pausedUntilRef.current) return;
+      const w = el.clientWidth || 1;
+      const maxScroll = el.scrollWidth - w;
+      let nextLeft = el.scrollLeft + w;
+      if (nextLeft > maxScroll - 6) nextLeft = 0;
+      el.scrollTo({ left: nextLeft, behavior: "smooth" });
+    }, 5500);
+    return () => {
+      window.clearInterval(tick);
+      el.removeEventListener("touchstart", onUserPoke);
+      el.removeEventListener("pointerdown", onUserPoke);
+      el.removeEventListener("wheel", onUserPoke);
+    };
+  }, [images.length]);
 
   // v159.12 — Mouse drag-to-scroll for desktop. Native scroll-snap-x
   // works for trackpad swipe + wheel, but doesn't accept a click+drag
@@ -174,6 +204,41 @@ function RoomSwipeMedia({
         ))}
       </div>
       <div className="hx-room-media-grad" />
+      {/* v159.13 — Desktop ‹›  arrows so mouse users don't have to
+          rely on drag-to-pan (CSS hides at hover:none / mobile). */}
+      {images.length > 1 && (
+        <>
+          <button
+            type="button"
+            className="hx-room-arrow hx-room-arrow-prev"
+            aria-label="Previous photo"
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const el = scrollRef.current; if (!el) return;
+              const w = el.clientWidth || 1;
+              let nx = el.scrollLeft - w;
+              if (nx < -2) nx = el.scrollWidth - w;
+              el.scrollTo({ left: nx, behavior: "smooth" });
+              pausedUntilRef.current = Date.now() + 8000;
+            }}
+          >‹</button>
+          <button
+            type="button"
+            className="hx-room-arrow hx-room-arrow-next"
+            aria-label="Next photo"
+            onClick={(e) => {
+              e.preventDefault(); e.stopPropagation();
+              const el = scrollRef.current; if (!el) return;
+              const w = el.clientWidth || 1;
+              const maxScroll = el.scrollWidth - w;
+              let nx = el.scrollLeft + w;
+              if (nx > maxScroll - 2) nx = 0;
+              el.scrollTo({ left: nx, behavior: "smooth" });
+              pausedUntilRef.current = Date.now() + 8000;
+            }}
+          >›</button>
+        </>
+      )}
     </>
   );
 }
@@ -1689,7 +1754,7 @@ export default function HotelDetail() {
 
   return (
     <div className="hx-shell">
-      <div className="max-w-6xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
+      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 sm:py-7 lg:py-9">
 
         {/* ── Toolbar — Back chip + crumb ── */}
         <div className="hx-toolbar">

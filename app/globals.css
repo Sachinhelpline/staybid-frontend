@@ -1089,11 +1089,15 @@ body.is-reel-page {
   position: relative;
 }
 
-/* ─── Editorial mosaic gallery. v159.9 — Hidden on mobile; the new
+/* ─── Editorial mosaic gallery. v159.9 — Hidden on mobile; the
    .hx-hero-swipe-wrap full-bleed carousel owns the small-screen
-   first view. Mosaic re-appears at ≥768px. */
+   first view.
+   v159.13 — User wants the SAME auto-scrolling swipe carousel on
+   every device (so auto-scroll + ‹›  arrows + manual swipe work
+   uniformly), so the editorial mosaic is now hidden on all
+   breakpoints. The 5 photos still exist as slides in the swipe. */
 .hx-mosaic {
-  display: none;
+  display: none !important;
   grid-template-columns: 1fr;
   grid-template-rows: auto;
   gap: 8px;
@@ -5038,7 +5042,16 @@ body.is-reel-page {
   overflow: hidden;
 }
 @media (min-width: 640px) { .hx-hero-swipe-wrap { margin: 0 -22px; } }
-@media (min-width: 768px) { .hx-hero-swipe-wrap { display: none; } }
+/* v159.13 — Swipe carousel is now the SINGLE hero on every device.
+   Tablet+ keeps the carousel (was display:none), gets rounded
+   corners + a max-height cap so it doesn't dominate the fold. */
+@media (min-width: 768px) {
+  .hx-hero-swipe-wrap {
+    margin: 0;
+    border-radius: 24px;
+    box-shadow: 0 12px 32px -16px rgba(31, 26, 15, 0.32);
+  }
+}
 .hx-hero-swipe {
   display: flex;
   overflow-x: auto;
@@ -5049,7 +5062,16 @@ body.is-reel-page {
   -webkit-overflow-scrolling: touch;
   aspect-ratio: 4 / 3;
   width: 100%;
+  cursor: grab;
+  user-select: none;
 }
+.hx-hero-swipe:active { cursor: grabbing; }
+@media (hover: none) { .hx-hero-swipe { cursor: default; } }
+/* v159.13 — Wider aspect on bigger screens so the carousel reads as
+   a hotel hero, not a square thumbnail. No max-height cap on desktop
+   so the swipe fills the full page width edge-to-edge (Airbnb feel).*/
+@media (min-width: 768px)  { .hx-hero-swipe { aspect-ratio: 16 / 9; } }
+@media (min-width: 1024px) { .hx-hero-swipe { aspect-ratio: 21 / 9; } }
 .hx-hero-swipe::-webkit-scrollbar { display: none; }
 .hx-hero-swipe-slide {
   flex: 0 0 100%;
@@ -5124,6 +5146,44 @@ body.is-reel-page {
   background: #FAF5EB;
   transform: scale(1.35);
 }
+
+/* v159.13 — Arrow buttons. Hidden on touch (mobile) since native swipe
+   is enough; visible on ≥1024 px with a hover-fade-in so they don't
+   crowd the photo. Premium glass pills with soft drop-shadow. */
+.hx-hero-swipe-arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 190, 130, 0.34);
+  background: rgba(15, 12, 8, 0.55);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  color: #FAF5EB;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 6px 18px -6px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 246, 226, 0.10);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.18s cubic-bezier(.3,1,.3,1), background 0.18s ease;
+  padding: 0;
+}
+.hx-hero-swipe-arrow-prev { left: 14px; }
+.hx-hero-swipe-arrow-next { right: 14px; }
+@media (min-width: 1024px) { .hx-hero-swipe-arrow { display: grid; place-items: center; } }
+.hx-hero-swipe-wrap:hover .hx-hero-swipe-arrow { opacity: 1; }
+.hx-hero-swipe-arrow:hover {
+  background: rgba(15, 12, 8, 0.78);
+  transform: translateY(-50%) scale(1.08);
+}
+.hx-hero-swipe-arrow:active { transform: translateY(-50%) scale(0.94); }
 
 /* v159.10 — Live suggestion list inside SearchSheet "Where?" section. */
 .hxr-sheet-suggest {
@@ -5299,3 +5359,42 @@ body.is-reel-page {
      margin, not as dead space. */
   .hx-page-grid > div:last-child { max-width: 340px !important; }
 }
+
+/* v159.13 — Room photo arrows. Hidden on touch; ≥1024 px shows on
+   hover of .hx-room-media for laptop/desktop users. Premium glass
+   pills matching the hero arrows. */
+.hx-room-arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 190, 130, 0.34);
+  background: rgba(15, 12, 8, 0.55);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  color: #FAF5EB;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 4px 14px -4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 246, 226, 0.10);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.18s cubic-bezier(.3,1,.3,1), background 0.18s ease;
+  padding: 0;
+}
+.hx-room-arrow-prev { left: 10px; }
+.hx-room-arrow-next { right: 10px; }
+@media (min-width: 1024px) { .hx-room-arrow { display: grid; place-items: center; } }
+.hx-room-media:hover .hx-room-arrow { opacity: 1; }
+.hx-room-arrow:hover {
+  background: rgba(15, 12, 8, 0.78);
+  transform: translateY(-50%) scale(1.08);
+}
+.hx-room-arrow:active { transform: translateY(-50%) scale(0.94); }
+@media (hover: none) { .hx-room-arrow { display: none !important; } }
