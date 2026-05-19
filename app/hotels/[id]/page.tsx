@@ -255,6 +255,25 @@ export default function HotelDetail() {
   const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
   const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
   const globalTotalGuests = globalAdults + globalChildren + globalKids;
+
+  // v159.8 — Hydrate from URL params passed by the /hotels SearchSheet
+  // (or directly bookmarked). One-time on mount; subsequent picker edits
+  // on this page override these. URL params are the SOURCE of truth on
+  // first paint so the picker arrives pre-filled with the search state.
+  useEffect(() => {
+    const sp = searchParams;
+    const ci = sp.get("checkIn");
+    const co = sp.get("checkOut");
+    const ad = sp.get("adults");
+    const ch = sp.get("children");
+    const kd = sp.get("kids");
+    if (ci) setGlobalCheckIn(ci);
+    if (co) setGlobalCheckOut(co);
+    if (ad) setGlobalAdults(Math.max(1, Math.min(8, Number(ad) || 2)));
+    if (ch) setGlobalChildren(Math.max(0, Math.min(6, Number(ch) || 0)));
+    if (kd) setGlobalKids(Math.max(0, Math.min(6, Number(kd) || 0)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const globalNights = (globalCheckIn && globalCheckOut)
     ? Math.max(1, Math.ceil((new Date(globalCheckOut).getTime() - new Date(globalCheckIn).getTime()) / 86400000))
     : 0;

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
+import LuxuryCalendar from "@/components/LuxuryCalendar";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -13,6 +14,10 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v159 — Airbnb-style explore. Multiple horizontally-scrolling rails grouped
 // by theme + city; a search/filter switches to the legacy responsive grid.
 // All rails read the same single `hotels` fetch — no extra round-trips.
+// v159.8 — Multi-level search sheet (Where + When + Who) reusing the
+// LuxuryCalendar from /hotels/[id]. State persists to localStorage as
+// `sb_search_state` and propagates to /hotels/[id] via URL params on
+// card tap so the detail picker arrives pre-filled.
 
 const CITY_PILLS: Array<{ key: string; label: string; icon: string }> = [
   { key: "",          label: "All",       icon: "🏔" },
@@ -131,6 +136,18 @@ function HotelList() {
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [recentIds, setRecentIds] = useState<string[]>([]);
 
+  // v159.8 — Multi-level search sheet state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchCheckIn, setSearchCheckIn] = useState("");
+  const [searchCheckOut, setSearchCheckOut] = useState("");
+  const [searchAdults, setSearchAdults] = useState(2);
+  const [searchChildren, setSearchChildren] = useState(0);
+  const [searchKids, setSearchKids] = useState(0);
+  const [calOpen, setCalOpen] = useState(false);
+  const [calMode, setCalMode] = useState<"checkIn" | "checkOut">("checkIn");
+  // Pending bookings — surfaces "Continue your booking" card at top of body
+  const [pendingBids, setPendingBids] = useState<any[]>([]);
+
   const initialSort = (() => {
     const s = searchParams.get("sort");
     return s === "price-asc" || s === "price-desc" || s === "rating" ? s : "default";
@@ -221,6 +238,19 @@ function HotelList() {
     }
     try { setSavedSet(readSavedHotelIds()); } catch {}
     try { setRecentIds(readRecentHotelIds()); } catch {}
+    // v159.8 — Hydrate search state from localStorage so the search pill
+    // remembers the user's last "when + who" between sessions.
+    try {
+      const raw = localStorage.getItem("sb_search_state");
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s?.checkIn) setSearchCheckIn(String(s.checkIn));
+        if (s?.checkOut) setSearchCheckOut(String(s.checkOut));
+        if (typeof s?.adults === "number")   setSearchAdults(Math.max(1, Math.min(8, s.adults)));
+        if (typeof s?.children === "number") setSearchChildren(Math.max(0, Math.min(6, s.children)));
+        if (typeof s?.kids === "number")     setSearchKids(Math.max(0, Math.min(6, s.kids)));
+      }
+    } catch {}
     setHydrated(true);
     const applyCity = () => {
       try { setCity(localStorage.getItem("sb_city") || ""); } catch {}
@@ -245,6 +275,38 @@ function HotelList() {
     if (debouncedSearch) p.q = debouncedSearch;
     fetchHotels(p);
   }, [city, debouncedSearch, fetchHotels, hydrated]);
+
+  // v159.8 — Persist search state. Only after hydration so we don't
+  // clobber stored values on initial paint.
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem("sb_search_state", JSON.stringify({
+        checkIn: searchCheckIn, checkOut: searchCheckOut,
+        adults: searchAdults, children: searchChildren, kids: searchKids,
+      }));
+    } catch {}
+  }, [hydrated, searchCheckIn, searchCheckOut, searchAdults, searchChildren, searchKids]);
+
+  // v159.8 — Fetch pending bookings ("Continue your booking" card).
+  // Bids with status PENDING / ACCEPTED / COUNTER haven't been completed
+  // — most recent one surfaces as a single card at top of body.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (typeof window === "undefined") return;
+    const tok = localStorage.getItem("sb_token");
+    if (!tok) return;
+    api.getMyBids?.()
+      .then((d: any) => {
+        const bids = (d?.bids || []).filter((b: any) =>
+          b?.status === "PENDING" || b?.status === "ACCEPTED" || b?.status === "COUNTER"
+        );
+        // Sort newest first + cap to 3 — most recent surface as a rail
+        bids.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setPendingBids(bids.slice(0, 3));
+      })
+      .catch(() => setPendingBids([]));
+  }, [hydrated]);
 
   const handleHeartTap = (e: React.MouseEvent, h: any) => {
     e.preventDefault();
@@ -288,6 +350,35 @@ function HotelList() {
 
   const filtersActive = sortBy !== "default" || selectedStars.size > 0;
   const inSearchMode = !!debouncedSearch.trim() || filtersActive;
+
+  // v159.8 — Search summary shown inside the trigger button.
+  const totalGuests = searchAdults + searchChildren + searchKids;
+  const fmtShort = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    } catch { return iso; }
+  };
+  const searchSummary = (() => {
+    const parts: string[] = [];
+    if (city) parts.push(city);
+    if (searchCheckIn && searchCheckOut) {
+      parts.push(`${fmtShort(searchCheckIn)} – ${fmtShort(searchCheckOut)}`);
+    }
+    if (totalGuests !== 2) parts.push(`${totalGuests} guest${totalGuests !== 1 ? "s" : ""}`);
+    return parts.length ? parts.join(" · ") : "Where to next? Search city or hotel…";
+  })();
+
+  // Build search URL params so card taps carry dates+guests to /hotels/[id].
+  const searchUrlParams = (() => {
+    const p = new URLSearchParams();
+    if (searchCheckIn)  p.set("checkIn",  searchCheckIn);
+    if (searchCheckOut) p.set("checkOut", searchCheckOut);
+    if (searchAdults !== 2)   p.set("adults",   String(searchAdults));
+    if (searchChildren !== 0) p.set("children", String(searchChildren));
+    if (searchKids !== 0)     p.set("kids",     String(searchKids));
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  })();
   const toggleStar = (s: number) => {
     setSelectedStars((prev) => {
       const next = new Set(prev);
@@ -306,11 +397,27 @@ function HotelList() {
     if (!filteredHotels.length) return [];
     const out: Rail[] = [];
 
-    // 1. Recently viewed — by stored ID order
+    // 1. Recently viewed — by stored ID order. v159.8: fallback to a
+    //    deterministic "Trending nearby" rail (top-rated hotels) when
+    //    there's no stored history yet so this rail always shows
+    //    SOMETHING instead of disappearing.
     if (recentIds.length) {
       const map = new Map(filteredHotels.map((h: any) => [String(h.id), h]));
       const items = recentIds.map((id) => map.get(String(id))).filter(Boolean);
       if (items.length) out.push({ key: "recent", title: "Recently viewed", icon: "🕘", items });
+    } else {
+      const seeded = [...filteredHotels]
+        .sort((a: any, b: any) => (Number(b.avgRating) || 0) - (Number(a.avgRating) || 0))
+        .slice(0, 8);
+      if (seeded.length >= 3) {
+        out.push({
+          key: "trending-nearby",
+          title: "Trending nearby",
+          icon: "✨",
+          eyebrow: "Picks the community is loving right now",
+          items: seeded,
+        });
+      }
     }
 
     // 2. Flash deals tonight
@@ -416,31 +523,23 @@ function HotelList() {
           hero so the scroll story is hero-away → sticky-stuck. */}
       <div className="hxr-sticky">
         <div className="hxr-sticky-inner">
-          {/* Search pill */}
-          <div className="hxr-search">
+          {/* v159.8 — Search pill is now a button. Tap opens full-screen
+              SearchSheet modal with Where / When / Who sections. Trigger
+              text shows the current state (city · dates · guest count). */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="hxr-search hxr-search-trigger"
+            aria-label="Open search"
+          >
             <svg className="hxr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Where to next? Search city or hotel…"
-              className="hxr-search-input"
-              type="search"
-              autoComplete="off"
-              aria-label="Search hotels"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="hxr-search-clear"
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+            <span className={`hxr-search-trigger-text ${(city || searchCheckIn || totalGuests !== 2) ? "hxr-search-trigger-active" : ""}`}>
+              {searchSummary}
+            </span>
+            <span className="hxr-search-trigger-glyph" aria-hidden="true">⌕</span>
+          </button>
 
           {/* Category pills — icon + label, Airbnb-true: no boxed bg on
               inactive, active gets a thin champagne underline. */}
@@ -555,6 +654,51 @@ function HotelList() {
           </div>
         )}
 
+        {/* v159.8 — Pending bookings card (Continue your booking). Surfaces
+            user's most recent active bids above all rails. Only renders
+            for authenticated users with active bids. */}
+        {!loading && !apiError && pendingBids.length > 0 && (
+          <div className="hxr-pending">
+            <div className="hxr-pending-head">
+              <h2 className="hxr-pending-title">Continue your booking</h2>
+              <Link href="/my-bids" className="hxr-pending-link">View all →</Link>
+            </div>
+            <div className="hxr-pending-cards">
+              {pendingBids.map((bid: any) => {
+                const hotelName = bid?.hotel?.name || "Your hotel";
+                const hotelImg  = bid?.hotel?.images?.[0] || "";
+                const statusLabel = bid.status === "ACCEPTED" ? "✓ Accepted · complete payment"
+                  : bid.status === "COUNTER" ? "Hotel countered · review offer"
+                  : "Waiting for hotel response";
+                return (
+                  <Link
+                    key={bid.id}
+                    href={`/my-bids#${bid.id}`}
+                    className="hxr-pending-card"
+                  >
+                    {hotelImg ? (
+                      <img src={sbImage(hotelImg, SB_IMG_CARD)} alt={hotelName} className="hxr-pending-img" loading="lazy" />
+                    ) : (
+                      <div className="hxr-pending-img hxr-pending-img-fallback">🏨</div>
+                    )}
+                    <div className="hxr-pending-body">
+                      <p className="hxr-pending-status">{statusLabel}</p>
+                      <p className="hxr-pending-name">{hotelName}</p>
+                      {(bid?.request?.checkIn && bid?.request?.checkOut) && (
+                        <p className="hxr-pending-meta">
+                          {fmtShort(bid.request.checkIn)} – {fmtShort(bid.request.checkOut)}
+                          {bid?.amount ? ` · ₹${Number(bid.amount).toLocaleString("en-IN")}` : ""}
+                        </p>
+                      )}
+                    </div>
+                    <span className="hxr-pending-arrow" aria-hidden="true">›</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Default view: rails. Triggered when no search + no filter. */}
         {!loading && !apiError && displayHotels.length > 0 && !inSearchMode && rails.length > 0 && (
           <div className="hxr-rails">
@@ -564,6 +708,7 @@ function HotelList() {
                 rail={rail}
                 onHeart={handleHeartTap}
                 savedSet={savedSet}
+                searchUrlParams={searchUrlParams}
               />
             ))}
           </div>
@@ -579,7 +724,7 @@ function HotelList() {
             </h2>
             <div className="hxr-grid">
               {displayHotels.map((h: any) => (
-                <CardLink key={h.id} h={h} variant="grid" onHeart={handleHeartTap} savedSet={savedSet} />
+                <CardLink key={h.id} h={h} variant="grid" onHeart={handleHeartTap} savedSet={savedSet} searchUrlParams={searchUrlParams} />
               ))}
             </div>
           </div>
@@ -591,11 +736,222 @@ function HotelList() {
             <h2 className="hxr-grid-title">All stays</h2>
             <div className="hxr-grid">
               {displayHotels.map((h: any) => (
-                <CardLink key={h.id} h={h} variant="grid" onHeart={handleHeartTap} savedSet={savedSet} />
+                <CardLink key={h.id} h={h} variant="grid" onHeart={handleHeartTap} savedSet={savedSet} searchUrlParams={searchUrlParams} />
               ))}
             </div>
           </div>
         )}
+      </div>
+
+      {/* v159.8 — Multi-level SearchSheet modal (Airbnb-style: Where ·
+          When · Who collapsed sections). Opens on search-pill tap.
+          Reuses LuxuryCalendar for the date picker. */}
+      {searchOpen && (
+        <div
+          className="hxr-sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search filters"
+          onClick={() => setSearchOpen(false)}
+        >
+          <div className="hxr-sheet" onClick={(e) => e.stopPropagation()}>
+            <header className="hxr-sheet-head">
+              <h2 className="hxr-sheet-title">Find your stay</h2>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="hxr-sheet-close"
+                aria-label="Close search"
+              >×</button>
+            </header>
+
+            <div className="hxr-sheet-body">
+              {/* Where */}
+              <section className="hxr-sheet-section">
+                <h3 className="hxr-sheet-h">Where?</h3>
+                <div className="hxr-sheet-search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search city or hotel name…"
+                    type="search"
+                    autoComplete="off"
+                    autoFocus
+                    aria-label="Search hotels"
+                  />
+                  {search && (
+                    <button type="button" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
+                  )}
+                </div>
+                <div className="hxr-sheet-cities">
+                  {CITY_PILLS.map((c) => {
+                    const active = c.key === city;
+                    return (
+                      <button
+                        key={c.key || "all"}
+                        type="button"
+                        onClick={() => {
+                          setCity(c.key);
+                          try { localStorage.setItem("sb_city", c.key); } catch {}
+                        }}
+                        className={`hxr-sheet-city ${active ? "hxr-sheet-city-active" : ""}`}
+                        aria-pressed={active}
+                      >
+                        <span aria-hidden="true">{c.icon}</span>
+                        <span>{c.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* When */}
+              <section className="hxr-sheet-section">
+                <h3 className="hxr-sheet-h">When?</h3>
+                <div className="hxr-sheet-dates">
+                  <button
+                    type="button"
+                    onClick={() => { setCalMode("checkIn"); setCalOpen(true); }}
+                    className="hxr-sheet-date"
+                  >
+                    <span className="hxr-sheet-date-lbl">📅 Check-in</span>
+                    <span className={`hxr-sheet-date-val ${searchCheckIn ? "" : "muted"}`}>
+                      {searchCheckIn
+                        ? new Date(searchCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                        : "Add date"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCalMode("checkOut"); setCalOpen(true); }}
+                    className="hxr-sheet-date"
+                  >
+                    <span className="hxr-sheet-date-lbl">📅 Check-out</span>
+                    <span className={`hxr-sheet-date-val ${searchCheckOut ? "" : "muted"}`}>
+                      {searchCheckOut
+                        ? new Date(searchCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                        : "Add date"}
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              {/* Who */}
+              <section className="hxr-sheet-section">
+                <h3 className="hxr-sheet-h">Who?</h3>
+                <div className="hxr-sheet-guests">
+                  <GuestRow
+                    label="Adults"
+                    sub="Ages 12+"
+                    value={searchAdults}
+                    min={1}
+                    max={8}
+                    onChange={setSearchAdults}
+                  />
+                  <GuestRow
+                    label="Children"
+                    sub="Ages 5–12 · +₹200/night"
+                    value={searchChildren}
+                    min={0}
+                    max={6}
+                    onChange={setSearchChildren}
+                  />
+                  <GuestRow
+                    label="Kids"
+                    sub="Under 5 · FREE"
+                    value={searchKids}
+                    min={0}
+                    max={6}
+                    onChange={setSearchKids}
+                  />
+                </div>
+              </section>
+            </div>
+
+            <footer className="hxr-sheet-foot">
+              <button
+                type="button"
+                className="hxr-sheet-clear"
+                onClick={() => {
+                  setSearch("");
+                  setCity("");
+                  setSearchCheckIn("");
+                  setSearchCheckOut("");
+                  setSearchAdults(2);
+                  setSearchChildren(0);
+                  setSearchKids(0);
+                  try { localStorage.setItem("sb_city", ""); } catch {}
+                }}
+              >Clear all</button>
+              <button
+                type="button"
+                className="hxr-sheet-apply"
+                onClick={() => setSearchOpen(false)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                Search
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {/* LuxuryCalendar — controlled by SearchSheet's "When" buttons */}
+      <LuxuryCalendar
+        open={calOpen}
+        mode={calMode}
+        checkIn={searchCheckIn}
+        checkOut={searchCheckOut}
+        rooms={[]}
+        city={city || "Mussoorie"}
+        pricingMode="demand"
+        onClose={() => setCalOpen(false)}
+        onApply={({ checkIn: ci, checkOut: co }) => {
+          setSearchCheckIn(ci);
+          setSearchCheckOut(co);
+          setCalOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+
+// ───────── Guest counter row inside SearchSheet ─────────
+function GuestRow({
+  label, sub, value, min, max, onChange,
+}: {
+  label: string;
+  sub: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <div className="hxr-guest-row">
+      <div className="hxr-guest-text">
+        <p className="hxr-guest-label">{label}</p>
+        <p className="hxr-guest-sub">{sub}</p>
+      </div>
+      <div className="hxr-guest-stepper">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(min, value - 1))}
+          disabled={value <= min}
+          aria-label={`Decrease ${label}`}
+        >−</button>
+        <span className="hxr-guest-value">{value}</span>
+        <button
+          type="button"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          aria-label={`Increase ${label}`}
+        >+</button>
       </div>
     </div>
   );
@@ -606,10 +962,12 @@ function RailSection({
   rail,
   onHeart,
   savedSet,
+  searchUrlParams,
 }: {
   rail: { key: string; title: string; icon?: string; eyebrow?: string; items: any[] };
   onHeart: (e: React.MouseEvent, h: any) => void;
   savedSet: Set<string>;
+  searchUrlParams?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -676,7 +1034,7 @@ function RailSection({
       </header>
       <div className="hxr-rail" ref={scrollRef} role="list">
         {rail.items.map((h: any) => (
-          <CardLink key={`${rail.key}-${h.id}`} h={h} variant="rail" onHeart={onHeart} savedSet={savedSet} />
+          <CardLink key={`${rail.key}-${h.id}`} h={h} variant="rail" onHeart={onHeart} savedSet={savedSet} searchUrlParams={searchUrlParams} />
         ))}
         {/* Bleed pad so the last card snaps cleanly to the right edge */}
         <div className="hxr-rail-end" aria-hidden="true" />
@@ -691,11 +1049,13 @@ function CardLink({
   variant,
   onHeart,
   savedSet,
+  searchUrlParams,
 }: {
   h: any;
   variant: "rail" | "grid";
   onHeart: (e: React.MouseEvent, h: any) => void;
   savedSet: Set<string>;
+  searchUrlParams?: string;
 }) {
   const { minPrice, showFlash } = h._minPrice !== undefined
     ? { minPrice: h._minPrice, showFlash: h._showFlash }
@@ -709,7 +1069,7 @@ function CardLink({
   return (
     <Link
       role="listitem"
-      href={`/hotels/${h.id}`}
+      href={`/hotels/${h.id}${searchUrlParams || ""}`}
       className={`hxr-card ${variant === "rail" ? "hxr-card-rail" : "hxr-card-grid"}`}
     >
       <div className="hxr-card-imgwrap">

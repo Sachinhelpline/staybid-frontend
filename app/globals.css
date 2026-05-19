@@ -4546,3 +4546,402 @@ body.is-reel-page {
   .hxr-card:hover { transform: none !important; }
   .hxr-card:hover .hxr-card-img { transform: none !important; }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   v159.8 — Multi-level SearchSheet + Pending bookings card
+   ───────────────────────────────────────────────────────────── */
+
+/* Search trigger — replaces the v159.x input. Tap → open sheet. */
+.hxr-search-trigger {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 10px 40px 10px 38px;
+  font-size: 0.82rem;
+  color: var(--text-base);
+  /* inherit .hxr-search box styling — bg, border, radius, shadow */
+}
+.hxr-search-trigger:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-soft));
+}
+@media (min-width: 1024px) {
+  .hxr-search-trigger { padding: 12px 44px 12px 44px; font-size: 0.88rem; }
+}
+.hxr-search-trigger-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.hxr-search-trigger-text.hxr-search-trigger-active {
+  color: var(--text-base);
+  font-weight: 600;
+}
+.hxr-search-trigger-glyph {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Pending bookings card — surfaces ACCEPTED/PENDING/COUNTER bids above
+   the rails. Single full-width Airbnb-style "Continue your booking". */
+.hxr-pending { margin-bottom: 22px; }
+.hxr-pending-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 10px; padding: 0 2px;
+}
+.hxr-pending-title {
+  margin: 0;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-weight: 500;
+  font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+  color: var(--text-base);
+}
+.hxr-pending-link {
+  font-size: 0.74rem; font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+.hxr-pending-cards {
+  display: flex; flex-direction: column; gap: 10px;
+}
+@media (min-width: 768px) { .hxr-pending-cards { flex-direction: row; flex-wrap: wrap; } }
+.hxr-pending-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.hxr-pending-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-soft));
+}
+.hxr-pending-img {
+  flex: 0 0 auto;
+  width: 64px; height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--accent-soft);
+}
+.hxr-pending-img-fallback {
+  display: grid; place-items: center;
+  font-size: 1.4rem; opacity: 0.5;
+}
+.hxr-pending-body { flex: 1 1 auto; min-width: 0; }
+.hxr-pending-status {
+  margin: 0 0 2px;
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.hxr-pending-name {
+  margin: 0;
+  font-size: 0.9rem; font-weight: 600;
+  color: var(--text-base);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hxr-pending-meta {
+  margin: 2px 0 0;
+  font-size: 0.72rem; color: var(--text-muted);
+}
+.hxr-pending-arrow {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+  color: var(--text-muted);
+  padding-right: 4px;
+}
+
+/* ───────── SearchSheet modal — Airbnb-style "Where / When / Who" ───────── */
+.hxr-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(15, 12, 8, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: hxrSheetFadeIn 0.18s ease;
+}
+@media (min-width: 768px) {
+  .hxr-sheet-backdrop {
+    align-items: center;
+    padding: 24px;
+  }
+}
+@keyframes hxrSheetFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.hxr-sheet {
+  background: var(--bg-card);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -20px 60px -16px rgba(31, 26, 15, 0.4);
+  animation: hxrSheetSlideUp 0.28s cubic-bezier(.32,1,.36,1);
+}
+@media (min-width: 768px) {
+  .hxr-sheet {
+    border-radius: 22px;
+    max-height: 86dvh;
+  }
+}
+@keyframes hxrSheetSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.hxr-sheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  position: relative;
+}
+.hxr-sheet-title {
+  margin: 0;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-weight: 500;
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--text-base);
+}
+.hxr-sheet-close {
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-soft);
+  color: var(--text-base);
+  font-size: 1.2rem;
+  line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.18s;
+}
+.hxr-sheet-close:hover { background: var(--accent-soft); transform: scale(1.05); }
+.hxr-sheet-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px 20px 12px;
+  display: flex; flex-direction: column;
+  gap: 22px;
+  -webkit-overflow-scrolling: touch;
+}
+.hxr-sheet-section { display: flex; flex-direction: column; gap: 10px; }
+.hxr-sheet-h {
+  margin: 0;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-base);
+  letter-spacing: -0.005em;
+}
+
+/* Where — search input + city chips */
+.hxr-sheet-search {
+  position: relative;
+  display: flex; align-items: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.hxr-sheet-search:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.hxr-sheet-search svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.hxr-sheet-search input {
+  flex: 1 1 auto; width: 100%;
+  background: transparent; border: 0; outline: none;
+  padding: 12px 40px 12px 40px;
+  font-size: 0.92rem;
+  color: var(--text-base);
+  font-family: inherit;
+}
+.hxr-sheet-search input::-webkit-search-cancel-button { display: none; }
+.hxr-sheet-search button {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px;
+  border-radius: 999px;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: grid; place-items: center;
+}
+.hxr-sheet-cities {
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+.hxr-sheet-city {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  transition: all 0.18s ease;
+}
+.hxr-sheet-city:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--text-base);
+}
+.hxr-sheet-city-active {
+  background: var(--bg-pill-active);
+  color: var(--text-inverse);
+  border-color: var(--border-strong);
+  font-weight: 600;
+}
+
+/* When — two date buttons */
+.hxr-sheet-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.hxr-sheet-date {
+  display: flex; flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s, background 0.18s;
+}
+.hxr-sheet-date:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  background: var(--bg-card);
+}
+.hxr-sheet-date-lbl {
+  font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hxr-sheet-date-val {
+  font-size: 0.92rem; font-weight: 600;
+  color: var(--text-base);
+}
+.hxr-sheet-date-val.muted { color: var(--text-muted); font-weight: 500; }
+
+/* Who — guest rows with stepper */
+.hxr-sheet-guests {
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.hxr-guest-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.hxr-guest-row:last-child { border-bottom: 0; }
+.hxr-guest-text { flex: 1 1 auto; }
+.hxr-guest-label {
+  margin: 0;
+  font-size: 0.94rem; font-weight: 600;
+  color: var(--text-base);
+}
+.hxr-guest-sub {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+.hxr-guest-stepper {
+  display: flex; align-items: center; gap: 12px;
+}
+.hxr-guest-stepper button {
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-base);
+  font-size: 1rem;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: border-color 0.18s, background 0.18s, transform 0.12s;
+}
+.hxr-guest-stepper button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.hxr-guest-stepper button:active:not(:disabled) { transform: scale(0.92); }
+.hxr-guest-stepper button:disabled {
+  opacity: 0.32; cursor: not-allowed;
+}
+.hxr-guest-value {
+  min-width: 1.4em;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-base);
+}
+
+/* Footer — Clear all + Search */
+.hxr-sheet-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-card);
+}
+.hxr-sheet-clear {
+  background: transparent;
+  border: 0;
+  color: var(--text-base);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.hxr-sheet-clear:hover { color: var(--accent); }
+.hxr-sheet-apply {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 22px;
+  background: var(--bg-pill-active);
+  color: var(--text-inverse);
+  border: 0;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -4px rgba(31, 26, 15, 0.32);
+  transition: transform 0.16s, box-shadow 0.16s;
+}
+.hxr-sheet-apply:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -6px rgba(31, 26, 15, 0.38);
+}
+.hxr-sheet-apply:active { transform: scale(0.97); }
