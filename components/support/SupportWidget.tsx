@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { notify } from "@/lib/notifications";
+import { w as wstr } from "@/lib/support/widget-strings";
 
 type SupportSender = "user" | "ai" | "agent" | "system";
 type SupportStatus = "ai_active" | "escalated" | "agent_active" | "resolved" | "closed";
@@ -146,6 +147,8 @@ export default function SupportWidget() {
     setLangOpen(false);
   }
   const currentLang = LANG_OPTIONS.find((o) => o.key === lang) || LANG_OPTIONS[0];
+  // v150 — localized widget UI strings table
+  const s = wstr(lang);
 
   // ⚠ v148.1 — DO NOT early-return BEFORE this point. All hooks must run
   // in the same order on every render. Moving the shouldHide check below
@@ -325,9 +328,9 @@ export default function SupportWidget() {
                   <span className="sb-support-avatar-dot" />
                 </div>
                 <div className="sb-support-titleblock">
-                  <div className="sb-support-title">StayBid Support</div>
+                  <div className="sb-support-title">{s.brandName}</div>
                   <div className="sb-support-subtitle">
-                    {view === "chat" ? "Live chat" : "We're here to help 24/7"}
+                    {view === "chat" ? s.liveChat : s.brandSubtitle}
                   </div>
                 </div>
               </div>
@@ -378,17 +381,20 @@ export default function SupportWidget() {
                 onOpen={openChat}
                 onStartNew={startNewChat}
                 signedIn={!!user}
+                s={s}
               />
             ) : view === "subject" ? (
               <SubjectPicker
                 onPick={createConvWithCategory}
                 onCancel={() => setView("list")}
+                s={s}
               />
             ) : activeId ? (
               <ChatView
                 conversationId={activeId}
                 token={token}
                 lang={lang}
+                s={s}
                 onClosed={backToList}
               />
             ) : null}
@@ -659,16 +665,16 @@ export default function SupportWidget() {
 function SubjectPicker({
   onPick,
   onCancel,
+  s,
 }: {
   onPick: (cat: Category) => void;
   onCancel: () => void;
+  s: ReturnType<typeof wstr>;
 }) {
   return (
     <div className="sb-support-subjects">
-      <div className="sb-support-subjects-title">What's your question about?</div>
-      <div className="sb-support-subjects-sub">
-        Pick a category — helps us connect you to the right person faster.
-      </div>
+      <div className="sb-support-subjects-title">{s.subjectTitle}</div>
+      <div className="sb-support-subjects-sub">{s.subjectSub}</div>
       <div className="sb-support-subjects-grid">
         {CATEGORIES.map((cat) => (
           <button
@@ -684,7 +690,7 @@ function SubjectPicker({
         ))}
       </div>
       <button type="button" onClick={onCancel} className="sb-support-subject-cancel">
-        ← Back
+        {s.subjectBack}
       </button>
       <style jsx global>{`
         .sb-support-subjects {
@@ -777,31 +783,33 @@ function ConversationList({
   onOpen,
   onStartNew,
   signedIn,
+  s,
 }: {
   conversations: Conversation[];
   onOpen: (id: string) => void;
   onStartNew: () => void;
   signedIn: boolean;
+  s: ReturnType<typeof wstr>;
 }) {
   return (
     <div className="sb-support-list">
       <button type="button" onClick={onStartNew} className="sb-support-new-btn">
-        💬 Naya chat shuru karein
+        {s.newChatBtn}
       </button>
       {!signedIn && (
         <div className="sb-support-anon-note">
-          Sign-in karne se aapki bookings + bids automatically pull ho jaati hain — fast resolution milti hai.
+          {s.anonNote}
         </div>
       )}
       {conversations.length === 0 ? (
         <div className="sb-support-empty">
           <div className="sb-support-empty-emoji">✨</div>
-          <div>Koi past conversation nahi.</div>
-          <div className="sb-support-empty-sub">Booking, bid, payment — kuch bhi pucho.</div>
+          <div>{s.emptyTitle}</div>
+          <div className="sb-support-empty-sub">{s.emptySub}</div>
         </div>
       ) : (
         <>
-          <div className="sb-support-list-heading">Past chats</div>
+          <div className="sb-support-list-heading">{s.pastChats}</div>
           {conversations.map((c) => (
             <button
               key={c.id}
@@ -811,7 +819,7 @@ function ConversationList({
             >
               <div className="sb-support-list-item-top">
                 <span className={`sb-support-list-status sb-support-list-status-${c.status}`}>
-                  {labelForStatus(c.status)}
+                  {labelForStatusS(c.status, s)}
                 </span>
                 {c.user_unread_count > 0 && (
                   <span className="sb-support-list-badge">{c.user_unread_count}</span>
@@ -821,7 +829,7 @@ function ConversationList({
                 {c.subject || "(no subject)"}
               </div>
               <div className="sb-support-list-time">
-                {timeAgo(c.last_message_at)}
+                {timeAgoS(c.last_message_at, s)}
                 {c.assigned_agent_name ? ` · ${c.assigned_agent_name}` : ""}
               </div>
             </button>
@@ -930,11 +938,13 @@ function ChatView({
   conversationId,
   token,
   lang,
+  s,
   onClosed,
 }: {
   conversationId: string;
   token: string | null;
   lang: LangKey;
+  s: ReturnType<typeof wstr>;
   onClosed: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -1117,11 +1127,11 @@ function ChatView({
   }
 
   const placeholder = useMemo(() => {
-    if (!conv) return "Type karein…";
-    if (conv.status === "closed" || conv.status === "resolved") return "Yeh chat band ho gaya hai";
-    if (conv.status === "agent_active") return `${conv.assigned_agent_name || "Agent"} ko likhein…`;
-    return "Apna sawaal likhein… (Hinglish OK)";
-  }, [conv]);
+    if (!conv) return s.placeholderActive;
+    if (conv.status === "closed" || conv.status === "resolved") return s.placeholderLocked;
+    if (conv.status === "agent_active") return s.placeholderAgent(conv.assigned_agent_name || "Agent");
+    return s.placeholderActive;
+  }, [conv, s]);
 
   const showEscalate =
     conv && (conv.status === "ai_active") && messages.some((m) => m.sender === "user");
@@ -1134,7 +1144,7 @@ function ChatView({
           {conv.status === "ai_active" && (
             <>
               <span className="sb-support-banner-dot sb-support-banner-dot-ai" />
-              <span>StayBid Assistant aapki madad kar raha hai</span>
+              <span>{s.statusAI}</span>
               {showEscalate && (
                 <button
                   type="button"
@@ -1142,7 +1152,7 @@ function ChatView({
                   onClick={escalate}
                   disabled={escalating}
                 >
-                  Talk to human
+                  {s.talkToHuman}
                 </button>
               )}
             </>
@@ -1150,19 +1160,19 @@ function ChatView({
           {conv.status === "escalated" && (
             <>
               <span className="sb-support-banner-dot sb-support-banner-dot-esc" />
-              <span>Team ko forward kar diya hai — soon reply aayega</span>
+              <span>{s.statusEscalated}</span>
             </>
           )}
           {conv.status === "agent_active" && (
             <>
               <span className="sb-support-banner-dot sb-support-banner-dot-agent" />
-              <span>{conv.assigned_agent_name || "Support"} live hai</span>
+              <span>{s.statusAgent(conv.assigned_agent_name || "Support")}</span>
             </>
           )}
           {(conv.status === "resolved" || conv.status === "closed") && (
             <>
               <span className="sb-support-banner-dot sb-support-banner-dot-closed" />
-              <span>Yeh conversation band ho gaya hai</span>
+              <span>{s.statusClosed}</span>
             </>
           )}
         </div>
@@ -1211,7 +1221,7 @@ function ChatView({
           onClick={closeChat}
           className="sb-support-chat-close-btn"
         >
-          Mark as resolved
+          {s.markResolved}
         </button>
       )}
 
@@ -1430,23 +1440,23 @@ function mergeMessages(prev: Message[], fresh: Message[]): Message[] {
   return next;
 }
 
-function labelForStatus(s: SupportStatus): string {
-  switch (s) {
-    case "ai_active": return "AI";
-    case "escalated": return "Queued";
-    case "agent_active": return "Live";
-    case "resolved": return "Resolved";
-    case "closed": return "Closed";
+function labelForStatusS(status: SupportStatus, s: ReturnType<typeof wstr>): string {
+  switch (status) {
+    case "ai_active": return s.statusPillAI;
+    case "escalated": return s.statusPillQueued;
+    case "agent_active": return s.statusPillLive;
+    case "resolved": return s.statusPillResolved;
+    case "closed": return s.statusPillClosed;
   }
 }
 
-function timeAgo(iso: string): string {
+function timeAgoS(iso: string, s: ReturnType<typeof wstr>): string {
   try {
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diff < 60) return "abhi";
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
-    return `${Math.floor(diff / 86400)} d ago`;
+    if (diff < 60) return s.justNow;
+    if (diff < 3600) return s.minAgo(Math.floor(diff / 60));
+    if (diff < 86400) return s.hourAgo(Math.floor(diff / 3600));
+    return s.dayAgo(Math.floor(diff / 86400));
   } catch {
     return "";
   }
