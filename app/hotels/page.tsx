@@ -391,22 +391,12 @@ function HotelList() {
   // ───────────────────────── Render ─────────────────────────
   return (
     <div className="hxr-page lux-bg">
-      {/* Sticky header — search pill + city pills + refine row */}
+      {/* Sticky header — slim: search + categories + refine only. v159.2:
+          hero text moved into the body (below sticky) so the persistent
+          chrome shrinks to ~1/4 its prior footprint without sacrificing
+          density or premium feel. */}
       <div className="hxr-sticky">
         <div className="hxr-sticky-inner">
-          {/* Eyebrow + count (compact) */}
-          <div className="hxr-hero">
-            <p className="hxr-eyebrow">Explore</p>
-            <h1 className="hxr-title">Find Your Perfect Stay</h1>
-            <p className="hxr-subtle">
-              {loading
-                ? "Searching the Himalayas…"
-                : inSearchMode
-                  ? `${displayHotels.length} of ${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} match`
-                  : `${total} hotel${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""} found`}
-            </p>
-          </div>
-
           {/* Search pill */}
           <div className="hxr-search">
             <svg className="hxr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -433,7 +423,8 @@ function HotelList() {
             )}
           </div>
 
-          {/* Category pills — icon + label, Airbnb-style */}
+          {/* Category pills — icon + label, Airbnb-true: no boxed bg on
+              inactive, active gets a thin champagne underline. */}
           <div className="hxr-cats" data-autonext-self="hotels-results">
             {CITY_PILLS.map((c) => {
               const active = c.key === city;
@@ -497,6 +488,22 @@ function HotelList() {
 
       {/* Body */}
       <div className="hxr-body" data-autonext="hotels-results">
+        {/* v159.2 — Slim hero. Lives inside the body so it scrolls away
+            with the rails. Sticky chrome above is purely functional. */}
+        <header className="hxr-hero-slim sb-fade-in">
+          <p className="hxr-hero-eyebrow">Explore</p>
+          <h1 className="hxr-hero-title">
+            Find Your Perfect Stay
+            <span className="hxr-hero-count">
+              {loading
+                ? "Searching…"
+                : inSearchMode
+                  ? `· ${displayHotels.length} match`
+                  : `· ${total} stay${total !== 1 ? "s" : ""}${city ? ` in ${city}` : ""}`}
+            </span>
+          </h1>
+        </header>
+
         {/* Loading skeleton */}
         {loading && (
           <div className="hxr-skel-rail" aria-hidden="true">
@@ -787,14 +794,19 @@ export default function HotelsPage() {
         <div className="hxr-page lux-bg">
           <div className="hxr-sticky">
             <div className="hxr-sticky-inner">
-              <div className="hxr-hero">
-                <p className="hxr-eyebrow">Explore</p>
-                <h1 className="hxr-title">Find Your Perfect Stay</h1>
-                <p className="hxr-subtle">Loading…</p>
+              <div className="hxr-search">
+                <svg className="hxr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <input className="hxr-search-input" placeholder="Where to next? Search city or hotel…" disabled aria-label="Search hotels" />
               </div>
             </div>
           </div>
           <div className="hxr-body">
+            <header className="hxr-hero-slim">
+              <p className="hxr-hero-eyebrow">Explore</p>
+              <h1 className="hxr-hero-title">Find Your Perfect Stay <span className="hxr-hero-count">· Loading…</span></h1>
+            </header>
             <div className="hxr-skel-rail" aria-hidden="true">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="hxr-skel-card">
