@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser } from "@/lib/sb-server";
 import {
   createConversation,
+  insertMessage,
   listConversationsForUser,
   listConversationsForAnon,
+  patchConversation,
 } from "@/lib/support/repo";
+import { isAIEnabled } from "@/lib/support/ai-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +62,29 @@ export async function POST(req: NextRequest) {
       userAgent: body?.metadata?.userAgent || null,
       tier: body?.metadata?.tier || null,
     },
+    // Start state depends on AI availability — without API key we don't
+    // pretend AI is active.
+    startStatus: isAIEnabled() ? "ai_active" : "escalated",
   });
+
+  // Seed a welcome system message so the chat doesn't open empty.
+  const welcomeBody = isAIEnabled()
+    ? "👋 Aap StayBid Support se baat kar rahe hain. Booking, bid, payment — kuch bhi pucho. Agar human team chahiye, neeche \"Talk to human\" button hai."
+    : "👋 Aap StayBid Support se baat kar rahe hain. Apna sawaal likhein — team kuch hi minutes mein reply karegi.";
+
+  await insertMessage({
+    conversationId: conv.id,
+    sender: "system",
+    senderId: null,
+    senderName: "StayBid",
+    body: welcomeBody,
+  });
+
+  await patchConversation(conv.id, {
+    last_message_at: new Date().toISOString(),
+    last_message_sender: "system",
+    user_unread_count: 1,
+  } as any);
 
   return NextResponse.json({ conversation: conv });
 }

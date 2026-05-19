@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { notify } from "@/lib/notifications";
 
 type SupportSender = "user" | "ai" | "agent" | "system";
 type SupportStatus = "ai_active" | "escalated" | "agent_active" | "resolved" | "closed";
@@ -80,6 +81,9 @@ export default function SupportWidget() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [unreadTotal, setUnreadTotal] = useState(0);
+  // Track previous unread to detect TRANSITIONS (0→N) and avoid spamming
+  // notifications on every refresh.
+  const prevUnreadRef = useRef<number>(-1);
 
   if (shouldHide(pathname)) return null;
 
@@ -107,6 +111,29 @@ export default function SupportWidget() {
       const list: Conversation[] = j.conversations || [];
       setConversations(list);
       const unread = list.reduce((s, c) => s + (c.user_unread_count || 0), 0);
+
+      // Fire a notification on TRANSITIONS only — when prev was 0 (or
+      // unset) and a new unread shows up while the widget is closed.
+      // Surfaces a desktop notification + in-app toast via lib/notifications.
+      if (prevUnreadRef.current >= 0 && unread > prevUnreadRef.current && !open) {
+        const newest = list.find((c) => c.user_unread_count > 0);
+        notify({
+          kind: "info",
+          title: newest?.assigned_agent_name
+            ? `${newest.assigned_agent_name} replied`
+            : "Support reply received",
+          body: "Open the chat to view the message",
+          duration: 6000,
+          actions: [
+            {
+              label: "Open chat",
+              primary: true,
+              onClick: () => setOpen(true),
+            },
+          ],
+        });
+      }
+      prevUnreadRef.current = unread;
       setUnreadTotal(unread);
     } catch {}
   }
