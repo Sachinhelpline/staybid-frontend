@@ -41,6 +41,7 @@ type Conversation = {
 const HIDE_PREFIXES = [
   "/admin",
   "/partner",
+  "/agent",
   "/onboard",
   "/auth",
 ];

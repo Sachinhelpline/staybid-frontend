@@ -143,6 +143,7 @@ export function Navbar() {
   // Operator panels keep their own headers — always hide.
   if (pathname?.startsWith("/partner")) return null;
   if (pathname?.startsWith("/admin")) return null;
+  if (pathname?.startsWith("/agent")) return null;
   if (pathname?.startsWith("/onboard")) return null;
 
   // Reel / IG-style customer routes — on MOBILE we want the in-page chrome

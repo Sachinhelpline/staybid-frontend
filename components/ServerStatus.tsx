@@ -33,6 +33,7 @@ export function ServerStatus() {
   if (pathname?.startsWith("/saved/posts")) return null;
   if (pathname?.startsWith("/admin")) return null;
   if (pathname?.startsWith("/partner")) return null;
+  if (pathname?.startsWith("/agent")) return null;
   if (pathname?.startsWith("/onboard")) return null;
 
   if (!down) return null;

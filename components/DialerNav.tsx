@@ -327,6 +327,7 @@ export function DialerNav() {
   // style bottom dock instead of the left-edge crown wheel, per design ask.
   if (pathname.startsWith("/admin") ||
       pathname.startsWith("/partner") ||
+      pathname.startsWith("/agent") ||
       pathname.startsWith("/onboard") ||
       pathname === "/" ||
       pathname.startsWith("/discover") ||

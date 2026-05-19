@@ -47,6 +47,7 @@ export function BottomDock() {
   const hidden =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
+    pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/auth");        // auth screens should be chrome-free
   if (hidden) return null;
