@@ -97,6 +97,12 @@ export default function SupportChatPage({
   const [showCanned, setShowCanned] = useState(false);
   const sinceRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // v151 — track scroll position to decide whether to auto-scroll on new
+  // messages. If user manually scrolled up to read history, we DON'T
+  // force-scroll on every incoming message — we surface a "↓ new" pill
+  // instead so they can choose to jump down.
+  const wasAtBottomRef = useRef<boolean>(true);
+  const [hasNewBelow, setHasNewBelow] = useState(false);
 
   const headers = () => buildHeaders(tokenKey, userKey);
 
@@ -141,11 +147,46 @@ export default function SupportChatPage({
     return () => clearInterval(t);
   }, [conversationId]);
 
-  function scrollToBottom() {
-    setTimeout(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }, 50);
+  function scrollToBottom(opts: { smooth?: boolean; force?: boolean } = {}) {
+    // Double-rAF so the DOM has committed the new message before we
+    // measure scrollHeight. Without this, native React batching can
+    // leave us short by 1 frame on Android Chrome.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTo({
+          top: el.scrollHeight,
+          behavior: opts.smooth ? "smooth" : "auto",
+        });
+        wasAtBottomRef.current = true;
+        setHasNewBelow(false);
+      });
+    });
   }
+
+  // v151 — track scroll position. User scrolling up = "wants to read
+  // history". User at bottom = "wants latest". This drives auto-scroll
+  // behavior on new messages.
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+    wasAtBottomRef.current = gap < 80;
+    if (wasAtBottomRef.current && hasNewBelow) setHasNewBelow(false);
+  }
+
+  // v151 — Aggressive auto-scroll on EVERY message length change. Fires
+  // when initial load completes, when polling adds messages, and when
+  // user sends a new message. Respects user's manual scroll position:
+  // if they're reading history, we don't yank them down — show pill instead.
+  useEffect(() => {
+    if (wasAtBottomRef.current) {
+      scrollToBottom({ smooth: true });
+    } else {
+      setHasNewBelow(true);
+    }
+  }, [messages.length]);
 
   async function send() {
     const text = reply.trim();
@@ -277,8 +318,18 @@ export default function SupportChatPage({
             </div>
           </div>
 
-          <div ref={scrollRef} style={S.scroll}>
+          <div ref={scrollRef} onScroll={handleScroll} style={S.scroll}>
             {messages.map((m) => <Bubble key={m.id} m={m} />)}
+            {hasNewBelow && (
+              <button
+                type="button"
+                onClick={() => scrollToBottom({ smooth: true, force: true })}
+                style={S.newBelowPill}
+                aria-label="Jump to latest messages"
+              >
+                ↓ New messages
+              </button>
+            )}
           </div>
 
           {!locked && (
@@ -413,9 +464,122 @@ function Bubble({ m }: { m: Message }) {
   );
 }
 
+// v151 — category → relevant section + quick actions map.
+// Tells the agent "what to look at first" + provides 1-click jumps to
+// the relevant admin pages so they can act without scrolling.
+const CATEGORY_FOCUS: Record<
+  string,
+  {
+    title: string;
+    icon: string;
+    note: string;
+    actions: Array<{ label: string; href: (userId: string | null) => string | null }>;
+  }
+> = {
+  booking: {
+    title: "🏨 Booking focus",
+    icon: "🏨",
+    note: "Customer has a question about bookings. See active stays + history below.",
+    actions: [
+      { label: "Open Bookings admin →", href: () => "/admin/bookings" },
+      { label: "View user profile →", href: (uid) => (uid ? `/admin/users?id=${uid}` : null) },
+    ],
+  },
+  bid: {
+    title: "🎟️ Bid focus",
+    icon: "🎟️",
+    note: "Customer has a bid query. Active/recent bids surface first.",
+    actions: [
+      { label: "Open Bids admin →", href: () => "/admin/bookings" },
+      { label: "View user profile →", href: (uid) => (uid ? `/admin/users?id=${uid}` : null) },
+    ],
+  },
+  payment: {
+    title: "💳 Payment focus",
+    icon: "💳",
+    note: "Payment / Razorpay query. Wallet + recent transactions shown.",
+    actions: [
+      { label: "Open Wallet admin →", href: () => "/admin/finance" },
+      { label: "View user profile →", href: (uid) => (uid ? `/admin/users?id=${uid}` : null) },
+    ],
+  },
+  refund: {
+    title: "💰 Refund focus",
+    icon: "💰",
+    note: "Refund request. Refundable bookings + recent transactions surface first.",
+    actions: [
+      { label: "Open Bookings →", href: () => "/admin/bookings" },
+      { label: "Open Holds →", href: () => "/admin/holds" },
+    ],
+  },
+  wallet_points: {
+    title: "⭐ Wallet / Points focus",
+    icon: "⭐",
+    note: "Loyalty / wallet query. StayPoints balance + history.",
+    actions: [
+      { label: "Open Wallet admin →", href: () => "/admin/finance" },
+      { label: "Open Redemption codes →", href: () => "/admin/redemption-codes" },
+    ],
+  },
+  tech: {
+    title: "🔧 Technical issue",
+    icon: "🔧",
+    note: "App / login / loading bug. Browser + page metadata surfaces first.",
+    actions: [
+      { label: "Open Settings →", href: () => "/admin/settings" },
+    ],
+  },
+  hotel_info: {
+    title: "📍 Hotel info",
+    icon: "📍",
+    note: "Hotel-specific question. Customer's recent hotel views + bookings.",
+    actions: [
+      { label: "Open Hotels admin →", href: () => "/admin/hotels" },
+    ],
+  },
+  other: {
+    title: "💬 General",
+    icon: "💬",
+    note: "Generic query. Full customer history below.",
+    actions: [],
+  },
+};
+
 function ContextPanel({ ctx, conv }: { ctx: UserContext | null; conv: Conversation }) {
+  const category = (conv.metadata?.category || "").toString().toLowerCase();
+  const focus = CATEGORY_FOCUS[category];
+  const userId = ctx?.user?.id || conv.user_id || null;
+
   return (
     <div style={S.contextInner}>
+      {/* v151 — category-aware focus block at TOP. Agent sees relevant
+          data + 1-click jumps to admin pages for the subject. */}
+      {focus && (
+        <div style={S.focusCard}>
+          <div style={S.focusTitle}>{focus.title}</div>
+          <div style={S.focusNote}>{focus.note}</div>
+          {focus.actions.length > 0 && (
+            <div style={S.focusActions}>
+              {focus.actions.map((a) => {
+                const href = a.href(userId);
+                if (!href) return null;
+                return (
+                  <a
+                    key={a.label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={S.focusActionBtn}
+                  >
+                    {a.label}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <Section title="Customer">
         {!ctx?.user ? (
           <div style={S.contextEmpty}>
@@ -428,36 +592,87 @@ function ContextPanel({ ctx, conv }: { ctx: UserContext | null; conv: Conversati
             <Row label="Email" value={ctx.user.email || "—"} />
             <Row label="Tier" value={ctx.user.tier || "silver"} />
             <Row label="Wallet" value={`₹${ctx.walletBalance}`} />
+            {ctx.user.id && (
+              <a
+                href={`/admin/users?id=${ctx.user.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={S.sectionLink}
+              >
+                Open full profile →
+              </a>
+            )}
           </>
         )}
       </Section>
 
+      {/* Bookings — emphasized when category is booking/refund */}
       {ctx && ctx.recentBookings.length > 0 && (
-        <Section title={`Recent bookings (${ctx.recentBookings.length})`}>
+        <Section
+          title={`Recent bookings (${ctx.recentBookings.length})`}
+          highlight={category === "booking" || category === "refund" || category === "hotel_info"}
+        >
           {ctx.recentBookings.map((b) => (
             <div key={b.id} style={S.contextItem}>
               <div style={{ fontWeight: 600 }}>{b.status}</div>
               <div style={{ fontSize: 11.5, opacity: 0.75 }}>
                 {b.checkIn?.slice(0, 10)} → {b.checkOut?.slice(0, 10)}
               </div>
-              <div style={{ fontSize: 10, opacity: 0.5, fontFamily: "monospace" }}>
+              <div style={{ fontSize: 10, opacity: 0.5, fontFamily: "monospace", marginBottom: 6 }}>
                 {b.id.slice(0, 18)}…
               </div>
+              <a
+                href={`/hotels/${b.hotelId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={S.miniLink}
+              >
+                View hotel →
+              </a>
             </div>
           ))}
         </Section>
       )}
 
+      {/* Bids — emphasized when category is bid */}
       {ctx && ctx.recentBids.length > 0 && (
-        <Section title={`Recent bids (${ctx.recentBids.length})`}>
+        <Section
+          title={`Recent bids (${ctx.recentBids.length})`}
+          highlight={category === "bid"}
+        >
           {ctx.recentBids.map((b) => (
             <div key={b.id} style={S.contextItem}>
               <div style={{ fontWeight: 600 }}>{b.status} · ₹{b.amount}</div>
-              <div style={{ fontSize: 10, opacity: 0.5, fontFamily: "monospace" }}>
+              <div style={{ fontSize: 10, opacity: 0.5, fontFamily: "monospace", marginBottom: 6 }}>
                 {b.id.slice(0, 18)}…
               </div>
+              <a
+                href={`/hotels/${b.hotelId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={S.miniLink}
+              >
+                View hotel →
+              </a>
             </div>
           ))}
+        </Section>
+      )}
+
+      {/* Wallet — emphasized for payment / refund / wallet_points */}
+      {ctx?.user && (category === "payment" || category === "refund" || category === "wallet_points") && (
+        <Section title="Wallet" highlight>
+          <Row label="Balance" value={`₹${ctx.walletBalance}`} />
+          {ctx.user.id && (
+            <a
+              href={`/admin/finance?userId=${ctx.user.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={S.sectionLink}
+            >
+              Wallet history →
+            </a>
+          )}
         </Section>
       )}
 
@@ -472,10 +687,21 @@ function ContextPanel({ ctx, conv }: { ctx: UserContext | null; conv: Conversati
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  highlight,
+}: {
+  title: string;
+  children: React.ReactNode;
+  highlight?: boolean;
+}) {
   return (
-    <div style={S.contextSection}>
-      <div style={S.contextSectionTitle}>{title}</div>
+    <div style={{ ...S.contextSection, ...(highlight ? S.contextSectionHighlight : {}) }}>
+      <div style={{ ...S.contextSectionTitle, ...(highlight ? S.contextSectionTitleHighlight : {}) }}>
+        {title}
+        {highlight && <span style={S.relevantPill}>relevant</span>}
+      </div>
       {children}
     </div>
   );
@@ -645,8 +871,29 @@ const S: Record<string, React.CSSProperties> = {
   scroll: {
     flex: 1,
     overflowY: "auto",
-    padding: "20px 26px",
+    padding: "20px 26px 24px",
     background: "#07080C",
+    position: "relative",
+    scrollBehavior: "smooth",
+  },
+  newBelowPill: {
+    position: "sticky",
+    bottom: 12,
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "block",
+    margin: "0 auto",
+    background: "linear-gradient(140deg, #D4AF37, #8B6914)",
+    color: "#0F1117",
+    border: "none",
+    padding: "8px 18px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "0 8px 20px -4px rgba(0,0,0,0.6), 0 0 0 1px rgba(212, 175, 55, 0.5)",
+    letterSpacing: 0.05,
+    zIndex: 5,
   },
   composer: {
     flex: "0 0 auto",
@@ -762,6 +1009,11 @@ const S: Record<string, React.CSSProperties> = {
     borderRadius: 12,
     padding: 16,
   },
+  contextSectionHighlight: {
+    background: "linear-gradient(170deg, rgba(212, 175, 55, 0.10), rgba(21, 24, 32, 1) 70%)",
+    border: "1px solid rgba(212, 175, 55, 0.36)",
+    boxShadow: "0 0 0 1px rgba(212, 175, 55, 0.15), 0 8px 20px -8px rgba(212, 175, 55, 0.20)",
+  },
   contextSectionTitle: {
     fontSize: 10.5,
     fontWeight: 700,
@@ -769,6 +1021,73 @@ const S: Record<string, React.CSSProperties> = {
     letterSpacing: 0.06,
     color: "#D4AF37",
     marginBottom: 12,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  contextSectionTitleHighlight: {
+    color: "#F0D060",
+  },
+  relevantPill: {
+    background: "rgba(212, 175, 55, 0.22)",
+    color: "#F0D060",
+    fontSize: 9,
+    fontWeight: 700,
+    padding: "2px 7px",
+    borderRadius: 999,
+    border: "1px solid rgba(212, 175, 55, 0.45)",
+    letterSpacing: 0.06,
+  },
+  focusCard: {
+    background: "linear-gradient(160deg, rgba(212, 175, 55, 0.16), rgba(15, 17, 23, 1) 80%)",
+    border: "1px solid rgba(212, 175, 55, 0.42)",
+    borderRadius: 14,
+    padding: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    boxShadow: "0 12px 28px -10px rgba(212, 175, 55, 0.30)",
+  },
+  focusTitle: {
+    fontSize: 14.5,
+    fontWeight: 700,
+    color: "#F0D060",
+  },
+  focusNote: {
+    fontSize: 12,
+    color: "#C8C0A8",
+    lineHeight: 1.5,
+  },
+  focusActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  focusActionBtn: {
+    display: "block",
+    background: "rgba(212, 175, 55, 0.10)",
+    color: "#F0D060",
+    border: "1px solid rgba(212, 175, 55, 0.35)",
+    padding: "8px 12px",
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 600,
+    textDecoration: "none",
+    textAlign: "left",
+  },
+  sectionLink: {
+    display: "inline-block",
+    marginTop: 10,
+    fontSize: 11.5,
+    color: "#D4AF37",
+    textDecoration: "none",
+    fontWeight: 600,
+  },
+  miniLink: {
+    fontSize: 11,
+    color: "#82B2DD",
+    textDecoration: "none",
+    fontWeight: 600,
   },
   contextEmpty: { color: "#8A8FA8", fontSize: 12.5, fontStyle: "italic" },
   contextRow: {
