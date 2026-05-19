@@ -832,15 +832,27 @@ export default function SupportWidget() {
         }
         .sb-support-mic-btn:hover { background: rgba(201, 166, 107, 0.18); }
         .sb-support-mic-btn.is-listening {
-          background: linear-gradient(140deg, #D49583, #C97058);
+          /* v158 — push-to-talk active state: bigger, redder, dramatic */
+          background: linear-gradient(140deg, #FF5566, #D02030);
           color: #fff;
-          border-color: rgba(212, 86, 95, 0.6);
-          animation: sbMicPulse 1.4s ease-in-out infinite;
+          border-color: rgba(255, 60, 80, 0.7);
+          transform: scale(1.18);
+          animation: sbMicPulse 1.1s ease-in-out infinite;
+          z-index: 2;
         }
         @keyframes sbMicPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(212, 86, 95, 0.4); }
-          50%      { box-shadow: 0 0 0 8px rgba(212, 86, 95, 0); }
+          0%, 100% {
+            box-shadow:
+              0 0 0 0 rgba(255, 60, 80, 0.55),
+              0 4px 12px rgba(208, 32, 48, 0.45);
+          }
+          50% {
+            box-shadow:
+              0 0 0 14px rgba(255, 60, 80, 0),
+              0 4px 12px rgba(208, 32, 48, 0.45);
+          }
         }
+        .sb-support-mic-btn { user-select: none; -webkit-touch-callout: none; }
         .sb-support-close {
           background: transparent;
           border: none;
@@ -1166,6 +1178,37 @@ function ChatView({
     { hi: "hi-IN", en: "en-US", es: "es-ES", fr: "fr-FR", ar: "ar-SA" } as const
   )[lang];
 
+  // v158 — Pick the BEST available voice for the locale.
+  // Prefer "Natural" / "Neural" / "Premium" / "Google" / "Microsoft"
+  // voices when available — these sound much less robotic than defaults.
+  const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    function pickVoice() {
+      const voices = speechSynthesis.getVoices();
+      if (voices.length === 0) return;
+      const langBase = speechLocale.toLowerCase().split("-")[0];
+      const matches = voices.filter((v) =>
+        v.lang.toLowerCase().startsWith(langBase)
+      );
+      if (matches.length === 0) {
+        selectedVoiceRef.current = null;
+        return;
+      }
+      const premium = matches.find((v) =>
+        /natural|neural|premium|wavenet|enhanced/i.test(v.name)
+      );
+      const google = matches.find((v) => /google/i.test(v.name));
+      const microsoft = matches.find((v) => /microsoft|aria|heera|ravi/i.test(v.name));
+      selectedVoiceRef.current = premium || google || microsoft || matches[0];
+    }
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+    return () => {
+      if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = null;
+    };
+  }, [speechLocale]);
+
   // Speak new AI / agent / system messages when voiceOut is on.
   useEffect(() => {
     if (!voiceOut || messages.length === 0) return;
@@ -1177,6 +1220,7 @@ function ChatView({
     try {
       const utter = new SpeechSynthesisUtterance(last.body);
       utter.lang = speechLocale;
+      if (selectedVoiceRef.current) utter.voice = selectedVoiceRef.current;
       utter.rate = 1.02;
       utter.pitch = 1.0;
       // Cancel any in-flight speech before starting a new one
@@ -1185,44 +1229,87 @@ function ChatView({
     } catch {}
   }, [messages, voiceOut, speechLocale]);
 
-  // Init mic recognition once
-  function startListening() {
+  // v158 — Push-to-talk redesign.
+  // Hold mic → recording starts. Release → final transcript captured →
+  // auto-sends to AI. No manual send tap needed.
+  // Refs survive across re-renders so onend can read the final text
+  // even if React hasn't flushed the latest setInput yet.
+  const pttFinalTextRef = useRef<string>("");
+  const pttActiveRef = useRef<boolean>(false);
+
+  function startPushToTalk() {
     if (typeof window === "undefined") return;
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
       alert("Voice input not supported in this browser. Try Chrome / Safari / Edge.");
       return;
     }
+    // Clear previous state
+    pttFinalTextRef.current = "";
+    pttActiveRef.current = true;
+    setInput("");
+
     try {
       const r = new SR();
       r.lang = speechLocale;
-      r.continuous = false;
+      // continuous=true so the recognizer keeps listening for the whole
+      // hold duration instead of stopping after the first sentence.
+      r.continuous = true;
       r.interimResults = true;
       r.maxAlternatives = 1;
-      let final = "";
       r.onresult = (e: any) => {
+        let final = "";
         let interim = "";
-        for (let i = e.resultIndex; i < e.results.length; i += 1) {
+        for (let i = 0; i < e.results.length; i += 1) {
           const piece = e.results[i][0].transcript;
-          if (e.results[i].isFinal) final += piece;
+          if (e.results[i].isFinal) final += piece + " ";
           else interim += piece;
         }
-        setInput((prev) => (final || interim).trim() || prev);
+        const composed = (final + interim).trim();
+        pttFinalTextRef.current = composed;
+        setInput(composed);
       };
-      r.onerror = () => setListening(false);
-      r.onend = () => setListening(false);
+      r.onerror = () => {
+        pttActiveRef.current = false;
+        setListening(false);
+      };
+      r.onend = () => {
+        setListening(false);
+        // Auto-send if we got text from this PTT session
+        if (pttActiveRef.current && pttFinalTextRef.current.trim().length > 0) {
+          pttActiveRef.current = false;
+          const finalText = pttFinalTextRef.current.trim();
+          // Slight delay so input state visibly clears + UI updates
+          setTimeout(() => send(finalText), 80);
+        } else {
+          pttActiveRef.current = false;
+        }
+      };
       r.start();
       recognitionRef.current = r;
       setListening(true);
     } catch {
+      pttActiveRef.current = false;
       setListening(false);
     }
   }
-  function stopListening() {
+
+  function endPushToTalk() {
+    // r.onend will fire and auto-send (if any text was captured)
     try {
       recognitionRef.current?.stop();
     } catch {}
+  }
+
+  function cancelPushToTalk() {
+    // User dragged away → abort without sending
+    pttActiveRef.current = false;
+    pttFinalTextRef.current = "";
+    try {
+      recognitionRef.current?.abort();
+    } catch {}
     setListening(false);
+    setInput("");
   }
   const supportsMic =
     typeof window !== "undefined" &&
@@ -1298,8 +1385,10 @@ function ChatView({
     }, 50);
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    // v158 — accept explicit text (used by push-to-talk auto-send so we
+    // don't race with React state). Falls back to input state.
+    const text = (overrideText ?? input).trim();
     if (!text || sending) return;
     setSending(true);
     setInput("");
@@ -1474,27 +1563,45 @@ function ChatView({
               send();
             }
           }}
-          placeholder={listening ? "Listening…" : placeholder}
+          placeholder={listening ? "🎙 Bolo… (release to send)" : placeholder}
           disabled={!!isLocked || sending}
           maxLength={4000}
         />
-        {/* v157 — Mic button (Web Speech API). Hidden when browser
-            doesn't support speech recognition (Firefox). */}
+        {/* v158 — Push-to-talk mic button.
+            HOLD = record (pointerDown), RELEASE = send (pointerUp).
+            Drag away = cancel (pointerLeave).
+            Hidden when browser doesn't support SpeechRecognition (Firefox).
+            Uses Pointer Events for unified touch + mouse handling. */}
         {supportsMic && (
           <button
             type="button"
-            onClick={listening ? stopListening : startListening}
+            onPointerDown={(e) => {
+              if (isLocked || sending) return;
+              e.preventDefault(); // prevent text input focus stealing
+              startPushToTalk();
+            }}
+            onPointerUp={() => {
+              if (listening) endPushToTalk();
+            }}
+            onPointerLeave={() => {
+              if (listening) endPushToTalk();
+            }}
+            onPointerCancel={() => {
+              if (listening) cancelPushToTalk();
+            }}
+            // Context-menu disabled so long-press doesn't trigger native menu
+            onContextMenu={(e) => e.preventDefault()}
             disabled={!!isLocked || sending}
             className={`sb-support-mic-btn ${listening ? "is-listening" : ""}`}
-            aria-label={listening ? "Stop listening" : "Voice input"}
-            title={listening ? "Tap to stop" : "Tap and speak"}
+            aria-label={listening ? "Recording — release to send" : "Push to talk"}
+            title={listening ? "Release to send" : "Hold to talk"}
           >
-            {listening ? "⏹" : "🎤"}
+            {listening ? "🔴" : "🎤"}
           </button>
         )}
         <button
           type="button"
-          onClick={send}
+          onClick={() => send()}
           disabled={!input.trim() || sending || !!isLocked}
         >
           {sending ? "…" : "➤"}
