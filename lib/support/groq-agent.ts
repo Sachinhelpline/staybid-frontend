@@ -14,6 +14,7 @@
 
 import type { AIResponse, SupportMessage } from "./types";
 import { SUPPORT_KB } from "./knowledge";
+import { detectMessageLang, langInstructionForAI } from "./lang-detect";
 
 const GROQ_API = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
@@ -44,10 +45,15 @@ export async function respondViaGroq(opts: {
 
   // Combined system message — Groq doesn't have prompt caching so we
   // append per-user context to the KB system prompt.
+  // v157 — also inject a language-match instruction based on the
+  // user's current message script + word heuristic. Llama 3.3 defaults
+  // to English unless explicitly told otherwise, even when the KB
+  // says "reply in user's language".
   const userContextBlock = buildUserContextBlock(userContext);
+  const langHint = langInstructionForAI(detectMessageLang(newMessage));
   messages.push({
     role: "system",
-    content: `${SUPPORT_KB}\n\n${userContextBlock}`,
+    content: `${SUPPORT_KB}\n\n${userContextBlock}\n\n# Reply language\n${langHint}`,
   });
 
   for (const m of history) {

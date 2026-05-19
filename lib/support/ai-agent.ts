@@ -15,6 +15,7 @@
 import type { AIResponse, SupportMessage } from "./types";
 import { SUPPORT_KB } from "./knowledge";
 import { isGroqEnabled, respondViaGroq } from "./groq-agent";
+import { detectMessageLang, langInstructionForAI } from "./lang-detect";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
@@ -109,6 +110,9 @@ async function respondViaAnthropic(opts: {
 
   const userContextBlock = buildUserContextBlock(userContext);
 
+  // v157 — explicit per-message language instruction
+  const langHint = langInstructionForAI(detectMessageLang(newMessage));
+
   const body = {
     model: MODEL,
     max_tokens: 800,
@@ -125,6 +129,13 @@ async function respondViaAnthropic(opts: {
       {
         type: "text",
         text: userContextBlock,
+      },
+      // Not cached: language hint based on user's CURRENT message
+      // script + Hinglish word detection. Forces Claude to reply in
+      // the user's actual language even when locale setting disagrees.
+      {
+        type: "text",
+        text: `# Reply language\n${langHint}`,
       },
     ],
     messages,

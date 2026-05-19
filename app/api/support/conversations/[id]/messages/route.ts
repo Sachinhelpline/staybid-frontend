@@ -86,19 +86,40 @@ export async function POST(
   });
 
   // 2. Decide next step based on conv.status
+  // v157 — Auto AI handover: if conv is in agent_active/escalated AND
+  // no agent reply for HANDOVER_AFTER_MIN minutes, flip back to
+  // ai_active so AI can keep helping the user instead of leaving them
+  // waiting. Agent can re-take ownership any time by sending a message.
+  const HANDOVER_AFTER_MIN = Number(process.env.SUPPORT_AI_HANDOVER_AFTER_MIN || 5);
+  let effectiveStatus = conv.status;
+  if (
+    (conv.status === "agent_active" || conv.status === "escalated") &&
+    conv.last_message_sender !== "user" // user hasn't already been pinging
+  ) {
+    const lastAt = new Date(conv.last_message_at).getTime();
+    const idleMin = (Date.now() - lastAt) / 60000;
+    if (idleMin >= HANDOVER_AFTER_MIN) {
+      effectiveStatus = "ai_active";
+    }
+  }
+
   let aiReplyMsg: any = null;
   let convPatch: Partial<SupportConversation> = {
     last_message_at: new Date().toISOString(),
     last_message_sender: "user",
     user_message_count: conv.user_message_count + 1,
-    agent_unread_count: conv.agent_unread_count + (conv.status !== "ai_active" ? 1 : 0),
+    agent_unread_count: conv.agent_unread_count + (effectiveStatus !== "ai_active" ? 1 : 0),
   };
 
-  if (conv.status === "ai_active") {
-    const aiResult = await runAIPath(conv, text, userId, senderName);
+  if (effectiveStatus === "ai_active") {
+    // v157 — Mutate conv copy so runAIPath sees the effective status
+    // (esp. important when handover flipped escalated → ai_active)
+    const aiConv = { ...conv, status: "ai_active" as SupportStatus };
+    const aiResult = await runAIPath(aiConv, text, userId, senderName);
     aiReplyMsg = aiResult.message;
     convPatch = {
       ...convPatch,
+      status: "ai_active", // persist the handover
       ...aiResult.conversationPatch,
     };
 
