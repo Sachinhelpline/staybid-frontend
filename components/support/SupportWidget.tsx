@@ -125,7 +125,13 @@ export default function SupportWidget() {
   }
   const currentLang = LANG_OPTIONS.find((o) => o.key === lang) || LANG_OPTIONS[0];
 
-  if (shouldHide(pathname)) return null;
+  // ⚠ v148.1 — DO NOT early-return BEFORE this point. All hooks must run
+  // in the same order on every render. Moving the shouldHide check below
+  // all useEffect calls fixes the "Application error: client-side
+  // exception" crash that bit users navigating between /hotels (widget
+  // shown) and / (widget hidden). Render-time gating now happens at the
+  // JSX level via `isHidden`.
+  const isHidden = shouldHide(pathname);
 
   // Anon chats → user chats migration. Fires once when user signs in
   // AND the device has an anonymous_id from a prior anonymous session.
@@ -158,12 +164,13 @@ export default function SupportWidget() {
   }, [open, token]);
 
   // Background unread polling every 60s (only when widget is closed
-  // — when open, the inner chat polls itself every 5s)
+  // — when open, the inner chat polls itself every 5s). Skipped when
+  // widget is hidden on the current route — saves needless network calls.
   useEffect(() => {
-    if (open) return;
+    if (open || isHidden) return;
     const t = setInterval(() => fetchConversations(), 60_000);
     return () => clearInterval(t);
-  }, [open, token]);
+  }, [open, token, isHidden]);
 
   async function fetchConversations() {
     try {
@@ -242,6 +249,9 @@ export default function SupportWidget() {
     setView("list");
     setActiveId(null);
   }
+
+  // Render gate AFTER all hooks have run — see ⚠ v148.1 note above.
+  if (isHidden) return null;
 
   return (
     <>
