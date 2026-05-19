@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CANNED_REPLIES } from "@/lib/support/knowledge";
+import { notify } from "@/lib/notifications";
 
 type SupportSender = "user" | "ai" | "agent" | "system";
 type SupportStatus = "ai_active" | "escalated" | "agent_active" | "resolved" | "closed";
@@ -88,6 +89,10 @@ export default function AdminSupportPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
+  // Tracks conversation ids we've already alerted on this session so a
+  // background refresh of an existing queue row doesn't re-notify.
+  const alertedIdsRef = useRef<Set<string>>(new Set());
+  const firstLoadRef = useRef<boolean>(true);
 
   async function loadList() {
     setLoadingList(true);
@@ -98,7 +103,37 @@ export default function AdminSupportPage() {
       );
       if (!r.ok) return;
       const j = await r.json();
-      setConversations(j.conversations || []);
+      const list: Conversation[] = j.conversations || [];
+
+      // Desktop notification on NEW escalations entering the queue. Skip
+      // on the first load — that's just initial state, not a new arrival.
+      if (view === "queue" && !firstLoadRef.current) {
+        for (const c of list) {
+          if (c.status === "escalated" && !alertedIdsRef.current.has(c.id)) {
+            alertedIdsRef.current.add(c.id);
+            notify({
+              kind: "warning",
+              title: "New support escalation",
+              body: c.subject || c.escalation_reason || "Open the inbox to view",
+              duration: 8000,
+            });
+          }
+        }
+        // Garbage-collect alerted ids no longer in queue (resolved/taken)
+        const liveIds = new Set(list.map((c) => c.id));
+        alertedIdsRef.current = new Set(
+          [...alertedIdsRef.current].filter((id) => liveIds.has(id))
+        );
+      } else if (view === "queue") {
+        // Seed the alerted set on first load so we don't re-fire on
+        // already-existing escalations.
+        for (const c of list) {
+          if (c.status === "escalated") alertedIdsRef.current.add(c.id);
+        }
+      }
+      firstLoadRef.current = false;
+
+      setConversations(list);
     } finally {
       setLoadingList(false);
     }

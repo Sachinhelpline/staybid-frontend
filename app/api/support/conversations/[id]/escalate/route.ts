@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authUserId } from "@/lib/sb-server";
+import { authUserId, authPayload } from "@/lib/sb-server";
 import {
   getConversation,
   insertMessage,
+  listMessages,
   patchConversation,
 } from "@/lib/support/repo";
+import { notifyTeamOfEscalation } from "@/lib/support/notify-team";
 import type {
   SupportConversation,
   SupportEscalationReason,
@@ -60,6 +62,19 @@ export async function POST(
   };
 
   const updated = await patchConversation(conv.id, patch as any);
+
+  // Fire-and-forget team email alert
+  const payload = authPayload(req);
+  const history = await listMessages(conv.id, { limit: 5 });
+  const lastUser = [...history].reverse().find((m) => m.sender === "user");
+  notifyTeamOfEscalation({
+    conversation: updated || conv,
+    reason,
+    lastUserMessage: lastUser?.body || "(user asked for human directly)",
+    customerName: payload?.name || null,
+    customerPhone: payload?.phone || null,
+  }).catch(() => {});
+
   return NextResponse.json({ conversation: updated });
 }
 

@@ -12,6 +12,7 @@ import {
   respondToMessage,
   shouldShortCircuitEscalate,
 } from "@/lib/support/ai-agent";
+import { notifyTeamOfEscalation } from "@/lib/support/notify-team";
 import type {
   SupportConversation,
   SupportEscalationReason,
@@ -83,6 +84,17 @@ export async function POST(
       ...convPatch,
       ...aiResult.conversationPatch,
     };
+
+    // Team alert on any new escalation triggered this turn
+    if (convPatch.status === "escalated" && convPatch.escalation_reason) {
+      notifyTeamOfEscalation({
+        conversation: { ...conv, ...convPatch } as SupportConversation,
+        reason: convPatch.escalation_reason as SupportEscalationReason,
+        lastUserMessage: text,
+        customerName: senderName,
+        customerPhone: payload?.phone || null,
+      }).catch(() => {});
+    }
   }
 
   await patchConversation(conv.id, convPatch as any);
