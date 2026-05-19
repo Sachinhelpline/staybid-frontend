@@ -69,6 +69,117 @@ const sampleReviews = [
   { id:"s3", rating:5, comment:"Worth every rupee! Negotiated a great price through StayBid and the experience exceeded all expectations.", createdAt:"2026-01-10", guestName:"Anita K." },
 ];
 
+/* v159.11 — Room photo swipe carousel. Replaces the static <img> +
+   thumbnail-tap-to-swap pattern with a horizontal scroll-snap container
+   showing ALL room photos full-bleed. User can swipe between slides
+   OR tap a thumbnail to scroll directly to it. Counter "N / total"
+   overlays bottom-right. Mirrors the hero swipe behavior from v159.9. */
+function RoomSwipeMedia({
+  roomId,
+  roomName,
+  images,
+  activeIdx,
+  onActiveIdxChange,
+}: {
+  roomId: string;
+  roomName: string;
+  images: string[];
+  activeIdx: number;
+  onActiveIdxChange: (idx: number) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync activeIdx when user swipes by reading scrollLeft / clientWidth.
+  // Throttled via rAF so rapid scrolls don't dispatch many state updates.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || images.length <= 1) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const w = el.clientWidth || 1;
+        const idx = Math.round(el.scrollLeft / w);
+        const clamped = Math.max(0, Math.min(images.length - 1, idx));
+        if (clamped !== activeIdx) onActiveIdxChange(clamped);
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [activeIdx, images.length, onActiveIdxChange]);
+
+  const scrollToIdx = useCallback((idx: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    el.scrollTo({ left: idx * w, behavior: "smooth" });
+  }, []);
+
+  return (
+    <>
+      <div className="hx-room-swipe" ref={scrollRef} role="region" aria-label={`${roomName} photos`}>
+        {images.map((img, idx) => (
+          <div key={idx} className="hx-room-swipe-slide" aria-label={`Photo ${idx + 1} of ${images.length}`}>
+            <img
+              src={img}
+              alt={`${roomName} — view ${idx + 1}`}
+              className="hx-room-swipe-img hx-room-media-img"
+              loading={idx === 0 ? "eager" : "lazy"}
+              onError={(e: any) => {
+                if (!e.target.dataset.fallbackTried) {
+                  e.target.dataset.fallbackTried = "1";
+                  e.target.src = `https://picsum.photos/seed/sb-fallback-${roomId}-${idx}/800/600`;
+                }
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="hx-room-media-grad" />
+      {images.length > 1 && (
+        <>
+          <span className="hx-room-counter" aria-live="polite">
+            {Math.min(images.length, activeIdx + 1)} / {images.length}
+          </span>
+          {/* Thumbnail strip — taps scroll the swipe to that slide. */}
+          <div className="hx-room-thumbs" onClick={(e) => e.stopPropagation()}>
+            {images.slice(0, 4).map((img, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`hx-room-thumb ${idx === activeIdx ? "is-active" : ""}`}
+                onClick={(ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  onActiveIdxChange(idx);
+                  scrollToIdx(idx);
+                }}
+                aria-label={`Show photo ${idx + 1}`}
+              >
+                <img
+                  src={img}
+                  alt=""
+                  loading="lazy"
+                  onError={(e: any) => {
+                    if (!e.target.dataset.fallbackTried) {
+                      e.target.dataset.fallbackTried = "1";
+                      e.target.src = `https://picsum.photos/seed/sb-thumb-${roomId}-${idx}/200/150`;
+                    }
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function HotelDetail() {
   const { id } = useParams();
   const router = useRouter();
@@ -2259,7 +2370,10 @@ export default function HotelDetail() {
               >
                 <div className="hx-room-body">
 
-                {/* ── Room Image gallery (4 photos: bed / interior / bathroom / view) ── */}
+                {/* ── Room Image gallery — v159.11 swipe carousel (was static
+                    image + thumbnail-tap-to-swap). All photos visible
+                    one-per-viewport, snap-x scroll, counter overlay,
+                    thumbnails still work as quick-jump shortcuts. ── */}
                 <div className="hx-room-media">
                   {(() => {
                     const roomImages: string[] = Array.isArray(r.images) && r.images.length > 0
@@ -2267,44 +2381,14 @@ export default function HotelDetail() {
                       : [roomImg];
                     const activeIdx = roomImgIdx[r.id] ?? 0;
                     const safeIdx = Math.min(activeIdx, roomImages.length - 1);
-                    const PHOTO_LABELS = ["Room", "Interior", "Bathroom", "View"];
                     return (
-                      <>
-                        <img
-                          key={safeIdx /* v133 — forces remount on thumb swap so fade-in animation replays */}
-                          src={roomImages[safeIdx]}
-                          alt={r.name || r.type}
-                          className="hx-room-media-img hx-room-img-fade"
-                          onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-fallback-" + r.id + "/800/600"; }}
-                          loading="lazy"
-                        />
-                        <div className="hx-room-media-grad" />
-                        {/* Thumbnail strip — tap to swap main image */}
-                        {roomImages.length > 1 && (
-                          <div className="hx-room-thumbs" onClick={(e) => e.stopPropagation()}>
-                            {roomImages.slice(0, 4).map((img, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                className={`hx-room-thumb ${idx === safeIdx ? "is-active" : ""}`}
-                                onClick={(ev) => {
-                                  ev.preventDefault();
-                                  ev.stopPropagation();
-                                  setRoomImgIdx((prev) => ({ ...prev, [r.id]: idx }));
-                                }}
-                                aria-label={`Show ${PHOTO_LABELS[idx] || `photo ${idx + 1}`}`}
-                              >
-                                <img
-                                  src={img}
-                                  alt=""
-                                  loading="lazy"
-                                  onError={(e: any) => { e.target.src = "https://picsum.photos/seed/sb-thumb-" + r.id + "-" + idx + "/200/150"; }}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <RoomSwipeMedia
+                        roomId={String(r.id)}
+                        roomName={r.name || r.type || "Room"}
+                        images={roomImages}
+                        activeIdx={safeIdx}
+                        onActiveIdxChange={(idx) => setRoomImgIdx((prev) => ({ ...prev, [r.id]: idx }))}
+                      />
                     );
                   })()}
 

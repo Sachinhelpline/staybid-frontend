@@ -5176,3 +5176,65 @@ body.is-reel-page {
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* v159.11 — Room photo swipe carousel inside .hx-room-media. The
+   container already has position:relative + overflow:hidden + a set
+   aspect-ratio (16/10 mobile, 44% width + min-height 280 desktop), so
+   the scroller fills it via absolute inset:0. Each slide takes the
+   full container width/height. Snap-x mandatory so flicks land on
+   exact slides. */
+.hx-room-swipe {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+.hx-room-swipe::-webkit-scrollbar { display: none; }
+.hx-room-swipe-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  position: relative;
+  background: var(--cozy-cream-200, #F5EFE0);
+}
+.hx-room-swipe-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s ease-out;
+}
+.hx-room-card:hover .hx-room-swipe-slide .hx-room-swipe-img {
+  transform: scale(1.04);
+}
+
+/* Counter overlay (bottom-right). v159.11 — dark glass pill with
+   tabular-nums for stable digit width while scrolling. */
+.hx-room-counter {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 3;
+  padding: 3px 9px;
+  background: rgba(15, 12, 8, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FAF5EB;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
