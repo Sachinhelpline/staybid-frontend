@@ -120,10 +120,11 @@ export default function AdminSupportPage() {
             });
           }
         }
-        // Garbage-collect alerted ids no longer in queue (resolved/taken)
+        // Garbage-collect alerted ids no longer in queue (resolved/taken).
+        // NOTE: tsconfig target=ES5 forbids Set spread → use Array.from.
         const liveIds = new Set(list.map((c) => c.id));
         alertedIdsRef.current = new Set(
-          [...alertedIdsRef.current].filter((id) => liveIds.has(id))
+          Array.from(alertedIdsRef.current).filter((id) => liveIds.has(id))
         );
       } else if (view === "queue") {
         // Seed the alerted set on first load so we don't re-fire on
