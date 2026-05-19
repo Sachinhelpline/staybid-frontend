@@ -586,13 +586,19 @@ export default function SupportWidget() {
           from { opacity: 0; transform: translateY(10px) scale(0.96); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
+        /* v156 — URL-bar overlap fix.
+           Use top constraint + safe-area-inset-top so browser chrome
+           (Chrome address bar on mobile) can NEVER cover the widget
+           header. Was: pure bottom+height could push widget under URL bar
+           when address bar was visible. */
         @media (max-width: 480px) {
           .sb-support-panel {
             right: 12px;
             left: 12px;
-            bottom: 84px;
+            top: calc(env(safe-area-inset-top, 0px) + 70px);
+            bottom: calc(84px + env(safe-area-inset-bottom, 0px));
             width: auto;
-            height: calc(100vh - 110px);
+            height: auto;
             border-radius: 20px;
           }
         }

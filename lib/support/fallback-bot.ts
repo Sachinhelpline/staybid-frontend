@@ -96,13 +96,37 @@ const INTENTS: Intent[] = [
     },
   },
 
+  // ── v156 NEW: payment debit/failed — catches Hinglish "paisa kat gaya"
+  {
+    key: "payment_debit",
+    patterns: [
+      /\b(payment\s?(debit|deducted|cut|gone|stuck|failed|fail|issue|problem|nahi|nhi))\b/i,
+      /\b(paisa\s?(kat|kata|gaya|cut|deduct))\b/i,
+      /\b(amount\s?(deducted|debited|cut|kat|gaya))\b/i,
+      /\b(razorpay|upi|debit\s?card|credit\s?card)\s?(failed|issue|problem|nahi|nhi)\b/i,
+      /\b(transaction\s?(failed|fail|pending|stuck))\b/i,
+      /\b(book\s?nahi|book\s?nhi|booking\s?confirm\s?nahi|booking\s?confirm\s?nhi)\b/i,
+      /\b(money\s?(deducted|cut|gone))\b/i,
+    ],
+    confidence: 0.85,
+    escalate: true,
+    responses: {
+      hi: "Yeh financial issue hai — paisa cut hua hai but booking confirm nahi mili. Turant team se connect kar raha hoon. Booking ID ya transaction ID (Razorpay payment ID like pay_xxx) share kijiye taki team 5 min mein resolve kar de. Agar refund chahiye toh 5-7 working days mein paisa wapas wallet/card mein aa jaata hai.",
+      en: "Payment issue — money was deducted but booking didn't confirm. Connecting you to our team RIGHT NOW. Please share the transaction ID (pay_xxx from Razorpay receipt) OR booking ID so we can resolve in 5 min. Refunds typically take 5-7 business days to land back.",
+      es: "Problema de pago — dinero deducido pero reserva no confirmada. Te conecto con el equipo. Comparte el ID de transacción (pay_xxx).",
+      fr: "Problème de paiement — argent débité mais réservation non confirmée. Je vous connecte à l'équipe. Partagez l'ID (pay_xxx).",
+      ar: "مشكلة دفع — تم خصم المال لكن الحجز لم يتأكد. أربطك بالفريق. شارك معرف المعاملة (pay_xxx).",
+    },
+  },
+
   // ── Booking status ───────────────────────────────────────
   {
     key: "booking_status",
     patterns: [
-      /\b(booking\s?(status|details|confirm|id)|my\s?booking|reservation)\b/i,
-      /\b(booking\s?kahan|kab\s?confirm)\b/i,
+      /\b(booking\s?(status|details|confirm|confirmation|id)|my\s?booking|reservation)\b/i,
+      /\b(booking\s?(kahan|kab|confirm|mili|milega|milegi|milegw))\b/i,
       /\b(status\s?(of\s?my)?\s?(booking|stay))\b/i,
+      /\b(reservation\s?(kab|confirm|mili|status))\b/i,
     ],
     confidence: 0.82,
     escalate: false,

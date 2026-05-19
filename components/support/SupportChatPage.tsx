@@ -292,6 +292,38 @@ export default function SupportChatPage({
             ← Back to inbox
           </Link>
           {aiStatus && <AIBadge status={aiStatus} />}
+          {/* v156 — AI test button. One-tap live check that diagnoses
+              "AI not replying" issues with concrete fix hints. */}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const r = await fetch("/api/admin/support/ai-test", { headers: headers() });
+                const j = await r.json();
+                if (j.ok) {
+                  alert(`✅ AI working\nProvider: ${j.provider}\nModel: ${j.model}\nLatency: ${j.latency_ms}ms\nSample reply: "${j.sample_reply}"`);
+                } else {
+                  alert(`❌ AI NOT working\nProvider: ${j.provider || "none"}\nError: ${j.error}\n\nFix hint:\n${j.hint || "(no hint)"}`);
+                }
+              } catch (e: any) {
+                alert(`❌ AI test failed: ${e?.message || e}`);
+              }
+            }}
+            style={{
+              background: "rgba(212, 175, 55, 0.10)",
+              color: "#D4AF37",
+              border: "1px solid rgba(212, 175, 55, 0.35)",
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 10.5,
+              fontWeight: 600,
+              cursor: "pointer",
+              letterSpacing: 0.04,
+            }}
+            title="Live test the configured AI provider — diagnose any errors"
+          >
+            ⚡ Test AI
+          </button>
         </div>
         <div style={S.topbarRight}>
           <StatusPill status={conv.status} />
