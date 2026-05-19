@@ -14,12 +14,24 @@
 
 import type { AIResponse, SupportMessage } from "./types";
 import { SUPPORT_KB } from "./knowledge";
+import { isGroqEnabled, respondViaGroq } from "./groq-agent";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
 
-export function isAIEnabled(): boolean {
+// v152 — AI is enabled when EITHER provider is configured. Router below
+// picks the right one: Groq (free tier) is preferred if set; Anthropic
+// (paid, premium quality) takes over only when Groq is OFF.
+//
+// To switch preference: set SUPPORT_AI_PREFER=anthropic to force
+// Anthropic-first when both keys are set. Default = Groq-first because
+// most users set Groq (free) and may have Anthropic as a backup.
+export function isAnthropicEnabled(): boolean {
   return !!(process.env.ANTHROPIC_API_KEY || "").trim();
+}
+
+export function isAIEnabled(): boolean {
+  return isGroqEnabled() || isAnthropicEnabled();
 }
 
 type UserContext = {
@@ -31,7 +43,45 @@ type UserContext = {
   walletBalance?: number;
 };
 
+// v152 — Provider router. Picks the right AI backend based on which
+// env vars are set + SUPPORT_AI_PREFER override. Always tries the
+// preferred provider first; if it fails AND the alternate is available,
+// falls back. If everything fails, throws — caller (messages route)
+// handles via fallback bot.
 export async function respondToMessage(opts: {
+  conversation: { id: string; status: string };
+  history: SupportMessage[];
+  newMessage: string;
+  userContext: UserContext;
+}): Promise<AIResponse> {
+  const prefer = (process.env.SUPPORT_AI_PREFER || "").toLowerCase();
+  const groqOn = isGroqEnabled();
+  const anthropicOn = isAnthropicEnabled();
+
+  // Default: Groq-first (free tier). User can force Anthropic-first by
+  // setting SUPPORT_AI_PREFER=anthropic.
+  const preferAnthropic = prefer === "anthropic";
+  const order: Array<"groq" | "anthropic"> = preferAnthropic
+    ? ["anthropic", "groq"]
+    : ["groq", "anthropic"];
+
+  let lastErr: any = null;
+  for (const provider of order) {
+    if (provider === "groq" && !groqOn) continue;
+    if (provider === "anthropic" && !anthropicOn) continue;
+    try {
+      if (provider === "groq") {
+        return await respondViaGroq(opts);
+      }
+      return await respondViaAnthropic(opts);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("No AI provider configured");
+}
+
+async function respondViaAnthropic(opts: {
   conversation: { id: string; status: string };
   history: SupportMessage[];
   newMessage: string;
