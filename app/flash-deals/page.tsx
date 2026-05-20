@@ -374,6 +374,18 @@ function FlashDealsContent() {
             const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${open.discount}&directBook=true`;
             router.push(url);
           }}
+          onViewHotel={(rid) => {
+            // v159.15 — Same deal context as onBook BUT without
+            // directBook=true → the hotel detail page opens for a full
+            // tour. The deal room shows the locked flash price, every
+            // other room shows its upgrade price. No booking modal.
+            const finalRoom =
+              rid === open.roomId
+                ? open
+                : { ...open, roomId: rid, aiPrice: open.upgrades.find(u => u.roomId === rid)?.dealPrice ?? open.aiPrice };
+            const url = `/hotels/${open.hotelId}?dealId=${open.id}&dealPrice=${snap100(finalRoom.aiPrice)}&roomId=${finalRoom.roomId}&discount=${open.discount}`;
+            router.push(url);
+          }}
         />
       )}
     </div>
@@ -414,11 +426,19 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
 
   const sold = leftSlots === 0;
 
+  // v159.15 — Tapping the card opens the HOTEL DETAIL page (full tour)
+  // with the deal context, NOT the booking flow. The deal room shows the
+  // locked flash price; other rooms show upgrade prices. No directBook.
+  const openHotelTour = () => {
+    const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}`;
+    router.push(url);
+  };
+
   return (
     <div
       className="fd-card"
       style={{ animationDelay: `${idx * 0.06}s` }}
-      onClick={onOpen}
+      onClick={openHotelTour}
     >
       {/* Image with cinematic ken-burns + gradient overlay */}
       <div className="fd-img-wrap">
@@ -502,7 +522,7 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
           <div className="fd-up-row" onClick={(e) => e.stopPropagation()}>
             <button
               className={`fd-up-chip ${pickedRoomId === deal.roomId ? "active" : ""}`}
-              onClick={() => onPickUpgrade(deal.roomId)}
+              onClick={(e) => { e.stopPropagation(); onPickUpgrade(deal.roomId); }}
             >
               <span className="fd-up-chip-type">{deal.room?.type || "Base"}</span>
               <span className="fd-up-chip-delta">{fmtINR(deal.aiPrice)}</span>
@@ -512,7 +532,7 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
                 key={u.roomId}
                 className={`fd-up-chip ${pickedRoomId === u.roomId ? "active" : ""} ${!u.available ? "soldout" : ""}`}
                 disabled={!u.available}
-                onClick={() => u.available && onPickUpgrade(u.roomId)}
+                onClick={(e) => { e.stopPropagation(); if (u.available) onPickUpgrade(u.roomId); }}
               >
                 <span className="fd-up-chip-type">{u.type}</span>
                 <span className="fd-up-chip-delta">
@@ -545,10 +565,12 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
             className={`fd-cta ${sold ? "sold" : ""}`}
             disabled={sold}
             onClick={(e) => {
+              // v159.15 — Grab Now opens the deal drawer (room picker +
+              // how-it-works + View-hotel / Grab options) instead of
+              // jumping straight to the booking modal.
               e.stopPropagation();
               if (sold) return;
-              const url = `/hotels/${deal.hotelId}?dealId=${deal.id}&dealPrice=${snap100(showAiPrice)}&roomId=${pickedRoomId}&discount=${deal.discount}&directBook=true`;
-              router.push(url);
+              onOpen();
             }}
           >
             {sold ? "Sold Out" : "⚡ Grab Now"}
@@ -563,11 +585,12 @@ function DealCard({ deal, idx, now, onOpen, pickedRoomId, onPickUpgrade, router 
 /* DRAWER                                                                     */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }: {
+function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook, onViewHotel }: {
   deal: Deal; now: number; pickedRoomId: string;
   onPickUpgrade: (rid: string) => void;
   onClose: () => void;
   onBook: (rid: string) => void;
+  onViewHotel: (rid: string) => void;
 }) {
   const midnight = new Date(); midnight.setHours(23, 59, 59, 999);
   const diffMs = Math.max(0, midnight.getTime() - now);
@@ -680,15 +703,28 @@ function DealDrawer({ deal, now, pickedRoomId, onPickUpgrade, onClose, onBook }:
           </div>
         </div>
 
-        {/* Sticky CTA */}
+        {/* Sticky CTA — v159.15: a "View hotel & full tour" button now
+            sits above the Grab CTA so the customer can explore the whole
+            hotel (with this deal's room price locked) instead of being
+            funnelled straight into booking. */}
         <div className="fd-drawer-cta-wrap">
-          <div className="fd-drawer-cta-info">
-            <div className="fd-drawer-cta-strike">{fmtINR(showFloor)}</div>
-            <div className="fd-drawer-cta-price">{fmtINR(showAiPrice)}<span>/night</span></div>
-          </div>
-          <button className="fd-drawer-cta" onClick={() => onBook(pickedRoomId)}>
-            ⚡ Grab this stay
+          <button
+            type="button"
+            className="fd-drawer-viewhotel"
+            onClick={() => onViewHotel(pickedRoomId)}
+          >
+            <span>🏨 View hotel &amp; full tour</span>
+            <span className="fd-drawer-viewhotel-arrow" aria-hidden="true">→</span>
           </button>
+          <div className="fd-drawer-cta-row">
+            <div className="fd-drawer-cta-info">
+              <div className="fd-drawer-cta-strike">{fmtINR(showFloor)}</div>
+              <div className="fd-drawer-cta-price">{fmtINR(showAiPrice)}<span>/night</span></div>
+            </div>
+            <button className="fd-drawer-cta" onClick={() => onBook(pickedRoomId)}>
+              ⚡ Grab this stay
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1483,37 +1519,40 @@ function FdStyles() {
       .fd-drawer-img-head {
         position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 22px;
       }
+      /* v159.15 — Drawer text + boxes auto-resize via clamp() so the
+         modal feels premium-tight on a 360 px phone and comfortable on
+         a desktop. min → preferred-vw → max for every size. */
       .fd-drawer-eyebrow {
         display: inline-flex; align-items: center; gap: 6px;
-        color: #ff7088; font-size: 0.6rem; font-weight: 700;
+        color: #ff7088; font-size: clamp(0.55rem, 1.9vw, 0.62rem); font-weight: 700;
         letter-spacing: 0.18em; margin-bottom: 6px;
       }
       /* v92 — Drawer header lies on top of the dark image — fix cream */
       .fd-drawer-img-head h2 {
         font-family: 'Cormorant Garamond', 'Syne', serif;
-        font-weight: 400; font-size: 1.6rem; margin: 0;
-        color: #F5EFE0;
+        font-weight: 400; font-size: clamp(1.25rem, 5.6vw, 1.7rem); margin: 0;
+        color: #F5EFE0; line-height: 1.15;
       }
       .fd-drawer-img-head p {
-        color: rgba(245, 239, 224, 0.78); font-size: 0.78rem;
+        color: rgba(245, 239, 224, 0.78); font-size: clamp(0.7rem, 2.4vw, 0.8rem);
         margin: 4px 0 0;
       }
 
       .fd-drawer-body {
         flex: 1; overflow-y: auto;
-        padding: 22px 22px 100px;
+        padding: clamp(16px, 4.5vw, 24px) clamp(14px, 4.5vw, 24px) 132px;
       }
       /* v92 — Drawer body theme-aware (lives in card bg, not over image) */
       .fd-drawer-section-title {
-        font-size: 0.65rem; font-weight: 700;
+        font-size: clamp(0.6rem, 2vw, 0.66rem); font-weight: 700;
         color: var(--accent);
         letter-spacing: 0.18em; text-transform: uppercase;
-        margin-bottom: 12px;
+        margin-bottom: clamp(8px, 2.4vw, 12px);
       }
-      .fd-drawer-rooms { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+      .fd-drawer-rooms { display: flex; flex-direction: column; gap: clamp(6px, 1.8vw, 8px); margin-bottom: clamp(16px, 4.5vw, 24px); }
       .fd-drawer-room {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 16px;
+        padding: clamp(11px, 3.4vw, 14px) clamp(12px, 3.8vw, 16px);
         background: var(--bg-pill);
         border: 1px solid var(--border-soft);
         border-radius: 14px;
@@ -1530,18 +1569,18 @@ function FdStyles() {
       .fd-drawer-room-left { flex: 1; min-width: 0; }
       .fd-drawer-room-type {
         display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-        color: var(--text-base); font-size: 0.86rem; font-weight: 600;
+        color: var(--text-base); font-size: clamp(0.8rem, 2.9vw, 0.9rem); font-weight: 600;
         margin-bottom: 4px;
       }
-      .fd-drawer-room-meta { color: var(--text-muted); font-size: 0.7rem; }
+      .fd-drawer-room-meta { color: var(--text-muted); font-size: clamp(0.66rem, 2.2vw, 0.72rem); }
       .fd-drawer-room-right { text-align: right; flex-shrink: 0; padding-left: 12px; }
-      .fd-drawer-room-price { color: var(--text-base); font-size: 1rem; font-weight: 800; }
+      .fd-drawer-room-price { color: var(--text-base); font-size: clamp(0.95rem, 3.4vw, 1.08rem); font-weight: 800; }
       .fd-drawer-room-strike {
-        color: var(--text-muted); font-size: 0.68rem;
+        color: var(--text-muted); font-size: clamp(0.62rem, 2.1vw, 0.7rem);
         text-decoration: line-through;
       }
       .fd-pill {
-        font-size: 0.55rem; font-weight: 700;
+        font-size: clamp(0.5rem, 1.8vw, 0.56rem); font-weight: 700;
         padding: 2px 8px; border-radius: 999px;
         background: var(--accent-soft); color: var(--text-soft);
         letter-spacing: 0.06em;
@@ -1555,7 +1594,7 @@ function FdStyles() {
       }
       .fd-drawer-empty {
         padding: 14px; text-align: center;
-        color: var(--text-muted); font-size: 0.78rem;
+        color: var(--text-muted); font-size: clamp(0.72rem, 2.5vw, 0.8rem);
         background: var(--bg-pill);
         border: 1px dashed var(--border-soft);
         border-radius: 14px;
@@ -1563,49 +1602,76 @@ function FdStyles() {
 
       .fd-drawer-rules ul {
         list-style: none; padding: 0; margin: 0;
-        display: flex; flex-direction: column; gap: 8px;
+        display: flex; flex-direction: column; gap: clamp(6px, 1.8vw, 8px);
       }
       .fd-drawer-rules li {
         display: flex; align-items: flex-start; gap: 12px;
-        padding: 10px 14px;
+        padding: clamp(8px, 2.6vw, 11px) clamp(11px, 3.6vw, 14px);
         background: var(--bg-pill);
         border: 1px solid var(--border-soft);
         border-radius: 12px;
-        color: var(--text-soft); font-size: 0.78rem; line-height: 1.4;
+        color: var(--text-soft); font-size: clamp(0.72rem, 2.5vw, 0.8rem); line-height: 1.4;
       }
       .fd-drawer-rules li > span:first-child {
-        font-size: 1rem; line-height: 1.1; flex-shrink: 0;
+        font-size: clamp(0.9rem, 3.2vw, 1rem); line-height: 1.1; flex-shrink: 0;
       }
 
       /* v92 — CTA wrapper sits at bottom of the drawer card. Use theme
          gradient that fades from transparent card bg into solid card bg
          so it reads on cream AND cocoa. */
+      /* v159.15 — Footer now stacks: a full-width "View hotel & tour"
+         secondary button above the price + Grab CTA row. */
       .fd-drawer-cta-wrap {
         position: absolute; left: 0; right: 0; bottom: 0;
-        padding: 14px 22px;
-        background: linear-gradient(180deg, transparent 0%, var(--bg-card) 35%, var(--bg-card) 100%);
+        padding: clamp(10px, 2.6vw, 14px) clamp(14px, 4vw, 22px);
+        background: linear-gradient(180deg, transparent 0%, var(--bg-card) 28%, var(--bg-card) 100%);
         border-top: 1px solid var(--border-soft);
-        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        display: flex; flex-direction: column; gap: clamp(7px, 1.8vw, 10px);
+      }
+      .fd-drawer-viewhotel {
+        display: flex; align-items: center; justify-content: center; gap: 7px;
+        width: 100%;
+        padding: clamp(9px, 2.4vw, 12px) 16px;
+        background: var(--bg-pill);
+        color: var(--text-base);
+        font-size: clamp(0.78rem, 2.6vw, 0.88rem); font-weight: 700;
+        border: 1px solid color-mix(in srgb, var(--cozy-champagne, #C9A66B) 45%, var(--border-soft));
+        border-radius: 12px;
+        cursor: pointer;
+        letter-spacing: 0.01em;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
+      }
+      .fd-drawer-viewhotel:hover {
+        background: var(--accent-soft);
+        border-color: var(--cozy-champagne, #C9A66B);
+        transform: translateY(-1px);
+      }
+      .fd-drawer-viewhotel-arrow { transition: transform 0.18s ease; }
+      .fd-drawer-viewhotel:hover .fd-drawer-viewhotel-arrow { transform: translateX(3px); }
+      .fd-drawer-cta-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: clamp(8px, 2.4vw, 12px);
       }
       .fd-drawer-cta-info { flex-shrink: 0; }
       .fd-drawer-cta-strike {
-        color: var(--text-muted); font-size: 0.7rem;
+        color: var(--text-muted); font-size: clamp(0.62rem, 2vw, 0.7rem);
         text-decoration: line-through; line-height: 1;
       }
       .fd-drawer-cta-price {
-        color: var(--text-base); font-size: 1.3rem; font-weight: 800; line-height: 1.1;
+        color: var(--text-base); font-size: clamp(1.05rem, 4.2vw, 1.3rem); font-weight: 800; line-height: 1.1;
       }
-      .fd-drawer-cta-price span { color: var(--text-muted); font-size: 0.68rem; font-weight: 500; margin-left: 4px; }
+      .fd-drawer-cta-price span { color: var(--text-muted); font-size: clamp(0.6rem, 2vw, 0.68rem); font-weight: 500; margin-left: 4px; }
       .fd-drawer-cta {
         flex: 1;
-        padding: 14px 20px;
+        padding: clamp(11px, 3vw, 14px) clamp(14px, 4vw, 20px);
         background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
-        color: #0a0814; font-size: 0.92rem; font-weight: 800;
-        border: none; border-radius: 14px;
+        color: #0a0814; font-size: clamp(0.82rem, 2.9vw, 0.92rem); font-weight: 800;
+        border: none; border-radius: 13px;
         cursor: pointer;
         box-shadow: 0 10px 26px rgba(240,180,41,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
         transition: all 0.2s ease;
         letter-spacing: 0.02em;
+        white-space: nowrap;
       }
       .fd-drawer-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(240,180,41,0.5); }
     `}</style>
