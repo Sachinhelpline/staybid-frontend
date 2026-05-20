@@ -108,9 +108,16 @@ agent code in `staybid-live` may be an old dump — confirm before touching it.
 ---
 
 ## 5. Known infra notes
-- Postgres crash (around 2026-05-20) was traced to Railway-side server slowness — not a code bug. Connection-pool timeout (`connection limit: 33, pool timeout: 10`) recovered on its own. If the pool-timeout error recurs while Railway is healthy, revisit `connection_limit` + `pool_timeout` tuning for the Supabase pooler.
+- Postgres crash (around 2026-05-20) was traced to Railway-side server slowness — not a code bug. Connection-pool timeout (`connection limit: 33, pool timeout: 10`) recovered on its own.
+- **Connection-pool timeout recurs** — `prisma.hotel.findMany()` / `hotel.count()` intermittently fail with "Timed out fetching a new connection from the connection pool". The Supabase DB itself is healthy (verified: tiny dataset, clean Postgres logs). Root cause is `staybid-live` Prisma `connection_limit=33` over-subscribed against the Supabase pgbouncer pooler — when Railway is slow/cold, slow queries hold all 33 connections for >10s. Fix: lower `connection_limit` (≈5-10) + tune `pool_timeout` in the deployed Railway `DATABASE_URL`.
+- **`components/ServerStatus.tsx` red banner** — pings Railway `/api/hotels` twice on mount; on double-failure shows the banner. Fixed on branch `claude/fix-prisma-bid-update-zbSba`: (a) message is now accurate English (old text wrongly said "database down" — DB is fine), (b) added 30s auto-recovery so the banner clears itself when the server recovers instead of staying stuck until reload.
+
+## 6. Supabase Postgres schema-mismatch errors (frontend)
+- **Status:** OPEN
+- Postgres logs show repeated PostgREST `ERROR: column ... does not exist` from the Next.js frontend's Supabase REST calls: `flash_deals.price`, `hotel_videos.uploadedAt`, `bids.checkIn`, `app_events.created_at`.
+- The frontend queries columns that don't exist on these tables → 400s. Find the offending `select=`/`order=` query strings and correct the column names.
 
 ---
 
-## 6. Verified OK
+## 7. Verified OK
 - Support inbox UI/UX, polling, scroll handling, role-rank logic for multi-row phone variants, AI suggest fallback, conversation state machine (take/release/resolve/ai_handoff).
