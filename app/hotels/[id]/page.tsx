@@ -2404,13 +2404,14 @@ export default function HotelDetail() {
         )}
 
         {(() => {
-          // v159.16 — Flash-deal upgrade pricing. The headline room is the
-          // cheapest; every other room is an "upgrade" priced at the locked
-          // deal price + the raw floor-price gap. Computed here once so each
-          // room card can show its own flash price.
-          const dealRoomFloor = flashMode
-            ? (hotel.rooms?.find((x: any) => x.id === dealRoomId)?.floorPrice || 0)
-            : 0;
+          // v159.17 — Flash-deal upgrade pricing. Every room gets the SAME
+          // discount % as the headline deal (v159.16 added the raw floor
+          // gap instead, which shrank the effective % on pricier rooms —
+          // a 21%-off deal showed only ~11% off on an upgrade room).
+          // Headline room keeps its locked URL dealPrice; every other
+          // room = its own floorPrice × (1 − dealDiscount%), snapped to
+          // the nearest ₹100 (platform price rule).
+          const flashDiscPct = flashMode ? parseFloat(dealDiscount || "0") : 0;
           return (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
@@ -2418,12 +2419,13 @@ export default function HotelDetail() {
             // A room is available unless explicitly flagged otherwise.
             const roomAvailable = r.isAvailable !== false
               && (r.quantity == null || Number(r.quantity) > 0);
-            // Per-room flash price: headline → dealPrice, upgrade → dealPrice
-            // + max(0, floor gap). Only meaningful in flashMode.
+            // Per-room flash price: headline → locked URL dealPrice;
+            // upgrade → floorPrice × (1 − disc%) snapped to ₹100. Same
+            // percentage as the headline so the saving is consistent.
             const roomFlashPrice = flashMode
               ? (isHeadlineRoom
                   ? Math.round(parseFloat(dealPrice || "0"))
-                  : Math.round(parseFloat(dealPrice || "0") + Math.max(0, (r.floorPrice || 0) - dealRoomFloor)))
+                  : Math.max(100, Math.round((r.floorPrice || 0) * (1 - flashDiscPct / 100) / 100) * 100))
               : 0;
             const flashUpgradeDiff = Math.max(0, roomFlashPrice - Math.round(parseFloat(dealPrice || "0")));
             // Render the flash pricing block for EVERY available room when
