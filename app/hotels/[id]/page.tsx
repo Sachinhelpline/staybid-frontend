@@ -261,12 +261,20 @@ export default function HotelDetail() {
   // ~1.5s on top of the delay so this is a generous floor.
   usePageTour("hotel", "hotel", { delayMs: 1400 });
 
-  // Flash deal URL params
+  // Flash deal URL params — the IMMUTABLE headline deal. dealRoomId is
+  // the cheapest room (headline); dealPrice is its locked flash price.
   const dealId       = searchParams.get("dealId");
   const dealPrice    = searchParams.get("dealPrice");
   const dealRoomId   = searchParams.get("roomId");
   const dealDiscount = searchParams.get("discount");
   const directBook   = searchParams.get("directBook") === "true";
+  // v159.16 — Flash-deal mode. When a customer arrives via a flash deal,
+  // EVERY available room becomes bookable at the flash rate: the headline
+  // room at dealPrice, every other room at dealPrice + the raw floor-price
+  // gap (the "upgrade difference"). `flashSel` records which room+price
+  // the flash booking modal currently targets — defaults to the headline.
+  const flashMode = !!(dealId && dealPrice && dealRoomId);
+  const [flashSel, setFlashSel] = useState<{ roomId: string; price: number } | null>(null);
 
   // Normal bid state
   const [bidRoom, setBidRoom]           = useState<any>(null);
@@ -764,7 +772,13 @@ export default function HotelDetail() {
   // bug that v123 had when the IntersectionObserver didn't fire.
 
   // ── Flash deal calculations ────────────────────────
-  const flashRoom      = hotel?.rooms?.find((r: any) => r.id === dealRoomId);
+  // v159.16 — fbRoomId / fbPrice resolve the flash booking target:
+  // `flashSel` when the user tapped a specific room (headline OR an
+  // upgrade), else the URL headline. The modal + handleFlashBook read
+  // these instead of the raw URL params so upgrades book correctly.
+  const fbRoomId       = flashSel?.roomId || dealRoomId;
+  const fbPrice        = flashSel ? flashSel.price : parseFloat(dealPrice || "0");
+  const flashRoom      = hotel?.rooms?.find((r: any) => r.id === fbRoomId);
   const baseCapacity   = flashRoom?.capacity || 2;
   const flashNights    = Math.max(1, Math.ceil(
     (new Date(flashCheckOut).getTime() - new Date(today).getTime()) / 86400000
@@ -772,7 +786,7 @@ export default function HotelDetail() {
   const extraAdults        = Math.max(0, flashAdults - baseCapacity);
   const extraAdultRate     = 500;
   const childRate          = 200;
-  const flashBaseTotal     = parseFloat(dealPrice || "0") * flashNights * flashRoomQty;
+  const flashBaseTotal     = fbPrice * flashNights * flashRoomQty;
   const flashExtraTotal    = extraAdults * extraAdultRate * flashNights;
   const flashChildTotal    = flashChildren * childRate * flashNights;
   const flashGrandTotal    = flashBaseTotal + flashExtraTotal + flashChildTotal;
@@ -876,7 +890,7 @@ export default function HotelDetail() {
   // Flash deal booking — routes through BookingReview first.
   const handleFlashBook = () => {
     if (!user) return router.push("/auth");
-    const dealAmt = parseFloat(dealPrice || "0");
+    const dealAmt = fbPrice;
     const rateLines = [
       { label: `₹${dealAmt.toLocaleString()} × ${flashNights} night${flashNights>1?"s":""}${flashRoomQty>1?` × ${flashRoomQty} rooms`:""}`, value: `₹${flashBaseTotal.toLocaleString()}` },
       ...(flashExtraTotal>0 ? [{ label: `${extraAdults} extra adult${extraAdults>1?"s":""} × ₹${extraAdultRate} × ${flashNights}n`, value: `₹${flashExtraTotal.toLocaleString()}` }] : []),
@@ -925,11 +939,11 @@ export default function HotelDetail() {
       });
 
       // Step 2: Confirm booking in backend
-      const dealAmt  = parseFloat(dealPrice!);
+      const dealAmt  = fbPrice;
       const floorAmt = flashRoom?.floorPrice || dealAmt;
 
       const reqRes = await api.createBidRequest?.({
-        hotelId: hotel.id, roomId: dealRoomId,
+        hotelId: hotel.id, roomId: fbRoomId,
         amount: floorAmt,
         checkIn: today, checkOut: flashCheckOut,
         guests: flashAdults + flashChildren,
@@ -953,7 +967,7 @@ export default function HotelDetail() {
       let bidRes: any;
       try {
         bidRes = await api.placeBid({
-          hotelId: hotel.id, roomId: dealRoomId!,
+          hotelId: hotel.id, roomId: fbRoomId!,
           amount: dealAmt,
           message: `${baseMsg} | ${paidTokens}`,
           requestId: reqRes?.request?.id,
@@ -961,7 +975,7 @@ export default function HotelDetail() {
         });
       } catch {
         bidRes = await api.placeBid({
-          hotelId: hotel.id, roomId: dealRoomId!,
+          hotelId: hotel.id, roomId: fbRoomId!,
           amount: floorAmt,
           message: `${baseMsg} | ${paidTokens}`,
           requestId: reqRes?.request?.id,
@@ -1004,7 +1018,7 @@ export default function HotelDetail() {
         await fetch("/api/bid/paid", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: dealRoomId,
+            bidId: bidRes.bid.id, hotelId: hotel.id, roomId: fbRoomId,
             customerId: user!.id,
             paidTotal, paidPerNight: paidPerNight, nights: flashNights,
             flow: mode === "full" ? "flash" : `flash-${mode}`, dealId,
@@ -1042,7 +1056,7 @@ export default function HotelDetail() {
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({
                 hotelId: hotel.id,
-                roomId: dealRoomId,
+                roomId: fbRoomId,
                 fromDate: today,
                 toDate: flashCheckOut,
                 qty: extraQty > 0 ? extraQty : 1,
@@ -1183,16 +1197,16 @@ export default function HotelDetail() {
   // adjust adults/children/kids after picking dates before the booking modal takes over.)
   // Live availability check for flash deal extensions (runs whenever qty/nights change)
   useEffect(() => {
-    if (!flashBookOpen || !dealRoomId || !hotel?.id || !flashIsUpgrade) { setFlashAvail(null); return; }
+    if (!flashBookOpen || !fbRoomId || !hotel?.id || !flashIsUpgrade) { setFlashAvail(null); return; }
     let cancelled = false;
     setFlashAvail((prev) => ({ unitsFree: 0, unitsTotal: 0, feasible: false, loading: true, ...(prev || {}) }));
-    const q = new URLSearchParams({ hotelId: hotel.id, roomId: dealRoomId, fromDate: today, toDate: flashCheckOut, qty: String(flashRoomQty) });
+    const q = new URLSearchParams({ hotelId: hotel.id, roomId: fbRoomId, fromDate: today, toDate: flashCheckOut, qty: String(flashRoomQty) });
     fetch(`/api/flash-deals/upgrade?${q.toString()}`)
       .then((r) => r.json())
       .then((j) => { if (!cancelled) setFlashAvail({ unitsFree: j.unitsFree || 0, unitsTotal: j.unitsTotal || 0, feasible: !!j.feasible, loading: false }); })
       .catch((e) => { if (!cancelled) setFlashAvail({ unitsFree: 0, unitsTotal: 0, feasible: false, loading: false, error: e?.message }); });
     return () => { cancelled = true; };
-  }, [flashBookOpen, dealRoomId, hotel?.id, flashRoomQty, flashCheckOut, today, flashIsUpgrade]);
+  }, [flashBookOpen, fbRoomId, hotel?.id, flashRoomQty, flashCheckOut, today, flashIsUpgrade]);
 
   const resumePickerIntent = () => {
     if (!pickerModal) return;
@@ -1821,7 +1835,11 @@ export default function HotelDetail() {
               </div>
             </div>
             <button
-              onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
+              onClick={() => withBackendAuth(() => {
+                // v159.16 — banner always books the HEADLINE deal room.
+                setFlashSel(null);
+                setFlashBookOpen(true);
+              })}
               className="hx-cta hx-cta-primary"
               style={{ flex: "0 0 auto", padding: "11px 22px" }}
             >
@@ -2385,9 +2403,32 @@ export default function HotelDetail() {
           </p>
         )}
 
+        {(() => {
+          // v159.16 — Flash-deal upgrade pricing. The headline room is the
+          // cheapest; every other room is an "upgrade" priced at the locked
+          // deal price + the raw floor-price gap. Computed here once so each
+          // room card can show its own flash price.
+          const dealRoomFloor = flashMode
+            ? (hotel.rooms?.find((x: any) => x.id === dealRoomId)?.floorPrice || 0)
+            : 0;
+          return (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
-            const isFlashRoom = dealRoomId === r.id && dealPrice;
+            const isHeadlineRoom = dealRoomId === r.id;
+            // A room is available unless explicitly flagged otherwise.
+            const roomAvailable = r.isAvailable !== false
+              && (r.quantity == null || Number(r.quantity) > 0);
+            // Per-room flash price: headline → dealPrice, upgrade → dealPrice
+            // + max(0, floor gap). Only meaningful in flashMode.
+            const roomFlashPrice = flashMode
+              ? (isHeadlineRoom
+                  ? Math.round(parseFloat(dealPrice || "0"))
+                  : Math.round(parseFloat(dealPrice || "0") + Math.max(0, (r.floorPrice || 0) - dealRoomFloor)))
+              : 0;
+            const flashUpgradeDiff = Math.max(0, roomFlashPrice - Math.round(parseFloat(dealPrice || "0")));
+            // Render the flash pricing block for EVERY available room when
+            // a flash deal brought the customer here.
+            const isFlashRoom = flashMode && roomAvailable;
             const aiPrice = roomPrices[r.id];
             const ds = aiPrice ? DEMAND_STYLE[aiPrice.demandLevel] : null;
             const livePrice = aiPrice?.price || r.floorPrice;
@@ -2501,24 +2542,38 @@ export default function HotelDetail() {
                   </div>
 
                   {isFlashRoom ? (
-                    /* ── FLASH ROOM PRICING ── */
+                    /* ── FLASH ROOM PRICING ──
+                       v159.16 — Headline room: locked deal price. Every
+                       other room: an upgrade priced at deal + floor gap,
+                       shown as "Deal ₹X + Upgrade ₹Y = ₹total". */
                     <div>
                       <div className="hx-price-block is-flash">
                         <div className="hx-price-row">
                           <div>
-                            <p className="hx-price-label">Flash Deal Price</p>
+                            <p className="hx-price-label">
+                              {isHeadlineRoom ? "⚡ Flash Deal Price" : "⚡ Flash Deal · Upgrade"}
+                            </p>
                             <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
                               <span className="hx-price-strike">₹{r.floorPrice.toLocaleString()}</span>
-                              <span className="hx-price-amount flash">₹{Number(dealPrice).toLocaleString()}</span>
+                              <span className="hx-price-amount flash">₹{roomFlashPrice.toLocaleString()}</span>
                             </div>
-                            <p className="hx-price-sub">/night · {dealDiscount}% off</p>
+                            <p className="hx-price-sub">
+                              /night · {Math.max(0, Math.round((1 - roomFlashPrice / (r.floorPrice || roomFlashPrice)) * 100))}% off
+                            </p>
+                            {!isHeadlineRoom && flashUpgradeDiff > 0 && (
+                              <p className="hx-price-sub" style={{ marginTop: "3px", color: "var(--cozy-cocoa-soft)" }}>
+                                Deal ₹{Math.round(parseFloat(dealPrice || "0")).toLocaleString()}
+                                {" + "}Upgrade ₹{flashUpgradeDiff.toLocaleString()}
+                                {" = "}<strong style={{ color: "var(--cozy-warm-dark)" }}>₹{roomFlashPrice.toLocaleString()}</strong>
+                              </p>
+                            )}
                           </div>
                           {aiPrice && (
                             <div className="hx-price-mini">
                               <p style={{ marginBottom: "2px" }}>Market Rate</p>
                               <p className="v">₹{aiPrice.price.toLocaleString()}</p>
                               <p style={{ color: "var(--cozy-sage)", fontWeight: 700, marginTop: "2px" }}>
-                                {Math.round((1 - parseFloat(dealPrice!) / aiPrice.price) * 100)}% below market
+                                {Math.max(0, Math.round((1 - roomFlashPrice / aiPrice.price) * 100))}% below market
                               </p>
                             </div>
                           )}
@@ -2526,10 +2581,13 @@ export default function HotelDetail() {
                       </div>
                       <div className="hx-cta-row">
                         <button
-                          onClick={() => withBackendAuth(() => setFlashBookOpen(true))}
+                          onClick={() => withBackendAuth(() => {
+                            setFlashSel({ roomId: r.id, price: roomFlashPrice });
+                            setFlashBookOpen(true);
+                          })}
                           className="hx-cta hx-cta-primary"
                         >
-                          ⚡ Book This Flash Deal
+                          {isHeadlineRoom ? "⚡ Book This Flash Deal" : "⚡ Upgrade & Book"}
                         </button>
                       </div>
                     </div>
@@ -2783,6 +2841,8 @@ export default function HotelDetail() {
             );
           })}
         </div>
+          );
+        })()}
 
         </> /* end rooms tab */}
 
@@ -3033,7 +3093,7 @@ export default function HotelDetail() {
                   <button
                     type="button"
                     onClick={() => {
-                      const dp = parseFloat(dealPrice || "0");
+                      const dp = fbPrice;
                       const disc = parseFloat(dealDiscount || "0");
                       const roomFloor = flashRoom?.floorPrice || 0;
                       openCalendar({
@@ -3156,7 +3216,7 @@ export default function HotelDetail() {
                 <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">Rate Breakdown</p>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between text-luxury-700">
-                    <span>₹{dealPrice} × {flashNights} night{flashNights > 1 ? "s" : ""}{flashRoomQty > 1 ? ` × ${flashRoomQty} rooms` : ""}</span>
+                    <span>₹{fbPrice.toLocaleString()} × {flashNights} night{flashNights > 1 ? "s" : ""}{flashRoomQty > 1 ? ` × ${flashRoomQty} rooms` : ""}</span>
                     <span className="font-semibold">₹{flashBaseTotal.toLocaleString()}</span>
                   </div>
                   {extraAdults > 0 && (
