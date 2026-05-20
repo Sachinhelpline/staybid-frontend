@@ -64,7 +64,7 @@ export function BackChip() {
            Champagne border stays the brand mark across both modes. */
         .sb-back-chip {
           position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 8px);
+          top: calc(env(safe-area-inset-top, 0px) + 6px);
           left: 8px;
           z-index: 62;
           width: 30px;
@@ -106,15 +106,16 @@ export function BackChip() {
            body.is-reel-page (set by useReelFullscreen). */
         body main { padding-top: calc(env(safe-area-inset-top, 0px) + 0px); }
         body.is-reel-page main { padding-top: 0; }
-        /* v159.18 — the customer Navbar is now hidden on mobile + tablet
-           (see app/desktop.css §4). With no 64px sticky bar in flow,
-           give <main> enough room so the page's first content row clears
-           the floating back chip. Desktop keeps the in-flow navbar, so
-           the extra padding is mobile/tablet only. This block only ships
-           on customer non-reel pages — BackChip returns null (and so
-           does this <style>) on reel routes + operator panels. */
+        /* v159.20 — no reserved empty band. The back chip floats in the
+           top-left corner and the page content flows right up to the
+           top; <main> keeps only a tiny safe-area breathing gap. Slim-
+           hero pages (/hotels, /flash-deals) indent their first breadcrumb
+           line past the chip — see app/desktop.css §4 — so the chip reads
+           as inline with the hero, not floating in dead space. This block
+           only ships on customer non-reel pages — BackChip returns null
+           (and so does this <style>) on reel routes + operator panels. */
         @media (max-width: 1023px) {
-          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 38px); }
+          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
           body.is-reel-page main { padding-top: 0; }
         }
       `}</style>

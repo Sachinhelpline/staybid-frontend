@@ -207,6 +207,14 @@
    this CSS. On desktop, the marker is ignored and the bar shows.
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
+  /* v159.20 — slim single-line hero pages (/hotels, /flash-deals) indent
+     their first breadcrumb line so it starts past the floating back chip
+     (left:8px + 30px wide). The chip then reads as inline with the hero
+     instead of floating above it in an empty band. */
+  .hxr-hero-slim, .fd-hero-slim { padding-left: 48px !important; }
+}
+
+@media (max-width: 1023px) {
   /* v159.18 — Hide the customer Navbar on ALL routes on mobile + tablet,
      not just reel routes. Primary navigation lives in the BottomDock,
      "Back" lives in the floating BackChip, and the location globe +
