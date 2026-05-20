@@ -207,8 +207,13 @@
    this CSS. On desktop, the marker is ignored and the bar shows.
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
-  /* Hide the Navbar on reel routes on mobile (preserves v121 behavior). */
-  .nav3d-bar[data-reel-route="true"] { display: none !important; }
+  /* v159.18 — Hide the customer Navbar on ALL routes on mobile + tablet,
+     not just reel routes. Primary navigation lives in the BottomDock,
+     "Back" lives in the floating BackChip, and the location globe +
+     Explore toggle were redundant chrome on small screens. This gives
+     the cleaner, premium edge-to-edge feel. Desktop (>=1024px) keeps
+     the full header — logo, location, Explore, Menu, profile — intact. */
+  .nav3d-bar { display: none !important; }
 }
 
 @media (min-width: 1024px) {

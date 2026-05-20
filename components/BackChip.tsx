@@ -105,6 +105,17 @@ export function BackChip() {
            body.is-reel-page (set by useReelFullscreen). */
         body main { padding-top: calc(env(safe-area-inset-top, 0px) + 0px); }
         body.is-reel-page main { padding-top: 0; }
+        /* v159.18 — the customer Navbar is now hidden on mobile + tablet
+           (see app/desktop.css §4). With no 64px sticky bar in flow,
+           give <main> enough room so the page's first content row clears
+           the floating back chip. Desktop keeps the in-flow navbar, so
+           the extra padding is mobile/tablet only. This block only ships
+           on customer non-reel pages — BackChip returns null (and so
+           does this <style>) on reel routes + operator panels. */
+        @media (max-width: 1023px) {
+          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 46px); }
+          body.is-reel-page main { padding-top: 0; }
+        }
       `}</style>
     </>
   );
