@@ -29,6 +29,8 @@ export function BackChip() {
     pathname.startsWith("/saved/posts") ||   // v87: IG-style "All Posts" has its own ← header
     pathname.startsWith("/u/") ||            // v110: /u/[handle] + /u/[handle]/posts own their headers
     pathname === "/bid" ||                   // v159.19: /bid has its own "‹ Auction Pit" toolbar back
+    pathname === "/hotels" ||                // v159.21: dock-tab page — bottom nav handles navigation
+    pathname === "/flash-deals" ||           // v159.21: dock-tab page — bottom nav handles navigation
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
     pathname.startsWith("/agent") ||

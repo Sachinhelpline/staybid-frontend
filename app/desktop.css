@@ -207,11 +207,12 @@
    this CSS. On desktop, the marker is ignored and the bar shows.
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
-  /* v159.20 — slim single-line hero pages (/hotels, /flash-deals) indent
-     their first breadcrumb line so it starts past the floating back chip
-     (left:8px + 30px wide). The chip then reads as inline with the hero
-     instead of floating above it in an empty band. */
-  .hxr-hero-slim, .fd-hero-slim { padding-left: 48px !important; }
+  /* v159.21 — /hotels + /flash-deals no longer show the floating back
+     chip (bottom nav handles navigation on these dock-tab pages). With
+     the chip gone, drop the chip-clearance indent and just give the slim
+     hero a small, intentional top breathing gap below the status bar —
+     no dead reserved band. */
+  .hxr-hero-slim, .fd-hero-slim { padding-top: 12px !important; }
 }
 
 @media (max-width: 1023px) {
