@@ -28,6 +28,9 @@ export function BackChip() {
     pathname.startsWith("/me") ||
     pathname.startsWith("/saved/posts") ||   // v87: IG-style "All Posts" has its own ← header
     pathname.startsWith("/u/") ||            // v110: /u/[handle] + /u/[handle]/posts own their headers
+    pathname === "/bid" ||                   // v159.19: /bid has its own "‹ Auction Pit" toolbar back
+    pathname === "/hotels" ||                // v159.21: dock-tab page — bottom nav handles navigation
+    pathname === "/flash-deals" ||           // v159.21: dock-tab page — bottom nav handles navigation
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
     pathname.startsWith("/agent") ||
@@ -63,7 +66,7 @@ export function BackChip() {
            Champagne border stays the brand mark across both modes. */
         .sb-back-chip {
           position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 8px);
+          top: calc(env(safe-area-inset-top, 0px) + 6px);
           left: 8px;
           z-index: 62;
           width: 30px;
@@ -105,6 +108,18 @@ export function BackChip() {
            body.is-reel-page (set by useReelFullscreen). */
         body main { padding-top: calc(env(safe-area-inset-top, 0px) + 0px); }
         body.is-reel-page main { padding-top: 0; }
+        /* v159.20 — no reserved empty band. The back chip floats in the
+           top-left corner and the page content flows right up to the
+           top; <main> keeps only a tiny safe-area breathing gap. Slim-
+           hero pages (/hotels, /flash-deals) indent their first breadcrumb
+           line past the chip — see app/desktop.css §4 — so the chip reads
+           as inline with the hero, not floating in dead space. This block
+           only ships on customer non-reel pages — BackChip returns null
+           (and so does this <style>) on reel routes + operator panels. */
+        @media (max-width: 1023px) {
+          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+          body.is-reel-page main { padding-top: 0; }
+        }
       `}</style>
     </>
   );
