@@ -7,22 +7,39 @@ export function ServerStatus() {
   const [down, setDown] = useState(false);
 
   useEffect(() => {
-    // Wait 5s for cold-start, then check twice before showing banner
+    let cancelled = false;
+
     const check = () =>
       fetch(`/api/proxy/api/hotels?limit=1`)
         .then((r) => r.ok)
         .catch(() => false);
 
-    const timer = setTimeout(async () => {
+    // Wait 5s for cold-start, then check twice before showing the banner.
+    const start = setTimeout(async () => {
       const first = await check();
-      if (first) return;
-      // Second attempt after 6s — avoid false positives on Railway cold start
-      await new Promise(r => setTimeout(r, 6000));
-      const second = await check();
-      if (!second) setDown(true);
+      if (cancelled) return;
+      if (!first) {
+        // Second attempt after 6s — avoid false positives on Railway cold start.
+        await new Promise((r) => setTimeout(r, 6000));
+        if (cancelled) return;
+        const second = await check();
+        if (cancelled) return;
+        if (!second) setDown(true);
+      }
     }, 5000);
 
-    return () => clearTimeout(timer);
+    // Keep re-checking every 30s so the banner clears itself once the
+    // server recovers — instead of staying stuck until a page reload.
+    const poll = setInterval(async () => {
+      const ok = await check();
+      if (!cancelled) setDown(!ok);
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(start);
+      clearInterval(poll);
+    };
   }, []);
 
   // Never show on full-screen reel surfaces — the red bar would push the
@@ -40,7 +57,7 @@ export function ServerStatus() {
 
   return (
     <div className="w-full bg-red-600 text-white text-center py-2 px-4 text-xs font-medium tracking-wide z-40">
-      ⚠ Server se connection fail ho raha hai — database down ho sakta hai. Admin se contact karein.
+      ⚠ We’re having trouble reaching the server. Some features may be temporarily unavailable — please try again shortly.
     </div>
   );
 }
