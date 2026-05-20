@@ -28,6 +28,7 @@ export function BackChip() {
     pathname.startsWith("/me") ||
     pathname.startsWith("/saved/posts") ||   // v87: IG-style "All Posts" has its own ← header
     pathname.startsWith("/u/") ||            // v110: /u/[handle] + /u/[handle]/posts own their headers
+    pathname === "/bid" ||                   // v159.19: /bid has its own "‹ Auction Pit" toolbar back
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
     pathname.startsWith("/agent") ||
@@ -113,7 +114,7 @@ export function BackChip() {
            on customer non-reel pages — BackChip returns null (and so
            does this <style>) on reel routes + operator panels. */
         @media (max-width: 1023px) {
-          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 46px); }
+          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 38px); }
           body.is-reel-page main { padding-top: 0; }
         }
       `}</style>
