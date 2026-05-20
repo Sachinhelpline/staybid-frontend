@@ -3326,13 +3326,10 @@ export default function HotelDetail() {
         const isBelow  = negAmt < floor;
         const isInstant = negAmt >= floor;
         const stayPoints = Math.floor(totalBid / 100) * 5;
-        // Stable per-hotel/room seed for synthesized "recent accepted prices"
+        // Stable per-hotel/room seed for synthesized "recent accepted prices".
+        // v159.14 — sparkBars removed (was only used by the now-hidden 14-day
+        // chart). recentAvg stays — feeds the AI ticker rotation below.
         const seed = (negRoom.id || hotel.id || "x").split("").reduce((s:number,c:string)=>s+c.charCodeAt(0),0);
-        const sparkBars = Array.from({length:14},(_,i)=>{
-          const r = ((seed * (i+1) * 17) % 100) / 100;
-          const bias = i > 6 ? 0.12 : 0; // gentle uptrend
-          return Math.max(0.18, Math.min(0.98, 0.35 + r * 0.55 + bias));
-        });
         const recentAvg = Math.round(floor * (0.85 + ((seed % 13) / 100)));
         const viewersNow = 3 + (seed % 9);
         // Rotating AI tips — CSS animates the rotation
@@ -3436,27 +3433,13 @@ export default function HotelDetail() {
                   <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-gold-400/90 border border-gold-400/25">Locked</span>
                 </div>
 
-                {/* Bidder tier chip — shows customer's historical bid quality
-                    + expected auto-accept window. Premium bidders see "~30s
-                    instant", lowballers see "manual hotel review only". */}
-                {bidderScore && (
-                  <div className="flex items-center gap-3 rounded-2xl p-3 border"
-                    style={{ background: bidderScore.bg, borderColor: bidderScore.color + "55" }}>
-                    <span className="text-xl shrink-0">{bidderScore.badge.split(" ")[0]}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-[0.72rem] font-bold" style={{ color: bidderScore.color }}>
-                          {bidderScore.label}
-                        </p>
-                        <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                          style={{ background: bidderScore.color + "22", color: bidderScore.color, border: `1px solid ${bidderScore.color}55` }}>
-                          ⏱ {bidderScore.responseTime}
-                        </span>
-                      </div>
-                      <p className="text-[0.62rem] text-white/60 mt-1 leading-relaxed">{bidderScore.tip}</p>
-                    </div>
-                  </div>
-                )}
+                {/* v159.14 — Bidder-tier banner removed from customer view.
+                    The underlying classification (PREMIUM / STRONG / SMART /
+                    CAUTIOUS / LOWBALL) still computes via lib/bidder-score.ts
+                    and feeds `autoAcceptMs` scheduling (lines 1128/1512), but
+                    the red "Lowball Pattern · HOTEL REVIEW ONLY" badge is no
+                    longer rendered — Sachin: this signal is AI-internal,
+                    not customer-facing. */}
 
                 {/* MAIN ARENA: Probability ring + Slot-machine number */}
                 <div className="relative rounded-3xl p-5 overflow-hidden"
@@ -3569,32 +3552,13 @@ export default function HotelDetail() {
                   })}
                 </div>
 
-                {/* Demand sparkline */}
-                <div className="rounded-2xl p-3.5 border" style={{ background:"rgba(255,255,255,0.03)", borderColor:"rgba(240,180,41,0.15)" }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-white/60">📊 Recent Accepts · 14d</p>
-                    <p className="text-[0.6rem] text-white/40">avg <span className="text-gold-400 font-bold">₹{recentAvg.toLocaleString()}</span></p>
-                  </div>
-                  <div className="flex items-end gap-1 h-12">
-                    {sparkBars.map((h,i)=>{
-                      const isPeak = h > 0.75;
-                      return (
-                        <div key={i} className="neg-spark flex-1 rounded-t-sm"
-                          style={{
-                            height: `${h*100}%`,
-                            background: isPeak
-                              ? "linear-gradient(180deg,#f0b429,#b8871a)"
-                              : "linear-gradient(180deg,rgba(240,180,41,.55),rgba(240,180,41,.15))",
-                            animationDelay: `${i*0.04}s`,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <p className="text-[0.6rem] text-white/40 mt-2 leading-relaxed">
-                    {prob.tip}
-                  </p>
-                </div>
+                {/* v159.14 — Recent Accepts sparkline removed from customer
+                    view. The 14-day bar chart + avg accepted price + the
+                    "Too low — hotel will almost certainly decline" tip were
+                    all AI-internal signals leaking to the customer. The data
+                    (recentAvg, sparkBars, prob.tip) still computes — feeds
+                    the LIVE AI ticker rotation above + the AI smart-pricing
+                    quick-chips below — but the visual chart is gone. */}
 
                 {/* StayPoints teaser */}
                 <div className="flex items-center gap-3 rounded-2xl px-4 py-2.5"
