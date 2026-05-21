@@ -49,6 +49,7 @@ export function BottomDock() {
     pathname.startsWith("/partner") ||
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
+    pathname.startsWith("/order") ||     // public QR food-ordering page
     pathname.startsWith("/auth");        // auth screens should be chrome-free
   if (hidden) return null;
 

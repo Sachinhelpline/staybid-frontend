@@ -145,6 +145,7 @@ export function Navbar() {
   if (pathname?.startsWith("/admin")) return null;
   if (pathname?.startsWith("/agent")) return null;
   if (pathname?.startsWith("/onboard")) return null;
+  if (pathname?.startsWith("/order")) return null;
 
   // Reel / IG-style customer routes — on MOBILE we want the in-page chrome
   // (own top bar / dock) to own the surface. On DESKTOP (>=1024px) we
