@@ -19,6 +19,8 @@ import ReservationsTab from "@/components/partner/ReservationsTab";
 import HousekeepingTab from "@/components/partner/HousekeepingTab";
 // v170 — reports & analytics (Phase 2).
 import ReportsTab from "@/components/partner/ReportsTab";
+// v170 — guest billing / folio / invoicing (Phase 2).
+import BillingTab from "@/components/partner/BillingTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -127,7 +129,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"reports"|"complaints"|"redeem"|"content"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"reports"|"complaints"|"redeem"|"content"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -835,6 +837,8 @@ export default function PartnerDashboard() {
     { id:"availability", icon:"🗓️", label:"Availability" },
     // v170 — housekeeping room-status board (clean / dirty / inspected).
     { id:"housekeeping", icon:"🧹", label:"Housekeeping" },
+    // v170 — guest billing / folio / GST invoicing.
+    { id:"billing", icon:"🧾", label:"Billing" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
     { id:"reports", icon:"📈", label:"Reports" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
@@ -1169,6 +1173,7 @@ export default function PartnerDashboard() {
                   { id:"reservations",icon:"🛎️", label:"Reservations",    hint:"Walk-in & phone bookings",                                    c:"#7c2d12", bg:"#fde9d8" },
                   { id:"availability",icon:"🗓️", label:"Availability",    hint:"Calendar & PMS",                                              c:"#2563eb", bg:"#dbeafe" },
                   { id:"housekeeping",icon:"🧹", label:"Housekeeping",    hint:"Room status board",                                           c:"#0e7490", bg:"#cffafe" },
+                  { id:"billing",     icon:"🧾", label:"Billing",         hint:"Folios · GST invoice",                                        c:"#9a3412", bg:"#ffedd5" },
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
                   { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#c9911a", bg:"#fef9e7" },
@@ -1773,6 +1778,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ HOUSEKEEPING ══════════════ */}
         {tab === "housekeeping" && hotel?.id && (
           <HousekeepingTab hotelId={hotel.id} rooms={rooms} roomUnits={roomUnits} />
+        )}
+
+        {/* ══════════════ BILLING / FOLIO ══════════════ */}
+        {tab === "billing" && hotel?.id && (
+          <BillingTab hotelId={hotel.id} />
         )}
 
         {/* ══════════════ REPORTS & ANALYTICS ══════════════ */}
