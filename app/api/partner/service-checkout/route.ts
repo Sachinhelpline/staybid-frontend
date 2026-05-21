@@ -149,7 +149,17 @@ async function handleCreate(req: NextRequest, o: { ids: string[]; userId: string
   }
   if (!order) return NextResponse.json({ error: lastErr }, { status: 502 });
 
-  const expires = new Date(Date.now() + PLAN_DAYS[plan] * 86400000).toISOString();
+  // Renewal fairness — if a single service still has time left, stack the
+  // new term on top of the remaining days instead of from now.
+  let baseMs = Date.now();
+  if (serviceKey) {
+    const cur = await sbSelect(
+      `hotel_services?hotel_id=eq.${encodeURIComponent(hotelId)}&service_key=eq.${encodeURIComponent(serviceKey)}&select=expires_at`
+    ).catch(() => []);
+    const curExp = cur?.[0]?.expires_at ? new Date(cur[0].expires_at).getTime() : 0;
+    if (Number.isFinite(curExp) && curExp > baseMs) baseMs = curExp;
+  }
+  const expires = new Date(baseMs + PLAN_DAYS[plan] * 86400000).toISOString();
   const rowId = genId("svcpay");
   const row = {
     id: rowId,
