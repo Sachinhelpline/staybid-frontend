@@ -40,6 +40,9 @@ import { calculateDynamicPrice } from "@/lib/ai-pricing";
 // v139 — auto-fires the 4-step reverse-auction tour on first visit.
 // Hook waits until [data-autonext="destination"] renders.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v170 — shared platform catalog (property types). The id the customer
+// picks here is the same id stored in hotels.property_type.
+import { PROPERTY_TYPES, PROPERTY_TYPE_MAP } from "@/lib/catalog";
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -362,6 +365,7 @@ export default function BidPage() {
 
   const [form, setForm] = useState({
     city:           "",
+    propertyType:   "",          // v170 — "" = Any property type
     checkIn:        "",
     checkOut:       "",
     adults:         2,
@@ -532,6 +536,7 @@ export default function BidPage() {
       ].filter(Boolean).join(". ");
 
       const requirements = [
+        form.propertyType ? `Property: ${PROPERTY_TYPE_MAP[form.propertyType]?.label || form.propertyType}` : "",
         `Room: ${form.roomType}, ${form.bedType} bed`,
         `View: ${form.view}`,
         `Meal plan: ${form.mealPlan.toUpperCase()}`,
@@ -548,6 +553,23 @@ export default function BidPage() {
       });
       // Fallback: if server-side filter returned nothing useful, use whatever the server gave us
       if (matching.length === 0 && allHotels.length > 0) matching = allHotels.slice(0, 3);
+
+      // v170 — property-type categorization (HARD filter). If the customer
+      // asked for a Villa / Resort etc., the bid only goes to that property
+      // type — no "asked for a villa, sees a guest house" clash. Empty →
+      // clear message so the customer picks a different type, never a
+      // wrong-category hotel.
+      if (form.propertyType) {
+        const pf = matching.filter(
+          (h: any) => (h.property_type || "hotel") === form.propertyType
+        );
+        if (pf.length === 0) {
+          throw new Error(
+            `No ${PROPERTY_TYPE_MAP[form.propertyType]?.label || "matching"} properties in ${form.city} right now. Try a different property type or city.`
+          );
+        }
+        matching = pf;
+      }
 
       // v164 — hotel-class filter: a premium customer competes only among
       // premium hotels; a budget customer isn't shown 5★ luxury. Soft — if
@@ -962,6 +984,38 @@ export default function BidPage() {
                 )}
               </div>
 
+              {/* Property Type — v170 categorized bidding. "" = Any. */}
+              <div data-autonext="propertyType">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Property Type</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                <div className="bx-chip-scroll">
+                  <button
+                    type="button"
+                    onClick={() => upd("propertyType", "")}
+                    className={`bx-chip bx-chip-ico ${form.propertyType === "" ? "is-selected" : ""}`}
+                  >
+                    <span className="bx-chip-ico-e">✦</span>Any
+                  </button>
+                  {PROPERTY_TYPES.map((pt) => (
+                    <button
+                      key={pt.id}
+                      type="button"
+                      onClick={() => upd("propertyType", pt.id)}
+                      className={`bx-chip bx-chip-ico ${form.propertyType === pt.id ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-chip-ico-e">{pt.emoji}</span>{pt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  {form.propertyType
+                    ? `Bid goes only to ${PROPERTY_TYPE_MAP[form.propertyType]?.label || ""} properties — no other type.`
+                    : "Any property type — pick one to narrow your auction."}
+                </p>
+              </div>
+
               {/* Dates */}
               <div data-autonext="dates">
                 <div className="bx-section-h">
@@ -1325,6 +1379,7 @@ export default function BidPage() {
                 <div className="bx-review-grid">
                   {[
                     { label: "Destination",  value: `${CITY_DATA[form.city]?.emoji || ""} ${form.city}` },
+                    { label: "Property",     value: form.propertyType ? PROPERTY_TYPE_MAP[form.propertyType]?.label || "Any" : "Any type" },
                     { label: "Duration",     value: `${nights} ${nights === 1 ? "night" : "nights"}` },
                     { label: "Check-in",     value: form.checkIn ? new Date(form.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—" },
                     { label: "Check-out",    value: form.checkOut ? new Date(form.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—" },
