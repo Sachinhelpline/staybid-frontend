@@ -196,7 +196,7 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen }: {
       <div className="bx-live-card-top">
         <span className="bx-live-card-hotel">{bid.hotelName}</span>
         <span className="bx-live-card-amt">
-          ₹{amount.toLocaleString("en-IN")}<small>/night</small>
+          ₹{amount.toLocaleString("en-IN")}<small> per room / night</small>
         </span>
       </div>
 
@@ -407,41 +407,44 @@ export default function BidPage() {
   // v129 — `budget` is the snapped (₹100-multiple) view of the typed input.
   // The probability dial, total estimate, and the bid amount sent to backend
   // all read this value so a half-typed "₹3,355" never leaks past the UI.
-  const budgetRaw = parseFloat(form.maxBudget) || 0;
-  const budget    = snap100(budgetRaw);
+  // v172 — the customer now enters a TOTAL trip budget (all rooms × all
+  // nights). `budget` (per room / per night) is DERIVED — the reverse
+  // auction still competes on a nightly room rate.
+  const nightsRooms = Math.max(1, nights) * Math.max(1, form.rooms);
+  const totalBudget = snap100(parseFloat(form.maxBudget) || 0);
+  const budget      = totalBudget > 0 ? snap100(totalBudget / nightsRooms) : 0;
   const bidStr   = city && budget > 0 ? calcBidStrength(budget, city.avg) : null;
   const totalEst = budget > 0 && nights > 0 ? budget * nights * form.rooms : 0;
 
-  // v170 — room-category price multiplier. The presets/estimate scale by
-  // the average multiplier of the room categories the customer picked, so
-  // an upgraded category (Suite/Villa) genuinely raises the suggested
-  // price. Defaults to 1.0 (Deluxe-level) when nothing is picked.
+  // v170 — room-category price multiplier (avg of the picked categories).
   const roomMult = form.roomTypes.length
     ? form.roomTypes.reduce((s, id) => s + (ROOM_CATEGORY_MULT[id] || 1), 0) / form.roomTypes.length
     : 1.0;
 
-  // v129 — every preset is a ₹100 multiple. v170 — × roomMult.
-  const presets: {
-    label: string; tier: "budget" | "smart" | "premium";
-    amount: number; icon: string; desc: string; recommended?: boolean;
-  }[] = city ? [
-    { label: "Budget",   tier: "budget",  amount: snap100((city.avg / 1.5) * roomMult), icon: "💰", desc: "Budget bidder" },
-    { label: "Smart",    tier: "smart",   amount: snap100(city.avg * roomMult),         icon: "⭐", desc: "Balanced bid",  recommended: true },
-    { label: "Premium",  tier: "premium", amount: snap100((city.avg * 1.5) * roomMult), icon: "⚡", desc: "Premium bidder" },
-  ] : [];
-
-  // v170 — meal-plan cost (per guest / night) added to the estimate.
-  const guestsCount = form.adults + form.children;
-  const mealCostNight = (MEAL_PLAN_MAP[form.mealPlan]?.perGuestNight || 0) * Math.max(1, guestsCount);
-
-  // v164 — effective hotel class. If the customer tapped a preset that wins;
-  // otherwise derive it from how their budget compares to the city average.
+  // v164 — effective hotel class (drives the auction's star targeting).
   const tier: "budget" | "smart" | "premium" =
     tierPick ||
     (city && budget > 0
       ? (budget <= city.avg * 0.8 ? "budget" : budget >= city.avg * 1.25 ? "premium" : "smart")
       : "smart");
   const TIER_LABEL = { budget: "budget-class", smart: "mid-class", premium: "premium-class" }[tier];
+
+  // v172 — AI presets are TOTAL trip budgets = nightly × roomMult × nights × rooms.
+  const presets: {
+    label: string; tier: "budget" | "smart" | "premium";
+    amount: number; icon: string; desc: string; recommended?: boolean;
+  }[] = city ? [
+    { label: "Budget",   tier: "budget",  amount: snap100((city.avg / 1.5) * roomMult * nightsRooms), icon: "💰", desc: "Budget bidder" },
+    { label: "Smart",    tier: "smart",   amount: snap100(city.avg * roomMult * nightsRooms),         icon: "⭐", desc: "Balanced bid",  recommended: true },
+    { label: "Premium",  tier: "premium", amount: snap100((city.avg * 1.5) * roomMult * nightsRooms), icon: "⚡", desc: "Premium bidder" },
+  ] : [];
+
+  // v172 — meal cost (per night, all guests) scaled to the property class.
+  const MEAL_TIER_FACTOR = { budget: 0.85, smart: 1.0, premium: 1.5 }[tier];
+  const guestsCount = form.adults + form.children;
+  const mealCostNight = Math.round(
+    (MEAL_PLAN_MAP[form.mealPlan]?.perGuestNight || 0) * Math.max(1, guestsCount) * MEAL_TIER_FACTOR / 10
+  ) * 10;
 
   /* ── v124 Live insights — real data, refreshed on city change + 30s polling ── */
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -843,7 +846,7 @@ export default function BidPage() {
 
           <p className="bx-hero-sub bx-win-seq" style={{ margin: "0 auto 12px", maxWidth: "36ch", animationDelay: "0.38s" }}>
             {success.nights} {success.nights === 1 ? "night" : "nights"} in{" "}
-            <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> · ₹{success.budget.toLocaleString("en-IN")}/night —
+            <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> · ₹{success.budget.toLocaleString("en-IN")} per room / night —
             watch the auction unfold live below.
           </p>
 
@@ -1030,12 +1033,13 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Property Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v170 — multi-select. Tap several; [] = Any. */}
-                <div className="bx-chip-scroll">
+                {/* v172 — multi-select, WRAP grid (no scroll) so every
+                    property type is visible at once. [] = Any. */}
+                <div className="bx-chip-wrap">
                   <button
                     type="button"
                     onClick={() => upd("propertyTypes", [])}
-                    className={`bx-chip bx-chip-ico ${form.propertyTypes.length === 0 ? "is-selected" : ""}`}
+                    className={`bx-chip bx-chip-ico bx-chip-sm ${form.propertyTypes.length === 0 ? "is-selected" : ""}`}
                   >
                     <span className="bx-chip-ico-e">✦</span>Any
                   </button>
@@ -1044,7 +1048,7 @@ export default function BidPage() {
                       key={pt.id}
                       type="button"
                       onClick={() => toggleArr("propertyTypes", pt.id)}
-                      className={`bx-chip bx-chip-ico ${form.propertyTypes.includes(pt.id) ? "is-selected" : ""}`}
+                      className={`bx-chip bx-chip-ico bx-chip-sm ${form.propertyTypes.includes(pt.id) ? "is-selected" : ""}`}
                     >
                       <span className="bx-chip-ico-e">{pt.emoji}</span>{pt.label}
                     </button>
@@ -1141,7 +1145,8 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Room Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-scroll">
+                {/* v172 — multi-select, WRAP grid (2–3 lines, no scroll) */}
+                <div className="bx-chip-wrap">
                   {BID_ROOM_CATEGORIES.map((rc) => (
                     <button
                       key={rc.id}
@@ -1215,14 +1220,11 @@ export default function BidPage() {
                     >
                       <span className="bx-mini-tile-icon">{MEAL_EMOJI[mp.id] || "🍽️"}</span>
                       <span className="bx-mini-tile-name">{mp.label}</span>
-                      <span className="bx-mini-tile-name" style={{ fontSize: "0.56rem", fontWeight: 800, color: "var(--cozy-champagne)" }}>
-                        {mp.perGuestNight > 0 ? `+₹${mp.perGuestNight}/guest` : "No extra"}
-                      </span>
                     </button>
                   ))}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
-                  Per-guest, per-night — added to your estimate. Final price confirmed by the hotel.
+                  Meal cost is folded into your total estimate (scaled to the property class). No per-plan price shown — the hotel confirms the final rate.
                 </p>
               </div>
 
@@ -1252,14 +1254,14 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Add-ons &amp; Preferences</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v170 — full catalog of add-on services, multi-select */}
-                <div className="bx-chip-scroll">
+                {/* v172 — full add-on catalog, multi-select, WRAP grid */}
+                <div className="bx-chip-wrap">
                   {ADDON_SERVICES.map((ad) => (
                     <button
                       key={ad.id}
                       type="button"
                       onClick={() => toggleArr("addons", ad.id)}
-                      className={`bx-chip bx-chip-ico ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
+                      className={`bx-chip bx-chip-ico bx-chip-sm ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
                       title={ad.note}
                     >
                       <span className="bx-chip-ico-e">{ad.emoji}</span>{ad.label}
@@ -1290,7 +1292,7 @@ export default function BidPage() {
                   </div>
                   <div className="bx-card is-accented">
                     <p className="bx-insight-meta" style={{ marginTop: 0, marginBottom: 12 }}>
-                      Based on {form.city} avg. ₹{city.avg.toLocaleString("en-IN")}/night · auction targets{" "}
+                      Total budget for {form.rooms} room{form.rooms > 1 ? "s" : ""} × {Math.max(1, nights)} night{nights !== 1 ? "s" : ""} · auction targets{" "}
                       <strong style={{ color: "var(--cozy-cocoa)" }}>{TIER_LABEL} hotels</strong>
                     </p>
                     <div className="bx-preset-row">
@@ -1313,16 +1315,18 @@ export default function BidPage() {
                 </div>
               )}
 
-              {/* Budget Input — slot-machine style */}
+              {/* Budget Input — v172: total trip budget (not per night) */}
               <div data-autonext="budget-input">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">
-                    Your Max Budget <span className="bx-section-h-required">*</span> · per room / night
+                    Your Total Trip Budget <span className="bx-section-h-required">*</span>
                   </span>
                   <span className="bx-section-h-rule" />
                 </div>
                 <div className="bx-budget-wrap">
-                  <div className="bx-budget-eyebrow">Name your nightly rate</div>
+                  <div className="bx-budget-eyebrow">
+                    Total for {form.rooms} room{form.rooms > 1 ? "s" : ""} × {Math.max(1, nights)} night{nights !== 1 ? "s" : ""}
+                  </div>
                   <div className="bx-budget-row">
                     <span className="bx-budget-cur">₹</span>
                     <input
@@ -1330,10 +1334,7 @@ export default function BidPage() {
                       value={form.maxBudget}
                       onChange={(e) => upd("maxBudget", e.target.value)}
                       onBlur={(e) => {
-                        // v129 — snap any typed amount to a ₹100 multiple on
-                        // blur so the value the user sees matches what gets
-                        // submitted. Live snap during typing would block them
-                        // mid-edit.
+                        // Snap any typed amount to a ₹100 multiple on blur.
                         const v = parseFloat(e.target.value) || 0;
                         if (v > 0) upd("maxBudget", String(Math.max(PRICE_MIN, snap100(v))));
                       }}
@@ -1344,12 +1345,13 @@ export default function BidPage() {
                       inputMode="numeric"
                     />
                   </div>
-                  <div className="bx-budget-suffix">per room / per night · steps of ₹{PRICE_STEP}</div>
+                  <div className="bx-budget-suffix">whole trip · auto-rounds to ₹{PRICE_STEP}</div>
                   {city && budget > 0 && (
                     <div className={`bx-budget-vs ${budget >= city.avg ? "is-up" : "is-down"}`}>
+                      ≈ ₹{budget.toLocaleString("en-IN")} / room / night ·{" "}
                       {budget >= city.avg
-                        ? `+₹${(budget - city.avg).toLocaleString("en-IN")} above ${form.city} average`
-                        : `−₹${(city.avg - budget).toLocaleString("en-IN")} below ${form.city} average`}
+                        ? `₹${(budget - city.avg).toLocaleString("en-IN")} above ${form.city} avg`
+                        : `₹${(city.avg - budget).toLocaleString("en-IN")} below ${form.city} avg`}
                     </div>
                   )}
                 </div>
@@ -1390,14 +1392,19 @@ export default function BidPage() {
                     <span className="bx-section-h-rule" />
                   </div>
                   <div className="bx-card">
-                    {/* v170 — itemized: room bid + meal cost, taxes on both */}
+                    {/* v172 — bifurcation: total budget → per room/night,
+                        + meals, + taxes = grand total. */}
                     <div className="bx-cost-row">
-                      <span>Room: ₹{budget.toLocaleString("en-IN")} × {nights} {nights === 1 ? "night" : "nights"}{form.rooms > 1 ? ` × ${form.rooms}` : ""}</span>
-                      <span className="v">₹{(budget * nights * form.rooms).toLocaleString("en-IN")}</span>
+                      <span>Your total trip budget</span>
+                      <span className="v">₹{totalBudget.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="bx-cost-row">
+                      <span style={{ fontSize: "0.7rem" }}>↳ Per room / per night · {form.rooms} room{form.rooms > 1 ? "s" : ""} × {nights}n</span>
+                      <span className="v" style={{ fontSize: "0.74rem" }}>₹{budget.toLocaleString("en-IN")}</span>
                     </div>
                     {mealCostNight > 0 && (
                       <div className="bx-cost-row">
-                        <span>{MEAL_PLAN_MAP[form.mealPlan]?.label || "Meals"} — {guestsCount} guest{guestsCount > 1 ? "s" : ""} × {nights}n</span>
+                        <span>+ {MEAL_PLAN_MAP[form.mealPlan]?.label || "Meals"} · {guestsCount} guest{guestsCount > 1 ? "s" : ""} × {nights}n</span>
                         <span className="v">₹{(mealCostNight * nights).toLocaleString("en-IN")}</span>
                       </div>
                     )}
@@ -1407,7 +1414,7 @@ export default function BidPage() {
                       <span className="v" style={{ fontWeight: 500, fontSize: "0.74rem" }}>≈ ₹{Math.round((totalEst + mealCostNight * nights) * 0.12).toLocaleString("en-IN")}</span>
                     </div>
                     <div className="bx-cost-total">
-                      <span className="bx-cost-total-l">Total Estimate</span>
+                      <span className="bx-cost-total-l">Grand Total Estimate</span>
                       <span className="bx-cost-total-r">₹{Math.round((totalEst + mealCostNight * nights) * 1.12).toLocaleString("en-IN")}</span>
                     </div>
                     <p style={{ fontSize: "0.62rem", color: "var(--text-muted)", textAlign: "center", marginTop: 8 }}>
@@ -1492,15 +1499,15 @@ export default function BidPage() {
 
                 <div className="bx-review-budget">
                   <div>
-                    <div className="bx-review-budget-l-l">Your Max Budget</div>
-                    <div className="bx-review-budget-l-v">₹{(parseInt(form.maxBudget) || 0).toLocaleString("en-IN")}</div>
-                    <div className="bx-review-budget-l-s">per room / night</div>
+                    <div className="bx-review-budget-l-l">Total Trip Budget</div>
+                    <div className="bx-review-budget-l-v">₹{totalBudget.toLocaleString("en-IN")}</div>
+                    <div className="bx-review-budget-l-s">≈ ₹{budget.toLocaleString("en-IN")} / room / night</div>
                   </div>
                   {totalEst > 0 && (
                     <div className="bx-review-budget-r">
-                      <div className="bx-review-budget-r-l">Est. Total</div>
-                      <div className="bx-review-budget-r-v">₹{Math.round(totalEst * 1.12).toLocaleString("en-IN")}</div>
-                      <div className="bx-review-budget-l-s" style={{ textAlign: "right" }}>incl. taxes</div>
+                      <div className="bx-review-budget-r-l">Grand Total</div>
+                      <div className="bx-review-budget-r-v">₹{Math.round((totalEst + mealCostNight * nights) * 1.12).toLocaleString("en-IN")}</div>
+                      <div className="bx-review-budget-l-s" style={{ textAlign: "right" }}>incl. meals + taxes</div>
                     </div>
                   )}
                 </div>
