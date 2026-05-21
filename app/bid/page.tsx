@@ -19,7 +19,7 @@
 // UI shifted.
 // ════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -135,10 +135,66 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
   round: i % 3 === 0,
 }));
 
+/* ── v163 — Live auction bid card (countdown + live status) ────── */
+const LIVE_WINDOW_MS = 15 * 60 * 1000;
+function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen }: {
+  bid: any; launchTs: number; nowTs: number; idx: number; onOpen: () => void;
+}) {
+  const status    = String(bid.status || "PENDING").toUpperCase();
+  const accepted  = status === "ACCEPTED" || status === "CONFIRMED";
+  const countered = status === "COUNTER" || status === "COUNTERED";
+  const rejected  = status === "REJECTED" || status === "EXPIRED";
+  const pending   = !accepted && !countered && !rejected;
+
+  const elapsed   = Math.max(0, nowTs - launchTs);
+  const remaining = Math.max(0, LIVE_WINDOW_MS - elapsed);
+  const mm = Math.floor(remaining / 60000);
+  const ss = Math.floor((remaining % 60000) / 1000);
+  const pct = Math.min(100, (elapsed / LIVE_WINDOW_MS) * 100);
+
+  const cls = accepted ? "is-accepted" : countered ? "is-countered" : rejected ? "is-rejected" : "";
+  const clickable = accepted || countered;
+
+  return (
+    <div
+      className={`bx-live-card ${cls} ${clickable ? "is-clickable" : ""}`}
+      style={{ animationDelay: `${0.12 + idx * 0.08}s` }}
+      onClick={clickable ? onOpen : undefined}
+      role={clickable ? "button" : undefined}
+    >
+      <div className="bx-live-card-top">
+        <span className="bx-live-card-hotel">{bid.hotelName}</span>
+        <span className="bx-live-card-amt">₹{Number(bid.amount).toLocaleString("en-IN")}<small>/night</small></span>
+      </div>
+
+      {accepted && (
+        <div className="bx-live-stat is-ok">🎉 Accepted! Tap to book your stay</div>
+      )}
+      {countered && (
+        <div className="bx-live-stat is-counter">
+          ↔ Countered{bid.counterAmount ? ` at ₹${Number(bid.counterAmount).toLocaleString("en-IN")}` : ""} — tap to respond
+        </div>
+      )}
+      {rejected && (
+        <div className="bx-live-stat is-rej">This hotel passed — others are still bidding</div>
+      )}
+      {pending && (
+        <>
+          <div className="bx-live-stat is-live">
+            <span className="bx-live-dot" />
+            <span className="bx-live-stat-tx">{remaining > 0 ? "Hotel reviewing your offer" : "Still live — hotel reviewing"}</span>
+            <span className="bx-live-timer">{remaining > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : "live"}</span>
+          </div>
+          <div className="bx-live-bar"><span style={{ width: `${pct}%` }} /></div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── Editorial step bar ────────────────────────────────────────── */
-// v162 — collapsed from 4 steps to 2. Step 1 merges Where&When + Stay
-// details (optional refinements collapse); Step 2 merges budget + review.
-const STEPS = ["Your Stay", "Your Price"];
+// v163 — 3 steps: where&when, stay details, price+review+launch.
+const STEPS = ["Where & When", "Your Stay", "Your Price"];
 
 function StepBar({ step }: { step: number }) {
   return (
@@ -224,9 +280,10 @@ export default function BidPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
-  // v162 — optional stay refinements (bed / view / meal / occasion /
-  // add-ons) collapse under one toggle so Step 1 stays short.
-  const [refineOpen, setRefineOpen] = useState(false);
+  // v163 — live auction state shown on the success screen itself.
+  const [liveBids, setLiveBids] = useState<any[]>([]);
+  const [launchTs, setLaunchTs] = useState(0);
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   // v139 — Tutorial Layer 2 — reverse-auction page tour. 4 steps walk
   // through city → dates → budget → submit. Uses existing
@@ -246,9 +303,9 @@ export default function BidPage() {
       const detail = (e as CustomEvent).detail || {};
       if (detail.key !== "bid") return;
       const toIdx = detail.toIndex as number;
-      // v162 — 2-step page now. Tour indices 0-1 (city/dates) live on
-      // page step 1; everything after (presets / budget / submit) is step 2.
-      const targetPageStep = toIdx <= 1 ? 1 : 2;
+      // v163 — 3-step page. Tour indices 0-1 (city/dates) live on page
+      // step 1; presets / budget / submit live on page step 3.
+      const targetPageStep = toIdx <= 1 ? 1 : 3;
       setStep((prev) => (prev !== targetPageStep ? targetPageStep : prev));
     };
     const onEnd = (e: Event) => {
@@ -337,31 +394,55 @@ export default function BidPage() {
     };
   }, [form.city]);
 
-  /* ── Recent-wins ticker rotation ── */
-  const [tickerIdx, setTickerIdx] = useState(0);
-  useEffect(() => {
-    const wins = insights?.recentWins || [];
-    if (wins.length < 2) return;
-    const t = setInterval(() => setTickerIdx((i) => (i + 1) % wins.length), 4500);
-    return () => clearInterval(t);
-  }, [insights?.recentWins?.length]);
-
-  const currentWin = useMemo(() => {
-    const wins = insights?.recentWins || [];
-    if (!wins.length) return null;
-    return wins[tickerIdx % wins.length];
-  }, [insights?.recentWins, tickerIdx]);
-
-  /* ── CountUp values for stats ribbon ── */
+  /* ── CountUp values for the hero live pills (v163) ── */
   const liveAuctions  = useCountUp(insights?.tonightAuctions || 0);
-  const liveAccepted  = useCountUp(insights?.acceptedToday || 0);
   const liveHotels    = useCountUp(insights?.hotelsListening || 0);
-  const liveStreak    = useCountUp(insights?.cityHotStreak || 0);
+
+  /* ── v163 Live auction on the success screen ──────────────────── */
+  // When a bid launches we keep the customer on the SAME screen and
+  // surface every placed bid live, with a countdown + status that
+  // updates by polling /api/bids/my — no jump to a different page.
+  useEffect(() => {
+    if (!success?.bids?.length) return;
+    setLaunchTs(Date.now());
+    setNowTs(Date.now());
+    setLiveBids(success.bids.map((b: any) => ({ ...b, status: "PENDING" })));
+  }, [success]);
+
+  // 1-second tick drives the per-card countdown.
+  useEffect(() => {
+    if (!success) return;
+    const t = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [success]);
+
+  // Poll real bid status every 15s so accepts/counters show live.
+  useEffect(() => {
+    if (!success?.bids?.length) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res: any = await api.getMyBids();
+        const all: any[] = res?.bids || res || [];
+        if (cancelled) return;
+        setLiveBids((prev) =>
+          prev.map((lb) => {
+            const m = all.find((x: any) => x.id === lb.bidId);
+            if (!m) return lb;
+            return { ...lb, status: m.status || lb.status, counterAmount: m.counterAmount ?? lb.counterAmount };
+          })
+        );
+      } catch { /* non-critical */ }
+    };
+    const t = setInterval(poll, 15000);
+    poll();
+    return () => { cancelled = true; clearInterval(t); };
+  }, [success]);
 
   const canNext = (): boolean => {
-    // v162 — step 1 now also requires a room type (merged in from the
-    // old step 2). Step 2 is the final step (launch lives inside it).
-    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.roomType);
+    // v163 — 3-step page. Step 3 is the final step (launch lives inside).
+    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1);
+    if (step === 2) return !!form.roomType;
     return budget > 0;
   };
 
@@ -455,6 +536,11 @@ export default function BidPage() {
           const requestId = reqRes?.request?.id;
           const baseMessage = `Guest's budget: ₹${budget}/night for ${nights} night${nights > 1 ? "s" : ""}${requirements ? ". " + requirements : ""}`;
 
+          // v163 — capture the placed bid so the success screen can show
+          // it live with a countdown (no jump to a different page).
+          let placedBidId = "";
+          let placedAmount = budget;
+
           try {
             const bidRes = await api.placeBid({
               hotelId:  hotel.id,
@@ -464,6 +550,7 @@ export default function BidPage() {
               message:  baseMessage,
             });
             if (bidRes?.bid?.id) {
+              placedBidId = bidRes.bid.id;
               localStorage.setItem(
                 `bid_dates_${bidRes.bid.id}`,
                 JSON.stringify({ checkIn: form.checkIn, checkOut: form.checkOut })
@@ -481,6 +568,8 @@ export default function BidPage() {
                 message:  `Guest's preferred price: ₹${budget}/night. ${baseMessage}. Please counter if possible.`,
               });
               if (bidRes?.bid?.id) {
+                placedBidId = bidRes.bid.id;
+                placedAmount = floor;
                 localStorage.setItem(
                   `bid_dates_${bidRes.bid.id}`,
                   JSON.stringify({ checkIn: form.checkIn, checkOut: form.checkOut })
@@ -491,11 +580,14 @@ export default function BidPage() {
             }
           }
 
-          return reqRes;
+          return { hotelId: hotel.id, hotelName: hotel.name || "Hotel", bidId: placedBidId, amount: placedAmount };
         })
       );
 
-      const successCount = results.filter(r => r.status === "fulfilled").length;
+      const launched = results
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+        .map((r) => r.value);
+      const successCount = launched.length;
       if (successCount === 0) {
         const firstErr: any = results.find(r => r.status === "rejected");
         throw new Error(firstErr?.reason?.message || "Could not submit your bid. Please try again.");
@@ -510,6 +602,7 @@ export default function BidPage() {
         rooms: form.rooms,
         totalEst,
         hotelsNotified: successCount,
+        bids: launched,
       });
     } catch (e: any) {
       alert(e.message || "Something went wrong. Please try again.");
@@ -519,8 +612,12 @@ export default function BidPage() {
   };
 
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
-  if (success) return (
-    <div className="bx-shell bx-win-shell min-h-screen flex items-center justify-center px-4 py-6">
+  if (success) {
+    const acceptedCount = liveBids.filter(
+      (b) => ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase())
+    ).length;
+    return (
+    <div className="bx-shell bx-win-shell min-h-screen flex justify-center px-4 py-6">
       {/* v162 — celebration confetti rain */}
       <div className="bx-confetti" aria-hidden="true">
         {CONFETTI.map((c, i) => (
@@ -564,12 +661,13 @@ export default function BidPage() {
             </span>
           </div>
 
-          <p className="bx-hero-sub bx-win-seq" style={{ margin: "0 auto 16px", maxWidth: "34ch", animationDelay: "0.38s" }}>
+          <p className="bx-hero-sub bx-win-seq" style={{ margin: "0 auto 12px", maxWidth: "36ch", animationDelay: "0.38s" }}>
             {success.nights} {success.nights === 1 ? "night" : "nights"} in{" "}
-            <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> — they respond within 2–4 hours.
+            <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> · ₹{success.budget.toLocaleString("en-IN")}/night —
+            watch the auction unfold live below.
           </p>
 
-          <div className="bx-review-grid bx-win-seq" style={{ marginBottom: 12, animationDelay: "0.46s" }}>
+          <div className="bx-review-grid bx-win-seq" style={{ marginBottom: 0, animationDelay: "0.46s", gridTemplateColumns: "repeat(3, 1fr)" }}>
             <div>
               <div className="bx-review-item-label">Check-in</div>
               <div className="bx-review-item-v">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
@@ -582,28 +680,44 @@ export default function BidPage() {
               <div className="bx-review-item-label">Nights</div>
               <div className="bx-review-item-v">{success.nights}</div>
             </div>
-            <div>
-              <div className="bx-review-item-label">Budget/n</div>
-              <div className="bx-review-item-v">₹{success.budget.toLocaleString("en-IN")}</div>
-            </div>
-            <div>
-              <div className="bx-review-item-label">Rooms</div>
-              <div className="bx-review-item-v">{success.rooms}</div>
-            </div>
-            <div>
-              <div className="bx-review-item-label">Est. Total</div>
-              <div className="bx-review-item-v">₹{Math.round(success.totalEst * 1.12).toLocaleString("en-IN")}</div>
-            </div>
+          </div>
+        </div>
+
+        {/* v163 — LIVE auction panel: every placed bid streams in HERE,
+            on the same screen, with a live countdown + status. */}
+        <div className="bx-live-panel bx-win-seq" style={{ animationDelay: "0.56s" }}>
+          <div className="bx-live-head">
+            <span className="bx-live-head-l">
+              <span className="bx-live-dot" />
+              Live Auction
+            </span>
+            <span className="bx-live-head-r">
+              {acceptedCount > 0
+                ? `${acceptedCount} accepted ✓`
+                : `${liveBids.length} ${liveBids.length === 1 ? "hotel" : "hotels"} bidding`}
+            </span>
           </div>
 
-          <div className="bx-cost-total bx-win-seq" style={{ marginTop: 0, marginBottom: 14, animationDelay: "0.54s" }}>
-            <span className="bx-cost-total-l">⏱ Hotels respond in</span>
-            <span className="bx-cost-total-r">2–4 hrs</span>
+          <div className="bx-live-list">
+            {liveBids.map((b, i) => (
+              <LiveBidCard
+                key={b.bidId || i}
+                bid={b}
+                idx={i}
+                launchTs={launchTs}
+                nowTs={nowTs}
+                onOpen={() => router.push("/my-bids")}
+              />
+            ))}
           </div>
 
-          <div className="bx-win-seq" style={{ display: "flex", flexDirection: "column", gap: 8, animationDelay: "0.62s" }}>
+          <p className="bx-live-note">
+            ⏱ Updating live · hotels usually respond within 2–4 hours — you'll be notified the moment one accepts.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
             <button onClick={() => router.push("/my-bids")} className="bx-launch-btn" style={{ padding: "14px 18px", fontSize: "1.05rem" }}>
-              Track My Bids
+              Track All Bids
             </button>
             <button onClick={() => router.push("/hotels")} className="bx-nav-back" style={{ width: "100%", flex: "0 0 auto" }}>
               Browse Hotels
@@ -612,81 +726,49 @@ export default function BidPage() {
         </div>
       </div>
     </div>
-  );
+    );
+  }
 
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
       <div className="bx-page-wrap mx-auto px-4 pt-4">
 
-        {/* Toolbar */}
-        <div className="bx-toolbar">
-          <button type="button" onClick={() => router.back()} className="bx-toolbar-back" aria-label="Back">
-            ‹
-          </button>
-          <span className="bx-toolbar-crumb">
-            Auction Pit{form.city ? ` · ${form.city}` : ""}
-          </span>
-        </div>
-
-        {/* v162 — Step 1 shows the full editorial hero; Step 2 collapses
-            it to a slim context bar so the hero no longer eats ~250px on
-            every step. The old separate stats-ribbon + wins-ticker are
-            merged into ONE live strip (the rotating win is now a pill). */}
+        {/* v163 — Step 1: compact split hero. Title + the two live pills
+            (auctions live / hotels listening) sit on the LEFT; the
+            explainer passage sits on the RIGHT. Toolbar (back button +
+            "Auction Pit" crumb) removed per request. Steps 2-3: slim bar. */}
         {step === 1 ? (
-          <div className="bx-hero bx-rise">
-            <span className="bx-hero-eyebrow">
-              <span className="bx-hero-eyebrow-dot" />
-              Reverse Auction · Live
-            </span>
-            <h1 className="bx-hero-title">
-              Name Your <em>Price</em>
-            </h1>
-            <p className="bx-hero-sub">
-              Set your rate — hotels in {form.city || "your destination"} compete, best offer wins your night.
-            </p>
-
-            {/* Combined live strip — stats + rotating win in ONE row */}
-            {insights && (
-              <div className="bx-stats-ribbon">
-                {insights.tonightAuctions > 0 && (
-                  <span className="bx-stat-pill bx-stat-pill-live">
-                    <span className="bx-stat-pill-value">{liveAuctions}</span>
-                    <span className="bx-stat-pill-label">auctions live{form.city ? ` in ${form.city}` : " tonight"}</span>
-                  </span>
-                )}
-                {insights.hotelsListening > 0 && (
-                  <span className="bx-stat-pill">
-                    <span className="bx-stat-pill-icon">🏨</span>
-                    <span className="bx-stat-pill-value">{liveHotels}</span>
-                    <span className="bx-stat-pill-label">hotels listening</span>
-                  </span>
-                )}
-                {insights.cityHotStreak >= 1 && (
-                  <span className="bx-stat-pill bx-stat-pill-hot">
-                    <span className="bx-stat-pill-icon">🔥</span>
-                    <span className="bx-stat-pill-value">{liveStreak}</span>
-                    <span className="bx-stat-pill-label">accepted last hour</span>
-                  </span>
-                )}
-                {insights.acceptedToday > 0 && (
-                  <span className="bx-stat-pill bx-stat-pill-accent">
-                    <span className="bx-stat-pill-icon">✓</span>
-                    <span className="bx-stat-pill-value">{liveAccepted}</span>
-                    <span className="bx-stat-pill-label">wins today</span>
-                  </span>
-                )}
-                {currentWin && (
-                  <span className="bx-stat-pill bx-stat-pill-win" key={`win-${currentWin.id}`}>
-                    <span className="bx-stat-pill-icon">🏆</span>
-                    <span className="bx-stat-pill-value">{currentWin.initial}</span>
-                    <span className="bx-stat-pill-label">
-                      won ₹{currentWin.amount.toLocaleString("en-IN")} · {currentWin.city || currentWin.hotelName}
+          <div className="bx-hero bx-hero-split bx-rise">
+            <div className="bx-hero-left">
+              <span className="bx-hero-eyebrow">
+                <span className="bx-hero-eyebrow-dot" />
+                Reverse Auction · Live
+              </span>
+              <h1 className="bx-hero-title">
+                Name Your <em>Price</em>
+              </h1>
+              {insights && (
+                <div className="bx-hero-pills">
+                  {insights.tonightAuctions > 0 && (
+                    <span className="bx-stat-pill bx-stat-pill-live">
+                      <span className="bx-stat-pill-value">{liveAuctions}</span>
+                      <span className="bx-stat-pill-label">auctions live{form.city ? ` in ${form.city}` : " tonight"}</span>
                     </span>
-                  </span>
-                )}
-              </div>
-            )}
+                  )}
+                  {insights.hotelsListening > 0 && (
+                    <span className="bx-stat-pill">
+                      <span className="bx-stat-pill-icon">🏨</span>
+                      <span className="bx-stat-pill-value">{liveHotels}</span>
+                      <span className="bx-stat-pill-label">hotels listening</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="bx-hero-sub bx-hero-sub-right">
+              Set what you want to pay. Hotels in {form.city || "your destination"} compete for your booking — the best offer wins your night.
+            </p>
           </div>
         ) : (
           <div className="bx-slim-hero bx-rise">
@@ -722,7 +804,9 @@ export default function BidPage() {
                   </span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                {/* v163 — compact 3-up grid so every city fits without
+                    tall tiles. Demand shows as a small corner dot. */}
+                <div className="bx-city-grid">
                   {Object.entries(CITY_DATA).map(([name, info]) => {
                     const isSelected = form.city === name;
                     const isSurge = info.demand === "Very High" || info.demand === "High";
@@ -731,20 +815,12 @@ export default function BidPage() {
                         key={name}
                         type="button"
                         onClick={() => { upd("city", name); scrollToAutoNext("dates"); }}
-                        className={`bx-tile ${isSelected ? "is-selected" : ""}`}
+                        className={`bx-city-tile ${isSelected ? "is-selected" : ""}`}
+                        title={`${name} · ${info.demand} demand`}
                       >
-                        <span className={`bx-tile-demand ${isSurge ? "is-surge" : ""}`}>
-                          <span className="dot" />
-                          {info.demand === "Very High" ? "Hot" : info.demand}
-                        </span>
-                        <span className="bx-tile-icon">{info.emoji}</span>
-                        <p className="bx-tile-name">{name}</p>
-                        <p className="bx-tile-sub">{info.state}</p>
-                        <div className="bx-tile-tags">
-                          {info.tags.slice(0, 2).map(t => (
-                            <span key={t} className="bx-tile-tag">{t}</span>
-                          ))}
-                        </div>
+                        <span className={`bx-city-dot ${isSurge ? "is-surge" : ""}`} />
+                        <span className="bx-city-emoji">{info.emoji}</span>
+                        <span className="bx-city-name">{name}</span>
                       </button>
                     );
                   })}
@@ -815,30 +891,34 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* Guests */}
+              {/* Guests & Rooms — 3 counters in ONE row (v163) */}
               <div data-autonext="guests">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Guests &amp; Rooms</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-card">
+                <div className="bx-guest-row">
                   {[
-                    { label: "Adults",     key: "adults",   sub: "Ages 18+",     min: 1, max: 10 },
-                    { label: "Children",   key: "children", sub: "Ages 2–17",    min: 0, max: 6  },
-                    { label: "Rooms",      key: "rooms",    sub: "Rooms needed", min: 1, max: 5  },
-                  ].map(({ label, key, sub, min, max }) => (
-                    <div key={key} className="bx-counter-row">
-                      <div>
-                        <p className="bx-counter-label">{label}</p>
-                        <p className="bx-counter-sub">{sub}</p>
-                      </div>
+                    { label: "Adults",   key: "adults",   min: 1, max: 10 },
+                    { label: "Children", key: "children", min: 0, max: 6  },
+                    { label: "Rooms",    key: "rooms",    min: 1, max: 5  },
+                  ].map(({ label, key, min, max }) => (
+                    <div key={key} className="bx-guest-cell">
+                      <p className="bx-guest-cell-label">{label}</p>
                       <Counter value={(form as any)[key]} onChange={(v) => upd(key, v)} min={min} max={max} />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Room Type — merged into Step 1 (v162) */}
+            </div>
+          )}
+
+          {/* ═══════════ STEP 2: YOUR STAY — room + compact preferences ═══ */}
+          {step === 2 && (
+            <div className="space-y-3 bx-step-pane" data-autonext-form>
+
+              {/* Room Type */}
               <div data-autonext="roomType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Room Type</span>
@@ -860,33 +940,13 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* v162 — optional refinements collapse under one toggle so
-                  Step 1 stays short. Bed / view / meals / occasion / add-ons. */}
-              <button
-                type="button"
-                className={`bx-refine-toggle ${refineOpen ? "is-open" : ""}`}
-                onClick={() => setRefineOpen((o) => !o)}
-                aria-expanded={refineOpen}
-              >
-                <span className="bx-refine-toggle-l">
-                  <span className="bx-refine-toggle-ico" aria-hidden="true">✨</span>
-                  <span className="bx-refine-toggle-tx">
-                    <span className="bx-refine-toggle-title">Refine your stay</span>
-                    <span className="bx-refine-toggle-sub">Bed · view · meals · occasion · add-ons — optional</span>
-                  </span>
-                </span>
-                <span className="bx-refine-toggle-caret" aria-hidden="true">▾</span>
-              </button>
-              {refineOpen && (
-                <div className="bx-refine-body">
-
-              {/* Bed type */}
+              {/* Bed preference — compact chips */}
               <div data-autonext="bedType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Bed Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div className="bx-chip-wrap">
                   {BED_TYPES.map((bt) => (
                     <button
                       key={bt.id}
@@ -900,13 +960,13 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* View */}
+              {/* View preference — compact chips */}
               <div data-autonext="view">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">View Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div className="bx-chip-wrap">
                   {VIEW_PREFS.map((v) => (
                     <button
                       key={v}
@@ -920,93 +980,80 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* Meal */}
+              {/* Meal Plan — 4 compact tiles in ONE row (v163) */}
               <div data-autonext="mealPlan">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Meal Plan</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="bx-quad-grid">
                   {MEAL_PLANS.map((mp) => (
                     <button
                       key={mp.id}
                       type="button"
                       onClick={() => { upd("mealPlan", mp.id); scrollToAutoNext("occasion"); }}
-                      className={`bx-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
+                      className={`bx-mini-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
                     >
-                      <span className="bx-tile-icon">{mp.icon}</span>
-                      <p className="bx-tile-name">{mp.label}</p>
-                      <p className="bx-tile-sub">{mp.desc}</p>
+                      <span className="bx-mini-tile-icon">{mp.icon}</span>
+                      <span className="bx-mini-tile-name">{mp.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Occasion */}
+              {/* Occasion — compact chips, single scrollable row (v163) */}
               <div data-autonext="occasion">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Trip Purpose / Occasion</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="bx-chip-scroll">
                   {OCCASIONS.map((oc) => (
                     <button
                       key={oc.id}
                       type="button"
                       onClick={() => { upd("occasion", oc.id); scrollToAutoNext("addons"); }}
-                      className={`bx-tile ${form.occasion === oc.id ? "is-selected" : ""}`}
-                      style={{ textAlign: "center", padding: 11 }}
+                      className={`bx-chip bx-chip-ico ${form.occasion === oc.id ? "is-selected" : ""}`}
                     >
-                      <span className="bx-tile-icon" style={{ fontSize: "1.2rem", margin: "0 auto 3px" }}>{oc.icon}</span>
-                      <p className="bx-tile-name" style={{ fontSize: "0.68rem", textAlign: "center" }}>{oc.label}</p>
+                      <span className="bx-chip-ico-e">{oc.icon}</span>{oc.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Add-ons */}
+              {/* Add-ons — compact toggle chips, single scrollable row (v163) */}
               <div data-autonext="addons">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Add-ons &amp; Preferences</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="bx-chip-scroll">
                   {[
-                    { key: "earlyCheckIn",    icon: "🌅", label: "Early Check-in",      sub: "Before 12 PM if available" },
-                    { key: "lateCheckOut",    icon: "🌇", label: "Late Check-out",       sub: "After 12 PM if available"  },
-                    { key: "airportTransfer", icon: "🚗", label: "Airport Transfer",     sub: "Pick-up & drop service"    },
-                    { key: "petFriendly",     icon: "🐾", label: "Pet-Friendly Room",    sub: "Pets are coming along"     },
-                    { key: "smokingRoom",     icon: "🚬", label: "Smoking Room",         sub: "If available"              },
-                  ].map(({ key, icon, label, sub }) => (
-                    <label key={key} className={`bx-addon-row ${(form as any)[key] ? "is-on" : ""}`}>
-                      <span className="bx-addon-icon">{icon}</span>
-                      <div className="bx-addon-body">
-                        <div className="bx-addon-label">{label}</div>
-                        <div className="bx-addon-sub">{sub}</div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={(form as any)[key]}
-                        onChange={(e) => upd(key, e.target.checked)}
-                        className="bx-addon-check"
-                      />
-                    </label>
+                    { key: "earlyCheckIn",    icon: "🌅", label: "Early Check-in" },
+                    { key: "lateCheckOut",    icon: "🌇", label: "Late Check-out" },
+                    { key: "airportTransfer", icon: "🚗", label: "Airport Transfer" },
+                    { key: "petFriendly",     icon: "🐾", label: "Pet-Friendly" },
+                    { key: "smokingRoom",     icon: "🚬", label: "Smoking Room" },
+                  ].map(({ key, icon, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => upd(key, !(form as any)[key])}
+                      className={`bx-chip bx-chip-ico ${(form as any)[key] ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-chip-ico-e">{icon}</span>{label}
+                    </button>
                   ))}
                 </div>
-
-                {/* v129 — "Additional requests" free-text textarea removed.
-                    It was an anti-bypass surface: customers could (and did)
-                    type phone numbers / WhatsApp handles / emails into it
-                    that hotels would receive verbatim. Stay preferences now
-                    flow exclusively through the structured toggles above. */}
+                {/* v129 — free-text "Additional requests" textarea removed
+                    (anti-bypass). Structured toggles only. */}
               </div>
-                </div>
-              )}
+
             </div>
           )}
 
-          {/* ═══════════ STEP 2: YOUR PRICE — budget + review + launch ═══ */}
-          {step === 2 && (
+          {/* ═══════════ STEP 3: YOUR PRICE — budget + review + launch ═══ */}
+          {step === 3 && (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* AI Presets */}
@@ -1255,9 +1302,9 @@ export default function BidPage() {
               ← Back
             </button>
           )}
-          {step < 2 && (
+          {step < 3 && (
             <button onClick={() => canNext() && goStep(step + 1)} disabled={!canNext()} className="bx-nav-cont">
-              Set your price →
+              {step === 1 ? "Stay details →" : "Set your price →"}
             </button>
           )}
         </div>

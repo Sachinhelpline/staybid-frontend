@@ -3268,8 +3268,9 @@ body.is-reel-page {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Celebration confetti rain */
-.bx-win-shell { overflow: hidden; }
+/* Celebration confetti rain — overflow-x only so a tall live-auction
+   success page can still scroll vertically (v163). */
+.bx-win-shell { overflow-x: hidden; }
 .bx-confetti {
   position: fixed; inset: 0;
   pointer-events: none; overflow: hidden;
@@ -3348,6 +3349,196 @@ body.is-reel-page {
   margin-top: 3px;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   v163 — /bid 3-step: split hero, compact one-line sections, and the
+   live auction panel that streams placed bids on the success screen.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Split hero — title + live pills LEFT, explainer passage RIGHT */
+.bx-hero-split {
+  display: flex; flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: flex-start;
+}
+.bx-hero-left { flex: 1 1 230px; min-width: 0; }
+.bx-hero-sub-right {
+  flex: 1 1 230px;
+  max-width: none;
+  align-self: center;
+}
+.bx-hero-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* Destination — compact 3-up grid */
+.bx-city-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bx-city-tile {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 11px 6px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.bx-city-tile:hover { border-color: rgba(201, 166, 107, 0.5); transform: translateY(-1px); }
+.bx-city-tile.is-selected {
+  border-color: var(--cozy-champagne);
+  background: linear-gradient(135deg, var(--cozy-cream-50), var(--cozy-cream-200));
+  box-shadow: 0 6px 16px -6px rgba(201, 166, 107, 0.5);
+}
+.bx-city-emoji { font-size: 1.4rem; line-height: 1; }
+.bx-city-name { font-size: 0.72rem; font-weight: 700; color: var(--cozy-warm-dark); text-align: center; line-height: 1.15; }
+.bx-city-dot {
+  position: absolute; top: 7px; right: 7px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cozy-sage);
+}
+.bx-city-dot.is-surge { background: var(--cozy-rose); animation: hx-pulse-soft 1.6s ease-in-out infinite; }
+
+/* Guests & Rooms — 3 counters in one row */
+.bx-guest-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bx-guest-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 12px 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+}
+.bx-guest-cell-label {
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--cozy-cocoa-soft);
+}
+
+/* Meal Plan — 4 compact tiles in one row */
+.bx-quad-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.bx-mini-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 11px 3px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
+}
+.bx-mini-tile:hover { border-color: rgba(201, 166, 107, 0.5); transform: translateY(-1px); }
+.bx-mini-tile.is-selected {
+  border-color: var(--cozy-champagne);
+  background: linear-gradient(135deg, var(--cozy-cream-50), var(--cozy-cream-200));
+}
+.bx-mini-tile-icon { font-size: 1.15rem; line-height: 1; }
+.bx-mini-tile-name { font-size: 0.6rem; font-weight: 700; color: var(--cozy-warm-dark); text-align: center; line-height: 1.15; }
+
+/* Chip rows — wrap (bed/view) or single scrollable line (occasion/add-ons) */
+.bx-chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.bx-chip-scroll {
+  display: flex; gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 3px;
+  -webkit-overflow-scrolling: touch;
+}
+.bx-chip-scroll::-webkit-scrollbar { display: none; }
+.bx-chip-scroll .bx-chip { flex: 0 0 auto; }
+.bx-chip-ico { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.bx-chip-ico-e { font-size: 0.95rem; line-height: 1; }
+
+/* ─── Live auction panel (success screen) ───────────────────────── */
+.bx-live-panel {
+  margin-top: 12px;
+  background: var(--bg-card);
+  border: 1px solid rgba(201, 166, 107, 0.32);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 14px 30px -16px rgba(31, 26, 15, 0.2);
+}
+.bx-live-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 11px;
+}
+.bx-live-head-l {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--cozy-warm-dark);
+}
+.bx-live-head-r { font-size: 0.68rem; font-weight: 700; color: var(--cozy-cocoa-soft); }
+.bx-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cozy-rose);
+  box-shadow: 0 0 0 0 rgba(212, 149, 131, 0.5);
+  animation: hx-pulse-soft 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.bx-live-list { display: flex; flex-direction: column; gap: 8px; }
+.bx-live-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 12px 14px;
+  animation: bxRise 0.5s cubic-bezier(.22,.8,.3,1) both;
+}
+.bx-live-card.is-accepted {
+  border-color: rgba(127, 146, 105, 0.6);
+  background: linear-gradient(135deg, rgba(127, 146, 105, 0.14), var(--bg-card));
+}
+.bx-live-card.is-countered { border-color: rgba(201, 166, 107, 0.55); }
+.bx-live-card.is-rejected { opacity: 0.55; }
+.bx-live-card.is-clickable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.2s ease; }
+.bx-live-card.is-clickable:hover { box-shadow: 0 8px 20px -10px rgba(31, 26, 15, 0.3); }
+.bx-live-card.is-clickable:active { transform: scale(0.99); }
+.bx-live-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.bx-live-card-hotel {
+  font-size: 0.85rem; font-weight: 700; color: var(--cozy-warm-dark);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bx-live-card-amt {
+  font-size: 0.92rem; font-weight: 800;
+  color: var(--cozy-champagne);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.bx-live-card-amt small { font-size: 0.58rem; font-weight: 600; color: var(--text-muted); }
+.bx-live-stat {
+  display: flex; align-items: center; gap: 7px;
+  margin-top: 9px;
+  font-size: 0.73rem; font-weight: 600;
+}
+.bx-live-stat.is-live { color: var(--text-soft); }
+.bx-live-stat.is-ok { color: #5f7a4a; font-weight: 700; }
+.bx-live-stat.is-counter { color: #b18943; font-weight: 700; }
+.bx-live-stat.is-rej { color: var(--text-muted); }
+.bx-live-stat-tx { flex: 1; min-width: 0; }
+.bx-live-timer {
+  font-variant-numeric: tabular-nums; font-weight: 800;
+  color: var(--cozy-warm-dark);
+  background: var(--cozy-cream-200);
+  border: 1px solid rgba(201, 166, 107, 0.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+.bx-live-bar {
+  margin-top: 9px; height: 4px;
+  border-radius: 999px;
+  background: var(--cozy-cream-200);
+  overflow: hidden;
+}
+.bx-live-bar > span {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--cozy-champagne), #b18943);
+  transition: width 1s linear;
+}
+.bx-live-note {
+  font-size: 0.66rem; color: var(--text-muted);
+  text-align: center; line-height: 1.5;
+  margin: 12px 6px 10px;
+}
+
+/* Tablet+: split hero passage gets a touch more room */
+@media (min-width: 640px) {
+  .bx-hero-sub-right { font-size: 0.86rem; }
+}
+
 /* Accessibility: reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .bx-ticker::before,
@@ -3369,7 +3560,10 @@ body.is-reel-page {
   .bx-win-burst .bx-win-badge,
   .bx-win-burst-ring,
   .bx-confetti-piece,
-  .bx-slim-hero-pulse { animation: none !important; }
+  .bx-slim-hero-pulse,
+  .bx-city-dot.is-surge,
+  .bx-live-card,
+  .bx-live-dot { animation: none !important; }
 }
 
 /* ════════════════════════════════════════════════════════════════
