@@ -295,3 +295,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e?.message || "Checkout failed" }, { status: 500 });
   }
 }
+
+// GET — this hotel's subscription payment history (receipts).
+export async function GET(req: NextRequest) {
+  const o = await owned(req);
+  if (!o) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!o.ids.length) return NextResponse.json({ payments: [] });
+  try {
+    const ids = o.ids.map((x) => encodeURIComponent(x)).join(",");
+    const rows = await sbSelect(
+      `service_payments?hotel_id=in.(${ids})&order=created_at.desc&limit=200`
+    ).catch(() => null);
+    if (rows == null) return NextResponse.json({ payments: [], provisioned: false });
+    return NextResponse.json({ payments: Array.isArray(rows) ? rows : [], provisioned: true });
+  } catch {
+    return NextResponse.json({ payments: [], provisioned: false });
+  }
+}
