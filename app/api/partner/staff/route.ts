@@ -9,23 +9,13 @@
 // until migrations/2026-05-21-hotel-staff.sql is applied.
 //
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { SB_URL, SB_H, SB_H_REPRESENT, sbSelect, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { pinHash, makeLoginCode } from "@/lib/partner/staff-auth";
 
 export const dynamic = "force-dynamic";
 
 const ROLES = new Set(["manager", "front_desk", "housekeeping"]);
-
-export function pinHash(pin: string, id: string) {
-  return crypto.createHash("sha256").update(`${pin}:${id}:staybid`).digest("hex");
-}
-function makeLoginCode() {
-  const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
-  let s = "";
-  for (let i = 0; i < 8; i++) s += alpha[Math.floor(Math.random() * alpha.length)];
-  return s;
-}
 
 async function ownedHotelIds(req: NextRequest): Promise<{ ids: string[]; userId: string } | null> {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();

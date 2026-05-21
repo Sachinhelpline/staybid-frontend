@@ -8,7 +8,7 @@
 //
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, sbSelect } from "@/lib/sb-server";
-import { pinHash } from "../staff/route";
+import { pinHash } from "@/lib/partner/staff-auth";
 
 export const dynamic = "force-dynamic";
 
