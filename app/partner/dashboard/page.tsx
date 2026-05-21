@@ -28,6 +28,7 @@ import FnbOrdersTab from "@/components/partner/FnbOrdersTab";
 // v176 — service entitlements (locked subscription services).
 import ServiceLockModal from "@/components/partner/ServiceLockModal";
 import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
+import SubscriptionBillingModal from "@/components/partner/SubscriptionBillingModal";
 import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
@@ -217,6 +218,8 @@ export default function PartnerDashboard() {
   const [svcReqs, setSvcReqs]   = useState<any[]>([]);
   const [svcLoaded, setSvcLoaded] = useState(false);
   const [lockModal, setLockModal] = useState<string | null>(null);
+  // v178 — subscription billing history modal
+  const [billingOpen, setBillingOpen] = useState(false);
   // v177 — subscription pricing + bundles (for the "Show charges" view)
   const [svcPricing, setSvcPricing] = useState<any[]>([]);
   const [svcBundles, setSvcBundles] = useState<any[]>([]);
@@ -2505,6 +2508,23 @@ export default function PartnerDashboard() {
           <div className="fade-up max-w-xl">
             <h2 className="sec-title text-xl mb-5">Hotel Profile</h2>
 
+            {/* v178 — Subscription billing — payment history + receipts. */}
+            <div className="card-p mb-5 flex items-center gap-3">
+              <span className="text-xl">🧾</span>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-luxury-900 text-sm">Subscription Billing</h3>
+                <p className="text-[0.68rem] text-luxury-500">Service payments aur receipts dekho</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBillingOpen(true)}
+                className="shrink-0 rounded-lg px-3 py-1.5 text-[0.7rem] font-bold text-white"
+                style={{ background: "#c9911a" }}
+              >
+                View history
+              </button>
+            </div>
+
             {/* v130 — Autopilot mode card. Lives at the top of Profile so the
                 partner sees their automation posture immediately. Defaults
                 to 'auto' if the column isn't provisioned — no UI hides
@@ -3184,6 +3204,11 @@ export default function PartnerDashboard() {
             setLockModal(null);
           }}
         />
+      )}
+
+      {/* v178 — subscription billing history */}
+      {billingOpen && (
+        <SubscriptionBillingModal onClose={() => setBillingOpen(false)} />
       )}
     </div>
   );

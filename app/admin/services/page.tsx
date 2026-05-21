@@ -37,7 +37,7 @@ const inp: React.CSSProperties = {
 };
 
 export default function AdminServicesPage() {
-  const [view, setView] = useState<"requests" | "pricing">("requests");
+  const [view, setView] = useState<"requests" | "pricing" | "payments">("requests");
   const wrap: React.CSSProperties = { background: C.bg, minHeight: "100%", color: C.text, padding: "20px 18px" };
 
   return (
@@ -47,7 +47,7 @@ export default function AdminServicesPage() {
         Subscription services ke access requests + pricing manage karein.
       </p>
       <div style={{ display: "flex", gap: 8, margin: "14px 0" }}>
-        {(["requests", "pricing"] as const).map((v) => (
+        {(["requests", "pricing", "payments"] as const).map((v) => (
           <button key={v} onClick={() => setView(v)}
             style={{
               background: view === v ? C.gold : "transparent",
@@ -60,8 +60,110 @@ export default function AdminServicesPage() {
           </button>
         ))}
       </div>
-      {view === "requests" ? <RequestsView /> : <PricingView />}
+      {view === "requests" ? <RequestsView /> : view === "pricing" ? <PricingView /> : <PaymentsView />}
     </div>
+  );
+}
+
+// ── Subscription payments / revenue ─────────────────────────────────────────
+const PLAN_LBL: Record<string, string> = { monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" };
+function inr(n: any) { return "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN"); }
+
+function PaymentsView() {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [totals, setTotals] = useState<any>({ paidCount: 0, revenue: 0, revenue30d: 0, activeSubs: 0 });
+  const [provisioned, setProvisioned] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"paid" | "all">("paid");
+  const card: React.CSSProperties = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 };
+
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/service-payments", { headers: adminHeaders(), cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      setPayments(d.payments || []);
+      setTotals(d.totals || { paidCount: 0, revenue: 0, revenue30d: 0, activeSubs: 0 });
+      setProvisioned(d.provisioned !== false);
+    } catch {} finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const rows = filter === "paid" ? payments.filter((p) => p.status === "paid") : payments;
+  const kpi = (label: string, val: string, color = C.gold): React.ReactNode => (
+    <div style={{ ...card, padding: 12, flex: "1 1 130px" }}>
+      <p style={{ fontSize: 10.5, color: C.textSoft, textTransform: "uppercase", letterSpacing: ".5px" }}>{label}</p>
+      <p style={{ fontSize: 18, fontWeight: 800, color, marginTop: 3 }}>{val}</p>
+    </div>
+  );
+
+  if (loading) return <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Loading…</div>;
+
+  return (
+    <>
+      {!provisioned && (
+        <div style={{ ...card, marginBottom: 14, borderColor: "rgba(240,180,41,0.4)", background: "rgba(240,180,41,0.08)" }}>
+          <p style={{ fontSize: 12.5, color: C.amber, fontWeight: 700 }}>⚠ migrations/2026-05-21-service-payments.sql apply karein.</p>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        {kpi("Total revenue", inr(totals.revenue), C.green)}
+        {kpi("Last 30 days", inr(totals.revenue30d), C.gold)}
+        {kpi("Paid payments", String(totals.paidCount), C.text)}
+        {kpi("Active subs", String(totals.activeSubs), C.amber)}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        {(["paid", "all"] as const).map((f) => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{
+              background: filter === f ? C.gold : "transparent",
+              color: filter === f ? "#1a1407" : C.textSoft,
+              border: `1px solid ${filter === f ? C.gold : C.border}`,
+              borderRadius: 8, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+              textTransform: "capitalize",
+            }}>
+            {f === "paid" ? "Paid" : "All"}
+          </button>
+        ))}
+      </div>
+
+      {rows.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", color: C.textSoft, fontSize: 12.5 }}>Koi payment nahi.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {rows.map((p) => {
+            const paid = p.status === "paid";
+            const svcKeys = Array.isArray(p.service_keys) ? p.service_keys : [];
+            return (
+              <div key={p.id} style={{ ...card, padding: 11, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 12.5, fontWeight: 700 }}>
+                    {p.bundle_id ? "Bundle" : svcName(p.service_key)}
+                    <span style={{ color: C.textMuted, fontWeight: 500 }}> · {PLAN_LBL[p.plan] || p.plan}</span>
+                  </p>
+                  <p style={{ fontSize: 11, color: C.textSoft }}>
+                    🏨 {p.hotel_name || p.hotel_id} · {svcKeys.map(svcName).join(", ")}
+                  </p>
+                  <p style={{ fontSize: 10.5, color: C.textMuted }}>
+                    {fmtT(p.paid_at || p.created_at)}{p.expires_at ? ` · expires ${fmtT(p.expires_at)}` : ""}
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: C.gold }}>{inr(p.amount)}</p>
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 700,
+                    color: paid ? C.green : p.status === "failed" ? C.red : C.amber,
+                  }}>
+                    {String(p.status || "").toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
