@@ -1,6 +1,10 @@
 // GET /api/partner/content/pending
-// Hotel partner's "Pending Reviews" queue. Lists every social_posts row
-// tagged to one of their hotels where moderation_status='PENDING_HOTEL_APPROVAL'.
+// v160 — repurposed. The hotel no longer gates guest content (booking ID is
+// the proof — verified-guest posts publish directly). This endpoint now lists
+// the PUBLISHED guest + community content tagged to the partner's hotels,
+// read-only, so the hotel can SEE what guests are posting about them. The
+// only action the partner can take is "report" (→ /api/partner/content/[id]),
+// which escalates an abusive post to admin — it cannot block a publish.
 //
 // Auth: x-partner-token (sb_partner_token from localStorage).
 //       Optional x-partner-hotel-id to scope to a single hotel; else all
@@ -64,17 +68,21 @@ export async function GET(req: NextRequest) {
   }
   const inHotels = scoped.map((h) => encodeURIComponent(h.id)).join(",");
 
-  // Fetch pending posts for those hotels
+  // Fetch published guest + community content for those hotels.
+  // verification_method in (booking, location_otp) keeps this to guest-driven
+  // content — CREATOR / HOTEL uploads are not surfaced here.
   const pr = await fetch(
     `${SB_URL}/rest/v1/social_posts` +
       `?hotel_id=in.(${inHotels})` +
-      `&moderation_status=eq.PENDING_HOTEL_APPROVAL` +
-      `&select=*&order=created_at.asc&limit=200`,
+      `&moderation_status=in.(APPROVED,AUTO_APPROVED)` +
+      `&verification_method=in.(booking,location_otp)` +
+      `&is_active=eq.true` +
+      `&select=*&order=created_at.desc&limit=200`,
     { headers: READ_HEADERS, cache: "no-store" }
   );
   if (!pr.ok) {
     return NextResponse.json(
-      { error: "Pending posts lookup failed" },
+      { error: "Guest content lookup failed" },
       { status: 500 }
     );
   }

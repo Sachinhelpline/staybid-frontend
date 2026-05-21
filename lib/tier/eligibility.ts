@@ -13,11 +13,21 @@ const READ_HEADERS = {
   Authorization: `Bearer ${SB_KEY}`,
 };
 
-// Phase 0 §3.1 locked: a booking is "completed" iff
-//   (bookings.status='CHECKED_OUT' OR bids.status='CHECKED_OUT')
-//   AND checkOut < NOW()
-//   AND checkOut > NOW() - INTERVAL '90 days'
+// v160 — a booking qualifies for the Verified Guest upload path from CHECK-IN
+// onwards, NOT just after checkout. Guests routinely post content during the
+// stay, so gating on a partner-marked CHECKOUT would block them until the
+// hotel remembers to mark it. The date-based rule below doesn't depend on any
+// partner action:
+//   status not cancelled  (bookings: CONFIRMED|CHECKED_IN|CHECKED_OUT;
+//                          bids:     ACCEPTED|CHECKED_IN|CHECKED_OUT)
+//   AND checkIn  <= NOW()                        (the stay has started)
+//   AND checkOut >= NOW() - INTERVAL '90 days'   (ongoing stays pass — checkOut
+//                                                 is in the future; old stays
+//                                                 fall out after 90 days)
 const ELIGIBILITY_WINDOW_DAYS = 90;
+
+const BOOKING_OK_STATUSES = ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"];
+const BID_OK_STATUSES = ["ACCEPTED", "CHECKED_IN", "CHECKED_OUT"];
 
 export type EligibleBooking = {
   // Unified shape across `bookings` table + `bids` (ACCEPTED → CHECKED_OUT)
@@ -27,6 +37,7 @@ export type EligibleBooking = {
   checkIn: string | null;
   checkOut: string | null;
   source: "booking" | "bid";
+  status?: string | null;
   hotelName?: string | null;
   hotelCity?: string | null;
 };
@@ -50,21 +61,23 @@ export async function listEligibleBookings(
   ).toISOString();
   const now = new Date().toISOString();
 
-  // Both tables in parallel.
+  // Both tables in parallel. checkIn <= now keeps it to stays that have
+  // already started; checkOut >= since keeps it within the 90-day window
+  // while still allowing ongoing stays (future checkOut passes gte.since).
   const [bookingsRes, bidsRes] = await Promise.all([
     fetch(
       `${SB_URL}/rest/v1/bookings?customerId=in.(${inList})` +
-        `&status=eq.CHECKED_OUT` +
+        `&status=in.(${BOOKING_OK_STATUSES.join(",")})` +
+        `&checkIn=lte.${encodeURIComponent(now)}` +
         `&checkOut=gte.${encodeURIComponent(since)}` +
-        `&checkOut=lt.${encodeURIComponent(now)}` +
-        `&select=id,hotelId,roomId,checkIn,checkOut,customerId` +
+        `&select=id,hotelId,roomId,checkIn,checkOut,customerId,status` +
         `&order=checkOut.desc&limit=100`,
       { headers: READ_HEADERS, cache: "no-store" }
     ),
     fetch(
       `${SB_URL}/rest/v1/bids?customerId=in.(${inList})` +
-        `&status=eq.CHECKED_OUT` +
-        `&select=id,hotelId,roomId,customerId,requestId` +
+        `&status=in.(${BID_OK_STATUSES.join(",")})` +
+        `&select=id,hotelId,roomId,customerId,requestId,status` +
         `&order=createdAt.desc&limit=100`,
       { headers: READ_HEADERS, cache: "no-store" }
     ),
@@ -75,9 +88,9 @@ export async function listEligibleBookings(
     : []) as any[];
   const bidRows = (bidsRes.ok ? await bidsRes.json().catch(() => []) : []) as any[];
 
-  // For CHECKED_OUT bids, we need to join bid_requests to get checkIn/checkOut
-  // and apply the same window filter at app-level (PostgREST can't filter on
-  // a related table's column from a top-level GET).
+  // For these bids we join bid_requests to get checkIn/checkOut and apply the
+  // same date window at app-level (PostgREST can't filter on a related
+  // table's column from a top-level GET).
   let bidEnriched: any[] = [];
   if (bidRows.length) {
     const reqIds = Array.from(
@@ -99,10 +112,15 @@ export async function listEligibleBookings(
     bidEnriched = bidRows
       .map((b) => {
         const r = b.requestId ? reqById.get(b.requestId) : null;
-        if (!r?.checkOut) return null;
+        if (!r?.checkIn || !r?.checkOut) return null;
+        const checkInMs = Date.parse(r.checkIn);
         const checkOutMs = Date.parse(r.checkOut);
-        if (!Number.isFinite(checkOutMs)) return null;
-        if (checkOutMs >= nowMs) return null;
+        if (!Number.isFinite(checkInMs) || !Number.isFinite(checkOutMs)) {
+          return null;
+        }
+        // Stay must have started, and must not be older than the 90-day
+        // window. Ongoing stays (future checkOut) are allowed.
+        if (checkInMs > nowMs) return null;
         if (checkOutMs < sinceMs) return null;
         return {
           id: b.id,
@@ -111,6 +129,7 @@ export async function listEligibleBookings(
           checkIn: r.checkIn,
           checkOut: r.checkOut,
           source: "bid" as const,
+          status: b.status,
         };
       })
       .filter(Boolean) as any[];
@@ -123,6 +142,7 @@ export async function listEligibleBookings(
     checkIn: b.checkIn,
     checkOut: b.checkOut,
     source: "booking" as const,
+    status: b.status,
   }));
 
   // Dedup on (hotelId, roomId, checkIn) — direct booking wins over bid projection.

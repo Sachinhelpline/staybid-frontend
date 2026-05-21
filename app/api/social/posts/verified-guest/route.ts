@@ -1,8 +1,14 @@
 // POST /api/social/posts/verified-guest
 // Verified Guest upload — body must include {bookingId, hotelId, mediaType,
 // mediaUrl, ...}. Validates booking ownership + CHECKED_OUT window before
-// inserting a social_posts row with moderation_status='PENDING_HOTEL_APPROVAL'
-// and verification_method='booking'. If the user was PUBLIC, promotes them
+// inserting a social_posts row.
+//
+// v160 — the booking ID IS the proof. A guest with a confirmed, checked-out
+// stay gets DIRECT publish: moderation_status='AUTO_APPROVED' — the post is
+// live in the feed instantly, no hotel gate, no admin gate. The hotel is
+// notified for awareness only (FYI, no action). Admin can still take a
+// published post down later via /admin/content if it's abusive.
+// verification_method='booking'. If the user was PUBLIC, promotes them
 // to VERIFIED_GUEST.
 //
 // Auth: any signed-in customer. Existing /api/social/posts is untouched.
@@ -62,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Booking not eligible — must be CHECKED_OUT for this hotel in the last 90 days",
+          "Booking not eligible — your stay at this hotel must have started (checked in) within the last 90 days",
       },
       { status: 403 }
     );
@@ -121,8 +127,9 @@ export async function POST(req: Request) {
     location_name: body.locationName || null,
     location_lat: typeof body.locationLat === "number" ? body.locationLat : null,
     location_lng: typeof body.locationLng === "number" ? body.locationLng : null,
-    moderation_status: "PENDING_HOTEL_APPROVAL",
+    moderation_status: "AUTO_APPROVED",
     verification_method: "booking",
+    auto_approved_at: new Date().toISOString(),
   };
   if (clientPostId) row.client_post_id = clientPostId;
   if (typeof body.highlightKey === "string" && body.highlightKey.trim()) {
@@ -181,8 +188,9 @@ export async function POST(req: Request) {
     void queueTierPromotionNudge(user.id, "VERIFIED_GUEST");
   }
 
-  // Queue an in-app notification to the hotel partner for the new pending review.
-  // Hotel owner is resolved via hotels.ownerId — we send to that user_id.
+  // FYI notification to the hotel partner — a verified guest just published
+  // content about their hotel. This is informational only (no approval
+  // needed); the hotel sees it in their read-only Guest Content tab.
   try {
     const hr = await fetch(
       `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(body.hotelId)}&select=ownerId,name`,
@@ -203,7 +211,7 @@ export async function POST(req: Request) {
             {
               user_id: ownerId,
               channel: "in_app",
-              template: "content_pending_approval",
+              template: "content_guest_published",
               payload: { post_id: post?.id, hotel_name: hotelName },
               status: "pending",
             },

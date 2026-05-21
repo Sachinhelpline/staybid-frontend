@@ -5807,3 +5807,185 @@ TBD     → docs: Phase 8 — smoke tests + rollback + soft launch (this commit)
 
 Tier System is complete and waiting for the merge signal.
 
+
+---
+
+## Service Subscription Billing Era (v159.22 → v159.26, 2026-05-21)
+
+Five phases (PRs #76–#79 + Phase 5) building a paid-subscription access
+layer over the partner panel. Every partner tab is now either a free
+default service or a locked subscription service.
+
+### Service model
+- **Default services** (free for every hotel, always): Bids, Rooms,
+  Bookings, Availability, Complaints, Content, Profile.
+- **Subscription services** (locked until granted): Flash Deals,
+  Reservations, Housekeeping, Billing, F&B Menu, F&B QR, Guest CRM,
+  Reports, Redeem, Channels, Staff, Verification.
+- Locked tabs + hub tiles show 🔒; unlocked tiles sort to the top of
+  "Manage your property". Trial/paid expiry is **lazy** — derived from
+  `hotel_services.expires_at` on read, no cron.
+
+### Phase 1 (#76) — Entitlements + access requests
+- Tapping a locked service → modal with 3 options: Activate · Show
+  charges · Request free trial → raises an admin request.
+- Admin → new "Service Access" page: pending-request queue with Approve
+  (free / 7 / 14 / 30 / 90-day trial) + Reject, plus granted-entitlement
+  list with Revoke.
+- API: `/api/partner/services` (GET state + POST request),
+  `/api/admin/service-requests` (GET queue + POST approve/reject/grant/revoke).
+- Migration `2026-05-21-hotel-services.sql` — `hotel_services`,
+  `service_requests`.
+
+### Phase 2 (#77) — Pricing config + bundles
+- `/admin/services` gets a "Pricing" tab: per-service monthly /
+  quarterly / yearly price + bundle plans (name + picked services + 3
+  prices).
+- "Show charges" in the lock modal shows real prices + any bundle that
+  includes the service.
+- Admin can approve a request as a PAID plan (Monthly/Quarterly/Yearly)
+  — `grantService` records `access_type=paid` + plan + term expiry.
+- API: `/api/admin/service-pricing` (GET/POST price + bundle CRUD).
+- Migration `2026-05-21-service-pricing.sql` — `service_pricing`,
+  `service_bundles`.
+
+### Phase 3 (#78) — Razorpay subscription billing
+- "Activate" on a priced service → plan picker → Razorpay payment →
+  instant unlock. Unpriced services still raise an admin request.
+- New `/api/partner/service-checkout`: **create** (server-validated
+  amount → Razorpay order — client never picks the amount, tamper-safe)
+  + **verify** (HMAC check → grant `hotel_services` with `access_type=paid`,
+  plan, term `expires_at`).
+- `openRazorpayForOrder()` helper in `lib/razorpay.ts` — opens the modal
+  for a server-created order without re-running `/api/razorpay/verify`.
+- A paid grant auto-approves any pending admin request for that service.
+- Migration `2026-05-21-service-payments.sql` — `service_payments`.
+
+### Phase 4 (#79) — Renewal banner + Renew flow
+- `ServiceRenewBanner` — surfaces any paid/trial service expiring within
+  7 days (or already expired) at the top of the dashboard. Renew →
+  re-opens checkout.
+- `ServiceLockModal` gains a **renew mode** (🔄 header, jumps straight to
+  the plan picker).
+- `service-checkout` create stacks a renewal term on top of remaining
+  days — renewing early never loses time. No new migration.
+
+### Phase 5 — Payment history + admin revenue (v159.26)
+- Partner: `GET /api/partner/service-checkout` returns the hotel's
+  payment rows. `SubscriptionBillingModal` — payment history +
+  printable receipt. Profile tab → "Subscription Billing" card.
+- Admin: `GET /api/admin/service-payments` — all payments + revenue
+  totals. Service Access page gains a "Payments" view (4 KPI cards +
+  paid/all filter + list). No new migration.
+
+### New Supabase tables (this era)
+| Table | Phase | Purpose |
+|---|---|---|
+| `hotel_services` | 1 | Per-hotel service grants (access_type, plan, expires_at) |
+| `service_requests` | 1 | Partner→admin access requests |
+| `service_pricing` | 2 | Per-service monthly/quarterly/yearly price |
+| `service_bundles` | 2 | Named bundle plans |
+| `service_payments` | 3 | Razorpay subscription purchase ledger |
+
+### Things to avoid (Service Billing era)
+- **Never** let the client pick the checkout amount — `service-checkout`
+  create validates the amount server-side against `service_pricing`.
+- **Never** add a cron for trial/paid expiry — it's lazy by design
+  (`expires_at` read check). A cron would just duplicate that.
+- **Never** lock a default service (Bids/Rooms/Bookings/Availability/
+  Complaints/Content/Profile). They are free for every hotel forever.
+
+---
+
+## Content Auto-Verify — Booking ID is the Proof (v160, 2026-05-21)
+
+Sachin's directive: a public user who uploads content (reel / photo / story)
+and **has a confirmed booking** gets DIRECT permission via the booking ID —
+no hotel gate, no admin gate. A public user who has **NOT stayed** at an
+onboarded hotel needs **admin verification** (plus the location-OTP
+requirement) — but **never** hotel verification. The hotel does not gate
+guest content at all.
+
+This reverses the original Phase 2 tier-system design where BOTH
+verified-guest and community uploads sat in `PENDING_HOTEL_APPROVAL`.
+
+### What changed
+
+| Path | Before (Phase 2) | After (v160) |
+|---|---|---|
+| **Verified Guest** (has booking ID) | `PENDING_HOTEL_APPROVAL` → hotel approves | `AUTO_APPROVED` — **live in feed instantly** |
+| **Community Contributor** (no stay, location-OTP) | `PENDING_HOTEL_APPROVAL` → hotel approves | `PENDING_ADMIN_REVIEW` — hidden until **admin** verifies |
+| **Hotel role** | gate-keeper (approve/reject/escalate) | informational only — read-only Guest Content tab + "Report" |
+
+### Critical fix — feed moderation filter
+
+`/api/social/feed` previously filtered only `is_active=eq.true` and did NOT
+check `moderation_status`. A `PENDING_ADMIN_REVIEW` post would have been
+publicly visible immediately. Fixed: the feed query now carries
+`&moderation_status=in.(APPROVED,AUTO_APPROVED)`. `moderation_status` is
+`NOT NULL DEFAULT 'APPROVED'` (tier-system Phase 1), so every pre-tier row +
+every CREATOR/HOTEL upload via `/api/social/posts` stays visible. REJECTED /
+FLAGGED / DELETED / PENDING_* rows are excluded for everyone (including the
+author's own `/me` — a community post is invisible until admin approves).
+
+### Files changed
+```
+app/api/social/feed/route.ts              # +moderation_status=in.(APPROVED,AUTO_APPROVED)
+app/api/social/posts/verified-guest/route.ts  # AUTO_APPROVED + auto_approved_at; hotel notif → FYI
+app/api/social/posts/community/route.ts        # PENDING_ADMIN_REVIEW + escalated_*; notify ADMIN sentinel
+app/api/partner/content/pending/route.ts        # repurposed → published guest content (read-only)
+app/api/partner/content/[id]/route.ts            # actions reduced to { action:"report" } → escalates to admin
+components/partner/PartnerContentTab.tsx          # read-only "Guest Content" gallery + 🚩 Report modal
+components/tier/UpgradeChoiceSheet.tsx             # copy fix — "publishes instantly" / team-checked
+lib/tier/eligibility.ts                             # eligible from check-in (see v160 addendum below)
+app/partner/dashboard/page.tsx                       # tab label "Content Reviews" → "Guest Content"
+app/layout.tsx                                        # SB_BUILD v160 + badge
+```
+
+### Flow after v160
+- **Verified Guest:** upload → `AUTO_APPROVED` → live. Hotel gets an FYI
+  notification (`content_guest_published`), sees it in the read-only Guest
+  Content tab. Admin can still take it down via `/admin/content` if abusive.
+- **Community Contributor:** upload → `PENDING_ADMIN_REVIEW` → notify
+  `user_id='ADMIN'` sentinel (`content_pending_admin_review`) → appears in the
+  existing `/admin/content` queue → admin approve → `APPROVED` → live.
+  (This path stays dormant until location OTP is enabled —
+  `NEXT_PUBLIC_ENABLE_LOCATION_OTP`, currently OFF.)
+- **Hotel "Report":** `POST /api/partner/content/[id] { action:"report", reason }`
+  → `PENDING_ADMIN_REVIEW` → off the feed → admin reviews. Hotel cannot block
+  a publish, only flag for admin.
+
+### Things to avoid
+- **Never** remove the `moderation_status=in.(APPROVED,AUTO_APPROVED)` filter
+  from `/api/social/feed` — that's the only thing keeping `PENDING_ADMIN_REVIEW`
+  community posts off the public feed.
+- **Never** restore the hotel approve/reject gate on guest content. Booking ID
+  IS the proof — verified guests publish directly. Hotels only "report".
+- **Never** route community uploads back to `PENDING_HOTEL_APPROVAL`. They go
+  to `PENDING_ADMIN_REVIEW` — admin verification, not hotel.
+- The `/api/cron/auto-approve-content` cron still sweeps `PENDING_HOTEL_APPROVAL`
+  (now an unused state) — it's harmless/idle. Do NOT point it at
+  `PENDING_ADMIN_REVIEW`; those must wait for a human admin.
+
+### v160 addendum — Verified Guest eligible from CHECK-IN, not checkout
+
+`lib/tier/eligibility.ts` originally required `status='CHECKED_OUT'` +
+`checkOut < NOW()` — meaning a guest could not post until the hotel marked
+their checkout. Guests post during the stay, so this blocked them. New rule
+(date-based, no dependency on a partner action):
+
+```
+bookings: status in (CONFIRMED, CHECKED_IN, CHECKED_OUT)
+bids:     status in (ACCEPTED,  CHECKED_IN, CHECKED_OUT)
+AND checkIn  <= NOW()                      -- the stay has started
+AND checkOut >= NOW() - INTERVAL '90 days' -- ongoing stays pass; old ones fall out
+```
+
+A guest can upload Verified Guest content from their check-in date through
+90 days after checkout. CANCELLED bookings never qualify. This is a strict
+superset of the old rule — no checked-out booking regresses.
+
+- **Never** re-add a `checkOut < NOW()` filter to `listEligibleBookings` — it
+  re-blocks mid-stay guests.
+- **Never** gate on `status='CHECKED_IN'` alone — not every hotel marks
+  check-in promptly; the `checkIn <= NOW()` date check is the reliable signal.
