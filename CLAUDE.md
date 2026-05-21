@@ -6035,3 +6035,119 @@ users could post hotel-less reels (exactly the v161 #2 case). Now:
   post id, not a hotel id. Use `_taggedHotelId`.
 - **Never** drop the `hotelId`-required check in `/api/social/posts` — it's
   the backstop that keeps hotel-less content out of the system.
+
+---
+
+## Unified Control Bar + Bid Redesign + Pricing Spine Era (v162 → v169, 2026-05-21)
+
+Eight versions: a control-bar redesign, a full `/bid` reverse-auction
+rebuild, and the platform's biggest pricing change — a single coherent
+price ("the spine") feeding every customer surface.
+
+### v162 — Unified control bar (`/hotels` + `/flash-deals`)
+Full-bleed search + scrolling city pills + separate sort/star row →
+ONE centered premium control bar: `[📍 Location ▾] [🔍 Search] [⚙ Filter ▾]`.
+Location button opens the globe picker; Search zoom-springs a sheet;
+Filter merges sort + star pills into a popover. Shared `.sb-cbar-*`
+styles in `globals.css`.
+
+### v163 — `/bid` 3-step redesign + live auction screen
+- 4 steps → **3**: Where & When · Your Stay · Your Price. In-page
+  toolbar ("Auction Pit" crumb + back button) removed.
+- Compact layout: split hero (title + merged live pill left, passage
+  right), destination 3-up grid, Guests & Rooms one row, Meal Plan 4
+  tiles/row, occasion + add-ons single scroll chip rows.
+- **Celebration success screen** — confetti, burst badge, count-up.
+- **Live auction panel ON the success screen** — launched bids stream
+  in live with status + countdown; no jump to `/my-bids`.
+
+### v164 — Bid auction: lowest-price guarantee + hotel-class targeting
+Fixed two reverse-auction flaws:
+1. **Overpay** — a low-floor hotel used to "accept" an inflated premium
+   bid. Now the auction deal is derived from StayBid's dynamic live
+   rate and is ALWAYS ≥8% below it (and StayBid's rate is below OTAs),
+   so the customer never pays above market. Cards show saving vs MRP.
+2. **Category clash** — bid broadcast to every hotel. Now targets by
+   star tier (Premium 4-5★, Smart all, Budget ≤4★), inferred from the
+   Budget/Smart/Premium preset, soft-fallback so it's never empty.
+The bid is placed at the computed deal price (≥ floor), so DB bid,
+displayed offer and bookable price all match.
+
+### v165–v168 — The Pricing Spine (Phases A, C, C2, C3)
+**The platform's price now has ONE source of truth.** Before: two
+disconnected engines (`lib/ai-pricing.ts` demand model vs
+`lib/pricing/engine.ts` competitor model) — hotel page / `/bid` /
+flash could each show a different number.
+
+- **v165 Phase A** — `room_date_price` table (one row per room×date:
+  `base_rate`, `live_price`, `bid_floor`, `flash_price`, vacancy,
+  demand score, competitor min, factors) + `lib/pricing/spine.ts`
+  (pure unified compute — reuses the demand engine, bakes in "always
+  below the cheapest competitor" as a hard rule) +
+  `/api/cron/price-spine` (batched recompute, every room × next 75
+  days). Purely additive — nothing read it yet.
+- **v166 Phase C** — `lib/pricing/read-spine.ts` `resolveSpinePrices()`
+  (the single accessor: reads the cache, computes on-the-fly for
+  misses) + `/api/pricing/spine` API. `/bid` wired to it.
+- **v167 Phase C2** — hotel-page room cards show spine `live_price`
+  (the 60s recalc effect overrides only `.price`; demand/trend badges
+  stay local; spine-unreachable → local price → never breaks).
+- **v168 Phase C3** — synthetic flash deals priced from spine
+  `flash_price`. Real `flash_deals` rows stay hotel/cron-managed.
+
+Phase D (retire `room_pricing_config`) was **deliberately skipped** —
+that table still stores the OTA-scraped `competitor_min` which the
+spine READS for the lowest-price guarantee. It's an input now, not
+dead code.
+
+### v169 — Calendar-demand pricing (`lib/ai-pricing.ts`)
+- **June fixed** — was `0.72×` (wrongly monsoon). June is FULL (summer
+  school vacation); monsoon does not start until 15 Jul. June → `1.10×`;
+  monsoon is now a date-precise window **15 Jul – 15 Sep**.
+- **Long-weekend engine** — gazetted holidays (26 Jan / 15 Aug / 2 Oct)
+  surge by day-of-week (Mon/Fri → 3-day, Tue/Thu → 4-day bridge).
+- **School-vacation windows** — summer 15 Apr–30 Jun, winter 20 Dec–15
+  Jan demand boost.
+- **Bulletproof clamp** — total multiplier clamped `0.55×–2.20×`.
+
+### Files added (this era)
+```
+migrations/2026-05-21-room-date-price-spine.sql   # spine table
+lib/pricing/spine.ts            # pure unified compute
+lib/pricing/read-spine.ts       # resolveSpinePrices() — single accessor
+app/api/cron/price-spine/route.ts
+app/api/pricing/spine/route.ts
+```
+
+### Cron jobs — current full picture
+11 cron routes exist. Scheduling:
+- **Vercel cron** (2-cap, full): `/api/cron/pricing` (daily 4:00),
+  `/api/cron/lifecycle` (daily 4:05).
+- **cron-job.org**: `expire-holds`, `flash-drop`, `feedback-lifecycle`,
+  `price-spine` (hourly), `support-auto-resolve` (daily),
+  `auto-approve-content` (hourly), `post-stay-nudge` (daily),
+  `view-milestone-rewards` (daily), `creator-upgrade-eval` (weekly).
+- All cron routes accept `?token=<CRON_SECRET || "staybid-cron-dev">`.
+- `/api/cron/price-spine` MUST stay scheduled — it's what keeps the
+  spine fresh; if it stops, surfaces fall back to on-the-fly compute
+  (correct, just not cached).
+
+### Things to Avoid (v162 → v169 Era)
+- **Never** let the `/bid` auction accept above the hotel's live rate.
+  The deal MUST be ≥8% below `livePrice`; `livePrice` is below OTAs.
+  This is the no-overpay guarantee.
+- **Never** retire `room_pricing_config` / its scraper — the spine
+  reads `competitor_min` from it for the lowest-price guarantee.
+- **Never** make a customer surface read a price WITHOUT a fallback.
+  `read-spine.ts` computes on-the-fly when the cache misses; the
+  hotel-page + `/bid` + flash all keep a local-compute fallback so a
+  spine outage can't break a page.
+- **Never** add a price input/preset without `snap100` (₹100 multiple
+  is platform-wide — `lib/price-snap.ts`).
+- **Never** treat June as monsoon. Monsoon is 15 Jul – 15 Sep. June is
+  peak (summer school vacation).
+- **Never** remove the `0.55×–2.20×` clamp in `calculateDynamicPrice`
+  — it's the guard against stacked surges producing an absurd price.
+- **Never** point a new customer surface at `room_pricing_config.
+  current_price` — that field is dead (nothing reads it post-v166).
+  Use the spine (`resolveSpinePrices` / `/api/pricing/spine`).
