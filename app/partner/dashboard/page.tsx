@@ -1817,7 +1817,7 @@ export default function PartnerDashboard() {
 
         {/* ══════════════ BILLING / FOLIO ══════════════ */}
         {tab === "billing" && hotel?.id && (
-          <BillingTab hotelId={hotel.id} />
+          <BillingTab hotelId={hotel.id} rooms={rooms} bids={bids} />
         )}
 
         {/* ══════════════ GUEST CRM ══════════════ */}
