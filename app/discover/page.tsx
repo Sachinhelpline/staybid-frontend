@@ -79,6 +79,10 @@ export default function DiscoverPage() {
         images:       isVideo ? (post.thumbnail_url ? [post.thumbnail_url] : []) : [post.media_url],
         _userPost:    true,
         _isSelf:      isSelf,
+        // v160 — real tagged hotel id (social_posts.hotel_id), kept separate
+        // from `id` (which is the post id). MoreMenu's "Open hotel page"
+        // links to this; null when the reel tagged no hotel.
+        _taggedHotelId: post.hotel_id || post.hotel?.id || null,
         _publicAuthor: a,                          // {username, display_name, user_type, ...}
         // v131.8 — forward `client_post_id` from server so the dedup in
         // InstagramHotelFeed can exact-match the local PostsStore's

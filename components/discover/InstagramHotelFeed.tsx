@@ -572,9 +572,14 @@ function CommentDrawer({
 // More Menu
 // ─────────────────────────────────────────────────────────────────────────
 function MoreMenu({
-  open, onClose, hotelId, isUserPost, onShare, onCopy, onToggleMute, muted, gain, onCycleGain, onEditPost, onDeletePost,
+  open, onClose, hotelHref, isUserPost, onShare, onCopy, onToggleMute, muted, gain, onCycleGain, onEditPost, onDeletePost,
 }: {
-  open: boolean; onClose: () => void; hotelId: string;
+  open: boolean; onClose: () => void;
+  /** Resolved /hotels/<realHotelId> link, or null when the reel has no
+   *  hotel attached. v160 — the parent computes this from the tagged
+   *  hotel id; it must NEVER be the social_posts row id (that always
+   *  404s on /hotels/[id]). */
+  hotelHref: string | null;
   isUserPost?: boolean;
   onShare: () => void; onCopy: () => void; onToggleMute: () => void; muted: boolean;
   gain: number; onCycleGain: () => void;
@@ -589,13 +594,18 @@ function MoreMenu({
   // owns mute toggling). Volume booster, Copy link, Share were stripped
   // in v81. MoreMenu now sticks to actions that DON'T duplicate the
   // front-rail surface.
+  // v160 — "Open hotel page" only appears when hotelHref resolved to a
+  // real hotel. A reel with no hotel tagged simply omits the row instead
+  // of linking to /hotels/<post-id> ("Hotel not found").
   const items = isUserPost
     ? [
         { icon: "✏️",  label: "Edit post",                                 onClick: onEditPost },
         { icon: "🗑",  label: "Delete post",                               onClick: onDeletePost, danger: true },
       ]
     : [
-        { icon: "🏨",  label: "Open hotel page",                           href: `/hotels/${hotelId}` },
+        ...(hotelHref
+          ? [{ icon: "🏨", label: "Open hotel page", href: hotelHref }]
+          : []),
         { icon: "🚩",  label: "Report this reel",                          danger: true },
         { icon: "🚫",  label: "Not interested" },
       ];
@@ -3064,6 +3074,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           // Tagged hotel — viewers tap "Explore hotel" / Book / Bid on
           // user posts to land straight on the hotel's page.
           _userPostTaggedHotel: p.taggedHotel || null,
+          // v160 — same id, flattened for MoreMenu "Open hotel page".
+          _taggedHotelId: p.taggedHotel?.id || null,
           // Highlight bucket — surfaced on the profile-sheet highlight
           // grid so the user can browse their own reels by theme.
           _userPostHighlight: (p as any).highlight || null,
@@ -4223,7 +4235,18 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       <MoreMenu
         open={moreOpen.open}
         onClose={() => setMoreOpen({ open: false, id: "" })}
-        hotelId={moreOpen.id}
+        hotelHref={(() => {
+          // v160 — resolve a REAL hotel link. For a real hotel-feed card
+          // hotel.id is a genuine hotel id. For a user-post reel hotel.id
+          // is the social_posts row id, so we use the tagged hotel id
+          // instead (null when the reel tagged no hotel → row hidden).
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          if (!h) return null;
+          if (h._userPost) {
+            return h._taggedHotelId ? `/hotels/${h._taggedHotelId}` : null;
+          }
+          return `/hotels/${h.id}`;
+        })()}
         isUserPost={(() => {
           // Owner-gate: Edit / Delete only appear for the post AUTHOR.
           // Earlier (v79 and prior) this just checked `_userPost`, which

@@ -7,12 +7,13 @@
 // per the v78 design ask. The crown wheel still lives on every other page
 // (DialerNav.tsx hides itself on the routes this dock owns).
 //
-// 5 slots — mirrors Instagram's bottom row:
-//   🏠 Home    → /
-//   🎬 Reels   → /discover    (active on the reel pages)
-//   🎯 Bid     → /bid         (the "compose" / primary action slot)
-//   🏨 Hotels  → /hotels      (search / browse equivalent)
-//   👤 Profile → /profile
+// 6 slots:
+//   ⌂ Home    → /
+//   ⌕ Hotels  → /hotels      (search / browse)
+//   ⚡ Deals   → /flash-deals
+//   ◎ Bid     → /bid
+//   ▷ Reels   → /discover    (active on the reel pages)
+//   ○ You     → /me
 //
 // The dock is fixed at the bottom (above the system gesture bar), uses a
 // glassy blurred surface so the reel video still bleeds subtly through.
@@ -28,12 +29,15 @@ type Item = {
   iconActive?: string;
 };
 
+// Slot 2 = Hotels, slot 5 = Reels (swapped per the customer ask). Order is
+// the only thing that changed — isActive() keys off href, not index, so
+// every route/highlight still resolves correctly.
 const ITEMS: Item[] = [
   { href: "/",            label: "Home",    icon: "⌂",  iconActive: "⌂" },
-  { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
+  { href: "/hotels",      label: "Hotels",  icon: "⌕",  iconActive: "⌕" },
   { href: "/flash-deals", label: "Deals",   icon: "⚡", iconActive: "⚡" },
   { href: "/bid",         label: "Bid",     icon: "◎",  iconActive: "●" },
-  { href: "/hotels",      label: "Hotels",  icon: "⌕",  iconActive: "⌕" },
+  { href: "/discover",    label: "Reels",   icon: "▷",  iconActive: "▶" },
   { href: "/me",          label: "You",     icon: "○",  iconActive: "●" },
 ];
 
