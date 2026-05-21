@@ -13,6 +13,8 @@ import PartnerContentTab from "@/components/partner/PartnerContentTab";
 import CodeScanner from "@/components/partner/CodeScanner";
 // v170 — create / fully edit a room category from the dashboard.
 import RoomEditorModal from "@/components/partner/RoomEditorModal";
+// v170 — front-desk reservations module (Phase 1).
+import ReservationsTab from "@/components/partner/ReservationsTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -121,7 +123,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"availability"|"complaints"|"redeem"|"content"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"complaints"|"redeem"|"content"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -824,6 +826,8 @@ export default function PartnerDashboard() {
     { id:"rooms",     icon:"🏨", label:"Rooms"      },
     { id:"flash",     icon:"⚡", label:"Flash Deals"},
     { id:"bookings",  icon:"📅", label:"Bookings"   },
+    // v170 — front-desk reservations (walk-in / phone / group bookings).
+    { id:"reservations", icon:"🛎️", label:"Reservations" },
     { id:"availability", icon:"🗓️", label:"Availability" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
     { id:"complaints", icon:"🚩", label:`Complaints${complaintStats.open ? ` (${complaintStats.open})` : ""}` },
@@ -1154,6 +1158,7 @@ export default function PartnerDashboard() {
                   { id:"rooms",       icon:"🏨", label:"Rooms & Pricing", hint:`${rooms.length} room${rooms.length!==1?"s":""}`,             c:"#7c3aed", bg:"#f3e8ff" },
                   { id:"flash",       icon:"⚡", label:"Flash Deals",     hint: activeDeals.length>0?`${activeDeals.length} live`:"Create one", c:"#dc2626", bg:"#fee2e2" },
                   { id:"bookings",    icon:"📅", label:"Bookings",        hint:`${bookings.length} confirmed`,                                c:"#0d9488", bg:"#ccfbf1" },
+                  { id:"reservations",icon:"🛎️", label:"Reservations",    hint:"Walk-in & phone bookings",                                    c:"#7c2d12", bg:"#fde9d8" },
                   { id:"availability",icon:"🗓️", label:"Availability",    hint:"Calendar & PMS",                                              c:"#2563eb", bg:"#dbeafe" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
                   { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#c9911a", bg:"#fef9e7" },
@@ -1748,6 +1753,11 @@ export default function PartnerDashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ══════════════ FRONT DESK · RESERVATIONS ══════════════ */}
+        {tab === "reservations" && hotel?.id && (
+          <ReservationsTab hotelId={hotel.id} rooms={rooms} />
         )}
 
         {/* ══════════════ AVAILABILITY / PMS ══════════════
