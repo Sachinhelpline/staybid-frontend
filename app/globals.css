@@ -3534,6 +3534,27 @@ body.is-reel-page {
   margin: 12px 6px 10px;
 }
 
+/* v163.1 — merged one-line live pill in the hero */
+.bx-hero-livepill { flex-wrap: nowrap; gap: 6px; }
+.bx-hero-livepill-seg { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.bx-hero-livepill-seg b { color: var(--cozy-warm-dark); font-weight: 800; }
+.bx-hero-livepill-sep { color: var(--text-muted); opacity: 0.7; }
+
+/* v163.1 — smaller chip so bed/view fit a single tidy row */
+.bx-chip-sm { padding: 6px 13px; font-size: 0.74rem; }
+
+/* v163.1 — live auction: accepted tick + expired state */
+.bx-live-tick {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: #7f9269; color: #fff;
+  font-size: 0.62rem; font-weight: 900;
+  flex-shrink: 0;
+}
+.bx-live-head-ok { color: #5f7a4a; font-weight: 800; }
+.bx-live-card.is-expired { opacity: 0.5; }
+.bx-live-card.is-expired .bx-live-card-amt { color: var(--text-muted); }
+
 /* Tablet+: split hero passage gets a touch more room */
 @media (min-width: 640px) {
   .bx-hero-sub-right { font-size: 0.86rem; }
