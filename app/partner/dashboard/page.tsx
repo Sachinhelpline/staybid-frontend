@@ -3166,6 +3166,13 @@ export default function PartnerDashboard() {
             setSvcReqs((p) => [...p, { service_key: lockModal, kind: "activate", status: "pending" }]);
             setLockModal(null);
           }}
+          onUnlocked={() => {
+            // v178 — paid checkout succeeded; pull fresh entitlements so
+            // the now-unlocked service drops its 🔒 immediately.
+            const token = getToken();
+            if (token) refreshLive(token);
+            setLockModal(null);
+          }}
         />
       )}
     </div>

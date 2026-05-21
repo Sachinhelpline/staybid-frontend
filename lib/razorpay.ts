@@ -36,6 +36,69 @@ export class RazorpayError extends Error {
   }
 }
 
+// v178 — open the Razorpay modal for an order that was ALREADY created
+// server-side (with a server-validated amount). The caller verifies the
+// payment through its own endpoint — this helper does NOT hit
+// /api/razorpay/verify. Used by the partner service-subscription checkout
+// so the amount can never be tampered client-side.
+export interface OpenForOrderOptions {
+  orderId: string;
+  amountPaise: number;
+  keyId: string;
+  description?: string;
+  userName?: string;
+  userPhone?: string;
+  userEmail?: string;
+}
+
+export async function openRazorpayForOrder(
+  opts: OpenForOrderOptions,
+): Promise<RazorpayPaymentResult> {
+  const loaded = await loadScript();
+  if (!loaded) {
+    throw new RazorpayError(
+      "Razorpay script load nahi hua. Internet check karein aur retry karein.",
+    );
+  }
+  return new Promise<RazorpayPaymentResult>((resolve, reject) => {
+    const RazorpayCtor = (window as any).Razorpay;
+    if (!RazorpayCtor) {
+      reject(new RazorpayError("Razorpay checkout SDK missing on window"));
+      return;
+    }
+    const rzp = new RazorpayCtor({
+      key: opts.keyId,
+      order_id: opts.orderId,
+      amount: opts.amountPaise,
+      currency: "INR",
+      name: "StayBid",
+      description: opts.description || "Subscription",
+      image: "/favicon.ico",
+      prefill: {
+        name: opts.userName || "",
+        contact: opts.userPhone ? opts.userPhone.replace(/\D/g, "") : "",
+        email: opts.userEmail || "",
+      },
+      theme: { color: "#c9911a" },
+      handler: (response: RazorpayPaymentResult) => resolve(response),
+      modal: {
+        ondismiss: () => reject(new RazorpayError("__CANCELLED__")),
+        escape: true,
+        backdropclose: false,
+      },
+    });
+    try {
+      rzp.on?.("payment.failed", (resp: any) => {
+        const desc = resp?.error?.description || resp?.error?.reason || "Payment failed.";
+        reject(new RazorpayError(desc, resp?.error?.code || null));
+      });
+    } catch {
+      // Older SDK builds may not expose .on — safe to ignore.
+    }
+    rzp.open();
+  });
+}
+
 function loadScript(attempt = 0): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(false);
