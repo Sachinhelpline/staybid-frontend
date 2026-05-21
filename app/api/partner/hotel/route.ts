@@ -129,7 +129,12 @@ export async function PATCH(req: NextRequest) {
 
   const updates = await req.json();
   const allowed: Record<string, any> = {};
-  const fields = ["name","description","amenities","images","city","state","starRating"];
+  // v170 — property_type / meal_plans / addon_services let a hotel
+  // declare what it offers, so the categorized /bid auction targets it.
+  const fields = [
+    "name","description","amenities","images","city","state","starRating",
+    "property_type","meal_plans","addon_services",
+  ];
   for (const f of fields) { if (updates[f] !== undefined) allowed[f] = updates[f]; }
 
   // Update for any matching owner ID (across customer + onboarding pools)
