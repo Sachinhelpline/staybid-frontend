@@ -11,6 +11,8 @@ import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/Avai
 import PartnerContentTab from "@/components/partner/PartnerContentTab";
 // v170 — camera QR / barcode scanner for the Redeem Codes tab.
 import CodeScanner from "@/components/partner/CodeScanner";
+// v170 — create / fully edit a room category from the dashboard.
+import RoomEditorModal from "@/components/partner/RoomEditorModal";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -174,6 +176,8 @@ export default function PartnerDashboard() {
   const [savingRoom, setSavingRoom]   = useState("");
   const [savedRoom, setSavedRoom]     = useState("");
   const [aiPrices, setAiPrices]       = useState<Record<string, any>>({});
+  // v170 — room category create / edit modal
+  const [roomEditor, setRoomEditor]   = useState<{ mode: "create"|"edit"; room?: any } | null>(null);
 
   // Flash deal creation
   const [newDeal, setNewDeal]         = useState({ roomId:"", dealPrice:"", discount:"", durationHours:"24", maxRooms:"1" });
@@ -410,6 +414,33 @@ export default function PartnerDashboard() {
       if (!res.ok) throw new Error(d.error || "Upload failed");
       setRooms(prev => prev.map(r => r.id === roomId ? { ...r, images: d.room?.images || images } : r));
     } catch (e: any) { alert(e.message || "Image save failed"); }
+  }
+
+  // ── v170 — room category create / edit / delete ──────────────────────────
+  function onRoomSaved(room: any, mode: "create" | "edit") {
+    if (room) {
+      setRooms(prev =>
+        mode === "create"
+          ? [...prev, room]
+          : prev.map(r => (r.id === room.id ? { ...r, ...room } : r))
+      );
+    }
+    setRoomEditor(null);
+  }
+  async function deleteRoomCategory(roomId: string) {
+    if (!confirm("Is room category ko delete karein? Iske room numbers bhi hat jayenge.")) return;
+    const token = getToken();
+    try {
+      const res = await fetch(`/api/partner/rooms?id=${encodeURIComponent(roomId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.error || "Delete failed");
+      setRooms(prev => prev.filter(r => r.id !== roomId));
+    } catch (e: any) {
+      alert("❌ " + (e?.message || "Delete failed"));
+    }
   }
 
   // ── Create flash deal ────────────────────────────────────────────────────
@@ -1322,15 +1353,25 @@ export default function PartnerDashboard() {
         {/* ══════════════ ROOMS & PRICING ══════════════ */}
         {tab === "rooms" && (
           <div className="fade-up">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="sec-title text-xl">Rooms & Pricing</h2>
-              <div className="flex items-center gap-1.5 text-[0.6rem] text-luxury-400 font-bold uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />AI Live Engine
+            <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+              <div>
+                <h2 className="sec-title text-xl">Rooms &amp; Pricing</h2>
+                <div className="flex items-center gap-1.5 text-[0.58rem] text-luxury-400 font-bold uppercase tracking-widest mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />AI Live Engine
+                </div>
               </div>
+              <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">
+                ➕ Add Room Category
+              </button>
             </div>
 
             {rooms.length === 0 ? (
-              <div className="card-p text-center py-10 text-luxury-400">No rooms found.</div>
+              <div className="card-p text-center py-10">
+                <p className="text-3xl mb-2">🏨</p>
+                <p className="text-luxury-600 font-semibold text-sm">Abhi koi room category nahi hai</p>
+                <p className="text-luxury-400 text-xs mt-0.5 mb-3">Pehla room type add karke pricing set karo.</p>
+                <button onClick={() => setRoomEditor({ mode: "create" })} className="btn-gold">➕ Add Room Category</button>
+              </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
                 {rooms.map(r => {
@@ -1346,6 +1387,16 @@ export default function PartnerDashboard() {
                         <img src={img} alt={r.name||r.type} className="w-full h-full object-cover"
                           onError={(e: any) => { e.target.src="https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                        <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+                          <button onClick={() => setRoomEditor({ mode: "edit", room: r })}
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition">
+                            ✏️ Edit
+                          </button>
+                          <button onClick={() => deleteRoomCategory(r.id)}
+                            className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-red-600 hover:bg-white backdrop-blur-md transition">
+                            🗑
+                          </button>
+                        </div>
                         {ai && ds && (
                           <span className={`absolute top-3 right-3 text-[0.6rem] font-bold px-2.5 py-1 rounded-full border backdrop-blur-md bg-white/80 ${ds.text} ${ds.border}`}>
                             <span className={`inline-block w-1.5 h-1.5 rounded-full ${ds.dot} mr-1.5 ${ai.demandLevel==="Surge"?"animate-ping":""}`} />
@@ -2920,6 +2971,18 @@ export default function PartnerDashboard() {
           </div>
         );
       })()}
+
+      {/* ── v170 — Room category create / edit modal ── */}
+      {roomEditor && hotel?.id && (
+        <RoomEditorModal
+          mode={roomEditor.mode}
+          room={roomEditor.room}
+          hotelId={hotel.id}
+          token={getToken()}
+          onClose={() => setRoomEditor(null)}
+          onSaved={onRoomSaved}
+        />
+      )}
     </div>
   );
 }
