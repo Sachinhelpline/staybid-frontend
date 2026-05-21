@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sbCached } from "@/lib/sb-cache";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { HOTEL_CARD_COLS, ROOM_CARD_COLS } from "@/lib/sb-columns";
+// v168 — synthetic flash prices come from the unified pricing spine.
+import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
@@ -60,6 +62,16 @@ export async function GET(req: NextRequest) {
     sbCachedFetch(`hotels?select=${HOTEL_CARD_COLS}`, TTL_CATALOG),
     sbCachedFetch(`rooms?select=${ROOM_CARD_COLS}`, TTL_CATALOG),
   ]);
+
+  // v168 — pricing-spine flash prices for tonight. Used to price the
+  // SYNTHESIZED deals (real flash_deals rows stay hotel/cron-managed).
+  // Failure → empty map → synthetic path falls back to its legacy
+  // floor-discount formula, so the flash feed never breaks.
+  const spineDate = toISO(new Date());
+  const spineMap: Record<string, any> = await resolveSpinePrices(
+    rooms.map((r: any) => r.id),
+    spineDate,
+  ).catch(() => ({}));
 
   const now = Date.now();
   const activeOnly = dealsRaw.filter((d: any) => {
@@ -147,8 +159,20 @@ export async function GET(req: NextRequest) {
     if (!hotel) continue;
     const floor = Number(r.floorPrice) || 0;
     if (floor <= 0) continue;
-    const disc  = 12 + ((synthIdx++ * 7) % 14); // 12% – 25%
-    const ai    = Math.max(500, Math.round(floor * (100 - disc) / 100));
+    // v168 — synthetic flash price from the unified spine (flash_price =
+    // live_price − 20%, ≥ flash floor, ₹100-snapped, always below the
+    // market rate). Falls back to the legacy floor-discount formula when
+    // the spine has no row for this room.
+    const sp = spineMap[r.id];
+    let ai: number, disc: number;
+    if (sp && Number(sp.flashPrice) > 0) {
+      ai = Number(sp.flashPrice);
+      const ref = Number(sp.baseRate) || floor;
+      disc = ref > ai ? Math.round((1 - ai / ref) * 100) : 12;
+    } else {
+      disc = 12 + ((synthIdx++ * 7) % 14); // 12% – 25% (legacy fallback)
+      ai   = Math.max(500, Math.round(floor * (100 - disc) / 100));
+    }
     const c: Candidate = {
       id:         `auto-${r.id}`,
       hotelId:    r.hotelId,
@@ -256,8 +280,13 @@ export async function GET(req: NextRequest) {
         const free  = unitsFree(r.id);
         const floor = Number(r.floorPrice) || 0;
         if (floor <= 0) return null;
-        // Apply the same discount % as the headline so deal feel is consistent
-        const price = Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
+        // v168 — when the headline is a synthetic deal, price upgrades from
+        // the spine too (consistent with the headline). Real flash deals
+        // keep the legacy same-discount formula.
+        const usp = spineMap[r.id];
+        const price = (headline._synthetic && usp && Number(usp.flashPrice) > 0)
+          ? Number(usp.flashPrice)
+          : Math.max(500, Math.round(floor * (100 - headline.discount) / 100));
         return {
           roomId:        r.id,
           type:          r.type || r.name || "Room",
