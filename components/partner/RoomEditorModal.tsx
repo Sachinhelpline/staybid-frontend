@@ -112,7 +112,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
       onClick={onClose}>
       <div
         className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }}
+        style={{ maxHeight: "90dvh" }}
         onClick={(e) => e.stopPropagation()}>
 
         {/* header */}
@@ -132,7 +132,7 @@ export default function RoomEditorModal({ mode, room, hotelId, token, onClose, o
         </div>
 
         {/* body */}
-        <div className="overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
           {/* Basics */}
           <div className="space-y-2.5">
             <div>
