@@ -12,6 +12,15 @@ import { snap100 } from "@/lib/price-snap";
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v143 — flash-drawer modal tour triggered on card tap.
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
+// v160 — shared globe picker for the unified control bar.
+import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+
+// v160 — Sort options for the unified control-bar filter popover.
+const FD_SORT_OPTS: Array<{ v: "discount" | "price-asc" | "ending"; label: string }> = [
+  { v: "discount",  label: "Biggest discount" },
+  { v: "price-asc", label: "Price · low to high" },
+  { v: "ending",    label: "Ending soonest" },
+];
 
 /* ─────────────────────────────────────────────────────────────────
    Flash Deals · v52 — Live · Ultra-premium
@@ -152,6 +161,9 @@ function FlashDealsContent() {
   const [openId, setOpenId]   = useState<string | null>(null);
   const [pickedUpgrade, setPickedUpgrade] = useState<Record<string, string>>({}); // dealId → roomId
   const [hydrated, setHydrated] = useState(false);
+  // v160 — unified control bar: location globe + sort popover.
+  const [locOpen, setLocOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // 1-second tick (countdown)
   useEffect(() => {
@@ -195,17 +207,6 @@ function FlashDealsContent() {
     }, 30000);
     return () => clearInterval(t);
   }, [city, hydrated]);
-
-  // v159.3 — icon + label pairs matching /hotels CITY_PILLS.
-  const cities: Array<{ key: string; label: string; icon: string }> = [
-    { key: "",          label: "All",       icon: "🏔" },
-    { key: "Mussoorie", label: "Mussoorie", icon: "⛰️" },
-    { key: "Dhanaulti", label: "Dhanaulti", icon: "🌲" },
-    { key: "Rishikesh", label: "Rishikesh", icon: "🕉" },
-    { key: "Shimla",    label: "Shimla",    icon: "🌨" },
-    { key: "Manali",    label: "Manali",    icon: "🏂" },
-    { key: "Dehradun",  label: "Dehradun",  icon: "🌳" },
-  ];
 
   /* Live stats strip ------------------------------------------------------- */
   const stats = useMemo(() => {
@@ -284,44 +285,76 @@ function FlashDealsContent() {
         </div>
       </header>
 
-      {/* v159.5 — Slim sticky chrome: city pills + refine. Solid background
-          (no backdrop-blur leak). Hero above scrolls away first. */}
+      {/* v160 — Unified premium control bar. Centered (not full-bleed):
+          [📍 Location ▾] · [ live status ] · [⚙ Sort ▾]. */}
       <div className="fd-sticky">
         <div className="fd-sticky-inner">
-          <div className="fd-cities" data-autonext-self="fd-results">
-            {cities.map((c) => {
-              const active = (c.key === "" && !city) || c.key === city;
-              return (
-                <button
-                  key={c.key || "all"}
-                  type="button"
-                  onClick={() => {
-                    setCity(c.key);
-                    try { localStorage.setItem("sb_city", c.key); } catch {}
-                  }}
-                  className={`fd-cat ${active ? "fd-cat-active" : ""}`}
-                  aria-pressed={active}
-                >
-                  <span className="fd-cat-icon" aria-hidden="true">{c.icon}</span>
-                  <span className="fd-cat-label">{c.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="fd-refine">
-            <label className="fd-refine-chip">
-              <span className="fd-refine-eyebrow">Sort</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="fd-refine-select"
-                aria-label="Sort flash deals"
+          <div className="sb-cbar-wrap" data-autonext-self="fd-results">
+            <div className="sb-cbar">
+              {/* Location — 3D button, opens globe picker */}
+              <button
+                type="button"
+                className="sb-cbar-loc"
+                onClick={() => setLocOpen(true)}
+                aria-label="Change location"
               >
-                <option value="discount">Biggest discount</option>
-                <option value="price-asc">Price · low → high</option>
-                <option value="ending">Ending soonest</option>
-              </select>
-            </label>
+                <span className="sb-cbar-loc-pin" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
+                  </svg>
+                </span>
+                <span className="sb-cbar-loc-txt">{city || "All"}</span>
+                <span className="sb-cbar-loc-caret" aria-hidden="true">▾</span>
+              </button>
+
+              {/* Live status — center */}
+              <div className="sb-cbar-info" aria-hidden="true">
+                <span className="sb-cbar-info-dot" />
+                <span className="sb-cbar-info-txt">
+                  {loading
+                    ? "Loading deals…"
+                    : `${stats.dealsLive} live deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` · ${city}` : ""}`}
+                </span>
+              </div>
+
+              {/* Sort — 3D button, opens popover */}
+              <button
+                type="button"
+                className={`sb-cbar-filter ${sortBy !== "discount" ? "is-active" : ""}`}
+                onClick={() => setFilterOpen((o) => !o)}
+                aria-label="Sort flash deals"
+                aria-expanded={filterOpen}
+              >
+                <svg className="sb-cbar-filter-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" d="M4 6h16M7 12h10M10 18h4" />
+                </svg>
+                <span className="sb-cbar-filter-lbl">Sort</span>
+              </button>
+            </div>
+
+            {filterOpen && (
+              <>
+                <div className="sb-cbar-scrim" onClick={() => setFilterOpen(false)} />
+                <div className="sb-cbar-pop" role="dialog" aria-label="Sort flash deals">
+                  <div className="sb-cbar-pop-grp">
+                    <p className="sb-cbar-pop-h">Sort by</p>
+                    <div className="sb-cbar-pop-opts">
+                      {FD_SORT_OPTS.map((o) => (
+                        <button
+                          key={o.v}
+                          type="button"
+                          className={`sb-cbar-pop-opt ${sortBy === o.v ? "is-on" : ""}`}
+                          onClick={() => { setSortBy(o.v); setFilterOpen(false); }}
+                        >
+                          <span>{o.label}</span>
+                          {sortBy === o.v && <span aria-hidden="true">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -387,6 +420,13 @@ function FlashDealsContent() {
             router.push(url);
           }}
         />
+      )}
+
+      {/* v160 — Location globe picker, opened by the control-bar location
+          button. Writes sb_city + fires sb:city-change → the apply
+          listener above reflects it into `city` state. */}
+      {locOpen && (
+        <LocationGlobeModal activeCity={city} onClose={() => setLocOpen(false)} />
       )}
     </div>
   );
@@ -793,10 +833,10 @@ function FdStyles() {
       }
       .fd-sticky-inner {
         max-width: 1480px; margin: 0 auto;
-        padding: 6px 14px 4px;
+        padding: 10px 18px 11px;
       }
-      @media (min-width: 640px)  { .fd-sticky-inner { padding: 8px 22px 6px; } }
-      @media (min-width: 1024px) { .fd-sticky-inner { padding: 10px 32px 8px; } }
+      @media (min-width: 640px)  { .fd-sticky-inner { padding: 12px 24px 13px; } }
+      @media (min-width: 1024px) { .fd-sticky-inner { padding: 15px 32px 16px; } }
 
       .fd-dot-live {
         width: 7px; height: 7px; border-radius: 50%;
@@ -821,6 +861,7 @@ function FdStyles() {
       @media (min-width: 1024px) { .fd-hero-slim { padding: 16px 32px 10px; } }
       .fd-hero-line {
         display: flex; align-items: baseline; flex-wrap: wrap;
+        justify-content: center; text-align: center;
         gap: 6px; margin: 0;
         line-height: 1.25;
       }
@@ -868,7 +909,8 @@ function FdStyles() {
       }
       /* Stat strip — secondary tiny row under the title line. */
       .fd-hero-stats {
-        display: inline-flex; flex-wrap: wrap; align-items: center;
+        display: flex; flex-wrap: wrap; align-items: center;
+        justify-content: center;
         gap: 5px; margin-top: 4px;
         font-size: 0.66rem; color: var(--cozy-cocoa-soft, #6E5430);
       }

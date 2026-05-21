@@ -7,9 +7,18 @@ import { getHotelArea } from "@/lib/areas";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+
+// v160 — Sort options for the unified control-bar filter popover.
+const SORT_OPTS: Array<{ v: "default" | "price-asc" | "price-desc" | "rating"; label: string }> = [
+  { v: "default",    label: "Recommended" },
+  { v: "price-asc",  label: "Price · low to high" },
+  { v: "price-desc", label: "Price · high to low" },
+  { v: "rating",     label: "Top rated" },
+];
 
 // v159 — Airbnb-style explore. Multiple horizontally-scrolling rails grouped
 // by theme + city; a search/filter switches to the legacy responsive grid.
@@ -138,6 +147,9 @@ function HotelList() {
 
   // v159.8 — Multi-level search sheet state
   const [searchOpen, setSearchOpen] = useState(false);
+  // v160 — Unified control bar: location globe + filter popover.
+  const [locOpen, setLocOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [searchCheckIn, setSearchCheckIn] = useState("");
   const [searchCheckOut, setSearchCheckOut] = useState("");
   const [searchAdults, setSearchAdults] = useState(2);
@@ -520,87 +532,110 @@ function HotelList() {
         </p>
       </header>
 
-      {/* Sticky header — slim: search + categories + refine only. v159.5:
-          background is solid (no backdrop-blur leak) and sits below the
-          hero so the scroll story is hero-away → sticky-stuck. */}
+      {/* v160 — Unified premium control bar. Centered (not full-bleed):
+          [📍 Location ▾] · [ 🔍 Search ] · [⚙ Filter ▾]. Location opens the
+          globe picker; Filter opens a sort + star-rating popover. */}
       <div className="hxr-sticky">
         <div className="hxr-sticky-inner">
-          {/* v159.8 — Search pill is now a button. Tap opens full-screen
-              SearchSheet modal with Where / When / Who sections. Trigger
-              text shows the current state (city · dates · guest count). */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            className="hxr-search hxr-search-trigger"
-            aria-label="Open search"
-          >
-            <svg className="hxr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
-            <span className={`hxr-search-trigger-text ${(city || searchCheckIn || totalGuests !== 2) ? "hxr-search-trigger-active" : ""}`}>
-              {searchSummary}
-            </span>
-            <span className="hxr-search-trigger-glyph" aria-hidden="true">⌕</span>
-          </button>
-
-          {/* Category pills — icon + label, Airbnb-true: no boxed bg on
-              inactive, active gets a thin champagne underline. */}
-          <div className="hxr-cats" data-autonext-self="hotels-results">
-            {CITY_PILLS.map((c) => {
-              const active = c.key === city;
-              return (
-                <button
-                  key={c.key || "all"}
-                  type="button"
-                  onClick={() => {
-                    setCity(c.key);
-                    try { localStorage.setItem("sb_city", c.key); } catch {}
-                  }}
-                  className={`hxr-cat ${active ? "hxr-cat-active" : ""}`}
-                  aria-pressed={active}
-                >
-                  <span className="hxr-cat-icon" aria-hidden="true">{c.icon}</span>
-                  <span className="hxr-cat-label">{c.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Refine row */}
-          <div className="hxr-refine">
-            <label className="hxr-refine-chip">
-              <span className="hxr-refine-eyebrow">Sort</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="hxr-refine-select"
-                aria-label="Sort hotels"
+          <div className="sb-cbar-wrap">
+            <div className="sb-cbar">
+              {/* Location — 3D button, opens globe picker */}
+              <button
+                type="button"
+                className="sb-cbar-loc"
+                data-autonext-self="hotels-results"
+                onClick={() => setLocOpen(true)}
+                aria-label="Change location"
               >
-                <option value="default">Recommended</option>
-                <option value="price-asc">Price · low → high</option>
-                <option value="price-desc">Price · high → low</option>
-                <option value="rating">Top rated</option>
-              </select>
-            </label>
-            {[5, 4, 3].map((s) => {
-              const active = selectedStars.has(s);
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleStar(s)}
-                  className={`hxr-star-chip ${active ? "hxr-star-active" : ""}`}
-                  aria-pressed={active}
-                  aria-label={`Filter ${s} star hotels`}
-                >
-                  {s}★
-                </button>
-              );
-            })}
-            {filtersActive && (
-              <button type="button" onClick={resetFilters} className="hxr-reset">
-                ✕ Reset
+                <span className="sb-cbar-loc-pin" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
+                  </svg>
+                </span>
+                <span className="sb-cbar-loc-txt">{city || "All"}</span>
+                <span className="sb-cbar-loc-caret" aria-hidden="true">▾</span>
               </button>
+
+              {/* Search — center, taps open the zoom-in search sheet */}
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="sb-cbar-search"
+                aria-label="Open search"
+              >
+                <svg className="sb-cbar-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <span className={`sb-cbar-search-txt ${(city || searchCheckIn || totalGuests !== 2) ? "is-set" : ""}`}>
+                  {searchSummary}
+                </span>
+                <span className="sb-cbar-search-kbd" aria-hidden="true">⌕</span>
+              </button>
+
+              {/* Filter — 3D button, opens sort + star popover */}
+              <button
+                type="button"
+                className={`sb-cbar-filter ${filtersActive ? "is-active" : ""}`}
+                onClick={() => setFilterOpen((o) => !o)}
+                aria-label="Sort and filter"
+                aria-expanded={filterOpen}
+              >
+                <svg className="sb-cbar-filter-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" d="M4 6h16M7 12h10M10 18h4" />
+                </svg>
+                <span className="sb-cbar-filter-lbl">Filter</span>
+                {((sortBy !== "default" ? 1 : 0) + selectedStars.size) > 0 && (
+                  <span className="sb-cbar-filter-badge">
+                    {(sortBy !== "default" ? 1 : 0) + selectedStars.size}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Filter popover — sort options + star toggles */}
+            {filterOpen && (
+              <>
+                <div className="sb-cbar-scrim" onClick={() => setFilterOpen(false)} />
+                <div className="sb-cbar-pop" role="dialog" aria-label="Sort and filter">
+                  <div className="sb-cbar-pop-grp">
+                    <p className="sb-cbar-pop-h">Sort by</p>
+                    <div className="sb-cbar-pop-opts">
+                      {SORT_OPTS.map((o) => (
+                        <button
+                          key={o.v}
+                          type="button"
+                          className={`sb-cbar-pop-opt ${sortBy === o.v ? "is-on" : ""}`}
+                          onClick={() => setSortBy(o.v)}
+                        >
+                          <span>{o.label}</span>
+                          {sortBy === o.v && <span aria-hidden="true">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="sb-cbar-pop-grp">
+                    <p className="sb-cbar-pop-h">Star rating</p>
+                    <div className="sb-cbar-pop-stars">
+                      {[5, 4, 3].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={`sb-cbar-pop-star ${selectedStars.has(s) ? "is-on" : ""}`}
+                          onClick={() => toggleStar(s)}
+                          aria-pressed={selectedStars.has(s)}
+                        >
+                          {s} ★
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {filtersActive && (
+                    <button type="button" className="sb-cbar-pop-reset" onClick={resetFilters}>
+                      ✕ Reset all
+                    </button>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -973,6 +1008,13 @@ function HotelList() {
           setCalOpen(false);
         }}
       />
+
+      {/* v160 — Location globe picker, opened by the control-bar location
+          button. Writes sb_city + fires sb:city-change, which the
+          applyCity listener above reflects into `city` state. */}
+      {locOpen && (
+        <LocationGlobeModal activeCity={city} onClose={() => setLocOpen(false)} />
+      )}
     </div>
   );
 }
@@ -1232,11 +1274,29 @@ export default function HotelsPage() {
           </header>
           <div className="hxr-sticky">
             <div className="hxr-sticky-inner">
-              <div className="hxr-search">
-                <svg className="hxr-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                <input className="hxr-search-input" placeholder="Where to next? Search city or hotel…" disabled aria-label="Search hotels" />
+              <div className="sb-cbar-wrap">
+                <div className="sb-cbar">
+                  <span className="sb-cbar-loc">
+                    <span className="sb-cbar-loc-pin" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" />
+                      </svg>
+                    </span>
+                    <span className="sb-cbar-loc-txt">All</span>
+                  </span>
+                  <span className="sb-cbar-search">
+                    <svg className="sb-cbar-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                    <span className="sb-cbar-search-txt">Where to next? Search city or hotel…</span>
+                  </span>
+                  <span className="sb-cbar-filter">
+                    <svg className="sb-cbar-filter-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" d="M4 6h16M7 12h10M10 18h4" />
+                    </svg>
+                    <span className="sb-cbar-filter-lbl">Filter</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
