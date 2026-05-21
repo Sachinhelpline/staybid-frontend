@@ -5810,6 +5810,93 @@ Tier System is complete and waiting for the merge signal.
 
 ---
 
+## Service Subscription Billing Era (v159.22 → v159.26, 2026-05-21)
+
+Five phases (PRs #76–#79 + Phase 5) building a paid-subscription access
+layer over the partner panel. Every partner tab is now either a free
+default service or a locked subscription service.
+
+### Service model
+- **Default services** (free for every hotel, always): Bids, Rooms,
+  Bookings, Availability, Complaints, Content, Profile.
+- **Subscription services** (locked until granted): Flash Deals,
+  Reservations, Housekeeping, Billing, F&B Menu, F&B QR, Guest CRM,
+  Reports, Redeem, Channels, Staff, Verification.
+- Locked tabs + hub tiles show 🔒; unlocked tiles sort to the top of
+  "Manage your property". Trial/paid expiry is **lazy** — derived from
+  `hotel_services.expires_at` on read, no cron.
+
+### Phase 1 (#76) — Entitlements + access requests
+- Tapping a locked service → modal with 3 options: Activate · Show
+  charges · Request free trial → raises an admin request.
+- Admin → new "Service Access" page: pending-request queue with Approve
+  (free / 7 / 14 / 30 / 90-day trial) + Reject, plus granted-entitlement
+  list with Revoke.
+- API: `/api/partner/services` (GET state + POST request),
+  `/api/admin/service-requests` (GET queue + POST approve/reject/grant/revoke).
+- Migration `2026-05-21-hotel-services.sql` — `hotel_services`,
+  `service_requests`.
+
+### Phase 2 (#77) — Pricing config + bundles
+- `/admin/services` gets a "Pricing" tab: per-service monthly /
+  quarterly / yearly price + bundle plans (name + picked services + 3
+  prices).
+- "Show charges" in the lock modal shows real prices + any bundle that
+  includes the service.
+- Admin can approve a request as a PAID plan (Monthly/Quarterly/Yearly)
+  — `grantService` records `access_type=paid` + plan + term expiry.
+- API: `/api/admin/service-pricing` (GET/POST price + bundle CRUD).
+- Migration `2026-05-21-service-pricing.sql` — `service_pricing`,
+  `service_bundles`.
+
+### Phase 3 (#78) — Razorpay subscription billing
+- "Activate" on a priced service → plan picker → Razorpay payment →
+  instant unlock. Unpriced services still raise an admin request.
+- New `/api/partner/service-checkout`: **create** (server-validated
+  amount → Razorpay order — client never picks the amount, tamper-safe)
+  + **verify** (HMAC check → grant `hotel_services` with `access_type=paid`,
+  plan, term `expires_at`).
+- `openRazorpayForOrder()` helper in `lib/razorpay.ts` — opens the modal
+  for a server-created order without re-running `/api/razorpay/verify`.
+- A paid grant auto-approves any pending admin request for that service.
+- Migration `2026-05-21-service-payments.sql` — `service_payments`.
+
+### Phase 4 (#79) — Renewal banner + Renew flow
+- `ServiceRenewBanner` — surfaces any paid/trial service expiring within
+  7 days (or already expired) at the top of the dashboard. Renew →
+  re-opens checkout.
+- `ServiceLockModal` gains a **renew mode** (🔄 header, jumps straight to
+  the plan picker).
+- `service-checkout` create stacks a renewal term on top of remaining
+  days — renewing early never loses time. No new migration.
+
+### Phase 5 — Payment history + admin revenue (v159.26)
+- Partner: `GET /api/partner/service-checkout` returns the hotel's
+  payment rows. `SubscriptionBillingModal` — payment history +
+  printable receipt. Profile tab → "Subscription Billing" card.
+- Admin: `GET /api/admin/service-payments` — all payments + revenue
+  totals. Service Access page gains a "Payments" view (4 KPI cards +
+  paid/all filter + list). No new migration.
+
+### New Supabase tables (this era)
+| Table | Phase | Purpose |
+|---|---|---|
+| `hotel_services` | 1 | Per-hotel service grants (access_type, plan, expires_at) |
+| `service_requests` | 1 | Partner→admin access requests |
+| `service_pricing` | 2 | Per-service monthly/quarterly/yearly price |
+| `service_bundles` | 2 | Named bundle plans |
+| `service_payments` | 3 | Razorpay subscription purchase ledger |
+
+### Things to avoid (Service Billing era)
+- **Never** let the client pick the checkout amount — `service-checkout`
+  create validates the amount server-side against `service_pricing`.
+- **Never** add a cron for trial/paid expiry — it's lazy by design
+  (`expires_at` read check). A cron would just duplicate that.
+- **Never** lock a default service (Bids/Rooms/Bookings/Availability/
+  Complaints/Content/Profile). They are free for every hotel forever.
+
+---
+
 ## Content Auto-Verify — Booking ID is the Proof (v160, 2026-05-21)
 
 Sachin's directive: a public user who uploads content (reel / photo / story)
@@ -5849,8 +5936,10 @@ app/api/social/posts/community/route.ts        # PENDING_ADMIN_REVIEW + escalate
 app/api/partner/content/pending/route.ts        # repurposed → published guest content (read-only)
 app/api/partner/content/[id]/route.ts            # actions reduced to { action:"report" } → escalates to admin
 components/partner/PartnerContentTab.tsx          # read-only "Guest Content" gallery + 🚩 Report modal
-app/partner/dashboard/page.tsx                     # tab label "Content Reviews" → "Guest Content"
-app/layout.tsx                                      # SB_BUILD v160 + badge
+components/tier/UpgradeChoiceSheet.tsx             # copy fix — "publishes instantly" / team-checked
+lib/tier/eligibility.ts                             # eligible from check-in (see v160 addendum below)
+app/partner/dashboard/page.tsx                       # tab label "Content Reviews" → "Guest Content"
+app/layout.tsx                                        # SB_BUILD v160 + badge
 ```
 
 ### Flow after v160
