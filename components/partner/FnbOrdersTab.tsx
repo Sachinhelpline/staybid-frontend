@@ -6,10 +6,15 @@
 // with a QR code. Guests scan the QR → public /order/<id> menu page.
 // Phase 3 adds the incoming-orders verification queue to this tab.
 //
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
+}
+function fmtCur(n: number) { return "₹" + Math.round(n || 0).toLocaleString("en-IN"); }
+function fmtTime(s: string) {
+  if (!s) return "";
+  return new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 const OUTLET_TYPE: Record<string, { label: string; icon: string; desc: string }> = {
@@ -36,9 +41,12 @@ function QRImg({ url, size }: { url: string; size: number }) {
 
 export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; hotelName: string }) {
   const [outlets, setOutlets] = useState<any[]>([]);
+  const [orders, setOrders]   = useState<any[]>([]);
+  const [folios, setFolios]   = useState<any[]>([]);
   const [provisioned, setProvisioned] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; outlet?: any } | null>(null);
+  const [verifyOrder, setVerifyOrder] = useState<any>(null);
   const [origin, setOrigin] = useState("");
   const [toast, setToast] = useState("");
 
@@ -47,19 +55,41 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
   const load = useCallback(async () => {
     if (!hotelId) return;
     try {
-      const r = await fetch(`/api/partner/outlets?hotelId=${encodeURIComponent(hotelId)}`, {
-        headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store",
-      });
-      const d = await r.json().catch(() => ({}));
-      setOutlets(d.outlets || []);
-      setProvisioned(d.provisioned !== false);
+      const [oR, ordR] = await Promise.all([
+        fetch(`/api/partner/outlets?hotelId=${encodeURIComponent(hotelId)}`, { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" }),
+        fetch(`/api/partner/orders?hotelId=${encodeURIComponent(hotelId)}`, { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" }),
+      ]);
+      const od = await oR.json().catch(() => ({}));
+      const ordD = await ordR.json().catch(() => ({}));
+      setOutlets(od.outlets || []);
+      setProvisioned(od.provisioned !== false);
+      setOrders(ordD.orders || []);
+      setFolios(ordD.folios || []);
     } catch { /* keep */ }
     finally { setLoading(false); }
   }, [hotelId]);
 
   useEffect(() => { load(); }, [load]);
 
+  // refresh incoming orders every 30s so the desk sees new ones
+  useEffect(() => {
+    const t = setInterval(() => { load(); }, 30_000);
+    return () => clearInterval(t);
+  }, [load]);
+
   function showToast(m: string) { setToast(m); setTimeout(() => setToast(""), 2200); }
+
+  async function rejectOrder(id: string) {
+    if (!confirm("Yeh order reject karein?")) return;
+    setOrders((p) => p.map((o) => (o.id === id ? { ...o, status: "rejected" } : o)));
+    try {
+      await fetch("/api/partner/orders", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id, action: "reject" }),
+      });
+    } catch { load(); }
+  }
   const orderUrl = (id: string) => `${origin}/order/${id}`;
 
   async function toggleOutlet(o: any) {
@@ -121,6 +151,11 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
         </div>
       )}
 
+      {/* ── incoming orders ── */}
+      <OrdersSection orders={orders} onVerify={(o: any) => setVerifyOrder(o)} onReject={rejectOrder} />
+
+      <p className="text-[0.78rem] font-bold text-luxury-900 mt-4 mb-2">Outlets &amp; QR codes</p>
+
       {loading ? (
         <div className="card-p text-center py-10 text-luxury-400 text-sm">Loading…</div>
       ) : outlets.length === 0 ? (
@@ -174,6 +209,11 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
       {editor && (
         <OutletEditor mode={editor.mode} outlet={editor.outlet} hotelId={hotelId}
           onClose={() => setEditor(null)} onSaved={() => { setEditor(null); load(); }} />
+      )}
+      {verifyOrder && (
+        <VerifyModal order={verifyOrder} folios={folios}
+          onClose={() => setVerifyOrder(null)}
+          onDone={(msg: string) => { setVerifyOrder(null); showToast(msg); load(); }} />
       )}
 
       {toast && (
@@ -248,6 +288,174 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
         <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
           <button onClick={save} disabled={saving} className="btn-gold flex-1">{saving ? "Saving…" : "Save Outlet"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── incoming orders ────────────────────────────────────────────────────────
+function OrdersSection({ orders, onVerify, onReject }: any) {
+  const pending = (orders || []).filter((o: any) => o.status === "pending");
+  const recent  = (orders || []).filter((o: any) => o.status !== "pending").slice(0, 12);
+  const [showRecent, setShowRecent] = useState(false);
+
+  return (
+    <div className="card-p">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[0.78rem] font-bold text-luxury-900">Incoming Food Orders</p>
+        {pending.length > 0 && (
+          <span className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse">
+            {pending.length} pending
+          </span>
+        )}
+      </div>
+      {pending.length === 0 ? (
+        <p className="text-xs text-luxury-400 py-2">Koi naya order nahi — QR se order aate hi yahan dikhega.</p>
+      ) : (
+        <div className="space-y-2">
+          {pending.map((o: any) => (
+            <OrderCard key={o.id} o={o} pending onVerify={onVerify} onReject={onReject} />
+          ))}
+        </div>
+      )}
+      {recent.length > 0 && (
+        <>
+          <button onClick={() => setShowRecent((s) => !s)} className="text-[0.68rem] font-bold text-gold-600 mt-2">
+            {showRecent ? "▾ Hide" : "▸ Show"} recent orders ({recent.length})
+          </button>
+          {showRecent && (
+            <div className="space-y-1.5 mt-1.5">
+              {recent.map((o: any) => <OrderCard key={o.id} o={o} onVerify={onVerify} onReject={onReject} />)}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function OrderCard({ o, pending, onVerify, onReject }: any) {
+  const items: any[] = Array.isArray(o.items) ? o.items : [];
+  const st = o.status === "added_to_folio" ? { label: "Billed", bg: "#dcfce7", c: "#15803d" }
+    : o.status === "rejected" ? { label: "Rejected", bg: "#fee2e2", c: "#b91c1c" }
+    : { label: "Pending", bg: "#fef3c7", c: "#b45309" };
+  return (
+    <div className="rounded-xl border border-luxury-100 p-2.5" style={{ background: pending ? "#fffdf6" : "#fff" }}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-[0.82rem] font-bold text-luxury-900">📍 {o.location || "—"}</p>
+            <span className="text-[0.52rem] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.bg, color: st.c }}>{st.label}</span>
+          </div>
+          <p className="text-[0.62rem] text-luxury-500">
+            {o.outlet_name || "Menu"} · {fmtTime(o.created_at)}{o.guest_name ? ` · ${o.guest_name}` : ""}{o.guest_phone ? ` · ${o.guest_phone}` : ""}
+          </p>
+        </div>
+        <p className="text-[0.84rem] font-bold text-luxury-900 shrink-0">{fmtCur(o.items_total)}</p>
+      </div>
+      <div className="mt-1.5 space-y-0.5">
+        {items.map((it: any) => (
+          <p key={it.id} className="text-[0.68rem] text-luxury-600">
+            {it.qty}× {it.item_name}{it.portion ? ` (${it.portion})` : ""} <span className="text-luxury-400">— {fmtCur(it.amount)}</span>
+          </p>
+        ))}
+      </div>
+      {o.note && <p className="text-[0.62rem] text-blue-600 italic mt-1">📝 {o.note}</p>}
+      {pending && (
+        <div className="flex gap-1.5 mt-2">
+          <button onClick={() => onVerify(o)} className="btn-gold !px-3 !py-1.5 text-[0.72rem] flex-1">✓ Verify &amp; Bill</button>
+          <button onClick={() => onReject(o.id)}
+            className="btn-ghost !px-3 !py-1.5 text-[0.72rem] !text-red-600 hover:!border-red-300">Reject</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── verify → pick the billing folio ────────────────────────────────────────
+function VerifyModal({ order, folios, onClose, onDone }: any) {
+  const loc = String(order.location || "").toLowerCase().trim();
+  const sorted = useMemo(() => {
+    const txt = (f: any) => `${f.room_label || ""} ${f.guest_name || ""} ${f.guest_phone || ""}`.toLowerCase();
+    return [...(folios || [])].sort((a, b) => {
+      const am = loc && txt(a).includes(loc) ? 0 : 1;
+      const bm = loc && txt(b).includes(loc) ? 0 : 1;
+      return am - bm;
+    });
+  }, [folios, loc]);
+  const [target, setTarget] = useState<string>("");   // "" = new folio
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const items: any[] = Array.isArray(order.items) ? order.items : [];
+
+  async function go() {
+    setSaving(true); setErr("");
+    try {
+      const r = await fetch("/api/partner/orders", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: order.id, action: "verify", ...(target ? { folioId: target } : { createFolio: true }) }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || "Verify failed");
+      onDone(`✓ ${d.charges || 0} item${d.charges === 1 ? "" : "s"} folio me add ho gaye`);
+    } catch (e: any) { setErr(e?.message || "Verify failed"); setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+      style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
+          <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>Verify &amp; Bill</p>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
+          {/* order recap */}
+          <div className="rounded-xl bg-luxury-50 p-2.5">
+            <p className="text-[0.74rem] font-bold text-luxury-900">📍 {order.location || "—"} · {fmtCur(order.items_total)}</p>
+            {items.map((it: any) => (
+              <p key={it.id} className="text-[0.66rem] text-luxury-600">{it.qty}× {it.item_name}{it.portion ? ` (${it.portion})` : ""}</p>
+            ))}
+          </div>
+
+          <p className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest">Bill in folio</p>
+          <div className="space-y-1.5">
+            {/* new folio option */}
+            <button type="button" onClick={() => setTarget("")}
+              className="w-full text-left rounded-xl p-2.5 transition-all"
+              style={{ background: target === "" ? "#fff8e6" : "#fff", border: `1.5px solid ${target === "" ? "#c9911a" : "#e6ddc8"}` }}>
+              <p className="text-[0.78rem] font-bold text-luxury-900">{target === "" ? "● " : "○ "}🆕 New folio</p>
+              <p className="text-[0.62rem] text-luxury-500 mt-0.5">
+                {order.guest_name || `Room ${order.location || "—"}`} ke naam se naya bill khulega
+              </p>
+            </button>
+            {sorted.map((f: any, i: number) => {
+              const on = target === f.id;
+              const suggested = loc && `${f.room_label || ""} ${f.guest_name || ""}`.toLowerCase().includes(loc);
+              return (
+                <button key={f.id} type="button" onClick={() => setTarget(f.id)}
+                  className="w-full text-left rounded-xl p-2.5 transition-all"
+                  style={{ background: on ? "#fff8e6" : "#fff", border: `1.5px solid ${on ? "#c9911a" : "#e6ddc8"}` }}>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[0.78rem] font-bold text-luxury-900">{on ? "● " : "○ "}{f.guest_name || "Guest"}</p>
+                    {suggested && <span className="text-[0.5rem] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">MATCH</span>}
+                  </div>
+                  <p className="text-[0.62rem] text-luxury-500 mt-0.5">{f.room_label || "—"}{f.guest_phone ? ` · ${f.guest_phone}` : ""}</p>
+                </button>
+              );
+            })}
+          </div>
+          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
+          <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+          <button onClick={go} disabled={saving} className="btn-gold flex-1">
+            {saving ? "Billing…" : "✓ Verify & Add to Folio"}
+          </button>
         </div>
       </div>
     </div>
