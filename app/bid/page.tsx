@@ -592,18 +592,36 @@ export default function BidPage() {
           ) || rooms[0];
           if (!room) throw new Error(`${hotel.name}: no rooms`);
 
-          // ── v164 auction pricing ────────────────────────────────────
+          // ── v166 auction pricing — sourced from the pricing spine ───
           // floor      = hotel's negotiation floor (won't go below)
-          // livePrice  = StayBid's own dynamic rate for this room/date
-          //              (same demand engine the hotel page uses)
+          // livePrice  = StayBid's own dynamic rate for this room/date.
+          //              v166: read from the unified spine (room_date_price
+          //              → competitor-undercut + per-date vacancy baked
+          //              in). Falls back to the local demand engine if the
+          //              spine is unreachable, so the auction never breaks.
           // dealPrice  = the auction result — ALWAYS ≥8% under livePrice,
           //              never below floor, never above the customer's
-          //              ceiling. Since StayBid's livePrice already sits
-          //              below every OTA, a deal under it is the lowest
-          //              price anywhere — the platform's promise.
-          const floor = Number(room.floorPrice) || 0;
-          const dyn = calculateDynamicPrice(floor || 1000, checkInISO, form.city);
-          const livePrice = Math.max(floor, dyn.price);
+          //              ceiling. Since livePrice already sits below every
+          //              OTA, a deal under it is the lowest price anywhere.
+          const roomFloor = Number(room.floorPrice) || 0;
+          let floor = roomFloor;
+          let livePrice = 0;
+          try {
+            const sp = await fetch("/api/pricing/spine", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ roomIds: [room.id], date: form.checkIn }),
+            }).then((r) => r.json());
+            const p = sp?.prices?.[room.id];
+            if (p && Number(p.livePrice) > 0) {
+              livePrice = Number(p.livePrice);
+              if (Number(p.bidFloor) > 0) floor = Number(p.bidFloor);
+            }
+          } catch { /* spine unreachable — fall back below */ }
+          if (livePrice <= 0) {
+            const dyn = calculateDynamicPrice(roomFloor || 1000, checkInISO, form.city);
+            livePrice = Math.max(roomFloor, dyn.price);
+          }
           const mrp = Number(room.mrp) || Math.round(livePrice * 1.6);
           const maxDeal = snap100(livePrice * 0.92);
           const accepted = floor > 0 ? budget >= floor : true;
