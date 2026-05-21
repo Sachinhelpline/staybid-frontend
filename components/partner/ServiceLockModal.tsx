@@ -26,19 +26,20 @@ const PLAN_LABEL: Record<string, string> = { monthly: "Monthly", quarterly: "Qua
 const PLAN_TERM: Record<string, string> = { monthly: "1 month", quarterly: "3 months", yearly: "12 months" };
 
 export default function ServiceLockModal({
-  serviceKey, hotelId, pendingRequest, pricing, bundles, onClose, onRequested, onUnlocked,
+  serviceKey, hotelId, pendingRequest, pricing, bundles, renew, onClose, onRequested, onUnlocked,
 }: {
   serviceKey: string;
   hotelId: string;
   pendingRequest?: { kind?: string } | null;
   pricing?: { monthly?: number | null; quarterly?: number | null; yearly?: number | null } | null;
   bundles?: any[];
+  renew?: boolean;
   onClose: () => void;
   onRequested: () => void;
   onUnlocked?: () => void;
 }) {
   const [showCharges, setShowCharges] = useState(false);
-  const [mode, setMode] = useState<"choose" | "plans">("choose");
+  const [mode, setMode] = useState<"choose" | "plans">(renew ? "plans" : "choose");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const label = SERVICE_LABEL[serviceKey] || serviceKey;
@@ -121,7 +122,7 @@ export default function ServiceLockModal({
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
-          <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>🔒 {label}</p>
+          <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>{renew ? "🔄" : "🔒"} {label}</p>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
         </div>
@@ -137,10 +138,11 @@ export default function ServiceLockModal({
             </div>
           ) : mode === "plans" ? (
             <>
-              <button onClick={() => { setMode("choose"); setErr(""); }}
+              <button onClick={() => { if (renew) { onClose(); } else { setMode("choose"); setErr(""); } }}
                 className="text-[0.7rem] text-luxury-500 mb-2">‹ Wapas</button>
               <p className="text-[0.78rem] text-luxury-600 mb-3">
-                <b>{label}</b> ke liye apna plan choose karo. Payment ke turant baad service unlock ho jayegi.
+                <b>{label}</b> {renew ? "ko renew karne ke liye plan choose karo" : "ke liye apna plan choose karo"}.
+                Payment ke turant baad service {renew ? "renew" : "unlock"} ho jayegi.
               </p>
 
               {hasPrice && (

@@ -27,6 +27,7 @@ import MenuBuilderTab from "@/components/partner/MenuBuilderTab";
 import FnbOrdersTab from "@/components/partner/FnbOrdersTab";
 // v176 — service entitlements (locked subscription services).
 import ServiceLockModal from "@/components/partner/ServiceLockModal";
+import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
 import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
@@ -1070,6 +1071,14 @@ export default function PartnerDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-5 py-6">
+
+        {/* v178 — paid/trial subscription expiry warning + Renew */}
+        {svcLoaded && (
+          <ServiceRenewBanner
+            entitlements={svcEnt}
+            onRenew={(key) => setLockModal(key)}
+          />
+        )}
 
         {/* ══════════════ OVERVIEW ══════════════ */}
         {tab === "overview" && (() => {
@@ -3161,6 +3170,7 @@ export default function PartnerDashboard() {
           pendingRequest={svcReqs.find((r: any) => r.service_key === lockModal) || null}
           pricing={svcPricing.find((p: any) => p.service_key === lockModal) || null}
           bundles={svcBundles}
+          renew={["paid", "trial"].includes(svcEnt[lockModal]?.accessType)}
           onClose={() => setLockModal(null)}
           onRequested={() => {
             setSvcReqs((p) => [...p, { service_key: lockModal, kind: "activate", status: "pending" }]);
