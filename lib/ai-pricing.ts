@@ -33,16 +33,19 @@ export interface DynamicPriceResult {
 }
 
 // ── Seasonal demand for Uttarakhand/Himachal hill stations (month 0–11) ──────
+// v169 — June corrected: it is FULL (summer school vacation, monsoon does
+// not arrive until 15 Jul). The monsoon discount is now a date-precise
+// window (getMonsoonMult), not a blunt month value.
 const SEASON_MULT: number[] = [
   0.95,  // Jan  — cold, low occupancy
   0.88,  // Feb  — off-season
   1.02,  // Mar  — Holi, spring begins
   1.20,  // Apr  — spring peak, schools on vacation soon
   1.32,  // May  — summer peak (Delhi/NCR escaping heat)
-  0.72,  // Jun  — monsoon starts, landslide risk
-  0.68,  // Jul  — heavy monsoon, lowest demand
-  0.78,  // Aug  — Independence Day bump, monsoon waning
-  0.84,  // Sep  — monsoon end, mild
+  1.10,  // Jun  — FULL: summer school vacation, monsoon not until 15 Jul
+  0.95,  // Jul  — early Jul busy; monsoon discount (15 Jul+) is date-precise
+  0.88,  // Aug  — monsoon
+  0.90,  // Sep  — monsoon tail / clearing
   1.40,  // Oct  — peak autumn, Navratri/Dussehra, clearest skies
   1.48,  // Nov  — Diwali season, peak of peak
   1.35,  // Dec  — Christmas, New Year, snowfall starts
@@ -70,10 +73,67 @@ const EVENTS: EventWindow[] = [
   { months: [12], days: [24,25,26,27,28,29,30,31],                    mult: 1.48, name: "Christmas & New Year" },
   { months: [1],  days: [1,2],                                        mult: 1.45, name: "New Year" },
   { months: [3],  days: [14,15,16,17,18,19],                          mult: 1.32, name: "Holi" },
-  { months: [8],  days: [14,15,16,17],                                mult: 1.22, name: "Independence Day" },
-  { months: [1],  days: [25,26,27],                                   mult: 1.18, name: "Republic Day" },
   { months: [4],  days: [13,14,15],                                   mult: 1.25, name: "Baisakhi / Dr Ambedkar Jayanti" },
 ];
+// v169 — Independence Day + Republic Day removed from EVENTS: they are
+// now driven by the day-of-week-aware long-weekend engine below, so the
+// surge lands on the actual long-weekend dates instead of a blunt
+// fixed 3-day window.
+
+// ── Gazetted national holidays (fixed-date) — drive long-weekend surge ──
+const GAZETTED_HOLIDAYS: { month: number; day: number; name: string }[] = [
+  { month: 1,  day: 26, name: "Republic Day" },
+  { month: 8,  day: 15, name: "Independence Day" },
+  { month: 10, day: 2,  name: "Gandhi Jayanti" },
+];
+
+// When a holiday touches a weekend it forms a long weekend — the single
+// biggest demand driver for hill stations. Returns a surge for every
+// date inside that window (holiday + weekend + any bridge day).
+function getLongWeekendMult(date: Date): { mult: number; name: string | null } {
+  const y = date.getFullYear();
+  const t = new Date(y, date.getMonth(), date.getDate()).getTime();
+  for (const h of GAZETTED_HOLIDAYS) {
+    const w = new Date(y, h.month - 1, h.day).getDay(); // 0 Sun … 6 Sat
+    let startOff = 0, endOff = 0, isLong = true;
+    if      (w === 5) { startOff = 0;  endOff = 2;  }   // Fri → Fri-Sun
+    else if (w === 1) { startOff = -2; endOff = 0;  }   // Mon → Sat-Mon
+    else if (w === 4) { startOff = 0;  endOff = 3;  }   // Thu → Thu-Sun (Fri bridge)
+    else if (w === 2) { startOff = -3; endOff = 0;  }   // Tue → Sat-Tue (Mon bridge)
+    else if (w === 6) { startOff = -1; endOff = 1;  }   // Sat → Fri-Sun
+    else if (w === 0) { startOff = -1; endOff = 1;  }   // Sun → Sat-Mon
+    else              { startOff = 0;  endOff = 0; isLong = false; } // Wed → isolated
+    const start = new Date(y, h.month - 1, h.day + startOff).getTime();
+    const end   = new Date(y, h.month - 1, h.day + endOff).getTime();
+    if (t >= start && t <= end) {
+      return {
+        mult: isLong ? 1.20 : 1.10,
+        name: `${h.name} ${isLong ? "Long Weekend" : "Holiday"}`,
+      };
+    }
+  }
+  return { mult: 1.0, name: null };
+}
+
+// ── School-vacation demand windows (peak travel for families) ────────────
+//   Summer: 15 Apr – 30 Jun   |   Winter: 20 Dec – 15 Jan
+function getSchoolSeasonMult(date: Date): { mult: number; name: string | null } {
+  const m = date.getMonth() + 1, d = date.getDate();
+  if ((m === 4 && d >= 15) || m === 5 || m === 6)
+    return { mult: 1.15, name: "Summer Vacation Season" };
+  if ((m === 12 && d >= 20) || (m === 1 && d <= 15))
+    return { mult: 1.15, name: "Winter Vacation Season" };
+  return { mult: 1.0, name: null };
+}
+
+// ── Monsoon window — hill-station travel dips (landslide risk) ───────────
+//   15 Jul – 15 Sep. June is intentionally NOT monsoon.
+function getMonsoonMult(date: Date): { mult: number; label: string | null } {
+  const m = date.getMonth() + 1, d = date.getDate();
+  if ((m === 7 && d >= 15) || m === 8 || (m === 9 && d <= 15))
+    return { mult: 0.80, label: "Monsoon Season" };
+  return { mult: 1.0, label: null };
+}
 
 function getEventMultiplier(date: Date): { mult: number; name: string | null } {
   const m = date.getMonth() + 1;
@@ -149,15 +209,25 @@ export function calculateDynamicPrice(
   // v130 — yield-management. mult = 1.0 when ratio not supplied → legacy
   // callers preserved verbatim.
   const { mult: occupancyMult, label: occupancyLabel } = getOccupancyMult(occupancyRatio);
+  // v169 — Indian-calendar demand windows: long weekends, school
+  // vacations, and the date-precise monsoon discount.
+  const { mult: schoolMult,  name:  schoolName }   = getSchoolSeasonMult(checkIn);
+  const { mult: monsoonMult, label: monsoonLabel } = getMonsoonMult(checkIn);
+  const { mult: lwMult,      name:  lwName }       = getLongWeekendMult(checkIn);
 
-  const totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult * occupancyMult;
+  let totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult
+                * occupancyMult * schoolMult * monsoonMult * lwMult;
+  // v169 — bulletproof clamp: however many surges/discounts stack, the
+  // multiplier (and therefore the price) stays inside a sane band.
+  totalMult = Math.max(0.55, Math.min(2.20, totalMult));
   const rawPrice  = baseFloorPrice * totalMult;
   // v130 — snap to ₹100 (was ₹50). Aligns with the platform-wide price-snap
   // rule (lib/price-snap.ts). Floor remains a hard lower bound.
   const price     = Math.max(baseFloorPrice, Math.round(rawPrice / 100) * 100);
 
   // Demand score 0-100
-  const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - 0.60) / (1.80 - 0.60) * 100)));
+  // v169 — score band widened to match the clamped multiplier range.
+  const demandScore = Math.min(100, Math.max(0, Math.round((totalMult - 0.55) / (2.20 - 0.55) * 100)));
   const demandLevel: DemandLevel =
     demandScore >= 88 ? "Surge" :
     demandScore >= 72 ? "Very High" :
@@ -174,6 +244,10 @@ export function calculateDynamicPrice(
   if (leadMult < 0.90) factors.push("Last-minute Vacancy");
   else if (leadMult >= 1.10) factors.push("Advance Booking Demand");
   if (cityMult >= 1.18) factors.push(`High Demand — ${city}`);
+  // v169 — Indian-calendar demand windows.
+  if (lwName) factors.push(lwName);
+  if (schoolName) factors.push(schoolName);
+  if (monsoonLabel) factors.push(monsoonLabel);
   // v130 — surface the yield factor only when it actually moved price.
   if (occupancyLabel) factors.push(occupancyLabel);
   if (factors.length === 0) factors.push("Standard Market Rate");
