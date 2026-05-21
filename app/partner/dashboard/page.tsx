@@ -25,6 +25,9 @@ import BillingTab from "@/components/partner/BillingTab";
 import MenuBuilderTab from "@/components/partner/MenuBuilderTab";
 // v173 — F&B QR ordering — outlets & QR codes.
 import FnbOrdersTab from "@/components/partner/FnbOrdersTab";
+// v176 — service entitlements (locked subscription services).
+import ServiceLockModal from "@/components/partner/ServiceLockModal";
+import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
 // v170 — staff & roles (Phase 3).
@@ -208,6 +211,11 @@ export default function PartnerDashboard() {
   const [aiPrices, setAiPrices]       = useState<Record<string, any>>({});
   // v170 — room category create / edit modal
   const [roomEditor, setRoomEditor]   = useState<{ mode: "create"|"edit"; room?: any } | null>(null);
+  // v176 — service entitlements: which subscription services are unlocked
+  const [svcEnt, setSvcEnt]     = useState<Record<string, any>>({});
+  const [svcReqs, setSvcReqs]   = useState<any[]>([]);
+  const [svcLoaded, setSvcLoaded] = useState(false);
+  const [lockModal, setLockModal] = useState<string | null>(null);
 
   // Flash deal creation
   const [newDeal, setNewDeal]         = useState({ roomId:"", dealPrice:"", discount:"", durationHours:"24", maxRooms:"1" });
@@ -273,34 +281,42 @@ export default function PartnerDashboard() {
   async function loadAll(token: string, user: any) {
     setLoading(true);
     try {
-      const [hotelRes, bidsRes, flashRes] = await Promise.all([
+      const [hotelRes, bidsRes, flashRes, svcRes] = await Promise.all([
         fetch("/api/partner/hotel",        { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/partner/bids",         { headers: { Authorization: `Bearer ${token}` } }),
         fetch("/api/partner/flash-deals",  { headers: { Authorization: `Bearer ${token}` } }),
+        fetch("/api/partner/services",     { headers: { Authorization: `Bearer ${token}` } }),
       ]);
-      const [hotelData, bidsData, flashData] = await Promise.all([
-        hotelRes.json(), bidsRes.json(), flashRes.json(),
+      const [hotelData, bidsData, flashData, svcData] = await Promise.all([
+        hotelRes.json(), bidsRes.json(), flashRes.json(), svcRes.json().catch(() => ({})),
       ]);
       if (hotelData.hotel)  { setHotel(hotelData.hotel); setRooms(hotelData.hotel.rooms || []); setEditHotel(hotelData.hotel); }
       if (hotelData.bookings) setBookings(hotelData.bookings);
       if (bidsData.bids)    setBids(bidsData.bids);
       if (flashData.deals)  setFlashDeals(flashData.deals);
+      setSvcEnt(svcData?.entitlements || {});
+      setSvcReqs(svcData?.requests || []);
+      setSvcLoaded(true);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }
 
   async function refreshLive(token: string) {
     try {
-      const [hotelRes, bidsRes, flashRes] = await Promise.all([
+      const [hotelRes, bidsRes, flashRes, svcRes] = await Promise.all([
         fetch("/api/partner/hotel",       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
         fetch("/api/partner/bids",        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
         fetch("/api/partner/flash-deals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch("/api/partner/services",    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
       ]);
-      const [hotelData, bidsData, flashData] = await Promise.all([hotelRes.json(), bidsRes.json(), flashRes.json()]);
+      const [hotelData, bidsData, flashData, svcData] = await Promise.all([
+        hotelRes.json(), bidsRes.json(), flashRes.json(), svcRes.json().catch(() => ({})),
+      ]);
       if (hotelData?.hotel)   { setHotel(hotelData.hotel); setRooms(hotelData.hotel.rooms || []); }
       if (hotelData?.bookings) setBookings(hotelData.bookings);
       if (bidsData?.bids)      setBids(bidsData.bids);
       if (flashData?.deals)    setFlashDeals(flashData.deals);
+      if (svcData?.entitlements) { setSvcEnt(svcData.entitlements); setSvcReqs(svcData.requests || []); setSvcLoaded(true); }
     } catch { /* silent */ }
   }
 
@@ -613,6 +629,12 @@ export default function PartnerDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotel?.id]);
 
+  // v176 — if the open tab got locked (trial expired / revoked), fall back.
+  useEffect(() => {
+    if (svcLoaded && isSubscriptionService(tab) && !svcEnt[tab]?.unlocked) setTab("overview");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [svcLoaded, svcEnt, tab]);
+
   // ── Availability / PMS handlers ──────────────────────────────────────────
   async function loadCalendar() {
     if (!hotel?.id) return;
@@ -851,6 +873,13 @@ export default function PartnerDashboard() {
   // v170 — staff role drives which tabs are visible (owner = everything).
   const role = (pUser?.staffRole as string) || "owner";
 
+  // v176 — a subscription service is locked until the admin grants access.
+  function serviceLocked(id: string): boolean {
+    if (!svcLoaded) return false;
+    if (!isSubscriptionService(id)) return false;
+    return !svcEnt[id]?.unlocked;
+  }
+
   const TABS = [
     { id:"overview",  icon:"📊", label:"Overview"   },
     { id:"bids",      icon:"📩", label:`Bids ${pendingBids > 0 ? `(${pendingBids})` : ""}` },
@@ -992,9 +1021,12 @@ export default function PartnerDashboard() {
         <div className="max-w-7xl mx-auto px-3 sm:px-5 flex gap-1 py-1.5">
           {TABS.map((t: any) => {
             const active = tab === t.id;
+            const locked = serviceLocked(t.id);
             const cls = `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
               active
                 ? "text-white"
+                : locked
+                ? "text-luxury-400 hover:bg-luxury-50"
                 : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-50"
             }`;
             const style = active
@@ -1003,11 +1035,19 @@ export default function PartnerDashboard() {
             const inner = (
               <>
                 <span className="text-[0.85rem]">{t.icon}</span>{t.label}
+                {locked && <span className="text-[0.7rem]">🔒</span>}
                 {t.id === "bids" && pendingBids > 0 && !active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 )}
               </>
             );
+            if (locked) {
+              return (
+                <button key={t.id} onClick={() => setLockModal(t.id)} className={cls}>
+                  {inner}
+                </button>
+              );
+            }
             if (t.href) {
               return <a key={t.id} href={t.href} className={cls} style={style}>{inner}</a>;
             }
@@ -1225,15 +1265,25 @@ export default function PartnerDashboard() {
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
                   { id:"staff",       icon:"🧑‍💼", label:"Staff",           hint:"Team logins & roles",                                          c:"#6d28d9", bg:"#ede9fe" },
                   { id:"channels",    icon:"🔗", label:"Channels",        hint:"OTA sync · Booking.com…",                                     c:"#1d4ed8", bg:"#dbeafe" },
-                ].filter((h: any) => tabAllowed(role, h.id)).map(h => (
+                ].filter((h: any) => tabAllowed(role, h.id))
+                  // v176 — unlocked (default + granted) tiles first, locked last
+                  .sort((a: any, b: any) => (serviceLocked(a.id) ? 1 : 0) - (serviceLocked(b.id) ? 1 : 0))
+                  .map(h => {
+                  const locked = serviceLocked(h.id);
+                  return (
                   <button key={h.id}
-                    onClick={() => h.href ? router.push(h.href) : setTab(h.id as any)}
-                    className="hub-tile">
+                    onClick={() => locked ? setLockModal(h.id) : (h.href ? router.push(h.href) : setTab(h.id as any))}
+                    className="hub-tile" style={locked ? { opacity: 0.62 } : undefined}>
                     <div className="hub-ico" style={{ background:h.bg }}>{h.icon}</div>
-                    <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">{h.label}</p>
-                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color:h.c }}>{h.hint}</p>
+                    <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">
+                      {h.label}{locked && <span className="ml-1">🔒</span>}
+                    </p>
+                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color: locked ? "#9a8a6a" : h.c }}>
+                      {locked ? "Tap to unlock" : h.hint}
+                    </p>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -3091,6 +3141,20 @@ export default function PartnerDashboard() {
           token={getToken()}
           onClose={() => setRoomEditor(null)}
           onSaved={onRoomSaved}
+        />
+      )}
+
+      {/* ── v176 — locked subscription service modal ── */}
+      {lockModal && hotel?.id && (
+        <ServiceLockModal
+          serviceKey={lockModal}
+          hotelId={hotel.id}
+          pendingRequest={svcReqs.find((r: any) => r.service_key === lockModal) || null}
+          onClose={() => setLockModal(null)}
+          onRequested={() => {
+            setSvcReqs((p) => [...p, { service_key: lockModal, kind: "activate", status: "pending" }]);
+            setLockModal(null);
+          }}
         />
       )}
     </div>
