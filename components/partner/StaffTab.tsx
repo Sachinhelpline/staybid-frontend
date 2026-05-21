@@ -190,8 +190,9 @@ function StaffEditor({
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
-      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>
             {created ? "Staff Login Ready" : mode === "create" ? "Add Staff" : "Edit Staff"}
           </p>
@@ -200,7 +201,7 @@ function StaffEditor({
         </div>
 
         {created ? (
-          <div className="px-4 py-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
             <p className="text-[0.78rem] text-luxury-600 mb-3">
               <b>{created.name}</b> ko ye details do — inse wo <span className="font-mono">/partner/staff</span> par login karega:
             </p>
@@ -219,7 +220,7 @@ function StaffEditor({
           </div>
         ) : (
           <>
-            <div className="px-4 py-4 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
               <div>
                 <label className={lbl}>Staff name *</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} className="inp-p" autoFocus />
@@ -250,7 +251,7 @@ function StaffEditor({
               </div>
               {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
             </div>
-            <div className="flex gap-2 px-4 py-3 border-t border-luxury-100">
+            <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
               <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
               <button onClick={save} disabled={saving} className="btn-gold flex-1">
                 {saving ? "Saving…" : mode === "create" ? "Create Login" : "Save"}

@@ -274,7 +274,7 @@ function ReservationForm({
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }}
       onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }}
+        style={{ maxHeight: "90dvh" }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>
@@ -284,7 +284,7 @@ function ReservationForm({
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center transition">×</button>
         </div>
 
-        <div className="overflow-y-auto px-4 py-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
             <label className={lbl}>Guest name *</label>
             <input value={f.guestName} onChange={(e) => set("guestName", e.target.value)}

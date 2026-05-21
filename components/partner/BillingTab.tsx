@@ -358,15 +358,15 @@ function NewFolioModal({
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100">
+        style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>New Folio</p>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
         </div>
 
         {/* mode toggle */}
-        <div className="flex gap-1.5 px-4 pt-3">
+        <div className="flex gap-1.5 px-4 pt-3 shrink-0">
           {([["online", "🌐 Online booking"], ["offline", "🚶 Walk-in / Offline"]] as const).map(([id, label]) => (
             <button key={id} onClick={() => { setMode(id); setErr(""); }}
               className={`flex-1 text-[0.74rem] font-bold py-1.5 rounded-lg border transition-all ${
@@ -378,7 +378,7 @@ function NewFolioModal({
           ))}
         </div>
 
-        <div className="overflow-y-auto px-4 py-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           {mode === "online" ? (
             <>
               <p className="text-[0.66rem] text-luxury-500">
@@ -389,7 +389,7 @@ function NewFolioModal({
               {bidList.length === 0 ? (
                 <p className="text-xs text-luxury-400 py-3 text-center">Koi confirmed online booking nahi mili.</p>
               ) : (
-                <div className="space-y-1.5 max-h-[260px] overflow-y-auto">
+                <div className="space-y-1.5">
                   {bidList.map((b) => {
                     const on = pickBidId === b.id;
                     const isToday = String(b.checkIn || "").slice(0, 10) === todayISO();
@@ -440,7 +440,7 @@ function NewFolioModal({
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
         </div>
 
-        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100">
+        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
           <button onClick={go} disabled={saving} className="btn-gold flex-1">
             {saving ? "Creating…" : "Create Folio"}

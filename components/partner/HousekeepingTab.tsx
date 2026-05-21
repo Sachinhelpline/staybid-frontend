@@ -222,9 +222,10 @@ function UnitPicker({
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }}
       onClick={onClose}>
-      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "90dvh" }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <div>
             <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>Room #{unit.roomNumber}</p>
             <p className="text-[0.66rem] text-luxury-400">{room?.name || room?.type || "Room"}</p>
@@ -233,7 +234,7 @@ function UnitPicker({
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center transition">×</button>
         </div>
 
-        <div className="px-4 py-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div>
             <label className="text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Status</label>
             <div className="grid grid-cols-2 gap-2">
@@ -266,7 +267,7 @@ function UnitPicker({
           </div>
         </div>
 
-        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100">
+        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
           <button onClick={() => onSave(status, assignedTo.trim(), note.trim())} className="btn-gold flex-1">
             Save Status

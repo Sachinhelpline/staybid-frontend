@@ -255,15 +255,15 @@ function ChannelEditor({
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: "92vh" }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100">
+        style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-luxury-100 shrink-0">
           <p className="font-display text-lg text-luxury-900" style={{ fontWeight: 500 }}>
             {m.icon} Connect {m.label}
           </p>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full bg-luxury-50 hover:bg-luxury-100 text-luxury-500 text-lg leading-none flex items-center justify-center">×</button>
         </div>
-        <div className="overflow-y-auto px-4 py-4 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
           <div className="rounded-xl p-2.5" style={{ background: "#f6f1e6" }}>
             <p className="text-[0.66rem] text-luxury-600">📍 Ye details kahan se lein: <b>{m.hint}</b></p>
           </div>
@@ -297,7 +297,7 @@ function ChannelEditor({
           </p>
           {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</p>}
         </div>
-        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100">
+        <div className="flex gap-2 px-4 py-3 border-t border-luxury-100 shrink-0">
           <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
           <button onClick={save} disabled={saving} className="btn-gold flex-1">
             {saving ? "Saving…" : "Save Connection"}
