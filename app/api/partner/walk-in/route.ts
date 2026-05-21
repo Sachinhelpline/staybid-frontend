@@ -2,14 +2,85 @@
 // Inserts into room_blocks with source='walk_in'. Immediately blocks the room dates
 // across the entire system (customer hotel page, availability API, calendar).
 import { NextRequest, NextResponse } from "next/server";
-import { sbInsert, decodeJwt, SB_URL, SB_H } from "@/lib/sb-server";
+import { sbInsert, sbSelect, decodeJwt, SB_URL, SB_H, SB_H_REPRESENT } from "@/lib/sb-server";
+import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 
 export const dynamic = "force-dynamic";
 
-function auth(req: NextRequest): { userId?: string; phone?: string } {
+function auth(req: NextRequest): { userId?: string; phone?: string; email?: string } {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const p = token ? decodeJwt(token) : null;
-  return { userId: p?.id || p?.user_id || p?.sub, phone: p?.phone || req.headers.get("x-phone") || "" };
+  return {
+    userId: p?.id || p?.user_id || p?.sub,
+    phone: p?.phone || req.headers.get("x-phone") || "",
+    email: p?.email || req.headers.get("x-email") || "",
+  };
+}
+
+// v170 — every hotel id this caller owns (front-desk reservations are
+// owner-scoped). Empty array → caller owns nothing.
+async function ownedHotelIds(req: NextRequest): Promise<string[]> {
+  const { userId, phone, email } = auth(req);
+  if (!userId) return [];
+  const ownerIds = await resolveOwnerIdsCrossPool(userId, phone, email);
+  if (!ownerIds.length) return [];
+  const hotels = await sbSelect(`hotels?ownerId=in.(${ownerIds.join(",")})&select=id`);
+  return (Array.isArray(hotels) ? hotels : []).map((h: any) => h.id);
+}
+
+// GET /api/partner/walk-in?hotelId=...  — list front-desk reservations
+export async function GET(req: NextRequest) {
+  const owned = await ownedHotelIds(req);
+  if (!owned.length) return NextResponse.json({ reservations: [] });
+  const hotelId = new URL(req.url).searchParams.get("hotelId");
+  if (!hotelId || !owned.includes(hotelId)) {
+    return NextResponse.json({ error: "hotelId required / not yours" }, { status: 403 });
+  }
+  try {
+    const rows = await sbSelect(
+      `room_blocks?hotelId=eq.${encodeURIComponent(hotelId)}&select=*&order=fromDate.desc`
+    );
+    return NextResponse.json({ reservations: Array.isArray(rows) ? rows : [] });
+  } catch (e: any) {
+    return NextResponse.json({ reservations: [], warning: e?.message });
+  }
+}
+
+// PATCH /api/partner/walk-in  — edit an existing reservation (room_blocks row)
+export async function PATCH(req: NextRequest) {
+  const owned = await ownedHotelIds(req);
+  if (!owned.length) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const existing = await sbSelect(`room_blocks?id=eq.${encodeURIComponent(body.id)}&select=id,hotelId`);
+  if (!existing?.[0]) return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
+  if (!owned.includes(existing[0].hotelId)) {
+    return NextResponse.json({ error: "Not your reservation" }, { status: 403 });
+  }
+
+  const patch: any = {};
+  for (const k of ["fromDate", "toDate", "guestName", "guestPhone", "guestEmail", "note", "roomId", "assignedUnitId", "assignedUnitNumber"]) {
+    if (body[k] !== undefined) patch[k] = body[k] === "" ? null : body[k];
+  }
+  if (body.amount !== undefined) patch.amount = body.amount === "" || body.amount == null ? null : Number(body.amount);
+  if (patch.fromDate && patch.toDate && patch.toDate <= patch.fromDate) {
+    return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 400 });
+  }
+  if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/room_blocks?id=eq.${encodeURIComponent(body.id)}`, {
+      method: "PATCH", headers: SB_H_REPRESENT, body: JSON.stringify(patch),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const j = await r.json().catch(() => []);
+    return NextResponse.json({ ok: true, reservation: Array.isArray(j) ? j[0] : j });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Update failed" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
