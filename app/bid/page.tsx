@@ -117,8 +117,28 @@ function useCountUp(target: number, duration = 800) {
   return val;
 }
 
+/* ── Count-up component — Vegas reveal for the success screen ──── */
+function WinCount({ value }: { value: number }) {
+  const v = useCountUp(value, 1100);
+  return <>{v}</>;
+}
+
+/* ── v162 — celebration confetti pieces (deterministic) ─────────── */
+const CONFETTI_COLORS = ["#C9A66B", "#D9BE82", "#D49583", "#9DAD8F", "#E7CFA0", "#B18943"];
+const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
+  left:  (i * 4.37 + (i % 4) * 6) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: (i % 8) * 0.21,
+  dur:   2.6 + (i % 5) * 0.55,
+  w:     i % 3 === 0 ? 7 : 9,
+  h:     i % 3 === 0 ? 7 : 15,
+  round: i % 3 === 0,
+}));
+
 /* ── Editorial step bar ────────────────────────────────────────── */
-const STEPS = ["Where & When", "Your Stay", "Smart Budget", "Review & Launch"];
+// v162 — collapsed from 4 steps to 2. Step 1 merges Where&When + Stay
+// details (optional refinements collapse); Step 2 merges budget + review.
+const STEPS = ["Your Stay", "Your Price"];
 
 function StepBar({ step }: { step: number }) {
   return (
@@ -204,6 +224,9 @@ export default function BidPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
+  // v162 — optional stay refinements (bed / view / meal / occasion /
+  // add-ons) collapse under one toggle so Step 1 stays short.
+  const [refineOpen, setRefineOpen] = useState(false);
 
   // v139 — Tutorial Layer 2 — reverse-auction page tour. 4 steps walk
   // through city → dates → budget → submit. Uses existing
@@ -223,16 +246,9 @@ export default function BidPage() {
       const detail = (e as CustomEvent).detail || {};
       if (detail.key !== "bid") return;
       const toIdx = detail.toIndex as number;
-      // Tour index → page step (v141: 5 steps after AI Smart Price added):
-      //   0 (city)            → page step 1
-      //   1 (dates)           → page step 1
-      //   2 (AI Smart Price)  → page step 3 (presets visible)
-      //   3 (budget input)    → page step 3 (same step, scrolls down)
-      //   4 (submit)          → page step 4
-      const targetPageStep =
-        toIdx === 0 || toIdx === 1 ? 1 :
-        toIdx === 2 || toIdx === 3 ? 3 :
-        4;
+      // v162 — 2-step page now. Tour indices 0-1 (city/dates) live on
+      // page step 1; everything after (presets / budget / submit) is step 2.
+      const targetPageStep = toIdx <= 1 ? 1 : 2;
       setStep((prev) => (prev !== targetPageStep ? targetPageStep : prev));
     };
     const onEnd = (e: Event) => {
@@ -343,10 +359,10 @@ export default function BidPage() {
   const liveStreak    = useCountUp(insights?.cityHotStreak || 0);
 
   const canNext = (): boolean => {
-    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1);
-    if (step === 2) return !!form.roomType;
-    if (step === 3) return budget > 0;
-    return true;
+    // v162 — step 1 now also requires a room type (merged in from the
+    // old step 2). Step 2 is the final step (launch lives inside it).
+    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.roomType);
+    return budget > 0;
   };
 
   const goStep = (next: number) => {
@@ -504,23 +520,56 @@ export default function BidPage() {
 
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
   if (success) return (
-    <div className="bx-shell min-h-screen flex items-center justify-center px-4 py-6">
+    <div className="bx-shell bx-win-shell min-h-screen flex items-center justify-center px-4 py-6">
+      {/* v162 — celebration confetti rain */}
+      <div className="bx-confetti" aria-hidden="true">
+        {CONFETTI.map((c, i) => (
+          <span
+            key={i}
+            className="bx-confetti-piece"
+            style={{
+              left: `${c.left}%`,
+              background: c.color,
+              width: c.w, height: c.h,
+              borderRadius: c.round ? "50%" : "1.5px",
+              animationDelay: `${c.delay}s`,
+              animationDuration: `${c.dur}s`,
+            }}
+          />
+        ))}
+      </div>
+
       <div className="bx-page-wrap-success w-full">
-        <div className="bx-win-card">
-          <div className="bx-win-badge">🎯</div>
-          <p className="bx-hero-eyebrow" style={{ justifyContent: "center" }}>
+        <div className="bx-win-card bx-win-pop">
+          {/* Burst badge — radiating rings + popping medal */}
+          <div className="bx-win-burst">
+            <span className="bx-win-burst-ring" />
+            <span className="bx-win-burst-ring is-two" />
+            <div className="bx-win-badge">🎉</div>
+          </div>
+
+          <p className="bx-hero-eyebrow bx-win-seq" style={{ justifyContent: "center", animationDelay: "0.15s" }}>
             <span className="bx-hero-eyebrow-dot" />
             Bid Request Launched
           </p>
-          <h1 className="bx-hero-title" style={{ fontSize: "clamp(1.5rem, 5vw, 2rem)", margin: "8px 0 6px" }}>
+          <h1 className="bx-hero-title bx-win-seq" style={{ fontSize: "clamp(1.5rem, 5vw, 2rem)", margin: "8px 0 4px", animationDelay: "0.22s" }}>
             Hotels Are <em>Competing</em>!
           </h1>
-          <p className="bx-hero-sub" style={{ margin: "0 auto 16px", maxWidth: "32ch" }}>
-            Bid for <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.nights} {success.nights === 1 ? "night" : "nights"} in {success.city}</strong> sent to{" "}
-            <strong style={{ color: "var(--cozy-champagne)" }}>{success.hotelsNotified} {success.hotelsNotified === 1 ? "hotel" : "hotels"}</strong>.
+
+          {/* Big animated hotel count */}
+          <div className="bx-win-bignum bx-win-seq" style={{ animationDelay: "0.3s" }}>
+            <span className="bx-win-bignum-v"><WinCount value={success.hotelsNotified} /></span>
+            <span className="bx-win-bignum-l">
+              {success.hotelsNotified === 1 ? "hotel is" : "hotels are"} bidding for your stay
+            </span>
+          </div>
+
+          <p className="bx-hero-sub bx-win-seq" style={{ margin: "0 auto 16px", maxWidth: "34ch", animationDelay: "0.38s" }}>
+            {success.nights} {success.nights === 1 ? "night" : "nights"} in{" "}
+            <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> — they respond within 2–4 hours.
           </p>
 
-          <div className="bx-review-grid" style={{ marginBottom: 12 }}>
+          <div className="bx-review-grid bx-win-seq" style={{ marginBottom: 12, animationDelay: "0.46s" }}>
             <div>
               <div className="bx-review-item-label">Check-in</div>
               <div className="bx-review-item-v">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
@@ -547,12 +596,12 @@ export default function BidPage() {
             </div>
           </div>
 
-          <div className="bx-cost-total" style={{ marginTop: 0, marginBottom: 14 }}>
+          <div className="bx-cost-total bx-win-seq" style={{ marginTop: 0, marginBottom: 14, animationDelay: "0.54s" }}>
             <span className="bx-cost-total-l">⏱ Hotels respond in</span>
             <span className="bx-cost-total-r">2–4 hrs</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="bx-win-seq" style={{ display: "flex", flexDirection: "column", gap: 8, animationDelay: "0.62s" }}>
             <button onClick={() => router.push("/my-bids")} className="bx-launch-btn" style={{ padding: "14px 18px", fontSize: "1.05rem" }}>
               Track My Bids
             </button>
@@ -580,83 +629,82 @@ export default function BidPage() {
           </span>
         </div>
 
-        {/* Editorial hero */}
-        <div className="bx-hero">
-          <span className="bx-hero-eyebrow">
-            <span className="bx-hero-eyebrow-dot" />
-            Reverse Auction · Live
-          </span>
-          <h1 className="bx-hero-title">
-            Name Your <em>Price</em>
-          </h1>
-          <p className="bx-hero-sub">
-            Set what you want to pay. Hotels in {form.city || "your destination"} compete for your booking — the best offer wins your night.
-          </p>
+        {/* v162 — Step 1 shows the full editorial hero; Step 2 collapses
+            it to a slim context bar so the hero no longer eats ~250px on
+            every step. The old separate stats-ribbon + wins-ticker are
+            merged into ONE live strip (the rotating win is now a pill). */}
+        {step === 1 ? (
+          <div className="bx-hero bx-rise">
+            <span className="bx-hero-eyebrow">
+              <span className="bx-hero-eyebrow-dot" />
+              Reverse Auction · Live
+            </span>
+            <h1 className="bx-hero-title">
+              Name Your <em>Price</em>
+            </h1>
+            <p className="bx-hero-sub">
+              Set your rate — hotels in {form.city || "your destination"} compete, best offer wins your night.
+            </p>
 
-          {/* Live stats ribbon */}
-          {insights && (
-            <div className="bx-stats-ribbon">
-              {insights.tonightAuctions > 0 && (
-                <span className="bx-stat-pill bx-stat-pill-live">
-                  <span className="bx-stat-pill-value">{liveAuctions}</span>
-                  <span className="bx-stat-pill-label">auctions live{form.city ? ` in ${form.city}` : " tonight"}</span>
-                </span>
-              )}
-              {insights.hotelsListening > 0 && (
-                <span className="bx-stat-pill">
-                  <span className="bx-stat-pill-icon">🏨</span>
-                  <span className="bx-stat-pill-value">{liveHotels}</span>
-                  <span className="bx-stat-pill-label">hotels listening</span>
-                </span>
-              )}
-              {insights.cityHotStreak >= 1 && (
-                <span className="bx-stat-pill bx-stat-pill-hot">
-                  <span className="bx-stat-pill-icon">🔥</span>
-                  <span className="bx-stat-pill-value">{liveStreak}</span>
-                  <span className="bx-stat-pill-label">accepted in last hour</span>
-                </span>
-              )}
-              {insights.acceptedToday > 0 && (
-                <span className="bx-stat-pill bx-stat-pill-accent">
-                  <span className="bx-stat-pill-icon">✓</span>
-                  <span className="bx-stat-pill-value">{liveAccepted}</span>
-                  <span className="bx-stat-pill-label">wins today</span>
-                </span>
-              )}
-              {insights.avgAcceptMins > 0 && (
-                <span className="bx-stat-pill">
-                  <span className="bx-stat-pill-icon">⏱</span>
-                  <span className="bx-stat-pill-value">{insights.avgAcceptMins} min</span>
-                  <span className="bx-stat-pill-label">avg accept</span>
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Live wins ticker */}
-          {currentWin && (
-            <div className="bx-ticker" key={`tick-${currentWin.id}`}>
-              <span className="bx-ticker-tag">
-                <span className="bx-ticker-tag-dot" />
-                Live wins
+            {/* Combined live strip — stats + rotating win in ONE row */}
+            {insights && (
+              <div className="bx-stats-ribbon">
+                {insights.tonightAuctions > 0 && (
+                  <span className="bx-stat-pill bx-stat-pill-live">
+                    <span className="bx-stat-pill-value">{liveAuctions}</span>
+                    <span className="bx-stat-pill-label">auctions live{form.city ? ` in ${form.city}` : " tonight"}</span>
+                  </span>
+                )}
+                {insights.hotelsListening > 0 && (
+                  <span className="bx-stat-pill">
+                    <span className="bx-stat-pill-icon">🏨</span>
+                    <span className="bx-stat-pill-value">{liveHotels}</span>
+                    <span className="bx-stat-pill-label">hotels listening</span>
+                  </span>
+                )}
+                {insights.cityHotStreak >= 1 && (
+                  <span className="bx-stat-pill bx-stat-pill-hot">
+                    <span className="bx-stat-pill-icon">🔥</span>
+                    <span className="bx-stat-pill-value">{liveStreak}</span>
+                    <span className="bx-stat-pill-label">accepted last hour</span>
+                  </span>
+                )}
+                {insights.acceptedToday > 0 && (
+                  <span className="bx-stat-pill bx-stat-pill-accent">
+                    <span className="bx-stat-pill-icon">✓</span>
+                    <span className="bx-stat-pill-value">{liveAccepted}</span>
+                    <span className="bx-stat-pill-label">wins today</span>
+                  </span>
+                )}
+                {currentWin && (
+                  <span className="bx-stat-pill bx-stat-pill-win" key={`win-${currentWin.id}`}>
+                    <span className="bx-stat-pill-icon">🏆</span>
+                    <span className="bx-stat-pill-value">{currentWin.initial}</span>
+                    <span className="bx-stat-pill-label">
+                      won ₹{currentWin.amount.toLocaleString("en-IN")} · {currentWin.city || currentWin.hotelName}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bx-slim-hero bx-rise">
+            <div className="bx-slim-hero-text">
+              <span className="bx-slim-hero-eyebrow">
+                <span className="bx-hero-eyebrow-dot" />
+                Name Your Price
               </span>
-              <div className="bx-ticker-feed">
-                <div className="bx-ticker-row" key={currentWin.id}>
-                  <span className="who">{currentWin.initial}</span>
-                  <span>won</span>
-                  <span className="amt">₹{currentWin.amount.toLocaleString("en-IN")}/n</span>
-                  <span>in {currentWin.city || currentWin.hotelName}</span>
-                  <span className="at">· {currentWin.when}</span>
-                </div>
-              </div>
-              <div className="bx-ticker-dotrow">
-                {(insights?.recentWins || []).slice(0, 5).map((_, i) => (
-                  <span key={i} className={`bx-ticker-dot ${i === tickerIdx % (insights?.recentWins.length || 1) ? "is-active" : ""}`} />
-                ))}
-              </div>
+              {form.city && <span className="bx-slim-hero-city">{form.city}</span>}
             </div>
-          )}
-        </div>
+            {insights && insights.tonightAuctions > 0 && (
+              <span className="bx-slim-hero-pill">
+                <span className="bx-slim-hero-pulse" />
+                {liveAuctions} live
+              </span>
+            )}
+          </div>
+        )}
 
         <StepBar step={step} />
 
@@ -664,7 +712,7 @@ export default function BidPage() {
 
           {/* ═══════════ STEP 1: WHERE & WHEN ═══════════ */}
           {step === 1 && (
-            <div className="space-y-3" data-autonext-form>
+            <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* Destination */}
               <div data-autonext="destination">
@@ -789,14 +837,8 @@ export default function BidPage() {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* ═══════════ STEP 2: YOUR STAY ═══════════ */}
-          {step === 2 && (
-            <div className="space-y-3" data-autonext-form>
-
-              {/* Room type */}
+              {/* Room Type — merged into Step 1 (v162) */}
               <div data-autonext="roomType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Room Type</span>
@@ -807,7 +849,7 @@ export default function BidPage() {
                     <button
                       key={rt.id}
                       type="button"
-                      onClick={() => { upd("roomType", rt.id); scrollToAutoNext("bedType"); }}
+                      onClick={() => upd("roomType", rt.id)}
                       className={`bx-tile ${form.roomType === rt.id ? "is-selected" : ""}`}
                     >
                       <span className="bx-tile-icon">{rt.icon}</span>
@@ -817,6 +859,26 @@ export default function BidPage() {
                   ))}
                 </div>
               </div>
+
+              {/* v162 — optional refinements collapse under one toggle so
+                  Step 1 stays short. Bed / view / meals / occasion / add-ons. */}
+              <button
+                type="button"
+                className={`bx-refine-toggle ${refineOpen ? "is-open" : ""}`}
+                onClick={() => setRefineOpen((o) => !o)}
+                aria-expanded={refineOpen}
+              >
+                <span className="bx-refine-toggle-l">
+                  <span className="bx-refine-toggle-ico" aria-hidden="true">✨</span>
+                  <span className="bx-refine-toggle-tx">
+                    <span className="bx-refine-toggle-title">Refine your stay</span>
+                    <span className="bx-refine-toggle-sub">Bed · view · meals · occasion · add-ons — optional</span>
+                  </span>
+                </span>
+                <span className="bx-refine-toggle-caret" aria-hidden="true">▾</span>
+              </button>
+              {refineOpen && (
+                <div className="bx-refine-body">
 
               {/* Bed type */}
               <div data-autonext="bedType">
@@ -938,12 +1000,14 @@ export default function BidPage() {
                     that hotels would receive verbatim. Stay preferences now
                     flow exclusively through the structured toggles above. */}
               </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ═══════════ STEP 3: SMART BUDGET ═══════════ */}
-          {step === 3 && (
-            <div className="space-y-3" data-autonext-form>
+          {/* ═══════════ STEP 2: YOUR PRICE — budget + review + launch ═══ */}
+          {step === 2 && (
+            <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* AI Presets */}
               {city && (
@@ -1078,29 +1142,11 @@ export default function BidPage() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* ═══════════ STEP 4: REVIEW & LAUNCH ═══════════ */}
-          {step === 4 && (
-            <div className="space-y-3" data-autonext-form>
-              {/* Cinematic probability hero */}
-              {bidStr && (
-                <div className="bx-review-hero">
-                  <div className="bx-review-eyebrow">
-                    <span className="bx-hero-eyebrow-dot" style={{ background: bidStr.color }} />
-                    AI confidence
-                  </div>
-                  <div className="bx-review-pct">
-                    {bidStr.pct}<span style={{ fontSize: "1.4rem", color: "var(--cozy-champagne-light)" }}>%</span>
-                  </div>
-                  <p className="bx-review-tier" style={{ color: bidStr.color }}>{bidStr.tier}</p>
-                  <p className="bx-review-tip">{bidStr.tip}</p>
-                </div>
-              )}
-
-              {/* Trip summary card */}
-              <div className="bx-card">
+              {/* v162 — Trip summary card. The old full-screen "AI
+                  confidence" hero is gone — the probability dial above
+                  already carries the confidence read. */}
+              <div className="bx-card bx-review-card">
                 <div className="bx-section-h" style={{ margin: "0 0 12px" }}>
                   <span className="bx-section-h-label">Booking Summary</span>
                   <span className="bx-section-h-rule" />
@@ -1209,9 +1255,9 @@ export default function BidPage() {
               ← Back
             </button>
           )}
-          {step < 4 && (
+          {step < 2 && (
             <button onClick={() => canNext() && goStep(step + 1)} disabled={!canNext()} className="bx-nav-cont">
-              Continue →
+              Set your price →
             </button>
           )}
         </div>

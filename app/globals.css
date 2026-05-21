@@ -3148,6 +3148,206 @@ body.is-reel-page {
   animation: hx-float-soft 3.6s ease-in-out infinite;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   v162 — /bid 2-step redesign: slim Step-2 hero, collapsible stay
+   refinements, entrance animation + celebration success screen.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Entrance — hero + step panes rise in */
+@keyframes bxRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bx-rise { animation: bxRise 0.5s cubic-bezier(.22,.8,.3,1) both; }
+
+/* Step pane — content rises, direct children stagger for a live feel */
+.bx-step-pane { animation: bxRise 0.42s cubic-bezier(.22,.8,.3,1) both; }
+.bx-step-pane > div { animation: bxRise 0.5s cubic-bezier(.22,.8,.3,1) both; }
+.bx-step-pane > div:nth-child(1) { animation-delay: 0.04s; }
+.bx-step-pane > div:nth-child(2) { animation-delay: 0.11s; }
+.bx-step-pane > div:nth-child(3) { animation-delay: 0.18s; }
+.bx-step-pane > div:nth-child(4) { animation-delay: 0.25s; }
+.bx-step-pane > div:nth-child(5) { animation-delay: 0.32s; }
+.bx-step-pane > div:nth-child(n+6) { animation-delay: 0.38s; }
+.bx-step-pane > button { animation: bxRise 0.5s cubic-bezier(.22,.8,.3,1) 0.3s both; }
+
+/* Slim hero — Step 2 context bar (replaces the repeated full hero) */
+.bx-slim-hero {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin: 2px 0 4px;
+  background: linear-gradient(135deg, var(--cozy-cream-50), var(--cozy-cream-200));
+  border: 1px solid rgba(201, 166, 107, 0.3);
+  border-radius: 16px;
+}
+.bx-slim-hero-text { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+.bx-slim-hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: "Cormorant Garamond", serif; font-style: italic;
+  font-size: 1.15rem; font-weight: 500;
+  color: var(--cozy-warm-dark);
+  white-space: nowrap;
+}
+.bx-slim-hero-city {
+  font-size: 0.72rem; font-weight: 700;
+  color: var(--cozy-cocoa-soft);
+  letter-spacing: 0.02em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bx-slim-hero-pill {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  background: var(--bg-card);
+  border: 1px solid rgba(201, 166, 107, 0.35);
+  border-radius: 999px;
+  font-size: 0.7rem; font-weight: 800;
+  color: var(--cozy-warm-dark);
+  font-variant-numeric: tabular-nums;
+}
+.bx-slim-hero-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cozy-rose);
+  animation: hx-pulse-soft 1.6s ease-in-out infinite;
+}
+
+/* Rotating-win pill inside the combined live strip */
+.bx-stat-pill-win {
+  background: linear-gradient(135deg, rgba(201, 166, 107, 0.16), rgba(201, 166, 107, 0.05));
+  border-color: rgba(201, 166, 107, 0.4);
+}
+.bx-stat-pill-win .bx-stat-pill-value { color: var(--cozy-cocoa); }
+
+/* Collapsible "Refine your stay" toggle */
+.bx-refine-toggle {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+  background: var(--bg-card);
+  border: 1px dashed rgba(201, 166, 107, 0.45);
+  border-radius: 15px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.bx-refine-toggle:hover { border-color: rgba(201, 166, 107, 0.7); }
+.bx-refine-toggle:active { transform: scale(0.99); }
+.bx-refine-toggle.is-open {
+  border-style: solid;
+  background: linear-gradient(135deg, var(--cozy-cream-50), var(--cozy-cream-200));
+}
+.bx-refine-toggle-l { display: flex; align-items: center; gap: 11px; }
+.bx-refine-toggle-ico {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--cozy-champagne-light), var(--cozy-champagne));
+  font-size: 1rem;
+}
+.bx-refine-toggle-tx { display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.bx-refine-toggle-title { font-size: 0.84rem; font-weight: 700; color: var(--cozy-warm-dark); }
+.bx-refine-toggle-sub { font-size: 0.66rem; color: var(--text-muted); }
+.bx-refine-toggle-caret {
+  font-size: 0.8rem; color: var(--cozy-cocoa-soft);
+  transition: transform 0.25s ease;
+}
+.bx-refine-toggle.is-open .bx-refine-toggle-caret { transform: rotate(180deg); }
+/* Higher specificity than `.bx-step-pane > div` so the accordion uses
+   its own open animation (no stale stagger delay on toggle). */
+.bx-step-pane > .bx-refine-body,
+.bx-refine-body {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-top: 12px;
+  animation: bxRefineOpen 0.34s cubic-bezier(.22,.8,.3,1) both;
+  animation-delay: 0s;
+}
+@keyframes bxRefineOpen {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Celebration confetti rain */
+.bx-win-shell { overflow: hidden; }
+.bx-confetti {
+  position: fixed; inset: 0;
+  pointer-events: none; overflow: hidden;
+  z-index: 5;
+}
+.bx-confetti-piece {
+  position: absolute; top: -26px;
+  display: block; opacity: 0;
+  animation-name: bxConfettiFall;
+  animation-timing-function: cubic-bezier(.3,.5,.5,1);
+  animation-iteration-count: infinite;
+}
+@keyframes bxConfettiFall {
+  0%   { opacity: 0; transform: translateY(-12px) rotate(0deg); }
+  8%   { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(104vh) rotate(560deg); }
+}
+
+/* Win card pop + sequential child reveal */
+.bx-win-pop { animation: bxWinPop 0.55s cubic-bezier(.2,1.25,.36,1) both; }
+@keyframes bxWinPop {
+  from { opacity: 0; transform: scale(0.86) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.bx-win-seq { animation: bxRise 0.5s cubic-bezier(.22,.8,.3,1) both; }
+
+/* Burst badge — radiating rings + popping medal */
+.bx-win-burst {
+  position: relative;
+  width: 76px; height: 76px;
+  margin: 4px auto 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bx-win-burst .bx-win-badge {
+  width: 72px; height: 72px;
+  font-size: 2rem; margin: 0;
+  position: relative; z-index: 2;
+  animation: bxBadgePop 0.6s cubic-bezier(.2,1.5,.4,1) 0.1s both;
+}
+@keyframes bxBadgePop {
+  from { transform: scale(0) rotate(-40deg); }
+  to   { transform: scale(1) rotate(0deg); }
+}
+.bx-win-burst-ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--cozy-champagne);
+  opacity: 0;
+  animation: bxBurstRing 2.4s ease-out infinite;
+}
+.bx-win-burst-ring.is-two { animation-delay: 1.2s; border-color: var(--cozy-rose); }
+@keyframes bxBurstRing {
+  0%   { opacity: 0.7; transform: scale(0.6); }
+  100% { opacity: 0;   transform: scale(2.15); }
+}
+
+/* Big animated hotel count on the success screen */
+.bx-win-bignum {
+  display: flex; flex-direction: column; align-items: center;
+  margin: 6px 0 2px;
+}
+.bx-win-bignum-v {
+  font-family: "Cormorant Garamond", serif; font-style: italic;
+  font-weight: 600;
+  font-size: 3.4rem; line-height: 1;
+  background: linear-gradient(135deg, var(--cozy-champagne), #b18943);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.bx-win-bignum-l {
+  font-size: 0.66rem; font-weight: 800;
+  color: var(--cozy-cocoa-soft);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 3px;
+}
+
 /* Accessibility: reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .bx-ticker::before,
@@ -3158,7 +3358,18 @@ body.is-reel-page {
   .bx-dial-eta-dot,
   .bx-hero-eyebrow-dot,
   .bx-win-badge,
-  .bx-ticker-row { animation: none !important; }
+  .bx-ticker-row,
+  .bx-rise,
+  .bx-step-pane,
+  .bx-step-pane > div,
+  .bx-step-pane > button,
+  .bx-refine-body,
+  .bx-win-pop,
+  .bx-win-seq,
+  .bx-win-burst .bx-win-badge,
+  .bx-win-burst-ring,
+  .bx-confetti-piece,
+  .bx-slim-hero-pulse { animation: none !important; }
 }
 
 /* ════════════════════════════════════════════════════════════════
