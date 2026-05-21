@@ -15,12 +15,16 @@ function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
 }
 
+function fmtCur(n: any) { return "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN"); }
+
 export default function ServiceLockModal({
-  serviceKey, hotelId, pendingRequest, onClose, onRequested,
+  serviceKey, hotelId, pendingRequest, pricing, bundles, onClose, onRequested,
 }: {
   serviceKey: string;
   hotelId: string;
   pendingRequest?: { kind?: string } | null;
+  pricing?: { monthly?: number | null; quarterly?: number | null; yearly?: number | null } | null;
+  bundles?: any[];
   onClose: () => void;
   onRequested: () => void;
 }) {
@@ -82,12 +86,48 @@ export default function ServiceLockModal({
                   <p className="text-[0.82rem] font-bold text-luxury-900">💰 Show charges</p>
                   <p className="text-[0.64rem] text-luxury-500">Is service ka plan price dekho</p>
                 </button>
-                {showCharges && (
-                  <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600" style={{ background: "#f6f1e6" }}>
-                    Plan pricing admin set karta hai (monthly / quarterly / yearly · single ya bundle).
-                    Activate ya free-trial request bhejo — admin aapko exact price ya free access bata dega.
-                  </div>
-                )}
+                {showCharges && (() => {
+                  const hasPrice = pricing && (pricing.monthly != null || pricing.quarterly != null || pricing.yearly != null);
+                  const myBundles = (bundles || []).filter((b: any) =>
+                    Array.isArray(b.service_keys) && b.service_keys.includes(serviceKey));
+                  if (!hasPrice && !myBundles.length) {
+                    return (
+                      <div className="rounded-xl p-2.5 text-[0.68rem] text-luxury-600" style={{ background: "#f6f1e6" }}>
+                        Iss service ki pricing admin abhi set kar raha hai. Activate ya free-trial request bhejo —
+                        admin aapko exact price ya free access bata dega.
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="rounded-xl p-2.5" style={{ background: "#f6f1e6" }}>
+                      {hasPrice && (
+                        <>
+                          <p className="text-[0.66rem] font-bold text-luxury-700 mb-1">{label} — plan price</p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {([["Monthly", pricing!.monthly], ["Quarterly", pricing!.quarterly], ["Yearly", pricing!.yearly]] as const).map(([k, v]) => (
+                              <div key={k} className="bg-white rounded-lg px-1.5 py-1 text-center">
+                                <p className="text-[0.52rem] text-luxury-400 uppercase tracking-wide">{k}</p>
+                                <p className="text-[0.74rem] font-bold text-gold-700">{v != null ? fmtCur(v) : "—"}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {myBundles.length > 0 && (
+                        <div className={hasPrice ? "mt-2" : ""}>
+                          <p className="text-[0.66rem] font-bold text-luxury-700 mb-1">Bundle plans</p>
+                          {myBundles.map((b: any) => (
+                            <p key={b.id} className="text-[0.62rem] text-luxury-600">
+                              <b>{b.name}</b> — {b.monthly != null ? `${fmtCur(b.monthly)}/mo` : ""}
+                              {b.yearly != null ? ` · ${fmtCur(b.yearly)}/yr` : ""}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-[0.58rem] text-luxury-400 mt-1.5">Activate dabao — admin confirm karega.</p>
+                    </div>
+                  );
+                })()}
                 <button onClick={() => raise("free_trial")} disabled={!!busy}
                   className="w-full text-left rounded-xl p-3 transition-all bg-white"
                   style={{ border: "1.5px solid #e6ddc8" }}>

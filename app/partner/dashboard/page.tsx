@@ -216,6 +216,9 @@ export default function PartnerDashboard() {
   const [svcReqs, setSvcReqs]   = useState<any[]>([]);
   const [svcLoaded, setSvcLoaded] = useState(false);
   const [lockModal, setLockModal] = useState<string | null>(null);
+  // v177 — subscription pricing + bundles (for the "Show charges" view)
+  const [svcPricing, setSvcPricing] = useState<any[]>([]);
+  const [svcBundles, setSvcBundles] = useState<any[]>([]);
 
   // Flash deal creation
   const [newDeal, setNewDeal]         = useState({ roomId:"", dealPrice:"", discount:"", durationHours:"24", maxRooms:"1" });
@@ -296,6 +299,8 @@ export default function PartnerDashboard() {
       if (flashData.deals)  setFlashDeals(flashData.deals);
       setSvcEnt(svcData?.entitlements || {});
       setSvcReqs(svcData?.requests || []);
+      setSvcPricing(svcData?.pricing || []);
+      setSvcBundles(svcData?.bundles || []);
       setSvcLoaded(true);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
@@ -316,7 +321,11 @@ export default function PartnerDashboard() {
       if (hotelData?.bookings) setBookings(hotelData.bookings);
       if (bidsData?.bids)      setBids(bidsData.bids);
       if (flashData?.deals)    setFlashDeals(flashData.deals);
-      if (svcData?.entitlements) { setSvcEnt(svcData.entitlements); setSvcReqs(svcData.requests || []); setSvcLoaded(true); }
+      if (svcData?.entitlements) {
+        setSvcEnt(svcData.entitlements); setSvcReqs(svcData.requests || []);
+        setSvcPricing(svcData.pricing || []); setSvcBundles(svcData.bundles || []);
+        setSvcLoaded(true);
+      }
     } catch { /* silent */ }
   }
 
@@ -3150,6 +3159,8 @@ export default function PartnerDashboard() {
           serviceKey={lockModal}
           hotelId={hotel.id}
           pendingRequest={svcReqs.find((r: any) => r.service_key === lockModal) || null}
+          pricing={svcPricing.find((p: any) => p.service_key === lockModal) || null}
+          bundles={svcBundles}
           onClose={() => setLockModal(null)}
           onRequested={() => {
             setSvcReqs((p) => [...p, { service_key: lockModal, kind: "activate", status: "pending" }]);

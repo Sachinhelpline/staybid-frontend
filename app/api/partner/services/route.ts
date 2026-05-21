@@ -36,13 +36,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ entitlements: {}, requests: [], provisioned: true });
 
   try {
-    const [svcRes, reqRes] = await Promise.all([
+    const [svcRes, reqRes, priceRes, bundleRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/hotel_services?hotel_id=eq.${encodeURIComponent(hotelId)}&select=*`, { headers: SB_H }),
       fetch(`${SB_URL}/rest/v1/service_requests?hotel_id=eq.${encodeURIComponent(hotelId)}&status=eq.pending&select=service_key,kind,status`, { headers: SB_H }),
+      fetch(`${SB_URL}/rest/v1/service_pricing?active=is.true&select=*`, { headers: SB_H }),
+      fetch(`${SB_URL}/rest/v1/service_bundles?active=is.true&select=*`, { headers: SB_H }),
     ]);
-    if (!svcRes.ok) return NextResponse.json({ entitlements: {}, requests: [], provisioned: false });
+    if (!svcRes.ok) return NextResponse.json({ entitlements: {}, requests: [], pricing: [], bundles: [], provisioned: false });
     const rows = await svcRes.json().catch(() => []);
     const reqs = reqRes.ok ? await reqRes.json().catch(() => []) : [];
+    const pricing = priceRes.ok ? await priceRes.json().catch(() => []) : [];
+    const bundles = bundleRes.ok ? await bundleRes.json().catch(() => []) : [];
     const now = Date.now();
     const entitlements: Record<string, any> = {};
     for (const r of Array.isArray(rows) ? rows : []) {
@@ -55,9 +59,15 @@ export async function GET(req: NextRequest) {
         expired: !!expired,
       };
     }
-    return NextResponse.json({ entitlements, requests: Array.isArray(reqs) ? reqs : [], provisioned: true });
+    return NextResponse.json({
+      entitlements,
+      requests: Array.isArray(reqs) ? reqs : [],
+      pricing: Array.isArray(pricing) ? pricing : [],
+      bundles: Array.isArray(bundles) ? bundles : [],
+      provisioned: true,
+    });
   } catch {
-    return NextResponse.json({ entitlements: {}, requests: [], provisioned: false });
+    return NextResponse.json({ entitlements: {}, requests: [], pricing: [], bundles: [], provisioned: false });
   }
 }
 

@@ -16,8 +16,16 @@ import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
 
 export const dynamic = "force-dynamic";
 
-async function grantService(hotelId: string, serviceKey: string, days: number, adminId: string) {
+const PLAN_DAYS: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+
+async function grantService(
+  hotelId: string, serviceKey: string,
+  opts: { days?: number; plan?: string }, adminId: string,
+) {
+  const plan = opts.plan && PLAN_DAYS[opts.plan] ? opts.plan : null;
+  const days = plan ? PLAN_DAYS[plan] : Math.max(0, Number(opts.days) || 0);
   const expires = days > 0 ? new Date(Date.now() + days * 86400000).toISOString() : null;
+  const accessType = plan ? "paid" : days > 0 ? "trial" : "free";
   const existing = await sbSelect(
     `hotel_services?hotel_id=eq.${encodeURIComponent(hotelId)}&service_key=eq.${encodeURIComponent(serviceKey)}&select=id`
   ).catch(() => []);
@@ -25,7 +33,8 @@ async function grantService(hotelId: string, serviceKey: string, days: number, a
     id: existing?.[0]?.id || genId("hsvc"),
     hotel_id: hotelId, service_key: serviceKey,
     status: "active",
-    access_type: days > 0 ? "trial" : "free",
+    access_type: accessType,
+    plan,
     expires_at: expires,
     granted_by: adminId,
     updated_at: new Date().toISOString(),
@@ -70,8 +79,7 @@ export async function POST(req: NextRequest) {
       const rows = await sbSelect(`service_requests?id=eq.${encodeURIComponent(body.id)}&select=*`);
       const sr = rows?.[0];
       if (!sr) return NextResponse.json({ error: "Request not found" }, { status: 404 });
-      const days = Math.max(0, Number(body.days) || 0);
-      await grantService(sr.hotel_id, sr.service_key, days, admin.id || "admin");
+      await grantService(sr.hotel_id, sr.service_key, { days: body.days, plan: body.plan }, admin.id || "admin");
       await fetch(`${SB_URL}/rest/v1/service_requests?id=eq.${encodeURIComponent(body.id)}`, {
         method: "PATCH", headers: SB_H,
         body: JSON.stringify({ status: "approved", decided_by: admin.id || "admin", decided_at: new Date().toISOString() }),
@@ -93,7 +101,7 @@ export async function POST(req: NextRequest) {
     if (action === "grant") {
       if (!body.hotelId || !body.serviceKey)
         return NextResponse.json({ error: "hotelId, serviceKey required" }, { status: 400 });
-      await grantService(body.hotelId, body.serviceKey, Math.max(0, Number(body.days) || 0), admin.id || "admin");
+      await grantService(body.hotelId, body.serviceKey, { days: body.days, plan: body.plan }, admin.id || "admin");
       logAdminAction({ admin, action: "service_grant", targetType: "service", targetId: `${body.hotelId}:${body.serviceKey}` } as any);
       return NextResponse.json({ ok: true });
     }
