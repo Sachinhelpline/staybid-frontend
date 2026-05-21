@@ -25,6 +25,8 @@ import BillingTab from "@/components/partner/BillingTab";
 import GuestsTab from "@/components/partner/GuestsTab";
 // v170 — staff & roles (Phase 3).
 import StaffTab from "@/components/partner/StaffTab";
+// v170 — channel manager / OTA connections (Phase 3).
+import ChannelManagerTab from "@/components/partner/ChannelManagerTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -145,7 +147,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"guests"|"reports"|"complaints"|"redeem"|"content"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -873,6 +875,8 @@ export default function PartnerDashboard() {
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
+    // v170 — channel manager / OTA connections (owner-only).
+    { id:"channels", icon:"🔗", label:"Channels" },
     // v170 — staff & roles management (owner-only).
     { id:"staff", icon:"🧑‍💼", label:"Staff" },
     { id:"profile",   icon:"⚙️", label:"Profile"    },
@@ -1210,6 +1214,7 @@ export default function PartnerDashboard() {
                   { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
                   { id:"staff",       icon:"🧑‍💼", label:"Staff",           hint:"Team logins & roles",                                          c:"#6d28d9", bg:"#ede9fe" },
+                  { id:"channels",    icon:"🔗", label:"Channels",        hint:"OTA sync · Booking.com…",                                     c:"#1d4ed8", bg:"#dbeafe" },
                 ].filter((h: any) => tabAllowed(role, h.id)).map(h => (
                   <button key={h.id}
                     onClick={() => h.href ? router.push(h.href) : setTab(h.id as any)}
@@ -1823,6 +1828,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ STAFF & ROLES ══════════════ */}
         {tab === "staff" && hotel?.id && role === "owner" && (
           <StaffTab hotelId={hotel.id} />
+        )}
+
+        {/* ══════════════ CHANNEL MANAGER ══════════════ */}
+        {tab === "channels" && hotel?.id && role === "owner" && (
+          <ChannelManagerTab hotelId={hotel.id} rooms={rooms} roomUnits={roomUnits} />
         )}
 
         {/* ══════════════ REPORTS & ANALYTICS ══════════════ */}
