@@ -3555,6 +3555,17 @@ body.is-reel-page {
 .bx-live-card.is-expired { opacity: 0.5; }
 .bx-live-card.is-expired .bx-live-card-amt { color: var(--text-muted); }
 
+/* v164 — auction saving line (proof it beats the market) */
+.bx-live-save { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.bx-live-save-strike { font-size: 0.7rem; color: var(--text-muted); text-decoration: line-through; }
+.bx-live-save-tag {
+  font-size: 0.64rem; font-weight: 800;
+  color: #5f7a4a;
+  background: rgba(127, 146, 105, 0.14);
+  border: 1px solid rgba(127, 146, 105, 0.3);
+  border-radius: 999px; padding: 2px 9px;
+}
+
 /* Tablet+: split hero passage gets a touch more room */
 @media (min-width: 640px) {
   .bx-hero-sub-right { font-size: 0.86rem; }
