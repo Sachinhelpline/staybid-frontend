@@ -40,9 +40,23 @@ import { calculateDynamicPrice } from "@/lib/ai-pricing";
 // v139 — auto-fires the 4-step reverse-auction tour on first visit.
 // Hook waits until [data-autonext="destination"] renders.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
-// v170 — shared platform catalog (property types). The id the customer
-// picks here is the same id stored in hotels.property_type.
-import { PROPERTY_TYPES, PROPERTY_TYPE_MAP } from "@/lib/catalog";
+// v170 — shared platform catalog. The id the customer picks here is the
+// same id the hotel stores (property_type / meal_plans / addon_services
+// / rooms.type) — so a pick and an offer always line up.
+import {
+  PROPERTY_TYPES, PROPERTY_TYPE_MAP,
+  ROOM_CATEGORIES, ROOM_CATEGORY_MAP, ROOM_CATEGORY_MULT,
+  MEAL_PLANS as CAT_MEAL_PLANS, MEAL_PLAN_MAP,
+  ADDON_SERVICES, ADDON_SERVICE_MAP,
+} from "@/lib/catalog";
+
+// Room categories the customer can bid for (the partner-only "custom"
+// free-name entry is excluded here).
+const BID_ROOM_CATEGORIES = ROOM_CATEGORIES.filter((c) => !c.custom);
+// Emoji per meal plan id — display only.
+const MEAL_EMOJI: Record<string, string> = {
+  room_only: "🏨", breakfast: "☕", half_board: "🍽️", full_board: "🍱", all_inclusive: "🎉",
+};
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
 const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
@@ -55,12 +69,7 @@ const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High
 };
 
 /* ── Room & Experience Options ─────────────────────────────────── */
-const ROOM_TYPES = [
-  { id: "standard", label: "Standard",  icon: "🛏️",  desc: "Comfortable & cozy"     },
-  { id: "deluxe",   label: "Deluxe",    icon: "✨",   desc: "Upgraded amenities"      },
-  { id: "suite",    label: "Suite",     icon: "👑",   desc: "Premium experience"      },
-  { id: "villa",    label: "Villa",     icon: "🏡",   desc: "Private luxury"          },
-];
+// v170 — room categories now come from lib/catalog (BID_ROOM_CATEGORIES).
 
 const BED_TYPES = [
   { id: "king",   label: "King Bed"   },
@@ -71,12 +80,7 @@ const BED_TYPES = [
 
 const VIEW_PREFS = ["Mountain", "Forest", "Garden", "Pool", "City", "Any"];
 
-const MEAL_PLANS = [
-  { id: "ro", label: "Room Only",   icon: "🏨", desc: "Just the room"            },
-  { id: "bb", label: "Breakfast",   icon: "☕", desc: "Morning meal included"    },
-  { id: "hb", label: "Half Board",  icon: "🍽️", desc: "Breakfast + dinner"       },
-  { id: "fb", label: "Full Board",  icon: "🍱", desc: "All 3 meals included"     },
-];
+// v170 — meal plans come from lib/catalog (CAT_MEAL_PLANS).
 
 const OCCASIONS = [
   { id: "none",        label: "Regular Stay",  icon: "🏨" },
@@ -365,27 +369,30 @@ export default function BidPage() {
 
   const [form, setForm] = useState({
     city:           "",
-    propertyType:   "",          // v170 — "" = Any property type
+    propertyTypes:  [] as string[],  // v170 — multi-select; [] = Any
     checkIn:        "",
     checkOut:       "",
     adults:         2,
     children:       0,
     rooms:          1,
-    roomType:       "deluxe",
+    roomTypes:      ["deluxe"] as string[], // v170 — multi-select room categories
     bedType:        "king",
     view:           "Any",
-    mealPlan:       "bb",
+    mealPlan:       "breakfast",      // v170 — catalog meal-plan id
     occasion:       "none",
     // v129 — `specialRequests` removed: free-text field was an anti-bypass
     // surface (phone/email/WhatsApp could slip through). Add-on toggles below
     // are now the only structured channel for stay preferences.
     maxBudget:      "",
-    earlyCheckIn:   false,
-    lateCheckOut:   false,
-    airportTransfer:false,
-    petFriendly:    false,
-    smokingRoom:    false,
+    addons:         [] as string[],  // v170 — catalog addon-service ids
   });
+
+  // v170 — toggle a value in/out of one of the array fields.
+  const toggleArr = (key: "propertyTypes" | "roomTypes" | "addons", val: string) =>
+    setForm((f) => {
+      const arr = f[key];
+      return { ...f, [key]: arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val] };
+    });
 
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -405,21 +412,27 @@ export default function BidPage() {
   const bidStr   = city && budget > 0 ? calcBidStrength(budget, city.avg) : null;
   const totalEst = budget > 0 && nights > 0 ? budget * nights * form.rooms : 0;
 
-  // v129 — every preset is a ₹100 multiple (same step as the Negotiate slider
-  // and partner counter slider). Lowest indivisible billing unit on the
-  // platform is ₹100; presets must land on it cleanly.
+  // v170 — room-category price multiplier. The presets/estimate scale by
+  // the average multiplier of the room categories the customer picked, so
+  // an upgraded category (Suite/Villa) genuinely raises the suggested
+  // price. Defaults to 1.0 (Deluxe-level) when nothing is picked.
+  const roomMult = form.roomTypes.length
+    ? form.roomTypes.reduce((s, id) => s + (ROOM_CATEGORY_MULT[id] || 1), 0) / form.roomTypes.length
+    : 1.0;
+
+  // v129 — every preset is a ₹100 multiple. v170 — × roomMult.
   const presets: {
     label: string; tier: "budget" | "smart" | "premium";
     amount: number; icon: string; desc: string; recommended?: boolean;
   }[] = city ? [
-    // v163 — presets map to room CATEGORIES (budget / smart / premium
-    // class room), not three bids for one room. "Smart" sits at the
-    // city average; Budget steps 1.5× down, Premium 1.5× up. All snap
-    // to ₹100 — the platform's indivisible billing unit.
-    { label: "Budget",   tier: "budget",  amount: snap100(city.avg / 1.5),  icon: "💰", desc: "Budget-class room" },
-    { label: "Smart",    tier: "smart",   amount: snap100(city.avg),        icon: "⭐", desc: "Balanced mid-class",  recommended: true },
-    { label: "Premium",  tier: "premium", amount: snap100(city.avg * 1.5),  icon: "⚡", desc: "Premium-class room" },
+    { label: "Budget",   tier: "budget",  amount: snap100((city.avg / 1.5) * roomMult), icon: "💰", desc: "Budget bidder" },
+    { label: "Smart",    tier: "smart",   amount: snap100(city.avg * roomMult),         icon: "⭐", desc: "Balanced bid",  recommended: true },
+    { label: "Premium",  tier: "premium", amount: snap100((city.avg * 1.5) * roomMult), icon: "⚡", desc: "Premium bidder" },
   ] : [];
+
+  // v170 — meal-plan cost (per guest / night) added to the estimate.
+  const guestsCount = form.adults + form.children;
+  const mealCostNight = (MEAL_PLAN_MAP[form.mealPlan]?.perGuestNight || 0) * Math.max(1, guestsCount);
 
   // v164 — effective hotel class. If the customer tapped a preset that wins;
   // otherwise derive it from how their budget compares to the city average.
@@ -500,7 +513,7 @@ export default function BidPage() {
   const canNext = (): boolean => {
     // v163 — 3-step page. Step 3 is the final step (launch lives inside).
     if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1);
-    if (step === 2) return !!form.roomType;
+    if (step === 2) return form.roomTypes.length > 0;
     return budget > 0;
   };
 
@@ -524,22 +537,26 @@ export default function BidPage() {
     if (!user) return router.push("/auth");
     setLoading(true);
     try {
-      // v129 — only structured fields go into requirements. Free-text
-      // `specialRequests` was removed as an anti-bypass surface.
+      // v170 — structured requirements built from the catalog selections.
+      const addonLabels = form.addons
+        .map((id) => {
+          const a = ADDON_SERVICE_MAP[id];
+          return a ? `${a.label}${a.charge === "paid" ? " (paid)" : ""}` : "";
+        })
+        .filter(Boolean);
       const extras = [
-        form.earlyCheckIn    ? "Early check-in requested"  : "",
-        form.lateCheckOut    ? "Late check-out requested"  : "",
-        form.airportTransfer ? "Airport transfer needed"   : "",
-        form.petFriendly     ? "Pet-friendly room needed"  : "",
-        form.smokingRoom     ? "Smoking room preferred"    : "",
-        form.occasion !== "none" ? `Special occasion: ${form.occasion}` : "",
+        ...addonLabels,
+        form.occasion !== "none" ? `Occasion: ${form.occasion}` : "",
       ].filter(Boolean).join(". ");
 
+      const roomLabels = form.roomTypes.map((id) => ROOM_CATEGORY_MAP[id]?.label || id).join(" / ");
       const requirements = [
-        form.propertyType ? `Property: ${PROPERTY_TYPE_MAP[form.propertyType]?.label || form.propertyType}` : "",
-        `Room: ${form.roomType}, ${form.bedType} bed`,
+        form.propertyTypes.length
+          ? `Property: ${form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(" / ")}`
+          : "",
+        `Room: ${roomLabels || "Any"}, ${form.bedType} bed`,
         `View: ${form.view}`,
-        `Meal plan: ${form.mealPlan.toUpperCase()}`,
+        `Meal plan: ${MEAL_PLAN_MAP[form.mealPlan]?.label || form.mealPlan}`,
         extras,
       ].filter(Boolean).join(" | ") || undefined;
 
@@ -554,21 +571,37 @@ export default function BidPage() {
       // Fallback: if server-side filter returned nothing useful, use whatever the server gave us
       if (matching.length === 0 && allHotels.length > 0) matching = allHotels.slice(0, 3);
 
-      // v170 — property-type categorization (HARD filter). If the customer
-      // asked for a Villa / Resort etc., the bid only goes to that property
-      // type — no "asked for a villa, sees a guest house" clash. Empty →
-      // clear message so the customer picks a different type, never a
-      // wrong-category hotel.
-      if (form.propertyType) {
-        const pf = matching.filter(
-          (h: any) => (h.property_type || "hotel") === form.propertyType
+      // v170 — property-type categorization (HARD filter, multi-select).
+      // The bid only goes to hotels whose type the customer picked — no
+      // "asked for a villa, sees a guest house" clash. Empty → clear
+      // message, never a wrong-category hotel.
+      if (form.propertyTypes.length) {
+        const pf = matching.filter((h: any) =>
+          form.propertyTypes.includes(h.property_type || "hotel")
         );
         if (pf.length === 0) {
+          const want = form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(" / ");
           throw new Error(
-            `No ${PROPERTY_TYPE_MAP[form.propertyType]?.label || "matching"} properties in ${form.city} right now. Try a different property type or city.`
+            `No ${want} in ${form.city} right now. Try a different property type or city.`
           );
         }
         matching = pf;
+      }
+
+      // v170 — meal-plan categorization (HARD filter). If the customer
+      // wants meals, only hotels that actually offer that plan compete —
+      // no "wants breakfast, hotel doesn't serve food" clash. Room Only
+      // needs no kitchen, so it is never filtered.
+      if (form.mealPlan && form.mealPlan !== "room_only") {
+        const mf = matching.filter((h: any) =>
+          Array.isArray(h.meal_plans) && h.meal_plans.includes(form.mealPlan)
+        );
+        if (mf.length === 0) {
+          throw new Error(
+            `No hotels in ${form.city} offer ${MEAL_PLAN_MAP[form.mealPlan]?.label || form.mealPlan} right now. Pick another meal plan.`
+          );
+        }
+        matching = mf;
       }
 
       // v164 — hotel-class filter: a premium customer competes only among
@@ -608,10 +641,17 @@ export default function BidPage() {
         matching.map(async (hotel: any) => {
           const detail = await api.getHotel(hotel.id);
           const rooms  = detail.rooms || detail.hotel?.rooms || [];
-          // v164 — prefer the room matching the chosen room-type.
-          const room = rooms.find((r: any) =>
-            String(r.type || "").toLowerCase().includes(form.roomType.toLowerCase())
-          ) || rooms[0];
+          // v170 — prefer a room matching ANY chosen room category
+          // (letters-only compare so "super_deluxe" ≈ "Super Deluxe Room").
+          // Falls back to the cheapest room so the hotel still competes.
+          const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z]/g, "");
+          const room =
+            rooms.find((r: any) =>
+              form.roomTypes.some((rt) => {
+                const n = norm(rt);
+                return n && (norm(r.type).includes(n) || norm(r.name).includes(n));
+              })
+            ) || rooms[0];
           if (!room) throw new Error(`${hotel.name}: no rooms`);
 
           // ── v166 auction pricing — sourced from the pricing spine ───
@@ -990,11 +1030,12 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Property Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
+                {/* v170 — multi-select. Tap several; [] = Any. */}
                 <div className="bx-chip-scroll">
                   <button
                     type="button"
-                    onClick={() => upd("propertyType", "")}
-                    className={`bx-chip bx-chip-ico ${form.propertyType === "" ? "is-selected" : ""}`}
+                    onClick={() => upd("propertyTypes", [])}
+                    className={`bx-chip bx-chip-ico ${form.propertyTypes.length === 0 ? "is-selected" : ""}`}
                   >
                     <span className="bx-chip-ico-e">✦</span>Any
                   </button>
@@ -1002,17 +1043,17 @@ export default function BidPage() {
                     <button
                       key={pt.id}
                       type="button"
-                      onClick={() => upd("propertyType", pt.id)}
-                      className={`bx-chip bx-chip-ico ${form.propertyType === pt.id ? "is-selected" : ""}`}
+                      onClick={() => toggleArr("propertyTypes", pt.id)}
+                      className={`bx-chip bx-chip-ico ${form.propertyTypes.includes(pt.id) ? "is-selected" : ""}`}
                     >
                       <span className="bx-chip-ico-e">{pt.emoji}</span>{pt.label}
                     </button>
                   ))}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
-                  {form.propertyType
-                    ? `Bid goes only to ${PROPERTY_TYPE_MAP[form.propertyType]?.label || ""} properties — no other type.`
-                    : "Any property type — pick one to narrow your auction."}
+                  {form.propertyTypes.length
+                    ? `Bid goes only to: ${form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(", ")} — no other type.`
+                    : "Any property type — tap one or more to narrow your auction."}
                 </p>
               </div>
 
@@ -1094,26 +1135,27 @@ export default function BidPage() {
           {step === 2 && (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
-              {/* Room Type — 4 compact tiles in ONE row (v163) */}
+              {/* Room Type — v170 multi-select catalog categories */}
               <div data-autonext="roomType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Room Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-quad-grid">
-                  {ROOM_TYPES.map((rt) => (
+                <div className="bx-chip-scroll">
+                  {BID_ROOM_CATEGORIES.map((rc) => (
                     <button
-                      key={rt.id}
+                      key={rc.id}
                       type="button"
-                      onClick={() => upd("roomType", rt.id)}
-                      className={`bx-mini-tile ${form.roomType === rt.id ? "is-selected" : ""}`}
-                      title={rt.desc}
+                      onClick={() => toggleArr("roomTypes", rc.id)}
+                      className={`bx-chip bx-chip-sm ${form.roomTypes.includes(rc.id) ? "is-selected" : ""}`}
                     >
-                      <span className="bx-mini-tile-icon">{rt.icon}</span>
-                      <span className="bx-mini-tile-name">{rt.label}</span>
+                      {rc.label}
                     </button>
                   ))}
                 </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  Pick one or more — upgraded categories cost more; the bid finds rooms in any chosen category.
+                </p>
               </div>
 
               {/* Bed preference — compact chips, single row */}
@@ -1156,25 +1198,32 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* Meal Plan — 4 compact tiles in ONE row (v163) */}
+              {/* Meal Plan — v170 catalog plans with transparent cost */}
               <div data-autonext="mealPlan">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Meal Plan</span>
                   <span className="bx-section-h-rule" />
                 </div>
                 <div className="bx-quad-grid">
-                  {MEAL_PLANS.map((mp) => (
+                  {CAT_MEAL_PLANS.map((mp) => (
                     <button
                       key={mp.id}
                       type="button"
                       onClick={() => { upd("mealPlan", mp.id); scrollToAutoNext("occasion"); }}
                       className={`bx-mini-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
+                      title={mp.desc}
                     >
-                      <span className="bx-mini-tile-icon">{mp.icon}</span>
+                      <span className="bx-mini-tile-icon">{MEAL_EMOJI[mp.id] || "🍽️"}</span>
                       <span className="bx-mini-tile-name">{mp.label}</span>
+                      <span className="bx-mini-tile-name" style={{ fontSize: "0.56rem", fontWeight: 800, color: "var(--cozy-champagne)" }}>
+                        {mp.perGuestNight > 0 ? `+₹${mp.perGuestNight}/guest` : "No extra"}
+                      </span>
                     </button>
                   ))}
                 </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  Per-guest, per-night — added to your estimate. Final price confirmed by the hotel.
+                </p>
               </div>
 
               {/* Occasion — compact chips, single scrollable row (v163) */}
@@ -1203,24 +1252,24 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Add-ons &amp; Preferences</span>
                   <span className="bx-section-h-rule" />
                 </div>
+                {/* v170 — full catalog of add-on services, multi-select */}
                 <div className="bx-chip-scroll">
-                  {[
-                    { key: "earlyCheckIn",    icon: "🌅", label: "Early Check-in" },
-                    { key: "lateCheckOut",    icon: "🌇", label: "Late Check-out" },
-                    { key: "airportTransfer", icon: "🚗", label: "Airport Transfer" },
-                    { key: "petFriendly",     icon: "🐾", label: "Pet-Friendly" },
-                    { key: "smokingRoom",     icon: "🚬", label: "Smoking Room" },
-                  ].map(({ key, icon, label }) => (
+                  {ADDON_SERVICES.map((ad) => (
                     <button
-                      key={key}
+                      key={ad.id}
                       type="button"
-                      onClick={() => upd(key, !(form as any)[key])}
-                      className={`bx-chip bx-chip-ico ${(form as any)[key] ? "is-selected" : ""}`}
+                      onClick={() => toggleArr("addons", ad.id)}
+                      className={`bx-chip bx-chip-ico ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
+                      title={ad.note}
                     >
-                      <span className="bx-chip-ico-e">{icon}</span>{label}
+                      <span className="bx-chip-ico-e">{ad.emoji}</span>{ad.label}
+                      {ad.charge === "paid" && <span style={{ marginLeft: 4, fontSize: "0.6rem", opacity: 0.7 }}>💳</span>}
                     </button>
                   ))}
                 </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  💳 = paid service, billed by the hotel as per actuals. Others are on request, subject to availability.
+                </p>
                 {/* v129 — free-text "Additional requests" textarea removed
                     (anti-bypass). Structured toggles only. */}
               </div>
@@ -1341,27 +1390,30 @@ export default function BidPage() {
                     <span className="bx-section-h-rule" />
                   </div>
                   <div className="bx-card">
+                    {/* v170 — itemized: room bid + meal cost, taxes on both */}
                     <div className="bx-cost-row">
-                      <span>₹{budget.toLocaleString("en-IN")} × {nights} {nights === 1 ? "night" : "nights"}</span>
-                      <span className="v">₹{(budget * nights).toLocaleString("en-IN")}</span>
+                      <span>Room: ₹{budget.toLocaleString("en-IN")} × {nights} {nights === 1 ? "night" : "nights"}{form.rooms > 1 ? ` × ${form.rooms}` : ""}</span>
+                      <span className="v">₹{(budget * nights * form.rooms).toLocaleString("en-IN")}</span>
                     </div>
-                    {form.rooms > 1 && (
+                    {mealCostNight > 0 && (
                       <div className="bx-cost-row">
-                        <span>× {form.rooms} rooms</span>
-                        <span className="v">₹{(budget * nights * form.rooms).toLocaleString("en-IN")}</span>
+                        <span>{MEAL_PLAN_MAP[form.mealPlan]?.label || "Meals"} — {guestsCount} guest{guestsCount > 1 ? "s" : ""} × {nights}n</span>
+                        <span className="v">₹{(mealCostNight * nights).toLocaleString("en-IN")}</span>
                       </div>
                     )}
                     <div className="bx-cost-divider" />
                     <div className="bx-cost-row">
                       <span style={{ fontSize: "0.7rem" }}>Taxes ~12%</span>
-                      <span className="v" style={{ fontWeight: 500, fontSize: "0.74rem" }}>≈ ₹{Math.round(totalEst * 0.12).toLocaleString("en-IN")}</span>
+                      <span className="v" style={{ fontWeight: 500, fontSize: "0.74rem" }}>≈ ₹{Math.round((totalEst + mealCostNight * nights) * 0.12).toLocaleString("en-IN")}</span>
                     </div>
                     <div className="bx-cost-total">
                       <span className="bx-cost-total-l">Total Estimate</span>
-                      <span className="bx-cost-total-r">₹{Math.round(totalEst * 1.12).toLocaleString("en-IN")}</span>
+                      <span className="bx-cost-total-r">₹{Math.round((totalEst + mealCostNight * nights) * 1.12).toLocaleString("en-IN")}</span>
                     </div>
                     <p style={{ fontSize: "0.62rem", color: "var(--text-muted)", textAlign: "center", marginTop: 8 }}>
-                      Final price confirmed by hotel at acceptance
+                      {form.addons.some((id) => ADDON_SERVICE_MAP[id]?.charge === "paid")
+                        ? "Paid add-ons billed separately by the hotel · final price confirmed at acceptance"
+                        : "Final price confirmed by hotel at acceptance"}
                     </p>
                   </div>
                 </div>
@@ -1379,7 +1431,7 @@ export default function BidPage() {
                 <div className="bx-review-grid">
                   {[
                     { label: "Destination",  value: `${CITY_DATA[form.city]?.emoji || ""} ${form.city}` },
-                    { label: "Property",     value: form.propertyType ? PROPERTY_TYPE_MAP[form.propertyType]?.label || "Any" : "Any type" },
+                    { label: "Property",     value: form.propertyTypes.length ? form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(", ") : "Any type" },
                     { label: "Duration",     value: `${nights} ${nights === 1 ? "night" : "nights"}` },
                     { label: "Check-in",     value: form.checkIn ? new Date(form.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—" },
                     { label: "Check-out",    value: form.checkOut ? new Date(form.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—" },
@@ -1397,10 +1449,10 @@ export default function BidPage() {
 
                 <div className="bx-review-grid">
                   {[
-                    { label: "Room Type",    value: ROOM_TYPES.find(r => r.id === form.roomType)?.label || form.roomType },
+                    { label: "Room Type",    value: form.roomTypes.map((id) => ROOM_CATEGORY_MAP[id]?.label || id).join(", ") || "Any" },
                     { label: "Bed",          value: BED_TYPES.find(b => b.id === form.bedType)?.label || form.bedType },
                     { label: "View",         value: form.view },
-                    { label: "Meal Plan",    value: MEAL_PLANS.find(m => m.id === form.mealPlan)?.label || form.mealPlan },
+                    { label: "Meal Plan",    value: `${MEAL_PLAN_MAP[form.mealPlan]?.label || form.mealPlan}${mealCostNight > 0 ? ` (+₹${mealCostNight}/night)` : ""}` },
                     ...(form.occasion !== "none" ? [{ label: "Occasion", value: OCCASIONS.find(o => o.id === form.occasion)?.label || form.occasion }] : []),
                   ].map(({ label, value }) => (
                     <div key={label}>
@@ -1410,18 +1462,25 @@ export default function BidPage() {
                   ))}
                 </div>
 
-                {(form.earlyCheckIn || form.lateCheckOut || form.airportTransfer || form.petFriendly || form.smokingRoom) && (
+                {form.addons.length > 0 && (
                   <>
                     <div className="bx-cost-divider" style={{ margin: "14px 0" }} />
                     <div>
-                      <div className="bx-review-item-label" style={{ marginBottom: 6 }}>Add-ons</div>
+                      <div className="bx-review-item-label" style={{ marginBottom: 6 }}>Add-ons &amp; Services</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {form.earlyCheckIn    && <span className="bx-chip is-selected" style={{ cursor: "default" }}>🌅 Early check-in</span>}
-                        {form.lateCheckOut    && <span className="bx-chip is-selected" style={{ cursor: "default" }}>🌇 Late check-out</span>}
-                        {form.airportTransfer && <span className="bx-chip is-selected" style={{ cursor: "default" }}>🚗 Airport transfer</span>}
-                        {form.petFriendly     && <span className="bx-chip is-selected" style={{ cursor: "default" }}>🐾 Pet-friendly</span>}
-                        {form.smokingRoom     && <span className="bx-chip is-selected" style={{ cursor: "default" }}>🚬 Smoking room</span>}
+                        {form.addons.map((id) => {
+                          const a = ADDON_SERVICE_MAP[id];
+                          if (!a) return null;
+                          return (
+                            <span key={id} className="bx-chip is-selected" style={{ cursor: "default" }}>
+                              {a.emoji} {a.label}{a.charge === "paid" ? " 💳" : ""}
+                            </span>
+                          );
+                        })}
                       </div>
+                      <p className="bx-budget-suffix" style={{ marginTop: 8 }}>
+                        💳 paid services are billed by the hotel as per actuals.
+                      </p>
                     </div>
                   </>
                 )}
