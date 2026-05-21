@@ -52,6 +52,7 @@ export function ServerStatus() {
   if (pathname?.startsWith("/partner")) return null;
   if (pathname?.startsWith("/agent")) return null;
   if (pathname?.startsWith("/onboard")) return null;
+  if (pathname?.startsWith("/order")) return null;
 
   if (!down) return null;
 

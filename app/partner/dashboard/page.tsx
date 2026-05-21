@@ -23,6 +23,8 @@ import ReportsTab from "@/components/partner/ReportsTab";
 import BillingTab from "@/components/partner/BillingTab";
 // v172 — F&B digital menu builder.
 import MenuBuilderTab from "@/components/partner/MenuBuilderTab";
+// v173 — F&B QR ordering — outlets & QR codes.
+import FnbOrdersTab from "@/components/partner/FnbOrdersTab";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
 // v170 — staff & roles (Phase 3).
@@ -130,7 +132,7 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
 // v170 — role-based tab visibility. The owner sees everything; staff
 // roles get a scoped subset. "staff" + "profile" stay owner-only.
 const STAFF_TAB_ALLOW: Record<string, Set<string>> = {
-  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","guests","reports","complaints","redeem","content","verification"]),
+  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","fnbqr","guests","reports","complaints","redeem","content","verification"]),
   front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests"]),
   housekeeping: new Set(["overview","housekeeping"]),
 };
@@ -149,7 +151,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -864,6 +866,8 @@ export default function PartnerDashboard() {
     { id:"billing", icon:"🧾", label:"Billing" },
     // v172 — F&B digital menu builder.
     { id:"menu", icon:"🍽️", label:"F&B Menu" },
+    // v173 — F&B QR ordering — outlets & QR codes.
+    { id:"fnbqr", icon:"📱", label:"F&B QR" },
     // v170 — guest CRM (profiles, stay history, repeat tags).
     { id:"guests", icon:"👥", label:"Guests" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
@@ -1211,6 +1215,7 @@ export default function PartnerDashboard() {
                   { id:"housekeeping",icon:"🧹", label:"Housekeeping",    hint:"Room status board",                                           c:"#0e7490", bg:"#cffafe" },
                   { id:"billing",     icon:"🧾", label:"Billing",         hint:"Folios · GST invoice",                                        c:"#9a3412", bg:"#ffedd5" },
                   { id:"menu",        icon:"🍽️", label:"F&B Menu",        hint:"Digital restaurant menu",                                     c:"#be123c", bg:"#ffe4e6" },
+                  { id:"fnbqr",       icon:"📱", label:"F&B QR",          hint:"QR codes · guest ordering",                                   c:"#0f766e", bg:"#ccfbf1" },
                   { id:"guests",      icon:"👥", label:"Guests",          hint:"CRM · stay history",                                          c:"#7c3aed", bg:"#ede9fe" },
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
@@ -1828,6 +1833,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ F&B DIGITAL MENU ══════════════ */}
         {tab === "menu" && hotel?.id && (
           <MenuBuilderTab hotelId={hotel.id} />
+        )}
+
+        {/* ══════════════ F&B QR ORDERING ══════════════ */}
+        {tab === "fnbqr" && hotel?.id && (
+          <FnbOrdersTab hotelId={hotel.id} hotelName={hotel.name || "Hotel"} />
         )}
 
         {/* ══════════════ GUEST CRM ══════════════ */}
