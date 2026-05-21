@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Booking not eligible — must be CHECKED_OUT for this hotel in the last 90 days",
+          "Booking not eligible — your stay at this hotel must have started (checked in) within the last 90 days",
       },
       { status: 403 }
     );

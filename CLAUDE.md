@@ -5877,3 +5877,26 @@ app/layout.tsx                                      # SB_BUILD v160 + badge
 - The `/api/cron/auto-approve-content` cron still sweeps `PENDING_HOTEL_APPROVAL`
   (now an unused state) — it's harmless/idle. Do NOT point it at
   `PENDING_ADMIN_REVIEW`; those must wait for a human admin.
+
+### v160 addendum — Verified Guest eligible from CHECK-IN, not checkout
+
+`lib/tier/eligibility.ts` originally required `status='CHECKED_OUT'` +
+`checkOut < NOW()` — meaning a guest could not post until the hotel marked
+their checkout. Guests post during the stay, so this blocked them. New rule
+(date-based, no dependency on a partner action):
+
+```
+bookings: status in (CONFIRMED, CHECKED_IN, CHECKED_OUT)
+bids:     status in (ACCEPTED,  CHECKED_IN, CHECKED_OUT)
+AND checkIn  <= NOW()                      -- the stay has started
+AND checkOut >= NOW() - INTERVAL '90 days' -- ongoing stays pass; old ones fall out
+```
+
+A guest can upload Verified Guest content from their check-in date through
+90 days after checkout. CANCELLED bookings never qualify. This is a strict
+superset of the old rule — no checked-out booking regresses.
+
+- **Never** re-add a `checkOut < NOW()` filter to `listEligibleBookings` — it
+  re-blocks mid-stay guests.
+- **Never** gate on `status='CHECKED_IN'` alone — not every hotel marks
+  check-in promptly; the `checkIn <= NOW()` date check is the reliable signal.
