@@ -135,58 +135,81 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
   round: i % 3 === 0,
 }));
 
-/* ── v163 — Live auction bid card (countdown + live status) ────── */
-const LIVE_WINDOW_MS = 15 * 60 * 1000;
+/* ── v163 — Live auction bid card ───────────────────────────────
+   The reverse-auction model the customer expects:
+   • A hotel whose floor price ≤ your bid ACCEPTS instantly. The timer
+     is the HOLD WINDOW — how long that accepted price is locked for
+     you to book (NOT a deadline for the hotel to respond).
+   • A hotel whose floor > your bid is still REVIEWING and may counter
+     near its floor — no countdown shown for those.
+   • Every card is tappable → opens that hotel's page.
+   ──────────────────────────────────────────────────────────────── */
+const LIVE_WINDOW_MS = 15 * 60 * 1000; // accepted-offer hold window
+
 function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen }: {
-  bid: any; launchTs: number; nowTs: number; idx: number; onOpen: () => void;
+  bid: any; launchTs: number; nowTs: number; idx: number; onOpen: (hotelId: string) => void;
 }) {
   const status    = String(bid.status || "PENDING").toUpperCase();
-  const accepted  = status === "ACCEPTED" || status === "CONFIRMED";
-  const countered = status === "COUNTER" || status === "COUNTERED";
-  const rejected  = status === "REJECTED" || status === "EXPIRED";
-  const pending   = !accepted && !countered && !rejected;
+  // `bid.accepted` = floor ≤ bid at launch (instant accept). The poll
+  // can later flip a reviewing hotel to ACCEPTED / COUNTER / REJECTED.
+  const accepted  = !!bid.accepted || status === "ACCEPTED" || status === "CONFIRMED";
+  const countered = !accepted && (status === "COUNTER" || status === "COUNTERED");
+  const rejected  = !accepted && (status === "REJECTED" || status === "EXPIRED");
+  const reviewing = !accepted && !countered && !rejected;
 
   const elapsed   = Math.max(0, nowTs - launchTs);
   const remaining = Math.max(0, LIVE_WINDOW_MS - elapsed);
+  const expired   = accepted && remaining <= 0;
   const mm = Math.floor(remaining / 60000);
   const ss = Math.floor((remaining % 60000) / 1000);
-  const pct = Math.min(100, (elapsed / LIVE_WINDOW_MS) * 100);
+  const holdLeftPct = Math.max(0, Math.min(100, (remaining / LIVE_WINDOW_MS) * 100));
 
-  const cls = accepted ? "is-accepted" : countered ? "is-countered" : rejected ? "is-rejected" : "";
-  const clickable = accepted || countered;
+  const cls = expired ? "is-expired"
+    : accepted ? "is-accepted"
+    : countered ? "is-countered"
+    : rejected ? "is-rejected" : "";
 
   return (
     <div
-      className={`bx-live-card ${cls} ${clickable ? "is-clickable" : ""}`}
-      style={{ animationDelay: `${0.12 + idx * 0.08}s` }}
-      onClick={clickable ? onOpen : undefined}
-      role={clickable ? "button" : undefined}
+      className={`bx-live-card is-clickable ${cls}`}
+      style={{ animationDelay: `${0.1 + idx * 0.07}s` }}
+      onClick={() => onOpen(bid.hotelId)}
+      role="button"
+      title={`Open ${bid.hotelName}`}
     >
       <div className="bx-live-card-top">
         <span className="bx-live-card-hotel">{bid.hotelName}</span>
         <span className="bx-live-card-amt">₹{Number(bid.amount).toLocaleString("en-IN")}<small>/night</small></span>
       </div>
 
-      {accepted && (
-        <div className="bx-live-stat is-ok">🎉 Accepted! Tap to book your stay</div>
+      {expired && (
+        <div className="bx-live-stat is-rej">⏳ Hold window ended — tap to rebid</div>
+      )}
+      {!expired && accepted && (
+        <>
+          <div className="bx-live-stat is-ok">
+            <span className="bx-live-tick">✓</span>
+            <span className="bx-live-stat-tx">Accepted your price — tap to book</span>
+            <span className="bx-live-timer">held {mm}:{String(ss).padStart(2, "0")}</span>
+          </div>
+          <div className="bx-live-bar"><span style={{ width: `${holdLeftPct}%` }} /></div>
+        </>
       )}
       {countered && (
         <div className="bx-live-stat is-counter">
-          ↔ Countered{bid.counterAmount ? ` at ₹${Number(bid.counterAmount).toLocaleString("en-IN")}` : ""} — tap to respond
+          ↔ Countered{bid.counterAmount ? ` at ₹${Number(bid.counterAmount).toLocaleString("en-IN")}` : ""} — tap to view
         </div>
       )}
       {rejected && (
-        <div className="bx-live-stat is-rej">This hotel passed — others are still bidding</div>
+        <div className="bx-live-stat is-rej">This hotel passed — others are still in</div>
       )}
-      {pending && (
-        <>
-          <div className="bx-live-stat is-live">
-            <span className="bx-live-dot" />
-            <span className="bx-live-stat-tx">{remaining > 0 ? "Hotel reviewing your offer" : "Still live — hotel reviewing"}</span>
-            <span className="bx-live-timer">{remaining > 0 ? `${mm}:${String(ss).padStart(2, "0")}` : "live"}</span>
-          </div>
-          <div className="bx-live-bar"><span style={{ width: `${pct}%` }} /></div>
-        </>
+      {reviewing && (
+        <div className="bx-live-stat is-live">
+          <span className="bx-live-dot" />
+          <span className="bx-live-stat-tx">
+            Reviewing your offer{bid.floorPrice > 0 ? ` — may counter near ₹${Number(bid.floorPrice).toLocaleString("en-IN")}` : ""}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -367,9 +390,13 @@ export default function BidPage() {
   // and partner counter slider). Lowest indivisible billing unit on the
   // platform is ₹100; presets must land on it cleanly.
   const presets = city ? [
-    { label: "Budget",   pct: 70,  amount: snap100(city.avg * 0.70),  icon: "💰", desc: "Best saving, lower chance" },
-    { label: "Smart",    pct: 88,  amount: snap100(city.avg * 0.88),  icon: "⭐", desc: "Optimal balance",  recommended: true },
-    { label: "Premium",  pct: 105, amount: snap100(city.avg * 1.05),  icon: "⚡", desc: "Instant confirm" },
+    // v163 — presets map to room CATEGORIES (budget / smart / premium
+    // class room), not three bids for one room. "Smart" sits at the
+    // city average; Budget steps 1.5× down, Premium 1.5× up. All snap
+    // to ₹100 — the platform's indivisible billing unit.
+    { label: "Budget",   amount: snap100(city.avg / 1.5),  icon: "💰", desc: "Budget-class room" },
+    { label: "Smart",    amount: snap100(city.avg),        icon: "⭐", desc: "Balanced mid-class",  recommended: true },
+    { label: "Premium",  amount: snap100(city.avg * 1.5),  icon: "⚡", desc: "Premium-class room" },
   ] : [];
 
   /* ── v124 Live insights — real data, refreshed on city change + 30s polling ── */
@@ -536,10 +563,16 @@ export default function BidPage() {
           const requestId = reqRes?.request?.id;
           const baseMessage = `Guest's budget: ₹${budget}/night for ${nights} night${nights > 1 ? "s" : ""}${requirements ? ". " + requirements : ""}`;
 
-          // v163 — capture the placed bid so the success screen can show
-          // it live with a countdown (no jump to a different page).
+          // v163 — capture the placed bid + the room's floor price so the
+          // live-auction panel can show the real model: a hotel whose
+          // floor ≤ your bid ACCEPTS instantly (deal held for the timer
+          // window); a hotel whose floor > your bid is still REVIEWING
+          // and may counter at its floor.
           let placedBidId = "";
           let placedAmount = budget;
+          const floorPrice = Number(room.floorPrice) || 0;
+          // Accepted instantly when the bid clears the room's floor.
+          let accepted = floorPrice > 0 ? budget >= floorPrice : true;
 
           try {
             const bidRes = await api.placeBid({
@@ -558,18 +591,19 @@ export default function BidPage() {
             }
           } catch (err: any) {
             const msg = (err?.message || "").toLowerCase();
-            const floor = Number(room.floorPrice) || 0;
-            if (msg.includes("too low") && floor > 0) {
+            if (msg.includes("too low") && floorPrice > 0) {
+              // Bid was below this hotel's floor → reviewing, not accepted.
+              accepted = false;
               const bidRes = await api.placeBid({
                 hotelId:  hotel.id,
                 roomId:   room.id,
-                amount:   floor,
+                amount:   floorPrice,
                 requestId,
                 message:  `Guest's preferred price: ₹${budget}/night. ${baseMessage}. Please counter if possible.`,
               });
               if (bidRes?.bid?.id) {
                 placedBidId = bidRes.bid.id;
-                placedAmount = floor;
+                placedAmount = floorPrice;
                 localStorage.setItem(
                   `bid_dates_${bidRes.bid.id}`,
                   JSON.stringify({ checkIn: form.checkIn, checkOut: form.checkOut })
@@ -580,7 +614,14 @@ export default function BidPage() {
             }
           }
 
-          return { hotelId: hotel.id, hotelName: hotel.name || "Hotel", bidId: placedBidId, amount: placedAmount };
+          return {
+            hotelId: hotel.id,
+            hotelName: hotel.name || "Hotel",
+            bidId: placedBidId,
+            amount: placedAmount,
+            floorPrice,
+            accepted,
+          };
         })
       );
 
@@ -613,9 +654,16 @@ export default function BidPage() {
 
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
   if (success) {
-    const acceptedCount = liveBids.filter(
-      (b) => ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase())
-    ).length;
+    // v163 — a bid counts as accepted if it cleared the hotel's floor
+    // at launch (instant) OR the poll later flipped it to ACCEPTED.
+    const isAccepted = (b: any) =>
+      !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
+    const acceptedCount  = liveBids.filter(isAccepted).length;
+    const reviewingCount = liveBids.length - acceptedCount;
+    // Accepted hotels float to the top of the live list.
+    const sortedBids = [...liveBids].sort(
+      (a, b) => (isAccepted(b) ? 1 : 0) - (isAccepted(a) ? 1 : 0)
+    );
     return (
     <div className="bx-shell bx-win-shell min-h-screen flex justify-center px-4 py-6">
       {/* v162 — celebration confetti rain */}
@@ -692,27 +740,27 @@ export default function BidPage() {
               Live Auction
             </span>
             <span className="bx-live-head-r">
-              {acceptedCount > 0
-                ? `${acceptedCount} accepted ✓`
-                : `${liveBids.length} ${liveBids.length === 1 ? "hotel" : "hotels"} bidding`}
+              {acceptedCount > 0 && <b className="bx-live-head-ok">{acceptedCount} accepted</b>}
+              {acceptedCount > 0 && reviewingCount > 0 && " · "}
+              {reviewingCount > 0 && `${reviewingCount} reviewing`}
             </span>
           </div>
 
           <div className="bx-live-list">
-            {liveBids.map((b, i) => (
+            {sortedBids.map((b, i) => (
               <LiveBidCard
                 key={b.bidId || i}
                 bid={b}
                 idx={i}
                 launchTs={launchTs}
                 nowTs={nowTs}
-                onOpen={() => router.push("/my-bids")}
+                onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
               />
             ))}
           </div>
 
           <p className="bx-live-note">
-            ⏱ Updating live · hotels usually respond within 2–4 hours — you'll be notified the moment one accepts.
+            ✓ Accepted offers are <strong>held 15 minutes</strong> — tap a hotel to lock your booking before the hold ends. Reviewing hotels may still counter.
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
@@ -748,21 +796,25 @@ export default function BidPage() {
               <h1 className="bx-hero-title">
                 Name Your <em>Price</em>
               </h1>
-              {insights && (
+              {insights && (insights.tonightAuctions > 0 || insights.hotelsListening > 0) && (
                 <div className="bx-hero-pills">
-                  {insights.tonightAuctions > 0 && (
-                    <span className="bx-stat-pill bx-stat-pill-live">
-                      <span className="bx-stat-pill-value">{liveAuctions}</span>
-                      <span className="bx-stat-pill-label">auctions live{form.city ? ` in ${form.city}` : " tonight"}</span>
-                    </span>
-                  )}
-                  {insights.hotelsListening > 0 && (
-                    <span className="bx-stat-pill">
-                      <span className="bx-stat-pill-icon">🏨</span>
-                      <span className="bx-stat-pill-value">{liveHotels}</span>
-                      <span className="bx-stat-pill-label">hotels listening</span>
-                    </span>
-                  )}
+                  {/* v163 — both live stats merged into ONE compact pill
+                      so they sit on a single line next to the title. */}
+                  <span className="bx-stat-pill bx-stat-pill-live bx-hero-livepill">
+                    {insights.tonightAuctions > 0 && (
+                      <span className="bx-hero-livepill-seg">
+                        <b>{liveAuctions}</b> live{form.city ? ` in ${form.city}` : ""}
+                      </span>
+                    )}
+                    {insights.tonightAuctions > 0 && insights.hotelsListening > 0 && (
+                      <span className="bx-hero-livepill-sep">·</span>
+                    )}
+                    {insights.hotelsListening > 0 && (
+                      <span className="bx-hero-livepill-seg">
+                        🏨 <b>{liveHotels}</b> listening
+                      </span>
+                    )}
+                  </span>
                 </div>
               )}
             </div>
@@ -918,41 +970,41 @@ export default function BidPage() {
           {step === 2 && (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
-              {/* Room Type */}
+              {/* Room Type — 4 compact tiles in ONE row (v163) */}
               <div data-autonext="roomType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Room Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="bx-quad-grid">
                   {ROOM_TYPES.map((rt) => (
                     <button
                       key={rt.id}
                       type="button"
                       onClick={() => upd("roomType", rt.id)}
-                      className={`bx-tile ${form.roomType === rt.id ? "is-selected" : ""}`}
+                      className={`bx-mini-tile ${form.roomType === rt.id ? "is-selected" : ""}`}
+                      title={rt.desc}
                     >
-                      <span className="bx-tile-icon">{rt.icon}</span>
-                      <p className="bx-tile-name">{rt.label}</p>
-                      <p className="bx-tile-sub">{rt.desc}</p>
+                      <span className="bx-mini-tile-icon">{rt.icon}</span>
+                      <span className="bx-mini-tile-name">{rt.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Bed preference — compact chips */}
+              {/* Bed preference — compact chips, single row */}
               <div data-autonext="bedType">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Bed Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-wrap">
+                <div className="bx-chip-scroll">
                   {BED_TYPES.map((bt) => (
                     <button
                       key={bt.id}
                       type="button"
                       onClick={() => { upd("bedType", bt.id); scrollToAutoNext("view"); }}
-                      className={`bx-chip ${form.bedType === bt.id ? "is-selected" : ""}`}
+                      className={`bx-chip bx-chip-sm ${form.bedType === bt.id ? "is-selected" : ""}`}
                     >
                       {bt.label}
                     </button>
@@ -960,19 +1012,19 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* View preference — compact chips */}
+              {/* View preference — compact chips, single row */}
               <div data-autonext="view">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">View Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-wrap">
+                <div className="bx-chip-scroll">
                   {VIEW_PREFS.map((v) => (
                     <button
                       key={v}
                       type="button"
                       onClick={() => { upd("view", v); scrollToAutoNext("mealPlan"); }}
-                      className={`bx-chip ${form.view === v ? "is-selected" : ""}`}
+                      className={`bx-chip bx-chip-sm ${form.view === v ? "is-selected" : ""}`}
                     >
                       {v}
                     </button>
