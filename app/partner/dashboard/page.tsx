@@ -30,6 +30,9 @@ import ServiceLockModal from "@/components/partner/ServiceLockModal";
 import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
 import SubscriptionBillingModal from "@/components/partner/SubscriptionBillingModal";
 import { isSubscriptionService } from "@/lib/partner/services";
+// v170 — shared platform catalog: property types, meal plans, add-on
+// services. The hotel declares here what the /bid auction targets.
+import { PROPERTY_TYPES, MEAL_PLANS as CAT_MEAL_PLANS, ADDON_SERVICES } from "@/lib/catalog";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
 // v170 — staff & roles (Phase 3).
@@ -2618,6 +2621,66 @@ export default function PartnerDashboard() {
                   value={Array.isArray(editHotel.amenities) ? editHotel.amenities.join(", ") : editHotel.amenities ?? ""}
                   onChange={e => setEditHotel((p: any) => ({ ...p, amenities: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean) }))}
                   className="inp-p" />
+              </div>
+
+              {/* v170 — Property type. Drives which /bid auctions this
+                  hotel is invited to. */}
+              <div>
+                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Property Type</label>
+                <select
+                  value={editHotel.property_type ?? "hotel"}
+                  onChange={e => setEditHotel((p: any) => ({ ...p, property_type: e.target.value }))}
+                  className="inp-p"
+                >
+                  {PROPERTY_TYPES.map(pt => (
+                    <option key={pt.id} value={pt.id}>{pt.emoji} {pt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* v170 — Meal plans this hotel actually serves. A bid that
+                  asks for a plan you don't tick will never reach you. */}
+              <div>
+                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Meal Plans You Offer</label>
+                <div className="flex flex-wrap gap-2">
+                  {CAT_MEAL_PLANS.map(mp => {
+                    const arr: string[] = Array.isArray(editHotel.meal_plans) ? editHotel.meal_plans : [];
+                    const on = arr.includes(mp.id);
+                    return (
+                      <button key={mp.id} type="button"
+                        onClick={() => setEditHotel((p: any) => {
+                          const cur: string[] = Array.isArray(p.meal_plans) ? p.meal_plans : [];
+                          return { ...p, meal_plans: cur.includes(mp.id) ? cur.filter(x => x !== mp.id) : [...cur, mp.id] };
+                        })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? "bg-gold-500 border-gold-500 text-white" : "bg-white border-luxury-200 text-luxury-500"}`}
+                      >
+                        {mp.label}{mp.perGuestNight > 0 ? ` · ₹${mp.perGuestNight}` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* v170 — Add-on services this hotel can provide. */}
+              <div>
+                <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1.5">Add-on Services You Provide</label>
+                <div className="flex flex-wrap gap-2">
+                  {ADDON_SERVICES.map(ad => {
+                    const arr: string[] = Array.isArray(editHotel.addon_services) ? editHotel.addon_services : [];
+                    const on = arr.includes(ad.id);
+                    return (
+                      <button key={ad.id} type="button"
+                        onClick={() => setEditHotel((p: any) => {
+                          const cur: string[] = Array.isArray(p.addon_services) ? p.addon_services : [];
+                          return { ...p, addon_services: cur.includes(ad.id) ? cur.filter(x => x !== ad.id) : [...cur, ad.id] };
+                        })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${on ? "bg-gold-500 border-gold-500 text-white" : "bg-white border-luxury-200 text-luxury-500"}`}
+                      >
+                        {ad.emoji} {ad.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <button onClick={saveHotelProfile} disabled={profileSaving} className="btn-gold w-full py-3 text-sm">
