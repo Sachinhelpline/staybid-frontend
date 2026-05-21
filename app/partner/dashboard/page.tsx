@@ -21,6 +21,8 @@ import HousekeepingTab from "@/components/partner/HousekeepingTab";
 import ReportsTab from "@/components/partner/ReportsTab";
 // v170 — guest billing / folio / invoicing (Phase 2).
 import BillingTab from "@/components/partner/BillingTab";
+// v172 — F&B digital menu builder.
+import MenuBuilderTab from "@/components/partner/MenuBuilderTab";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
 // v170 — staff & roles (Phase 3).
@@ -128,7 +130,7 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
 // v170 — role-based tab visibility. The owner sees everything; staff
 // roles get a scoped subset. "staff" + "profile" stay owner-only.
 const STAFF_TAB_ALLOW: Record<string, Set<string>> = {
-  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","guests","reports","complaints","redeem","content","verification"]),
+  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","guests","reports","complaints","redeem","content","verification"]),
   front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests"]),
   housekeeping: new Set(["overview","housekeeping"]),
 };
@@ -147,7 +149,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -860,6 +862,8 @@ export default function PartnerDashboard() {
     { id:"housekeeping", icon:"🧹", label:"Housekeeping" },
     // v170 — guest billing / folio / GST invoicing.
     { id:"billing", icon:"🧾", label:"Billing" },
+    // v172 — F&B digital menu builder.
+    { id:"menu", icon:"🍽️", label:"F&B Menu" },
     // v170 — guest CRM (profiles, stay history, repeat tags).
     { id:"guests", icon:"👥", label:"Guests" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
@@ -1206,6 +1210,7 @@ export default function PartnerDashboard() {
                   { id:"availability",icon:"🗓️", label:"Availability",    hint:"Calendar & PMS",                                              c:"#2563eb", bg:"#dbeafe" },
                   { id:"housekeeping",icon:"🧹", label:"Housekeeping",    hint:"Room status board",                                           c:"#0e7490", bg:"#cffafe" },
                   { id:"billing",     icon:"🧾", label:"Billing",         hint:"Folios · GST invoice",                                        c:"#9a3412", bg:"#ffedd5" },
+                  { id:"menu",        icon:"🍽️", label:"F&B Menu",        hint:"Digital restaurant menu",                                     c:"#be123c", bg:"#ffe4e6" },
                   { id:"guests",      icon:"👥", label:"Guests",          hint:"CRM · stay history",                                          c:"#7c3aed", bg:"#ede9fe" },
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
@@ -1818,6 +1823,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ BILLING / FOLIO ══════════════ */}
         {tab === "billing" && hotel?.id && (
           <BillingTab hotelId={hotel.id} rooms={rooms} bids={bids} />
+        )}
+
+        {/* ══════════════ F&B DIGITAL MENU ══════════════ */}
+        {tab === "menu" && hotel?.id && (
+          <MenuBuilderTab hotelId={hotel.id} />
         )}
 
         {/* ══════════════ GUEST CRM ══════════════ */}
