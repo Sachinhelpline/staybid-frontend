@@ -83,21 +83,46 @@ export async function POST(req: NextRequest) {
     status: "open",
     tax_pct: body.taxPct != null ? Number(body.taxPct) : 12,
     discount: body.discount != null ? Number(body.discount) : 0,
+    gst_mode: body.gstMode === "inclusive" ? "inclusive" : "exclusive",
     note: body.note || null,
     created_by: owned.userId,
   };
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/guest_folios`, {
-      method: "POST", headers: SB_H_REPRESENT, body: JSON.stringify(row),
-    });
-    const txt = await r.text();
+    const doInsert = (r: any) =>
+      fetch(`${SB_URL}/rest/v1/guest_folios`, { method: "POST", headers: SB_H_REPRESENT, body: JSON.stringify(r) });
+    let r = await doInsert(row);
+    let txt = await r.text();
+    // gst_mode column not migrated yet — retry without it (graceful).
+    if (!r.ok && /gst_mode/i.test(txt)) {
+      const { gst_mode, ...slim } = row;
+      r = await doInsert(slim);
+      txt = await r.text();
+    }
     if (!r.ok) {
       if (tableMissing(txt, r.status))
         return NextResponse.json({ error: "Billing tables not provisioned yet. Apply migrations/2026-05-21-guest-folios.sql." }, { status: 412 });
       throw new Error(txt);
     }
     const j = txt ? JSON.parse(txt) : [];
-    return NextResponse.json({ ok: true, folio: Array.isArray(j) ? j[0] : j });
+    const folio = Array.isArray(j) ? j[0] : j;
+
+    // v171 — online-booking folios seed a locked room charge from the booking.
+    if (folio?.id && body.roomCharge && body.roomCharge.label) {
+      const rc = body.roomCharge;
+      const qty = Number(rc.qty) || 1;
+      const unitPrice = Number(rc.unitPrice) || 0;
+      try {
+        await fetch(`${SB_URL}/rest/v1/folio_charges`, {
+          method: "POST", headers: SB_H_REPRESENT,
+          body: JSON.stringify({
+            id: genId("chg"), folio_id: folio.id, hotel_id: body.hotelId,
+            kind: "room", label: String(rc.label), qty, unit_price: unitPrice,
+            amount: qty * unitPrice, created_by: owned.userId,
+          }),
+        });
+      } catch { /* best-effort — folio still created */ }
+    }
+    return NextResponse.json({ ok: true, folio });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Create failed" }, { status: 500 });
   }
@@ -126,6 +151,7 @@ export async function PATCH(req: NextRequest) {
   if (body.note       !== undefined) patch.note        = body.note || null;
   if (body.taxPct     !== undefined) patch.tax_pct     = Number(body.taxPct) || 0;
   if (body.discount   !== undefined) patch.discount    = Number(body.discount) || 0;
+  if (body.gstMode === "inclusive" || body.gstMode === "exclusive") patch.gst_mode = body.gstMode;
   if (body.status === "open" || body.status === "settled") {
     patch.status = body.status;
     patch.settled_at = body.status === "settled" ? new Date().toISOString() : null;
@@ -133,9 +159,19 @@ export async function PATCH(req: NextRequest) {
   if (!Object.keys(patch).length) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/guest_folios?id=eq.${encodeURIComponent(body.id)}`, {
-      method: "PATCH", headers: SB_H_REPRESENT, body: JSON.stringify(patch),
-    });
+    const doPatch = (p: any) =>
+      fetch(`${SB_URL}/rest/v1/guest_folios?id=eq.${encodeURIComponent(body.id)}`, {
+        method: "PATCH", headers: SB_H_REPRESENT, body: JSON.stringify(p),
+      });
+    let r = await doPatch(patch);
+    // gst_mode column not migrated yet — retry without it (graceful).
+    if (!r.ok && patch.gst_mode !== undefined) {
+      const txt = await r.text();
+      if (/gst_mode/i.test(txt)) {
+        const { gst_mode, ...slim } = patch;
+        if (Object.keys(slim).length) r = await doPatch(slim);
+      } else throw new Error(txt);
+    }
     if (!r.ok) throw new Error(await r.text());
     const j = await r.json().catch(() => []);
     return NextResponse.json({ ok: true, folio: Array.isArray(j) ? j[0] : j });
