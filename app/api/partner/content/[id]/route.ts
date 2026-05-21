@@ -1,10 +1,17 @@
 // POST /api/partner/content/[id]
-// Hotel partner action on a pending social_posts row.
-// Body: { action: "approve" | "reject" | "escalate", reason?, notes? }
+// v160 — hotel partner "report" action on a PUBLISHED guest post.
+// Body: { action: "report", reason }
+//
+// The hotel no longer approves/rejects guest content (booking ID is the
+// proof — guest posts publish directly). The only thing a partner can do is
+// REPORT an abusive post: that escalates it to admin
+// (moderation_status='PENDING_ADMIN_REVIEW'), which immediately removes it
+// from the public feed pending admin review. The hotel cannot block a
+// publish on its own — it can only flag for admin.
 //
 // Auth: x-partner-token. Authorization: partner must own the hotel the
-// post is tagged to. Only acts when moderation_status='PENDING_HOTEL_APPROVAL';
-// other states return 409.
+// post is tagged to. Only acts when the post is currently published
+// (AUTO_APPROVED | APPROVED); other states return 409.
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { resolveUserIds } from "@/lib/sb-server";
@@ -31,7 +38,8 @@ function decodeJwt(t: string): any {
   }
 }
 
-const VALID_ACTIONS = new Set(["approve", "reject", "escalate"]);
+const VALID_ACTIONS = new Set(["report"]);
+const PUBLISHED = new Set(["AUTO_APPROVED", "APPROVED"]);
 
 export async function POST(
   req: NextRequest,
@@ -49,13 +57,13 @@ export async function POST(
   const body = await req.json().catch(() => null);
   if (!body || !VALID_ACTIONS.has(body.action)) {
     return NextResponse.json(
-      { error: "action must be approve | reject | escalate" },
+      { error: "action must be report" },
       { status: 400 }
     );
   }
-  if (body.action === "reject" && !body.reason) {
+  if (!body.reason || !String(body.reason).trim()) {
     return NextResponse.json(
-      { error: "reason required for reject" },
+      { error: "reason required to report content" },
       { status: 400 }
     );
   }
@@ -90,46 +98,23 @@ export async function POST(
   }
   const hotel = hotels[0];
 
-  // Guard: only act on a still-pending post
-  if (post.moderation_status !== "PENDING_HOTEL_APPROVAL") {
+  // Guard: only report a currently-published post. Already-reported posts
+  // (PENDING_ADMIN_REVIEW) or removed ones return 409 — no double report.
+  if (!PUBLISHED.has(post.moderation_status)) {
     return NextResponse.json(
       {
-        error: `Post is no longer pending (current: ${post.moderation_status})`,
+        error: `Post can't be reported (current: ${post.moderation_status})`,
       },
       { status: 409 }
     );
   }
 
   const now = new Date().toISOString();
-  let patch: Record<string, any> = {};
-  let template = "";
-  let notifyAuthor = true;
-
-  if (body.action === "approve") {
-    patch = {
-      moderation_status: "APPROVED",
-      approved_at: now,
-      approved_by: payload.id,
-    };
-    template = "content_approved";
-  } else if (body.action === "reject") {
-    patch = {
-      moderation_status: "REJECTED",
-      rejected_at: now,
-      rejected_by: payload.id,
-      rejection_reason: String(body.reason).slice(0, 500),
-    };
-    template = "content_rejected";
-  } else if (body.action === "escalate") {
-    patch = {
-      moderation_status: "PENDING_ADMIN_REVIEW",
-      escalated_to_admin_at: now,
-      escalated_by: payload.id,
-    };
-    // Don't notify the author on escalation — they still see the post as pending
-    notifyAuthor = false;
-    template = "content_escalated_to_admin";
-  }
+  const patch = {
+    moderation_status: "PENDING_ADMIN_REVIEW",
+    escalated_to_admin_at: now,
+    escalated_by: payload.id,
+  };
 
   const upd = await fetch(
     `${SB_URL}/rest/v1/social_posts?id=eq.${encodeURIComponent(params.id)}`,
@@ -143,59 +128,28 @@ export async function POST(
   }
   const updated = ((await upd.json().catch(() => [])) as any[])[0];
 
-  // Notify author (or admins for escalation)
+  // Notify ADMIN — the post is now off the public feed pending admin review.
+  // Routed to the user_id='ADMIN' sentinel that /admin/content listens for.
   try {
-    if (notifyAuthor) {
-      // social_posts.author_id → social_profiles.id → social_profiles.user_id
-      const apr = await fetch(
-        `${SB_URL}/rest/v1/social_profiles?id=eq.${encodeURIComponent(post.author_id)}&select=user_id&limit=1`,
-        { headers: READ_HEADERS, cache: "no-store" }
-      );
-      const auth = ((await apr.json().catch(() => [])) as any[])[0];
-      if (auth?.user_id) {
-        await fetch(`${SB_URL}/rest/v1/notification_queue`, {
-          method: "POST",
-          headers: HEADERS,
-          body: JSON.stringify([
-            {
-              user_id: auth.user_id,
-              channel: "in_app",
-              template,
-              payload: {
-                post_id: post.id,
-                hotel_name: hotel.name,
-                reason: body.reason || null,
-              },
-              status: "pending",
-            },
-          ]),
-        });
-      }
-    } else {
-      // Escalation — notify admins so they see the queue. Admin user list is
-      // not known here; Phase 6 admin notification preferences will refine
-      // this. For now, we INSERT a row keyed to a sentinel user_id='ADMIN'
-      // that the admin panel can listen for, plus log to audit later.
-      await fetch(`${SB_URL}/rest/v1/notification_queue`, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify([
-          {
-            user_id: "ADMIN",
-            channel: "in_app",
-            template,
-            payload: {
-              post_id: post.id,
-              hotel_name: hotel.name,
-              escalated_by: payload.id,
-              notes: body.notes || null,
-            },
-            status: "pending",
+    await fetch(`${SB_URL}/rest/v1/notification_queue`, {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify([
+        {
+          user_id: "ADMIN",
+          channel: "in_app",
+          template: "content_reported_by_hotel",
+          payload: {
+            post_id: post.id,
+            hotel_name: hotel.name,
+            reported_by: payload.id,
+            reason: String(body.reason).slice(0, 500),
           },
-        ]),
-      });
-    }
+          status: "pending",
+        },
+      ]),
+    });
   } catch {}
 
-  return NextResponse.json({ post: updated, action: body.action });
+  return NextResponse.json({ post: updated, action: "report" });
 }

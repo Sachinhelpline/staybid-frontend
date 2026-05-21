@@ -123,7 +123,13 @@ export async function GET(req: NextRequest) {
 
   // v131 — narrowed select (was *). Drops internal moderation columns +
   // retry counters that the public feed never renders.
-  let filter = `select=${SOCIAL_POST_FEED_COLS}&is_active=eq.true&order=created_at.desc&limit=${limit}`;
+  // v160 — only published content is feed-visible. moderation_status is NOT
+  // NULL DEFAULT 'APPROVED' (Phase 1), so every pre-tier-system row + every
+  // CREATOR/HOTEL upload via /api/social/posts is 'APPROVED'. Verified-guest
+  // uploads land 'AUTO_APPROVED'. Community-contributor uploads sit in
+  // 'PENDING_ADMIN_REVIEW' and stay hidden until an admin verifies them.
+  // REJECTED / FLAGGED / DELETED rows are excluded for everyone.
+  let filter = `select=${SOCIAL_POST_FEED_COLS}&is_active=eq.true&moderation_status=in.(APPROVED,AUTO_APPROVED)&order=created_at.desc&limit=${limit}`;
   if (cursor)             filter += `&created_at=lt.${encodeURIComponent(cursor)}`;
   if (type)               filter += `&media_type=eq.${encodeURIComponent(type)}`;
   if (authorId)           filter += `&author_id=eq.${encodeURIComponent(authorId)}`;

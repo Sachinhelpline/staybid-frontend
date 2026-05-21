@@ -1,22 +1,27 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// PartnerContentTab — hotel-partner Pending Reviews queue.
+// PartnerContentTab — hotel-partner "Guest Content" view.
 // ═══════════════════════════════════════════════════════════════════════════
-// Reads /api/partner/content/pending (auth via x-partner-token from
-// localStorage.sb_partner_token + scoped via x-partner-hotel-id).
-// Per-post actions:
-//   - Approve  → publishes the post to the public feed (moderation_status=APPROVED)
-//   - Reject   → rejects with required reason; author is notified
-//   - Escalate → routes to admin (moderation_status=PENDING_ADMIN_REVIEW)
+// v160 — the hotel no longer gates guest content. A guest with a confirmed,
+// checked-out booking publishes content directly (the booking ID is the
+// proof). This tab is now READ-ONLY: it shows the published reels & photos
+// guests have posted about the hotel.
 //
-// Per Phase 2 contract, all three actions hit POST /api/partner/content/[id]
-// with { action, reason?, notes? } body. The endpoint guards ownership + state.
+// The only action available is "🚩 Report" — if a post is abusive/fake the
+// partner reports it (reason required) and it is escalated to admin
+// (moderation_status=PENDING_ADMIN_REVIEW), which immediately takes it off
+// the public feed pending admin review. The hotel cannot block a publish on
+// its own.
+//
+// Reads  GET  /api/partner/content/pending  (published guest content)
+// Posts  POST /api/partner/content/[id]     ({ action: "report", reason })
+// Auth: x-partner-token (sb_partner_token) + x-partner-hotel-id.
 import { useEffect, useState, useCallback } from "react";
 import TierBadge from "@/components/tier/TierBadge";
 import { modalPortal } from "@/lib/partner/modal-portal";
 import type { ContentTier } from "@/lib/tier/types";
 
-type PendingPost = {
+type GuestPost = {
   id: string;
   hotel_id: string;
   author_id: string;
@@ -37,11 +42,6 @@ type PendingPost = {
   hotel_name?: string | null;
 };
 
-type ActionState = {
-  postId: string;
-  kind: "reject" | "escalate" | null;
-};
-
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   if (ms < 60_000) return "just now";
@@ -51,18 +51,14 @@ function timeAgo(iso: string): string {
 }
 
 export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
-  const [posts, setPosts] = useState<PendingPost[]>([]);
+  const [posts, setPosts] = useState<GuestPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [actionState, setActionState] = useState<ActionState>({
-    postId: "",
-    kind: null,
-  });
+  const [reportId, setReportId] = useState<string>("");
   const [reasonText, setReasonText] = useState("");
-  const [notesText, setNotesText] = useState("");
 
-  const fetchPending = useCallback(async () => {
+  const fetchContent = useCallback(async () => {
     setLoading(true);
     setErr(null);
     try {
@@ -85,28 +81,22 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
         setPosts(j?.posts || []);
       }
     } catch (e: any) {
-      setErr(e?.message || "Failed to load queue");
+      setErr(e?.message || "Failed to load guest content");
     } finally {
       setLoading(false);
     }
   }, [hotelId]);
 
   useEffect(() => {
-    fetchPending();
-  }, [fetchPending]);
+    fetchContent();
+  }, [fetchContent]);
 
-  const closeActionModal = () => {
-    setActionState({ postId: "", kind: null });
+  const closeReportModal = () => {
+    setReportId("");
     setReasonText("");
-    setNotesText("");
   };
 
-  const submitAction = async (
-    postId: string,
-    action: "approve" | "reject" | "escalate",
-    reason?: string,
-    notes?: string
-  ) => {
+  const submitReport = async (postId: string, reason: string) => {
     setBusyId(postId);
     try {
       const tok =
@@ -122,17 +112,17 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
             "x-partner-token": tok,
             "x-partner-hotel-id": hotelId,
           },
-          body: JSON.stringify({ action, reason, notes }),
+          body: JSON.stringify({ action: "report", reason }),
         }
       );
       const j = await r.json();
       if (!r.ok) {
-        alert(j?.error || `Action failed (${r.status})`);
+        alert(j?.error || `Report failed (${r.status})`);
         return;
       }
-      // Optimistically drop from queue
+      // Reported posts leave the public feed → drop from this read-only list
       setPosts((curr) => curr.filter((p) => p.id !== postId));
-      closeActionModal();
+      closeReportModal();
     } catch (e: any) {
       alert(e?.message || "Network error");
     } finally {
@@ -145,16 +135,17 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="font-display text-2xl font-light text-luxury-900">
-            Content Reviews
+            Guest Content
           </h2>
           <p className="text-sm text-luxury-400 mt-1">
-            Reels &amp; photos tagged to your hotel by verified guests.
-            Approve to publish, reject if inappropriate, or escalate if
-            unsure.
+            Reels &amp; photos guests have posted about your hotel. Verified
+            guests (with a confirmed booking) publish directly — no approval
+            needed. See something abusive or fake? Report it and our team
+            reviews it.
           </p>
         </div>
         <button
-          onClick={fetchPending}
+          onClick={fetchContent}
           className="text-xs text-gold-600 font-semibold border border-gold-200 hover:bg-gold-50 px-3 py-2 rounded-lg"
         >
           ↻ Refresh
@@ -163,7 +154,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
 
       {loading && (
         <div className="text-center py-16 text-luxury-400 text-sm">
-          Loading queue…
+          Loading guest content…
         </div>
       )}
 
@@ -175,15 +166,15 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
 
       {!loading && !err && posts.length === 0 && (
         <div className="text-center py-16 bg-white rounded-2xl border border-luxury-100">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl">✓</span>
+          <div className="w-16 h-16 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl">📸</span>
           </div>
           <p className="text-luxury-800 font-semibold mb-1">
-            No pending reviews
+            No guest content yet
           </p>
           <p className="text-xs text-luxury-400">
-            When a verified guest uploads content tagged to your hotel,
-            it&apos;ll appear here for approval.
+            When a guest posts a reel or photo about their stay, it shows up
+            here automatically.
           </p>
         </div>
       )}
@@ -257,7 +248,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                     </span>
                   </div>
 
-                  {/* Meta + actions */}
+                  {/* Meta + report */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="font-semibold text-sm text-luxury-900">
@@ -275,6 +266,10 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                       </div>
                     )}
 
+                    <div className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5 mb-2">
+                      ● Live on feed
+                    </div>
+
                     {p.caption && (
                       <p className="text-sm text-luxury-700 mb-3 line-clamp-3">
                         {p.caption}
@@ -284,28 +279,10 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                     <div className="flex gap-2 flex-wrap">
                       <button
                         disabled={busyId === p.id}
-                        onClick={() => submitAction(p.id, "approve")}
-                        className="text-xs font-semibold text-emerald-700 border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
-                      >
-                        ✓ Approve
-                      </button>
-                      <button
-                        disabled={busyId === p.id}
-                        onClick={() =>
-                          setActionState({ postId: p.id, kind: "reject" })
-                        }
+                        onClick={() => setReportId(p.id)}
                         className="text-xs font-semibold text-red-600 border border-red-300 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
                       >
-                        ✕ Reject
-                      </button>
-                      <button
-                        disabled={busyId === p.id}
-                        onClick={() =>
-                          setActionState({ postId: p.id, kind: "escalate" })
-                        }
-                        className="text-xs font-semibold text-amber-700 border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg disabled:opacity-50"
-                      >
-                        ⚠ Escalate to Admin
+                        🚩 Report to admin
                       </button>
                     </div>
                   </div>
@@ -316,81 +293,48 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
         </div>
       )}
 
-      {/* Action modal — used for both Reject (reason required) and
-          Escalate (optional notes). */}
-      {actionState.kind && modalPortal(
+      {/* Report modal — reason required. Reporting escalates the post to
+          admin and removes it from the public feed pending review. */}
+      {reportId && modalPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={closeActionModal}
+          onClick={closeReportModal}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             className="bg-white max-w-md w-full mx-4 rounded-3xl shadow-luxury-lg p-6"
           >
             <h3 className="font-display text-xl font-light text-luxury-900 mb-2">
-              {actionState.kind === "reject"
-                ? "Reject content"
-                : "Escalate to admin"}
+              Report this content
             </h3>
             <p className="text-sm text-luxury-400 mb-4">
-              {actionState.kind === "reject"
-                ? "The author will be notified with your reason. They can repost with corrected content."
-                : "An admin will review and decide. Add optional notes about why you're escalating."}
+              The post will be taken off the public feed and an admin will
+              review it. Tell us what&apos;s wrong — abusive, fake, not your
+              hotel, etc.
             </p>
-            {actionState.kind === "reject" ? (
-              <textarea
-                value={reasonText}
-                onChange={(e) => setReasonText(e.target.value)}
-                placeholder="Reason (required)..."
-                rows={3}
-                className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-none focus:border-gold-400"
-              />
-            ) : (
-              <textarea
-                value={notesText}
-                onChange={(e) => setNotesText(e.target.value)}
-                placeholder="Notes for admin (optional)..."
-                rows={3}
-                className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-none focus:border-gold-400"
-              />
-            )}
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              placeholder="Reason (required)..."
+              rows={3}
+              className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-none focus:border-gold-400"
+            />
             <div className="flex gap-2 mt-4">
               <button
-                onClick={closeActionModal}
+                onClick={closeReportModal}
                 className="flex-1 py-3 rounded-xl border border-luxury-200 text-sm font-semibold text-luxury-600"
               >
                 Cancel
               </button>
               <button
-                disabled={
-                  busyId === actionState.postId ||
-                  (actionState.kind === "reject" && !reasonText.trim())
-                }
-                onClick={() => {
-                  if (actionState.kind === "reject") {
-                    submitAction(
-                      actionState.postId,
-                      "reject",
-                      reasonText.trim()
-                    );
-                  } else {
-                    submitAction(
-                      actionState.postId,
-                      "escalate",
-                      undefined,
-                      notesText.trim() || undefined
-                    );
-                  }
-                }}
+                disabled={busyId === reportId || !reasonText.trim()}
+                onClick={() => submitReport(reportId, reasonText.trim())}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{
-                  background:
-                    actionState.kind === "reject"
-                      ? "linear-gradient(135deg, #dc2626, #b91c1c)"
-                      : "linear-gradient(135deg, #d97706, #b45309)",
+                  background: "linear-gradient(135deg, #dc2626, #b91c1c)",
                 }}
               >
-                {actionState.kind === "reject" ? "Reject" : "Escalate"}
+                Report
               </button>
             </div>
           </div>

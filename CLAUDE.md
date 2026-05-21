@@ -5807,3 +5807,73 @@ TBD     → docs: Phase 8 — smoke tests + rollback + soft launch (this commit)
 
 Tier System is complete and waiting for the merge signal.
 
+
+---
+
+## Content Auto-Verify — Booking ID is the Proof (v160, 2026-05-21)
+
+Sachin's directive: a public user who uploads content (reel / photo / story)
+and **has a confirmed booking** gets DIRECT permission via the booking ID —
+no hotel gate, no admin gate. A public user who has **NOT stayed** at an
+onboarded hotel needs **admin verification** (plus the location-OTP
+requirement) — but **never** hotel verification. The hotel does not gate
+guest content at all.
+
+This reverses the original Phase 2 tier-system design where BOTH
+verified-guest and community uploads sat in `PENDING_HOTEL_APPROVAL`.
+
+### What changed
+
+| Path | Before (Phase 2) | After (v160) |
+|---|---|---|
+| **Verified Guest** (has booking ID) | `PENDING_HOTEL_APPROVAL` → hotel approves | `AUTO_APPROVED` — **live in feed instantly** |
+| **Community Contributor** (no stay, location-OTP) | `PENDING_HOTEL_APPROVAL` → hotel approves | `PENDING_ADMIN_REVIEW` — hidden until **admin** verifies |
+| **Hotel role** | gate-keeper (approve/reject/escalate) | informational only — read-only Guest Content tab + "Report" |
+
+### Critical fix — feed moderation filter
+
+`/api/social/feed` previously filtered only `is_active=eq.true` and did NOT
+check `moderation_status`. A `PENDING_ADMIN_REVIEW` post would have been
+publicly visible immediately. Fixed: the feed query now carries
+`&moderation_status=in.(APPROVED,AUTO_APPROVED)`. `moderation_status` is
+`NOT NULL DEFAULT 'APPROVED'` (tier-system Phase 1), so every pre-tier row +
+every CREATOR/HOTEL upload via `/api/social/posts` stays visible. REJECTED /
+FLAGGED / DELETED / PENDING_* rows are excluded for everyone (including the
+author's own `/me` — a community post is invisible until admin approves).
+
+### Files changed
+```
+app/api/social/feed/route.ts              # +moderation_status=in.(APPROVED,AUTO_APPROVED)
+app/api/social/posts/verified-guest/route.ts  # AUTO_APPROVED + auto_approved_at; hotel notif → FYI
+app/api/social/posts/community/route.ts        # PENDING_ADMIN_REVIEW + escalated_*; notify ADMIN sentinel
+app/api/partner/content/pending/route.ts        # repurposed → published guest content (read-only)
+app/api/partner/content/[id]/route.ts            # actions reduced to { action:"report" } → escalates to admin
+components/partner/PartnerContentTab.tsx          # read-only "Guest Content" gallery + 🚩 Report modal
+app/partner/dashboard/page.tsx                     # tab label "Content Reviews" → "Guest Content"
+app/layout.tsx                                      # SB_BUILD v160 + badge
+```
+
+### Flow after v160
+- **Verified Guest:** upload → `AUTO_APPROVED` → live. Hotel gets an FYI
+  notification (`content_guest_published`), sees it in the read-only Guest
+  Content tab. Admin can still take it down via `/admin/content` if abusive.
+- **Community Contributor:** upload → `PENDING_ADMIN_REVIEW` → notify
+  `user_id='ADMIN'` sentinel (`content_pending_admin_review`) → appears in the
+  existing `/admin/content` queue → admin approve → `APPROVED` → live.
+  (This path stays dormant until location OTP is enabled —
+  `NEXT_PUBLIC_ENABLE_LOCATION_OTP`, currently OFF.)
+- **Hotel "Report":** `POST /api/partner/content/[id] { action:"report", reason }`
+  → `PENDING_ADMIN_REVIEW` → off the feed → admin reviews. Hotel cannot block
+  a publish, only flag for admin.
+
+### Things to avoid
+- **Never** remove the `moderation_status=in.(APPROVED,AUTO_APPROVED)` filter
+  from `/api/social/feed` — that's the only thing keeping `PENDING_ADMIN_REVIEW`
+  community posts off the public feed.
+- **Never** restore the hotel approve/reject gate on guest content. Booking ID
+  IS the proof — verified guests publish directly. Hotels only "report".
+- **Never** route community uploads back to `PENDING_HOTEL_APPROVAL`. They go
+  to `PENDING_ADMIN_REVIEW` — admin verification, not hotel.
+- The `/api/cron/auto-approve-content` cron still sweeps `PENDING_HOTEL_APPROVAL`
+  (now an unused state) — it's harmless/idle. Do NOT point it at
+  `PENDING_ADMIN_REVIEW`; those must wait for a human admin.

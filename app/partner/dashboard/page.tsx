@@ -921,7 +921,7 @@ export default function PartnerDashboard() {
     // Phase 5 (tier-system) — Pending content moderation queue. Hotel
     // partner approves / rejects / escalates user-uploaded reels & photos
     // tagged to their property. Reads /api/partner/content/pending.
-    { id:"content", icon:"🖼️", label:"Content Reviews" },
+    { id:"content", icon:"🖼️", label:"Guest Content" },
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
@@ -1281,7 +1281,7 @@ export default function PartnerDashboard() {
                   { id:"reports",     icon:"📈", label:"Reports",         hint:"Revenue · ADR · occupancy",                                   c:"#15803d", bg:"#ecfdf5" },
                   { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
                   { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#c9911a", bg:"#fef9e7" },
-                  { id:"content",     icon:"🖼️", label:"Content Reviews", hint:"Approve guest reels",                                          c:"#0891b2", bg:"#cffafe" },
+                  { id:"content",     icon:"🖼️", label:"Guest Content",   hint:"Reels & photos guests posted",                                c:"#0891b2", bg:"#cffafe" },
                   { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
                   { id:"staff",       icon:"🧑‍💼", label:"Staff",           hint:"Team logins & roles",                                          c:"#6d28d9", bg:"#ede9fe" },

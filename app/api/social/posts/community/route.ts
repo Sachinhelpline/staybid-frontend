@@ -1,8 +1,13 @@
 // POST /api/social/posts/community
 // Community Contributor upload — body must include {hotelId, locationVerificationId,
 // mediaType, mediaUrl, ...}. Consumes an active VERIFIED location_verifications
-// row (one OTP = one post). Sets moderation_status='PENDING_HOTEL_APPROVAL'
-// and verification_method='location_otp'. Promotes PUBLIC → COMMUNITY_CONTRIBUTOR.
+// row (one OTP = one post). verification_method='location_otp'.
+// Promotes PUBLIC → COMMUNITY_CONTRIBUTOR.
+//
+// v160 — this user has NOT stayed at the hotel (no booking). They cleared the
+// on-site location OTP, but that alone doesn't publish. The post lands in
+// moderation_status='PENDING_ADMIN_REVIEW' and stays HIDDEN from the public
+// feed until an admin verifies it. No hotel gate — admin verification only.
 //
 // Auth: any signed-in customer.
 import { NextResponse } from "next/server";
@@ -140,8 +145,10 @@ export async function POST(req: Request) {
     location_name: body.locationName || null,
     location_lat: typeof body.locationLat === "number" ? body.locationLat : null,
     location_lng: typeof body.locationLng === "number" ? body.locationLng : null,
-    moderation_status: "PENDING_HOTEL_APPROVAL",
+    moderation_status: "PENDING_ADMIN_REVIEW",
     verification_method: "location_otp",
+    escalated_to_admin_at: new Date().toISOString(),
+    escalated_by: "system",
   };
   if (clientPostId) row.client_post_id = clientPostId;
   if (typeof body.highlightKey === "string" && body.highlightKey.trim()) {
@@ -215,10 +222,13 @@ export async function POST(req: Request) {
     void queueTierPromotionNudge(user.id, "COMMUNITY_CONTRIBUTOR");
   }
 
-  // Notify the hotel partner
+  // Notify ADMIN — this post needs admin verification before it goes live.
+  // Routed to the user_id='ADMIN' sentinel that /admin/content listens for
+  // (same pattern as the partner-escalation path in /api/partner/content/[id]).
   try {
+    let hotelName = "a hotel";
     const hr = await fetch(
-      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(body.hotelId)}&select=ownerId,name`,
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(body.hotelId)}&select=name`,
       {
         headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
         cache: "no-store",
@@ -226,24 +236,25 @@ export async function POST(req: Request) {
     );
     if (hr.ok) {
       const hotels = (await hr.json().catch(() => [])) as any[];
-      const ownerId = hotels[0]?.ownerId || null;
-      const hotelName = hotels[0]?.name || "Your hotel";
-      if (ownerId) {
-        void fetch(`${SB_URL}/rest/v1/notification_queue`, {
-          method: "POST",
-          headers: HEADERS,
-          body: JSON.stringify([
-            {
-              user_id: ownerId,
-              channel: "in_app",
-              template: "content_pending_approval",
-              payload: { post_id: post?.id, hotel_name: hotelName },
-              status: "pending",
-            },
-          ]),
-        });
-      }
+      hotelName = hotels[0]?.name || hotelName;
     }
+    void fetch(`${SB_URL}/rest/v1/notification_queue`, {
+      method: "POST",
+      headers: HEADERS,
+      body: JSON.stringify([
+        {
+          user_id: "ADMIN",
+          channel: "in_app",
+          template: "content_pending_admin_review",
+          payload: {
+            post_id: post?.id,
+            hotel_name: hotelName,
+            verification_method: "location_otp",
+          },
+          status: "pending",
+        },
+      ]),
+    });
   } catch {}
 
   return NextResponse.json({
