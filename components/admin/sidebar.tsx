@@ -20,6 +20,7 @@ const NAV = [
   { href: "/admin/support", label: "Support Inbox", icon: "🎧" },
   // Phase 5 tier-system — escalated content moderation queue
   { href: "/admin/content", label: "Content Reviews", icon: "🖼️" },
+  { href: "/admin/services", label: "Service Access", icon: "🔑" },
   { href: "/admin/fraud", label: "Fraud & Security", icon: "🛡️" },
   { href: "/admin/finance", label: "Finance", icon: "📊" },
   { href: "/admin/commission-rules", label: "Creator Commission", icon: "✨" },
