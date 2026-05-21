@@ -23,6 +23,8 @@ import ReportsTab from "@/components/partner/ReportsTab";
 import BillingTab from "@/components/partner/BillingTab";
 // v170 — guest CRM (Phase 3).
 import GuestsTab from "@/components/partner/GuestsTab";
+// v170 — staff & roles (Phase 3).
+import StaffTab from "@/components/partner/StaffTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -121,6 +123,18 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
   );
 }
 
+// v170 — role-based tab visibility. The owner sees everything; staff
+// roles get a scoped subset. "staff" + "profile" stay owner-only.
+const STAFF_TAB_ALLOW: Record<string, Set<string>> = {
+  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","guests","reports","complaints","redeem","content","verification"]),
+  front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests"]),
+  housekeeping: new Set(["overview","housekeeping"]),
+};
+function tabAllowed(role: string, id: string): boolean {
+  if (role === "owner") return true;
+  return !!STAFF_TAB_ALLOW[role]?.has(id);
+}
+
 // ── main component ─────────────────────────────────────────────────────────
 export default function PartnerDashboard() {
   const router = useRouter();
@@ -131,7 +145,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"guests"|"reports"|"complaints"|"redeem"|"content"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"guests"|"reports"|"complaints"|"redeem"|"content"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -828,6 +842,9 @@ export default function PartnerDashboard() {
   const activeDeals   = flashDeals.filter(d => d.isActive !== false && daysUntil(d.validUntil || "") >= 0);
   const filteredBids  = bidFilter === "ALL" ? bids : bids.filter(b => b.status === bidFilter);
 
+  // v170 — staff role drives which tabs are visible (owner = everything).
+  const role = (pUser?.staffRole as string) || "owner";
+
   const TABS = [
     { id:"overview",  icon:"📊", label:"Overview"   },
     { id:"bids",      icon:"📩", label:`Bids ${pendingBids > 0 ? `(${pendingBids})` : ""}` },
@@ -856,8 +873,10 @@ export default function PartnerDashboard() {
     // Verification = dedicated page (different layout). Treated as a tab so
     // partners discover it in the same row, but clicking routes out.
     { id:"verification", icon:"🎬", label:"Verification", href:"/partner/verification" } as any,
+    // v170 — staff & roles management (owner-only).
+    { id:"staff", icon:"🧑‍💼", label:"Staff" },
     { id:"profile",   icon:"⚙️", label:"Profile"    },
-  ] as const;
+  ].filter((t: any) => tabAllowed(role, t.id));
 
   return (
     <div className="min-h-screen bg-luxury-50">
@@ -936,6 +955,11 @@ export default function PartnerDashboard() {
             {hotel && (
               <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/[0.06] px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
                 🏨 {hotel.name}
+              </span>
+            )}
+            {pUser?.staffRole && (
+              <span className="text-[0.58rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-1 rounded-full uppercase tracking-wide">
+                {pUser.staffRole === "front_desk" ? "Front Desk" : pUser.staffRole === "housekeeping" ? "Housekeeping" : "Manager"}
               </span>
             )}
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
@@ -1185,7 +1209,8 @@ export default function PartnerDashboard() {
                   { id:"content",     icon:"🖼️", label:"Content Reviews", hint:"Approve guest reels",                                          c:"#0891b2", bg:"#cffafe" },
                   { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
                   { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
-                ].map(h => (
+                  { id:"staff",       icon:"🧑‍💼", label:"Staff",           hint:"Team logins & roles",                                          c:"#6d28d9", bg:"#ede9fe" },
+                ].filter((h: any) => tabAllowed(role, h.id)).map(h => (
                   <button key={h.id}
                     onClick={() => h.href ? router.push(h.href) : setTab(h.id as any)}
                     className="hub-tile">
@@ -1793,6 +1818,11 @@ export default function PartnerDashboard() {
         {/* ══════════════ GUEST CRM ══════════════ */}
         {tab === "guests" && hotel?.id && (
           <GuestsTab bids={bids} hotelId={hotel.id} />
+        )}
+
+        {/* ══════════════ STAFF & ROLES ══════════════ */}
+        {tab === "staff" && hotel?.id && role === "owner" && (
+          <StaffTab hotelId={hotel.id} />
         )}
 
         {/* ══════════════ REPORTS & ANALYTICS ══════════════ */}

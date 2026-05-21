@@ -231,6 +231,9 @@ export default function PartnerLogin() {
         </div>
 
         <div className="mt-5 text-center space-y-2">
+          <Link href="/partner/staff" className="block text-amber-400/60 text-xs hover:text-amber-400 transition-colors">
+            🧑‍💼 Staff member? Sign in with your code →
+          </Link>
           <p className="text-white/20 text-xs">Not a partner yet?{" "}
             <a href="mailto:support@staybid.in" className="text-amber-400/60 hover:text-amber-400 transition-colors">
               Apply for onboarding →
