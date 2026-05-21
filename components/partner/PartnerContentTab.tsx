@@ -13,6 +13,7 @@
 // with { action, reason?, notes? } body. The endpoint guards ownership + state.
 import { useEffect, useState, useCallback } from "react";
 import TierBadge from "@/components/tier/TierBadge";
+import { modalPortal } from "@/lib/partner/modal-portal";
 import type { ContentTier } from "@/lib/tier/types";
 
 type PendingPost = {
@@ -317,7 +318,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
 
       {/* Action modal — used for both Reject (reason required) and
           Escalate (optional notes). */}
-      {actionState.kind && (
+      {actionState.kind && modalPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={closeActionModal}

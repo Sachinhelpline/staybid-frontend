@@ -12,6 +12,7 @@
 // Status is date-derived — no schema change, fully bulletproof.
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { modalPortal } from "@/lib/partner/modal-portal";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -269,7 +270,7 @@ function ReservationForm({
 
   const lbl = "text-[0.62rem] font-bold text-luxury-400 uppercase tracking-widest block mb-1";
 
-  return (
+  return modalPortal(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }}
       onClick={onClose}>

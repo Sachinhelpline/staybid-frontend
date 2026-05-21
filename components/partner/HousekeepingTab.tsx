@@ -7,6 +7,7 @@
 // optionally assign a staff member. Backed by /api/partner/housekeeping.
 //
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { modalPortal } from "@/lib/partner/modal-portal";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -218,7 +219,7 @@ function UnitPicker({
   const [assignedTo, setAssignedTo] = useState<string>(meta?.assignedTo || "");
   const [note, setNote] = useState<string>(meta?.note || "");
 
-  return (
+  return modalPortal(
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }}
       onClick={onClose}>
