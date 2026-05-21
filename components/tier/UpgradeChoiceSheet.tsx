@@ -275,8 +275,8 @@ export default function UpgradeChoiceSheet({
                   }}
                 >
                   Pick a hotel where you&apos;ve checked out in the last
-                  90 days. Your content goes to the hotel for review,
-                  then publishes.
+                  90 days. Your booking is the proof — your content
+                  publishes instantly.
                 </div>
               </div>
               <div
@@ -351,7 +351,8 @@ export default function UpgradeChoiceSheet({
                   }}
                 >
                   Verify your physical presence at a hotel using your
-                  phone&apos;s location + OTP. Great for walk-ins and
+                  phone&apos;s location + OTP. Content is checked by our
+                  team before it publishes. Great for walk-ins and
                   day-trippers.
                 </div>
               </div>
