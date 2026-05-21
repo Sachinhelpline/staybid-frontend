@@ -10,6 +10,7 @@
 //   • permission denied / no cam → clear error, manual entry still works
 //
 import { useCallback, useEffect, useRef, useState } from "react";
+import { modalPortal } from "@/lib/partner/modal-portal";
 
 type Props = {
   onDetected: (code: string) => void;
@@ -147,7 +148,7 @@ export default function CodeScanner({ onDetected, buttonClassName, buttonLabel }
         {buttonLabel || "📷 Scan with Camera"}
       </button>
 
-      {open && (
+      {open && modalPortal(
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4"
           style={{ background: "rgba(10,8,5,0.93)", backdropFilter: "blur(4px)" }}
