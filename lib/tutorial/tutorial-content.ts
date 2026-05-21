@@ -532,7 +532,7 @@ const EARN_STEPS: LocalisedSteps = {
 const EXPLORE_STEPS: LocalisedSteps = {
   en: [
     {
-      element: 'input[placeholder="Search by hotel name…"]',
+      element: '.sb-cbar-search',
       title: "🔍 Search",
       description: "Type a hotel name or vibe. Results filter live as you type.",
       side: "bottom",
@@ -544,7 +544,7 @@ const EXPLORE_STEPS: LocalisedSteps = {
       side: "bottom",
     },
     {
-      element: 'select[aria-label="Sort hotels"]',
+      element: '.sb-cbar-filter',
       title: "📊 Sort + ★ filter",
       description: "Sort by price / rating, multi-select star levels. Combine for the perfect view.",
       side: "bottom",
@@ -558,7 +558,7 @@ const EXPLORE_STEPS: LocalisedSteps = {
   ],
   hi: [
     {
-      element: 'input[placeholder="Search by hotel name…"]',
+      element: '.sb-cbar-search',
       title: "🔍 Search",
       description: "Hotel name ya vibe likho. Result live filter hote rahenge.",
       side: "bottom",
@@ -570,7 +570,7 @@ const EXPLORE_STEPS: LocalisedSteps = {
       side: "bottom",
     },
     {
-      element: 'select[aria-label="Sort hotels"]',
+      element: '.sb-cbar-filter',
       title: "📊 Sort + ★ filter",
       description: "Price/rating se sort karo, multi-select stars. Combine kar ke perfect view.",
       side: "bottom",
