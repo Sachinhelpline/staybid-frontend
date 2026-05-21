@@ -73,24 +73,39 @@ export default function PartnerVerification() {
 
   return (
     <div className="bg-luxury-50 min-h-screen">
-      <div className="max-w-5xl mx-auto px-5 py-10">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-display text-3xl text-luxury-900">Verification & Complaints</h1>
-            <p className="text-sm text-luxury-500 mt-1">{partner.hotel.name} · {partner.hotel.id}</p>
-          </div>
-          <div className="flex items-center gap-3">
+      {/* premium dark navbar — matches the partner dashboard */}
+      <nav className="sticky top-0 z-40" style={{ background: "linear-gradient(180deg,#1c140a,#13100a)", borderBottom: "1px solid rgba(240,180,41,0.16)" }}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{ height: "56px" }}>
+          <Link href="/partner/dashboard" className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
+              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 2px 8px rgba(201,145,26,0.4)" }}>S</div>
+            <div className="min-w-0">
+              <span className="font-display text-base text-white tracking-wide">StayBid</span>
+              <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
+            </div>
+          </Link>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => partner?.hotel?.id && load(partner.hotel.id, true)}
               disabled={refreshing}
-              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50">
+              className="text-[0.68rem] text-white/60 hover:text-white border border-white/10 hover:border-white/25 px-2.5 py-1.5 rounded-lg transition-all disabled:opacity-50">
               {refreshing ? "Refreshing…" : "↻ Refresh"}
             </button>
-            <Link href="/partner/dashboard" className="text-sm text-luxury-500 hover:text-gold-700">← Dashboard</Link>
+            <Link href="/partner/dashboard"
+              className="text-[0.68rem] text-white/55 hover:text-amber-300 border border-white/10 hover:border-amber-400/40 px-2.5 py-1.5 rounded-lg transition-all">
+              ← Dashboard
+            </Link>
           </div>
         </div>
+      </nav>
 
-        <div className="flex gap-2 mb-5 border-b border-luxury-200">
+      <div className="max-w-5xl mx-auto px-4 sm:px-5 py-6">
+        <div className="mb-4">
+          <h1 className="font-display text-xl text-luxury-900" style={{ fontWeight: 500 }}>Verification &amp; Complaints</h1>
+          <p className="text-[0.78rem] text-luxury-500 mt-0.5">{partner.hotel.name} · {partner.hotel.id}</p>
+        </div>
+
+        <div className="flex gap-1.5 mb-4 overflow-x-auto">
           <TabBtn active={tab === "pending"}    onClick={() => setTab("pending")}>
             Pending Proofs · {pending.length}
           </TabBtn>
@@ -113,9 +128,10 @@ export default function PartnerVerification() {
 function TabBtn({ active, children, onClick }: any) {
   return (
     <button onClick={onClick}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${
-              active ? "border-gold-500 text-gold-800" : "border-transparent text-luxury-500 hover:text-luxury-800"
-            }`}>
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
+              active ? "text-white" : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-100"
+            }`}
+            style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 2px 8px rgba(201,145,26,0.3)" } : undefined}>
       {children}
     </button>
   );

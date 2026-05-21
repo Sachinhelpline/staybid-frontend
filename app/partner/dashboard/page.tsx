@@ -9,6 +9,8 @@ import { api } from "@/lib/api";
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
 // Phase 5 tier-system — Pending content reviews queue (auth: x-partner-token)
 import PartnerContentTab from "@/components/partner/PartnerContentTab";
+// v170 — camera QR / barcode scanner for the Redeem Codes tab.
+import CodeScanner from "@/components/partner/CodeScanner";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -812,14 +814,34 @@ export default function PartnerDashboard() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         .font-display { font-family:'Cormorant Garamond',serif; }
         body { font-family:'Inter',sans-serif; }
-        .card-p { background:#fff; border-radius:20px; border:1px solid #f0ebe1; box-shadow:0 2px 12px rgba(160,130,80,0.06); padding:20px; }
-        .inp-p { border:1px solid #e8e0d0; border-radius:10px; padding:10px 14px; font-size:0.85rem; width:100%; outline:none; transition:all 0.2s; color:#3d2c14; }
-        .inp-p:focus { border-color:#c9911a; box-shadow:0 0 0 3px rgba(201,145,26,0.12); }
-        .btn-gold { background:linear-gradient(135deg,#c9911a,#f0b429); color:#fff; border:none; border-radius:10px; padding:10px 20px; font-weight:700; cursor:pointer; font-size:0.85rem; transition:all 0.2s; }
-        .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 20px rgba(201,145,26,0.35); }
-        .btn-gold:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+        /* v170 — premium partner panel: tighter padding, refined depth, smaller radii */
+        .card-p { background:#fff; border-radius:15px; border:1px solid #efe7d7; box-shadow:0 1px 2px rgba(61,44,20,0.04),0 4px 16px rgba(160,130,80,0.045); padding:15px; }
+        .card-tight { padding:12px !important; border-radius:13px !important; }
+        .inp-p { border:1px solid #e6ddc8; border-radius:9px; padding:8px 11px; font-size:0.8rem; width:100%; outline:none; transition:all 0.18s; color:#3d2c14; background:#fff; }
+        .inp-p:focus { border-color:#c9911a; box-shadow:0 0 0 3px rgba(201,145,26,0.13); }
+        .btn-gold { background:linear-gradient(135deg,#c9911a,#f0b429); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(201,145,26,0.22); }
+        .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(201,145,26,0.34); }
+        .btn-gold:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+        .btn-ghost { background:#fff; color:#7a6645; border:1px solid #e6ddc8; border-radius:9px; padding:7px 13px; font-weight:700; cursor:pointer; font-size:0.78rem; transition:all 0.18s; }
+        .btn-ghost:hover:not(:disabled) { border-color:#c9911a; color:#3d2c14; background:#fdfaf2; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation:fadeUp 0.3s ease-out both; }
+        /* premium clickable hub launcher tile (dashboard boxes) */
+        .hub-tile { background:#fff; border:1px solid #efe7d7; border-radius:14px; padding:12px; text-align:left; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:5px; min-height:96px; }
+        .hub-tile:hover { transform:translateY(-2px); border-color:#e3c98f; box-shadow:0 9px 24px rgba(160,130,80,0.14); }
+        .hub-tile:active { transform:translateY(0); }
+        .hub-ico { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; }
+        .sec-title { font-family:'Cormorant Garamond',serif; font-weight:500; color:#241a0c; letter-spacing:0.01em; }
+        /* premium camera scanner */
+        .scan-frame { position:relative; width:100%; aspect-ratio:4/3; max-height:360px; background:#0b0907; border-radius:15px; overflow:hidden; }
+        .scan-frame video { width:100%; height:100%; object-fit:cover; }
+        .scan-reticle { position:absolute; top:13%; bottom:13%; left:13%; right:13%; border-radius:14px; border:2px solid rgba(240,180,41,0.92); box-shadow:0 0 0 100vmax rgba(8,7,5,0.56); }
+        .scan-reticle::before,.scan-reticle::after { content:""; position:absolute; width:22px; height:22px; border:3px solid #f0b429; }
+        .scan-reticle::before { top:-2px; left:-2px; border-right:0; border-bottom:0; border-radius:6px 0 0 0; }
+        .scan-reticle::after { bottom:-2px; right:-2px; border-left:0; border-top:0; border-radius:0 0 6px 0; }
+        .scan-laser { position:absolute; left:14%; right:14%; height:2.5px; border-radius:2px; background:linear-gradient(90deg,transparent,#f0b429,transparent); box-shadow:0 0 12px rgba(240,180,41,0.85); animation:scanLaser 2.1s ease-in-out infinite; }
+        @keyframes scanLaser { 0%{top:15%} 50%{top:83%} 100%{top:15%} }
+        @media (max-width:640px){ .card-p { padding:13px; border-radius:14px; } }
         /* v145 — premium counter slider thumb (gold halo, larger drag target).
            Track is rendered by sibling divs; the <input> itself is transparent
            so the colored zones underneath show through. */
@@ -849,28 +871,28 @@ export default function PartnerDashboard() {
       `}</style>
 
       {/* ── Partner Navbar ─────────────────────────────────────────────── */}
-      <nav className="bg-luxury-900 border-b border-luxury-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-5 flex items-center justify-between" style={{height:"60px"}}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-              style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>S</div>
-            <div>
-              <span className="font-display text-lg text-white tracking-wide">StayBid</span>
-              <span className="ml-2 text-[0.6rem] font-bold text-amber-400/70 tracking-[0.15em] uppercase">Partner</span>
+      <nav className="sticky top-0 z-40" style={{background:"linear-gradient(180deg,#1c140a,#13100a)",borderBottom:"1px solid rgba(240,180,41,0.16)"}}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-5 flex items-center justify-between" style={{height:"56px"}}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0"
+              style={{background:"linear-gradient(135deg,#c9911a,#f0b429)",boxShadow:"0 2px 8px rgba(201,145,26,0.4)"}}>S</div>
+            <div className="min-w-0">
+              <span className="font-display text-base text-white tracking-wide">StayBid</span>
+              <span className="ml-1.5 text-[0.55rem] font-bold text-amber-400/75 tracking-[0.18em] uppercase">Partner</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             {hotel && (
-              <span className="hidden sm:block text-sm font-semibold text-white/70 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+              <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/[0.06] px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
                 🏨 {hotel.name}
               </span>
             )}
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
               style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
               {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
             </div>
             <button onClick={logout}
-              className="text-xs text-white/50 hover:text-red-400 border border-white/10 hover:border-red-400/30 px-3 py-1.5 rounded-lg transition-all">
+              className="text-[0.68rem] text-white/55 hover:text-red-300 border border-white/10 hover:border-red-400/40 px-2.5 py-1.5 rounded-lg transition-all">
               Sign Out
             </button>
           </div>
@@ -878,28 +900,33 @@ export default function PartnerDashboard() {
       </nav>
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-luxury-200 sticky top-[60px] z-30 overflow-x-auto">
-        <div className="max-w-7xl mx-auto px-5 flex gap-1 py-2">
+      <div className="bg-white/95 backdrop-blur border-b border-luxury-200 sticky top-[56px] z-30 overflow-x-auto"
+        style={{boxShadow:"0 1px 6px rgba(160,130,80,0.05)"}}>
+        <div className="max-w-7xl mx-auto px-3 sm:px-5 flex gap-1 py-1.5">
           {TABS.map((t: any) => {
-            const cls = `flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              tab === t.id
-                ? "bg-gold-500/10 text-gold-600 border border-gold-400/30"
-                : "text-luxury-500 hover:text-luxury-800 hover:bg-luxury-50"
+            const active = tab === t.id;
+            const cls = `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
+              active
+                ? "text-white"
+                : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-50"
             }`;
-            // Tabs with `href` route to a dedicated page (e.g. Verification).
-            if (t.href) {
-              return (
-                <a key={t.id} href={t.href} className={cls}>
-                  <span>{t.icon}</span>{t.label}
-                </a>
-              );
-            }
-            return (
-              <button key={t.id} onClick={() => setTab(t.id as any)} className={cls}>
-                <span>{t.icon}</span>{t.label}
-                {t.id === "bids" && pendingBids > 0 && tab !== "bids" && (
+            const style = active
+              ? { background:"linear-gradient(135deg,#c9911a,#f0b429)", boxShadow:"0 2px 8px rgba(201,145,26,0.3)" }
+              : undefined;
+            const inner = (
+              <>
+                <span className="text-[0.85rem]">{t.icon}</span>{t.label}
+                {t.id === "bids" && pendingBids > 0 && !active && (
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                 )}
+              </>
+            );
+            if (t.href) {
+              return <a key={t.id} href={t.href} className={cls} style={style}>{inner}</a>;
+            }
+            return (
+              <button key={t.id} onClick={() => setTab(t.id as any)} className={cls} style={style}>
+                {inner}
               </button>
             );
           })}
@@ -922,7 +949,7 @@ export default function PartnerDashboard() {
           });
           return (
           <div className="fade-up space-y-6">
-            <h2 className="font-display text-2xl font-light text-luxury-900">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
+            <h2 className="sec-title text-xl">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
 
             {/* ── Quick Walk-in / PMS Control ── */}
             <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-xl border border-white/20 relative">
@@ -1067,20 +1094,51 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Stats grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
               {[
-                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"text-amber-600",   bg:"bg-amber-50",   border:"border-amber-200",   action: () => setTab("bids") },
-                { label:"Countered",     value: counteredBids, icon:"💬", color:"text-orange-600",  bg:"bg-orange-50",  border:"border-orange-200",  action: () => setTab("bids") },
-                { label:"Confirmed",     value: acceptedBids, icon:"✅", color:"text-emerald-600", bg:"bg-emerald-50", border:"border-emerald-200", action: () => setTab("bookings") },
-                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"text-gold-600", bg:"bg-gold-50",    border:"border-gold-200",    action: () => setTab("bookings") },
+                { label:"Pending Bids",  value: pendingBids,  icon:"📩", color:"#b45309", bg:"#fffbeb", border:"#fde68a", action: () => setTab("bids") },
+                { label:"Countered",     value: counteredBids, icon:"💬", color:"#c2410c", bg:"#fff7ed", border:"#fed7aa", action: () => setTab("bids") },
+                { label:"Confirmed",     value: acceptedBids, icon:"✅", color:"#047857", bg:"#ecfdf5", border:"#a7f3d0", action: () => setTab("bookings") },
+                { label:"Est. Revenue",  value: fmtCur(revenue), icon:"💰", color:"#a16207", bg:"#fefce8", border:"#fde68a", action: () => setTab("bookings") },
               ].map(s => (
                 <button key={s.label} onClick={s.action}
-                  className={`card-p text-left hover:scale-[1.02] transition-transform cursor-pointer ${s.bg} border ${s.border}`}>
-                  <p className="text-2xl mb-1">{s.icon}</p>
-                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-xs text-luxury-500 font-medium mt-0.5">{s.label}</p>
+                  className="card-p card-tight text-left hover:-translate-y-0.5 transition-transform cursor-pointer"
+                  style={{ background:s.bg, borderColor:s.border }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-base">{s.icon}</span>
+                    <span className="text-luxury-300 text-sm">›</span>
+                  </div>
+                  <p className="text-xl font-bold mt-1.5" style={{ color:s.color }}>{s.value}</p>
+                  <p className="text-[0.68rem] text-luxury-500 font-semibold mt-0.5">{s.label}</p>
                 </button>
               ))}
+            </div>
+
+            {/* ── Premium quick-launch hub ── */}
+            <div>
+              <p className="sec-title text-lg mb-2.5">Manage your property</p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                {[
+                  { id:"bids",        icon:"📩", label:"Bids",            hint: pendingBids>0?`${pendingBids} to respond`:"All clear",        c:"#b45309", bg:"#fef3c7" },
+                  { id:"rooms",       icon:"🏨", label:"Rooms & Pricing", hint:`${rooms.length} room${rooms.length!==1?"s":""}`,             c:"#7c3aed", bg:"#f3e8ff" },
+                  { id:"flash",       icon:"⚡", label:"Flash Deals",     hint: activeDeals.length>0?`${activeDeals.length} live`:"Create one", c:"#dc2626", bg:"#fee2e2" },
+                  { id:"bookings",    icon:"📅", label:"Bookings",        hint:`${bookings.length} confirmed`,                                c:"#0d9488", bg:"#ccfbf1" },
+                  { id:"availability",icon:"🗓️", label:"Availability",    hint:"Calendar & PMS",                                              c:"#2563eb", bg:"#dbeafe" },
+                  { id:"complaints",  icon:"🚩", label:"Complaints",      hint: complaintStats.open>0?`${complaintStats.open} open`:"None open", c:"#e11d48", bg:"#ffe4e6" },
+                  { id:"redeem",      icon:"🎟️", label:"Redeem Codes",    hint:"📷 Scan at check-in",                                          c:"#c9911a", bg:"#fef9e7" },
+                  { id:"content",     icon:"🖼️", label:"Content Reviews", hint:"Approve guest reels",                                          c:"#0891b2", bg:"#cffafe" },
+                  { id:"verification",icon:"🎬", label:"Verification",    hint:"Video proofs",        href:"/partner/verification",            c:"#4f46e5", bg:"#e0e7ff" },
+                  { id:"profile",     icon:"⚙️", label:"Profile",         hint:"Hotel & autopilot",                                            c:"#525252", bg:"#f5f5f4" },
+                ].map(h => (
+                  <button key={h.id}
+                    onClick={() => h.href ? router.push(h.href) : setTab(h.id as any)}
+                    className="hub-tile">
+                    <div className="hub-ico" style={{ background:h.bg }}>{h.icon}</div>
+                    <p className="text-[0.78rem] font-bold text-luxury-900 leading-tight">{h.label}</p>
+                    <p className="text-[0.62rem] font-semibold leading-tight" style={{ color:h.c }}>{h.hint}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Active flash deals strip */}
@@ -1143,7 +1201,7 @@ export default function PartnerDashboard() {
         {tab === "bids" && (
           <div className="fade-up">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display text-2xl font-light text-luxury-900">Bid Inbox</h2>
+              <h2 className="sec-title text-xl">Bid Inbox</h2>
               <div className="flex gap-2">
                 {(["PENDING","COUNTER","ACCEPTED","REJECTED","ALL"] as const).map(f => (
                   <button key={f} onClick={() => setBidFilter(f)}
@@ -1265,7 +1323,7 @@ export default function PartnerDashboard() {
         {tab === "rooms" && (
           <div className="fade-up">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display text-2xl font-light text-luxury-900">Rooms & Pricing</h2>
+              <h2 className="sec-title text-xl">Rooms & Pricing</h2>
               <div className="flex items-center gap-1.5 text-[0.6rem] text-luxury-400 font-bold uppercase tracking-widest">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />AI Live Engine
               </div>
@@ -1472,7 +1530,7 @@ export default function PartnerDashboard() {
         {/* ══════════════ FLASH DEALS ══════════════ */}
         {tab === "flash" && (
           <div className="fade-up space-y-6">
-            <h2 className="font-display text-2xl font-light text-luxury-900">Flash Deals</h2>
+            <h2 className="sec-title text-xl">Flash Deals</h2>
 
             {/* Create deal */}
             <div className="card-p border-2 border-gold-200 bg-gradient-to-br from-gold-50/30 to-white">
@@ -1575,7 +1633,7 @@ export default function PartnerDashboard() {
         {/* ══════════════ BOOKINGS ══════════════ */}
         {tab === "bookings" && (
           <div className="fade-up">
-            <h2 className="font-display text-2xl font-light text-luxury-900 mb-5">Confirmed Bookings</h2>
+            <h2 className="sec-title text-xl mb-5">Confirmed Bookings</h2>
             {bookings.length === 0 ? (
               <div className="card-p text-center py-12 text-luxury-400">
                 <p className="text-4xl mb-3">📅</p>
@@ -1657,7 +1715,7 @@ export default function PartnerDashboard() {
           <div className="fade-up space-y-6">
             <div className="flex items-end justify-between flex-wrap gap-3">
               <div>
-                <h2 className="font-display text-2xl font-light text-luxury-900">Availability Calendar</h2>
+                <h2 className="sec-title text-xl">Availability Calendar</h2>
                 <p className="text-sm text-luxury-500">Real-time occupancy across bookings, walk-ins, OTA channels & manual holds</p>
               </div>
             </div>
@@ -2054,7 +2112,7 @@ export default function PartnerDashboard() {
         {tab === "complaints" && (
           <div className="fade-up space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <h2 className="font-display text-2xl font-light text-luxury-900">Guest Complaints</h2>
+              <h2 className="sec-title text-xl">Guest Complaints</h2>
               <button onClick={loadComplaints} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-luxury-200 text-luxury-700 hover:bg-luxury-50">
                 ↻ Refresh
               </button>
@@ -2216,7 +2274,7 @@ export default function PartnerDashboard() {
         {/* ══════════════ PROFILE ══════════════ */}
         {tab === "profile" && (
           <div className="fade-up max-w-xl">
-            <h2 className="font-display text-2xl font-light text-luxury-900 mb-5">Hotel Profile</h2>
+            <h2 className="sec-title text-xl mb-5">Hotel Profile</h2>
 
             {/* v130 — Autopilot mode card. Lives at the top of Profile so the
                 partner sees their automation posture immediately. Defaults
@@ -2880,8 +2938,8 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
     setTimeout(() => setToast(""), 2400);
   }
 
-  async function lookup() {
-    const code = codeInput.trim().toUpperCase();
+  async function lookupCode(rawCode: string) {
+    const code = (rawCode || "").trim().toUpperCase();
     if (!code) return;
     setValidating(true);
     setError("");
@@ -2908,6 +2966,15 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
       setValidating(false);
     }
   }
+  function lookup() { return lookupCode(codeInput); }
+  // v170 — camera scan hands the raw decoded value straight into lookup.
+  function onScan(raw: string) {
+    const c = (raw || "").trim().toUpperCase();
+    setCodeInput(c);
+    setValidated(null);
+    setError("");
+    lookupCode(c);
+  }
 
   async function fulfill() {
     if (!validated?.code?.code) return;
@@ -2932,13 +2999,28 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
 
   return (
     <div className="fade-up max-w-2xl">
-      <h2 className="font-display text-2xl font-light text-luxury-900 mb-1">Redeem Guest Codes</h2>
-      <p className="text-sm text-luxury-500 mb-5">Scan or enter the guest's StayPoints reward code at check-in. Amenity perks (breakfast, late checkout, upgrades) appear here.</p>
+      <h2 className="sec-title text-xl mb-0.5">Redeem Guest Codes</h2>
+      <p className="text-[0.78rem] text-luxury-500 mb-4">Scan a guest's reward code with your camera at check-in — or type it in. Amenity perks (breakfast, late checkout, upgrades) appear here.</p>
 
-      <div className="card-p mb-4">
-        <label className="text-[0.65rem] font-bold text-luxury-400 uppercase tracking-widest block mb-2">
-          Guest code or barcode
-        </label>
+      {/* ── Scanner-first capture card ── */}
+      <div className="card-p mb-3.5">
+        <div className="rounded-xl p-3.5 mb-3 flex items-center gap-3"
+          style={{ background:"linear-gradient(135deg,#fff8e6,#fdf1cf)", border:"1px solid #f0e0b0" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
+            style={{ background:"linear-gradient(135deg,#f0b429,#c9911a)" }}>📷</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[0.82rem] font-bold text-luxury-900 leading-tight">Camera scan</p>
+            <p className="text-[0.66rem] text-luxury-500 leading-tight mt-0.5">Point the camera at the guest's QR or barcode</p>
+          </div>
+          <CodeScanner onDetected={onScan} buttonClassName="btn-gold" buttonLabel="Scan now" />
+        </div>
+
+        <div className="flex items-center gap-2 my-2">
+          <div className="h-px flex-1 bg-luxury-200" />
+          <span className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">or enter manually</span>
+          <div className="h-px flex-1 bg-luxury-200" />
+        </div>
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -2948,11 +3030,9 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
             onChange={(e) => { setCodeInput(e.target.value.toUpperCase()); setValidated(null); setError(""); }}
             onKeyDown={(e) => e.key === "Enter" && lookup()}
             placeholder="STAY-XXXX-XXXX or 12-digit"
-            className="inp-p font-mono tracking-wider text-lg placeholder:font-sans placeholder:tracking-normal placeholder:text-sm"
+            className="inp-p font-mono tracking-wider text-base placeholder:font-sans placeholder:tracking-normal placeholder:text-xs"
           />
-          <button onClick={lookup} disabled={validating || !codeInput.trim()}
-            className="px-5 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-50 whitespace-nowrap"
-            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
+          <button onClick={lookup} disabled={validating || !codeInput.trim()} className="btn-gold whitespace-nowrap">
             {validating ? "…" : "Look up"}
           </button>
         </div>
@@ -2962,30 +3042,37 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
       </div>
 
       {validated && (
-        <div className="card-p mb-4 border-2 border-gold-300 bg-gold-50/40">
+        <div className="card-p mb-3.5 fade-up" style={{ border:"1.5px solid #e3c98f", background:"#fffdf6" }}>
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0"
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
               style={{ background: "linear-gradient(135deg,#f0b429,#c9911a)" }}>
               {validated.code.kind === "amenity" ? "🏨" : validated.code.kind === "coupon" ? "🎟️" : "🎁"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-luxury-900 text-base leading-tight">{validated.code.title || validated.code.code}</p>
-              <p className="font-mono text-xs text-luxury-600 mt-1">{validated.code.code}</p>
+              <p className="font-bold text-luxury-900 text-[0.92rem] leading-tight">{validated.code.title || validated.code.code}</p>
+              <p className="font-mono text-[0.7rem] text-luxury-600 mt-1">{validated.code.code}</p>
             </div>
             <span className={`text-[0.55rem] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
               validated.code.status === "active" ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
               : "bg-red-100 text-red-700 border border-red-300"
             }`}>{validated.code.status}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-            <div><span className="text-luxury-400">Guest:</span> <span className="font-semibold text-luxury-900">{validated.customer?.name || "Guest"}</span></div>
-            <div><span className="text-luxury-400">Phone:</span> <span className="font-semibold text-luxury-900">{validated.customer?.phone || "—"}</span></div>
-            <div><span className="text-luxury-400">Kind:</span> <span className="font-semibold text-luxury-900 capitalize">{validated.code.kind.replace("_", " ")}</span></div>
-            <div><span className="text-luxury-400">Expires:</span> <span className="font-semibold text-luxury-900">{new Date(validated.code.expires_at).toLocaleDateString("en-IN")}</span></div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {[
+              { k:"Guest",   v: validated.customer?.name || "Guest" },
+              { k:"Phone",   v: validated.customer?.phone || "—" },
+              { k:"Kind",    v: String(validated.code.kind || "").replace("_", " ") },
+              { k:"Expires", v: validated.code.expires_at ? new Date(validated.code.expires_at).toLocaleDateString("en-IN") : "—" },
+            ].map((d) => (
+              <div key={d.k} className="bg-luxury-50 rounded-lg px-2.5 py-1.5">
+                <p className="text-[0.58rem] text-luxury-400 uppercase tracking-wider font-bold">{d.k}</p>
+                <p className="text-[0.78rem] font-semibold text-luxury-900 capitalize truncate">{d.v}</p>
+              </div>
+            ))}
           </div>
           {validated.canFulfill ? (
             <button onClick={fulfill} disabled={validating}
-              className="w-full py-3 rounded-2xl font-extrabold text-sm text-white"
+              className="w-full py-2.5 rounded-xl font-extrabold text-[0.82rem] text-white transition-all disabled:opacity-50"
               style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
               {validating ? "Marking…" : "✓ Mark Fulfilled"}
             </button>
@@ -2997,18 +3084,18 @@ function PartnerRedeemTab({ hotelId }: { hotelId: string }) {
 
       {recent.length > 0 && (
         <div className="card-p">
-          <h3 className="font-bold text-luxury-900 text-sm mb-3">Recently Fulfilled</h3>
-          <div className="space-y-2">
+          <h3 className="font-bold text-luxury-900 text-[0.82rem] mb-2.5">Recently Fulfilled</h3>
+          <div className="space-y-1.5">
             {recent.map((r, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base">✓</span>
-                  <div>
-                    <p className="font-mono text-xs font-bold text-emerald-800">{r.code.code}</p>
-                    <p className="text-[0.65rem] text-emerald-700">{r.code.title || r.code.kind} · {r.customer?.name || "Guest"}</p>
+              <div key={i} className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-sm">✓</span>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[0.7rem] font-bold text-emerald-800 truncate">{r.code.code}</p>
+                    <p className="text-[0.62rem] text-emerald-700 truncate">{r.code.title || r.code.kind} · {r.customer?.name || "Guest"}</p>
                   </div>
                 </div>
-                <p className="text-[0.6rem] text-emerald-600">{new Date(r.fulfilledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-[0.58rem] text-emerald-600 shrink-0">{new Date(r.fulfilledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>
               </div>
             ))}
           </div>

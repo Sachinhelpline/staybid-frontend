@@ -114,10 +114,10 @@ export default function PartnerLogin() {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         .font-display { font-family: 'Cormorant Garamond', serif; }
         body { font-family: 'Inter', sans-serif; }
-        .gold-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(201,145,26,0.25); border-radius: 12px; padding: 14px 16px; color: #fff; width: 100%; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .gold-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(201,145,26,0.25); border-radius: 11px; padding: 12px 14px; color: #fff; width: 100%; font-size: 0.85rem; outline: none; transition: all 0.18s; }
         .gold-input::placeholder { color: rgba(255,255,255,0.3); }
-        .gold-input:focus { border-color: rgba(201,145,26,0.7); background: rgba(255,255,255,0.09); box-shadow: 0 0 0 3px rgba(201,145,26,0.12); }
-        .gold-btn { background: linear-gradient(135deg,#c9911a,#f0b429); color: #fff; border: none; border-radius: 12px; padding: 14px; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.9rem; transition: all 0.2s; }
+        .gold-input:focus { border-color: rgba(201,145,26,0.7); background: rgba(255,255,255,0.09); box-shadow: 0 0 0 3px rgba(201,145,26,0.13); }
+        .gold-btn { background: linear-gradient(135deg,#c9911a,#f0b429); color: #fff; border: none; border-radius: 11px; padding: 12px; font-weight: 700; cursor: pointer; width: 100%; font-size: 0.85rem; transition: all 0.18s; box-shadow: 0 2px 10px rgba(201,145,26,0.25); }
         .gold-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(201,145,26,0.4); }
         .gold-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
@@ -126,20 +126,20 @@ export default function PartnerLogin() {
 
       <div className="w-full max-w-sm fade-up">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-xl"
-              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>S</div>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2.5 mb-3.5">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+              style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 3px 12px rgba(201,145,26,0.4)" }}>S</div>
             <div>
-              <p className="font-display text-2xl text-white tracking-wide leading-none">StayBid</p>
-              <p className="text-[0.65rem] text-amber-400/80 tracking-[0.2em] uppercase font-medium">Partner Portal</p>
+              <p className="font-display text-xl text-white tracking-wide leading-none">StayBid</p>
+              <p className="text-[0.6rem] text-amber-400/80 tracking-[0.2em] uppercase font-medium">Partner Portal</p>
             </div>
           </div>
-          <h1 className="font-display text-3xl font-light text-white mb-1">Welcome Back</h1>
-          <p className="text-white/40 text-sm">Sign in to manage your property</p>
+          <h1 className="font-display text-2xl font-light text-white mb-0.5">Welcome Back</h1>
+          <p className="text-white/40 text-[0.82rem]">Sign in to manage your property</p>
         </div>
 
-        <div className="bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-2xl">
+        <div className="bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
           {step === "phone" ? (
             <div className="space-y-4">
               <div>
