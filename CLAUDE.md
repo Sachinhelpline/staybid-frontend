@@ -5989,3 +5989,49 @@ superset of the old rule — no checked-out booking regresses.
   re-blocks mid-stay guests.
 - **Never** gate on `status='CHECKED_IN'` alone — not every hotel marks
   check-in promptly; the `checkIn <= NOW()` date check is the reliable signal.
+
+---
+
+## Nav Swap + Hotel-Link Fix + Mandatory Hotel Tag (v161, 2026-05-21)
+
+Three asks in one pass.
+
+### 1. Bottom-dock slot swap
+`components/discover/BottomDock.tsx` — ITEMS reordered: **Home · Hotels ·
+Deals · Bid · Reels · You** (Hotels moved to slot 2, Reels to slot 5). Pure
+array reorder — `isActive()` keys off `href`, not index, so every route +
+highlight still resolves.
+
+### 2. "Hotel not found" — root cause + fix
+Tapping a reel's "⋯ → Open hotel page" landed on **Hotel not found**. Cause:
+`socialPostToItem` (`app/discover/page.tsx`) sets the feed item's
+`hotel.id = post.id` (the social_posts row id, NOT a hotel id). MoreMenu's
+"Open hotel page" built `/hotels/<post-id>` → never resolves. Not data loss
+— the link was wired to the post id by construction.
+
+Fix:
+- `socialPostToItem` + the PostsStore mapper now forward `_taggedHotelId`
+  (the real `social_posts.hotel_id` / `taggedHotel.id`).
+- `MoreMenu` takes `hotelHref` (pre-resolved) instead of `hotelId`. The
+  parent computes it: real hotel card → `/hotels/<hotel.id>`; user-post reel
+  → `/hotels/<_taggedHotelId>`; **no tagged hotel → the row is omitted**.
+
+Note: `/hotels/[id]` still has `.catch(() => {})` on the `getHotel` fetch —
+a server-down also renders "Hotel not found" (can't distinguish 404 from a
+fetch failure). Left as-is for now; the routing bug above was the real cause.
+
+### 3. Every new post must tag a hotel
+`/api/social/posts` previously allowed `hotel_id = null`, so CREATOR/HOTEL
+users could post hotel-less reels (exactly the v161 #2 case). Now:
+- HOTEL author with no pick → defaults to `profile.hotel_id`.
+- Any other author with no hotel → **400** "A hotel tag is required".
+- PUBLIC users were already covered — `/verified-guest` + `/community` both
+  mandate `hotelId`.
+- `CreateFlow` Composer: both Post buttons disabled until a hotel is tagged
+  (when `tierContext` is undefined); the tag tile shows "· Required".
+
+### Things to avoid
+- **Never** pass the social_posts row id as a `/hotels/[id]` link — it's the
+  post id, not a hotel id. Use `_taggedHotelId`.
+- **Never** drop the `hotelId`-required check in `/api/social/posts` — it's
+  the backstop that keeps hotel-less content out of the system.

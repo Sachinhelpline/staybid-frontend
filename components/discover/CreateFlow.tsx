@@ -2950,10 +2950,10 @@ export function Composer({
           ) : (
             <button
               onClick={post}
-              disabled={!mediaFile || posting || step !== "edit"}
+              disabled={!mediaFile || posting || step !== "edit" || (!tierContext && !taggedHotel)}
               className="font-bold text-[0.84rem] py-1 px-2 -mx-2"
               style={{
-                color: !mediaFile || posting || step !== "edit" ? "rgba(255,215,107,0.35)" : "#ffd76b",
+                color: !mediaFile || posting || step !== "edit" || (!tierContext && !taggedHotel) ? "rgba(255,215,107,0.35)" : "#ffd76b",
               }}
             >
               {posting ? "Posting…" : "Post"}
@@ -3739,7 +3739,9 @@ export function Composer({
                     : "rgba(255,255,255,0.04)",
                   border: taggedHotel
                     ? "1px solid rgba(240,180,41,0.45)"
-                    : "1px solid rgba(255,255,255,0.10)",
+                    : (!tierContext
+                        ? "1px solid rgba(240,180,41,0.40)"
+                        : "1px solid rgba(255,255,255,0.10)"),
                 }}
               >
                 <span
@@ -3754,12 +3756,16 @@ export function Composer({
                 </span>
                 <span className="flex-1 text-left min-w-0">
                   <span className="block text-white text-[0.82rem] font-semibold truncate">
-                    {taggedHotel ? taggedHotel.name : "Tag a hotel"}
+                    {taggedHotel
+                      ? taggedHotel.name
+                      : (!tierContext ? "Tag a hotel · Required" : "Tag a hotel")}
                   </span>
                   <span className="block text-white/55 text-[0.62rem] truncate">
                     {taggedHotel
                       ? (taggedHotel.city ? `📍 ${taggedHotel.city} · viewers can book or bid from this reel` : "viewers can book or bid from this reel")
-                      : "Tag a StayBid hotel so viewers can book or bid right from your reel"}
+                      : (!tierContext
+                          ? "Required — every post must link to a StayBid hotel so viewers can book or bid"
+                          : "Tag a StayBid hotel so viewers can book or bid right from your reel")}
                   </span>
                 </span>
                 {taggedHotel ? (
@@ -3992,12 +3998,12 @@ export function Composer({
               {/* Confirm post (extra safety) */}
               <button
                 onClick={post}
-                disabled={posting || !!lastError}
+                disabled={posting || !!lastError || (!tierContext && !taggedHotel)}
                 className="ig-cta-3d ig-cta-book w-full"
                 style={{ padding: "12px", fontSize: "0.86rem" }}
               >
                 <span className="ig-cta-icon">⚡</span>
-                <span className="ig-cta-text">{posting ? "Posting…" : lastError ? "Tap Retry above" : `Post to your profile`}</span>
+                <span className="ig-cta-text">{posting ? "Posting…" : lastError ? "Tap Retry above" : (!tierContext && !taggedHotel) ? "Tag a hotel to post" : `Post to your profile`}</span>
               </button>
             </div>
           </div>

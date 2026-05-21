@@ -48,6 +48,22 @@ export async function POST(req: Request) {
     else if (profile.user_type !== "HOTEL") hotelId = body.hotelId;
   }
 
+  // v160 — every piece of content must be tied to a hotel. A HOTEL author
+  // defaults to their own hotel even if they didn't pick one; CREATOR (and
+  // any other) author must tag a hotel. PUBLIC users never reach this route
+  // — they post via /verified-guest or /community, both of which already
+  // require a hotel — so this closes the last gap (creators posting
+  // hotel-less reels, e.g. the "Open hotel page → not found" case).
+  if (!hotelId && profile.user_type === "HOTEL" && profile.hotel_id) {
+    hotelId = profile.hotel_id;
+  }
+  if (!hotelId) {
+    return NextResponse.json(
+      { error: "A hotel tag is required — pick the hotel this content is about." },
+      { status: 400 }
+    );
+  }
+
   // v111 — bulletproof idempotency. Composer sends `clientPostId` once
   // per post() invocation; we de-dup at the DB by (author_id,
   // client_post_id). 1..N rapid POSTs return the same row, fixing the
