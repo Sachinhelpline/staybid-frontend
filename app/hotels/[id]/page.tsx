@@ -741,12 +741,32 @@ export default function HotelDetail() {
   // ── AI live pricing: recalculate every 60s ──────────────────────────────────
   useEffect(() => {
     if (!hotel?.rooms?.length) return;
-    const recalculate = () => {
+    const recalculate = async () => {
       const checkInForCalc = selectedCheckIn || today;
       const next: Record<string, DynamicPriceResult> = {};
       for (const r of hotel.rooms) {
         next[r.id] = calculateDynamicPrice(r.floorPrice || 1000, checkInForCalc, hotel.city || "Mussoorie");
       }
+      // v167 — override the displayed price with the unified pricing
+      // spine (room_date_price → competitor-undercut + per-date vacancy
+      // baked in). Demand / trend / factor badges stay from the local
+      // compute. If the spine is unreachable the local price stands, so
+      // the page never breaks.
+      try {
+        const roomIds = hotel.rooms.map((r: any) => r.id);
+        const sp = await fetch("/api/pricing/spine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomIds, date: checkInForCalc }),
+        }).then((r) => r.json());
+        const prices = sp?.prices || {};
+        for (const r of hotel.rooms) {
+          const p = prices[r.id];
+          if (p && Number(p.livePrice) > 0) {
+            next[r.id] = { ...next[r.id], price: Number(p.livePrice) };
+          }
+        }
+      } catch { /* spine unreachable — local price stands */ }
       setRoomPrices((prev) => {
         // Flash animation on price change
         const changed: Record<string, boolean> = {};
