@@ -24,11 +24,13 @@ import { parseAddons } from "@/lib/counter-addons";
 // auto-accept countdown.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
-const STATUS_META: Record<string, { label: string; dot: string; chip: string; glow: string }> = {
-  PENDING:  { label: "Pending",   dot: "bg-amber-400",   chip: "text-amber-300 border-amber-400/40 bg-amber-500/10",   glow: "shadow-[0_0_18px_rgba(245,158,11,0.25)]" },
-  COUNTER:  { label: "Countered", dot: "bg-orange-400",  chip: "text-orange-300 border-orange-400/40 bg-orange-500/10", glow: "shadow-[0_0_18px_rgba(249,115,22,0.25)]" },
-  ACCEPTED: { label: "Accepted",  dot: "bg-emerald-400", chip: "text-emerald-300 border-emerald-400/40 bg-emerald-500/10", glow: "shadow-[0_0_24px_rgba(52,211,153,0.35)]" },
-  REJECTED: { label: "Rejected",  dot: "bg-red-400",     chip: "text-red-300 border-red-400/40 bg-red-500/10",         glow: "shadow-[0_0_18px_rgba(239,68,68,0.25)]" },
+// v174 — cozy-theme status palette. Mid-tone colours that read on both the
+// cream (light) and walnut (dark) surfaces — no per-theme branching needed.
+const STATUS_META: Record<string, { label: string; color: string; soft: string }> = {
+  PENDING:  { label: "Pending",   color: "#C9A66B", soft: "rgba(201,166,107,0.14)" },
+  COUNTER:  { label: "Countered", color: "#C77B43", soft: "rgba(199,123,67,0.14)" },
+  ACCEPTED: { label: "Accepted",  color: "#7F9269", soft: "rgba(127,146,105,0.18)" },
+  REJECTED: { label: "Declined",  color: "#C77E6D", soft: "rgba(199,126,109,0.14)" },
 };
 
 const isPaid = (b: any) => typeof b?.message === "string" && b.message.includes("Razorpay:");
@@ -55,6 +57,10 @@ export default function MyBidsPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState("");
   const [filter, setFilter] = useState<"ALL"|"PENDING"|"COUNTER"|"ACCEPTED"|"REJECTED">("ALL");
+  // v174 — bidding is two distinct flows. BID = reverse-auction "Place Bid"
+  // rows; FLASH = flash-deal rows (carry b.dealId OR a `deal_price_{id}`
+  // localStorage marker the flash booking flow writes). Toggle swaps the view.
+  const [section, setSection] = useState<"BID"|"FLASH">("BID");
   const [celebrateId, setCelebrateId] = useState<string>("");
   const [confettiBurst, setConfettiBurst] = useState(0);
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
@@ -114,7 +120,12 @@ export default function MyBidsPage() {
         // Normalize: every bid gets checkIn/checkOut from the fallback chain
         const list = (d.bids || []).map((b: any) => {
           const { checkIn, checkOut } = resolveDates(b);
-          return { ...b, checkIn, checkOut };
+          // v174 — tag flash-deal bids so the section toggle can split them.
+          let isFlash = !!(b.dealId || b.deal_id);
+          if (!isFlash) {
+            try { isFlash = !!localStorage.getItem(`deal_price_${b.id}`); } catch {}
+          }
+          return { ...b, checkIn, checkOut, _isFlash: isFlash };
         });
         // Fetch unit assignments for these bid IDs (shows allocated room #)
         try {
@@ -494,33 +505,45 @@ export default function MyBidsPage() {
   };
 
   const filters = ["ALL", "PENDING", "COUNTER", "ACCEPTED", "REJECTED"] as const;
-  const filtered = filter === "ALL" ? bids : bids.filter((b) => b.status === filter);
 
-  const pendingCount  = useMemo(() => bids.filter((b) => b.status === "PENDING").length,  [bids]);
-  const counterCount  = useMemo(() => bids.filter((b) => b.status === "COUNTER").length,  [bids]);
-  const acceptedCount = useMemo(() => bids.filter((b) => b.status === "ACCEPTED").length, [bids]);
-  const unpaidAccepted = useMemo(() => bids.filter((b) => b.status === "ACCEPTED" && !isPaid(b)).length, [bids]);
+  // v174 — split by flow first, then by status filter.
+  const bidCount   = useMemo(() => bids.filter((b) => !b._isFlash).length, [bids]);
+  const flashCount = useMemo(() => bids.filter((b) =>  b._isFlash).length, [bids]);
+  const sectionBids = useMemo(
+    () => bids.filter((b) => (section === "FLASH" ? b._isFlash : !b._isFlash)),
+    [bids, section]
+  );
+  const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
+
+  const pendingCount  = useMemo(() => sectionBids.filter((b) => b.status === "PENDING").length,  [sectionBids]);
+  const counterCount  = useMemo(() => sectionBids.filter((b) => b.status === "COUNTER").length,  [sectionBids]);
+  const acceptedCount = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED").length, [sectionBids]);
+  const unpaidAccepted = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED" && !isPaid(b)).length, [sectionBids]);
+
+  const sectionEmpty = section === "FLASH"
+    ? { icon: "⚡", title: "No flash-deal bookings yet", sub: "Grab a time-limited deal and it shows up here.", cta: "Browse Flash Deals", href: "/flash-deals" }
+    : { icon: "🎯", title: "No place-bid offers yet", sub: "Name your price on any hotel — your bids land here.", cta: "Browse Hotels", href: "/hotels" };
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden"
-      style={{
-        background: "radial-gradient(1200px 600px at 20% -10%, rgba(201,145,26,0.18), transparent 60%), radial-gradient(900px 500px at 100% 10%, rgba(240,180,41,0.10), transparent 60%), linear-gradient(180deg,#05060a 0%, #0b0a10 50%, #05060a 100%)",
-      }}
-    >
+    // v174 — cozy theme. `.lux-bg` paints the page in var(--bg-page); every
+    // surface below uses theme tokens directly (no reliance on auto-fix).
+    <div className="lux-bg min-h-screen relative overflow-hidden">
       <style>{`
         @keyframes shine { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
         @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(240,180,41,0.55)} 50%{box-shadow:0 0 0 14px rgba(240,180,41,0)} }
+        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(201,166,107,0.5)} 50%{box-shadow:0 0 0 12px rgba(201,166,107,0)} }
         @keyframes celebPop { 0%{transform:scale(0.6);opacity:0} 40%{transform:scale(1.05);opacity:1} 100%{transform:scale(1);opacity:1} }
         @keyframes confettiFall { to { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
         @keyframes goldSweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(220%); } }
-        .gold-text { background: linear-gradient(90deg,#f4d06f,#f0b429,#c9911a,#f0b429,#f4d06f); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
-        .gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.04em; }
-        .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.6s ease-in-out infinite; }
-        .glass-card { background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)); border:1px solid rgba(240,180,41,0.18); backdrop-filter: blur(14px); }
-        .gold-border-anim { position:relative; }
-        .gold-border-anim::before { content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1px; background:linear-gradient(120deg,rgba(240,180,41,0.7),rgba(255,255,255,0.05) 30%, rgba(240,180,41,0.7) 60%, rgba(255,255,255,0.05) 85%); background-size:200% 200%; animation: shine 7s linear infinite; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none; }
+        .gold-text { background: linear-gradient(90deg,#d9a93e,#c9911a,#b8871a,#c9911a,#d9a93e); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
+        .gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
+        .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
+        .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
+        .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+        .mb-seg { background: var(--bg-pill); border:1px solid var(--border-soft); border-radius:999px; padding:4px; display:flex; gap:4px; }
+        .mb-seg button { flex:1; border-radius:999px; padding:10px 12px; font-weight:700; font-size:.82rem; color: var(--text-soft); transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; }
+        .mb-seg button.on { background: linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a); color:#1a1205; box-shadow:0 4px 16px rgba(201,145,26,0.32); }
         .confetti-piece { position:absolute; top:-10px; width:8px; height:14px; border-radius:2px; animation: confettiFall linear forwards; }
       `}</style>
 
@@ -531,7 +554,7 @@ export default function MyBidsPage() {
             const left = Math.random() * 100;
             const dur  = 2.2 + Math.random() * 2.4;
             const del  = Math.random() * 0.6;
-            const hue  = [ "#f0b429", "#f4d06f", "#c9911a", "#fffaeb", "#fde68a" ][i % 5];
+            const hue  = [ "#f0b429", "#d9a93e", "#c9911a", "#7F9269", "#C9A66B" ][i % 5];
             return (
               <span key={i} className="confetti-piece"
                 style={{ left: `${left}%`, background: hue, animationDuration: `${dur}s`, animationDelay: `${del}s`, transform: `rotate(${Math.random()*360}deg)` }} />
@@ -540,30 +563,42 @@ export default function MyBidsPage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-5 py-10 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-10 relative z-10">
         {/* Header */}
-        <div className="text-center mb-8" style={{ animation: "fadeUp 0.5s ease both" }}>
-          <p className="text-[0.62rem] tracking-[0.35em] text-gold-400/80 font-semibold uppercase mb-2">Luxury Account</p>
-          <h1 className="font-display text-5xl font-light mb-1 gold-text">MY BIDS</h1>
-          <p className="text-white/50 text-sm">Track all your bids in one place</p>
+        <div className="text-center mb-6" style={{ animation: "fadeUp 0.5s ease both" }}>
+          <p className="text-[0.6rem] tracking-[0.34em] font-semibold uppercase mb-1.5" style={{ color: "var(--text-muted)" }}>Your Account</p>
+          <h1 className="font-display text-4xl sm:text-5xl font-light mb-1 gold-text">My Bids</h1>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Flash deals &amp; reverse-auction bids — all in one place</p>
         </div>
 
-        {/* Summary chips */}
+        {/* Section toggle — Place Bids ⇄ Flash Deals */}
         {bids.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="mb-seg max-w-md mx-auto mb-5" style={{ animation: "fadeUp 0.5s ease both" }}>
+            <button className={section === "BID" ? "on" : ""}
+              onClick={() => { setSection("BID"); setFilter("ALL"); }}>
+              🎯 Place Bids <span className="opacity-70">({bidCount})</span>
+            </button>
+            <button className={section === "FLASH" ? "on" : ""}
+              onClick={() => { setSection("FLASH"); setFilter("ALL"); }}>
+              ⚡ Flash Deals <span className="opacity-70">({flashCount})</span>
+            </button>
+          </div>
+        )}
+
+        {/* Summary chips */}
+        {sectionBids.length > 0 && (
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-5 max-w-2xl mx-auto">
             {[
-              { label: "Pending",  value: pendingCount,  color: "text-amber-300" },
-              { label: "Countered",value: counterCount,  color: "text-orange-300" },
-              { label: "Accepted", value: acceptedCount, color: "text-emerald-300" },
+              { label: "Pending",  value: pendingCount,  color: STATUS_META.PENDING.color },
+              { label: "Countered",value: counterCount,  color: STATUS_META.COUNTER.color },
+              { label: "Accepted", value: acceptedCount, color: STATUS_META.ACCEPTED.color },
             ].map((s, i) => (
-              <div key={s.label}
-                className="glass-card gold-border-anim rounded-2xl p-4 text-center sb-card-lift"
-                style={{ animation: `fadeUp 0.5s ease ${i*0.08}s both` }}
-              >
-                <p className={`text-3xl font-bold ${s.color}`} style={{ animation: "floaty 3s ease-in-out infinite" }}>
+              <div key={s.label} className="mb-card rounded-2xl py-3.5 px-2 text-center"
+                style={{ animation: `fadeUp 0.5s ease ${i*0.08}s both` }}>
+                <p className="text-2xl sm:text-3xl font-bold" style={{ color: s.color }}>
                   <CountUp value={s.value} duration={900} />
                 </p>
-                <p className="text-[0.62rem] text-white/50 mt-0.5 tracking-[0.2em] uppercase">{s.label}</p>
+                <p className="text-[0.58rem] mt-0.5 tracking-[0.18em] uppercase" style={{ color: "var(--text-muted)" }}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -571,32 +606,29 @@ export default function MyBidsPage() {
 
         {/* Pay-now banner */}
         {unpaidAccepted > 0 && (
-          <div className="glass-card gold-border-anim rounded-2xl p-4 mb-6 flex items-center gap-3"
-            style={{ animation: "fadeUp 0.5s ease both" }}>
-            <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-lg"
-              style={{ animation: "pulseGlow 2s infinite" }}>🎉</div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-200">{unpaidAccepted} bid{unpaidAccepted>1?"s":""} accepted — Pay now to confirm</p>
-              <p className="text-xs text-white/50">Your luxury stay is one tap away</p>
+          <div className="mb-card rounded-2xl p-3.5 mb-5 flex items-center gap-3 max-w-2xl mx-auto"
+            style={{ animation: "fadeUp 0.5s ease both", borderColor: "rgba(127,146,105,0.4)" }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0"
+              style={{ background: STATUS_META.ACCEPTED.soft, animation: "pulseGlow 2s infinite" }}>🎉</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
+                {unpaidAccepted} bid{unpaidAccepted>1?"s":""} accepted — pay now to confirm
+              </p>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Your stay is one tap away</p>
             </div>
           </div>
         )}
 
-        {/* Filters */}
-        {bids.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
+        {/* Status filters */}
+        {sectionBids.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-5 justify-center">
             {filters.map((f) => {
               const active = filter === f;
-              const count = f === "ALL" ? bids.length : bids.filter(b => b.status === f).length;
+              const count = f === "ALL" ? sectionBids.length : sectionBids.filter(b => b.status === f).length;
               return (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 border ${
-                    active
-                      ? "gold-btn border-transparent shadow-[0_8px_24px_rgba(240,180,41,0.35)]"
-                      : "bg-white/5 border-white/10 text-white/60 hover:border-gold-400/40 hover:text-white"
-                  }`}
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${active ? "gold-btn" : ""}`}
+                  style={active ? undefined : { background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}
                 >
                   {f === "ALL" ? `All (${count})` : `${f.charAt(0) + f.slice(1).toLowerCase()} (${count})`}
                 </button>
@@ -607,104 +639,117 @@ export default function MyBidsPage() {
 
         {/* Loading */}
         {loading && bids.length === 0 && (
-          <div className="space-y-4">
-            {[1,2,3].map(i => <div key={i} className="h-40 rounded-3xl glass-card" style={{ animation: "pulseGlow 2s infinite" }} />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+            {[1,2,3].map(i => <div key={i} className="h-36 rounded-2xl mb-card" style={{ animation: "pulseGlow 2s infinite" }} />)}
           </div>
         )}
 
-        {/* Empty */}
+        {/* Empty — whole page (no bids at all) */}
         {!loading && bids.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 rounded-full glass-card gold-border-anim flex items-center justify-center mx-auto mb-5 text-3xl"
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-full mb-card flex items-center justify-center mx-auto mb-5 text-3xl"
               style={{ animation: "floaty 3s ease-in-out infinite" }}>👑</div>
-            <p className="text-lg font-semibold text-white mb-1">No bids placed yet</p>
-            <p className="text-sm text-white/40 mb-6">Browse hotels and place your first bid.</p>
-            <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">
-              Browse Luxury Hotels
-            </Link>
+            <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
+            <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Browse hotels and place your first bid.</p>
+            <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
           </div>
         )}
 
-        {/* Cards */}
-        <div className="space-y-4">
+        {/* Empty — this section only */}
+        {!loading && bids.length > 0 && sectionBids.length === 0 && (
+          <div className="text-center py-14">
+            <div className="w-16 h-16 rounded-full mb-card flex items-center justify-center mx-auto mb-4 text-2xl"
+              style={{ animation: "floaty 3s ease-in-out infinite" }}>{sectionEmpty.icon}</div>
+            <p className="text-base font-semibold mb-1" style={{ color: "var(--text-base)" }}>{sectionEmpty.title}</p>
+            <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{sectionEmpty.sub}</p>
+            <Link href={sectionEmpty.href} className="gold-btn px-5 py-2.5 rounded-2xl text-sm inline-block">{sectionEmpty.cta}</Link>
+          </div>
+        )}
+
+        {/* Cards — responsive grid: 1col mobile · 2col tablet · 3col desktop.
+            items-start lets each card shrink to its own content height. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
           {filtered.map((b: any, idx: number) => {
             const meta  = STATUS_META[b.status] || STATUS_META.PENDING;
             const paid  = isPaid(b);
             // BUG-FIX: below-floor bids are stored at floor in bid.amount (backend
             // rejects below-floor). The customer's actual bid intent lives in the
-            // message ("Guest's preferred price: ₹X/night"). resolveBidDisplayAmount
-            // recovers it so My Bids shows what the customer ACTUALLY bid, not floor.
+            // message ("Guest's preferred price: ₹X/night").
             const customerBid = extractCustomerBidFromMessage(b.message);
             const yourBid = customerBid ?? Number(b.amount || 0);
-            // Active price = what the customer would pay if they accept now.
-            //   COUNTER: hotel's counter
-            //   ACCEPTED: hotel accepted at customer's bid (use customerBid if below-floor, else bid.amount)
-            //   else: customer's bid
             const confirmAmt = b.status === "COUNTER"
               ? (b.counterAmount || b.amount)
               : (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : yourBid);
             const nights = nightsBetween(b.checkIn, b.checkOut);
             const total = Number(confirmAmt) * nights;
             const isCelebrating = celebrateId === b.id;
-            const floorAmt = Number(b.amount || 0); // what backend recorded (floor if below-floor)
+            const floorAmt = Number(b.amount || 0);
             const wasBelowFloor = customerBid != null && customerBid < floorAmt;
 
             return (
-              <div key={b.id}
-                className={`relative glass-card gold-border-anim rounded-3xl p-5 sb-card-lift ${meta.glow}`}
-                style={{ animation: `fadeUp 0.45s ease ${idx*0.05}s both` }}
-              >
+              <div key={b.id} className="relative mb-card rounded-2xl p-4"
+                style={{ animation: `fadeUp 0.45s ease ${idx*0.05}s both` }}>
                 {/* Celebration overlay */}
                 {isCelebrating && (
-                  <div className="absolute inset-0 rounded-3xl flex items-center justify-center z-20 pointer-events-none"
-                    style={{ background: "radial-gradient(circle at 50% 50%, rgba(52,211,153,0.22), rgba(0,0,0,0.6) 70%)", animation: "celebPop 0.6s ease both" }}>
+                  <div className="absolute inset-0 rounded-2xl flex items-center justify-center z-20 pointer-events-none"
+                    style={{ background: `radial-gradient(circle at 50% 50%, ${STATUS_META.ACCEPTED.soft}, var(--bg-card) 78%)`, animation: "celebPop 0.6s ease both" }}>
                     <div className="text-center">
-                      <div className="text-5xl mb-2" style={{ animation: "floaty 1.5s ease-in-out infinite" }}>🎉</div>
-                      <p className="font-display text-3xl gold-text">Bid Accepted!</p>
-                      <p className="text-white/70 text-xs tracking-[0.3em] uppercase mt-1">Pay to confirm</p>
+                      <div className="text-4xl mb-1.5" style={{ animation: "floaty 1.5s ease-in-out infinite" }}>🎉</div>
+                      <p className="font-display text-2xl gold-text">Bid Accepted!</p>
+                      <p className="text-[0.62rem] tracking-[0.28em] uppercase mt-1" style={{ color: "var(--text-soft)" }}>Pay to confirm</p>
                     </div>
                   </div>
                 )}
 
                 {/* Header row */}
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between gap-2 mb-2.5">
                   <div className="min-w-0">
                     <Link href={`/hotels/${b.hotelId}`}
-                      className="font-semibold text-white hover:text-gold-400 transition-colors text-[1.05rem] leading-snug block truncate">
+                      className="font-semibold text-[1rem] leading-snug block truncate hover:underline"
+                      style={{ color: "var(--text-base)" }}>
                       {b.hotel?.name || "Hotel"}
                     </Link>
-                    <p className="text-xs text-white/50 mt-0.5">
+                    <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
                       {b.hotel?.city ? `${b.hotel.city}${b.hotel.state ? ", " + b.hotel.state : ""}` : (b.room?.type || "Room")}
                     </p>
-                    {units[b.id]?.unitNumber && (
-                      <p className="text-[0.7rem] mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-gold-400/40 bg-gold-500/10 text-gold-300 font-semibold tracking-wide">
-                        🔑 Room #{units[b.id].unitNumber}
-                      </p>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
+                        {b._isFlash ? "⚡ Flash Deal" : "🎯 Reverse Auction"}
+                      </span>
+                      {units[b.id]?.unitNumber && (
+                        <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.34)", color: "#c9911a" }}>
+                          🔑 Room #{units[b.id].unitNumber}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-[0.65rem] font-bold px-3 py-1 rounded-full border shrink-0 inline-flex items-center gap-1.5 ${meta.chip}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} style={{ animation: "pulseGlow 1.8s infinite" }}/>
+                  <span className="text-[0.62rem] font-bold px-2.5 py-1 rounded-full shrink-0 inline-flex items-center gap-1.5"
+                    style={{ color: meta.color, background: meta.soft, border: `1px solid ${meta.color}55` }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />
                     {meta.label}{paid ? " · Paid" : ""}
                   </span>
                 </div>
 
                 {/* Details */}
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-3 gap-2 mb-3 rounded-xl p-2.5"
+                  style={{ background: "var(--bg-pill)" }}>
                   <div>
-                    <p className="text-[0.6rem] text-white/40 uppercase tracking-[0.2em] mb-1">Your Bid</p>
-                    <p className="text-sm font-bold gold-text">₹{yourBid.toLocaleString("en-IN")}</p>
-                    <p className="text-[0.6rem] text-white/40">/night</p>
+                    <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Your Bid</p>
+                    <p className="text-sm font-bold" style={{ color: "#c9911a" }}>₹{yourBid.toLocaleString("en-IN")}</p>
+                    <p className="text-[0.56rem]" style={{ color: "var(--text-muted)" }}>/night</p>
                     {wasBelowFloor && (
-                      <p className="text-[0.55rem] text-white/35 mt-0.5">below min · pending review</p>
+                      <p className="text-[0.52rem] mt-0.5" style={{ color: "var(--text-muted)" }}>below min · pending review</p>
                     )}
                   </div>
                   <div>
-                    <p className="text-[0.6rem] text-white/40 uppercase tracking-[0.2em] mb-1">Check-in</p>
-                    <p className="text-sm text-white/80">{fmtDate(b.checkIn)}</p>
+                    <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Check-in</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkIn)}</p>
                   </div>
                   <div>
-                    <p className="text-[0.6rem] text-white/40 uppercase tracking-[0.2em] mb-1">Check-out</p>
-                    <p className="text-sm text-white/80">{fmtDate(b.checkOut)}</p>
+                    <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Check-out</p>
+                    <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{fmtDate(b.checkOut)}</p>
                   </div>
                 </div>
 
@@ -718,55 +763,43 @@ export default function MyBidsPage() {
                   />
                 )}
 
-                {/* Counter — v129 snaps the displayed counter price to ₹100
-                    and parses the partner's structured amenity selection from
-                    the message field into chip pills (anti-bypass: no
-                    free-text from hotel makes it past parseAddons). */}
+                {/* Counter — v129 snaps the displayed counter to ₹100 and
+                    parses the partner's structured amenity selection into
+                    chip pills (anti-bypass: parseAddons drops free-text). */}
                 {b.status === "COUNTER" && (() => {
                   const counterSnapped = snap100(b.counterAmount || 0);
-                  // The partner-side serializer writes "[StayBid-Addons] id1,id2"
-                  // into either `hotelMessage` (Supabase fallback) or `message`
-                  // (Railway). Check both and parseAddons returns [] on no match.
                   const addons = parseAddons(b.hotelMessage || b.message || "");
+                  const c = STATUS_META.COUNTER.color;
                   return (
-                    <div className="mt-3 p-4 rounded-2xl border border-orange-400/30 bg-orange-500/10">
-                      <p className="text-sm text-orange-100 mb-3">
-                        Hotel countered at <span className="text-xl font-bold text-orange-200">₹{counterSnapped.toLocaleString("en-IN")}</span>/night
+                    <div className="mt-3 p-3.5 rounded-xl"
+                      style={{ background: STATUS_META.COUNTER.soft, border: `1px solid ${c}44` }}>
+                      <p className="text-sm mb-2.5" style={{ color: "var(--text-base)" }}>
+                        Hotel countered at <span className="text-lg font-bold" style={{ color: c }}>₹{counterSnapped.toLocaleString("en-IN")}</span>/night
                       </p>
-
                       {addons.length > 0 && (
-                        <div className="mb-3">
-                          <p className="text-[0.6rem] font-bold text-orange-200/80 uppercase tracking-widest mb-1.5">
+                        <div className="mb-2.5">
+                          <p className="text-[0.58rem] font-bold uppercase tracking-widest mb-1.5" style={{ color: c }}>
                             🎁 Complimentary included
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {addons.map((a) => (
-                              <span
-                                key={a.id}
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.65rem] font-semibold bg-orange-400/15 border border-orange-300/30 text-orange-100"
-                                title={a.desc}
-                              >
-                                <span>{a.icon}</span>
-                                <span>{a.label}</span>
+                              <span key={a.id} title={a.desc}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[0.62rem] font-semibold"
+                                style={{ background: `${c}22`, border: `1px solid ${c}40`, color: "var(--text-base)" }}>
+                                <span>{a.icon}</span><span>{a.label}</span>
                               </span>
                             ))}
                           </div>
                         </div>
                       )}
-
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleCounterAccept(b)}
-                          disabled={actionLoading === b.id}
-                          className="flex-1 py-2.5 gold-btn rounded-xl text-sm disabled:opacity-40"
-                        >
+                        <button onClick={() => handleCounterAccept(b)} disabled={actionLoading === b.id}
+                          className="flex-1 py-2.5 gold-btn rounded-xl text-sm disabled:opacity-40">
                           {actionLoading === b.id ? "…" : `Accept ₹${counterSnapped.toLocaleString("en-IN")}`}
                         </button>
-                        <button
-                          onClick={() => handleCounterReject(b.id)}
-                          disabled={actionLoading === b.id}
-                          className="flex-1 py-2.5 bg-red-500/15 text-red-300 text-sm font-semibold rounded-xl hover:bg-red-500/25 border border-red-400/30 transition disabled:opacity-40"
-                        >
+                        <button onClick={() => handleCounterReject(b.id)} disabled={actionLoading === b.id}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl transition disabled:opacity-40"
+                          style={{ background: STATUS_META.REJECTED.soft, color: STATUS_META.REJECTED.color, border: `1px solid ${STATUS_META.REJECTED.color}44` }}>
                           Decline
                         </button>
                       </div>
@@ -776,16 +809,15 @@ export default function MyBidsPage() {
 
                 {/* Accepted: Pay Now gate */}
                 {b.status === "ACCEPTED" && !paid && (
-                  <div className="mt-3 p-4 rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 to-gold-500/5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-xl">🎊</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-emerald-200">Accepted at ₹{confirmAmt}/night</p>
-                        <p className="text-[0.7rem] text-white/60">Total ₹{total.toLocaleString("en-IN")} · {nights} night{nights>1?"s":""}</p>
+                  <div className="mt-3 p-3.5 rounded-xl"
+                    style={{ background: STATUS_META.ACCEPTED.soft, border: `1px solid ${STATUS_META.ACCEPTED.color}44` }}>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="text-lg">🎊</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>Accepted at ₹{confirmAmt}/night</p>
+                        <p className="text-[0.68rem]" style={{ color: "var(--text-soft)" }}>Total ₹{total.toLocaleString("en-IN")} · {nights} night{nights>1?"s":""}</p>
                       </div>
                     </div>
-                    {/* Auto-cancel countdown — 15 min window after accept,
-                        5-min warning popup, expiry banner. */}
                     <AcceptedBidTimer
                       bidId={b.id}
                       hotelId={b.hotelId || b.hotel?.id}
@@ -793,15 +825,12 @@ export default function MyBidsPage() {
                       onPayNow={() => handlePayNow(b)}
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
                     />
-                    <button
-                      onClick={() => handlePayNow(b)}
-                      disabled={actionLoading === b.id}
-                      className="w-full py-3.5 gold-btn rounded-xl text-sm disabled:opacity-40 mt-3"
-                      style={{ animation: "pulseGlow 2s infinite" }}
-                    >
-                      {actionLoading === b.id ? "Opening Payment…" : `Pay ₹${total.toLocaleString("en-IN")} & Confirm Booking →`}
+                    <button onClick={() => handlePayNow(b)} disabled={actionLoading === b.id}
+                      className="w-full py-3 gold-btn rounded-xl text-sm disabled:opacity-40 mt-3"
+                      style={{ animation: "pulseGlow 2s infinite" }}>
+                      {actionLoading === b.id ? "Opening Payment…" : `Pay ₹${total.toLocaleString("en-IN")} & Confirm →`}
                     </button>
-                    <p className="text-[0.65rem] text-white/40 text-center mt-2 tracking-wide">
+                    <p className="text-[0.62rem] text-center mt-2 tracking-wide" style={{ color: "var(--text-muted)" }}>
                       Secure payment via Razorpay · Instant confirmation
                     </p>
                   </div>
@@ -809,20 +838,23 @@ export default function MyBidsPage() {
 
                 {/* Accepted + paid */}
                 {b.status === "ACCEPTED" && paid && (
-                  <div className="mt-3 p-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 flex items-center justify-between">
-                    <p className="text-sm text-emerald-200 font-medium">✓ Booked at ₹{confirmAmt}/night</p>
-                    <Link href="/bookings" className="text-xs text-gold-400 font-semibold">View Booking →</Link>
+                  <div className="mt-3 p-3 rounded-xl flex items-center justify-between gap-2"
+                    style={{ background: STATUS_META.ACCEPTED.soft, border: `1px solid ${STATUS_META.ACCEPTED.color}44` }}>
+                    <p className="text-sm font-medium" style={{ color: STATUS_META.ACCEPTED.color }}>✓ Booked at ₹{confirmAmt}/night</p>
+                    <Link href="/bookings" className="text-xs font-semibold shrink-0" style={{ color: "#c9911a" }}>View Booking →</Link>
                   </div>
                 )}
 
                 {/* Footer */}
-                <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-                  <p className="text-[0.65rem] text-white/40 tracking-wide">
+                <div className="mt-3.5 pt-2.5 flex items-center justify-between gap-2"
+                  style={{ borderTop: "1px solid var(--border-soft)" }}>
+                  <p className="text-[0.62rem] tracking-wide truncate" style={{ color: "var(--text-muted)" }}>
                     {b.createdAt
                       ? `Bid on ${new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
                       : ""}
                   </p>
-                  <Link href={`/hotels/${b.hotelId}`} className="text-xs text-gold-400 hover:text-gold-300 transition-colors font-medium tracking-wide">
+                  <Link href={`/hotels/${b.hotelId}`} className="text-xs font-medium tracking-wide shrink-0"
+                    style={{ color: "#c9911a" }}>
                     View Hotel →
                   </Link>
                 </div>
@@ -832,7 +864,7 @@ export default function MyBidsPage() {
         </div>
       </div>
 
-      {/* Booking Review modal (Phase 2) — sits between accept-counter / pay-now and Razorpay */}
+      {/* Booking Review modal — sits between accept-counter / pay-now and Razorpay */}
       {review && <BookingReview {...review} open onClose={() => setReview(null)} />}
     </div>
   );
