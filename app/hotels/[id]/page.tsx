@@ -661,20 +661,27 @@ export default function HotelDetail() {
   // to retype dates that the system already knows. Only fires when the
   // global picker is empty (customer hasn't manually changed dates).
   // v185 — Phase 4A widened from ACCEPTED/COUNTER → ANY active bid
-  // including PENDING. The bid request always carries dates even
-  // before the hotel responds, so customer shouldn't have to retype.
+  // including PENDING.
+  // v187 — Phase 5: iterate ALL bids until we find one with dates AND
+  // add the localStorage `bid_dates_{id}` fallback that /my-bids uses,
+  // because /api/bids/my (Railway) doesn't always include the request
+  // relation — Sachin's SS2 showed "Add date" blank for that reason.
   useEffect(() => {
     if (!myBids.length) return;
     if (checkIn && checkOut) return;
-    const live = myBids.find((b: any) =>
+    const candidates = myBids.filter((b: any) =>
       b.status === "ACCEPTED" || b.status === "COUNTER" || b.status === "PENDING"
     );
-    if (!live) return;
-    const ci = live.request?.checkIn || live.bidRequest?.checkIn || live.checkIn;
-    const co = live.request?.checkOut || live.bidRequest?.checkOut || live.checkOut;
-    if (ci && co) {
-      setCheckIn(String(ci).slice(0, 10));
-      setCheckOut(String(co).slice(0, 10));
+    for (const live of candidates) {
+      let stored: any = null;
+      try { stored = JSON.parse(localStorage.getItem(`bid_dates_${live.id}`) || "null"); } catch {}
+      const ci = live.request?.checkIn  || live.bidRequest?.checkIn  || live.checkIn  || stored?.checkIn;
+      const co = live.request?.checkOut || live.bidRequest?.checkOut || live.checkOut || stored?.checkOut;
+      if (ci && co) {
+        setCheckIn(String(ci).slice(0, 10));
+        setCheckOut(String(co).slice(0, 10));
+        return;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myBids]);
