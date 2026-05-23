@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -46,7 +46,10 @@ function fmtDate(s?: string) {
   return new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export default function MyBidsPage() {
+// v194 — split: inner component reads useSearchParams; the default export
+// wraps in <Suspense> so Next 14 static prerender doesn't bail out
+// (https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
+function MyBidsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -917,5 +920,13 @@ export default function MyBidsPage() {
       {/* Booking Review modal — sits between accept-counter / pay-now and Razorpay */}
       {review && <BookingReview {...review} open onClose={() => setReview(null)} />}
     </div>
+  );
+}
+
+export default function MyBidsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center" }}>Loading…</div>}>
+      <MyBidsPageInner />
+    </Suspense>
   );
 }
