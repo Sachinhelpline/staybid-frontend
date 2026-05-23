@@ -161,13 +161,17 @@ function calcBidStrength(
     }
   } catch { /* engine guards w/ ratio fallback; keep cityAvg */ }
 
-  // Room category multiplier — if customer selected multiple categories
-  // (multi-select), the strongest one wins (they're bidding for ANY of
-  // these tiers, so probability targets the most expensive eligible).
+  // Room category multiplier — AVERAGE of selected categories so the
+  // probability stays in sync with the AI Smart Presets (which also use
+  // the average — see line ~501 below). MAX would over-inflate the
+  // expected market price when a customer ticks "Standard + Suite",
+  // making the Premium preset look like a Long Shot even at ₹2,700
+  // ABOVE the city average — exactly the v181.1 bug Sachin caught.
   let roomMult = 1.0;
-  for (const id of roomCategoryIds) {
-    const m = ROOM_CATEGORY_MULT[id] || 1.0;
-    if (m > roomMult) roomMult = m;
+  if (roomCategoryIds.length) {
+    let sum = 0;
+    for (const id of roomCategoryIds) sum += (ROOM_CATEGORY_MULT[id] || 1);
+    roomMult = sum / roomCategoryIds.length;
   }
   const expectedMarket = Math.max(1, livePrice * roomMult);
   const r = budget / expectedMarket;
@@ -510,14 +514,36 @@ export default function BidPage() {
       : "smart");
   const TIER_LABEL = { budget: "budget-class", smart: "mid-class", premium: "premium-class" }[tier];
 
-  // v172 — AI presets are TOTAL trip budgets = nightly × roomMult × nights × rooms.
+  // v181.2 — Presets now anchored to the SAME expected market the
+  // probability dial uses (livePrice from calculateDynamicPrice × the
+  // AVERAGE roomMult). Without this the Premium preset showed 10%
+  // ("Very Long Shot") even when ₹2,700 above the static city avg
+  // — the dial was reading season-surged live price but presets were
+  // reading static city.avg.
+  //
+  //   Budget  = expectedMarket × 0.70   → ratio 0.70 → 42% "Moderate"
+  //   Smart   = expectedMarket × 1.00   → ratio 1.00 → 96% "Instant"
+  //   Premium = expectedMarket × 1.30   → ratio ≥1.0 → 96% "Instant"
+  //
+  // (Smart stays Recommended — it's the cheapest preset that still
+  // auto-confirms with the engine's live market read.)
+  let presetLivePrice = city?.avg || 0;
+  if (city) {
+    try {
+      if (form.checkIn) {
+        const r = calculateDynamicPrice(city.avg, form.checkIn, form.city);
+        if (r && Number.isFinite(r.price) && r.price > 0) presetLivePrice = r.price;
+      }
+    } catch { /* fall back to city.avg */ }
+  }
+  const presetExpected = presetLivePrice * roomMult; // per-room per-night
   const presets: {
     label: string; tier: "budget" | "smart" | "premium";
     amount: number; icon: string; desc: string; recommended?: boolean;
   }[] = city ? [
-    { label: "Budget",   tier: "budget",  amount: snap100((city.avg / 1.5) * roomMult * nightsRooms), icon: "💰", desc: "Budget bidder" },
-    { label: "Smart",    tier: "smart",   amount: snap100(city.avg * roomMult * nightsRooms),         icon: "⭐", desc: "Balanced bid",  recommended: true },
-    { label: "Premium",  tier: "premium", amount: snap100((city.avg * 1.5) * roomMult * nightsRooms), icon: "⚡", desc: "Premium bidder" },
+    { label: "Budget",   tier: "budget",  amount: snap100(presetExpected * 0.70 * nightsRooms), icon: "💰", desc: "Budget bidder" },
+    { label: "Smart",    tier: "smart",   amount: snap100(presetExpected * 1.00 * nightsRooms), icon: "⭐", desc: "Balanced bid",  recommended: true },
+    { label: "Premium",  tier: "premium", amount: snap100(presetExpected * 1.30 * nightsRooms), icon: "⚡", desc: "Premium bidder" },
   ] : [];
 
   // v172 — meal cost (per night, all guests) scaled to the property class.
