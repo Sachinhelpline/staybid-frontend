@@ -4148,10 +4148,10 @@ export default function HotelDetail() {
                       : "0 12px 32px rgba(240,180,41,0.4), 0 0 0 1px rgba(255,255,255,0.15) inset",
                   }}>
                   {negLoading
-                    ? "⏳ Placing your bid…"
+                    ? "⏳ Submitting your bid…"
                     : isInstant
                       ? `⚡ Instant Confirm · ₹${totalBid.toLocaleString()}`
-                      : `🎯 Place Bid · ₹${negAmt.toLocaleString()}/night`}
+                      : `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
                 </button>
                 <p className="text-[0.6rem] text-center text-white/30 -mt-1">
                   {isInstant ? "Paid via Razorpay · 100% refundable if hotel rejects" : "No payment now · Hotel will counter or accept"}
