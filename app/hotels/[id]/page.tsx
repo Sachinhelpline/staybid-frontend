@@ -628,6 +628,24 @@ export default function HotelDetail() {
 
   useEffect(() => { fetchMyBids(); }, [user, id]);
 
+  // v185 — Phase 4A fix: poll myBids every 30s + refetch when the tab
+  // becomes visible again. Previously fetchMyBids ran only once on
+  // mount → if a bid got auto-accepted while the customer was on the
+  // hotel page, the lock banner + Pay & Confirm CTA never appeared
+  // until full page refresh. Sachin's SS5 + SS6 showed exactly this:
+  // /bid live auction said ACCEPTED, hotel page still showed PENDING.
+  useEffect(() => {
+    if (!user || !id) return;
+    const onVis = () => { if (!document.hidden) fetchMyBids(); };
+    document.addEventListener("visibilitychange", onVis);
+    const t = setInterval(fetchMyBids, 30_000);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, id]);
+
   // v182 — Phase 1: hoist the locked-bid + countered context to the
   // component scope so BOTH the sticky sidebar (A1) and the per-room
   // cards (A3 inside the IIFE further down) read the same values.
@@ -642,10 +660,15 @@ export default function HotelDetail() {
   // the customer's accepted/countered bid request so they don't have
   // to retype dates that the system already knows. Only fires when the
   // global picker is empty (customer hasn't manually changed dates).
+  // v185 — Phase 4A widened from ACCEPTED/COUNTER → ANY active bid
+  // including PENDING. The bid request always carries dates even
+  // before the hotel responds, so customer shouldn't have to retype.
   useEffect(() => {
     if (!myBids.length) return;
     if (checkIn && checkOut) return;
-    const live = myBids.find((b: any) => b.status === "ACCEPTED" || b.status === "COUNTER");
+    const live = myBids.find((b: any) =>
+      b.status === "ACCEPTED" || b.status === "COUNTER" || b.status === "PENDING"
+    );
     if (!live) return;
     const ci = live.request?.checkIn || live.bidRequest?.checkIn || live.checkIn;
     const co = live.request?.checkOut || live.bidRequest?.checkOut || live.checkOut;
