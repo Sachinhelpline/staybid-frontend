@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/data-table";
 import KpiCard from "@/components/admin/kpi-card";
 import { LivePill, LiveCountdown, useAutoPoll } from "@/components/admin/live-ticker";
+// v177 — auto-cleanup of stale bids in the admin booking ledger. Same
+// rule the customer /my-bids + hotel partner Bid Inbox views use.
+import { filterActiveBids } from "@/lib/bid-expiry";
 
 // v94 — source style map (mirror of lib/attribution SOURCE_*) — kept local
 // because the admin panel doesn't import from the customer-side lib.
@@ -34,12 +37,17 @@ export default function AdminBookings() {
   // v126.2 — live auto-poll every 10s + LIVE pill at top.
   const { lastAt, refresh } = useAutoPoll(load, 10_000);
 
-  // v94 — source filter is applied client-side over the loaded set so
-  // admins can switch channels without re-hitting the API.
-  const filteredBookings = source === "all" ? bookings : bookings.filter((b) => (b.source || "direct") === source);
+  // v177 — drop stale bids before any aggregation. Paid ACCEPTED rows +
+  // CHECKED_IN/OUT stays + active in-window bids survive; everything past
+  // its slot or past the IST-midnight cutoff is filtered out so the admin
+  // ledger doesn't accumulate 3-day-old PENDING rows.
+  const activeBookings = filterActiveBids(bookings as any[]);
+
+  // v94 — source filter is applied client-side over the active set.
+  const filteredBookings = source === "all" ? activeBookings : activeBookings.filter((b) => (b.source || "direct") === source);
 
   // Live source-breakdown chip strip for the current dataset.
-  const sourceCounts = bookings.reduce<Record<string, number>>((acc, b) => {
+  const sourceCounts = activeBookings.reduce<Record<string, number>>((acc, b) => {
     const s = b.source || "direct"; acc[s] = (acc[s] || 0) + 1; return acc;
   }, {});
 
@@ -161,14 +169,16 @@ export default function AdminBookings() {
   ];
 
   // v103 — KPI strip computed from currently loaded bookings/bids
+  // v177 — KPI strip mirrors the filtered set so admin counts match
+  // what's actually rendered after stale rows are dropped.
   const stats = useMemo(() => {
-    const total      = bookings.length;
-    const accepted   = bookings.filter((b: any) => ["accepted","confirmed","checked_in","checked_out","ACCEPTED","CONFIRMED","CHECKED_IN","CHECKED_OUT"].includes(b.status)).length;
-    const pending    = bookings.filter((b: any) => ["open","OPEN","PENDING","pending"].includes(b.status)).length;
-    const countered  = bookings.filter((b: any) => ["counter","COUNTER","COUNTERED","countered"].includes(b.status)).length;
-    const gross      = bookings.reduce((s: number, b: any) => s + Number(b.paidTotal || 0), 0);
+    const total      = activeBookings.length;
+    const accepted   = activeBookings.filter((b: any) => ["accepted","confirmed","checked_in","checked_out","ACCEPTED","CONFIRMED","CHECKED_IN","CHECKED_OUT"].includes(b.status)).length;
+    const pending    = activeBookings.filter((b: any) => ["open","OPEN","PENDING","pending"].includes(b.status)).length;
+    const countered  = activeBookings.filter((b: any) => ["counter","COUNTER","COUNTERED","countered"].includes(b.status)).length;
+    const gross      = activeBookings.reduce((s: number, b: any) => s + Number(b.paidTotal || 0), 0);
     return { total, accepted, pending, countered, gross };
-  }, [bookings]);
+  }, [activeBookings]);
 
   return (
     <div style={{ fontFamily: "DM Sans, sans-serif" }}>
@@ -207,7 +217,7 @@ export default function AdminBookings() {
         </select>
         <button onClick={load} style={btnStyle}>Search</button>
         <span style={{ marginLeft: "auto", color: "#8A8FA8", alignSelf: "center", fontSize: 13 }}>
-          {filteredBookings.length} of {bookings.length} bids
+          {filteredBookings.length} of {activeBookings.length} bids
         </span>
       </div>
 
@@ -219,7 +229,7 @@ export default function AdminBookings() {
         {(["all", "direct", "creator", "hotel-feed", "flash"] as const).map((s) => {
           const meta = s === "all" ? { icon: "🌐", label: "All", color: "#D4AF37" } : SOURCE_STYLE[s];
           const isActive = source === s;
-          const count = s === "all" ? bookings.length : (sourceCounts[s] || 0);
+          const count = s === "all" ? activeBookings.length : (sourceCounts[s] || 0);
           return (
             <button key={s} onClick={() => setSource(s)}
               style={{
