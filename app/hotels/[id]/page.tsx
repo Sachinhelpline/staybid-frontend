@@ -2359,14 +2359,25 @@ export default function HotelDetail() {
         {tab === "rooms" && <>
 
         {/* ── My Bids ── */}
-        {myBids.length > 0 && (
+        {/* v188 — Phase 6: customer's bid list on this hotel filters
+            out past bookings (CHECKED_IN / CHECKED_OUT / CANCELLED /
+            REJECTED). Only ACTIVE offers — PENDING / ACCEPTED /
+            COUNTER — show in this surface, because Sachin's SS1 was
+            cluttered with one CHECKED_IN row sitting next to live
+            offers. The /bookings page owns the past-stays display. */}
+        {(() => {
+          const activeOffers = myBids.filter((b: any) =>
+            b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "COUNTER"
+          );
+          if (activeOffers.length === 0) return null;
+          return (
           <div className="mb-10 hx-reveal">
             <div className="hx-section-h">
               <span className="hx-section-h-label">Your offers on this stay</span>
               <span className="hx-section-h-rule" />
             </div>
             <div className="space-y-3">
-              {myBids.map((b: any) => {
+              {activeOffers.map((b: any) => {
                 const st = statusStyle(b.status);
                 return (
                   <div key={b.id} className="card-luxury p-5">
@@ -2405,7 +2416,8 @@ export default function HotelDetail() {
               })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── v123 Availability Picker — premium glass-on-cream ── */}
         <div id="availability-picker" className="hx-availability hx-reveal" style={{ marginBottom: "24px" }}>
@@ -2783,8 +2795,35 @@ export default function HotelDetail() {
 
                   {/* Room name overlay at bottom */}
                   <div className="hx-room-media-name">
-                    <h3>{r.name || r.type}</h3>
-                    <p>{r.type} · up to {r.capacity} guests</p>
+                    {/* v188 — Phase 6 god-level room name rule:
+                        Top: hotel's display name (r.name) always wins.
+                              Blank-string guard so an empty r.name
+                              doesn't fall through to the category
+                              alone.
+                        Sub: explicit "[Category] category" label so
+                              the customer sees what tier this room is.
+                        When the customer's active bid (locked /
+                        pending / countered) is on THIS room, append
+                        a small "✓ your selected" tick mirroring the
+                        roomTypes they picked at bid time. */}
+                    <h3>{(r.name && String(r.name).trim()) || r.type || "Room"}</h3>
+                    <p>
+                      <span style={{ fontWeight: 600 }}>{r.type || "Standard"}</span> category
+                      {(isLockedRoom || myRoomPending || myRoomCountered) && (
+                        <>
+                          {" "}
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 3,
+                            padding: "1px 7px", borderRadius: 999,
+                            background: "rgba(255,255,255,0.22)",
+                            border: "1px solid rgba(255,255,255,0.35)",
+                            fontSize: "0.62rem", fontWeight: 800,
+                            marginLeft: 4, verticalAlign: "middle",
+                          }}>✓ your selected</span>
+                        </>
+                      )}
+                      {" · "}up to {r.capacity} guests
+                    </p>
                   </div>
                 </div>
 
