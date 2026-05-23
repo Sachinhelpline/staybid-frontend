@@ -1053,7 +1053,12 @@ export default function BidPage() {
                 launchTs={launchTs}
                 nowTs={nowTs}
                 onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                onGrab={(bid) => router.push(`/my-bids#bid-${bid}`)}
+                // v194 — auto-open BookingReview on /my-bids landing. Was
+                // `#bid-<id>` which dumped the user on the list and required
+                // a second tap to open the Pay/Hold/Pay-at-Hotel modal. The
+                // `?payNow=<id>` query param fires handlePayNow as soon as
+                // the bids list hydrates.
+                onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
               />
             ))}
           </div>
