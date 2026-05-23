@@ -45,6 +45,10 @@ import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
 import { computeBidCooldown, cooldownReasonLabel, formatCooldownRemaining } from "@/lib/bid-cooldown";
+// v182 — Phase 1 hotel-page bid-lock completeness: live 15-min timer
+// inside the locked-room status banner so the customer sees how long
+// they have to confirm payment before auto-cancel kicks in.
+import AcceptedBidTimer from "@/components/AcceptedBidTimer";
 // v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
 // schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
 // path: never blocks on a missing column — falls back to 'auto'.
@@ -623,6 +627,34 @@ export default function HotelDetail() {
   };
 
   useEffect(() => { fetchMyBids(); }, [user, id]);
+
+  // v182 — Phase 1: hoist the locked-bid + countered context to the
+  // component scope so BOTH the sticky sidebar (A1) and the per-room
+  // cards (A3 inside the IIFE further down) read the same values.
+  const pageActiveBids = filterActiveBids(myBids as any[]);
+  const pageLockedBid  = pageActiveBids.find((b: any) => b.status === "ACCEPTED") || null;
+  const pageCounteredBid = pageActiveBids.find((b: any) => b.status === "COUNTER") || null;
+  const pageLockedAmount = pageLockedBid
+    ? (extractCustomerBidFromMessage(pageLockedBid.message) ?? Number(pageLockedBid.amount || 0))
+    : 0;
+
+  // v182 — Phase 1 A2: auto-fill the global check-in/out picker from
+  // the customer's accepted/countered bid request so they don't have
+  // to retype dates that the system already knows. Only fires when the
+  // global picker is empty (customer hasn't manually changed dates).
+  useEffect(() => {
+    if (!myBids.length) return;
+    if (checkIn && checkOut) return;
+    const live = myBids.find((b: any) => b.status === "ACCEPTED" || b.status === "COUNTER");
+    if (!live) return;
+    const ci = live.request?.checkIn || live.bidRequest?.checkIn || live.checkIn;
+    const co = live.request?.checkOut || live.bidRequest?.checkOut || live.checkOut;
+    if (ci && co) {
+      setCheckIn(String(ci).slice(0, 10));
+      setCheckOut(String(co).slice(0, 10));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myBids]);
 
   // ── v94 booking-source attribution ──────────────────────────────────────
   // Capture src/cid/via/vid/ctype from the URL on first mount and persist
@@ -2556,6 +2588,42 @@ export default function HotelDetail() {
             const lockUpgradeDelta = isOtherWhenLocked
               ? Math.max(0, Math.round((r.floorPrice || 0) - lockedAmount))
               : 0;
+            // v182 — Phase 1 A3/A4: single bid-state CTA replacing the
+            // Book Now + Negotiate row whenever the customer has an
+            // active bid touching this hotel. Routes to /my-bids where
+            // the pay-now / counter-accept flows already live (and the
+            // global AcceptedBidTimer keeps the countdown in sync).
+            const lockedBidId = lockedBid?.id || myRoomCountered?.id || myRoomPending?.id;
+            const roomBidCta: React.ReactNode | null =
+              isLockedRoom ? (
+                <button
+                  onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                  className="hx-cta hx-cta-primary"
+                  style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
+                >
+                  💰 Pay &amp; Confirm Booking — ₹{lockedAmount.toLocaleString("en-IN")}/night →
+                </button>
+              ) : myRoomCountered ? (
+                <button
+                  onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                  className="hx-cta hx-cta-primary"
+                  style={{ width: "100%", background: "linear-gradient(135deg,#a85b26 0%,#C77B43 50%,#a85b26 100%)", color: "#fff" }}
+                >
+                  🤝 Review Counter — ₹{Number(myRoomCountered.counterAmount || 0).toLocaleString("en-IN")}/night →
+                </button>
+              ) : myRoomPending ? (
+                <div className="hx-cta hx-cta-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.85, cursor: "default" }}>
+                  ⏳ Bid pending review — hotel will respond shortly
+                </div>
+              ) : isOtherWhenLocked && lockUpgradeDelta > 0 ? (
+                <button
+                  onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                  className="hx-cta hx-cta-primary"
+                  style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205" }}
+                >
+                  💎 Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night →
+                </button>
+              ) : null;
             const aiPrice = roomPrices[r.id];
             const ds = aiPrice ? DEMAND_STYLE[aiPrice.demandLevel] : null;
             const livePrice = aiPrice?.price || r.floorPrice;
@@ -2711,29 +2779,32 @@ export default function HotelDetail() {
                   {/* v178 — Rule B status banner. Surfaces what the
                       customer's active bid means for this specific room.
                       Hidden when isFlashRoom (flash chrome takes over). */}
-                  {!isFlashRoom && isLockedRoom && (
+                  {!isFlashRoom && isLockedRoom && lockedBid && (
                     <div style={{
-                      marginBottom: 14, padding: "10px 12px", borderRadius: 12,
+                      marginBottom: 14, padding: "12px 14px", borderRadius: 12,
                       background: "rgba(127,146,105,0.16)",
                       border: "1px solid rgba(127,146,105,0.42)",
-                      display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: "1.05rem" }}>🔒</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#5a6e44", margin: 0 }}>
-                          Your bid was accepted at ₹{lockedAmount.toLocaleString("en-IN")}/night
-                        </p>
-                        <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
-                          {extractCustomerBidFromMessage(lockedBid!.message) != null
-                            ? "Pay now from My Bids to confirm this booking."
-                            : "Open My Bids to complete payment."}
-                        </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: "1.05rem" }}>🔒</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#5a6e44", margin: 0 }}>
+                            Your bid was accepted at ₹{lockedAmount.toLocaleString("en-IN")}/night
+                          </p>
+                          <p style={{ fontSize: "0.68rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                            Confirm payment before the hold window expires.
+                          </p>
+                        </div>
                       </div>
-                      <Link href="/my-bids" style={{
-                        fontSize: "0.7rem", fontWeight: 800, padding: "6px 12px",
-                        borderRadius: 999, background: "#7F9269", color: "#fff",
-                        textDecoration: "none", whiteSpace: "nowrap",
-                      }}>Pay Now →</Link>
+                      {/* v182 — live 15-min countdown + Pay Now action.
+                          Both the timer + button land on /my-bids which
+                          owns the actual Razorpay payment flow. */}
+                      <AcceptedBidTimer
+                        bidId={String(lockedBid.id)}
+                        hotelId={String(lockedBid.hotelId || hotel?.id || "")}
+                        acceptedAt={lockedBid.acceptedAt || lockedBid.updatedAt || lockedBid.createdAt}
+                        onPayNow={() => router.push(`/my-bids#bid-${lockedBid.id}`)}
+                      />
                     </div>
                   )}
                   {!isFlashRoom && !isLockedRoom && myRoomCountered && (
@@ -2860,20 +2931,22 @@ export default function HotelDetail() {
                               From ₹{(r.floorPrice || 0).toLocaleString()}/night
                             </span>
                           </div>
-                          <div className="hx-cta-row">
-                            <button
-                              onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="hx-cta hx-cta-primary"
-                            >
-                              Book Now →
-                            </button>
-                            <button
-                              onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="hx-cta hx-cta-secondary"
-                            >
-                              🤝 Negotiate
-                            </button>
-                          </div>
+                          {roomBidCta || (
+                            <div className="hx-cta-row">
+                              <button
+                                onClick={() => withBackendAuth(() => openBookNow(r))}
+                                className="hx-cta hx-cta-primary"
+                              >
+                                Book Now →
+                              </button>
+                              <button
+                                onClick={() => withBackendAuth(() => openNegotiate(r))}
+                                className="hx-cta hx-cta-secondary"
+                              >
+                                🤝 Negotiate
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         /* ── Dates selected — show full pricing ── */
@@ -3071,20 +3144,22 @@ export default function HotelDetail() {
                             );
                           })()}
 
-                          <div className="hx-cta-row">
-                            <button
-                              onClick={() => withBackendAuth(() => openBookNow(r))}
-                              className="hx-cta hx-cta-primary"
-                            >
-                              Book Now →
-                            </button>
-                            <button
-                              onClick={() => withBackendAuth(() => openNegotiate(r))}
-                              className="hx-cta hx-cta-secondary"
-                            >
-                              🤝 Negotiate
-                            </button>
-                          </div>
+                          {roomBidCta || (
+                            <div className="hx-cta-row">
+                              <button
+                                onClick={() => withBackendAuth(() => openBookNow(r))}
+                                className="hx-cta hx-cta-primary"
+                              >
+                                Book Now →
+                              </button>
+                              <button
+                                onClick={() => withBackendAuth(() => openNegotiate(r))}
+                                className="hx-cta hx-cta-secondary"
+                              >
+                                🤝 Negotiate
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -3106,6 +3181,60 @@ export default function HotelDetail() {
           {/* ── v123 Sticky desktop booking summary (≥1100px only) ── */}
           <aside className="hx-sticky-rail" aria-label="Best rate summary">
             <div className="hx-sticky-card hx-reveal">
+              {/* v182 — Phase 1 A1: when the customer has a locked
+                  (ACCEPTED) bid on this hotel, the sidebar replaces the
+                  generic "Best rate from ₹2,900" with the customer's
+                  actual locked rate + Pay & Confirm CTA so they don't
+                  see the public floor and confuse it with their bid. */}
+              {pageLockedBid ? (
+                <>
+                  <span className="hx-sticky-rate-l">Your locked rate</span>
+                  <div className="hx-sticky-rate-v" style={{ color: "#5a6e44" }}>
+                    ₹{pageLockedAmount.toLocaleString("en-IN")}
+                  </div>
+                  <p className="hx-sticky-rate-s">
+                    /night · accepted by the hotel · pay within the hold window
+                  </p>
+                  <div style={{
+                    margin: "16px 0 14px", padding: "10px 12px",
+                    background: "rgba(127,146,105,0.16)",
+                    border: "1px solid rgba(127,146,105,0.42)",
+                    borderRadius: 12, display: "flex", alignItems: "center", gap: 8,
+                  }}>
+                    <span style={{ fontSize: "1rem" }}>🔒</span>
+                    <p style={{ fontSize: "0.74rem", color: "#5a6e44", margin: 0, lineHeight: 1.45 }}>
+                      Bid accepted — confirm payment to lock this booking.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/my-bids#bid-${pageLockedBid.id}`)}
+                    className="hx-cta hx-cta-primary"
+                    style={{ width: "100%", marginBottom: 8, background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
+                  >
+                    💰 Pay &amp; Confirm Booking →
+                  </button>
+                </>
+              ) : pageCounteredBid ? (
+                <>
+                  <span className="hx-sticky-rate-l">Hotel countered at</span>
+                  <div className="hx-sticky-rate-v" style={{ color: "#a85b26" }}>
+                    ₹{Number(pageCounteredBid.counterAmount || 0).toLocaleString("en-IN")}
+                  </div>
+                  <p className="hx-sticky-rate-s">
+                    /night · review and accept or decline from My Bids
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/my-bids#bid-${pageCounteredBid.id}`)}
+                    className="hx-cta hx-cta-primary"
+                    style={{ width: "100%", marginTop: 14, marginBottom: 8, background: "linear-gradient(135deg,#a85b26 0%,#C77B43 50%,#a85b26 100%)", color: "#fff" }}
+                  >
+                    🤝 Review Counter →
+                  </button>
+                </>
+              ) : (
+              <>
               <span className="hx-sticky-rate-l">Best rate from</span>
               <div className="hx-sticky-rate-v">
                 ₹{(lowestForRibbon || 0).toLocaleString()}
@@ -3155,6 +3284,7 @@ export default function HotelDetail() {
                   </button>
                 );
               })()}
+              </> /* /v182 default-no-active-bid branch */ )}
 
               <div style={{
                 marginTop: "16px", paddingTop: "14px",
