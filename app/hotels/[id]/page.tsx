@@ -37,17 +37,14 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
-<<<<<<< HEAD
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
-=======
 // v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
 import { computeBidCooldown, cooldownReasonLabel, formatCooldownRemaining } from "@/lib/bid-cooldown";
->>>>>>> 9e3692d (Rule C — 3h re-bid cooldown after PENDING/ACCEPTED/COUNTER (v179))
 // v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
 // schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
 // path: never blocks on a missing column — falls back to 'auto'.
