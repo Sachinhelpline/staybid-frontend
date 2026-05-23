@@ -50,9 +50,51 @@ import {
   ADDON_SERVICES, ADDON_SERVICE_MAP,
 } from "@/lib/catalog";
 
-// Room categories the customer can bid for (the partner-only "custom"
-// free-name entry is excluded here).
-const BID_ROOM_CATEGORIES = ROOM_CATEGORIES.filter((c) => !c.custom);
+// v181 — Curated customer-facing pick-lists for /bid. Catalog in
+// lib/catalog.ts stays the full hotel-side set (partner panel +
+// onboarding still declare from the wide list). Here we present only
+// the customer-facing categories Sachin curated, with refined icons.
+// IDs match lib/catalog.ts so filter + DB matching stays intact.
+
+// Property types — 11 customer-facing picks (incl. "any" pseudo).
+// Icons curated for premium feel (no homely 🏚️ for Bungalow etc).
+const BID_PROPERTY_PICK: { id: string; label: string; icon: string }[] = [
+  { id: "any",         label: "Any",          icon: "✦"  },
+  { id: "hotel",       label: "Hotel",        icon: "🛎" },
+  { id: "resort",      label: "Resort",       icon: "🌴" },
+  { id: "villa",       label: "Villa",        icon: "🏡" },
+  { id: "cottage",     label: "Cottage",      icon: "🛖" },
+  { id: "guest_house", label: "Guest House",  icon: "🏠" },
+  { id: "homestay",    label: "Homestay",     icon: "🏘" },
+  { id: "camp",        label: "Camp / Glamping", icon: "⛺" },
+  { id: "bungalow",    label: "Bungalow",     icon: "🏯" },
+  { id: "hostel",      label: "Hostel",       icon: "🎒" },
+  { id: "treehouse",   label: "Treehouse",    icon: "🌳" },
+];
+
+// Room categories the customer can bid for — 7 curated picks with
+// refined icons mirroring the property silhouette. Partner-only
+// "custom" name excluded here.
+const BID_ROOM_PICK: { id: string; label: string; icon: string }[] = [
+  { id: "standard",     label: "Standard",        icon: "🛏" },
+  { id: "super_deluxe", label: "Super Deluxe",    icon: "✨" },
+  { id: "family",       label: "Family Room",     icon: "👨‍👩‍👧" },
+  { id: "suite",        label: "Suite",           icon: "👑" },
+  { id: "cottage",      label: "Cottage",         icon: "🛖" },
+  { id: "villa",        label: "Private Villa",   icon: "🏡" },
+  { id: "tent",         label: "Luxury Tent",     icon: "⛺" },
+];
+// Legacy alias — still consumed by the room-category multiplier
+// lookup and the filter pipeline elsewhere in this file.
+const BID_ROOM_CATEGORIES = BID_ROOM_PICK.map((p) => ({ id: p.id, label: p.label }));
+
+// Add-on services — curated subset, dropped: doctor_on_call,
+// candlelight_dinner, room_decoration, spa_session, trekking_guide,
+// honeymoon_package (per Sachin).
+const BID_ADDON_PICK = ADDON_SERVICES.filter((a) => ![
+  "doctor_on_call", "candlelight_dinner", "room_decoration",
+  "spa_session", "trekking_guide", "honeymoon_package",
+].includes(a.id));
 // Emoji per meal plan id — display only.
 const MEAL_EMOJI: Record<string, string> = {
   room_only: "🏨", breakfast: "☕", half_board: "🍽️", full_board: "🍱", all_inclusive: "🎉",
@@ -1072,26 +1114,28 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Property Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v172 — multi-select, WRAP grid (no scroll) so every
-                    property type is visible at once. [] = Any. */}
-                <div className="bx-chip-wrap">
-                  <button
-                    type="button"
-                    onClick={() => upd("propertyTypes", [])}
-                    className={`bx-chip bx-chip-ico bx-chip-sm ${form.propertyTypes.length === 0 ? "is-selected" : ""}`}
-                  >
-                    <span className="bx-chip-ico-e">✦</span>Any
-                  </button>
-                  {PROPERTY_TYPES.map((pt) => (
-                    <button
-                      key={pt.id}
-                      type="button"
-                      onClick={() => toggleArr("propertyTypes", pt.id)}
-                      className={`bx-chip bx-chip-ico bx-chip-sm ${form.propertyTypes.includes(pt.id) ? "is-selected" : ""}`}
-                    >
-                      <span className="bx-chip-ico-e">{pt.emoji}</span>{pt.label}
-                    </button>
-                  ))}
+                {/* v181 — curated 11-pick grid w/ premium icon tiles.
+                    Responsive: 2 cols mobile, 3 tablet, 4 laptop,
+                    5 desktop. Auto-fit so chips never look cramped on
+                    wide screens. */}
+                <div className="bx-pick-grid">
+                  {BID_PROPERTY_PICK.map((pt) => {
+                    const isAny      = pt.id === "any";
+                    const isSelected = isAny
+                      ? form.propertyTypes.length === 0
+                      : form.propertyTypes.includes(pt.id);
+                    return (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={() => isAny ? upd("propertyTypes", []) : toggleArr("propertyTypes", pt.id)}
+                        className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
+                      >
+                        <span className="bx-pick-icon">{pt.icon}</span>
+                        <span className="bx-pick-label">{pt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
                   {form.propertyTypes.length
@@ -1184,16 +1228,18 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Room Type</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v172 — multi-select, WRAP grid (2–3 lines, no scroll) */}
-                <div className="bx-chip-wrap">
-                  {BID_ROOM_CATEGORIES.map((rc) => (
+                {/* v181 — curated 7-pick room grid w/ premium icon
+                    tiles + same responsive auto-fit grid as property. */}
+                <div className="bx-pick-grid">
+                  {BID_ROOM_PICK.map((rc) => (
                     <button
                       key={rc.id}
                       type="button"
                       onClick={() => toggleArr("roomTypes", rc.id)}
-                      className={`bx-chip bx-chip-sm ${form.roomTypes.includes(rc.id) ? "is-selected" : ""}`}
+                      className={`bx-pick-tile ${form.roomTypes.includes(rc.id) ? "is-selected" : ""}`}
                     >
-                      {rc.label}
+                      <span className="bx-pick-icon">{rc.icon}</span>
+                      <span className="bx-pick-label">{rc.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1273,15 +1319,20 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Trip Purpose / Occasion</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-scroll">
+                {/* v181 — occasion now in the same premium pick grid.
+                    Mobile lands as a 2-col block (per Sachin's spec) and
+                    spreads to 3/4/6 on tablet/laptop/desktop via the
+                    shared bx-pick-grid responsive rules. */}
+                <div className="bx-pick-grid">
                   {OCCASIONS.map((oc) => (
                     <button
                       key={oc.id}
                       type="button"
                       onClick={() => { upd("occasion", oc.id); scrollToAutoNext("addons"); }}
-                      className={`bx-chip bx-chip-ico ${form.occasion === oc.id ? "is-selected" : ""}`}
+                      className={`bx-pick-tile ${form.occasion === oc.id ? "is-selected" : ""}`}
                     >
-                      <span className="bx-chip-ico-e">{oc.icon}</span>{oc.label}
+                      <span className="bx-pick-icon">{oc.icon}</span>
+                      <span className="bx-pick-label">{oc.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1293,18 +1344,22 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Add-ons &amp; Preferences</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v172 — full add-on catalog, multi-select, WRAP grid */}
-                <div className="bx-chip-wrap">
-                  {ADDON_SERVICES.map((ad) => (
+                {/* v181 — curated add-on subset (10 items) in the
+                    shared premium pick grid. Paid add-ons carry a small
+                    💳 corner badge so the customer sees the cost flag
+                    before tapping. */}
+                <div className="bx-pick-grid">
+                  {BID_ADDON_PICK.map((ad) => (
                     <button
                       key={ad.id}
                       type="button"
                       onClick={() => toggleArr("addons", ad.id)}
-                      className={`bx-chip bx-chip-ico bx-chip-sm ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
+                      className={`bx-pick-tile ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
                       title={ad.note}
                     >
-                      <span className="bx-chip-ico-e">{ad.emoji}</span>{ad.label}
-                      {ad.charge === "paid" && <span style={{ marginLeft: 4, fontSize: "0.6rem", opacity: 0.7 }}>💳</span>}
+                      <span className="bx-pick-icon">{ad.emoji}</span>
+                      <span className="bx-pick-label">{ad.label}</span>
+                      {ad.charge === "paid" && <span className="bx-pick-tag">💳</span>}
                     </button>
                   ))}
                 </div>
