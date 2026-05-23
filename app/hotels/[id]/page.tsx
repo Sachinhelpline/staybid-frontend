@@ -37,10 +37,17 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+<<<<<<< HEAD
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
+=======
+// v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
+// on the same hotel. Anti-friction guard so customers can't insta-rebid
+// at lower amounts the moment one resolves.
+import { computeBidCooldown, cooldownReasonLabel, formatCooldownRemaining } from "@/lib/bid-cooldown";
+>>>>>>> 9e3692d (Rule C — 3h re-bid cooldown after PENDING/ACCEPTED/COUNTER (v179))
 // v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
 // schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
 // path: never blocks on a missing column — falls back to 'auto'.
@@ -290,6 +297,34 @@ export default function HotelDetail() {
   const [bidSuccess, setBidSuccess]     = useState(false);
   const [myBids, setMyBids]             = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState("");
+  // v179 — Rule C: tick state to keep the cooldown countdown fresh so
+  // the banner + handler gate refresh once every 30s without a refetch.
+  const [cooldownTick, setCooldownTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setCooldownTick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  // myBids already pre-filtered by hotelId in fetchMyBids().
+  // cooldownTick deliberately read so re-renders re-evaluate the window.
+  void cooldownTick;
+  const bidCooldown = computeBidCooldown(myBids as any[]);
+  // Cooldown gate helper. Returns true when blocked (caller should
+  // early-return); fires a NotificationToast explaining why + linking
+  // to My Bids so the customer can resolve the live bid.
+  const checkRebidCooldown = (): boolean => {
+    if (!bidCooldown.active) return false;
+    const { title, sub } = cooldownReasonLabel(bidCooldown.reason);
+    const wait = formatCooldownRemaining(bidCooldown.retryAfterMs || 0);
+    notify({
+      id: `bid-cooldown-${id}-${Date.now()}`,
+      kind: "warning",
+      title: `${title} · try again in ${wait}`,
+      body: sub,
+      actions: [{ label: "Open My Bids", href: "/my-bids", primary: true }],
+      duration: 6500,
+    });
+    return true;
+  };
 
   // Per-room active image index for the 4-photo gallery on each room card.
   // Key = room.id, value = index 0-3. Lifted to parent so each room's
@@ -1130,6 +1165,7 @@ export default function HotelDetail() {
   // ── Normal bid ─────────────────────────────────────
   const handleBid = async () => {
     if (!user) return router.push("/auth");
+    if (checkRebidCooldown()) return; // v179 Rule C
     if (!bidAmount || !bidRoom || !checkIn || !checkOut) return alert("Please fill all fields");
     setBidLoading(true);
     try {
@@ -1247,6 +1283,7 @@ export default function HotelDetail() {
   // in executeBookNow(mode) once user picks Pay-Full / Hold / Pay-At-Hotel.
   const handleBookNow = () => {
     if (!user) return router.push("/auth");
+    if (checkRebidCooldown()) return; // v179 Rule C
     if (!bnIn || !bnOut || !bnRoom) return alert("Select dates");
     const nights  = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
     const extra   = Math.max(0, bnAdults-(bnRoom.capacity||2));
@@ -1385,6 +1422,7 @@ export default function HotelDetail() {
 
   const handleNegotiate = async () => {
     if (!user) return router.push("/auth");
+    if (checkRebidCooldown()) return; // v179 Rule C
     if (!negIn || !negOut) return alert("Select dates");
     const isAboveFloor = negAmt >= negRoom.floorPrice;
     const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
@@ -1913,6 +1951,38 @@ export default function HotelDetail() {
           trustBadge={!!hotel.trustBadge}
           flashDealActive={!!(dealId && dealPrice)}
         />
+
+        {/* v179 — Rule C cooldown notice. Shown when the customer has an
+            active bid on this hotel; CTAs further down also bail with a
+            toast if tapped, but the explicit banner sets expectation up
+            front so the customer doesn't waste a tap. */}
+        {bidCooldown.active && (() => {
+          const { title, sub } = cooldownReasonLabel(bidCooldown.reason);
+          const wait = formatCooldownRemaining(bidCooldown.retryAfterMs || 0);
+          return (
+            <div style={{
+              marginTop: 12, padding: "11px 14px", borderRadius: 14,
+              background: "rgba(201,166,107,0.14)",
+              border: "1px solid rgba(201,166,107,0.42)",
+              display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+            }}>
+              <span style={{ fontSize: "1.05rem" }}>⏳</span>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-base)", margin: 0 }}>
+                  {title} · try again in {wait}
+                </p>
+                <p style={{ fontSize: "0.7rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                  {sub} Same hotel · same window · prevents repeated lower-amount retries.
+                </p>
+              </div>
+              <Link href="/my-bids" style={{
+                fontSize: "0.72rem", fontWeight: 800, padding: "7px 13px",
+                borderRadius: 999, background: "#c9911a", color: "#1a1205",
+                textDecoration: "none", whiteSpace: "nowrap",
+              }}>Open My Bids →</Link>
+            </div>
+          );
+        })()}
 
         {/* ── v128.1 PERFORMANCE SCORECARD — 3D award medal w/ rank ribbon.
             v159.9 — Tightened from marginTop:14 → 8 + gap 16 → 12 +
