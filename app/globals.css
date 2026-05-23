@@ -3573,15 +3573,19 @@ body.is-reel-page {
        ultra   ≥1536   → 6 columns
    Tile is a vertical icon-above-label card with a soft hover lift +
    gold gradient selected state. Animated, never flat. */
+/* v186 — Phase 4B: 3 columns on mobile (was 2). Sachin asked for
+   "kam se kam 3 type ek line main". Icons shrink slightly on small
+   mobile to keep tap targets sane; back up to 4/5/6/7 on tablet+. */
 .bx-pick-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
 }
-@media (min-width: 640px)  { .bx-pick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; } }
-@media (min-width: 1024px) { .bx-pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } }
-@media (min-width: 1280px) { .bx-pick-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px; } }
-@media (min-width: 1536px) { .bx-pick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; } }
+@media (min-width: 480px)  { .bx-pick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; } }
+@media (min-width: 640px)  { .bx-pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; } }
+@media (min-width: 1024px) { .bx-pick-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; } }
+@media (min-width: 1280px) { .bx-pick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 13px; } }
+@media (min-width: 1536px) { .bx-pick-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; } }
 
 /* v184 — Phase 3: box-less premium icon tiles + iOS-style zoom-on-
    select. The button itself is transparent (no card, no border, no bg)
