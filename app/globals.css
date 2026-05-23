@@ -3583,87 +3583,156 @@ body.is-reel-page {
 @media (min-width: 1280px) { .bx-pick-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px; } }
 @media (min-width: 1536px) { .bx-pick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; } }
 
+/* v184 — Phase 3: box-less premium icon tiles + iOS-style zoom-on-
+   select. The button itself is transparent (no card, no border, no bg)
+   — only the icon bubble + label show. Tap targets stay generous via
+   internal padding (~80×96px on mobile, ~96×108 desktop). The 3D feel
+   comes from the icon bubble's layered box-shadow stack, not a card. */
 .bx-pick-tile {
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 5px;
-  padding: 11px 9px 10px;
-  background: var(--bg-card);
-  border: 1.5px solid var(--border-soft);
-  border-radius: 16px;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 4px 14px;
+  background: transparent;
+  border: 0;
   cursor: pointer;
   color: var(--cozy-cocoa);
-  box-shadow: 0 2px 6px rgba(31, 26, 15, 0.04);
-  transition: transform .22s cubic-bezier(.32,1.2,.36,1),
-              box-shadow .22s ease,
-              border-color .22s ease,
-              background .22s ease;
   font-family: inherit;
-  isolation: isolate;
+  transition: transform .35s cubic-bezier(.32,1.2,.36,1);
+  /* Tap-target guarantee even without a visible box. */
+  min-height: 96px;
+  -webkit-tap-highlight-color: transparent;
 }
-/* Soft champagne halo on hover. The ::before is the lift shadow, ::after
-   is a thin diagonal sheen that wipes through on hover for the live
-   feel — premium animated, not flat. */
-.bx-pick-tile::after {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(135deg, transparent 35%, rgba(201,166,107,0.22) 50%, transparent 65%);
-  transform: translateX(-110%);
-  transition: transform .55s cubic-bezier(.32,1.2,.36,1);
-}
-.bx-pick-tile:hover {
-  transform: translateY(-3px);
-  border-color: rgba(201, 166, 107, 0.55);
-  box-shadow: 0 10px 22px -8px rgba(201, 166, 107, 0.35),
-              0 3px 7px rgba(31, 26, 15, 0.06);
-}
-.bx-pick-tile:hover::after { transform: translateX(110%); }
-.bx-pick-tile:active { transform: translateY(-1px) scale(0.985); }
-.bx-pick-tile.is-selected {
-  border-color: rgba(201, 166, 107, 0.7);
-  background: linear-gradient(135deg, var(--cozy-champagne) 0%, #b18943 100%);
-  color: #fff;
-  box-shadow: 0 10px 24px -6px rgba(201, 166, 107, 0.55),
-              0 0 0 2px rgba(255,255,255,0.18) inset;
-  transform: translateY(-2px);
-}
-.bx-pick-tile.is-selected .bx-pick-icon {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #fff;
-}
-.bx-pick-tile.is-selected .bx-pick-label { color: #fff; }
 
+/* Spring scale on the WHOLE tile when selected — iPhone-app-icon feel.
+   Tile lifts subtly so the selected icon sits a half-step above its
+   neighbours, no border / box required. */
+.bx-pick-tile.is-selected { transform: translateY(-2px) scale(1.04); }
+.bx-pick-tile:active { transform: scale(0.96); }
+@media (hover: hover) {
+  .bx-pick-tile:hover { transform: translateY(-2px); }
+  .bx-pick-tile.is-selected:hover { transform: translateY(-3px) scale(1.06); }
+}
+
+/* The icon BUBBLE is the only visible surface. Stacked box-shadows
+   create a real 3D bubble that catches light from top-left and casts
+   a soft drop shadow below. Cream-to-champagne gradient gives depth
+   without flat fill. */
 .bx-pick-icon {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px;
+  width: 56px; height: 56px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  border: 1px solid rgba(201, 166, 107, 0.34);
-  font-size: 1.1rem; line-height: 1;
-  transition: transform .22s ease, background .22s ease, border-color .22s ease;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.85) 0%, transparent 55%),
+    linear-gradient(160deg, #FFF8E8 0%, #F2E5C7 100%);
+  font-size: 1.65rem; line-height: 1;
+  box-shadow:
+    0 6px 14px -3px rgba(31, 26, 15, 0.14),
+    0 2px 4px rgba(31, 26, 15, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(201, 145, 26, 0.08);
+  transition: transform .35s cubic-bezier(.32,1.2,.36,1),
+              box-shadow .25s ease,
+              background .25s ease;
+  filter: drop-shadow(0 1px 1px rgba(31, 26, 15, 0.06));
 }
-.bx-pick-tile:hover .bx-pick-icon {
-  transform: scale(1.08) rotate(-2deg);
+
+/* Hover: icon scales + the bubble brightens. Whole tile lifts above. */
+@media (hover: hover) {
+  .bx-pick-tile:hover .bx-pick-icon {
+    transform: scale(1.06);
+    box-shadow:
+      0 10px 22px -6px rgba(201, 166, 107, 0.45),
+      0 3px 7px rgba(31, 26, 15, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(201, 145, 26, 0.10);
+  }
 }
+
+/* Active = tap-down spring */
+.bx-pick-tile:active .bx-pick-icon { transform: scale(0.92); }
+
+/* SELECTED: zoom-up 1.18× (iPhone tap-and-hold feel) + champagne
+   glow halo via inset + outer shadow ring + warmer gradient. */
+.bx-pick-tile.is-selected .bx-pick-icon {
+  transform: scale(1.18);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.78) 0%, transparent 55%),
+    linear-gradient(160deg, #FBD879 0%, #C9911A 100%);
+  box-shadow:
+    0 14px 28px -6px rgba(201, 145, 26, 0.55),
+    0 5px 10px rgba(31, 26, 15, 0.12),
+    0 0 0 4px rgba(201, 166, 107, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(120, 80, 10, 0.18);
+}
+
+/* LABEL: clean, no box. Goes champagne + bold when selected. Below
+   the label, a small gold dot appears on selected for affordance. */
 .bx-pick-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-align: center;
   line-height: 1.2;
   letter-spacing: 0.01em;
-  white-space: nowrap; max-width: 100%;
-  overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 2px;
+  color: var(--cozy-cocoa);
+  transition: color .22s ease, font-weight .22s ease, letter-spacing .22s ease;
 }
-.bx-pick-tag {
-  position: absolute; top: 6px; right: 7px;
-  font-size: 0.6rem; line-height: 1; opacity: 0.75;
+.bx-pick-tile.is-selected .bx-pick-label {
+  color: #8B6914;
+  letter-spacing: 0.03em;
 }
-.bx-pick-tile.is-selected .bx-pick-tag { opacity: 0.95; }
+.bx-pick-tile.is-selected::after {
+  /* gold dot under the label when selected — iOS app-grouping cue */
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cozy-champagne);
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px rgba(201, 166, 107, 0.7);
+  animation: bxPickDotPulse 1.8s ease-in-out infinite;
+}
+@keyframes bxPickDotPulse {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 0.55; transform: translateX(-50%) scale(0.8); }
+}
 
+/* The 💳 paid-service flag floats above the icon top-right. */
+.bx-pick-tag {
+  position: absolute;
+  top: 4px; right: calc(50% - 30px);
+  font-size: 0.65rem; line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(31, 26, 15, 0.18));
+  pointer-events: none;
+}
+
+/* Bigger icon + breathing room on tablet+ desktop. The grid already
+   adds columns; here we just upsize the icon so it doesn't look thin
+   on wide screens. */
+@media (min-width: 640px) {
+  .bx-pick-tile { padding: 12px 4px 16px; min-height: 104px; gap: 9px; }
+  .bx-pick-icon { width: 60px; height: 60px; font-size: 1.78rem; }
+  .bx-pick-label { font-size: 0.74rem; }
+  .bx-pick-tag { right: calc(50% - 32px); }
+}
 @media (min-width: 1024px) {
-  .bx-pick-tile { padding: 13px 10px 12px; }
-  .bx-pick-icon { width: 40px; height: 40px; font-size: 1.18rem; }
-  .bx-pick-label { font-size: 0.76rem; }
+  .bx-pick-tile { padding: 14px 4px 18px; min-height: 116px; }
+  .bx-pick-icon { width: 68px; height: 68px; font-size: 2rem; }
+  .bx-pick-label { font-size: 0.78rem; }
+  .bx-pick-tag { right: calc(50% - 36px); }
+}
+
+/* Honour reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .bx-pick-tile, .bx-pick-tile .bx-pick-icon { transition: none; }
+  .bx-pick-tile.is-selected { transform: none; }
+  .bx-pick-tile.is-selected .bx-pick-icon { transform: scale(1.08); }
+  .bx-pick-tile.is-selected::after { animation: none; }
 }
 
 /* v163.1 — live auction: accepted tick + expired state */
