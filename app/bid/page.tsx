@@ -507,6 +507,27 @@ export default function BidPage() {
       return { ...f, [key]: arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val] };
     });
 
+  // v187 — Phase 5: smart auto-scroll for multi-select sections. Fires
+  // ONLY when adding (not removing) a pick takes the count from below
+  // the section's min threshold to exactly the threshold — i.e. the
+  // moment the rule is first satisfied. Property: 3, Room: 2. Until
+  // then customer stays on the section (no premature scroll).
+  const toggleProperty = (id: string) => {
+    const wasSelected = form.propertyTypes.includes(id);
+    toggleArr("propertyTypes", id);
+    if (!wasSelected && form.propertyTypes.length + 1 >= 3) {
+      // crossed up to the 3 threshold — release to next section
+      setTimeout(() => scrollToAutoNext("dates"), 80);
+    }
+  };
+  const toggleRoom = (id: string) => {
+    const wasSelected = form.roomTypes.includes(id);
+    toggleArr("roomTypes", id);
+    if (!wasSelected && form.roomTypes.length + 1 >= 2) {
+      setTimeout(() => scrollToAutoNext("bedType"), 80);
+    }
+  };
+
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
   // Luxury calendar
@@ -657,7 +678,8 @@ export default function BidPage() {
     // the auction has variety. Sachin: "any 3 types of property select
     // karni padegi" — customer must pick a minimum spread, no Any.
     if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.propertyTypes.length >= 3);
-    if (step === 2) return form.roomTypes.length > 0;
+    // v187 — Phase 5: step 2 requires ≥ 2 room types (Sachin's rule).
+    if (step === 2) return form.roomTypes.length >= 2;
     return budget > 0;
   };
 
@@ -1137,7 +1159,7 @@ export default function BidPage() {
                     box-less premium grid as property / room / occasion.
                     Surge dot kept as a corner accent (very-high demand
                     cities). 3 cols mobile → 4/5/6/7 desktop. */}
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-prominent">
                   {Object.entries(CITY_DATA).map(([name, info]) => {
                     const isSelected = form.city === name;
                     const isSurge = info.demand === "Very High" || info.demand === "High";
@@ -1203,7 +1225,7 @@ export default function BidPage() {
                       <button
                         key={pt.id}
                         type="button"
-                        onClick={() => toggleArr("propertyTypes", pt.id)}
+                        onClick={() => toggleProperty(pt.id)}
                         className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
                       >
                         <span className="bx-pick-icon">{pt.icon}</span>
@@ -1302,6 +1324,20 @@ export default function BidPage() {
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Room Type</span>
                   <span className="bx-section-h-rule" />
+                  {/* v187 — live counter: pick at least 2 to proceed. */}
+                  <span
+                    style={{
+                      fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.06em",
+                      padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap",
+                      background: form.roomTypes.length >= 2
+                        ? "rgba(127,146,105,0.18)"
+                        : "rgba(201,123,67,0.18)",
+                      color: form.roomTypes.length >= 2 ? "#5a6e44" : "#a85b26",
+                      border: `1px solid ${form.roomTypes.length >= 2 ? "rgba(127,146,105,0.45)" : "rgba(201,123,67,0.45)"}`,
+                    }}
+                  >
+                    {form.roomTypes.length}/2 picked
+                  </span>
                 </div>
                 {/* v181 — curated 7-pick room grid w/ premium icon
                     tiles + same responsive auto-fit grid as property. */}
@@ -1310,7 +1346,7 @@ export default function BidPage() {
                     <button
                       key={rc.id}
                       type="button"
-                      onClick={() => toggleArr("roomTypes", rc.id)}
+                      onClick={() => toggleRoom(rc.id)}
                       className={`bx-pick-tile ${form.roomTypes.includes(rc.id) ? "is-selected" : ""}`}
                     >
                       <span className="bx-pick-icon">{rc.icon}</span>
@@ -1319,7 +1355,9 @@ export default function BidPage() {
                   ))}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
-                  Pick one or more — upgraded categories cost more; the bid finds rooms in any chosen category.
+                  {form.roomTypes.length >= 2
+                    ? `Bid spans: ${form.roomTypes.map((id) => ROOM_CATEGORY_MAP[id]?.label || id).join(", ")} — upgraded categories cost more.`
+                    : `Pick at least 2 room categories (currently ${form.roomTypes.length} selected) — upgraded categories cost more.`}
                 </p>
               </div>
 
@@ -1331,7 +1369,7 @@ export default function BidPage() {
                 </div>
                 {/* v186 — Phase 4B: bed picker now in the shared
                     box-less premium grid (was horizontal scroll chips). */}
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-compact">
                   {BED_TYPES.map((bt) => (
                     <button
                       key={bt.id}
@@ -1352,7 +1390,7 @@ export default function BidPage() {
                   <span className="bx-section-h-label">View Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-compact">
                   {VIEW_PREFS_PICK.map((v) => (
                     <button
                       key={v.id}
@@ -1375,7 +1413,7 @@ export default function BidPage() {
                 </div>
                 {/* v186 — Phase 4B: meal plans in the shared box-less
                     grid (was 4-up tile grid). */}
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-compact">
                   {CAT_MEAL_PLANS.map((mp) => (
                     <button
                       key={mp.id}
@@ -1404,7 +1442,7 @@ export default function BidPage() {
                     Mobile lands as a 2-col block (per Sachin's spec) and
                     spreads to 3/4/6 on tablet/laptop/desktop via the
                     shared bx-pick-grid responsive rules. */}
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-compact">
                   {OCCASIONS.map((oc) => (
                     <button
                       key={oc.id}
@@ -1429,7 +1467,7 @@ export default function BidPage() {
                     shared premium pick grid. Paid add-ons carry a small
                     💳 corner badge so the customer sees the cost flag
                     before tapping. */}
-                <div className="bx-pick-grid">
+                <div className="bx-pick-grid size-compact">
                   {BID_ADDON_PICK.map((ad) => (
                     <button
                       key={ad.id}

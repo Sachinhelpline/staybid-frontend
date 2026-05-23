@@ -3587,6 +3587,36 @@ body.is-reel-page {
 @media (min-width: 1280px) { .bx-pick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 13px; } }
 @media (min-width: 1536px) { .bx-pick-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; } }
 
+/* v187 — Phase 5: per-section icon-size hierarchy. Sachin's feedback:
+   "sabhi icon ke size same hai jabki jo icon jitni importance rakhta
+   hai ushko uta size accept ratio kam jyada karo" — vary icon size by
+   the importance/role of the section. Default = property + room (the
+   anchor decisions). Prominent = destination (broadest decision).
+   Compact = add-ons / occasion / bed / view / meal (refinements).
+*/
+.bx-pick-grid.size-prominent .bx-pick-icon { width: 64px; height: 64px; font-size: 1.85rem; }
+.bx-pick-grid.size-prominent { gap: 9px; }
+@media (min-width: 640px) {
+  .bx-pick-grid.size-prominent .bx-pick-icon { width: 72px; height: 72px; font-size: 2rem; }
+  .bx-pick-grid.size-prominent { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+}
+@media (min-width: 1024px) {
+  .bx-pick-grid.size-prominent .bx-pick-icon { width: 84px; height: 84px; font-size: 2.3rem; }
+  .bx-pick-grid.size-prominent { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.bx-pick-grid.size-compact .bx-pick-icon { width: 44px; height: 44px; font-size: 1.3rem; }
+.bx-pick-grid.size-compact .bx-pick-label { font-size: 0.66rem; }
+.bx-pick-grid.size-compact .bx-pick-tile { min-height: 80px; padding: 8px 4px 11px; gap: 6px; }
+@media (min-width: 640px) {
+  .bx-pick-grid.size-compact .bx-pick-icon { width: 50px; height: 50px; font-size: 1.5rem; }
+  .bx-pick-grid.size-compact .bx-pick-label { font-size: 0.7rem; }
+}
+@media (min-width: 1024px) {
+  .bx-pick-grid.size-compact .bx-pick-icon { width: 56px; height: 56px; font-size: 1.7rem; }
+  .bx-pick-grid.size-compact .bx-pick-label { font-size: 0.74rem; }
+}
+
 /* v184 — Phase 3: box-less premium icon tiles + iOS-style zoom-on-
    select. The button itself is transparent (no card, no border, no bg)
    — only the icon bubble + label show. Tap targets stay generous via
