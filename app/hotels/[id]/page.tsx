@@ -37,6 +37,10 @@ import {
 } from "@/lib/attribution";
 // v129 — every bid/counter/flash price is a ₹100 multiple. See lib/price-snap.ts.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+// v178 — Rule B: per-room bid status badges on the hotel detail page.
+// Filter stale bids the same way customer / partner / admin views do.
+import { filterActiveBids } from "@/lib/bid-expiry";
+import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
 // v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
 // schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
 // path: never blocks on a missing column — falls back to 'auto'.
@@ -2432,6 +2436,27 @@ export default function HotelDetail() {
           // room = its own floorPrice × (1 − dealDiscount%), snapped to
           // the nearest ₹100 (platform price rule).
           const flashDiscPct = flashMode ? parseFloat(dealDiscount || "0") : 0;
+          // v178 — Rule B: per-room bid status. After a customer launches a
+          // bid for this hotel, the room their bid is attached to should
+          // surface its live state (Pending countdown / Counter offer /
+          // Accepted-locked price). Once one room is locked, every other
+          // room in the same hotel shows a flash-deal-style upgrade chip
+          // priced against the locked amount. All filtering uses the same
+          // expiry rule as /my-bids / partner Bid Inbox / admin ledger.
+          const activeMyBids   = filterActiveBids(myBids as any[]);
+          const lockedBid      = activeMyBids.find((b: any) => b.status === "ACCEPTED") || null;
+          const pendingByRoom  = new Map<string, any>();
+          const counteredByRoom = new Map<string, any>();
+          for (const b of activeMyBids) {
+            if (b.status === "PENDING" && b.roomId) pendingByRoom.set(String(b.roomId), b);
+            if (b.status === "COUNTER" && b.roomId) counteredByRoom.set(String(b.roomId), b);
+          }
+          // Locked amount = customer's actual bid (recovered from message
+          // when below-floor was rewritten to floor), else b.amount.
+          const lockedAmount = lockedBid
+            ? (extractCustomerBidFromMessage(lockedBid.message) ?? Number(lockedBid.amount || 0))
+            : 0;
+          const lockedRoomId = lockedBid?.roomId ? String(lockedBid.roomId) : null;
           return (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
@@ -2451,6 +2476,19 @@ export default function HotelDetail() {
             // Render the flash pricing block for EVERY available room when
             // a flash deal brought the customer here.
             const isFlashRoom = flashMode && roomAvailable;
+            // v178 — Rule B per-room bid state. Mutually exclusive against
+            // flashMode: if customer arrived via flash deal, the flash
+            // chrome wins; otherwise the bid-lock chrome takes over.
+            const myRoomPending   = pendingByRoom.get(String(r.id))    || null;
+            const myRoomCountered = counteredByRoom.get(String(r.id))  || null;
+            const myRoomLock      = lockedBid && lockedRoomId === String(r.id) ? lockedBid : null;
+            const isLockedRoom    = !!myRoomLock;
+            const isOtherWhenLocked = !!lockedBid && !isLockedRoom;
+            // Locked upgrade delta (other rooms) — what extra the customer
+            // pays per night over their accepted price to upgrade.
+            const lockUpgradeDelta = isOtherWhenLocked
+              ? Math.max(0, Math.round((r.floorPrice || 0) - lockedAmount))
+              : 0;
             const aiPrice = roomPrices[r.id];
             const ds = aiPrice ? DEMAND_STYLE[aiPrice.demandLevel] : null;
             const livePrice = aiPrice?.price || r.floorPrice;
@@ -2526,7 +2564,47 @@ export default function HotelDetail() {
                         FLASH DEAL
                       </span>
                     )}
-                    {!isFlashRoom && ds && (
+                    {/* v178 — Rule B: bid state badges. Mutually exclusive
+                        with flash. Locked > Countered > Pending priority. */}
+                    {!isFlashRoom && isLockedRoom && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        padding: "4px 9px", borderRadius: 999,
+                        background: "rgba(127,146,105,0.92)", color: "#fff",
+                        fontSize: "0.58rem", fontWeight: 800,
+                        letterSpacing: "0.12em", textTransform: "uppercase",
+                        boxShadow: "0 4px 12px rgba(127,146,105,0.38)",
+                      }}>🔒 Price Locked</span>
+                    )}
+                    {!isFlashRoom && !isLockedRoom && myRoomCountered && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        padding: "4px 9px", borderRadius: 999,
+                        background: "rgba(199,123,67,0.94)", color: "#fff",
+                        fontSize: "0.58rem", fontWeight: 800,
+                        letterSpacing: "0.12em", textTransform: "uppercase",
+                        boxShadow: "0 4px 12px rgba(199,123,67,0.38)",
+                      }}>🤝 Counter Offer</span>
+                    )}
+                    {!isFlashRoom && !isLockedRoom && !myRoomCountered && myRoomPending && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        padding: "4px 9px", borderRadius: 999,
+                        background: "rgba(201,166,107,0.94)", color: "#1a1205",
+                        fontSize: "0.58rem", fontWeight: 800,
+                        letterSpacing: "0.12em", textTransform: "uppercase",
+                      }}>⏳ Bid Pending</span>
+                    )}
+                    {!isFlashRoom && isOtherWhenLocked && lockUpgradeDelta > 0 && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        padding: "4px 9px", borderRadius: 999,
+                        background: "rgba(201,145,26,0.94)", color: "#1a1205",
+                        fontSize: "0.58rem", fontWeight: 800,
+                        letterSpacing: "0.12em", textTransform: "uppercase",
+                      }}>💎 +₹{lockUpgradeDelta.toLocaleString()} Upgrade</span>
+                    )}
+                    {!isFlashRoom && ds && !isLockedRoom && !myRoomCountered && !myRoomPending && !isOtherWhenLocked && (
                       <span className={`hx-badge-demand ${aiPrice!.demandLevel === "Surge" ? "is-surge" : ""}`}>
                         <span className="hx-badge-demand-dot" />
                         {aiPrice!.demandLevel} Demand
@@ -2562,6 +2640,94 @@ export default function HotelDetail() {
                       </span>
                     )}
                   </div>
+
+                  {/* v178 — Rule B status banner. Surfaces what the
+                      customer's active bid means for this specific room.
+                      Hidden when isFlashRoom (flash chrome takes over). */}
+                  {!isFlashRoom && isLockedRoom && (
+                    <div style={{
+                      marginBottom: 14, padding: "10px 12px", borderRadius: 12,
+                      background: "rgba(127,146,105,0.16)",
+                      border: "1px solid rgba(127,146,105,0.42)",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <span style={{ fontSize: "1.05rem" }}>🔒</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#5a6e44", margin: 0 }}>
+                          Your bid was accepted at ₹{lockedAmount.toLocaleString("en-IN")}/night
+                        </p>
+                        <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                          {extractCustomerBidFromMessage(lockedBid!.message) != null
+                            ? "Pay now from My Bids to confirm this booking."
+                            : "Open My Bids to complete payment."}
+                        </p>
+                      </div>
+                      <Link href="/my-bids" style={{
+                        fontSize: "0.7rem", fontWeight: 800, padding: "6px 12px",
+                        borderRadius: 999, background: "#7F9269", color: "#fff",
+                        textDecoration: "none", whiteSpace: "nowrap",
+                      }}>Pay Now →</Link>
+                    </div>
+                  )}
+                  {!isFlashRoom && !isLockedRoom && myRoomCountered && (
+                    <div style={{
+                      marginBottom: 14, padding: "10px 12px", borderRadius: 12,
+                      background: "rgba(199,123,67,0.14)",
+                      border: "1px solid rgba(199,123,67,0.42)",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <span style={{ fontSize: "1.05rem" }}>🤝</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a5a26", margin: 0 }}>
+                          Hotel countered at ₹{Number(myRoomCountered.counterAmount || 0).toLocaleString("en-IN")}/night
+                        </p>
+                        <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                          Accept or decline from My Bids.
+                        </p>
+                      </div>
+                      <Link href="/my-bids" style={{
+                        fontSize: "0.7rem", fontWeight: 800, padding: "6px 12px",
+                        borderRadius: 999, background: "#C77B43", color: "#fff",
+                        textDecoration: "none", whiteSpace: "nowrap",
+                      }}>Review →</Link>
+                    </div>
+                  )}
+                  {!isFlashRoom && !isLockedRoom && !myRoomCountered && myRoomPending && (
+                    <div style={{
+                      marginBottom: 14, padding: "10px 12px", borderRadius: 12,
+                      background: "rgba(201,166,107,0.14)",
+                      border: "1px solid rgba(201,166,107,0.42)",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <span style={{ fontSize: "1.05rem" }}>⏳</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a6a1f", margin: 0 }}>
+                          Bid pending at ₹{(extractCustomerBidFromMessage(myRoomPending.message) ?? Number(myRoomPending.amount || 0)).toLocaleString("en-IN")}/night
+                        </p>
+                        <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                          Hotel is reviewing — drops off if not actioned in time.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {!isFlashRoom && isOtherWhenLocked && lockUpgradeDelta > 0 && (
+                    <div style={{
+                      marginBottom: 14, padding: "10px 12px", borderRadius: 12,
+                      background: "rgba(201,145,26,0.12)",
+                      border: "1px solid rgba(201,145,26,0.36)",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <span style={{ fontSize: "1.05rem" }}>💎</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a5e10", margin: 0 }}>
+                          Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night
+                        </p>
+                        <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
+                          Pay the difference over your accepted ₹{lockedAmount.toLocaleString("en-IN")} to upgrade.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {isFlashRoom ? (
                     /* ── FLASH ROOM PRICING ──
