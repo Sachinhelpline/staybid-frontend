@@ -58,8 +58,10 @@ import {
 
 // Property types — 11 customer-facing picks (incl. "any" pseudo).
 // Icons curated for premium feel (no homely 🏚️ for Bungalow etc).
+// v186 — Phase 4B: "Any" pseudo-option dropped per Sachin's rule —
+// customer MUST pick at least 3 specific property types so the
+// auction targets a curated spread, not a fire-everywhere broadcast.
 const BID_PROPERTY_PICK: { id: string; label: string; icon: string }[] = [
-  { id: "any",         label: "Any",          icon: "✦"  },
   { id: "hotel",       label: "Hotel",        icon: "🛎" },
   { id: "resort",      label: "Resort",       icon: "🌴" },
   { id: "villa",       label: "Villa",        icon: "🏡" },
@@ -113,14 +115,23 @@ const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High
 /* ── Room & Experience Options ─────────────────────────────────── */
 // v170 — room categories now come from lib/catalog (BID_ROOM_CATEGORIES).
 
+// v186 — Phase 4B: bed + view get matching icons so they look at home
+// in the box-less bx-pick-grid alongside property + room.
 const BED_TYPES = [
-  { id: "king",   label: "King Bed"   },
-  { id: "twin",   label: "Twin Beds"  },
-  { id: "double", label: "Double Bed" },
-  { id: "any",    label: "Any Bed"    },
+  { id: "king",   label: "King Bed",   icon: "👑" },
+  { id: "twin",   label: "Twin Beds",  icon: "🛏" },
+  { id: "double", label: "Double Bed", icon: "🛌" },
+  { id: "any",    label: "Any Bed",    icon: "✦"  },
 ];
 
-const VIEW_PREFS = ["Mountain", "Forest", "Garden", "Pool", "City", "Any"];
+const VIEW_PREFS_PICK = [
+  { id: "Mountain", label: "Mountain", icon: "⛰" },
+  { id: "Forest",   label: "Forest",   icon: "🌲" },
+  { id: "Garden",   label: "Garden",   icon: "🌷" },
+  { id: "Pool",     label: "Pool",     icon: "🏊" },
+  { id: "City",     label: "City",     icon: "🏙" },
+  { id: "Any",      label: "Any",      icon: "✦"  },
+];
 
 // v170 — meal plans come from lib/catalog (CAT_MEAL_PLANS).
 
@@ -642,7 +653,10 @@ export default function BidPage() {
 
   const canNext = (): boolean => {
     // v163 — 3-step page. Step 3 is the final step (launch lives inside).
-    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1);
+    // v186 — Phase 4B: step 1 now requires at least 3 property types so
+    // the auction has variety. Sachin: "any 3 types of property select
+    // karni padegi" — customer must pick a minimum spread, no Any.
+    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.propertyTypes.length >= 3);
     if (step === 2) return form.roomTypes.length > 0;
     return budget > 0;
   };
@@ -1119,9 +1133,11 @@ export default function BidPage() {
                   </span>
                   <span className="bx-section-h-rule" />
                 </div>
-                {/* v163 — compact 3-up grid so every city fits without
-                    tall tiles. Demand shows as a small corner dot. */}
-                <div className="bx-city-grid">
+                {/* v186 — Phase 4B: destination now in the same shared
+                    box-less premium grid as property / room / occasion.
+                    Surge dot kept as a corner accent (very-high demand
+                    cities). 3 cols mobile → 4/5/6/7 desktop. */}
+                <div className="bx-pick-grid">
                   {Object.entries(CITY_DATA).map(([name, info]) => {
                     const isSelected = form.city === name;
                     const isSurge = info.demand === "Very High" || info.demand === "High";
@@ -1130,12 +1146,12 @@ export default function BidPage() {
                         key={name}
                         type="button"
                         onClick={() => { upd("city", name); scrollToAutoNext("dates"); }}
-                        className={`bx-city-tile ${isSelected ? "is-selected" : ""}`}
+                        className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
                         title={`${name} · ${info.demand} demand`}
                       >
-                        <span className={`bx-city-dot ${isSurge ? "is-surge" : ""}`} />
-                        <span className="bx-city-emoji">{info.emoji}</span>
-                        <span className="bx-city-name">{name}</span>
+                        <span className="bx-pick-icon">{info.emoji}</span>
+                        <span className="bx-pick-label">{name}</span>
+                        {isSurge && <span className="bx-pick-tag" style={{ color: "#C77B43" }}>🔥</span>}
                       </button>
                     );
                   })}
@@ -1160,22 +1176,34 @@ export default function BidPage() {
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Property Type</span>
                   <span className="bx-section-h-rule" />
+                  {/* v186 — live counter: pick at least 3 to proceed. */}
+                  <span
+                    className="bx-section-h-count"
+                    style={{
+                      fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.06em",
+                      padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap",
+                      background: form.propertyTypes.length >= 3
+                        ? "rgba(127,146,105,0.18)"
+                        : "rgba(201,123,67,0.18)",
+                      color: form.propertyTypes.length >= 3 ? "#5a6e44" : "#a85b26",
+                      border: `1px solid ${form.propertyTypes.length >= 3 ? "rgba(127,146,105,0.45)" : "rgba(201,123,67,0.45)"}`,
+                    }}
+                  >
+                    {form.propertyTypes.length}/3 picked
+                  </span>
                 </div>
-                {/* v181 — curated 11-pick grid w/ premium icon tiles.
-                    Responsive: 2 cols mobile, 3 tablet, 4 laptop,
-                    5 desktop. Auto-fit so chips never look cramped on
-                    wide screens. */}
+                {/* v181 — curated 10-pick grid w/ premium icon tiles.
+                    v186 — Any pseudo-option removed (Sachin's rule:
+                    must select at least 3 types). Grid is 3 cols
+                    mobile → 4/5/6/7 desktop. */}
                 <div className="bx-pick-grid">
                   {BID_PROPERTY_PICK.map((pt) => {
-                    const isAny      = pt.id === "any";
-                    const isSelected = isAny
-                      ? form.propertyTypes.length === 0
-                      : form.propertyTypes.includes(pt.id);
+                    const isSelected = form.propertyTypes.includes(pt.id);
                     return (
                       <button
                         key={pt.id}
                         type="button"
-                        onClick={() => isAny ? upd("propertyTypes", []) : toggleArr("propertyTypes", pt.id)}
+                        onClick={() => toggleArr("propertyTypes", pt.id)}
                         className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
                       >
                         <span className="bx-pick-icon">{pt.icon}</span>
@@ -1185,9 +1213,9 @@ export default function BidPage() {
                   })}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
-                  {form.propertyTypes.length
+                  {form.propertyTypes.length >= 3
                     ? `Bid goes only to: ${form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(", ")} — no other type.`
-                    : "Any property type — tap one or more to narrow your auction."}
+                    : `Pick at least 3 property types to broaden the auction (currently ${form.propertyTypes.length} selected).`}
                 </p>
               </div>
 
@@ -1301,35 +1329,39 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Bed Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-scroll">
+                {/* v186 — Phase 4B: bed picker now in the shared
+                    box-less premium grid (was horizontal scroll chips). */}
+                <div className="bx-pick-grid">
                   {BED_TYPES.map((bt) => (
                     <button
                       key={bt.id}
                       type="button"
                       onClick={() => { upd("bedType", bt.id); scrollToAutoNext("view"); }}
-                      className={`bx-chip bx-chip-sm ${form.bedType === bt.id ? "is-selected" : ""}`}
+                      className={`bx-pick-tile ${form.bedType === bt.id ? "is-selected" : ""}`}
                     >
-                      {bt.label}
+                      <span className="bx-pick-icon">{bt.icon}</span>
+                      <span className="bx-pick-label">{bt.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* View preference — compact chips, single row */}
+              {/* View preference — v186 same premium grid as bed/property */}
               <div data-autonext="view">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">View Preference</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-chip-scroll">
-                  {VIEW_PREFS.map((v) => (
+                <div className="bx-pick-grid">
+                  {VIEW_PREFS_PICK.map((v) => (
                     <button
-                      key={v}
+                      key={v.id}
                       type="button"
-                      onClick={() => { upd("view", v); scrollToAutoNext("mealPlan"); }}
-                      className={`bx-chip bx-chip-sm ${form.view === v ? "is-selected" : ""}`}
+                      onClick={() => { upd("view", v.id); scrollToAutoNext("mealPlan"); }}
+                      className={`bx-pick-tile ${form.view === v.id ? "is-selected" : ""}`}
                     >
-                      {v}
+                      <span className="bx-pick-icon">{v.icon}</span>
+                      <span className="bx-pick-label">{v.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1341,17 +1373,19 @@ export default function BidPage() {
                   <span className="bx-section-h-label">Meal Plan</span>
                   <span className="bx-section-h-rule" />
                 </div>
-                <div className="bx-quad-grid">
+                {/* v186 — Phase 4B: meal plans in the shared box-less
+                    grid (was 4-up tile grid). */}
+                <div className="bx-pick-grid">
                   {CAT_MEAL_PLANS.map((mp) => (
                     <button
                       key={mp.id}
                       type="button"
                       onClick={() => { upd("mealPlan", mp.id); scrollToAutoNext("occasion"); }}
-                      className={`bx-mini-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
+                      className={`bx-pick-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
                       title={mp.desc}
                     >
-                      <span className="bx-mini-tile-icon">{MEAL_EMOJI[mp.id] || "🍽️"}</span>
-                      <span className="bx-mini-tile-name">{mp.label}</span>
+                      <span className="bx-pick-icon">{MEAL_EMOJI[mp.id] || "🍽️"}</span>
+                      <span className="bx-pick-label">{mp.label}</span>
                     </button>
                   ))}
                 </div>
