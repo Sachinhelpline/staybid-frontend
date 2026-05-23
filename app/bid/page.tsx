@@ -307,11 +307,14 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
           <div className="bx-live-bar"><span style={{ width: `${holdLeftPct}%` }} /></div>
           {/* v183 — Phase 2 B6: explicit Pay Now & Grab CTA. Stops the
               card click so customer goes straight to /my-bids pay flow
-              instead of the hotel page. */}
-          {onGrab && bid.id && (
+              instead of the hotel page.
+              v185 — Phase 4A bug-fix: liveBids items carry `bidId` not
+              `id` (success.bids shape from placeBid). Fall back to
+              bidId so the button actually renders for accepted rows. */}
+          {onGrab && (bid.id || bid.bidId) && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onGrab(String(bid.id)); }}
+              onClick={(e) => { e.stopPropagation(); onGrab(String(bid.id || bid.bidId)); }}
               className="bx-live-grab-btn"
               aria-label={`Pay ₹${amount.toLocaleString("en-IN")} per night and grab this booking`}
             >
