@@ -49,6 +49,13 @@ import { computeBidCooldown, cooldownReasonLabel, formatCooldownRemaining } from
 // inside the locked-room status banner so the customer sees how long
 // they have to confirm payment before auto-cancel kicks in.
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
+// v189 — Phase 7A: also mount AutoAcceptCountdown on the hotel page's
+// "Your offers on this stay" list so PENDING bids visibly auto-promote
+// to ACCEPTED the moment the customer's tier-based window elapses,
+// without needing them to switch to /my-bids first. The component
+// itself POSTs trigger-accept at T-0 so the flip happens even when
+// the back-end cron hasn't yet swept.
+import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
 // v130 — Hybrid AI Autopilot. resolveAutoAcceptMs adjusts the tier-based
 // schedule by the hotel's autopilot_mode (auto / hybrid / manual). Hot
 // path: never blocks on a missing column — falls back to 'auto'.
@@ -613,15 +620,32 @@ export default function HotelDetail() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // v189 — Phase 7A: side-channel fetch for auto_accept_at + bidder_tier
+  // per PENDING bid (Railway /api/bids/my doesn't include those cols).
+  // Powers AutoAcceptCountdown mounted in the "Your offers" list below.
+  const [autoAcceptInfo, setAutoAcceptInfo] = useState<Record<string, { auto_accept_at: string | null; bidder_tier: string | null }>>({});
+
   const fetchMyBids = () => {
     if (!user) return;
     api.getMyBids?.()
-      .then((d) => {
+      .then(async (d) => {
         const all = d.bids || [];
         const hotelBids = all.filter((b: any) => b.hotelId === id);
         setMyBids(hotelBids);
         // Bidder score is computed from ALL bids across hotels — full history
         try { setBidderScore(computeBidderScore(all)); } catch {}
+        // v189 — auto-accept side-channel for PENDING rows.
+        try {
+          const pendingIds = hotelBids.filter((b: any) => b.status === "PENDING").map((b: any) => b.id).filter(Boolean);
+          if (pendingIds.length) {
+            const token = localStorage.getItem("sb_token");
+            const r = await fetch(`/api/bids/auto-accept-info?ids=${encodeURIComponent(pendingIds.join(","))}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const j = await r.json();
+            if (j?.info) setAutoAcceptInfo(j.info);
+          }
+        } catch {}
       })
       .catch(() => {});
   };
@@ -2388,6 +2412,21 @@ export default function HotelDetail() {
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
                     </div>
+                    {/* v189 — Phase 7A: live auto-accept countdown on
+                        PENDING rows so the customer sees exactly when
+                        their bid promotes to ACCEPTED (and the timer
+                        itself POSTs trigger-accept at T-0 if the
+                        backend cron hasn't already swept). */}
+                    {b.status === "PENDING" && autoAcceptInfo[b.id]?.auto_accept_at && (
+                      <div className="mt-3">
+                        <AutoAcceptCountdown
+                          bidId={b.id}
+                          autoAcceptAt={autoAcceptInfo[b.id].auto_accept_at!}
+                          bidderTier={autoAcceptInfo[b.id].bidder_tier}
+                          onAccepted={() => fetchMyBids()}
+                        />
+                      </div>
+                    )}
                     {b.status === "COUNTER" && (
                       <div className="mt-4 p-4 bg-orange-50 rounded-2xl border border-orange-200">
                         <p className="text-sm font-medium text-orange-800 mb-3">
