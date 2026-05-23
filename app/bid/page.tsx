@@ -242,8 +242,12 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
    ──────────────────────────────────────────────────────────────── */
 const LIVE_WINDOW_MS = 15 * 60 * 1000; // accepted-offer hold window
 
-function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen }: {
-  bid: any; launchTs: number; nowTs: number; idx: number; onOpen: (hotelId: string) => void;
+function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
+  bid: any; launchTs: number; nowTs: number; idx: number;
+  onOpen: (hotelId: string) => void;
+  // v183 — Phase 2 B6: explicit "Pay Now & Grab" route. Parent owns the
+  // routing logic (/my-bids#bid-<id>) so the LiveBidCard stays generic.
+  onGrab?: (bidId: string) => void;
 }) {
   const status    = String(bid.status || "PENDING").toUpperCase();
   const accepted  = !!bid.accepted || status === "ACCEPTED" || status === "CONFIRMED";
@@ -297,10 +301,23 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen }: {
         <>
           <div className="bx-live-stat is-ok">
             <span className="bx-live-tick">✓</span>
-            <span className="bx-live-stat-tx">Accepted at your price — tap to book</span>
+            <span className="bx-live-stat-tx">Accepted at your price — pay to grab</span>
             <span className="bx-live-timer">held {mm}:{String(ss).padStart(2, "0")}</span>
           </div>
           <div className="bx-live-bar"><span style={{ width: `${holdLeftPct}%` }} /></div>
+          {/* v183 — Phase 2 B6: explicit Pay Now & Grab CTA. Stops the
+              card click so customer goes straight to /my-bids pay flow
+              instead of the hotel page. */}
+          {onGrab && bid.id && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onGrab(String(bid.id)); }}
+              className="bx-live-grab-btn"
+              aria-label={`Pay ₹${amount.toLocaleString("en-IN")} per night and grab this booking`}
+            >
+              💰 Pay Now &amp; Grab — ₹{amount.toLocaleString("en-IN")} →
+            </button>
+          )}
         </>
       )}
       {!expired && countered && (
@@ -997,6 +1014,7 @@ export default function BidPage() {
                 launchTs={launchTs}
                 nowTs={nowTs}
                 onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
+                onGrab={(bid) => router.push(`/my-bids#bid-${bid}`)}
               />
             ))}
           </div>
