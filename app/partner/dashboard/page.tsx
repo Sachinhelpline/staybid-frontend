@@ -42,6 +42,9 @@ import ChannelManagerTab from "@/components/partner/ChannelManagerTab";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
+// v177 — auto-cleanup of stale bids in the Bid Inbox. Same rule the
+// customer /my-bids + admin /admin/bookings views use.
+import { filterActiveBids } from "@/lib/bid-expiry";
 // v129 — structured complimentary-amenity catalog replaces the free-text
 // "Message to Guest" textarea (anti-bypass: phone/email/WhatsApp could slip
 // through that box). See lib/counter-addons.ts for the rationale.
@@ -879,12 +882,16 @@ export default function PartnerDashboard() {
   );
 
   // ── Derived stats ────────────────────────────────────────────────────────
-  const pendingBids   = bids.filter(b => b.status === "PENDING").length;
-  const counteredBids = bids.filter(b => b.status === "COUNTER").length;
-  const acceptedBids  = bids.filter(b => b.status === "ACCEPTED").length;
-  const revenue       = bids.filter(b => b.status === "ACCEPTED").reduce((s, b) => s + (b.amount || 0), 0);
+  // v177 — drop stale bids from the inbox before counting / rendering.
+  // Same expiry rule the customer + admin views use, so the three stay
+  // in sync. Hotels never see a 3-day-old "Pending" row again.
+  const activeBidsForInbox = filterActiveBids(bids as any[]);
+  const pendingBids   = activeBidsForInbox.filter(b => b.status === "PENDING").length;
+  const counteredBids = activeBidsForInbox.filter(b => b.status === "COUNTER").length;
+  const acceptedBids  = activeBidsForInbox.filter(b => b.status === "ACCEPTED").length;
+  const revenue       = activeBidsForInbox.filter(b => b.status === "ACCEPTED").reduce((s, b) => s + (b.amount || 0), 0);
   const activeDeals   = flashDeals.filter(d => d.isActive !== false && daysUntil(d.validUntil || "") >= 0);
-  const filteredBids  = bidFilter === "ALL" ? bids : bids.filter(b => b.status === bidFilter);
+  const filteredBids  = bidFilter === "ALL" ? activeBidsForInbox : activeBidsForInbox.filter(b => b.status === bidFilter);
 
   // v170 — staff role drives which tabs are visible (owner = everything).
   const role = (pUser?.staffRole as string) || "owner";

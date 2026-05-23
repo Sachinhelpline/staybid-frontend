@@ -23,6 +23,10 @@ import { parseAddons } from "@/lib/counter-addons";
 // v141 — Phase-5 my-bids tour. 4 steps: card → status → actions →
 // auto-accept countdown.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v177 — auto-cleanup of stale bids. Drops PENDING > slot window / 6h,
+// COUNTER > 60 min, ACCEPTED-unpaid > 15 min, REJECTED > 30 min, plus a
+// hard IST-midnight cutoff for any bid sitting past today.
+import { filterActiveBids } from "@/lib/bid-expiry";
 
 // v174 — cozy-theme status palette. Mid-tone colours that read on both the
 // cream (light) and walnut (dark) surfaces — no per-theme branching needed.
@@ -506,12 +510,31 @@ export default function MyBidsPage() {
 
   const filters = ["ALL", "PENDING", "COUNTER", "ACCEPTED", "REJECTED"] as const;
 
+  // v177 — re-render every 30s so expired bids drop off the page as
+  // their windows close without a full refetch.
+  const [, setExpiryTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setExpiryTick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   // v174 — split by flow first, then by status filter.
-  const bidCount   = useMemo(() => bids.filter((b) => !b._isFlash).length, [bids]);
-  const flashCount = useMemo(() => bids.filter((b) =>  b._isFlash).length, [bids]);
+  // v177 — merge auto_accept_at from the side-channel info into each bid
+  // before the expiry check so the helper has the scheduled accept time.
+  const activeBids = useMemo(
+    () => filterActiveBids(bids.map((b: any) => ({
+      ...b,
+      auto_accept_at: autoAcceptInfo[b.id]?.auto_accept_at ?? b.auto_accept_at ?? null,
+    }))),
+    // expiryTick deliberately listed so useMemo re-runs on the 30s tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bids, autoAcceptInfo, setExpiryTick]
+  );
+  const bidCount   = useMemo(() => activeBids.filter((b) => !b._isFlash).length, [activeBids]);
+  const flashCount = useMemo(() => activeBids.filter((b) =>  b._isFlash).length, [activeBids]);
   const sectionBids = useMemo(
-    () => bids.filter((b) => (section === "FLASH" ? b._isFlash : !b._isFlash)),
-    [bids, section]
+    () => activeBids.filter((b) => (section === "FLASH" ? b._isFlash : !b._isFlash)),
+    [activeBids, section]
   );
   const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
 
