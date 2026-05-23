@@ -3543,6 +3543,109 @@ body.is-reel-page {
 /* v163.1 — smaller chip so bed/view fit a single tidy row */
 .bx-chip-sm { padding: 6px 13px; font-size: 0.74rem; }
 
+/* ─── v181 — Premium pick grid for /bid (property, room, occasion,
+   add-ons). Responsive auto-fit so the same layout naturally fills
+   wide-screen real estate without the chip cramming we had before.
+       phone   <640px  → 2 columns
+       tablet  ≥640    → 3 columns
+       laptop  ≥1024   → 4 columns
+       desktop ≥1280   → 5 columns
+       ultra   ≥1536   → 6 columns
+   Tile is a vertical icon-above-label card with a soft hover lift +
+   gold gradient selected state. Animated, never flat. */
+.bx-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+@media (min-width: 640px)  { .bx-pick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; } }
+@media (min-width: 1024px) { .bx-pick-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } }
+@media (min-width: 1280px) { .bx-pick-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px; } }
+@media (min-width: 1536px) { .bx-pick-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; } }
+
+.bx-pick-tile {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px;
+  padding: 11px 9px 10px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 16px;
+  cursor: pointer;
+  color: var(--cozy-cocoa);
+  box-shadow: 0 2px 6px rgba(31, 26, 15, 0.04);
+  transition: transform .22s cubic-bezier(.32,1.2,.36,1),
+              box-shadow .22s ease,
+              border-color .22s ease,
+              background .22s ease;
+  font-family: inherit;
+  isolation: isolate;
+}
+/* Soft champagne halo on hover. The ::before is the lift shadow, ::after
+   is a thin diagonal sheen that wipes through on hover for the live
+   feel — premium animated, not flat. */
+.bx-pick-tile::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(135deg, transparent 35%, rgba(201,166,107,0.22) 50%, transparent 65%);
+  transform: translateX(-110%);
+  transition: transform .55s cubic-bezier(.32,1.2,.36,1);
+}
+.bx-pick-tile:hover {
+  transform: translateY(-3px);
+  border-color: rgba(201, 166, 107, 0.55);
+  box-shadow: 0 10px 22px -8px rgba(201, 166, 107, 0.35),
+              0 3px 7px rgba(31, 26, 15, 0.06);
+}
+.bx-pick-tile:hover::after { transform: translateX(110%); }
+.bx-pick-tile:active { transform: translateY(-1px) scale(0.985); }
+.bx-pick-tile.is-selected {
+  border-color: rgba(201, 166, 107, 0.7);
+  background: linear-gradient(135deg, var(--cozy-champagne) 0%, #b18943 100%);
+  color: #fff;
+  box-shadow: 0 10px 24px -6px rgba(201, 166, 107, 0.55),
+              0 0 0 2px rgba(255,255,255,0.18) inset;
+  transform: translateY(-2px);
+}
+.bx-pick-tile.is-selected .bx-pick-icon {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+.bx-pick-tile.is-selected .bx-pick-label { color: #fff; }
+
+.bx-pick-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid rgba(201, 166, 107, 0.34);
+  font-size: 1.1rem; line-height: 1;
+  transition: transform .22s ease, background .22s ease, border-color .22s ease;
+}
+.bx-pick-tile:hover .bx-pick-icon {
+  transform: scale(1.08) rotate(-2deg);
+}
+.bx-pick-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.bx-pick-tag {
+  position: absolute; top: 6px; right: 7px;
+  font-size: 0.6rem; line-height: 1; opacity: 0.75;
+}
+.bx-pick-tile.is-selected .bx-pick-tag { opacity: 0.95; }
+
+@media (min-width: 1024px) {
+  .bx-pick-tile { padding: 13px 10px 12px; }
+  .bx-pick-icon { width: 40px; height: 40px; font-size: 1.18rem; }
+  .bx-pick-label { font-size: 0.76rem; }
+}
+
 /* v163.1 — live auction: accepted tick + expired state */
 .bx-live-tick {
   display: inline-flex; align-items: center; justify-content: center;
@@ -3608,10 +3711,14 @@ body.is-reel-page {
   width: 100%;
   max-width: 560px;
 }
-@media (min-width: 640px)  { .bx-page-wrap { max-width: 600px; } }
-@media (min-width: 768px)  { .bx-page-wrap { max-width: 660px; } }
-@media (min-width: 1024px) { .bx-page-wrap { max-width: 720px; } }
-@media (min-width: 1440px) { .bx-page-wrap { max-width: 780px; } }
+/* v181 — wider on desktop / laptop so the pick grids breathe and
+   the page actually uses the screen real estate Sachin asked for
+   ("complete page par spread karo na ki mobile jaisa"). */
+@media (min-width: 640px)  { .bx-page-wrap { max-width: 640px; } }
+@media (min-width: 768px)  { .bx-page-wrap { max-width: 760px; } }
+@media (min-width: 1024px) { .bx-page-wrap { max-width: 1000px; } }
+@media (min-width: 1280px) { .bx-page-wrap { max-width: 1180px; } }
+@media (min-width: 1536px) { .bx-page-wrap { max-width: 1320px; } }
 .bx-page-wrap-success {
   max-width: 440px;
 }
