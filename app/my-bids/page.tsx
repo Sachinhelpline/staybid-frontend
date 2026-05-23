@@ -23,10 +23,6 @@ import { parseAddons } from "@/lib/counter-addons";
 // v141 — Phase-5 my-bids tour. 4 steps: card → status → actions →
 // auto-accept countdown.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
-// v177 — auto-cleanup of stale bids. Drops PENDING > slot window / 6h,
-// COUNTER > 60 min, ACCEPTED-unpaid > 15 min, REJECTED > 30 min, plus a
-// hard IST-midnight cutoff for any bid sitting past today.
-import { filterActiveBids } from "@/lib/bid-expiry";
 
 // v174 — cozy-theme status palette. Mid-tone colours that read on both the
 // cream (light) and walnut (dark) surfaces — no per-theme branching needed.
@@ -64,7 +60,9 @@ export default function MyBidsPage() {
   // v174 — bidding is two distinct flows. BID = reverse-auction "Place Bid"
   // rows; FLASH = flash-deal rows (carry b.dealId OR a `deal_price_{id}`
   // localStorage marker the flash booking flow writes). Toggle swaps the view.
-  const [section, setSection] = useState<"BID"|"FLASH">("BID");
+  // v180 — two real sections: PLACE BID (reverse-auction from /bid) vs
+  // NEGOTIATE (single-hotel bid from /hotels/[id]).
+  const [section, setSection] = useState<"PLACE"|"NEGOTIATE">("NEGOTIATE");
   const [celebrateId, setCelebrateId] = useState<string>("");
   const [confettiBurst, setConfettiBurst] = useState(0);
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
@@ -124,12 +122,24 @@ export default function MyBidsPage() {
         // Normalize: every bid gets checkIn/checkOut from the fallback chain
         const list = (d.bids || []).map((b: any) => {
           const { checkIn, checkOut } = resolveDates(b);
-          // v174 — tag flash-deal bids so the section toggle can split them.
+          // v180 — bidding has TWO flows:
+          //   • PLACE BID (reverse-auction from /bid page) → broadcasts
+          //     to many hotels, message pattern: "Guest bid ₹X/night for N
+          //     nights (max ₹Y)..." (see app/bid/page.tsx line 708)
+          //   • NEGOTIATE (single-hotel from /hotels/[id]) → message
+          //     pattern: "Guest's preferred price:..." or Razorpay /
+          //     Flash-Deal / Book Now (paid) tokens.
+          // Flash-deal rows fall under NEGOTIATE (they're hotel-specific)
+          // — paid flash bookings are already filtered out by isPaid + the
+          // booking listing. The kept `_isFlash` marker is informational
+          // only (used for the "⚡ Flash Deal" pill on cards).
+          const msg = String(b.message || "");
+          const isPlaceBid = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
           let isFlash = !!(b.dealId || b.deal_id);
           if (!isFlash) {
             try { isFlash = !!localStorage.getItem(`deal_price_${b.id}`); } catch {}
           }
-          return { ...b, checkIn, checkOut, _isFlash: isFlash };
+          return { ...b, checkIn, checkOut, _isPlaceBid: isPlaceBid, _isFlash: isFlash };
         });
         // Fetch unit assignments for these bid IDs (shows allocated room #)
         try {
@@ -510,31 +520,12 @@ export default function MyBidsPage() {
 
   const filters = ["ALL", "PENDING", "COUNTER", "ACCEPTED", "REJECTED"] as const;
 
-  // v177 — re-render every 30s so expired bids drop off the page as
-  // their windows close without a full refetch.
-  const [, setExpiryTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setExpiryTick((n) => n + 1), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
-  // v174 — split by flow first, then by status filter.
-  // v177 — merge auto_accept_at from the side-channel info into each bid
-  // before the expiry check so the helper has the scheduled accept time.
-  const activeBids = useMemo(
-    () => filterActiveBids(bids.map((b: any) => ({
-      ...b,
-      auto_accept_at: autoAcceptInfo[b.id]?.auto_accept_at ?? b.auto_accept_at ?? null,
-    }))),
-    // expiryTick deliberately listed so useMemo re-runs on the 30s tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bids, autoAcceptInfo, setExpiryTick]
-  );
-  const bidCount   = useMemo(() => activeBids.filter((b) => !b._isFlash).length, [activeBids]);
-  const flashCount = useMemo(() => activeBids.filter((b) =>  b._isFlash).length, [activeBids]);
+  // v180 — split by flow first, then by status filter.
+  const placeBidCount  = useMemo(() => bids.filter((b) =>  b._isPlaceBid).length, [bids]);
+  const negotiateCount = useMemo(() => bids.filter((b) => !b._isPlaceBid).length, [bids]);
   const sectionBids = useMemo(
-    () => activeBids.filter((b) => (section === "FLASH" ? b._isFlash : !b._isFlash)),
-    [activeBids, section]
+    () => bids.filter((b) => (section === "PLACE" ? b._isPlaceBid : !b._isPlaceBid)),
+    [bids, section]
   );
   const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
 
@@ -543,9 +534,9 @@ export default function MyBidsPage() {
   const acceptedCount = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED").length, [sectionBids]);
   const unpaidAccepted = useMemo(() => sectionBids.filter((b) => b.status === "ACCEPTED" && !isPaid(b)).length, [sectionBids]);
 
-  const sectionEmpty = section === "FLASH"
-    ? { icon: "⚡", title: "No flash-deal bookings yet", sub: "Grab a time-limited deal and it shows up here.", cta: "Browse Flash Deals", href: "/flash-deals" }
-    : { icon: "🎯", title: "No place-bid offers yet", sub: "Name your price on any hotel — your bids land here.", cta: "Browse Hotels", href: "/hotels" };
+  const sectionEmpty = section === "PLACE"
+    ? { icon: "🎯", title: "No place-bid offers yet", sub: "Name your price on /bid and hotels compete — your bids land here.", cta: "Place a Bid", href: "/bid" }
+    : { icon: "🏨", title: "No negotiate bids yet", sub: "Negotiate with a hotel directly — your single-hotel bids land here.", cta: "Browse Hotels", href: "/hotels" };
 
   return (
     // v174 — cozy theme. `.lux-bg` paints the page in var(--bg-page); every
@@ -591,19 +582,19 @@ export default function MyBidsPage() {
         <div className="text-center mb-6" style={{ animation: "fadeUp 0.5s ease both" }}>
           <p className="text-[0.6rem] tracking-[0.34em] font-semibold uppercase mb-1.5" style={{ color: "var(--text-muted)" }}>Your Account</p>
           <h1 className="font-display text-4xl sm:text-5xl font-light mb-1 gold-text">My Bids</h1>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Flash deals &amp; reverse-auction bids — all in one place</p>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Place Bid &amp; Negotiate — your live offers across both flows</p>
         </div>
 
-        {/* Section toggle — Place Bids ⇄ Flash Deals */}
+        {/* Section toggle — Place Bid ⇄ Negotiate (v180) */}
         {bids.length > 0 && (
           <div className="mb-seg max-w-md mx-auto mb-5" style={{ animation: "fadeUp 0.5s ease both" }}>
-            <button className={section === "BID" ? "on" : ""}
-              onClick={() => { setSection("BID"); setFilter("ALL"); }}>
-              🎯 Place Bids <span className="opacity-70">({bidCount})</span>
+            <button className={section === "NEGOTIATE" ? "on" : ""}
+              onClick={() => { setSection("NEGOTIATE"); setFilter("ALL"); }}>
+              🏨 Negotiate <span className="opacity-70">({negotiateCount})</span>
             </button>
-            <button className={section === "FLASH" ? "on" : ""}
-              onClick={() => { setSection("FLASH"); setFilter("ALL"); }}>
-              ⚡ Flash Deals <span className="opacity-70">({flashCount})</span>
+            <button className={section === "PLACE" ? "on" : ""}
+              onClick={() => { setSection("PLACE"); setFilter("ALL"); }}>
+              🎯 Place Bid <span className="opacity-70">({placeBidCount})</span>
             </button>
           </div>
         )}
@@ -738,8 +729,14 @@ export default function MyBidsPage() {
                     <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                       <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
-                        {b._isFlash ? "⚡ Flash Deal" : "🎯 Reverse Auction"}
+                        {b._isPlaceBid ? "🎯 Place Bid" : "🏨 Negotiate"}
                       </span>
+                      {b._isFlash && (
+                        <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: "rgba(201,145,26,0.14)", border: "1px solid rgba(201,145,26,0.36)", color: "#c9911a" }}>
+                          ⚡ Flash
+                        </span>
+                      )}
                       {units[b.id]?.unitNumber && (
                         <span className="text-[0.6rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold"
                           style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.34)", color: "#c9911a" }}>

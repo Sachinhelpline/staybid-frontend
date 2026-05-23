@@ -92,8 +92,44 @@ const OCCASIONS = [
 ];
 
 /* ── AI Bid Strength Calculator ────────────────────────────────── */
-function calcBidStrength(budget: number, cityAvg: number) {
-  const r = budget / cityAvg;
+// v180 — Real acceptance probability driven by the platform's dynamic
+// price engine (lib/ai-pricing.ts) + the room category multiplier from
+// the catalog. Previously this used only a flat per-city average — which
+// ignored season, day-of-week, holidays, monsoon, and the customer's
+// room-tier selection, producing the same probability for a deluxe in
+// June vs a suite in December. Now:
+//   expectedMarket = livePrice(cityAvg, checkIn, city) × roomCategoryMult
+//   r = customerBudget / expectedMarket
+// Same tier buckets, but the comparator is honest.
+function calcBidStrength(
+  budget: number,
+  cityAvg: number,
+  city: string,
+  checkInISO: string,
+  roomCategoryIds: string[],
+) {
+  // Live market price for THIS check-in + THIS city, snapped through the
+  // engine's full demand chain (season × DoW × event × lead × city ×
+  // micro × school × monsoon × long-weekend).
+  let livePrice = cityAvg;
+  try {
+    if (checkInISO) {
+      const r = calculateDynamicPrice(cityAvg, checkInISO, city);
+      if (r && Number.isFinite(r.price) && r.price > 0) livePrice = r.price;
+    }
+  } catch { /* engine guards w/ ratio fallback; keep cityAvg */ }
+
+  // Room category multiplier — if customer selected multiple categories
+  // (multi-select), the strongest one wins (they're bidding for ANY of
+  // these tiers, so probability targets the most expensive eligible).
+  let roomMult = 1.0;
+  for (const id of roomCategoryIds) {
+    const m = ROOM_CATEGORY_MULT[id] || 1.0;
+    if (m > roomMult) roomMult = m;
+  }
+  const expectedMarket = Math.max(1, livePrice * roomMult);
+  const r = budget / expectedMarket;
+
   if (r >= 1.00) return { pct: 96, label: "Instant Accept", color: "#7F9269", tier: "Instant Win",      bar: "bg-emerald-500", tip: "Hotels will compete aggressively. Auto-confirms instantly.",         responseTime: "Auto-confirms instantly" };
   if (r >= 0.90) return { pct: 78, label: "Very Strong",    color: "#9DAD8F", tier: "Very Strong",      bar: "bg-emerald-400", tip: "Excellent bid — most 4★+ hotels will accept.",                       responseTime: "Confirms in ~30 min"    };
   if (r >= 0.80) return { pct: 60, label: "Strong",         color: "#C9A66B", tier: "Strong",           bar: "bg-gold-500",    tip: "Good chance — 3–5 hotels likely to respond with a counter or yes.",  responseTime: "Response in ~1 hr"      };
@@ -413,7 +449,10 @@ export default function BidPage() {
   const nightsRooms = Math.max(1, nights) * Math.max(1, form.rooms);
   const totalBudget = snap100(parseFloat(form.maxBudget) || 0);
   const budget      = totalBudget > 0 ? snap100(totalBudget / nightsRooms) : 0;
-  const bidStr   = city && budget > 0 ? calcBidStrength(budget, city.avg) : null;
+  // v180 — feed the dynamic-price engine + room category into the dial.
+  const bidStr   = city && budget > 0
+    ? calcBidStrength(budget, city.avg, form.city, form.checkIn, form.roomTypes || [])
+    : null;
   const totalEst = budget > 0 && nights > 0 ? budget * nights * form.rooms : 0;
 
   // v170 — room-category price multiplier (avg of the picked categories).
