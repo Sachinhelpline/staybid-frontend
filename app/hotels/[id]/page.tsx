@@ -2663,11 +2663,29 @@ export default function HotelDetail() {
             const myRoomCountered = counteredByRoom.get(String(r.id))  || null;
             const myRoomLock      = lockedBid && lockedRoomId === String(r.id) ? lockedBid : null;
             const isLockedRoom    = !!myRoomLock;
-            const isOtherWhenLocked = !!lockedBid && !isLockedRoom;
-            // Locked upgrade delta (other rooms) — what extra the customer
-            // pays per night over their accepted price to upgrade.
-            const lockUpgradeDelta = isOtherWhenLocked
-              ? Math.max(0, Math.round((r.floorPrice || 0) - lockedAmount))
+            // v192 — Phase 9: widen the upgrade-chip trigger. Was only
+            // firing on ACCEPTED (isOtherWhenLocked); now any ACTIVE
+            // bid (PENDING/COUNTER/ACCEPTED) on a DIFFERENT room of
+            // this hotel surfaces an Upgrade chip on the room being
+            // viewed. Anchor amount = the most-committed active bid
+            // (ACCEPTED > COUNTER > earliest PENDING).
+            const anchorBid =
+              lockedBid ||
+              activeMyBids.find((b: any) => b.status === "COUNTER" && String(b.roomId) !== String(r.id)) ||
+              activeMyBids.find((b: any) => b.status === "PENDING" && String(b.roomId) !== String(r.id)) ||
+              null;
+            const anchorRoomId = anchorBid?.roomId ? String(anchorBid.roomId) : null;
+            const isOtherWhenActive = !!anchorBid && !isLockedRoom && !myRoomPending && !myRoomCountered && anchorRoomId !== String(r.id);
+            const anchorAmount = anchorBid
+              ? (anchorBid.status === "COUNTER"
+                  ? Number(anchorBid.counterAmount || anchorBid.amount || 0)
+                  : (extractCustomerBidFromMessage(anchorBid.message) ?? Number(anchorBid.amount || 0)))
+              : 0;
+            // Legacy alias kept for the per-room badge JSX below that
+            // still uses `isOtherWhenLocked` + `lockUpgradeDelta`.
+            const isOtherWhenLocked = isOtherWhenActive;
+            const lockUpgradeDelta = isOtherWhenActive
+              ? Math.max(0, Math.round((r.floorPrice || 0) - anchorAmount))
               : 0;
             // v182 — Phase 1 A3/A4: single bid-state CTA replacing the
             // Book Now + Negotiate row whenever the customer has an
