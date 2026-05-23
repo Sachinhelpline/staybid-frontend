@@ -846,9 +846,9 @@ export default function MyBidsPage() {
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
                     />
                     <button onClick={() => handlePayNow(b)} disabled={actionLoading === b.id}
-                      className="w-full py-3 gold-btn rounded-xl text-sm disabled:opacity-40 mt-3"
-                      style={{ animation: "pulseGlow 2s infinite" }}>
-                      {actionLoading === b.id ? "Opening Payment…" : `Pay ₹${total.toLocaleString("en-IN")} & Confirm →`}
+                      className="w-full py-3.5 gold-btn rounded-xl text-base font-bold disabled:opacity-40 mt-3"
+                      style={{ animation: "pulseGlow 2s infinite", letterSpacing: "0.02em" }}>
+                      {actionLoading === b.id ? "Opening Payment…" : `💰 Pay Now & Grab — ₹${total.toLocaleString("en-IN")} →`}
                     </button>
                     <p className="text-[0.62rem] text-center mt-2 tracking-wide" style={{ color: "var(--text-muted)" }}>
                       Secure payment via Razorpay · Instant confirmation
