@@ -6151,3 +6151,75 @@ app/api/pricing/spine/route.ts
 - **Never** point a new customer surface at `room_pricing_config.
   current_price` — that field is dead (nothing reads it post-v166).
   Use the spine (`resolveSpinePrices` / `/api/pricing/spine`).
+
+---
+
+## Session Handoff — End of Day 2026-05-23 (resume at v192/v193/v194 merge)
+
+**Three PRs sit on `main` ready to squash-merge** — all CI green, no review
+comments, no conflicts beyond the trivial `SB_BUILD` line in `app/layout.tsx`.
+Sachin's last message was "ishko yaad rakho memories karo subha yahi se start
+karenge good night" — so tomorrow's first action is to confirm with him then
+merge in this exact order (or any order — they're independent):
+
+| PR | Branch | Build | What |
+|---|---|---|---|
+| #117 | `claude/phase9-widen-upgrade-pending-msg` | v192 | Widen upgrade-chip rule to PENDING/COUNTER bids (was ACCEPTED-only). Anchored on `anchorBid` / `isOtherWhenActive` derivation in `app/hotels/[id]/page.tsx`. |
+| #118 | `claude/expire-stale-pending-bids-v193` | v193 | Backend RPC `mark_stale_pending_bids()` + cron wiring in `/api/cron/expire-holds`. Sweep PENDING bids older than 6h to EXPIRED. **Already applied to production Supabase** — 93 of 120 stuck bids cleared on first manual RPC call. Merging this just locks in the auto-cron. |
+| #119 | `claude/pay-now-modal-flow-v194` | v194 | `/bid` success screen "Pay Now & Grab" CTA → `?payNow=<id>` query param → `/my-bids` auto-opens BookingReview modal on landing (was: dump-on-list + second-tap-required). Includes Suspense wrapper fix for Next 14 `useSearchParams` static-prerender bailout (hit on first build, fixed in `624b1c8`). |
+
+### Merge sequence
+Each PR independently green. Order doesn't matter; only conflict is the
+single `SB_BUILD` line in `app/layout.tsx`. For each subsequent merge after
+the first:
+```
+git checkout main && git pull origin main
+git checkout <branch>
+git rebase origin/main
+# if conflict: git checkout --theirs app/layout.tsx
+git push --force-with-lease
+# then squash-merge via mcp__github__merge_pull_request
+```
+
+### What's NOT done (intentionally — out of v192-v194 scope)
+1. **27 remaining PENDING bids** — within the 6h actionable window. Cron
+   will age them out as they cross the threshold OR Sachin manually clears
+   from `/partner/dashboard` Bid Inbox.
+2. **Customer notification on bid expire** — not added in v193. Currently
+   customer just sees the row drop off `/my-bids` (client filter already
+   hid them at 6h; v193 just makes the DB row match). Could add a
+   `notification_queue` insert in `mark_stale_pending_bids()` if desired.
+3. **Cron-job.org schedule reconfiguration** — not needed. The existing
+   `/api/cron/expire-holds` schedule (every 15 min) now also runs the new
+   RPC inside the same call. Zero scheduler change required.
+4. **Stale COUNTER / REJECTED / ACCEPTED-unpaid DB sweep** — v193 only
+   covers PENDING. The client filter `lib/bid-expiry.ts` still hides those
+   from views (60min for COUNTER, 30min for REJECTED, 15min for unpaid
+   ACCEPTED). If row-state-vs-display-state divergence becomes a problem,
+   extend the RPC with those cases — same shape, additive cases inside
+   `mark_stale_pending_bids()`.
+
+### Quick context for tomorrow's first message to Sachin
+> "Good morning! Kal raat 3 PRs ready hokar paused the (#117/#118/#119, sab CI
+> green). Bolo, sequence mein merge karu?"
+
+### Things to avoid (Session Handoff Era — 2026-05-23)
+- **Never** ship a new client component using `useSearchParams()` without
+  the inner-component + `<Suspense>` wrapper pattern (see `app/hotels`,
+  `app/flash-deals`, `app/me/posts`, `app/u/[username]/posts`,
+  `app/my-bids`). Next 14 static prerender bails out otherwise. Local
+  `tsc --noEmit` does NOT catch this — only Vercel `next build` does.
+- **Never** route the `/bid` success-screen Pay Now CTA back to a URL
+  FRAGMENT (`#bid-<id>`). Use the `?payNow=<id>` query param so the
+  receiving page's effect can read + clear it via `router.replace`.
+- **Never** unschedule cron-job.org's `/api/cron/expire-holds` hit — that's
+  the heartbeat that drives BOTH `mark_expired_holds()` (holds + windows +
+  auto-accept) AND v193's `mark_stale_pending_bids()`. Killing it leaves
+  both row-state machines stuck.
+- **Never** lower the 6h threshold in `mark_stale_pending_bids()` without
+  also lowering the client rule in `lib/bid-expiry.ts:106` — they're a
+  matched pair. Diverging values create a visible "stuck" gap.
+- **Never** raise the 500-row hard cap inside the RPC past ~2000 without
+  checking PostgREST timeout. The cap exists so a backlog can't blow one
+  transaction. 200 active rows at any time is the steady-state expectation
+  given the 6h cutoff + cron-job.org's 15-min cadence.
