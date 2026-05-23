@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { CountUp } from "@/components/CountUp";
@@ -20,13 +21,15 @@ import InspirationBanner from "@/components/tier/InspirationBanner";
 // chat with hotel.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
-const statusStyle: Record<string, { bg: string; text: string; border: string; label: string; dot: string }> = {
-  PENDING:    { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   label: "Pending",    dot: "bg-amber-400"   },
-  CONFIRMED:  { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Confirmed",  dot: "bg-emerald-400" },
-  ACCEPTED:   { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Confirmed",  dot: "bg-emerald-400" },
-  CHECKED_IN: { bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200",    label: "Checked In", dot: "bg-blue-400"    },
-  CHECKED_OUT:{ bg: "bg-luxury-50",  text: "text-luxury-600",  border: "border-luxury-200",  label: "Checked Out",dot: "bg-luxury-400"  },
-  CANCELLED:  { bg: "bg-red-50",     text: "text-red-600",     border: "border-red-200",     label: "Cancelled",  dot: "bg-red-400"     },
+// v174 — cozy-theme status palette. Mid-tone colours that read on both
+// the cream (light) and walnut (dark) surfaces — no per-theme branching.
+const STATUS_META: Record<string, { color: string; soft: string; label: string }> = {
+  PENDING:     { color: "#C9A66B", soft: "rgba(201,166,107,0.15)", label: "Pending"     },
+  CONFIRMED:   { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
+  ACCEPTED:    { color: "#7F9269", soft: "rgba(127,146,105,0.17)", label: "Confirmed"   },
+  CHECKED_IN:  { color: "#5E83A8", soft: "rgba(94,131,168,0.16)",  label: "Checked In"  },
+  CHECKED_OUT: { color: "#9A8B6F", soft: "rgba(154,139,111,0.17)", label: "Checked Out" },
+  CANCELLED:   { color: "#C77E6D", soft: "rgba(199,126,109,0.14)", label: "Cancelled"   },
 };
 
 // ── Hold banner ────────────────────────────────────────────────────────
@@ -48,13 +51,13 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
   if (state.payAtHotel) {
     // Pay-at-hotel: no countdown, just info banner — balance settled at desk
     return (
-      <div className="mb-4 rounded-2xl p-4 border bg-gradient-to-br from-amber-50 to-gold-50"
-        style={{ borderColor: "rgba(240,180,41,0.45)" }}>
+      <div className="mb-4 rounded-2xl p-4 border"
+        style={{ background: "rgba(201,145,26,0.10)", borderColor: "rgba(201,145,26,0.42)" }}>
         <div className="flex items-start gap-3">
           <span className="text-xl">🏨</span>
           <div className="flex-1">
-            <p className="text-sm font-bold text-luxury-900">Pay at Hotel · Balance ₹{state.balanceDue.toLocaleString()}</p>
-            <p className="text-[0.7rem] text-luxury-600 leading-relaxed mt-0.5">
+            <p className="text-sm font-bold" style={{ color: "var(--text-base)" }}>Pay at Hotel · Balance ₹{state.balanceDue.toLocaleString()}</p>
+            <p className="text-[0.7rem] leading-relaxed mt-0.5" style={{ color: "var(--text-soft)" }}>
               You've paid <span className="font-bold">₹{state.holdAmount.toLocaleString()}</span> to lock this booking.
               Settle the remaining <span className="font-bold">₹{state.balanceDue.toLocaleString()}</span> at the hotel desk.
             </p>
@@ -113,40 +116,42 @@ function HoldBanner({ bidId, onPaid }: { bidId: string; onPaid: () => void }) {
 
   if (expired) {
     return (
-      <div className="mb-4 rounded-2xl p-4 border bg-red-50 border-red-200">
-        <p className="text-sm font-bold text-red-700">⏰ Hold expired</p>
-        <p className="text-[0.7rem] text-red-600 mt-0.5">
+      <div className="mb-4 rounded-2xl p-4 border"
+        style={{ background: STATUS_META.CANCELLED.soft, borderColor: `${STATUS_META.CANCELLED.color}55` }}>
+        <p className="text-sm font-bold" style={{ color: STATUS_META.CANCELLED.color }}>⏰ Hold expired</p>
+        <p className="text-[0.7rem] mt-0.5" style={{ color: "var(--text-soft)" }}>
           Your ₹{state.holdAmount.toLocaleString()} hold for ₹{state.totalAmount.toLocaleString()} has expired.
           Contact the hotel to re-confirm at current rates.
         </p>
         <button onClick={() => { removeHoldState(state.bidId); onPaid(); }}
-          className="mt-2 text-[0.7rem] font-semibold text-red-600 underline">Dismiss</button>
+          className="mt-2 text-[0.7rem] font-semibold underline" style={{ color: STATUS_META.CANCELLED.color }}>Dismiss</button>
       </div>
     );
   }
 
   return (
-    <div className="mb-4 rounded-2xl p-4 border-2 bg-gradient-to-br from-emerald-50 to-gold-50"
-      style={{ borderColor: "rgba(16,185,129,0.4)" }}>
+    <div className="mb-4 rounded-2xl p-4 border-2"
+      style={{ background: STATUS_META.CONFIRMED.soft, borderColor: `${STATUS_META.CONFIRMED.color}66` }}>
       <div className="flex items-start gap-3 mb-3">
         <span className="text-2xl">🔒</span>
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-0.5">
-            <p className="text-sm font-bold text-emerald-700">Price locked — pay balance to confirm</p>
-            <span className="text-[0.55rem] font-bold tracking-wider uppercase bg-emerald-500 text-white px-2 py-0.5 rounded-full">{countdown}</span>
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <p className="text-sm font-bold" style={{ color: STATUS_META.CONFIRMED.color }}>Price locked — pay balance to confirm</p>
+            <span className="text-[0.55rem] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full"
+              style={{ background: STATUS_META.CONFIRMED.color, color: "#fff" }}>{countdown}</span>
           </div>
-          <p className="text-[0.7rem] text-luxury-600 leading-relaxed">
+          <p className="text-[0.7rem] leading-relaxed" style={{ color: "var(--text-soft)" }}>
             You've paid <span className="font-bold">₹{state.holdAmount.toLocaleString()}</span>.
-            Balance <span className="font-bold text-luxury-900">₹{state.balanceDue.toLocaleString()}</span> due before lock expires.
+            Balance <span className="font-bold" style={{ color: "var(--text-base)" }}>₹{state.balanceDue.toLocaleString()}</span> due before lock expires.
           </p>
         </div>
       </div>
       <button onClick={payBalance} disabled={paying}
         className="w-full py-3 rounded-xl font-bold text-sm tracking-wide disabled:opacity-40 transition-transform active:scale-[0.99]"
         style={{
-          background: "linear-gradient(135deg,#10b981 0%,#34d399 50%,#10b981 100%)",
-          color: "#022c22",
-          boxShadow: "0 6px 18px rgba(16,185,129,0.35)",
+          background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)",
+          color: "#fff",
+          boxShadow: "0 6px 18px rgba(127,146,105,0.4)",
         }}>
         {paying ? "⏳ Opening Razorpay…" : `✅ Pay Balance ₹${state.balanceDue.toLocaleString()} & Confirm`}
       </button>
@@ -166,8 +171,8 @@ function Barcode({ id }: { id: string }) {
       {bars.map((b, i) => (
         <div
           key={i}
-          style={{ width: b.w, height: `${b.h}%` }}
-          className="bg-luxury-700 rounded-[1px] shrink-0"
+          style={{ width: b.w, height: `${b.h}%`, background: "var(--text-base)" }}
+          className="rounded-[1px] shrink-0 opacity-80"
         />
       ))}
     </div>
@@ -224,11 +229,12 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
 
   if (state?.submitted) {
     return (
-      <div className="mb-4 rounded-2xl p-3 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+      <div className="mb-4 rounded-2xl p-3 flex items-center gap-3"
+        style={{ background: STATUS_META.CONFIRMED.soft, border: `1px solid ${STATUS_META.CONFIRMED.color}44` }}>
         <span className="text-lg">✅</span>
-        <div className="flex-1">
-          <p className="text-xs font-bold text-emerald-800">Thanks for your feedback</p>
-          <p className="text-[0.65rem] text-emerald-700">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold" style={{ color: STATUS_META.CONFIRMED.color }}>Thanks for your feedback</p>
+          <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>
             {Array.from({ length: 5 }).map((_, i) => i < (state.rating || 0) ? "★" : "☆").join("")}
             {state.comments ? ` · "${state.comments.slice(0, 60)}${state.comments.length > 60 ? "…" : ""}"` : ""}
           </p>
@@ -241,17 +247,18 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full mb-4 rounded-2xl p-4 bg-gradient-to-br from-gold-50 to-amber-50 border border-gold-200 hover:shadow-gold transition text-left"
+        className="w-full mb-4 rounded-2xl p-4 transition text-left sb-card-lift"
+        style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.32)" }}
       >
         <div className="flex items-center gap-3">
           <span className="text-2xl">⭐</span>
           <div className="flex-1">
-            <p className="text-sm font-bold text-luxury-900">Rate your stay at {hotelName}</p>
-            <p className="text-[0.7rem] text-luxury-600">
+            <p className="text-sm font-bold" style={{ color: "var(--text-base)" }}>Rate your stay at {hotelName}</p>
+            <p className="text-[0.7rem]" style={{ color: "var(--text-soft)" }}>
               Share feedback and earn <strong>+100 StayPoints</strong> on top of your {stayPoints} cashback points
             </p>
           </div>
-          <span className="text-gold-600 text-sm font-bold">Rate →</span>
+          <span className="text-sm font-bold" style={{ color: "#c9911a" }}>Rate →</span>
         </div>
       </button>
 
@@ -262,13 +269,14 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto"
+            className="w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto"
+            style={{ background: "var(--bg-card)" }}
           >
             <div className="px-5 py-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="font-display text-xl text-luxury-900">How was {hotelName}?</div>
-                  <p className="text-xs text-luxury-500 mt-0.5">Your feedback helps thousands of travellers</p>
+                  <div className="font-display text-xl" style={{ color: "var(--text-base)" }}>How was {hotelName}?</div>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Your feedback helps thousands of travellers</p>
                 </div>
                 <ModalCloseButton onClose={() => setOpen(false)} tone="light" />
               </div>
@@ -285,7 +293,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                       onMouseLeave={() => setHover(0)}
                       onClick={() => setRating(n)}
                       className={`text-4xl transition-transform ${lit ? "scale-110" : "scale-100"}`}
-                      style={{ color: lit ? "#f0b429" : "#e5e0d0" }}
+                      style={{ color: lit ? "#f0b429" : "var(--border-strong)" }}
                       aria-label={`${n} star${n > 1 ? "s" : ""}`}
                     >
                       ★
@@ -293,39 +301,42 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                   );
                 })}
               </div>
-              <p className="text-center text-xs text-luxury-500 -mt-3 mb-4">
+              <p className="text-center text-xs -mt-3 mb-4" style={{ color: "var(--text-muted)" }}>
                 {rating === 5 ? "Loved it" : rating === 4 ? "Great" : rating === 3 ? "It was okay" : rating === 2 ? "Below expectations" : "Disappointing"}
               </p>
 
-              <label className="text-[10px] font-bold uppercase tracking-wider text-luxury-500 mb-2 block">
-                Comments <span className="text-luxury-400 font-normal lowercase">(optional)</span>
+              <label className="text-[10px] font-bold uppercase tracking-wider mb-2 block" style={{ color: "var(--text-muted)" }}>
+                Comments <span className="font-normal lowercase">(optional)</span>
               </label>
               <textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value.slice(0, 1000))}
                 rows={4}
                 placeholder="What stood out? What could be better?"
-                className="input-luxury w-full resize-none"
+                className="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: "var(--bg-input)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}
                 maxLength={1000}
               />
-              <div className="text-[10px] text-luxury-400 mt-1 text-right">{comments.length}/1000</div>
+              <div className="text-[10px] mt-1 text-right" style={{ color: "var(--text-muted)" }}>{comments.length}/1000</div>
 
               {err && (
-                <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700 mt-3">{err}</div>
+                <div className="rounded-xl px-3 py-2 text-sm mt-3"
+                  style={{ background: STATUS_META.CANCELLED.soft, border: `1px solid ${STATUS_META.CANCELLED.color}44`, color: STATUS_META.CANCELLED.color }}>{err}</div>
               )}
 
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={() => setOpen(false)}
                   disabled={submitting}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-luxury-200 text-luxury-700 font-semibold text-sm hover:bg-luxury-50 transition disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm transition disabled:opacity-50"
+                  style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}
                 >
                   Later
                 </button>
                 <button
                   onClick={submit}
                   disabled={submitting}
-                  className="flex-[2] btn-luxury text-sm py-2.5 disabled:opacity-60"
+                  className="flex-[2] bk-gold-btn text-sm py-2.5 rounded-xl disabled:opacity-60"
                 >
                   {submitting ? "Submitting…" : "Submit & earn 100 points"}
                 </button>
@@ -340,7 +351,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
 
 function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string; onRefresh: () => void }) {
   const [expanded, setExpanded] = useState(false);
-  const st = statusStyle[b.status] || { bg: "bg-luxury-50", text: "text-luxury-600", border: "border-luxury-100", label: b.status, dot: "bg-luxury-400" };
+  const st = STATUS_META[b.status] || { color: "#9A8B6F", soft: "rgba(154,139,111,0.16)", label: b.status };
 
   const bookingId = b.id?.slice(0, 8).toUpperCase() || "STAYBID1";
 
@@ -381,33 +392,48 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
   const mapsQuery = encodeURIComponent([hotel.name, address, city].filter(Boolean).join(", "));
   const whatsappNum = phone?.replace(/\D/g, "");
 
-  return (
-    <div className="card-luxury sb-card-lift overflow-hidden">
-      <div className="h-[3px] bg-gradient-to-r from-gold-500 via-amber-300 to-gold-500" />
+  // Reusable cozy "info row" for the expanded section
+  const InfoRow = ({ icon, children }: { icon: string; children: React.ReactNode }) => (
+    <div className="flex items-start gap-3">
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-base"
+        style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.28)" }}>{icon}</div>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+  const Lbl = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-[0.6rem] uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>{children}</p>
+  );
 
-      <div className="p-5">
+  return (
+    <div className="bk-card rounded-2xl overflow-hidden">
+      <div className="h-[3px]" style={{ background: "linear-gradient(90deg,#c9911a,#f0d27a,#c9911a)" }} />
+
+      <div className="p-4 sm:p-5">
         {/* Hotel name + status */}
         <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-luxury-900 text-[1.1rem] leading-snug">{hotel.name || "Hotel"}</h3>
-            {stars && <p className="text-gold-500 text-xs tracking-widest mt-0.5">{"★".repeat(Math.min(5, stars))}</p>}
+            <h3 className="font-semibold text-[1.05rem] leading-snug" style={{ color: "var(--text-base)" }}>{hotel.name || "Hotel"}</h3>
+            {stars && <p className="text-xs tracking-widest mt-0.5" style={{ color: "#c9911a" }}>{"★".repeat(Math.min(5, stars))}</p>}
           </div>
-          <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border shrink-0 ${st.bg} ${st.text} ${st.border}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${st.dot} ${isConfirmed ? "animate-pulse" : ""}`} />
+          <span className="flex items-center gap-1.5 text-[0.68rem] font-bold px-3 py-1 rounded-full shrink-0"
+            style={{ color: st.color, background: st.soft, border: `1px solid ${st.color}55` }}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isConfirmed ? "animate-pulse" : ""}`} style={{ background: st.color }} />
             {st.label}
           </span>
         </div>
-        <p className="text-sm text-luxury-400 mb-4">
+        <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
           {room.type || "Room"}{city ? ` · ${city}` : ""}{b.guests ? ` · ${b.guests} guest${b.guests !== 1 ? "s" : ""}` : ""}
         </p>
 
         {/* Allocated room number */}
         {unitNumber ? (
-          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-300 text-gold-700 font-bold text-xs tracking-wide shadow-sm">
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-xs tracking-wide"
+            style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.36)", color: "#c9911a" }}>
             🔑 Room #{unitNumber} Allocated
           </div>
         ) : isConfirmed && (
-          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-luxury-50 border border-luxury-200 text-luxury-600 text-[0.7rem]">
+          <div className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[0.7rem]"
+            style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
             🔑 Room number will be allocated at check-in
           </div>
         )}
@@ -416,12 +442,13 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         <HoldBanner bidId={b.id} onPaid={onRefresh} />
 
         {/* Barcode + Booking ID */}
-        <div className="bg-luxury-50 border border-luxury-100 rounded-2xl px-4 pt-3 pb-3 mb-4">
+        <div className="rounded-2xl px-4 pt-3 pb-3 mb-4"
+          style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)" }}>
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Booking ID</p>
-              <p className="font-mono font-bold text-luxury-800 text-base tracking-[0.15em]">#{bookingId}</p>
-              <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mt-1">{b.paymentMode || "BID BOOKING"}</p>
+              <p className="text-[0.58rem] uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>Booking ID</p>
+              <p className="font-mono font-bold text-base tracking-[0.15em]" style={{ color: "var(--text-base)" }}>#{bookingId}</p>
+              <p className="text-[0.58rem] uppercase tracking-widest mt-1" style={{ color: "var(--text-muted)" }}>{b.paymentMode || "BID BOOKING"}</p>
             </div>
             <div className="flex-1 flex justify-end">
               <Barcode id={b.id || bookingId} />
@@ -431,49 +458,51 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
         {/* StayPoints banner */}
         {isCompleted ? (
-          <div className="flex items-center gap-3 bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5 mb-4">
+          <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4"
+            style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.30)" }}>
             <span className="text-lg">🎁</span>
             <div>
-              <p className="text-xs font-bold text-gold-700">+{stayPoints} StayPoints Credited!</p>
-              <p className="text-[0.65rem] text-gold-600">Added to your wallet as cashback</p>
+              <p className="text-xs font-bold" style={{ color: "#c9911a" }}>+{stayPoints} StayPoints Credited!</p>
+              <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>Added to your wallet as cashback</p>
             </div>
           </div>
         ) : isConfirmed ? (
-          <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 mb-4">
+          <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4"
+            style={{ background: STATUS_META.PENDING.soft, border: `1px solid ${STATUS_META.PENDING.color}40` }}>
             <span className="text-lg">⭐</span>
             <div>
-              <p className="text-xs font-bold text-amber-700">Earn {stayPoints} StayPoints on checkout</p>
-              <p className="text-[0.65rem] text-amber-600">Redeemable as cashback on future stays</p>
+              <p className="text-xs font-bold" style={{ color: "var(--text-base)" }}>Earn {stayPoints} StayPoints on checkout</p>
+              <p className="text-[0.65rem]" style={{ color: "var(--text-soft)" }}>Redeemable as cashback on future stays</p>
             </div>
           </div>
         ) : null}
 
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-luxury-50 rounded-xl p-3 border border-luxury-100">
-            <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Check-in</p>
-            {fmtDate(checkIn)
-              ? <p className="text-sm font-semibold text-luxury-800 leading-snug">{fmtDate(checkIn)}</p>
-              : <p className="text-xs text-luxury-400 italic">Confirm with hotel</p>}
-            <p className="text-[0.65rem] text-luxury-400 mt-0.5">From 12:00 PM</p>
-          </div>
-          <div className="bg-luxury-50 rounded-xl p-3 border border-luxury-100">
-            <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Check-out</p>
-            {fmtDate(checkOut)
-              ? <p className="text-sm font-semibold text-luxury-800 leading-snug">{fmtDate(checkOut)}</p>
-              : <p className="text-xs text-luxury-400 italic">Confirm with hotel</p>}
-            <p className="text-[0.65rem] text-luxury-400 mt-0.5">By 11:00 AM</p>
-          </div>
+          {[
+            { lbl: "Check-in",  d: checkIn,  note: "From 12:00 PM" },
+            { lbl: "Check-out", d: checkOut, note: "By 11:00 AM"   },
+          ].map((x) => (
+            <div key={x.lbl} className="rounded-xl p-3"
+              style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)" }}>
+              <p className="text-[0.58rem] uppercase tracking-widest mb-1" style={{ color: "var(--text-muted)" }}>{x.lbl}</p>
+              {fmtDate(x.d)
+                ? <p className="text-sm font-semibold leading-snug" style={{ color: "var(--text-base)" }}>{fmtDate(x.d)}</p>
+                : <p className="text-xs italic" style={{ color: "var(--text-muted)" }}>Confirm with hotel</p>}
+              <p className="text-[0.62rem] mt-0.5" style={{ color: "var(--text-muted)" }}>{x.note}</p>
+            </div>
+          ))}
         </div>
 
         {/* Amount */}
         <div className="flex items-center justify-between mb-4 px-1">
           <div>
-            <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-0.5">{nights} Night{nights !== 1 ? "s" : ""}</p>
-            <p className="text-2xl font-bold text-luxury-900">₹{displayAmount.toLocaleString()}</p>
-            {nights > 1 && <p className="text-xs text-luxury-400">₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
+            <p className="text-[0.58rem] uppercase tracking-widest mb-0.5" style={{ color: "var(--text-muted)" }}>{nights} Night{nights !== 1 ? "s" : ""}</p>
+            <p className="text-2xl font-bold" style={{ color: "var(--text-base)" }}>₹{displayAmount.toLocaleString()}</p>
+            {nights > 1 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
           </div>
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-gold-500 to-amber-600 flex items-center justify-center shadow-gold">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#c9911a,#9c7414)", boxShadow: "0 6px 18px rgba(201,145,26,0.34)" }}>
             <span className="text-white font-bold text-lg">{nights}N</span>
           </div>
         </div>
@@ -500,23 +529,22 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {isCompleted && (
           <a
             href="/verification"
-            className="mt-2 inline-flex items-center justify-center w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-gold-100 to-amber-100 border border-gold-300 text-gold-900 text-sm font-semibold hover:from-gold-200 hover:to-amber-200"
+            className="mt-2 inline-flex items-center justify-center w-full px-4 py-2.5 rounded-xl text-sm font-semibold transition"
+            style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.32)", color: "#c9911a" }}
           >
-            😊 Rate hotel video & service · earn 100 StayPoints →
+            😊 Rate hotel video &amp; service · earn 100 StayPoints →
           </a>
         )}
 
-        {/* v105 — Report-an-issue link with proper spacing + visual separator.
-            Was stacking too tightly under <BookingChat> with -mt-1 negative
-            margin, looked like an overlap on Android phones. Now sits on
-            its own row with a clear top border + sensible padding. */}
+        {/* v105 — Report-an-issue link with proper spacing + visual separator. */}
         {(isConfirmed || isCompleted) && (
-          <div className="mt-3 pt-3 border-t border-luxury-100 flex items-center gap-2">
+          <div className="mt-3 pt-3 flex items-center gap-2" style={{ borderTop: "1px solid var(--border-soft)" }}>
             <a
               href={`/complaints?bookingId=${encodeURIComponent(b.id)}&hotelId=${encodeURIComponent(hotel.id || "")}`}
-              className="text-[0.75rem] font-semibold text-rose-600/80 hover:text-rose-700 transition-colors inline-flex items-center gap-1.5"
+              className="text-[0.75rem] font-semibold transition-colors inline-flex items-center gap-1.5"
+              style={{ color: STATUS_META.CANCELLED.color }}
             >
-              <span className="text-red-500">🚩</span>
+              <span>🚩</span>
               <span>Report an issue with this booking</span>
             </a>
           </div>
@@ -525,7 +553,8 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {/* Expand toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between text-xs text-luxury-400 hover:text-luxury-700 transition-colors pt-3 border-t border-luxury-100"
+          className="w-full flex items-center justify-between text-xs transition-colors pt-3"
+          style={{ borderTop: "1px solid var(--border-soft)", color: "var(--text-muted)" }}
         >
           <span className="font-medium uppercase tracking-widest">{expanded ? "Hide Details" : "View Hotel Details"}</span>
           <span className={`transition-transform duration-200 text-[10px] ${expanded ? "rotate-180" : ""}`}>▼</span>
@@ -533,98 +562,76 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
 
         {/* Expanded details */}
         {expanded && (
-          <div className="mt-4 space-y-4 border-t border-luxury-100 pt-4">
+          <div className="mt-4 space-y-4 pt-4" style={{ borderTop: "1px solid var(--border-soft)" }}>
 
             {/* Location with Maps button */}
             {(address || city) && (
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center shrink-0 text-base">📍</div>
-                <div className="flex-1">
-                  <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Location</p>
-                  <p className="text-sm text-luxury-800 font-medium mb-2">{[address, city].filter(Boolean).join(", ")}</p>
-                  <a
-                    href={`https://maps.google.com/?q=${mapsQuery}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    🗺 Get Directions
-                  </a>
-                </div>
-              </div>
+              <InfoRow icon="📍">
+                <Lbl>Location</Lbl>
+                <p className="text-sm font-medium mb-2" style={{ color: "var(--text-base)" }}>{[address, city].filter(Boolean).join(", ")}</p>
+                <a href={`https://maps.google.com/?q=${mapsQuery}`} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors">
+                  🗺 Get Directions
+                </a>
+              </InfoRow>
             )}
 
             {/* Phone with Call + WhatsApp */}
             {phone && (
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center shrink-0 text-base">📞</div>
-                <div className="flex-1">
-                  <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Hotel Contact</p>
-                  <p className="text-sm text-luxury-800 font-semibold mb-2">{phone}</p>
-                  <div className="flex gap-2">
-                    <a
-                      href={`tel:${phone}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      📱 Call Now
-                    </a>
-                    <a
-                      href={`https://wa.me/${whatsappNum}?text=Hi, I have a booking #${bookingId} at ${hotel.name || "your hotel"}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#25D366] hover:bg-[#20b958] px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      💬 WhatsApp
-                    </a>
-                  </div>
+              <InfoRow icon="📞">
+                <Lbl>Hotel Contact</Lbl>
+                <p className="text-sm font-semibold mb-2" style={{ color: "var(--text-base)" }}>{phone}</p>
+                <div className="flex gap-2 flex-wrap">
+                  <a href={`tel:${phone}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-colors">
+                    📱 Call Now
+                  </a>
+                  <a href={`https://wa.me/${whatsappNum}?text=Hi, I have a booking #${bookingId} at ${hotel.name || "your hotel"}`}
+                    target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#25D366] hover:bg-[#20b958] px-3 py-1.5 rounded-lg transition-colors">
+                    💬 WhatsApp
+                  </a>
                 </div>
-              </div>
+              </InfoRow>
             )}
 
             {/* Email */}
             {email && (
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center shrink-0 text-base">✉️</div>
-                <div>
-                  <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Email</p>
-                  <a href={`mailto:${email}`} className="text-sm text-gold-600 font-semibold hover:underline">{email}</a>
-                </div>
-              </div>
+              <InfoRow icon="✉️">
+                <Lbl>Email</Lbl>
+                <a href={`mailto:${email}`} className="text-sm font-semibold hover:underline" style={{ color: "#c9911a" }}>{email}</a>
+              </InfoRow>
             )}
 
             {/* Room */}
             {room.type && (
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center shrink-0 text-base">🛏</div>
-                <div>
-                  <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Room</p>
-                  <p className="text-sm text-luxury-800 font-medium">{room.type}{room.capacity ? ` · Up to ${room.capacity} guests` : ""}</p>
-                </div>
-              </div>
+              <InfoRow icon="🛏">
+                <Lbl>Room</Lbl>
+                <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>{room.type}{room.capacity ? ` · Up to ${room.capacity} guests` : ""}</p>
+              </InfoRow>
             )}
 
             {/* Booked on */}
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-gold-50 border border-gold-200 flex items-center justify-center shrink-0 text-base">🗓</div>
-              <div>
-                <p className="text-[0.6rem] text-luxury-400 uppercase tracking-widest mb-1">Booked On</p>
-                <p className="text-sm text-luxury-800 font-medium">
-                  {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            </div>
+            <InfoRow icon="🗓">
+              <Lbl>Booked On</Lbl>
+              <p className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
+                {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            </InfoRow>
 
             {/* StayPoints redemption info */}
-            <div className="bg-gradient-to-r from-gold-50 to-amber-50 border border-gold-200 rounded-xl p-4">
-              <p className="text-xs font-bold text-gold-700 mb-1">⭐ StayPoints Program</p>
-              <p className="text-[0.7rem] text-gold-600 leading-relaxed">
+            <div className="rounded-xl p-4"
+              style={{ background: "rgba(201,145,26,0.10)", border: "1px solid rgba(201,145,26,0.28)" }}>
+              <p className="text-xs font-bold mb-1" style={{ color: "#c9911a" }}>⭐ StayPoints Program</p>
+              <p className="text-[0.7rem] leading-relaxed" style={{ color: "var(--text-soft)" }}>
                 Earn <strong>{stayPoints} points</strong> (₹{stayPoints} value) on completing this stay.
                 Points are credited to your wallet after check-out and can be redeemed on future bookings.
               </p>
             </div>
 
             {(!phone && !address) && (
-              <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-xs text-amber-700">
+              <div className="rounded-xl px-4 py-3 text-xs"
+                style={{ background: STATUS_META.PENDING.soft, border: `1px solid ${STATUS_META.PENDING.color}40`, color: "var(--text-soft)" }}>
                 Hotel contact details will be shared via SMS/email before check-in.
               </div>
             )}
@@ -642,7 +649,7 @@ export default function BookingsPage() {
   const [units, setUnits] = useState<Record<string, { unitId: string; unitNumber: string }>>({});
   const [loading, setLoading]   = useState(true);
   // v141 — Phase 5 — bookings tour. delayMs:1400 so /api/bookings/my
-  // populates at least one .card-luxury before fire.
+  // populates at least one .card before fire.
   usePageTour("bookings", "bookings", { delayMs: 1400 });
 
   useEffect(() => {
@@ -724,9 +731,22 @@ export default function BookingsPage() {
     }).finally(() => setLoading(false));
   }, [user, authLoading, router]);
 
+  // Shared cozy styles for this page.
+  const styleBlock = (
+    <style>{`
+      @keyframes bkFadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+      .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
+      .bk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+      .bk-gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
+    `}</style>
+  );
+
   if (authLoading || loading) return (
-    <div className="max-w-2xl mx-auto px-5 py-12 space-y-4">
-      {[1, 2, 3].map((i) => <div key={i} className="h-64 shimmer rounded-3xl" />)}
+    <div className="lux-bg min-h-screen">
+      {styleBlock}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 xl:grid-cols-2 gap-5">
+        {[1, 2, 3, 4].map((i) => <div key={i} className="h-64 shimmer rounded-2xl" />)}
+      </div>
     </div>
   );
 
@@ -734,33 +754,42 @@ export default function BookingsPage() {
     .filter(b => b.status === "CHECKED_OUT")
     .reduce((sum, b) => sum + Math.floor((b.totalAmount || 0) / 100) * 5, 0);
 
-  return (
-    <div className="bg-luxury-50 min-h-screen">
-      <div className="max-w-2xl mx-auto px-5 py-12">
+  const upcoming  = bookings.filter(b => b.status === "ACCEPTED" || b.status === "CONFIRMED" || b.status === "CHECKED_IN" || b.status === "PENDING").length;
 
-        <div className="mb-8 sb-fade-in">
-          <p className="text-gold-500 text-[0.68rem] font-semibold tracking-[0.2em] uppercase mb-2">Account</p>
-          <h1 className="font-display font-light text-luxury-900" style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)" }}>
+  return (
+    <div className="lux-bg min-h-screen">
+      {styleBlock}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+
+        {/* Hero */}
+        <div className="mb-6" style={{ animation: "bkFadeUp 0.5s ease both" }}>
+          <p className="text-[0.66rem] font-semibold tracking-[0.22em] uppercase mb-1.5" style={{ color: "var(--text-muted)" }}>Your Account</p>
+          <h1 className="font-display font-light" style={{ fontSize: "clamp(1.9rem, 4vw, 2.6rem)", color: "var(--text-base)" }}>
             My Bookings
           </h1>
-          <div className="flex items-center gap-4 mt-2">
-            {bookings.length > 0 && (
-              <p className="text-sm text-luxury-400">
-                <CountUp value={bookings.length} duration={700} /> booking{bookings.length !== 1 ? "s" : ""}
-              </p>
-            )}
-            {totalPoints > 0 && (
-              <p className="text-xs font-semibold text-gold-600 bg-gold-50 border border-gold-200 px-3 py-1 rounded-full sb-card-lift">
-                ⭐ <CountUp value={totalPoints} duration={900} /> StayPoints earned
-              </p>
-            )}
-          </div>
+          {bookings.length > 0 && (
+            <div className="flex items-center gap-2.5 mt-3 flex-wrap">
+              <span className="text-xs font-semibold px-3 py-1 rounded-full"
+                style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
+                🎫 <CountUp value={bookings.length} duration={700} /> total
+              </span>
+              {upcoming > 0 && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full"
+                  style={{ background: STATUS_META.CONFIRMED.soft, border: `1px solid ${STATUS_META.CONFIRMED.color}44`, color: STATUS_META.CONFIRMED.color }}>
+                  🗓 <CountUp value={upcoming} duration={700} /> upcoming
+                </span>
+              )}
+              {totalPoints > 0 && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full"
+                  style={{ background: "rgba(201,145,26,0.12)", border: "1px solid rgba(201,145,26,0.32)", color: "#c9911a" }}>
+                  ⭐ <CountUp value={totalPoints} duration={900} /> StayPoints earned
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Phase 4 tier-system — Inspiration banner. Only renders when
-            the user has at least one booking (so we have something to
-            inspire them about). Dismissible per-(user, banner-variant)
-            via localStorage. Routes into /discover#create on tap. */}
+        {/* Phase 4 tier-system — Inspiration banner. */}
         {bookings.length > 0 && (
           <InspirationBanner
             variant="card"
@@ -771,23 +800,26 @@ export default function BookingsPage() {
         )}
 
         {bookings.length === 0 && (
-          <div className="text-center py-24">
-            <div className="w-20 h-20 rounded-full bg-white border border-luxury-100 flex items-center justify-center mx-auto mb-5 shadow-luxury">
+          <div className="text-center py-20">
+            <div className="w-20 h-20 rounded-full bk-card flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">📋</span>
             </div>
-            <p className="text-lg font-semibold text-luxury-800 mb-1">No bookings yet</p>
-            <p className="text-sm text-luxury-400 mb-6">Start by placing a bid or booking a flash deal.</p>
+            <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bookings yet</p>
+            <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Start by placing a bid or booking a flash deal.</p>
+            <Link href="/hotels" className="bk-gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
           </div>
         )}
 
-        <div className="space-y-5 sb-stagger">
-          {bookings.map((b) => (
-            <BookingCard
-              key={b.id}
-              b={b}
-              unitNumber={units[b.id]?.unitNumber}
-              onRefresh={() => {/* hold state read from localStorage; refresh forces re-render via state pun */}}
-            />
+        {/* Responsive grid: 1 col mobile/tablet · 2 col desktop. */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start">
+          {bookings.map((b, i) => (
+            <div key={b.id} style={{ animation: `bkFadeUp 0.45s ease ${Math.min(i, 6) * 0.06}s both` }}>
+              <BookingCard
+                b={b}
+                unitNumber={units[b.id]?.unitNumber}
+                onRefresh={() => {/* hold state read from localStorage; refresh forces re-render via state pun */}}
+              />
+            </div>
           ))}
         </div>
       </div>
