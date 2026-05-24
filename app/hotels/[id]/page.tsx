@@ -42,7 +42,7 @@ import {
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
-import { filterActiveBids } from "@/lib/bid-expiry";
+import { filterActiveBids, isBidPaid } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
 // v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
@@ -2474,9 +2474,53 @@ export default function HotelDetail() {
                         </div>
                       </div>
                     )}
-                    {b.status === "ACCEPTED" && (
+                    {b.status === "ACCEPTED" && !isBidPaid(b) && (() => {
+                      // v197 — accepted-bid card on hotel detail page now
+                      // mirrors the /my-bids card: live 15-min countdown +
+                      // check-in / check-out chips + prominent Pay Now CTA.
+                      // Was: static one-liner only.
+                      const acceptedAmt = resolveBidDisplayAmount(b);
+                      const cin  = b.checkIn  || b.request?.checkIn  || b.bidRequest?.checkIn;
+                      const cout = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut;
+                      const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—";
+                      return (
+                        <div className="mt-3 p-3.5 rounded-2xl"
+                          style={{ background: "rgba(127,146,105,0.14)", border: "1px solid rgba(127,146,105,0.42)" }}>
+                          <p className="text-sm font-semibold mb-2" style={{ color: "#5a6e44" }}>
+                            ✓ Accepted at ₹{acceptedAmt.toLocaleString("en-IN")}/night — pay to confirm
+                          </p>
+                          {(cin || cout) && (
+                            <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-xl p-2"
+                              style={{ background: "rgba(255,252,246,0.6)" }}>
+                              <div>
+                                <p className="text-[0.55rem] uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>Check-in</p>
+                                <p className="text-xs font-semibold" style={{ color: "var(--text-base)" }}>{fmtDate(cin)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[0.55rem] uppercase tracking-[0.16em]" style={{ color: "var(--text-muted)" }}>Check-out</p>
+                                <p className="text-xs font-semibold" style={{ color: "var(--text-base)" }}>{fmtDate(cout)}</p>
+                              </div>
+                            </div>
+                          )}
+                          <AcceptedBidTimer
+                            bidId={String(b.id)}
+                            hotelId={String(b.hotelId || hotel?.id || "")}
+                            acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                            onPayNow={() => router.push(`/my-bids#bid-${b.id}`)}
+                          />
+                          <button
+                            onClick={() => router.push(`/my-bids#bid-${b.id}`)}
+                            className="w-full mt-2.5 py-3 rounded-xl font-bold text-sm"
+                            style={{ background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
+                          >
+                            💰 Pay Now & Confirm Booking →
+                          </button>
+                        </div>
+                      );
+                    })()}
+                    {b.status === "ACCEPTED" && isBidPaid(b) && (
                       <p className="mt-3 text-sm text-emerald-600 font-medium">
-                        ✓ Accepted at ₹{resolveBidDisplayAmount(b).toLocaleString("en-IN")} — pay to confirm
+                        ✓ Booked at ₹{resolveBidDisplayAmount(b).toLocaleString("en-IN")}/night — confirmed
                       </p>
                     )}
                     {b.status === "REJECTED" && (
@@ -2747,14 +2791,31 @@ export default function HotelDetail() {
                 <div className="hx-cta hx-cta-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.85, cursor: "default" }}>
                   ⏳ Bid pending review — hotel will respond shortly
                 </div>
-              ) : isOtherWhenLocked && lockUpgradeDelta > 0 ? (
-                <button
-                  onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
-                  className="hx-cta hx-cta-primary"
-                  style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205" }}
-                >
-                  💎 Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night →
-                </button>
+              ) : isOtherWhenLocked ? (
+                // v197 — when an ACCEPTED bid exists on a DIFFERENT room,
+                // never fall through to Book Now / Negotiate. Show one of
+                // two CTAs based on this room's floor relative to the locked
+                // amount. Either way Book/Negotiate stays hidden so the
+                // customer is funnelled to pay the existing accepted bid
+                // (which is the only thing they can do anyway under the
+                // v195 one-active-bid-per-city rule).
+                lockUpgradeDelta > 0 ? (
+                  <button
+                    onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                    className="hx-cta hx-cta-primary"
+                    style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205" }}
+                  >
+                    💎 Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                    className="hx-cta hx-cta-primary"
+                    style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
+                  >
+                    💰 Pay accepted ₹{lockedAmount.toLocaleString("en-IN")}/night →
+                  </button>
+                )
               ) : null;
             const aiPrice = roomPrices[r.id];
             const ds = aiPrice ? DEMAND_STYLE[aiPrice.demandLevel] : null;
