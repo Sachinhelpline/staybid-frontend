@@ -44,6 +44,11 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids, isBidPaid } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
+// v199 — Update Budget slider for PENDING/COUNTER cards in the
+// "Your offers" section. Same control as /my-bids — extracted to a
+// shared component so the customer can re-pitch from the hotel page
+// without leaving for /my-bids.
+import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 // v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
@@ -368,6 +373,22 @@ export default function HotelDetail() {
   // review screen shows complete trip details + lets user choose
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
+
+  // v198 — Upgrade Room modal state. When a customer has an ACCEPTED bid
+  // on Room A and taps the "💎 Upgrade to Room B" CTA on another room's
+  // card, this modal opens with the full breakdown
+  // (accepted + delta × nights = total to pay) → Razorpay charges only
+  // the delta → backend swaps the bid's roomId so /my-bids, partner
+  // panel, hotel page all auto-sync via existing polling.
+  const [upgradeModal, setUpgradeModal] = useState<null | {
+    bidId: string;
+    fromRoomName: string;
+    toRoom: any;
+    acceptedAmount: number;
+    deltaPerNight: number;
+    nights: number;
+  }>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   // 409 — one-active-bid-per-city sheet. Negotiate path only (Book Now / Flash
   // bypass the bid rail). Populated by handleNegotiate / executeNegotiate.
   const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
@@ -696,9 +717,13 @@ export default function HotelDetail() {
   // add the localStorage `bid_dates_{id}` fallback that /my-bids uses,
   // because /api/bids/my (Railway) doesn't always include the request
   // relation — Sachin's SS2 showed "Add date" blank for that reason.
+  // v198 — also write to globalCheckIn/globalCheckOut (the picker actually
+  // reads those, not the legacy `checkIn`/`checkOut` state). Pre-v198 this
+  // effect set the legacy state only → picker stayed blank → user had to
+  // retype the dates their own accepted bid was already on.
   useEffect(() => {
     if (!myBids.length) return;
-    if (checkIn && checkOut) return;
+    if (checkIn && checkOut && globalCheckIn && globalCheckOut) return;
     const candidates = myBids.filter((b: any) =>
       b.status === "ACCEPTED" || b.status === "COUNTER" || b.status === "PENDING"
     );
@@ -708,13 +733,41 @@ export default function HotelDetail() {
       const ci = live.request?.checkIn  || live.bidRequest?.checkIn  || live.checkIn  || stored?.checkIn;
       const co = live.request?.checkOut || live.bidRequest?.checkOut || live.checkOut || stored?.checkOut;
       if (ci && co) {
-        setCheckIn(String(ci).slice(0, 10));
-        setCheckOut(String(co).slice(0, 10));
+        const ciStr = String(ci).slice(0, 10);
+        const coStr = String(co).slice(0, 10);
+        if (!checkIn) setCheckIn(ciStr);
+        if (!checkOut) setCheckOut(coStr);
+        if (!globalCheckIn) setGlobalCheckIn(ciStr);
+        if (!globalCheckOut) setGlobalCheckOut(coStr);
         return;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myBids]);
+
+  // v198 — Hard-lock the global picker dates to the customer's ACCEPTED
+  // bid for the duration the bid is live. The accepted bid IS the stay
+  // — letting the customer change dates would let them bid on a date
+  // range that doesn't match their already-confirmed slot. This effect
+  // force-syncs every time pageLockedBid changes (polled every 30 s)
+  // so a fresh acceptance instantly locks the picker even if the
+  // customer had typed different dates beforehand.
+  const lockedBidDates = pageLockedBid ? (() => {
+    let stored: any = null;
+    try { stored = JSON.parse(localStorage.getItem(`bid_dates_${pageLockedBid.id}`) || "null"); } catch {}
+    const ci = pageLockedBid.checkIn || pageLockedBid.request?.checkIn || pageLockedBid.bidRequest?.checkIn || stored?.checkIn || "";
+    const co = pageLockedBid.checkOut || pageLockedBid.request?.checkOut || pageLockedBid.bidRequest?.checkOut || stored?.checkOut || "";
+    return ci && co ? { checkIn: String(ci).slice(0, 10), checkOut: String(co).slice(0, 10) } : null;
+  })() : null;
+  const datesLocked = !!lockedBidDates;
+  useEffect(() => {
+    if (!lockedBidDates) return;
+    if (globalCheckIn !== lockedBidDates.checkIn) setGlobalCheckIn(lockedBidDates.checkIn);
+    if (globalCheckOut !== lockedBidDates.checkOut) setGlobalCheckOut(lockedBidDates.checkOut);
+    if (checkIn !== lockedBidDates.checkIn) setCheckIn(lockedBidDates.checkIn);
+    if (checkOut !== lockedBidDates.checkOut) setCheckOut(lockedBidDates.checkOut);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockedBidDates?.checkIn, lockedBidDates?.checkOut]);
 
   // ── v94 booking-source attribution ──────────────────────────────────────
   // Capture src/cid/via/vid/ctype from the URL on first mount and persist
@@ -1869,6 +1922,50 @@ export default function HotelDetail() {
     finally { setActionLoading(""); }
   };
 
+  // v198 — Execute room upgrade. Razorpay charges only the delta
+  // × nights, then PATCH /api/bids/[id]/upgrade-room swaps the bid's
+  // roomId + amount. Every consumer (/my-bids polling, partner panel,
+  // hotel page polling) picks up the new room+price automatically.
+  const executeUpgrade = async () => {
+    if (!upgradeModal || !hotel) return;
+    setUpgradeLoading(true);
+    try {
+      const totalDelta = Math.max(0, upgradeModal.deltaPerNight * upgradeModal.nights);
+      let payResult: any = { razorpay_payment_id: "wallet_only" };
+      if (totalDelta > 0) {
+        payResult = await openRazorpayCheckout({
+          amount: totalDelta,
+          hotelName: hotel.name,
+          description: `Room upgrade: ${upgradeModal.fromRoomName} → ${upgradeModal.toRoom.name || upgradeModal.toRoom.type} · ₹${upgradeModal.deltaPerNight}/n × ${upgradeModal.nights}n`,
+          userName: user!.name || user!.phone || "",
+          userPhone: user!.phone,
+          userEmail: user!.email,
+        });
+      }
+      const token = localStorage.getItem("sb_token");
+      const res = await fetch(`/api/bids/${upgradeModal.bidId}/upgrade-room`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          newRoomId: upgradeModal.toRoom.id,
+          newAmount: upgradeModal.acceptedAmount + upgradeModal.deltaPerNight,
+          paymentId: payResult.razorpay_payment_id,
+          deltaPaid: totalDelta,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Upgrade failed");
+      setUpgradeModal(null);
+      alert(`✓ Upgraded to ${upgradeModal.toRoom.name || upgradeModal.toRoom.type}! Pay the balance from My Bids to confirm.`);
+      fetchMyBids();
+    } catch (e: any) {
+      if (e?.message === "__CANCELLED__") { return; }
+      alert(e?.message || "Couldn't process the upgrade. Please try again.");
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
   const handleCounterReject = async (bidId: string) => {
     setActionLoading(bidId);
     try {
@@ -2474,6 +2571,26 @@ export default function HotelDetail() {
                         </div>
                       </div>
                     )}
+                    {/* v199 — Update Budget chip on PENDING + COUNTER cards.
+                        Mirrors the /my-bids card so the customer can re-pitch
+                        the same bid without leaving the hotel page. Hidden
+                        on ACCEPTED (price-locked) — use Pay Now or v198
+                        Upgrade Room instead. Flow inferred from the bid
+                        message: /bid broadcasts say "Guest bid"/"max ₹"; a
+                        Negotiate bid doesn't. */}
+                    {(b.status === "PENDING" || b.status === "COUNTER") && (() => {
+                      const msg = String(b.message || "");
+                      const isPlaceBid = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
+                      const flow: "place" | "negotiate" = isPlaceBid ? "place" : "negotiate";
+                      return (
+                        <UpdateBudgetInline
+                          bid={b}
+                          flow={flow}
+                          floor={Number(b.room?.floorPrice || 0)}
+                          onUpdated={() => fetchMyBids()}
+                        />
+                      );
+                    })()}
                     {b.status === "ACCEPTED" && !isBidPaid(b) && (() => {
                       // v197 — accepted-bid card on hotel detail page now
                       // mirrors the /my-bids card: live 15-min countdown +
@@ -2547,19 +2664,43 @@ export default function HotelDetail() {
             </div>
           </div>
 
+          {/* v198 — Locked-dates banner. When the customer already has an
+              ACCEPTED bid for this hotel, the dates are bound to that bid.
+              Picker becomes read-only so the customer doesn't try to
+              change to a different stay. */}
+          {datesLocked && (
+            <div className="mb-3 p-3 rounded-2xl flex items-center gap-2 border" style={{
+              background: "linear-gradient(135deg, #fff9e6 0%, #fff4cc 100%)",
+              borderColor: "rgba(184,134,11,0.30)",
+            }}>
+              <span style={{ fontSize: "1.1rem" }}>🔒</span>
+              <div style={{ fontSize: "0.72rem", lineHeight: 1.35 }}>
+                <p style={{ fontWeight: 700, color: "#6e5430" }}>Dates locked to your accepted bid</p>
+                <p style={{ color: "#8a6f3a", marginTop: 2 }}>
+                  Pay now to confirm. Need different dates? Cancel the offer first from My Bids.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Dates row — opens LuxuryCalendar with per-day live pricing */}
           <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
             <button
               type="button"
-              onClick={() => openCalendar({
-                mode: "checkIn",
-                checkIn: globalCheckIn,
-                checkOut: globalCheckOut,
-                onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
-              })}
+              disabled={datesLocked}
+              onClick={() => {
+                if (datesLocked) return;
+                openCalendar({
+                  mode: "checkIn",
+                  checkIn: globalCheckIn,
+                  checkOut: globalCheckOut,
+                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                });
+              }}
               className="picker-tile block text-left"
+              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-in {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckIn ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckIn
                   ? new Date(globalCheckIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -2568,15 +2709,20 @@ export default function HotelDetail() {
             </button>
             <button
               type="button"
-              onClick={() => openCalendar({
-                mode: "checkOut",
-                checkIn: globalCheckIn,
-                checkOut: globalCheckOut,
-                onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
-              })}
+              disabled={datesLocked}
+              onClick={() => {
+                if (datesLocked) return;
+                openCalendar({
+                  mode: "checkOut",
+                  checkIn: globalCheckIn,
+                  checkOut: globalCheckOut,
+                  onApply: ({ checkIn: ci, checkOut: co }) => { setGlobalCheckIn(ci); setGlobalCheckOut(co); },
+                });
+              }}
               className="picker-tile block text-left"
+              style={datesLocked ? { opacity: 0.85, cursor: "not-allowed" } : undefined}
             >
-              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out</p>
+              <p className="text-[0.6rem] font-bold text-luxury-500 uppercase tracking-widest mb-1">📅 Check-out {datesLocked && <span style={{ color: "#b8871a" }}>· 🔒</span>}</p>
               <span className={`block text-sm font-semibold ${globalCheckOut ? "text-luxury-900" : "text-luxury-400"}`}>
                 {globalCheckOut
                   ? new Date(globalCheckOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
@@ -2799,13 +2945,35 @@ export default function HotelDetail() {
                 // customer is funnelled to pay the existing accepted bid
                 // (which is the only thing they can do anyway under the
                 // v195 one-active-bid-per-city rule).
+                // v198 — Upgrade CTA now shows the FULL breakdown
+                // (accepted + delta = total) and opens the upgrade-room
+                // modal instead of routing to /my-bids. Confirming charges
+                // only the delta × nights and PATCHes the bid's roomId so
+                // every surface (/my-bids, partner panel, hotel page)
+                // auto-syncs via existing fetchMyBids polling.
                 lockUpgradeDelta > 0 ? (
                   <button
-                    onClick={() => router.push(`/my-bids#bid-${lockedBidId || ""}`)}
+                    onClick={() => {
+                      if (!lockedBid || !lockedBidId) return;
+                      const upgradeNights = globalNights || 1;
+                      setUpgradeModal({
+                        bidId: String(lockedBidId),
+                        fromRoomName: lockedBid.room?.name || lockedBid.room?.type || "your accepted room",
+                        toRoom: r,
+                        acceptedAmount: lockedAmount,
+                        deltaPerNight: lockUpgradeDelta,
+                        nights: upgradeNights,
+                      });
+                    }}
                     className="hx-cta hx-cta-primary"
-                    style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205" }}
+                    style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
                   >
-                    💎 Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night →
+                    <div style={{ fontSize: "0.85rem", fontWeight: 800 }}>
+                      💎 Upgrade to {r.name || r.type}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", fontWeight: 600, opacity: 0.85, marginTop: 2 }}>
+                      ₹{lockedAmount.toLocaleString("en-IN")} accepted + ₹{lockUpgradeDelta.toLocaleString("en-IN")} extra = ₹{(lockedAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
+                    </div>
                   </button>
                 ) : (
                   <button
@@ -4446,6 +4614,99 @@ export default function HotelDetail() {
       ══════════════════════════════════════════ */}
       {review && (
         <BookingReview {...review} open onClose={() => setReview(null)} />
+      )}
+
+      {/* ══════════════════════════════════════════
+          v198 — UPGRADE ROOM modal. Opens when a customer with an
+          ACCEPTED bid taps the "💎 Upgrade to {Room}" CTA on another
+          room's card. Shows the full breakdown — accepted + delta ×
+          nights = total — and on confirm charges the delta via
+          Razorpay + PATCHes the bid's roomId so every surface stays
+          in sync via existing fetchMyBids polling.
+      ══════════════════════════════════════════ */}
+      {upgradeModal && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-sm modal-backdrop p-0 sm:p-4"
+          onClick={() => !upgradeLoading && setUpgradeModal(null)}
+        >
+          <div
+            className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl"
+            style={{ background: "var(--bg-card,#fff)", color: "var(--text-base,#1a1205)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2 border-b" style={{ borderColor: "rgba(184,134,11,0.15)" }}>
+              <div>
+                <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: "#b8871a" }}>💎 Upgrade your room</p>
+                <h3 className="text-lg font-black mt-1" style={{ fontFamily: "'Cormorant Garamond',serif", lineHeight: 1.2 }}>
+                  {upgradeModal.fromRoomName} → {upgradeModal.toRoom.name || upgradeModal.toRoom.type}
+                </h3>
+              </div>
+              <button
+                onClick={() => !upgradeLoading && setUpgradeModal(null)}
+                aria-label="Close"
+                disabled={upgradeLoading}
+                className="text-2xl leading-none opacity-60 hover:opacity-100 px-2"
+              >×</button>
+            </div>
+
+            {/* Breakdown */}
+            <div className="px-5 py-4 space-y-3">
+              <div className="rounded-2xl p-3.5" style={{ background: "linear-gradient(135deg,#fff9e6 0%,#fff4cc 100%)", border: "1px solid rgba(184,134,11,0.25)" }}>
+                <div className="flex justify-between items-center text-sm">
+                  <span style={{ color: "#6e5430" }}>Accepted price</span>
+                  <span style={{ color: "#1a1205", fontWeight: 700 }}>₹{upgradeModal.acceptedAmount.toLocaleString("en-IN")}/n</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mt-2">
+                  <span style={{ color: "#6e5430" }}>Upgrade extra</span>
+                  <span style={{ color: "#b8871a", fontWeight: 700 }}>+ ₹{upgradeModal.deltaPerNight.toLocaleString("en-IN")}/n</span>
+                </div>
+                <div className="border-t mt-2 pt-2 flex justify-between items-center" style={{ borderColor: "rgba(184,134,11,0.30)" }}>
+                  <span className="text-sm font-bold" style={{ color: "#1a1205" }}>New rate</span>
+                  <span className="text-lg font-black" style={{ color: "#1a1205" }}>₹{(upgradeModal.acceptedAmount + upgradeModal.deltaPerNight).toLocaleString("en-IN")}/n</span>
+                </div>
+              </div>
+
+              <div className="text-xs space-y-1.5 px-1" style={{ color: "var(--text-soft,#4a3208)" }}>
+                <div className="flex justify-between">
+                  <span>Nights</span>
+                  <span style={{ fontWeight: 600 }}>× {upgradeModal.nights}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Extra you pay now</span>
+                  <span style={{ fontWeight: 700, color: "#b8871a" }}>₹{(upgradeModal.deltaPerNight * upgradeModal.nights).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-[0.65rem] opacity-75 italic">
+                  <span>Anchor (accepted): ₹{(upgradeModal.acceptedAmount * upgradeModal.nights).toLocaleString("en-IN")} due at My Bids</span>
+                </div>
+              </div>
+
+              <div className="rounded-xl p-2.5 text-[0.7rem]" style={{ background: "rgba(127,146,105,0.10)", border: "1px solid rgba(127,146,105,0.25)", color: "#4a5c3a" }}>
+                ✓ Pay only the upgrade extra now. Your accepted ₹{upgradeModal.acceptedAmount.toLocaleString("en-IN")}/night stays locked. After upgrade, settle the balance from My Bids to confirm.
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-5 pb-5 pt-2 sticky bottom-0" style={{ background: "var(--bg-card,#fff)" }}>
+              <button
+                onClick={executeUpgrade}
+                disabled={upgradeLoading}
+                className="hx-cta hx-cta-primary"
+                style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", opacity: upgradeLoading ? 0.7 : 1 }}
+              >
+                {upgradeLoading ? "Processing…" : `💎 Confirm upgrade · Pay ₹${(upgradeModal.deltaPerNight * upgradeModal.nights).toLocaleString("en-IN")}`}
+              </button>
+              <button
+                onClick={() => !upgradeLoading && setUpgradeModal(null)}
+                disabled={upgradeLoading}
+                className="hx-cta hx-cta-secondary mt-2"
+                style={{ width: "100%" }}
+              >
+                Keep my current room
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Floating picker modal — opens when user taps Book Now/Negotiate without dates ── */}
