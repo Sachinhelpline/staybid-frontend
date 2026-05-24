@@ -10,6 +10,10 @@ import BookingReview, { type BookingReviewProps } from "@/components/BookingRevi
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
 import AutoAcceptCountdown from "@/components/AutoAcceptCountdown";
+// v199 — UpdateBudgetInline extracted to a shared component so the
+// hotel page's "Your offers" PENDING/COUNTER cards can mount the same
+// slider. Previously defined locally in this file (~80 lines below).
+import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
@@ -87,90 +91,9 @@ function PendingBidCountdown({ expiresAt, flow }: { expiresAt?: string; flow: "p
   );
 }
 
-// ── Inline Update Budget slider ───────────────────────────────────────
-// Lives on every PENDING / COUNTER card so the customer can re-pitch
-// without losing their place in the city. Uses /api/bids/:id/budget which
-// also resets the countdown.
-function UpdateBudgetInline({
-  bid, flow, floor, onUpdated,
-}: { bid: any; flow: "place" | "negotiate"; floor: number; onUpdated: () => void }) {
-  const current = Number(bid.counterAmount || bid.amount || 0);
-  const min = Math.max(100, Math.round(floor || Math.max(current * 0.5, 500)));
-  const max = Math.max(min + 500, Math.round(current * 2 || 8000));
-  const [open, setOpen] = useState(false);
-  const [amt, setAmt] = useState<number>(Math.max(min, current));
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => { setAmt(Math.max(min, current)); setOpen(true); }}
-        className="mt-2 w-full py-2 text-xs font-semibold rounded-xl"
-        style={{ background: "var(--bg-pill)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}
-      >
-        💡 Update Budget
-      </button>
-    );
-  }
-
-  const submit = async () => {
-    setErr("");
-    setBusy(true);
-    try {
-      await api.updateBidBudget(bid.id, amt, flow);
-      setOpen(false);
-      onUpdated();
-    } catch (e: any) {
-      setErr(e?.message || "Could not update");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="mt-2 p-3 rounded-xl"
-      style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)" }}>
-      <div className="flex items-baseline justify-between mb-2">
-        <span className="text-[0.62rem] uppercase tracking-wide font-semibold" style={{ color: "var(--text-muted)" }}>
-          New budget / night
-        </span>
-        <span className="text-sm font-bold" style={{ color: "#c9911a" }}>
-          ₹{amt.toLocaleString("en-IN")}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min} max={max} step={100}
-        value={amt}
-        onChange={(e) => setAmt(Number(e.target.value))}
-        disabled={busy}
-        style={{ width: "100%", accentColor: "#c9911a" }}
-      />
-      <div className="flex justify-between text-[0.6rem] mt-1" style={{ color: "var(--text-muted)" }}>
-        <span>₹{min.toLocaleString("en-IN")}</span>
-        <span>₹{max.toLocaleString("en-IN")}</span>
-      </div>
-      {bid.status === "COUNTER" && (
-        <p className="text-[0.62rem] mt-1.5" style={{ color: "var(--text-muted)" }}>
-          Drops the counter and re-pitches at your new amount.
-        </p>
-      )}
-      {err && <p className="text-xs mt-2" style={{ color: "#c0392b" }}>{err}</p>}
-      <div className="flex gap-2 mt-2">
-        <button onClick={submit} disabled={busy}
-          className="flex-1 gold-btn py-2 rounded-lg text-xs disabled:opacity-50">
-          {busy ? "Updating…" : "Confirm"}
-        </button>
-        <button onClick={() => setOpen(false)} disabled={busy}
-          className="flex-1 py-2 text-xs font-semibold rounded-lg"
-          style={{ background: "var(--bg-card)", color: "var(--text-soft)", border: "1px solid var(--border-soft)" }}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
+// v199 — UpdateBudgetInline was previously defined here. Extracted to
+// components/UpdateBudgetInline.tsx so the hotel detail page's "Your
+// offers" surface mounts the same control. No behavior change.
 
 // v194 — split: inner component reads useSearchParams; the default export
 // wraps in <Suspense> so Next 14 static prerender doesn't bail out

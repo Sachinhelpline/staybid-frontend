@@ -44,6 +44,11 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids, isBidPaid } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
+// v199 — Update Budget slider for PENDING/COUNTER cards in the
+// "Your offers" section. Same control as /my-bids — extracted to a
+// shared component so the customer can re-pitch from the hotel page
+// without leaving for /my-bids.
+import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 // v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
@@ -2566,6 +2571,26 @@ export default function HotelDetail() {
                         </div>
                       </div>
                     )}
+                    {/* v199 — Update Budget chip on PENDING + COUNTER cards.
+                        Mirrors the /my-bids card so the customer can re-pitch
+                        the same bid without leaving the hotel page. Hidden
+                        on ACCEPTED (price-locked) — use Pay Now or v198
+                        Upgrade Room instead. Flow inferred from the bid
+                        message: /bid broadcasts say "Guest bid"/"max ₹"; a
+                        Negotiate bid doesn't. */}
+                    {(b.status === "PENDING" || b.status === "COUNTER") && (() => {
+                      const msg = String(b.message || "");
+                      const isPlaceBid = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
+                      const flow: "place" | "negotiate" = isPlaceBid ? "place" : "negotiate";
+                      return (
+                        <UpdateBudgetInline
+                          bid={b}
+                          flow={flow}
+                          floor={Number(b.room?.floorPrice || 0)}
+                          onUpdated={() => fetchMyBids()}
+                        />
+                      );
+                    })()}
                     {b.status === "ACCEPTED" && !isBidPaid(b) && (() => {
                       // v197 — accepted-bid card on hotel detail page now
                       // mirrors the /my-bids card: live 15-min countdown +
