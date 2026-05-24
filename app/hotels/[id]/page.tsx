@@ -1365,7 +1365,22 @@ export default function HotelDetail() {
     finally { setBidLoading(false); }
   };
 
+  // v200 — Defense-in-depth guard: if the customer already has an active
+  // bid on this hotel, intercept any Book Now / Negotiate attempt that
+  // slipped past the UI gates and route them to /my-bids instead. This
+  // is the fallback for any stale CTA that wasn't hidden. Per Sachin's
+  // 1-bid-per-hotel rule (2026-05-24).
+  const interceptIfActiveBidHere = (): boolean => {
+    if (pageActiveBids.length === 0) return false;
+    const bid = pageLockedBid || pageCounteredBid || pageActiveBids[0];
+    if (!bid) return false;
+    alert("You already have an active bid on this hotel. Please pay or update its budget from My Bids before placing a new one.");
+    router.push(`/my-bids#bid-${bid.id}`);
+    return true;
+  };
+
   const openBookNow = (r: any) => {
+    if (interceptIfActiveBidHere()) return;
     if (!globalCheckIn || !globalCheckOut) {
       setPickerModal({ intent: "book", room: r });
       return;
@@ -1378,6 +1393,7 @@ export default function HotelDetail() {
     setBnSuccess(false);
   };
   const openNegotiate = (r: any) => {
+    if (interceptIfActiveBidHere()) return;
     if (!globalCheckIn || !globalCheckOut) {
       setPickerModal({ intent: "negotiate", room: r });
       return;
@@ -4579,7 +4595,12 @@ export default function HotelDetail() {
           through and tempt a second tap. Some success flows clear their
           *Room state on submit (bidSuccess / bnSuccess), so without these
           guards the floating CTA would re-appear behind the celebration. */}
-      {hotel && !inPageCtaVisible && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && !bidSuccess && !bnSuccess && !negSuccess && !flashBookSuccess && (
+      {/* v200 — Hide the floating sticky Book Now chip when this customer
+          already has an active bid on this hotel. Per-hotel 1-bid rule:
+          no point offering a new booking surface when the existing bid
+          must be paid / cancelled first. The "Your offers" section above
+          already shows the right CTAs (Pay Now / Upgrade / Pay accepted). */}
+      {hotel && pageActiveBids.length === 0 && !inPageCtaVisible && !calCfg.open && !flashBookOpen && !bnRoom && !negRoom && !pickerModal && !review && !bidSuccess && !bnSuccess && !negSuccess && !flashBookSuccess && (
         <div className="hx-mobile-cta-wrap" aria-hidden={false}>
           <button
             type="button"
