@@ -57,7 +57,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // names in social_posts / hotel_videos / social_profiles projections made
 // PostgREST 400 the entire response. Bumping the cache name forces the
 // activate handler to drop the stale HTML → fresh fetch on next nav.
-const HTML_CACHE = 'staybid-html-v5';
+// v194.1 — one-time HTML_CACHE bump (v5 → v6). After v192-v194 merge,
+// mobile users were getting stuck on v191 HTML — SWR was serving the
+// stale cached copy from staybid-html-v5 and the background fetch
+// wasn't progressing to a re-render on second visit. Same recovery
+// pattern as the v131 bump.
+const HTML_CACHE = 'staybid-html-v6';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
