@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -46,10 +46,18 @@ function fmtDate(s?: string) {
   return new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
-export default function MyBidsPage() {
+// v194 — split: inner component reads useSearchParams; the default export
+// wraps in <Suspense> so Next 14 static prerender doesn't bail out
+// (https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
+function MyBidsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [bids, setBids] = useState<any[]>([]);
+  // v194 — guard so the `?payNow=<id>` deep-link from /bid success screen
+  // only fires the BookingReview modal once per landing (re-renders /
+  // polling refresh must not re-open it).
+  const payNowFiredRef = useRef<string | null>(null);
   // v141 — Phase 5 — my-bids tour. delayMs:1500 so async bids list
   // renders at least one .glass-card before fire.
   usePageTour("mybids", "mybids", { delayMs: 1500 });
@@ -538,6 +546,31 @@ export default function MyBidsPage() {
     ? { icon: "🎯", title: "No place-bid offers yet", sub: "Name your price on /bid and hotels compete — your bids land here.", cta: "Place a Bid", href: "/bid" }
     : { icon: "🏨", title: "No negotiate bids yet", sub: "Negotiate with a hotel directly — your single-hotel bids land here.", cta: "Browse Hotels", href: "/hotels" };
 
+  // v194 — auto-open BookingReview when the user lands here from the /bid
+  // success screen's "Pay Now & Grab" CTA. Param: `?payNow=<bidId>`. Fires
+  // once per landing (payNowFiredRef gate) so the 15 s polling refresh
+  // can't re-open the modal. Also flips to the PLACE section if the bid
+  // is a place-bid so the underlying card is visible when the modal closes.
+  useEffect(() => {
+    const wantBidId = searchParams?.get("payNow");
+    if (!wantBidId) return;
+    if (payNowFiredRef.current === wantBidId) return;
+    if (!bids || bids.length === 0) return;
+    const b = bids.find((row: any) => String(row?.id) === String(wantBidId));
+    if (!b) return;
+    // Only fire for actionable rows — ACCEPTED + unpaid. If the row is
+    // already paid or in a non-actionable state, just clean the URL.
+    if (b.status === "ACCEPTED" && !isPaid(b)) {
+      if (b._isPlaceBid && section !== "PLACE") setSection("PLACE");
+      payNowFiredRef.current = String(wantBidId);
+      handlePayNow(b);
+    } else {
+      payNowFiredRef.current = String(wantBidId);
+    }
+    // Clean the URL param so a refresh doesn't re-fire.
+    try { router.replace("/my-bids", { scroll: false }); } catch {}
+  }, [searchParams, bids, section, router]);
+
   return (
     // v174 — cozy theme. `.lux-bg` paints the page in var(--bg-page); every
     // surface below uses theme tokens directly (no reliance on auto-fix).
@@ -887,5 +920,13 @@ export default function MyBidsPage() {
       {/* Booking Review modal — sits between accept-counter / pay-now and Razorpay */}
       {review && <BookingReview {...review} open onClose={() => setReview(null)} />}
     </div>
+  );
+}
+
+export default function MyBidsPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center" }}>Loading…</div>}>
+      <MyBidsPageInner />
+    </Suspense>
   );
 }
