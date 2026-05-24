@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 
-// One active bid per (customer × city). Per-flow timers:
+// v200 — One active bid per (customer × HOTEL). Per-flow timers:
 //   • Negotiate (1:1 single hotel)    → 3h
 //   • /bid      (1:N reverse auction) → 1h
 const NEGOTIATE_MS = 3 * 3600_000;
@@ -9,31 +9,37 @@ const PLACE_MS     = 1 * 3600_000;
 const expiresAtFor = (flow?: string) =>
   new Date(Date.now() + (flow === "place" ? PLACE_MS : NEGOTIATE_MS)).toISOString();
 
-// Returns the conflicting active bid (PENDING / COUNTER / unpaid ACCEPTED)
-// in the same city, or null.
+// v200 — Returns the conflicting active bid (PENDING / COUNTER / unpaid
+// ACCEPTED) on THIS SAME hotel, or null. Per Sachin's confirmed rule
+// (2026-05-24): one active bid per (customer × hotel). Different hotels
+// in the same city are OK — a /bid broadcast still works because we
+// exempt same-requestId.
 //
 // `currentRequestId` is the requestId attached to the incoming placeBid. /bid
 // broadcasts N hotels in one city under ONE bid_request — so all N share the
 // same requestId. We treat same-requestId rows as the same logical bid and
 // skip them, so a single /bid submit doesn't 409 itself across its own
 // per-hotel calls. A new /bid run (new requestId) does 409 against the
-// still-active prior broadcast, which is the desired guard.
-async function findActiveBidInCity(
+// still-active prior bid ON THE SAME hotel, which is the desired guard.
+//
+// We DROP the `expiresAt > now()` filter that was in v195 — stale ACCEPTED-
+// unpaid bids (past 15-min payment window) had `expiresAt` in the past, so
+// the old query silently returned no conflict and the customer could
+// place duplicates (Sachin SS1/SS2 showed 4 stacked ACCEPTED on the same
+// hotel). New rule: trust the STATUS column; the row stays ACCEPTED until
+// either paid (bookings.paidAmount > 0) OR cron sweeps it to EXPIRED.
+// While ACCEPTED-unpaid, no new bids on the same hotel can be placed.
+async function findActiveBidOnHotel(
   customerIds: string[],
-  city: string,
+  hotelId: string,
   currentRequestId?: string | null,
 ): Promise<any | null> {
-  if (!customerIds.length || !city) return null;
+  if (!customerIds.length || !hotelId) return null;
   const ids = customerIds.join(",");
   const bids = await sbSelect(
-    `bids?customerId=in.(${ids})&status=in.(PENDING,COUNTER,ACCEPTED)&expiresAt=gt.${encodeURIComponent(new Date().toISOString())}&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt`
+    `bids?customerId=in.(${ids})&hotelId=eq.${hotelId}&status=in.(PENDING,COUNTER,ACCEPTED)&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt`
   );
   if (!bids.length) return null;
-
-  const hotelIds = Array.from(new Set(bids.map((b: any) => b.hotelId).filter(Boolean)));
-  const hotels = await sbSelect(`hotels?id=in.(${hotelIds.join(",")})&select=id,name,city`);
-  const hotelById = new Map(hotels.map((h: any) => [h.id, h]));
-  const cityNorm = city.toLowerCase().trim();
 
   // ACCEPTED only locks while there's no paid booking yet.
   const acceptedIds = bids.filter((b: any) => b.status === "ACCEPTED").map((b: any) => b.id);
@@ -45,16 +51,19 @@ async function findActiveBidInCity(
     paidByBidId = new Map(bks.map((b: any) => [b.bidId, Number(b.paidAmount || 0)]));
   }
 
+  let hotelMeta: any = null;
   for (const b of bids) {
-    const hotel = hotelById.get(b.hotelId);
-    if (!hotel || String(hotel.city || "").toLowerCase().trim() !== cityNorm) continue;
     if (b.status === "ACCEPTED" && (paidByBidId.get(b.id) || 0) > 0) continue;
     if (currentRequestId && b.requestId && b.requestId === currentRequestId) continue;
+    if (!hotelMeta) {
+      const hotels = await sbSelect(`hotels?id=eq.${hotelId}&select=id,name,city`);
+      hotelMeta = hotels[0] || { id: hotelId, name: "this hotel", city: "" };
+    }
     return {
       bidId:         b.id,
       hotelId:       b.hotelId,
-      hotelName:     hotel.name || "Hotel",
-      city:          hotel.city,
+      hotelName:     hotelMeta.name || "this hotel",
+      city:          hotelMeta.city || "",
       status:        b.status,
       amount:        b.amount,
       counterAmount: b.counterAmount,
@@ -89,22 +98,20 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Pre-flight: 409 if customer already has an active bid in this city.
-  // Skipped for flash-deal bookings — those are instant-purchase, not bids.
+  // v200 — Pre-flight: 409 if customer already has an active bid on THIS
+  // hotel. Skipped for flash-deal bookings — those are instant-purchase,
+  // not bids. Per-hotel rule (was per-city in v195) — customer can bid on
+  // different hotels in the same city, but only one bid per hotel.
   if (!dealId) {
-    const hotels = await sbSelect(`hotels?id=eq.${hotelId}&select=city`);
-    const city = hotels[0]?.city;
-    if (city) {
-      const conflict = await findActiveBidInCity([customerId], city, requestId);
-      if (conflict) {
-        return NextResponse.json(
-          {
-            error: `You already have an active bid in ${city}. Update its budget instead of placing a new one.`,
-            conflict,
-          },
-          { status: 409 }
-        );
-      }
+    const conflict = await findActiveBidOnHotel([customerId], hotelId, requestId);
+    if (conflict) {
+      return NextResponse.json(
+        {
+          error: `You already have an active bid on ${conflict.hotelName}. Update its budget instead of placing a new one.`,
+          conflict,
+        },
+        { status: 409 }
+      );
     }
   }
 
