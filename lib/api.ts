@@ -38,7 +38,19 @@ async function request(path: string, opts?: RequestInit, retries = 3): Promise<a
   return res.json();
 }
 
-// Direct call to Next.js API route (Supabase-backed, bypasses Railway)
+// Direct call to Next.js API route (Supabase-backed, bypasses Railway).
+// On non-OK the thrown Error carries `status` + the parsed `body` so
+// callers can branch on response shape (e.g. 409 conflict on placeBid).
+export class ApiError extends Error {
+  status: number;
+  body: any;
+  constructor(message: string, status: number, body: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
 async function direct(path: string, opts?: RequestInit): Promise<any> {
   const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
   const res = await fetch(path, {
@@ -51,7 +63,7 @@ async function direct(path: string, opts?: RequestInit): Promise<any> {
   });
   const text = await res.text();
   const data = (() => { try { return JSON.parse(text); } catch { return { error: text }; } })();
-  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  if (!res.ok) throw new ApiError(data?.error || "Something went wrong", res.status, data);
   return data;
 }
 
@@ -83,6 +95,12 @@ export const api = {
     return result;
   },
   placeBid:          (data: any)   => direct("/api/bids/place",   { method: "POST", body: JSON.stringify(data) }),
+  // PATCH amount on an active bid (PENDING/COUNTER). Used by the "Update
+  // Budget" slider in /my-bids and the 409-conflict sheet on /bid +
+  // /hotels/[id] — one active bid per (customer × city), so re-bidding is
+  // explicitly a budget update instead of a brand-new bid.
+  updateBidBudget:   (id: string, amount: number, flow?: "place" | "negotiate") =>
+    direct(`/api/bids/${id}/budget`, { method: "PATCH", body: JSON.stringify({ amount, flow }) }),
   acceptBid:         (id: string)  => direct(`/api/bids/${id}/accept`, { method: "POST" }),
   getMyBids:         ()            => direct("/api/bids/my"),
   getFlashDeals:     (city?: string) => direct(`/api/flash/near${city ? `?city=${encodeURIComponent(city)}` : ""}`),

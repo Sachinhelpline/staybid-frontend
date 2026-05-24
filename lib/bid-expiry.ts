@@ -9,8 +9,11 @@
 //     after the scheduled accept time. The cron / trigger-accept route
 //     usually flips the row to ACCEPTED before this; the grace covers any
 //     missed crons.
-//   • PENDING without `auto_accept_at` (LOWBALL, manual review)   → expire
-//     6 h after creation. Hotels who haven't acted in 6 h are unlikely to.
+//   • PENDING without `auto_accept_at`   → expire when the bid's stamped
+//     `expiresAt` passes. The /place endpoint sets it to 1 h for /bid
+//     (reverse auction) and 3 h for Negotiate (single hotel). Falls back
+//     to the same per-flow rule derived from the message pattern when
+//     `expiresAt` is missing on legacy rows.
 //   • COUNTER → expire 60 min after the hotel posted the counter. Customer
 //     either accepts or declines in that window or the offer dies.
 //   • ACCEPTED & not paid → expire 15 min after acceptance (the existing
@@ -32,6 +35,7 @@ export interface BidLike {
   updatedAt?: string | Date | null;
   acceptedAt?: string | Date | null;
   auto_accept_at?: string | Date | null;
+  expiresAt?: string | Date | null;
   message?: string | null;
   hotelMessage?: string | null;
   dealId?: string | null;
@@ -100,7 +104,20 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
     if (!Number.isNaN(acc)) return nowMs > acc + 15 * MIN;
   }
   if (b.status === "PENDING") {
-    return nowMs > created.getTime() + 6 * HOUR;
+    // Per-flow expiry: the backend stamps expiresAt at place-time
+    //   • /bid (reverse auction) → 1h
+    //   • Negotiate (single hotel) → 3h
+    // Fall back to a 1h-or-3h derivation from the message pattern when
+    // expiresAt is missing (legacy rows), then a 6h hard cap. Hotels that
+    // haven't acted by the window are unlikely to.
+    if (b.expiresAt) {
+      const exp = new Date(b.expiresAt).getTime();
+      if (!Number.isNaN(exp)) return nowMs > exp;
+    }
+    const msg = String(b.message || "");
+    const isPlaceFlow = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
+    const ageMs = nowMs - created.getTime();
+    return ageMs > (isPlaceFlow ? 1 * HOUR : 3 * HOUR);
   }
 
   return false;

@@ -21,9 +21,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+// One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
+// hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
+// conflict and let the customer update the existing bid budget instead.
+import ActiveBidConflictSheet, { type BidConflict } from "@/components/ActiveBidConflictSheet";
 // v122.2 — auto-scroll the next form section into view on every selection
 // so the user never has to manually scroll between fields in this 4-step
 // wizard. See lib/auto-next-scroll.ts for the helper.
@@ -434,6 +438,9 @@ export default function BidPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
+  // 409 sheet — populated when any per-hotel placeBid hits the
+  // one-active-bid-per-city rail.
+  const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
   // v163 — live auction state shown on the success screen itself.
   const [liveBids, setLiveBids] = useState<any[]>([]);
   const [launchTs, setLaunchTs] = useState(0);
@@ -872,6 +879,7 @@ export default function BidPage() {
 
           // dealPrice is always ≥ floor, so it clears the backend floor
           // check. The catch is a pure safety net for stale floor data.
+          // Reverse-auction broadcast → flow:"place" (1h timer).
           let placedBidId = "";
           try {
             const bidRes = await api.placeBid({
@@ -880,6 +888,7 @@ export default function BidPage() {
               amount:   dealPrice,
               requestId,
               message:  baseMessage,
+              flow:     "place",
             });
             if (bidRes?.bid?.id) {
               placedBidId = bidRes.bid.id;
@@ -889,6 +898,13 @@ export default function BidPage() {
               );
             }
           } catch (err: any) {
+            // 409 = one-active-bid-per-city. Bubble up with the conflict
+            // payload so the outer catch can show the sheet exactly once
+            // (every per-hotel placeBid in the same city would 409 — no
+            // value stacking sheets per hotel).
+            if (err instanceof ApiError && err.status === 409 && err.body?.conflict) {
+              throw Object.assign(new Error("CONFLICT"), { __conflict: err.body.conflict });
+            }
             const msg = (err?.message || "").toLowerCase();
             if (msg.includes("too low") && floor > 0) {
               const bidRes = await api.placeBid({
@@ -897,6 +913,7 @@ export default function BidPage() {
                 amount:   floor,
                 requestId,
                 message:  baseMessage,
+                flow:     "place",
               });
               if (bidRes?.bid?.id) {
                 placedBidId = bidRes.bid.id;
@@ -928,6 +945,19 @@ export default function BidPage() {
         .map((r) => r.value);
       const successCount = launched.length;
       if (successCount === 0) {
+        // Surface the city-conflict sheet if every per-hotel placeBid hit 409
+        // — same customer + same city = same active bid for all.
+        const conflictReject: any = results.find(
+          (r): r is PromiseRejectedResult => r.status === "rejected" && (r as any).reason?.__conflict
+        );
+        if (conflictReject) {
+          setBidConflict({
+            conflict: conflictReject.reason.__conflict,
+            desiredAmount: budget,
+            maxBudget: budget * 2,
+          });
+          return;
+        }
         const firstErr: any = results.find(r => r.status === "rejected");
         throw new Error(firstErr?.reason?.message || "Could not submit your bid. Please try again.");
       }
@@ -1813,6 +1843,20 @@ export default function BidPage() {
       <style jsx global>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* 409 — one-active-bid-per-city. Closes by tap-outside or Cancel,
+          updates the existing bid budget in place when the slider is used. */}
+      {bidConflict && (
+        <ActiveBidConflictSheet
+          conflict={bidConflict.conflict}
+          flow="place"
+          desiredAmount={bidConflict.desiredAmount}
+          floorPrice={bidConflict.floorPrice}
+          maxBudget={bidConflict.maxBudget}
+          onClose={() => setBidConflict(null)}
+          onUpdated={() => router.push("/my-bids")}
+        />
+      )}
     </div>
   );
 }

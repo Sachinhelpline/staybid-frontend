@@ -46,6 +46,132 @@ function fmtDate(s?: string) {
   return new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+// ── PENDING / COUNTER countdown banner ────────────────────────────────
+// Per-flow expiry: 1h for /bid (reverse auction), 3h for Negotiate. The
+// row's expiresAt already reflects the right window because the place +
+// budget-update endpoints set it server-side. Once it hits 0 the cron
+// sweeps the bid to EXPIRED — until then we show a live HH:MM:SS chip.
+function PendingBidCountdown({ expiresAt, flow }: { expiresAt?: string; flow: "place" | "negotiate" }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!expiresAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [expiresAt]);
+  if (!expiresAt) return null;
+  const ms = new Date(expiresAt).getTime() - now;
+  const expired = ms <= 0;
+  const total = Math.max(0, ms);
+  const h = Math.floor(total / 3600_000);
+  const m = Math.floor((total % 3600_000) / 60_000);
+  const s = Math.floor((total % 60_000) / 1000);
+  const label = expired
+    ? "Bid expired"
+    : (h > 0
+        ? `${h}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s left`
+        : `${m}m ${String(s).padStart(2,"0")}s left`);
+  const tone = expired ? "#c0392b" : (ms < 5 * 60_000 ? "#C77B43" : "#7F9269");
+  return (
+    <div
+      className="mt-3 rounded-xl px-3 py-2 flex items-center gap-2"
+      style={{ background: `${tone}14`, border: `1px solid ${tone}44` }}
+    >
+      <span style={{ fontSize: 16 }}>⏱</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold" style={{ color: tone }}>{label}</p>
+        <p className="text-[0.62rem]" style={{ color: "var(--text-muted)" }}>
+          {flow === "place" ? "Auction window — hotels reply within 1h" : "Negotiate window — hotel replies within 3h"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Inline Update Budget slider ───────────────────────────────────────
+// Lives on every PENDING / COUNTER card so the customer can re-pitch
+// without losing their place in the city. Uses /api/bids/:id/budget which
+// also resets the countdown.
+function UpdateBudgetInline({
+  bid, flow, floor, onUpdated,
+}: { bid: any; flow: "place" | "negotiate"; floor: number; onUpdated: () => void }) {
+  const current = Number(bid.counterAmount || bid.amount || 0);
+  const min = Math.max(100, Math.round(floor || Math.max(current * 0.5, 500)));
+  const max = Math.max(min + 500, Math.round(current * 2 || 8000));
+  const [open, setOpen] = useState(false);
+  const [amt, setAmt] = useState<number>(Math.max(min, current));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => { setAmt(Math.max(min, current)); setOpen(true); }}
+        className="mt-2 w-full py-2 text-xs font-semibold rounded-xl"
+        style={{ background: "var(--bg-pill)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}
+      >
+        💡 Update Budget
+      </button>
+    );
+  }
+
+  const submit = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      await api.updateBidBudget(bid.id, amt, flow);
+      setOpen(false);
+      onUpdated();
+    } catch (e: any) {
+      setErr(e?.message || "Could not update");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 p-3 rounded-xl"
+      style={{ background: "var(--bg-pill)", border: "1px solid var(--border-soft)" }}>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-[0.62rem] uppercase tracking-wide font-semibold" style={{ color: "var(--text-muted)" }}>
+          New budget / night
+        </span>
+        <span className="text-sm font-bold" style={{ color: "#c9911a" }}>
+          ₹{amt.toLocaleString("en-IN")}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min} max={max} step={100}
+        value={amt}
+        onChange={(e) => setAmt(Number(e.target.value))}
+        disabled={busy}
+        style={{ width: "100%", accentColor: "#c9911a" }}
+      />
+      <div className="flex justify-between text-[0.6rem] mt-1" style={{ color: "var(--text-muted)" }}>
+        <span>₹{min.toLocaleString("en-IN")}</span>
+        <span>₹{max.toLocaleString("en-IN")}</span>
+      </div>
+      {bid.status === "COUNTER" && (
+        <p className="text-[0.62rem] mt-1.5" style={{ color: "var(--text-muted)" }}>
+          Drops the counter and re-pitches at your new amount.
+        </p>
+      )}
+      {err && <p className="text-xs mt-2" style={{ color: "#c0392b" }}>{err}</p>}
+      <div className="flex gap-2 mt-2">
+        <button onClick={submit} disabled={busy}
+          className="flex-1 gold-btn py-2 rounded-lg text-xs disabled:opacity-50">
+          {busy ? "Updating…" : "Confirm"}
+        </button>
+        <button onClick={() => setOpen(false)} disabled={busy}
+          className="flex-1 py-2 text-xs font-semibold rounded-lg"
+          style={{ background: "var(--bg-card)", color: "var(--text-soft)", border: "1px solid var(--border-soft)" }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // v194 — split: inner component reads useSearchParams; the default export
 // wraps in <Suspense> so Next 14 static prerender doesn't bail out
 // (https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout).
@@ -814,6 +940,24 @@ function MyBidsPageInner() {
                     bidderTier={autoAcceptInfo[b.id].bidder_tier}
                     onAccepted={() => fetchBids(true)}
                   />
+                )}
+
+                {/* PENDING / COUNTER per-flow countdown + Update Budget. The
+                    countdown is 1h for /bid (b._isPlaceBid), 3h for Negotiate.
+                    Budget update PATCHes the bid and refreshes the list. */}
+                {(b.status === "PENDING" || b.status === "COUNTER") && (
+                  <>
+                    <PendingBidCountdown
+                      expiresAt={b.expiresAt}
+                      flow={b._isPlaceBid ? "place" : "negotiate"}
+                    />
+                    <UpdateBudgetInline
+                      bid={b}
+                      flow={b._isPlaceBid ? "place" : "negotiate"}
+                      floor={Number(b.room?.floorPrice || 0)}
+                      onUpdated={() => fetchBids(true)}
+                    />
+                  </>
                 )}
 
                 {/* Counter — v129 snaps the displayed counter to ₹100 and
