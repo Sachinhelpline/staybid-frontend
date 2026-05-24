@@ -5,7 +5,10 @@ import Link from "next/link";
 // Phase 4 tier-system — Inspiration nudge embedded in the booking-confirmed
 // success modal. Self-dismissing per (user, hotel) via localStorage.
 import InspirationBanner from "@/components/tier/InspirationBanner";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+// 409 city-conflict sheet — one active bid per (customer × city). Surfaces
+// the existing bid + inline "Update Budget" instead of a new bid.
+import ActiveBidConflictSheet, { type BidConflict } from "@/components/ActiveBidConflictSheet";
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
@@ -40,7 +43,7 @@ import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from 
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
 import { filterActiveBids } from "@/lib/bid-expiry";
-import { extractCustomerBidFromMessage } from "@/lib/paid-amount";
+import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
 // v179 — Rule C: 3-hour re-bid cooldown after PENDING/ACCEPTED/COUNTER
 // on the same hotel. Anti-friction guard so customers can't insta-rebid
 // at lower amounts the moment one resolves.
@@ -365,6 +368,9 @@ export default function HotelDetail() {
   // review screen shows complete trip details + lets user choose
   // Pay-Full / Hold-for-24h / Pay-Hold-Now-Settle-At-Hotel.
   const [review, setReview] = useState<null | (Omit<BookingReviewProps,"open"|"onClose">)>(null);
+  // 409 — one-active-bid-per-city sheet. Negotiate path only (Book Now / Flash
+  // bypass the bid rail). Populated by handleNegotiate / executeNegotiate.
+  const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
 
   // v159 — Recently viewed tracker. Push current hotel id to front of
   // `sb_recent_viewed_hotels` localStorage (max 12). Read by /hotels rails.
@@ -1544,7 +1550,7 @@ export default function HotelDetail() {
       const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
       // Record customer intent (no payment for below-floor)
@@ -1575,6 +1581,18 @@ export default function HotelDetail() {
       fetchMyBids();
     } catch(e:any) {
       if (e.message === "__CANCELLED__") { return; }
+      // 409 — already an active bid in this city. Show the conflict sheet
+      // anchored on the existing bid (slider seeded with the negotiate amt).
+      if (e instanceof ApiError && e.status === 409 && e.body?.conflict) {
+        setNegRoom(null);
+        setBidConflict({
+          conflict: e.body.conflict,
+          desiredAmount: negAmt,
+          floorPrice: negRoom?.floorPrice,
+          maxBudget: Math.max(negAmt * 2, (negRoom?.floorPrice || 1000) * 2),
+        });
+        return;
+      }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
         setNegRoom(null);
         openVerifyAndRetry(() => openNegotiate(negRoom));
@@ -1611,7 +1629,7 @@ export default function HotelDetail() {
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
       const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
       // v124 — apply redemption to bid
       if (applied?.couponCode || applied?.walletCreditAppliedInr) {
         try {
@@ -1695,6 +1713,18 @@ export default function HotelDetail() {
       fetchMyBids();
     } catch(e:any) {
       if (e.message === "__CANCELLED__") { return; }
+      // 409 — already an active bid in this city. Razorpay was charged
+      // BEFORE placeBid, so we surface the conflict + a refund note.
+      if (e instanceof ApiError && e.status === 409 && e.body?.conflict) {
+        setNegRoom(null); setReview(null);
+        setBidConflict({
+          conflict: e.body.conflict,
+          desiredAmount: negAmt,
+          floorPrice: negRoom?.floorPrice,
+          maxBudget: Math.max(negAmt * 2, (negRoom?.floorPrice || 1000) * 2),
+        });
+        return;
+      }
       if (jwtRedirect(e.message) || isFirebaseToken()) {
         setNegRoom(null); setReview(null);
         openVerifyAndRetry(() => openNegotiate(negRoom));
@@ -2445,7 +2475,9 @@ export default function HotelDetail() {
                       </div>
                     )}
                     {b.status === "ACCEPTED" && (
-                      <p className="mt-3 text-sm text-emerald-600 font-medium">✓ Booking confirmed at ₹{b.counterAmount || b.amount}</p>
+                      <p className="mt-3 text-sm text-emerald-600 font-medium">
+                        ✓ Accepted at ₹{resolveBidDisplayAmount(b).toLocaleString("en-IN")} — pay to confirm
+                      </p>
                     )}
                     {b.status === "REJECTED" && (
                       <p className="mt-3 text-sm text-red-500">Bid was not accepted</p>
@@ -2631,11 +2663,12 @@ export default function HotelDetail() {
             if (b.status === "PENDING" && b.roomId) pendingByRoom.set(String(b.roomId), b);
             if (b.status === "COUNTER" && b.roomId) counteredByRoom.set(String(b.roomId), b);
           }
-          // Locked amount = customer's actual bid (recovered from message
-          // when below-floor was rewritten to floor), else b.amount.
-          const lockedAmount = lockedBid
-            ? (extractCustomerBidFromMessage(lockedBid.message) ?? Number(lockedBid.amount || 0))
-            : 0;
+          // Locked amount = the price the bid was ACTUALLY accepted at.
+          // resolveBidDisplayAmount picks counterAmount → customer's preferred
+          // price (below-floor recovery) → bid.amount in that order — so an
+          // ACCEPTED-via-counter row no longer shows the customer's original
+          // (lower) offer.
+          const lockedAmount = lockedBid ? resolveBidDisplayAmount(lockedBid) : 0;
           const lockedRoomId = lockedBid?.roomId ? String(lockedBid.roomId) : null;
           return (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
@@ -2676,11 +2709,11 @@ export default function HotelDetail() {
               null;
             const anchorRoomId = anchorBid?.roomId ? String(anchorBid.roomId) : null;
             const isOtherWhenActive = !!anchorBid && !isLockedRoom && !myRoomPending && !myRoomCountered && anchorRoomId !== String(r.id);
-            const anchorAmount = anchorBid
-              ? (anchorBid.status === "COUNTER"
-                  ? Number(anchorBid.counterAmount || anchorBid.amount || 0)
-                  : (extractCustomerBidFromMessage(anchorBid.message) ?? Number(anchorBid.amount || 0)))
-              : 0;
+            // Single resolver: counterAmount → preferred-price → bid.amount.
+            // Pre-fix bug: ACCEPTED branch ignored counterAmount, so an
+            // ACCEPTED-via-counter anchor used the customer's original (often
+            // lower) offer → upgrade-chip delta over-shot or even read 0.
+            const anchorAmount = anchorBid ? resolveBidDisplayAmount(anchorBid) : 0;
             // Legacy alias kept for the per-room badge JSX below that
             // still uses `isOtherWhenLocked` + `lockUpgradeDelta`.
             const isOtherWhenLocked = isOtherWhenActive;
@@ -4494,6 +4527,20 @@ export default function HotelDetail() {
             <button onClick={() => setBidSuccess(false)} className="btn-luxury w-full py-3 rounded-2xl text-sm">Done</button>
           </div>
         </div>
+      )}
+
+      {/* 409 city-conflict sheet — Negotiate path hits this when the
+          customer already has an active bid in the same city. */}
+      {bidConflict && (
+        <ActiveBidConflictSheet
+          conflict={bidConflict.conflict}
+          flow="negotiate"
+          desiredAmount={bidConflict.desiredAmount}
+          floorPrice={bidConflict.floorPrice}
+          maxBudget={bidConflict.maxBudget}
+          onClose={() => setBidConflict(null)}
+          onUpdated={() => { setBidConflict(null); fetchMyBids(); }}
+        />
       )}
 
       {/* v132.9 — Floating back-to-top button (desktop only, surfaces
