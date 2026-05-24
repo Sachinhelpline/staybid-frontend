@@ -109,6 +109,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // v196 Sachin-rule: for /bid (flow="place") broadcasts, hotels whose floor
+    // is at or below the customer's offer auto-accept INSTANTLY — the user
+    // explicitly asked for this ("jish hotel ne auto accept hui hai unke price
+    // rule ke according"). This overrides the v130 "let competition settle"
+    // design — Sachin owns the product decision. Negotiate (single hotel) keeps
+    // its existing schedule-accept lifecycle via /api/bids/[id]/schedule-accept.
+    // We re-read the floor here (not from the earlier check) so dealId-bypass
+    // bids never auto-accept (their floor check was skipped).
+    let autoAccept = false;
+    if (flow === "place" && !dealId) {
+      const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
+      const floor = Number(rooms[0]?.floorPrice || 0);
+      autoAccept = floor > 0 && Number(amount) >= floor;
+    }
+
     const bid = await sbInsert("bids", {
       id: genId("bid"),
       customerId,
@@ -116,12 +131,16 @@ export async function POST(req: NextRequest) {
       roomId,
       amount: Number(amount),
       requestId: requestId || null,
-      status: "PENDING",
+      status: autoAccept ? "ACCEPTED" : "PENDING",
       message: message || null,
-      expiresAt: expiresAtFor(flow),
+      // Auto-accepted bids open the 15-min pay-window timer (same window the
+      // hotel-accept path uses). Pending bids keep their per-flow timer.
+      expiresAt: autoAccept
+        ? new Date(Date.now() + 15 * 60_000).toISOString()
+        : expiresAtFor(flow),
       isBestDeal: false,
     });
-    return NextResponse.json({ bid });
+    return NextResponse.json({ bid, autoAccepted: autoAccept });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Bid failed" }, { status: 500 });
   }

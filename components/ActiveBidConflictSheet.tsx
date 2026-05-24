@@ -67,6 +67,15 @@ export default function ActiveBidConflictSheet({
   const [amount, setAmount] = useState<number>(seed);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string>("");
+  // v196 — after a fan-out PATCH that auto-accepts eligible siblings, surface
+  // a mini winners' circle inside the sheet instead of just closing. Sachin
+  // asked for "jish hotel ne auto accept hui hai" to be visible right at
+  // budget-update time, not buried in /my-bids.
+  const [winners, setWinners] = useState<null | {
+    accepted: number;
+    pending: number;
+    bids: Array<{ bidId: string; hotelId: string; amount: number; status: string; autoAccepted?: boolean }>;
+  }>(null);
 
   // Live countdown
   const [now, setNow] = useState(() => Date.now());
@@ -90,7 +99,21 @@ export default function ActiveBidConflictSheet({
     setErr("");
     setSaving(true);
     try {
-      const res = await api.updateBidBudget(conflict.bidId, amount, flow);
+      const res: any = await api.updateBidBudget(conflict.bidId, amount, flow);
+      // v196 — /api/bids/[id]/budget now returns { bids: [...], autoAcceptedCount,
+      // fanOut } on the v195 PATCH shape. If fan-out happened, show the
+      // winners panel and let the user tap through to /my-bids. Otherwise
+      // (Negotiate single-bid update) just fire the callback + close.
+      if (Array.isArray(res?.bids) && res.bids.length > 0) {
+        const accepted = res.bids.filter((b: any) => b.autoAccepted).length;
+        setWinners({
+          accepted,
+          pending: res.bids.length - accepted,
+          bids: res.bids,
+        });
+        onUpdated?.(res.bids[0]);
+        return;
+      }
       onUpdated?.(res?.bid);
       onClose();
     } catch (e: any) {
@@ -133,6 +156,79 @@ export default function ActiveBidConflictSheet({
           <span style={{ width: 44, height: 5, borderRadius: 3, background: "rgba(0,0,0,0.18)" }} />
         </div>
 
+        {/* v196 winners panel — shown after fan-out PATCH auto-accepts at least
+            one sibling. Replaces the budget-slider view in-place so the user
+            sees the outcome before the sheet closes. */}
+        {winners && (
+          <div>
+            <div className="flex items-start gap-3 mb-3">
+              <span style={{ fontSize: 26 }}>🎉</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-lg leading-tight">
+                  {winners.accepted > 0
+                    ? `${winners.accepted} hotel${winners.accepted > 1 ? "s" : ""} accepted instantly!`
+                    : "Budget updated"}
+                </h3>
+                <p className="text-xs mt-1" style={{ color: "var(--text-muted, #6b6357)" }}>
+                  {winners.accepted > 0
+                    ? `Pay within 15 min to lock ${winners.accepted > 1 ? "any of these stays" : "this stay"}. `
+                    : ""}
+                  {winners.pending > 0
+                    ? `${winners.pending} hotel${winners.pending > 1 ? "s are" : " is"} still reviewing.`
+                    : ""}
+                </p>
+              </div>
+            </div>
+            <div
+              className="rounded-2xl p-2 mb-4 max-h-[260px] overflow-y-auto"
+              style={{ background: "var(--bg-pill, rgba(0,0,0,0.04))", border: "1px solid var(--border-soft, rgba(0,0,0,0.08))" }}
+            >
+              {winners.bids.map((b) => (
+                <div key={b.bidId} className="flex items-center justify-between gap-2 px-2 py-2"
+                  style={{ borderBottom: "1px solid var(--border-soft, rgba(0,0,0,0.05))" }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">
+                      ₹{Number(b.amount || 0).toLocaleString("en-IN")}/night
+                    </p>
+                    <p className="text-[0.62rem]" style={{ color: "var(--text-muted, #6b6357)" }}>
+                      Hotel · {b.hotelId}
+                    </p>
+                  </div>
+                  <span
+                    className="text-[0.6rem] font-bold px-2 py-0.5 rounded-full shrink-0"
+                    style={{
+                      background: b.autoAccepted ? "rgba(127,146,105,0.18)" : "rgba(201,166,107,0.18)",
+                      color: b.autoAccepted ? "#5a6e44" : "#8a6a1f",
+                      border: `1px solid ${b.autoAccepted ? "#7F926955" : "#C9A66B55"}`,
+                    }}
+                  >
+                    {b.autoAccepted ? "✓ Accepted" : "Pending"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { onClose(); router.push("/my-bids"); }}
+                className="w-full py-3 rounded-xl font-bold text-sm"
+                style={{ background: "linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a)", color: "#1a1205" }}
+              >
+                {winners.accepted > 0 ? "💰 Pay Now in My Bids →" : "View My Bids →"}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full py-2 text-xs font-semibold"
+                style={{ color: "var(--text-muted, #6b6357)" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* default budget-update view (hidden when winners panel takes over) */}
+        {!winners && (
+        <>
         {/* heading */}
         <div className="flex items-start gap-3 mb-3">
           <span style={{ fontSize: 26 }}>⚠️</span>
@@ -238,6 +334,8 @@ export default function ActiveBidConflictSheet({
             Cancel
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
