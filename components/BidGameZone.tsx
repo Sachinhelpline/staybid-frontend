@@ -81,7 +81,7 @@ type Burst = { id: number; x: number; y: number };
 
 /* ── Component ───────────────────────────────────────────────────── */
 
-export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, className, zoneLabel = "AUCTION GAME ZONE" }: Props) {
+export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, className, zoneLabel = "STAYBID REVERSE BIDDING ZONE" }: Props) {
   const [phase, setPhase] = useState<Phase>("boot");
   const [activeIdx, setActiveIdx] = useState(0);
   const [maxReached, setMaxReached] = useState(0);
@@ -415,16 +415,20 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
           <div className="bgz-boot-aurora" aria-hidden="true" />
           <div className="bgz-boot-grid" aria-hidden="true" />
           <div className="bgz-boot-content">
-            <div className="bgz-boot-eyebrow">⚡ ENTER THE</div>
+            <div className="bgz-boot-eyebrow">⚡ WELCOME TO</div>
             <h1 className="bgz-boot-title">{zoneLabel}</h1>
             <p className="bgz-boot-sub">
               Real hotels. Real deals. Set your price, watch them compete.
+            </p>
+            <p className="bgz-boot-sub bgz-boot-sub-hi">
+              Sirf 1 minute mein apki pasand ka hotel · room · price par
+              book kare — StayBid ke 100% satisfaction ke saath.
             </p>
             <button
               type="button"
               className="bgz-boot-cta"
               onClick={handleStart}
-              aria-label="Press start to enter the auction game zone"
+              aria-label="Press start to enter the StayBid reverse bidding zone"
             >
               <span className="bgz-boot-cta-glow" aria-hidden="true" />
               <span className="bgz-boot-cta-label">▶ PRESS START</span>

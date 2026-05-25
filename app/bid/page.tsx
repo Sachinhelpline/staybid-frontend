@@ -450,6 +450,36 @@ type Insights = {
 };
 
 /* ──────────────────────────────────────────────────────────────────
+   v203.2 — gaming-zone character morph for the guests/rooms counters.
+   Each count value maps to an emoji string. `key={n}` on the rendering
+   element causes React to remount on change → CSS keyframe @bgzCounterPop
+   fires from below with a bouncy scale-in. Bigger numbers stack more
+   humans / bigger buildings so the UI tells the same story as the number.
+────────────────────────────────────────────────────────────────── */
+function emojiForCount(kind: "adults" | "children" | "rooms", n: number): string {
+  if (n <= 0) return "·";
+  if (kind === "adults") {
+    if (n === 1) return "🧍";
+    if (n === 2) return "👫";
+    if (n === 3) return "👨‍👩‍👦";
+    if (n === 4) return "👨‍👩‍👧‍👦";
+    return "👨‍👩‍👧‍👦🧍"; // 5+
+  }
+  if (kind === "children") {
+    if (n === 1) return "🧒";
+    if (n === 2) return "🧒🧒";
+    if (n === 3) return "🧒🧒🧒";
+    return "🧒🧒🧒🧒";
+  }
+  // rooms — building grows
+  if (n === 1) return "🛏️";
+  if (n === 2) return "🏠";
+  if (n === 3) return "🏡";
+  if (n === 4) return "🏘️";
+  return "🏨";
+}
+
+/* ──────────────────────────────────────────────────────────────────
    DateAutoOpener (v202.2) — opens the LuxuryCalendar exactly once
    on mount when the Dates card slides into view with no check-in
    set. `useRef` guards against repeat fires across re-renders and
@@ -1178,7 +1208,12 @@ export default function BidPage() {
       autoAdvanceDelayMs: 380,
       render: () => (
         <>
-          <div className="bcs-photo-grid">
+          {/* v203.2 — borderless circular city AVATARS (gaming-zone
+              feel), not bordered photo boxes. Selected avatar gets a
+              champagne conic-gradient halo + sparkle; "Hot" cities get
+              a pulsing red dot top-right. Float ambient via parent
+              .bgz-city-grid's stagger animation. */}
+          <div className="bgz-city-grid">
             {Object.entries(CITY_DATA).map(([name, info]) => {
               const isSelected = form.city === name;
               const isSurge = info.demand === "Very High" || info.demand === "High";
@@ -1187,24 +1222,30 @@ export default function BidPage() {
                   key={name}
                   type="button"
                   onClick={() => upd("city", name)}
-                  className={`bcs-photo-tile ${isSelected ? "is-selected" : ""}`}
+                  className={`bgz-city-avatar ${isSelected ? "is-selected" : ""}`}
                   title={`${name} · ${info.demand} demand`}
                 >
-                  <img
-                    src={info.photo}
-                    alt={name}
-                    className="bcs-photo-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      const t = e.currentTarget as HTMLImageElement;
-                      if (t.dataset.fallback) return;
-                      t.dataset.fallback = "1";
-                      t.src = `https://picsum.photos/seed/${encodeURIComponent(name)}/480/600`;
-                    }}
-                  />
-                  <span className="bcs-photo-shade" />
-                  {isSurge && <span className="bcs-photo-surge">🔥 Hot</span>}
-                  <span className="bcs-photo-label">{name}</span>
+                  <span className="bgz-city-halo" aria-hidden="true" />
+                  <span className="bgz-city-disc">
+                    <img
+                      src={info.photo}
+                      alt={name}
+                      className="bgz-city-img"
+                      loading="lazy"
+                      onError={(e) => {
+                        const t = e.currentTarget as HTMLImageElement;
+                        if (t.dataset.fallback) return;
+                        t.dataset.fallback = "1";
+                        t.src = `https://picsum.photos/seed/${encodeURIComponent(name)}/240/240`;
+                      }}
+                    />
+                  </span>
+                  {isSurge && (
+                    <span className="bgz-city-hot" aria-hidden="true">
+                      <span className="bgz-city-hot-pulse" />
+                    </span>
+                  )}
+                  <span className="bgz-city-label">{name}</span>
                 </button>
               );
             })}
@@ -1235,7 +1276,12 @@ export default function BidPage() {
       autoAdvanceDelayMs: 760, // longer delay — user sees 3rd pick light up
       render: () => (
         <>
-          <div className="bcs-photo-grid">
+          {/* v203.2 — 3D metallic icon discs for each property type
+              (gaming-category selection feel, not CAPTCHA photos). Each
+              disc has a radial highlight, a rotating sheen overlay
+              (mix-blend-mode screen for metallic shimmer), gold rim on
+              selection, and a soft drop shadow. Emoji is large + centered. */}
+          <div className="bgz-prop-grid">
             {BID_PROPERTY_PICK.map((pt) => {
               const isSelected = form.propertyTypes.includes(pt.id);
               return (
@@ -1243,31 +1289,23 @@ export default function BidPage() {
                   key={pt.id}
                   type="button"
                   onClick={() => toggleProperty(pt.id)}
-                  className={`bcs-photo-tile ${isSelected ? "is-selected" : ""}`}
+                  className={`bgz-prop-tile ${isSelected ? "is-selected" : ""}`}
                   title={pt.label}
                 >
-                  <img
-                    src={pt.photo}
-                    alt={pt.label}
-                    className="bcs-photo-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      const t = e.currentTarget as HTMLImageElement;
-                      if (t.dataset.fallback) return;
-                      t.dataset.fallback = "1";
-                      t.src = `https://picsum.photos/seed/${encodeURIComponent(pt.id)}/480/600`;
-                    }}
-                  />
-                  <span className="bcs-photo-shade" />
-                  <span className="bcs-photo-label">{pt.label}</span>
+                  <span className="bgz-prop-disc" aria-hidden="true">
+                    <span className="bgz-prop-glyph">{pt.icon}</span>
+                    <span className="bgz-prop-sheen" />
+                  </span>
+                  <span className="bgz-prop-label">{pt.label}</span>
+                  {isSelected && <span className="bgz-prop-check" aria-hidden="true">✓</span>}
                 </button>
               );
             })}
           </div>
-          <p className="bx-budget-suffix" style={{ marginTop: 10, textAlign: "center" }}>
+          <p className="bgz-prop-tally">
             {form.propertyTypes.length >= 3
-              ? `✓ Bid goes only to ${form.propertyTypes.length} property types — no others.`
-              : `${form.propertyTypes.length}/3 picked. Tap ${3 - form.propertyTypes.length} more to continue.`}
+              ? `✓ Bid will reach ${form.propertyTypes.length} property categories`
+              : `${form.propertyTypes.length}/3 picked · tap ${3 - form.propertyTypes.length} more to continue`}
           </p>
         </>
       ),
@@ -1350,26 +1388,46 @@ export default function BidPage() {
       isComplete: () => form.adults >= 1 && form.rooms >= 1,
       summary: () => `${form.adults}A${form.children ? ` + ${form.children}C` : ""} · ${form.rooms}R`,
       render: () => (
-        // v202.2 — `.bcs-native-counters` strips the PGP tile chrome
-        // (border, gold halo, padding) so the guest counter reads as a
-        // flat native row inside the card body — no card-in-card feel.
-        <div className="bx-guest-row bcs-native-counters">
-          {[
-            { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"         },
-            { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"        },
-            { label: "Rooms",    key: "rooms",    min: 1, max: 5,  kind: "rooms"    as GuestKind, sub: "1 / family"      },
-          ].map(({ label, key, min, max, kind, sub }) => (
-            <PremiumGuestPicker
-              key={key}
-              kind={kind}
-              label={label}
-              sublabel={sub}
-              value={(form as any)[key]}
-              onChange={(v) => upd(key, v)}
-              min={min}
-              max={max}
-            />
-          ))}
+        // v203.2 — gaming-zone character morph counters. Each row shows
+        // a big animated emoji that JUMPS up from below every time the
+        // count changes (via React `key` remount + @keyframes
+        // bgzCounterPop). The emoji reflects the count: 1 guest = solo
+        // person, 2 = couple, 3+ = family. Rooms grow from bed → house
+        // → villa → multiple buildings → resort hotel.
+        <div className="bgz-counter-stack">
+          {([
+            { label: "Adults",   key: "adults"   as const, min: 1, max: 10, sub: "12+ yrs" },
+            { label: "Children", key: "children" as const, min: 0, max: 6,  sub: "5-12 yrs" },
+            { label: "Rooms",    key: "rooms"    as const, min: 1, max: 5,  sub: "1 per family" },
+          ]).map(({ label, key, min, max, sub }) => {
+            const n = (form as any)[key] as number;
+            return (
+              <div className="bgz-counter-row" key={key}>
+                <button
+                  type="button"
+                  className="bgz-counter-btn"
+                  onClick={() => upd(key, Math.max(min, n - 1))}
+                  disabled={n <= min}
+                  aria-label={`Decrease ${label}`}
+                >−</button>
+                <div className="bgz-counter-stage">
+                  <div className="bgz-counter-emoji" key={n}>{emojiForCount(key, n)}</div>
+                  <div className="bgz-counter-meta">
+                    <span className="bgz-counter-n" key={`n-${n}`}>{n}</span>
+                    <span className="bgz-counter-label">{label}</span>
+                    <span className="bgz-counter-sub">{sub}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="bgz-counter-btn"
+                  onClick={() => upd(key, Math.min(max, n + 1))}
+                  disabled={n >= max}
+                  aria-label={`Increase ${label}`}
+                >＋</button>
+              </div>
+            );
+          })}
         </div>
       ),
     },
