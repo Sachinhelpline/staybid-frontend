@@ -6819,3 +6819,218 @@ body.is-reel-page {
     transition: none !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — Premium photo-tile grid (cities + property types)
+   - Replaces .bx-pick-grid + .bx-pick-tile inside the Card Stack
+   - Photo-only: NO emoji bubble inside the tile (per Sachin's v202.1
+     feedback: "icon remove karo sirf photo and city name rakho").
+   - Premium rounded corners (18px) + gold halo on selection.
+   - 2 cols on mobile, 3 cols on slightly wider screens.
+────────────────────────────────────────────────────────────────── */
+.bcs-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 420px) {
+  .bcs-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 11px;
+  }
+}
+
+.bcs-photo-tile {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #1f1a0f;
+  box-shadow: 0 4px 14px rgba(31, 26, 15, 0.12),
+              0 1px 3px rgba(31, 26, 15, 0.08);
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease,
+              border-color 0.22s ease;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.bcs-photo-tile:active {
+  transform: scale(0.97);
+}
+.bcs-photo-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(31, 26, 15, 0.18),
+              0 2px 6px rgba(31, 26, 15, 0.10);
+}
+
+.bcs-photo-tile.is-selected {
+  border-color: var(--cozy-champagne, #C9A66B);
+  box-shadow: 0 0 0 4px rgba(201, 166, 107, 0.22),
+              0 12px 26px rgba(201, 166, 107, 0.28),
+              0 2px 6px rgba(31, 26, 15, 0.14);
+  transform: translateY(-3px);
+}
+
+.bcs-photo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  display: block;
+}
+
+.bcs-photo-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+              rgba(31, 26, 15, 0.10) 0%,
+              rgba(31, 26, 15, 0.35) 55%,
+              rgba(31, 26, 15, 0.72) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bcs-photo-tile.is-selected .bcs-photo-shade {
+  background: linear-gradient(180deg,
+              rgba(31, 26, 15, 0.05) 0%,
+              rgba(201, 166, 107, 0.18) 55%,
+              rgba(31, 26, 15, 0.78) 100%);
+}
+
+.bcs-photo-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  color: #FFF9EC;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  text-align: left;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65),
+               0 0 12px rgba(0, 0, 0, 0.35);
+  line-height: 1.18;
+}
+
+.bcs-photo-surge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #FFE7A3;
+  background: rgba(31, 26, 15, 0.55);
+  border: 1px solid rgba(217, 190, 130, 0.40);
+  padding: 3px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Tick badge bottom-right on selected photo tile — gold check */
+.bcs-photo-tile.is-selected::after {
+  content: "✓";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #E7CFA0 0%, #C9A66B 100%);
+  color: #1F1A0F;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(31, 26, 15, 0.35);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — `.bcs-native-counters` strips Premium Guest Picker chrome
+   when the picker renders inside a Card Stack body. The card itself
+   already provides the framing; without this override the picker
+   reads as card-in-card and feels heavy.
+────────────────────────────────────────────────────────────────── */
+.bcs-native-counters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bcs-native-counters .pgp {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 10px 4px !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
+}
+.bcs-native-counters .pgp:last-child {
+  border-bottom: none;
+}
+.bcs-native-counters .pgp:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — Swipe hint chevrons on the active Card Stack card.
+   Tiny animated arrows on the left + right rim signal that the
+   user can swipe horizontally. CSS-only, no JS. Pulse loop ~2.4s
+   with a subtle horizontal nudge so it doesn't shout — reads as
+   ambient hint, not a banner.
+────────────────────────────────────────────────────────────────── */
+.bcs-card.is-active::before,
+.bcs-card.is-active::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 32px;
+  margin-top: -16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 22px;
+  opacity: 0;
+  pointer-events: none;
+  animation: bcsSwipeHint 2.6s ease-in-out infinite;
+}
+.bcs-card.is-active::before {
+  left: 6px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 22' fill='none' stroke='%23C9A66B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='11,3 3,11 11,19'/></svg>");
+}
+.bcs-card.is-active::after {
+  right: 6px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 22' fill='none' stroke='%23C9A66B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='3,3 11,11 3,19'/></svg>");
+  animation-delay: 1.3s;
+}
+@keyframes bcsSwipeHint {
+  0%,  100% { opacity: 0; transform: translateX(0); }
+  20%       { opacity: 0.55; transform: translateX(-3px); }
+  40%, 60%  { opacity: 0.85; transform: translateX(0); }
+  80%       { opacity: 0.30; transform: translateX(3px); }
+}
+.bcs-card.is-active::after {
+  animation-name: bcsSwipeHintR;
+}
+@keyframes bcsSwipeHintR {
+  0%,  100% { opacity: 0; transform: translateX(0); }
+  20%       { opacity: 0.55; transform: translateX(3px); }
+  40%, 60%  { opacity: 0.85; transform: translateX(0); }
+  80%       { opacity: 0.30; transform: translateX(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcs-card.is-active::before,
+  .bcs-card.is-active::after {
+    animation: none !important;
+    opacity: 0.35;
+  }
+}

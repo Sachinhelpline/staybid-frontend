@@ -74,17 +74,22 @@ import {
 // v186 — Phase 4B: "Any" pseudo-option dropped per Sachin's rule —
 // customer MUST pick at least 3 specific property types so the
 // auction targets a curated spread, not a fire-everywhere broadcast.
-const BID_PROPERTY_PICK: { id: string; label: string; icon: string }[] = [
-  { id: "hotel",       label: "Hotel",        icon: "🛎" },
-  { id: "resort",      label: "Resort",       icon: "🌴" },
-  { id: "villa",       label: "Villa",        icon: "🏡" },
-  { id: "cottage",     label: "Cottage",      icon: "🛖" },
-  { id: "guest_house", label: "Guest House",  icon: "🏠" },
-  { id: "homestay",    label: "Homestay",     icon: "🏘" },
-  { id: "camp",        label: "Camp / Glamping", icon: "⛺" },
-  { id: "bungalow",    label: "Bungalow",     icon: "🏯" },
-  { id: "hostel",      label: "Hostel",       icon: "🎒" },
-  { id: "treehouse",   label: "Treehouse",    icon: "🌳" },
+const BID_PROPERTY_PICK: { id: string; label: string; icon: string; photo: string }[] = [
+  // v202.2 — `photo` field added. Each URL is a Unsplash photo themed
+  // to the property type. The destination + property-type tiles now
+  // render photo-only (no emoji bubble inside) per Sachin's v202.1
+  // feedback. `icon` stays as a fallback when photo URL 404s — the
+  // gold tile + label survives gracefully.
+  { id: "hotel",       label: "Hotel",            icon: "🛎",  photo: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=240&q=70&auto=format&fit=crop" },
+  { id: "resort",      label: "Resort",           icon: "🌴",  photo: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=240&q=70&auto=format&fit=crop" },
+  { id: "villa",       label: "Villa",            icon: "🏡",  photo: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=240&q=70&auto=format&fit=crop" },
+  { id: "cottage",     label: "Cottage",          icon: "🛖",  photo: "https://images.unsplash.com/photo-1452784444945-3f422708fe5e?w=240&q=70&auto=format&fit=crop" },
+  { id: "guest_house", label: "Guest House",      icon: "🏠",  photo: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=240&q=70&auto=format&fit=crop" },
+  { id: "homestay",    label: "Homestay",         icon: "🏘",  photo: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=240&q=70&auto=format&fit=crop" },
+  { id: "camp",        label: "Camp / Glamping",  icon: "⛺",  photo: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=240&q=70&auto=format&fit=crop" },
+  { id: "bungalow",    label: "Bungalow",         icon: "🏯",  photo: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=240&q=70&auto=format&fit=crop" },
+  { id: "hostel",      label: "Hostel",           icon: "🎒",  photo: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=240&q=70&auto=format&fit=crop" },
+  { id: "treehouse",   label: "Treehouse",        icon: "🌳",  photo: "https://images.unsplash.com/photo-1488462237308-ecaa28b729d7?w=240&q=70&auto=format&fit=crop" },
 ];
 
 // Room categories the customer can bid for — 7 curated picks with
@@ -437,6 +442,26 @@ type Insights = {
   recentWins: Array<{ id: string; initial: string; amount: number; hotelName: string; city: string; when: string }>;
   city: string | null;
 };
+
+/* ──────────────────────────────────────────────────────────────────
+   DateAutoOpener (v202.2) — opens the LuxuryCalendar exactly once
+   on mount when the Dates card slides into view with no check-in
+   set. `useRef` guards against repeat fires across re-renders and
+   the 80ms RAF defer lets the card-swap animation finish first so
+   the calendar doesn't fight the slide-in for paint priority.
+────────────────────────────────────────────────────────────────── */
+function DateAutoOpener({ shouldOpen, onOpen }: { shouldOpen: boolean; onOpen: () => void }) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (firedRef.current) return;
+    if (!shouldOpen) return;
+    firedRef.current = true;
+    const t = setTimeout(onOpen, 80);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    Main Component
@@ -1147,7 +1172,7 @@ export default function BidPage() {
       autoAdvanceDelayMs: 380,
       render: () => (
         <>
-          <div className="bx-pick-grid size-prominent">
+          <div className="bcs-photo-grid">
             {Object.entries(CITY_DATA).map(([name, info]) => {
               const isSelected = form.city === name;
               const isSurge = info.demand === "Very High" || info.demand === "High";
@@ -1156,21 +1181,24 @@ export default function BidPage() {
                   key={name}
                   type="button"
                   onClick={() => upd("city", name)}
-                  className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
+                  className={`bcs-photo-tile ${isSelected ? "is-selected" : ""}`}
                   title={`${name} · ${info.demand} demand`}
-                  style={{
-                    // v202.1 — actual city photo backdrop. The gradient
-                    // overlay (cocoa→transparent) keeps the city label
-                    // readable on bright photos. Existing .bx-pick-tile
-                    // CSS still owns the gold halo on .is-selected.
-                    backgroundImage: `linear-gradient(160deg, rgba(31,26,15,0.10) 0%, rgba(31,26,15,0.55) 100%), url('${info.photo}')`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
                 >
-                  <span className="bx-pick-icon" style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.55))" }}>{info.emoji}</span>
-                  <span className="bx-pick-label" style={{ color: "#FAF5EB", textShadow: "0 1px 4px rgba(0,0,0,0.65), 0 0 14px rgba(0,0,0,0.35)", fontWeight: 800 }}>{name}</span>
-                  {isSurge && <span className="bx-pick-tag" style={{ color: "#FFD37A", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>🔥</span>}
+                  <img
+                    src={info.photo}
+                    alt={name}
+                    className="bcs-photo-img"
+                    loading="lazy"
+                    onError={(e) => {
+                      const t = e.currentTarget as HTMLImageElement;
+                      if (t.dataset.fallback) return;
+                      t.dataset.fallback = "1";
+                      t.src = `https://picsum.photos/seed/${encodeURIComponent(name)}/480/600`;
+                    }}
+                  />
+                  <span className="bcs-photo-shade" />
+                  {isSurge && <span className="bcs-photo-surge">🔥 Hot</span>}
+                  <span className="bcs-photo-label">{name}</span>
                 </button>
               );
             })}
@@ -1201,7 +1229,7 @@ export default function BidPage() {
       autoAdvanceDelayMs: 760, // longer delay — user sees 3rd pick light up
       render: () => (
         <>
-          <div className="bx-pick-grid">
+          <div className="bcs-photo-grid">
             {BID_PROPERTY_PICK.map((pt) => {
               const isSelected = form.propertyTypes.includes(pt.id);
               return (
@@ -1209,15 +1237,28 @@ export default function BidPage() {
                   key={pt.id}
                   type="button"
                   onClick={() => toggleProperty(pt.id)}
-                  className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
+                  className={`bcs-photo-tile ${isSelected ? "is-selected" : ""}`}
+                  title={pt.label}
                 >
-                  <span className="bx-pick-icon">{pt.icon}</span>
-                  <span className="bx-pick-label">{pt.label}</span>
+                  <img
+                    src={pt.photo}
+                    alt={pt.label}
+                    className="bcs-photo-img"
+                    loading="lazy"
+                    onError={(e) => {
+                      const t = e.currentTarget as HTMLImageElement;
+                      if (t.dataset.fallback) return;
+                      t.dataset.fallback = "1";
+                      t.src = `https://picsum.photos/seed/${encodeURIComponent(pt.id)}/480/600`;
+                    }}
+                  />
+                  <span className="bcs-photo-shade" />
+                  <span className="bcs-photo-label">{pt.label}</span>
                 </button>
               );
             })}
           </div>
-          <p className="bx-budget-suffix" style={{ marginTop: 8, textAlign: "center" }}>
+          <p className="bx-budget-suffix" style={{ marginTop: 10, textAlign: "center" }}>
             {form.propertyTypes.length >= 3
               ? `✓ Bid goes only to ${form.propertyTypes.length} property types — no others.`
               : `${form.propertyTypes.length}/3 picked. Tap ${3 - form.propertyTypes.length} more to continue.`}
@@ -1241,6 +1282,13 @@ export default function BidPage() {
       autoAdvanceDelayMs: 540, // wait for calendar sheet to close cleanly
       render: () => (
         <div className="bx-card">
+          {/* v202.2 — auto-open calendar when the Dates card mounts +
+              checkIn is empty. The wrapper's useRef guard ensures the
+              calendar opens ONCE per card mount, not on every re-render. */}
+          <DateAutoOpener
+            shouldOpen={!form.checkIn}
+            onOpen={() => setCalCfg({ open: true, mode: "checkIn" })}
+          />
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -1291,7 +1339,10 @@ export default function BidPage() {
       isComplete: () => form.adults >= 1 && form.rooms >= 1,
       summary: () => `${form.adults}A${form.children ? ` + ${form.children}C` : ""} · ${form.rooms}R`,
       render: () => (
-        <div className="bx-guest-row">
+        // v202.2 — `.bcs-native-counters` strips the PGP tile chrome
+        // (border, gold halo, padding) so the guest counter reads as a
+        // flat native row inside the card body — no card-in-card feel.
+        <div className="bx-guest-row bcs-native-counters">
           {[
             { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"         },
             { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"        },
