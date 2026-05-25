@@ -24,6 +24,10 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+// v201 — shared premium guest-count picker. Animated figure icons morph
+// with the value (1=👤, 2=👫, 3-4=👨‍👩‍👧, 5+=group) + directional value-roll.
+// Replaces the inline <Counter> previously declared in this file.
+import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPicker";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -376,15 +380,10 @@ function StepBar({ step }: { step: number }) {
 }
 
 /* ── Counter (compact, editorial) ──────────────────────────────── */
-function Counter({ value, onChange, min = 0, max = 10 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
-  return (
-    <div className="bx-counter-ctrl">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="bx-counter-btn" aria-label="decrement">−</button>
-      <span className="bx-counter-val">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="bx-counter-btn" aria-label="increment">+</button>
-    </div>
-  );
-}
+// v201 — local Counter() removed. The Guests & Rooms row now renders three
+// <PremiumGuestPicker> tiles directly (see the loop in the Step 1 form). The
+// legacy `.bx-counter-*` styles remain in globals.css for any third-party
+// callers; nothing in this file references them anymore.
 
 /* ── Probability Dial (SVG, Vegas-style) ───────────────────────── */
 function ProbabilityDial({ pct, color, instant }: { pct: number; color: string; instant: boolean }) {
@@ -1327,7 +1326,7 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* Guests & Rooms — 3 counters in ONE row (v163) */}
+              {/* Guests & Rooms — 3 premium counters in ONE row (v201) */}
               <div data-autonext="guests">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Guests &amp; Rooms</span>
@@ -1335,14 +1334,20 @@ export default function BidPage() {
                 </div>
                 <div className="bx-guest-row">
                   {[
-                    { label: "Adults",   key: "adults",   min: 1, max: 10 },
-                    { label: "Children", key: "children", min: 0, max: 6  },
-                    { label: "Rooms",    key: "rooms",    min: 1, max: 5  },
-                  ].map(({ label, key, min, max }) => (
-                    <div key={key} className="bx-guest-cell">
-                      <p className="bx-guest-cell-label">{label}</p>
-                      <Counter value={(form as any)[key]} onChange={(v) => upd(key, v)} min={min} max={max} />
-                    </div>
+                    { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"        },
+                    { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"       },
+                    { label: "Rooms",    key: "rooms",    min: 1, max: 5,  kind: "rooms"    as GuestKind, sub: "1 unit / family"},
+                  ].map(({ label, key, min, max, kind, sub }) => (
+                    <PremiumGuestPicker
+                      key={key}
+                      kind={kind}
+                      label={label}
+                      sublabel={sub}
+                      value={(form as any)[key]}
+                      onChange={(v) => upd(key, v)}
+                      min={min}
+                      max={max}
+                    />
                   ))}
                 </div>
               </div>

@@ -6403,3 +6403,142 @@ body.is-reel-page {
 }
 .hx-room-arrow:active { transform: translateY(-50%) scale(0.94); }
 @media (hover: none) { .hx-room-arrow { display: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PremiumGuestPicker (v201) — cozy minimal animated counter
+   Used across /bid + /hotels/[id] global picker + flash deal modal.
+   Single-counter component; host stacks 2-3 in a flex/grid row.
+   Add new tones to .pgp-sub-* if a new colour band is needed.
+═════════════════════════════════════════════════════════════════════ */
+.pgp {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(31, 26, 15, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  min-width: 0;
+}
+.pgp:hover {
+  transform: translateY(-1px);
+  border-color: rgba(201, 166, 107, 0.42);
+  box-shadow: 0 4px 12px -4px rgba(201, 166, 107, 0.22);
+}
+
+.pgp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.pgp-icon {
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-block;
+  animation: pgpIconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pgpIconPop {
+  0%   { transform: scale(0.78); opacity: 0.5; }
+  60%  { transform: scale(1.14); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+.pgp-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.pgp-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.pgp-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 166, 107, 0.10);
+  color: var(--text-base);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.pgp-btn:hover:not(:disabled) {
+  background: rgba(201, 166, 107, 0.24);
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(201, 166, 107, 0.14);
+}
+.pgp-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.pgp-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.pgp-val {
+  font-size: 1.18rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-base);
+  min-width: 24px;
+  text-align: center;
+  display: inline-block;
+}
+.pgp-val[data-dir="up"]   { animation: pgpRollUp   0.28s ease both; }
+.pgp-val[data-dir="down"] { animation: pgpRollDown 0.28s ease both; }
+@keyframes pgpRollUp {
+  from { transform: translateY(7px);  opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes pgpRollDown {
+  from { transform: translateY(-7px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.pgp-sub {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.pgp-sub-amber   { color: #b8871a; }
+.pgp-sub-emerald { color: #4a7f4a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pgp,
+  .pgp:hover,
+  .pgp-btn,
+  .pgp-btn:hover:not(:disabled),
+  .pgp-btn:active:not(:disabled),
+  .pgp-icon,
+  .pgp-val[data-dir="up"],
+  .pgp-val[data-dir="down"] {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
