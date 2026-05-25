@@ -28,6 +28,11 @@ import LuxuryCalendar from "@/components/LuxuryCalendar";
 // with the value (1=👤, 2=👫, 3-4=👨‍👩‍👧, 5+=group) + directional value-roll.
 // Replaces the inline <Counter> previously declared in this file.
 import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPicker";
+// v202 — mobile/tablet Card Stack flow for Step 1. Desktop (>= 1024px)
+// keeps the existing inline scrollable list of sub-sections. On mobile
+// + tablet, Step 1 collapses into a Tinder/Wallet-style card stack
+// driven by `useIsMobileTablet()` (SSR-safe matchMedia).
+import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidCardStack";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -535,6 +540,13 @@ export default function BidPage() {
   };
 
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+
+  // v202 — mobile/tablet flag drives the Card Stack render path for
+  // Step 1 sub-sections. Desktop (>= 1024px) reads the existing inline
+  // sub-sections; mobile/tablet swap into <BidCardStack>. SSR-safe —
+  // returns false on first render so the server-rendered markup
+  // matches the desktop path.
+  const isMobile = useIsMobileTablet();
 
   // Luxury calendar
   const [calCfg, setCalCfg] = useState<{
@@ -1110,6 +1122,176 @@ export default function BidPage() {
     );
   }
 
+  /* ─────────────── v202 BidCardStack — Step 1 mobile cards ───────────
+     Built per render so closures over `form` / `nights` / `city` stay
+     fresh. The cards reuse the existing `bx-*` Tailwind+CSS surface
+     classes (orbs, date buttons, guest-row) so visually nothing
+     regresses — only the LAYOUT (one card at a time + breadcrumb
+     chips + sticky CTA) is new. Property type uses the SAME 3-pick
+     validation as the desktop path. */
+  const step1Cards: BidCard[] = [
+    {
+      key: "destination",
+      icon: "🌍",
+      title: "Where do you want to stay?",
+      hint: "Pick a city to see hotels listening tonight",
+      isComplete: () => !!form.city,
+      summary: () => `📍 ${form.city}`,
+      render: () => (
+        <>
+          <div className="bx-pick-grid size-prominent">
+            {Object.entries(CITY_DATA).map(([name, info]) => {
+              const isSelected = form.city === name;
+              const isSurge = info.demand === "Very High" || info.demand === "High";
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => upd("city", name)}
+                  className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
+                  title={`${name} · ${info.demand} demand`}
+                >
+                  <span className="bx-pick-icon">{info.emoji}</span>
+                  <span className="bx-pick-label">{name}</span>
+                  {isSurge && <span className="bx-pick-tag" style={{ color: "#C77B43" }}>🔥</span>}
+                </button>
+              );
+            })}
+          </div>
+          {city && (
+            <div className="bx-insight" style={{ marginTop: 12 }}>
+              <span className="bx-insight-icon">🤖</span>
+              <div>
+                <div className="bx-insight-title">AI Insight</div>
+                <div className="bx-insight-body">{city.tip}</div>
+                <div className="bx-insight-meta">
+                  Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotels listening
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "propertyType",
+      icon: "🏨",
+      title: "What kind of property?",
+      hint: "Pick at least 3 types to broaden the auction",
+      isComplete: () => form.propertyTypes.length >= 3,
+      summary: () => `${form.propertyTypes.length} types`,
+      render: () => (
+        <>
+          <div className="bx-pick-grid">
+            {BID_PROPERTY_PICK.map((pt) => {
+              const isSelected = form.propertyTypes.includes(pt.id);
+              return (
+                <button
+                  key={pt.id}
+                  type="button"
+                  onClick={() => toggleProperty(pt.id)}
+                  className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
+                >
+                  <span className="bx-pick-icon">{pt.icon}</span>
+                  <span className="bx-pick-label">{pt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="bx-budget-suffix" style={{ marginTop: 8, textAlign: "center" }}>
+            {form.propertyTypes.length >= 3
+              ? `✓ Bid goes only to ${form.propertyTypes.length} property types — no others.`
+              : `${form.propertyTypes.length}/3 picked. Tap ${3 - form.propertyTypes.length} more to continue.`}
+          </p>
+        </>
+      ),
+    },
+    {
+      key: "dates",
+      icon: "📅",
+      title: "When are you travelling?",
+      hint: "Pick check-in and check-out dates",
+      isComplete: () => !!(form.checkIn && form.checkOut && nights >= 1),
+      summary: () => {
+        if (!form.checkIn || !form.checkOut) return "Dates";
+        const ci = new Date(form.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        const co = new Date(form.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        return `${ci} → ${co} · ${nights}n`;
+      },
+      render: () => (
+        <div className="bx-card">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setCalCfg({ open: true, mode: "checkIn" })}
+              className={`bx-date-btn ${form.checkIn ? "is-set" : ""}`}
+            >
+              <div>
+                <div className="bx-date-btn-eyebrow">Check-in</div>
+                <div className={`bx-date-btn-v ${form.checkIn ? "" : "is-empty"}`}>
+                  {form.checkIn
+                    ? new Date(form.checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                    : "Pick date"}
+                </div>
+              </div>
+              <span className="bx-date-btn-icon">📅</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalCfg({ open: true, mode: "checkOut" })}
+              className={`bx-date-btn ${form.checkOut ? "is-set" : ""}`}
+            >
+              <div>
+                <div className="bx-date-btn-eyebrow">Check-out</div>
+                <div className={`bx-date-btn-v ${form.checkOut ? "" : "is-empty"}`}>
+                  {form.checkOut
+                    ? new Date(form.checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                    : "Pick date"}
+                </div>
+              </div>
+              <span className="bx-date-btn-icon">📅</span>
+            </button>
+          </div>
+          {nights > 0 && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <span className="bx-nights-pill">
+                {nights} {nights === 1 ? "night" : "nights"}
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "guests",
+      icon: "👥",
+      title: "Who's coming?",
+      hint: "Adults, children + how many rooms",
+      isComplete: () => form.adults >= 1 && form.rooms >= 1,
+      summary: () => `${form.adults}A${form.children ? ` + ${form.children}C` : ""} · ${form.rooms}R`,
+      render: () => (
+        <div className="bx-guest-row">
+          {[
+            { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"         },
+            { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"        },
+            { label: "Rooms",    key: "rooms",    min: 1, max: 5,  kind: "rooms"    as GuestKind, sub: "1 / family"      },
+          ].map(({ label, key, min, max, kind, sub }) => (
+            <PremiumGuestPicker
+              key={key}
+              kind={kind}
+              label={label}
+              sublabel={sub}
+              value={(form as any)[key]}
+              onChange={(v) => upd(key, v)}
+              min={min}
+              max={max}
+            />
+          ))}
+        </div>
+      ),
+    },
+  ];
+
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
@@ -1177,8 +1359,19 @@ export default function BidPage() {
 
         <div className={`transition-all duration-200 ${animating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
 
-          {/* ═══════════ STEP 1: WHERE & WHEN ═══════════ */}
+          {/* ═══════════ STEP 1: WHERE & WHEN ═══════════
+              v202 — mobile/tablet swaps the inline list of 4 sub-
+              sections for a Card Stack (one card on top, peeks
+              behind, breadcrumb chips at top, sticky CTA). Desktop
+              keeps the existing scrollable layout intact. */}
           {step === 1 && (
+            isMobile ? (
+              <BidCardStack
+                cards={step1Cards}
+                onAllComplete={() => goStep(2)}
+                finalCtaLabel="Your Stay →"
+              />
+            ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* Destination */}
@@ -1353,6 +1546,7 @@ export default function BidPage() {
               </div>
 
             </div>
+            )
           )}
 
           {/* ═══════════ STEP 2: YOUR STAY — room + compact preferences ═══ */}
