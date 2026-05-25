@@ -35,6 +35,11 @@ export interface BidCard {
   summary: () => string;
   /** Card body — receives an `onAdvance` callback to programmatically move forward. */
   render: (ctx: { onAdvance: () => void; cardIdx: number; activeIdx: number }) => ReactNode;
+  /** v202.1 — auto-advance once `isComplete()` returns true. Delay in ms
+   *  between completion and advance lets the user see selection feedback
+   *  (e.g. a 3rd property type lighting up) before the card slides away. */
+  autoAdvance?: boolean;
+  autoAdvanceDelayMs?: number;
 }
 
 interface Props {
@@ -90,6 +95,58 @@ export default function BidCardStack({ cards, onAllComplete, finalCtaLabel, clas
   const isLastCard = activeIdx === cards.length - 1;
   const canAdvanceNow = activeCard?.isComplete() ?? false;
 
+  // v202.1 — auto-advance per Sachin's feedback. When the active card has
+  // `autoAdvance: true` AND `isComplete()` flips true, schedule an advance
+  // after a small delay so the user sees the selection feedback. NEVER
+  // auto-advances the LAST card (user explicitly taps "Continue →" there
+  // because that triggers `onAllComplete` → step transition / submit flow).
+  useEffect(() => {
+    if (!activeCard) return;
+    if (!activeCard.autoAdvance) return;
+    if (isLastCard) return;
+    if (!canAdvanceNow) return;
+    const delay = activeCard.autoAdvanceDelayMs ?? 450;
+    const t = setTimeout(() => {
+      // Re-check inside the timer — user may have undone the pick in the
+      // intervening ms, in which case we politely stand down.
+      if (activeCard.isComplete()) advance();
+    }, delay);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCard, canAdvanceNow, isLastCard]);
+
+  // v202.1 — horizontal swipe gestures (Sachin feedback: "right swife
+  // kare toh back, left/up swipe kare toh next"). Threshold 60px keeps
+  // accidental brushes from triggering. Vertical scroll inside a card
+  // body works normally — we only consume horizontal swipes.
+  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }, []);
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const elapsed = Date.now() - start.t;
+    // Must be a fast-ish horizontal swipe (not a slow vertical scroll).
+    if (elapsed > 600) return;
+    if (Math.abs(dx) < 60) return;
+    if (Math.abs(dy) > Math.abs(dx)) return; // vertical scroll, ignore
+    if (dx < 0) {
+      // Left swipe → next (mirrors Tinder/IG stories: drag left to advance)
+      if (canAdvanceNow && !isLastCard) advance();
+    } else {
+      // Right swipe → back (go to previous card if reached)
+      if (activeIdx > 0) jumpTo(activeIdx - 1);
+    }
+  }, [activeIdx, advance, canAdvanceNow, isLastCard, jumpTo]);
+
   return (
     <div className={`bcs-shell ${className || ""}`.trim()}>
       {/* ── Breadcrumb chips — completed cards collapse here ─────── */}
@@ -120,7 +177,12 @@ export default function BidCardStack({ cards, onAllComplete, finalCtaLabel, clas
       </div>
 
       {/* ── Card stack — active card on top + 2 peeks behind ────── */}
-      <div className="bcs-stack" ref={stackRef}>
+      <div
+        className="bcs-stack"
+        ref={stackRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         {cards.map((c, i) => {
           const offset = i - activeIdx;
           // Only render the 3 cards visible in the stack: prev (slides

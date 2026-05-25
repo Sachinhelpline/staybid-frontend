@@ -116,13 +116,19 @@ const MEAL_EMOJI: Record<string, string> = {
 };
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
-const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
-  Mussoorie:  { emoji: "🏔️", avg: 3200, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Weekend & holiday peak — bid early for best rates!",  state: "Uttarakhand",       tags: ["Hill Station", "Honeymoon", "Nature"] },
-  Dhanaulti:  { emoji: "🌲", avg: 2800, demand: "Medium",    demandColor: "text-amber-600  bg-amber-50  border-amber-200",  tip: "Weekdays offer up to 25% better deals here.",         state: "Uttarakhand",       tags: ["Forest", "Peaceful", "Couples"] },
-  Rishikesh:  { emoji: "🕉️", avg: 2400, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Yoga retreat season — adventure packages popular.",   state: "Uttarakhand",       tags: ["Adventure", "Spiritual", "Yoga"] },
-  Shimla:     { emoji: "❄️", avg: 3500, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Peak hill-station demand — book ahead for savings.",  state: "Himachal Pradesh",  tags: ["Snow", "Heritage", "Family"] },
-  Manali:     { emoji: "🏂", avg: 3800, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Adventure season — premium pricing, bid smart.",      state: "Himachal Pradesh",  tags: ["Skiing", "Adventure", "Honeymoon"] },
-  Dehradun:   { emoji: "🌿", avg: 2200, demand: "Low",       demandColor: "text-emerald-600 bg-emerald-50 border-emerald-200", tip: "Low season — great deals & immediate accepts!",    state: "Uttarakhand",       tags: ["Gateway", "Business", "Budget"] },
+// v202.1 — `photo` field added. Each URL is a Unsplash hi-res landscape
+// keyed to the city's natural character (mountain / forest / river /
+// snow). The destination card uses it as a circular orb background;
+// the emoji stays as a fallback if the URL 404s. Per CLAUDE.md v131.5
+// rule: ONLY curl-verified Unsplash IDs on customer surfaces — these
+// are tested-good photo IDs from the public landscape collection.
+const CITY_DATA: Record<string, { emoji: string; photo: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
+  Mussoorie:  { emoji: "🏔️", photo: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=240&q=72&auto=format&fit=crop", avg: 3200, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Weekend & holiday peak — bid early for best rates!",  state: "Uttarakhand",       tags: ["Hill Station", "Honeymoon", "Nature"] },
+  Dhanaulti:  { emoji: "🌲", photo: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=240&q=72&auto=format&fit=crop", avg: 2800, demand: "Medium",    demandColor: "text-amber-600  bg-amber-50  border-amber-200",  tip: "Weekdays offer up to 25% better deals here.",         state: "Uttarakhand",       tags: ["Forest", "Peaceful", "Couples"] },
+  Rishikesh:  { emoji: "🕉️", photo: "https://images.unsplash.com/photo-1545071677-eea2dbb59f57?w=240&q=72&auto=format&fit=crop", avg: 2400, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Yoga retreat season — adventure packages popular.",   state: "Uttarakhand",       tags: ["Adventure", "Spiritual", "Yoga"] },
+  Shimla:     { emoji: "❄️", photo: "https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=240&q=72&auto=format&fit=crop", avg: 3500, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Peak hill-station demand — book ahead for savings.",  state: "Himachal Pradesh",  tags: ["Snow", "Heritage", "Family"] },
+  Manali:     { emoji: "🏂", photo: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=240&q=72&auto=format&fit=crop", avg: 3800, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Adventure season — premium pricing, bid smart.",      state: "Himachal Pradesh",  tags: ["Skiing", "Adventure", "Honeymoon"] },
+  Dehradun:   { emoji: "🌿", photo: "https://images.unsplash.com/photo-1503631015414-3527d1e4506f?w=240&q=72&auto=format&fit=crop", avg: 2200, demand: "Low",       demandColor: "text-emerald-600 bg-emerald-50 border-emerald-200", tip: "Low season — great deals & immediate accepts!",    state: "Uttarakhand",       tags: ["Gateway", "Business", "Budget"] },
 };
 
 /* ── Room & Experience Options ─────────────────────────────────── */
@@ -1137,6 +1143,8 @@ export default function BidPage() {
       hint: "Pick a city to see hotels listening tonight",
       isComplete: () => !!form.city,
       summary: () => `📍 ${form.city}`,
+      autoAdvance: true,
+      autoAdvanceDelayMs: 380,
       render: () => (
         <>
           <div className="bx-pick-grid size-prominent">
@@ -1150,10 +1158,19 @@ export default function BidPage() {
                   onClick={() => upd("city", name)}
                   className={`bx-pick-tile ${isSelected ? "is-selected" : ""}`}
                   title={`${name} · ${info.demand} demand`}
+                  style={{
+                    // v202.1 — actual city photo backdrop. The gradient
+                    // overlay (cocoa→transparent) keeps the city label
+                    // readable on bright photos. Existing .bx-pick-tile
+                    // CSS still owns the gold halo on .is-selected.
+                    backgroundImage: `linear-gradient(160deg, rgba(31,26,15,0.10) 0%, rgba(31,26,15,0.55) 100%), url('${info.photo}')`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
                 >
-                  <span className="bx-pick-icon">{info.emoji}</span>
-                  <span className="bx-pick-label">{name}</span>
-                  {isSurge && <span className="bx-pick-tag" style={{ color: "#C77B43" }}>🔥</span>}
+                  <span className="bx-pick-icon" style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.55))" }}>{info.emoji}</span>
+                  <span className="bx-pick-label" style={{ color: "#FAF5EB", textShadow: "0 1px 4px rgba(0,0,0,0.65), 0 0 14px rgba(0,0,0,0.35)", fontWeight: 800 }}>{name}</span>
+                  {isSurge && <span className="bx-pick-tag" style={{ color: "#FFD37A", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>🔥</span>}
                 </button>
               );
             })}
@@ -1180,6 +1197,8 @@ export default function BidPage() {
       hint: "Pick at least 3 types to broaden the auction",
       isComplete: () => form.propertyTypes.length >= 3,
       summary: () => `${form.propertyTypes.length} types`,
+      autoAdvance: true,
+      autoAdvanceDelayMs: 760, // longer delay — user sees 3rd pick light up
       render: () => (
         <>
           <div className="bx-pick-grid">
@@ -1218,6 +1237,8 @@ export default function BidPage() {
         const co = new Date(form.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
         return `${ci} → ${co} · ${nights}n`;
       },
+      autoAdvance: true,
+      autoAdvanceDelayMs: 540, // wait for calendar sheet to close cleanly
       render: () => (
         <div className="bx-card">
           <div className="grid grid-cols-2 gap-3">
@@ -1986,7 +2007,13 @@ export default function BidPage() {
           )}
         </div>
 
-        {/* Navigation */}
+        {/* Navigation — v202.1: hidden on mobile during Step 1 because
+            BidCardStack ships its own sticky CTA rail. Showing both
+            left a "Next → / Stay details →" double-CTA bug visible
+            in screenshot 3 of Sachin's v202 feedback. Desktop sees
+            the row as before; mobile Step 2/3 also see it (only the
+            card-stack screen suppresses it). */}
+        {!(isMobile && step === 1) && (
         <div className="bx-nav-row">
           {step > 1 && (
             <button onClick={() => goStep(step - 1)} className="bx-nav-back">
@@ -1999,6 +2026,7 @@ export default function BidPage() {
             </button>
           )}
         </div>
+        )}
 
         <p style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 14, letterSpacing: "0.02em" }}>
           Step {step} of {STEPS.length} · {STEPS[step - 1]}
