@@ -37,6 +37,7 @@
 ═══════════════════════════════════════════════════════════════════ */
 
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import gsap from "gsap";
 import type { BidCard } from "./BidCardStack";
 import {
@@ -87,6 +88,14 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
   const [muted, setMutedState] = useState(false);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [, forceRender] = useState(0);
+  // v203.1 — portal-mount the game zone to document.body so the
+  // `position: fixed` boot screen escapes the /bid page's Tailwind
+  // `transition-all translate-y-0` parent. That parent's CSS transform
+  // creates a containing block which traps `position: fixed`, collapsing
+  // .bgz-boot to 0×0. Portal pattern matches CLAUDE.md v132.2 /v128.5
+  // precedents (createPortal to escape containing-block ancestors).
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
   const stepRef = useRef<HTMLDivElement | null>(null);
@@ -393,7 +402,12 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
 
   /* ── Rendering ───────────────────────────────────────────────────── */
 
-  return (
+  // v203.1 — Build the entire UI tree, then portal it to document.body
+  // so the position-fixed boot screen + full-viewport stage escape the
+  // /bid page's transform-trap. SSR-safe: portalReady starts false, flips
+  // true on mount, so first paint returns null (no hydration mismatch
+  // since the parent /bid page is a client component).
+  const ui = (
     <div className={`bgz-shell ${className || ""}`.trim()}>
       {/* PHASE 1 — Boot screen */}
       {phase === "boot" && (
@@ -573,4 +587,7 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
       )}
     </div>
   );
+
+  if (!portalReady || typeof document === "undefined") return null;
+  return createPortal(ui, document.body);
 }
