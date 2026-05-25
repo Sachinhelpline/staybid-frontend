@@ -31,8 +31,14 @@ import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPic
 // v202 — mobile/tablet Card Stack flow for Step 1. Desktop (>= 1024px)
 // keeps the existing inline scrollable list of sub-sections. On mobile
 // + tablet, Step 1 collapses into a Tinder/Wallet-style card stack
-// driven by `useIsMobileTablet()` (SSR-safe matchMedia).
+// v203 — mobile/tablet renders <BidGameZone> for a cinematic
+// PlayStation-style game-zone (boot screen → connected stage with
+// parallax + GSAP choreography + Web Audio cues + haptics). Desktop
+// keeps the legacy inline flow. v202 BidCardStack is preserved as the
+// graceful fallback if the game zone ever needs to be killed (single
+// import swap restores the older UX).
 import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidCardStack";
+import BidGameZone from "@/components/BidGameZone";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -1280,13 +1286,18 @@ export default function BidPage() {
       },
       autoAdvance: true,
       autoAdvanceDelayMs: 540, // wait for calendar sheet to close cleanly
-      render: () => (
+      render: (ctx) => (
         <div className="bx-card">
-          {/* v202.2 — auto-open calendar when the Dates card mounts +
-              checkIn is empty. The wrapper's useRef guard ensures the
-              calendar opens ONCE per card mount, not on every re-render. */}
+          {/* v203 — auto-open calendar ONLY on FORWARD arrival to the
+              Dates card. `firstReach` is the BidGameZone-supplied flag
+              that's true the first time the user lands on this card.
+              When the user swipes BACK from a later card, firstReach is
+              false → no re-open → no fight with back navigation. The
+              legacy BidCardStack doesn't pass `firstReach` (undefined)
+              so we treat undefined as "first reach" to preserve old
+              behaviour on desktop / older renderers. */}
           <DateAutoOpener
-            shouldOpen={!form.checkIn}
+            shouldOpen={!form.checkIn && (ctx as { firstReach?: boolean }).firstReach !== false}
             onOpen={() => setCalCfg({ open: true, mode: "checkIn" })}
           />
           <div className="grid grid-cols-2 gap-3">
@@ -1438,7 +1449,14 @@ export default function BidPage() {
               keeps the existing scrollable layout intact. */}
           {step === 1 && (
             isMobile ? (
-              <BidCardStack
+              /* v203 — BidGameZone replaces BidCardStack on mobile/tablet.
+                 Boot screen → connected parallax stage → 4 steps → handoff
+                 to step 2. Same `BidCard[]` interface so step1Cards
+                 authored for v202 renders byte-identical. The auto-advance
+                 + DateAutoOpener back-nav regression bugs are fixed inside
+                 BidGameZone (forward-only triggers). To revert to the v202
+                 stacked-cards UX, swap this line back to <BidCardStack>. */
+              <BidGameZone
                 cards={step1Cards}
                 onAllComplete={() => goStep(2)}
                 finalCtaLabel="Your Stay →"
