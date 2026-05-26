@@ -36,10 +36,11 @@
    jsx blocks in component files).
 ═══════════════════════════════════════════════════════════════════ */
 
-import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import type { BidCard } from "./BidCardStack";
+import NaturalMountainScene from "./bid-game/NaturalMountainScene";
 import {
   isMuted as soundIsMuted,
   playComplete,
@@ -376,22 +377,10 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
     [triggerBurstAt]
   );
 
-  /* ── Ambient particle field — 18 floating gold embers ───────────── */
-  const ambientParticles = useMemo(
-    () =>
-      Array.from({ length: 18 }, (_, i) => {
-        const seed = i * 73.7;
-        return {
-          id: i,
-          left: (Math.sin(seed) * 0.5 + 0.5) * 100,
-          delay: (i * 0.4) % 6,
-          duration: 7 + (i % 5),
-          size: 2 + (i % 4),
-          opacity: 0.18 + ((i * 13) % 30) / 100,
-        };
-      }),
-    []
-  );
+  /* v205 — ambient gold-ember particle field removed. Replaced by the
+     NaturalMountainScene's real Unsplash mountain photos + animated
+     SVG birds + climber trail overlay. The `useMemo` import below
+     stays unused for now (cheap; harmless); future cleanup can drop. */
 
   // Force re-render once / sec so the activeCard's isComplete reads stay live
   useEffect(() => {
@@ -412,8 +401,10 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
       {/* PHASE 1 — Boot screen */}
       {phase === "boot" && (
         <div className="bgz-boot" ref={bootRef} role="dialog" aria-label="Auction game zone — press start">
-          <div className="bgz-boot-aurora" aria-hidden="true" />
-          <div className="bgz-boot-grid" aria-hidden="true" />
+          {/* v205 — real natural mountain backdrop (Unsplash photo at
+              dawn) replaces v204's cheap procedural Three.js scene.
+              Static frame on boot — no climber trail, no birds. */}
+          <NaturalMountainScene step={0} totalSteps={cards.length} active={false} />
           <div className="bgz-boot-content">
             <div className="bgz-boot-eyebrow">⚡ WELCOME TO</div>
             <h1 className="bgz-boot-title">{zoneLabel}</h1>
@@ -441,26 +432,13 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
       {/* PHASE 2 — Game zone stage */}
       {(phase === "playing" || phase === "exiting") && (
         <div className="bgz-stage" ref={stageRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {/* Ambient backdrop layers */}
+          {/* v205 — natural mountain scene cross-fades real photos per
+              step + animated climber trail overlay. Replaces v204's
+              cheap Three.js scene. Photos from curl-verified Unsplash
+              IDs (Mussoorie dawn → Manali twilight) so the colors are
+              actually-real sky-blue, real green forests, real snow. */}
           <div className="bgz-stage-backdrop" aria-hidden="true">
-            <div className="bgz-stage-aurora" />
-            <div className="bgz-stage-vignette" />
-            <div className="bgz-stage-particles">
-              {ambientParticles.map((p) => (
-                <span
-                  key={p.id}
-                  className="bgz-particle"
-                  style={{
-                    left: `${p.left}%`,
-                    width: `${p.size}px`,
-                    height: `${p.size}px`,
-                    opacity: p.opacity,
-                    animationDelay: `${p.delay}s`,
-                    animationDuration: `${p.duration}s`,
-                  }}
-                />
-              ))}
-            </div>
+            <NaturalMountainScene step={activeIdx} totalSteps={cards.length} active />
           </div>
 
           {/* Top HUD — step pips + sound toggle */}

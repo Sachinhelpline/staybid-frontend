@@ -8121,3 +8121,119 @@ body.is-reel-page {
 .bgz-cta-btn-final {
   margin-bottom: 2px;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   v205 — NaturalMountainScene
+   Real photographic mountain backdrops cross-faded per step. Replaces
+   v204's cheap Three.js scene. All photos curl-verified Unsplash IDs.
+═══════════════════════════════════════════════════════════════════ */
+.nms-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(180deg, #95b8d8 0%, #d4c099 100%);
+}
+
+/* Cross-fading real mountain photos. All photos stay in DOM at opacity 0;
+   active step ramps to 1 with 1.2s ease. Ken-burns subtle zoom on the
+   active photo gives "alive" feel without distorting the natural look. */
+.nms-photo {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 14s linear;
+  will-change: opacity, transform;
+}
+.nms-photo.is-active {
+  opacity: 1;
+  transform: scale(1.0);
+  transition:
+    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 14s linear;
+}
+
+/* Bottom vignette only — preserves the natural sky color at top, just
+   darkens the lower edge so card content sits over readable surface.
+   Side vignette removed since user wanted "real natural" — no fake
+   tunnel effect. */
+.nms-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 55%,
+    rgba(15, 12, 8, 0.18) 80%,
+    rgba(15, 12, 8, 0.42) 100%
+  );
+}
+
+/* Two birds gliding across the upper third of the sky. SVG silhouettes
+   with arc-flight animation. Pure visual ornament — no perf cost. */
+.nms-birds {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.nms-bird {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.nms-bird-1 {
+  animation: nmsBirdGlide1 28s linear infinite;
+}
+.nms-bird-2 {
+  animation: nmsBirdGlide2 34s linear infinite;
+  animation-delay: -8s;
+}
+@keyframes nmsBirdGlide1 {
+  0%   { transform: translate(-10%, 8%); }
+  50%  { transform: translate(55%, 12%); }
+  100% { transform: translate(110%, 6%); }
+}
+@keyframes nmsBirdGlide2 {
+  0%   { transform: translate(110%, 16%); }
+  50%  { transform: translate(45%, 9%); }
+  100% { transform: translate(-10%, 14%); }
+}
+
+/* Climber trail SVG overlay */
+.nms-trail-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes nmsClimberPulse {
+  0%, 100% { r: 1.6; opacity: 1; }
+  50%      { r: 2.1; opacity: 0.82; }
+}
+.nms-climber-active {
+  animation: nmsClimberPulse 1.7s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .nms-photo {
+    transition: opacity 0.3s ease;
+    transform: none !important;
+  }
+  .nms-bird, .nms-climber-active {
+    animation: none !important;
+  }
+}
