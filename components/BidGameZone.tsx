@@ -40,6 +40,7 @@ import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import type { BidCard } from "./BidCardStack";
+import MountainStage from "./bid-game/MountainStage";
 import {
   isMuted as soundIsMuted,
   playComplete,
@@ -412,8 +413,11 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
       {/* PHASE 1 — Boot screen */}
       {phase === "boot" && (
         <div className="bgz-boot" ref={bootRef} role="dialog" aria-label="Auction game zone — press start">
-          <div className="bgz-boot-aurora" aria-hidden="true" />
-          <div className="bgz-boot-grid" aria-hidden="true" />
+          {/* v204 — natural mountain scene replaces gold/black aurora */}
+          <div className="bgz-boot-scene" aria-hidden="true">
+            <MountainStage step={0} totalSteps={cards.length} active={false} />
+            <div className="bgz-boot-scene-vignette" />
+          </div>
           <div className="bgz-boot-content">
             <div className="bgz-boot-eyebrow">⚡ WELCOME TO</div>
             <h1 className="bgz-boot-title">{zoneLabel}</h1>
@@ -441,26 +445,14 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
       {/* PHASE 2 — Game zone stage */}
       {(phase === "playing" || phase === "exiting") && (
         <div className="bgz-stage" ref={stageRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {/* Ambient backdrop layers */}
+          {/* v204 — Mountain climbing scene replaces gold/black aurora.
+              Sun moves, sky tints, camera dollies higher per step; the
+              climber trail SVG overlay reveals as the user advances. The
+              old gold ambient particles are gone — the snow + birds in
+              the 3D scene cover the "alive feel" requirement. */}
           <div className="bgz-stage-backdrop" aria-hidden="true">
-            <div className="bgz-stage-aurora" />
+            <MountainStage step={activeIdx} totalSteps={cards.length} active />
             <div className="bgz-stage-vignette" />
-            <div className="bgz-stage-particles">
-              {ambientParticles.map((p) => (
-                <span
-                  key={p.id}
-                  className="bgz-particle"
-                  style={{
-                    left: `${p.left}%`,
-                    width: `${p.size}px`,
-                    height: `${p.size}px`,
-                    opacity: p.opacity,
-                    animationDelay: `${p.delay}s`,
-                    animationDuration: `${p.duration}s`,
-                  }}
-                />
-              ))}
-            </div>
           </div>
 
           {/* Top HUD — step pips + sound toggle */}

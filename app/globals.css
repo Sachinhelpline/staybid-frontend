@@ -7108,7 +7108,9 @@ body.is-reel-page {
 
 .bgz-boot-content {
   position: relative;
-  z-index: 2;
+  /* v204 — bumped above the new .bgz-boot-scene-vignette (z:2) +
+     .bgms-stage (z:0) so the headline + CTA float over the mountain. */
+  z-index: 4;
   text-align: center;
   padding: 0 24px;
   max-width: 420px;
@@ -8120,4 +8122,77 @@ body.is-reel-page {
 
 .bgz-cta-btn-final {
   margin-bottom: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v204 — MountainStage (Three.js natural backdrop)
+   Wraps the canvas + climber trail SVG overlay. Used by both the boot
+   screen (.bgz-boot-scene) and the live stage (.bgz-stage-backdrop).
+═══════════════════════════════════════════════════════════════════ */
+.bgms-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bgms-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bgms-canvas-wrap canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Climber trail SVG overlay — positioned absolutely over the canvas */
+.bgms-trail-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 0 6px rgba(231, 207, 160, 0.45));
+}
+
+@keyframes bgmsClimberPulse {
+  0%, 100% { r: 1.6; opacity: 1; }
+  50%      { r: 2.1; opacity: 0.78; }
+}
+.bgms-climber-active {
+  animation: bgmsClimberPulse 1.7s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bgms-climber-active {
+    animation: none !important;
+  }
+}
+
+/* Boot-screen mountain scene container — replaces .bgz-boot-aurora +
+   .bgz-boot-grid which are no longer rendered in JSX but kept in CSS
+   as harmless dead rules for now (no DOM consumer = no paint cost). */
+.bgz-boot-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.bgz-boot-scene-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 35%, transparent 30%, rgba(15, 12, 8, 0.55) 100%),
+    linear-gradient(to bottom, transparent 40%, rgba(15, 12, 8, 0.75) 100%);
 }
