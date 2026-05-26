@@ -610,14 +610,15 @@ export default function BidPage() {
 
   // v187 — Phase 5: smart auto-scroll for multi-select sections. Fires
   // ONLY when adding (not removing) a pick takes the count from below
-  // the section's min threshold to exactly the threshold — i.e. the
-  // moment the rule is first satisfied. Property: 3, Room: 2. Until
-  // then customer stays on the section (no premature scroll).
+  // the section's min threshold to exactly the threshold.
+  // v227 — Property threshold relaxed from 3 → 1. Sachin's report: in
+  // some cities the user could only pick 1-2 types that actually exist,
+  // and the "must pick 3" wall blocked them. One pick is enough to
+  // continue; zero picks = "Any type" (broadest auction).
   const toggleProperty = (id: string) => {
     const wasSelected = form.propertyTypes.includes(id);
     toggleArr("propertyTypes", id);
-    if (!wasSelected && form.propertyTypes.length + 1 >= 3) {
-      // crossed up to the 3 threshold — release to next section
+    if (!wasSelected && form.propertyTypes.length + 1 >= 1) {
       setTimeout(() => scrollToAutoNext("dates"), 80);
     }
   };
@@ -893,7 +894,12 @@ export default function BidPage() {
     // v208 — SS4/SS5: 2-step page. Step 2 IS the final step (launch
     // lives inside). Step 1 unchanged (city/dates/property types).
     // The old step===2 "≥2 room types" rule is gone with Your Stay.
-    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.propertyTypes.length >= 3);
+    // v227 — property minimum dropped 3 → 0. Zero picks = "Any type"
+    // and the bid lands across every property type in the city. The
+    // submit() property-type filter is now SOFT (falls back to all
+    // matching hotels if no city hotel offers the picked types), so
+    // there's no need to gate the Continue button on a minimum count.
+    if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1);
     return budget > 0;
   };
 
@@ -970,37 +976,35 @@ export default function BidPage() {
       // Fallback: if server-side filter returned nothing useful, use whatever the server gave us
       if (matching.length === 0 && allHotels.length > 0) matching = allHotels.slice(0, 3);
 
-      // v170 — property-type categorization (HARD filter, multi-select).
-      // The bid only goes to hotels whose type the customer picked — no
-      // "asked for a villa, sees a guest house" clash. Empty → clear
-      // message, never a wrong-category hotel.
+      // v227 — property-type filter softened from HARD to SOFT.
+      // Sachin's report: in Dhanaulti picking 3 types like
+      // (villa, cottage, homestay) used to throw because Dhanaulti
+      // hotels are all `resort` / `lodge` / `camp` / `hotel`. The
+      // customer's bid never launched — same UX as a one-bid-one-city
+      // conflict. The original v170 HARD filter explicitly said
+      // "no wrong-category hotel ever". v227 keeps that intent when
+      // matches exist, but falls back to ALL city hotels when zero
+      // match so the auction launches. Customer's preference is still
+      // recorded in `requirements` so the hotel sees what was asked.
       if (form.propertyTypes.length) {
         const pf = matching.filter((h: any) =>
           form.propertyTypes.includes(h.property_type || "hotel")
         );
-        if (pf.length === 0) {
-          const want = form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(" / ");
-          throw new Error(
-            `No ${want} in ${form.city} right now. Try a different property type or city.`
-          );
-        }
-        matching = pf;
+        if (pf.length > 0) matching = pf;
+        // else: leave `matching` as-is (every city hotel competes).
       }
 
-      // v170 — meal-plan categorization (HARD filter). If the customer
-      // wants meals, only hotels that actually offer that plan compete —
-      // no "wants breakfast, hotel doesn't serve food" clash. Room Only
-      // needs no kitchen, so it is never filtered.
+      // v227 — meal-plan filter softened from HARD to SOFT for the
+      // same reason. Customer's meal preference still flows through
+      // `requirements` so hotels see it; this just stops a blank
+      // meal-plan column on a few hotels from killing the auction.
       if (form.mealPlan && form.mealPlan !== "room_only") {
         const mf = matching.filter((h: any) =>
           Array.isArray(h.meal_plans) && h.meal_plans.includes(form.mealPlan)
         );
-        if (mf.length === 0) {
-          throw new Error(
-            `No hotels in ${form.city} offer ${MEAL_PLAN_MAP[form.mealPlan]?.label || form.mealPlan} right now. Pick another meal plan.`
-          );
-        }
-        matching = mf;
+        if (mf.length > 0) matching = mf;
+        // else: every city hotel competes — fall through to the
+        // existing v164 hotel-class soft filter below.
       }
 
       // v164 — hotel-class filter: a premium customer competes only among
@@ -1448,11 +1452,14 @@ export default function BidPage() {
       key: "propertyType",
       icon: "🏨",
       title: "What kind of property?",
-      hint: "Pick at least 3 types to broaden the auction",
-      isComplete: () => form.propertyTypes.length >= 3,
-      summary: () => `${form.propertyTypes.length} types`,
-      autoAdvance: true,
-      autoAdvanceDelayMs: 760, // longer delay — user sees 3rd pick light up
+      hint: "Pick any types (optional) — leave blank for all types",
+      // v227 — property is now optional. Zero picks = "Any type"; one
+      // or more picks acts as a SOFT preference (submit() falls back
+      // to all city hotels if none match).
+      isComplete: () => true,
+      summary: () => form.propertyTypes.length ? `${form.propertyTypes.length} types` : "Any type",
+      autoAdvance: false,
+      autoAdvanceDelayMs: 760,
       render: () => (
         <>
           {/* v203.2 — 3D metallic icon discs for each property type
@@ -1482,11 +1489,9 @@ export default function BidPage() {
             })}
           </div>
           <p className="bgz-prop-tally">
-            {form.propertyTypes.length >= 3
-              ? `✓ Bid will reach ${form.propertyTypes.length} property categories`
-              : visiblePropertyTypes.length < 3
-              ? `Only ${visiblePropertyTypes.length} ${visiblePropertyTypes.length === 1 ? "type" : "types"} available in ${form.city || "this city"} — pick what you want`
-              : `${form.propertyTypes.length}/3 picked · tap ${3 - form.propertyTypes.length} more to continue`}
+            {form.propertyTypes.length > 0
+              ? `✓ Bid prefers ${form.propertyTypes.length} ${form.propertyTypes.length === 1 ? "type" : "types"} (falls back to all if none match)`
+              : `Any type · bid will reach every property in ${form.city || "this city"}`}
           </p>
         </>
       ),
@@ -2108,20 +2113,19 @@ export default function BidPage() {
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Property Type</span>
                   <span className="bx-section-h-rule" />
-                  {/* v186 — live counter: pick at least 3 to proceed. */}
+                  {/* v227 — optional preference. No "must pick 3" wall;
+                      zero picks lands on every property type. */}
                   <span
                     className="bx-section-h-count"
                     style={{
                       fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.06em",
                       padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap",
-                      background: form.propertyTypes.length >= 3
-                        ? "rgba(127,146,105,0.18)"
-                        : "rgba(201,123,67,0.18)",
-                      color: form.propertyTypes.length >= 3 ? "#5a6e44" : "#a85b26",
-                      border: `1px solid ${form.propertyTypes.length >= 3 ? "rgba(127,146,105,0.45)" : "rgba(201,123,67,0.45)"}`,
+                      background: "rgba(127,146,105,0.18)",
+                      color: "#5a6e44",
+                      border: "1px solid rgba(127,146,105,0.45)",
                     }}
                   >
-                    {form.propertyTypes.length}/3 picked
+                    {form.propertyTypes.length ? `${form.propertyTypes.length} picked` : "Any type"}
                   </span>
                 </div>
                 {/* v181 — curated 10-pick grid w/ premium icon tiles.
@@ -2145,9 +2149,9 @@ export default function BidPage() {
                   })}
                 </div>
                 <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
-                  {form.propertyTypes.length >= 3
-                    ? `Bid goes only to: ${form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(", ")} — no other type.`
-                    : `Pick at least 3 property types to broaden the auction (currently ${form.propertyTypes.length} selected).`}
+                  {form.propertyTypes.length > 0
+                    ? `Bid prefers: ${form.propertyTypes.map((id) => PROPERTY_TYPE_MAP[id]?.label || id).join(", ")} — falls back to every type if none match in ${form.city || "this city"}.`
+                    : `Any type · bid reaches every property in ${form.city || "this city"}. Pick specific types to narrow.`}
                 </p>
               </div>
 

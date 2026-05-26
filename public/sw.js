@@ -81,7 +81,21 @@ const CACHE_NAME = 'staybid-static-v2';
 // removes the BidGameZone ambient drone (user feedback: "background
 // sound chal raha hai jiska koi kaam nahi"). Cache bump forces fresh
 // HTML on next visit so the fix lands without an SWR cycle wait.
-const HTML_CACHE = 'staybid-html-v9';
+// v227 — one-time HTML_CACHE bump (v9 → v10). Three independent fixes
+// ship together: (a) hotel detail page was scroll-locked when a user
+// arrived from /discover or /reels — the `is-reel-page` body class
+// (position:fixed; overflow:hidden; height:100vh) wasn't always
+// cleaned by useReelFullscreen's unmount on fast Next.js client-side
+// nav. /hotels/[id] now defensively strips the class on mount. (b)
+// /bid's mandatory "pick 3 property types" rule is gone — zero picks
+// = "Any type" + a single pick advances Step 1. (c) /bid's submit()
+// property-type + meal-plan filters soften from HARD-throw to
+// SOFT-fallback so Dhanaulti (resort/lodge/camp/hotel only) no
+// longer rejects a user who picked villa/cottage/homestay; the bid
+// launches across every city hotel and the preference is recorded in
+// `requirements` for the hotel to read. Cache bump forces v227 HTML
+// delivery on next visit.
+const HTML_CACHE = 'staybid-html-v10';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
