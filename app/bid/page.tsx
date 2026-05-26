@@ -1770,6 +1770,50 @@ export default function BidPage() {
              a failure flips to an error card with the actual reason +
              a Try Again button that calls submit() inline. */
           if (submitError && !loading) {
+            // v228 — when the failure was a city-conflict 409, show a
+            // conflict-specific card with "View Active Bid →" CTA instead
+            // of the generic "Couldn't reach hotels · Try Again". Sachin's
+            // feedback: "already launch bid ka message show hona chahiye
+            // na ush bid ko view karne ke liye". Old card kept verbatim
+            // for every other failure mode (network, auth, hotel filter
+            // mismatch, etc.) so non-conflict errors still surface fully.
+            if (bidConflict) {
+              const c = bidConflict.conflict;
+              const currentAmt = Number(c.counterAmount || c.amount || 0);
+              return (
+                <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
+                  <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>🎯</div>
+                  <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 6 }}>
+                    You already have an active bid in {c.city || form.city}
+                  </div>
+                  <div style={{
+                    fontSize: "0.86rem",
+                    color: "var(--cozy-cocoa-soft)",
+                    lineHeight: 1.5,
+                    marginBottom: 14,
+                  }}>
+                    One bid per city — your {c.hotelName ? `${c.hotelName} ` : ""}bid at <strong style={{ color: "#c9911a" }}>₹{currentAmt.toLocaleString("en-IN")}/night</strong> is still live. View it to update the budget or cancel before launching a new one.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/my-bids#bid-${c.bidId}`)}
+                    style={{
+                      padding: "11px 26px",
+                      borderRadius: 999,
+                      fontWeight: 700,
+                      fontSize: "0.92rem",
+                      background: "linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a)",
+                      color: "var(--cozy-warm-dark)",
+                      border: "1px solid rgba(110,84,48,0.35)",
+                      boxShadow: "0 3px 10px rgba(110,84,48,0.18)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    👀 View Active Bid →
+                  </button>
+                </div>
+              );
+            }
             return (
               <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
                 <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⚠️</div>

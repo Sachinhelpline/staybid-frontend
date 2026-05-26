@@ -95,7 +95,24 @@ const CACHE_NAME = 'staybid-static-v2';
 // launches across every city hotel and the preference is recorded in
 // `requirements` for the hotel to read. Cache bump forces v227 HTML
 // delivery on next visit.
-const HTML_CACHE = 'staybid-html-v10';
+// v228 — one-time HTML_CACHE bump (v10 → v11). Two user-facing fixes:
+// (a) /bid Step 6 "Review Bid & Visit" used to surface a confusing
+// generic "Couldn't reach hotels · Try Again" card whenever the city
+// already had an active bid — even though the ActiveBidConflictSheet
+// also opened on top. Now the Step 6 error branch detects bidConflict
+// and shows a dedicated card: "You already have an active bid in {city}"
+// + ₹X/night recap + 👀 View Active Bid → (routes to /my-bids#bid-id)
+// + ✏️ Update existing budget (reopens the sheet). Generic error card
+// preserved for every NON-conflict failure mode. (b) BookingReview
+// modal payment options were cut from the bottom on the Shimla flow:
+// the old `maxHeight: calc(94vh - 64px - 96px)` body cap assumed a 96px
+// footer, but Pay Full + Hold + Pay-at-Hotel rendered ~220px → body
+// extended behind the CTAs. New flex layout (header shrink-0 · body
+// flex-1 min-h-0 · footer shrink-0 + env(safe-area-inset-bottom) inset)
+// makes the body shrink to whatever the footer leaves free, regardless
+// of how many CTAs render. Cache bump forces v228 HTML delivery on
+// next page open so the fix lands without an SWR refresh cycle wait.
+const HTML_CACHE = 'staybid-html-v11';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
