@@ -805,6 +805,24 @@ export default function BidPage() {
     setLiveBids(success.bids.map((b: any) => ({ ...b, status: "PENDING" })));
   }, [success]);
 
+  /* v222 — per-route theme-color match so the OS status bar blends
+     into the climber's dark mountain backdrop. layout.tsx sets the
+     global theme-color to `#07060e` (very dark cool blue) which is
+     the right color for the reel feed. /bid's climber bg starts at
+     `#14110b` (very dark warm brown) — close but the seam is visible
+     to a sharp eye, especially when the photo's sky has warm dawn
+     tones at the top (user report SS1/SS2: "upar se screen cut ho
+     gyi"). Update meta theme-color on mount, restore on unmount. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") || "#07060e";
+    if (meta) meta.setAttribute("content", "#14110b");
+    return () => {
+      if (meta) meta.setAttribute("content", prev);
+    };
+  }, []);
+
   /* v220 — bridge the Set Price modal close + Review Bid modal open
      after submit() succeeds. Pre-v220 the Set Price sheet stayed open
      after Launch Bid tap (price card has autoAdvance: false) and the
@@ -1560,7 +1578,25 @@ export default function BidPage() {
          is rebuilt every render so the closure over `loading` stays
          fresh and the label flips in real time. */
       doneLabel: loading ? "⏳ Launching…" : "🚀 Launch Bid",
-      onDoneClick: () => { if (loading) return; void submit(); },
+      onDoneClick: () => {
+        if (loading) return;
+        /* v222 — open the Review Bid sheet IMMEDIATELY (don't wait for
+           submit to complete). Railway free-tier cold-start can take
+           20-30s — keeping the user stuck on a "Launching…" button
+           that long made them give up (v221 user report: "fir se wahi
+           hold rahta hai kuch nhi badalta"). Now they see the live-
+           auction panel right away with a spinner that fills in as
+           hotels respond. submit() runs in the background; when
+           success populates, the existing useEffect[success] is a
+           no-op (already on idx=5), and the live bid list takes over
+           from the spinner. */
+        void submit();
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("sb:cmm-open-sheet", { detail: { idx: 5 } }));
+          }, 80);
+        }
+      },
       render: () => (
         <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
           {city && presets.length > 0 && (
@@ -1654,6 +1690,30 @@ export default function BidPage() {
       doneLabel: "Continue to Pay ›",
       render: () => {
         if (!success) {
+          /* v222 — split empty state into two modes:
+             - loading=true: bid is launching RIGHT NOW (user tapped
+               Launch Bid; submit() is in flight). Show animated spinner
+               + "Reaching hotels…" copy so they know the system is
+               working, not stuck.
+             - loading=false: user hasn't tapped Launch Bid yet (came
+               here directly somehow). Show the classic guidance. */
+          if (loading) {
+            return (
+              <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
+                <div
+                  className="bx-launch-spinner"
+                  style={{ margin: "0 auto 14px" }}
+                />
+                <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 6 }}>
+                  Reaching {form.city || "hotels"}…
+                </div>
+                <div style={{ fontSize: "0.86rem", color: "var(--cozy-cocoa-soft)", lineHeight: 1.5 }}>
+                  Notifying every matching hotel in your destination.
+                  This usually takes 5-30 seconds.
+                </div>
+              </div>
+            );
+          }
           return (
             <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
               <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⏳</div>

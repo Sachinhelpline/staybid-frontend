@@ -8820,6 +8820,23 @@ body.is-reel-page {
   }
 }
 
+/* v222 — Launching-bid spinner inside Review Bid card. Champagne ring
+   with a darker top arc rotating; matches the cozy palette so the
+   card looks intentional, not a generic loader. Moved out of inline
+   styled-jsx to avoid bumping /bid/page.tsx past the 2-block SWC
+   visitor.rs:597 panic ceiling. */
+.bx-launch-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 3px solid rgba(201, 166, 107, 0.20);
+  border-top-color: #C9A66B;
+  animation: sbBidSpin 0.85s linear infinite;
+}
+@keyframes sbBidSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* v221 — Desktop-only back chip on /bid. Mobile users have the OS
    back gesture (Android edge-swipe / iOS swipe); on desktop there's
    no gesture so a visible back button is needed. Floating top-left
