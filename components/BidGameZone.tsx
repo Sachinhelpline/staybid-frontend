@@ -189,40 +189,72 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
               Static frame on boot — no climber trail, no birds. */}
           <NaturalMountainScene step={0} totalSteps={cards.length} active={false} />
           <div className="bgz-boot-content">
-            <div className="bgz-boot-eyebrow">⚡ WELCOME TO</div>
-            <h1 className="bgz-boot-title">{zoneLabel}</h1>
-            <p className="bgz-boot-sub">
-              Real hotels. Real deals. Set your price, watch them compete.
-            </p>
-            <p className="bgz-boot-sub bgz-boot-sub-en">
-              Book your dream hotel · room · at your dream price in just 1
-              minute — backed by StayBid&rsquo;s 100% satisfaction promise.
-            </p>
-            {/* v213 — SS1 layout (Candy Crush style) + SS2 cream theme.
-                Top step tracker + 5 alternating numbered cards with
-                mockup content inside, so the customer sees the exact
-                journey before pressing Press Start. */}
+            {/* v214 — SS2 (Candy Crush) layout, 100% structure-identical,
+                only cream-on-mountain SS3 theme. Compact 2-col header +
+                step tracker strip + 5 alternating cards with OUTSIDE
+                eyebrow (number disc + italic title + sub-text). */}
+            <div className="bgz-boot-header">
+              <div className="bgz-boot-brand">
+                <span className="bgz-boot-brand-bolt">⚡</span>
+                <span className="bgz-boot-brand-text">
+                  <span className="bgz-boot-brand-name">stay·bid</span>
+                  <span className="bgz-boot-brand-live">LIVE</span>
+                </span>
+              </div>
+              <div className="bgz-boot-headline">
+                <h1 className="bgz-boot-title">Bid Your Stay, Save Big!</h1>
+                <p className="bgz-boot-sub">Name your price. Hotels compete. You win.</p>
+              </div>
+            </div>
             <div className="bgz-boot-tracker" aria-hidden="true">
-              <div className="bgz-boot-track-item"><span className="bgz-boot-track-num">1</span><span className="bgz-boot-track-lbl">Where</span></div>
-              <div className="bgz-boot-track-item"><span className="bgz-boot-track-num">2</span><span className="bgz-boot-track-lbl">Property</span></div>
-              <div className="bgz-boot-track-item"><span className="bgz-boot-track-num">3</span><span className="bgz-boot-track-lbl">Dates</span></div>
-              <div className="bgz-boot-track-item"><span className="bgz-boot-track-num">4</span><span className="bgz-boot-track-lbl">Guests</span></div>
-              <div className="bgz-boot-track-item"><span className="bgz-boot-track-num">5</span><span className="bgz-boot-track-lbl">Review</span></div>
+              <div className="bgz-boot-track-item">
+                <span className="bgz-boot-track-num">1</span>
+                <span className="bgz-boot-track-name">Where</span>
+                <span className="bgz-boot-track-sub">Pick city</span>
+              </div>
+              <div className="bgz-boot-track-item">
+                <span className="bgz-boot-track-num">2</span>
+                <span className="bgz-boot-track-name">Property</span>
+                <span className="bgz-boot-track-sub">Type of stay</span>
+              </div>
+              <div className="bgz-boot-track-item">
+                <span className="bgz-boot-track-num">3</span>
+                <span className="bgz-boot-track-name">Dates</span>
+                <span className="bgz-boot-track-sub">Choose dates</span>
+              </div>
+              <div className="bgz-boot-track-item">
+                <span className="bgz-boot-track-num">4</span>
+                <span className="bgz-boot-track-name">Guests</span>
+                <span className="bgz-boot-track-sub">Who&rsquo;s coming</span>
+              </div>
+              <div className="bgz-boot-track-item">
+                <span className="bgz-boot-track-num">5</span>
+                <span className="bgz-boot-track-name">Review</span>
+                <span className="bgz-boot-track-sub">Place your bid</span>
+              </div>
             </div>
             <ol className="bgz-boot-journey" aria-label="Your 5-step journey">
               <li className="bgz-boot-step bgz-boot-step--right">
-                <span className="bgz-boot-step-num">1</span>
+                <div className="bgz-boot-step-eyebrow">
+                  <span className="bgz-boot-step-num">1</span>
+                  <div className="bgz-boot-step-eyebrow-text">
+                    <div className="bgz-boot-step-eye-title">Where to stay?</div>
+                    <div className="bgz-boot-step-eye-sub">Pick a city and see hotels listening tonight.</div>
+                  </div>
+                </div>
                 <div className="bgz-boot-step-card">
                   <div className="bgz-boot-step-title">Where do you want to stay?</div>
                   <div className="bgz-boot-mock-pills">
                     <span>🏔️ Mussoorie</span>
                     <span>🌲 Dhanaulti</span>
                     <span>🕉️ Rishikesh</span>
+                    <span>❄️ Shimla</span>
+                    <span>🏂 Manali</span>
+                    <span>🌿 Dehradun</span>
                   </div>
                 </div>
               </li>
               <li className="bgz-boot-step bgz-boot-step--left">
-                <span className="bgz-boot-step-num">2</span>
                 <div className="bgz-boot-step-card">
                   <div className="bgz-boot-step-title">What kind of property?</div>
                   <div className="bgz-boot-mock-pills">
@@ -231,9 +263,22 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
                     <span>🏡 Cottage</span>
                   </div>
                 </div>
+                <div className="bgz-boot-step-eyebrow">
+                  <span className="bgz-boot-step-num">2</span>
+                  <div className="bgz-boot-step-eyebrow-text">
+                    <div className="bgz-boot-step-eye-title">Type of stay?</div>
+                    <div className="bgz-boot-step-eye-sub">Pick at least one to start your auction.</div>
+                  </div>
+                </div>
               </li>
               <li className="bgz-boot-step bgz-boot-step--right">
-                <span className="bgz-boot-step-num">3</span>
+                <div className="bgz-boot-step-eyebrow">
+                  <span className="bgz-boot-step-num">3</span>
+                  <div className="bgz-boot-step-eyebrow-text">
+                    <div className="bgz-boot-step-eye-title">Select your dates</div>
+                    <div className="bgz-boot-step-eye-sub">A short trip — pick smart, save more.</div>
+                  </div>
+                </div>
                 <div className="bgz-boot-step-card">
                   <div className="bgz-boot-step-title">Select your stay dates</div>
                   <div className="bgz-boot-mock-dates">
@@ -244,7 +289,6 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
                 </div>
               </li>
               <li className="bgz-boot-step bgz-boot-step--left">
-                <span className="bgz-boot-step-num">4</span>
                 <div className="bgz-boot-step-card">
                   <div className="bgz-boot-step-title">Who&rsquo;s coming?</div>
                   <div className="bgz-boot-mock-guests">
@@ -253,9 +297,22 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
                     <span>🛏 1 Room</span>
                   </div>
                 </div>
+                <div className="bgz-boot-step-eyebrow">
+                  <span className="bgz-boot-step-num">4</span>
+                  <div className="bgz-boot-step-eyebrow-text">
+                    <div className="bgz-boot-step-eye-title">Who&rsquo;s coming?</div>
+                    <div className="bgz-boot-step-eye-sub">Tell us who&rsquo;s travelling &amp; how many rooms.</div>
+                  </div>
+                </div>
               </li>
               <li className="bgz-boot-step bgz-boot-step--right">
-                <span className="bgz-boot-step-num">5</span>
+                <div className="bgz-boot-step-eyebrow">
+                  <span className="bgz-boot-step-num">5</span>
+                  <div className="bgz-boot-step-eyebrow-text">
+                    <div className="bgz-boot-step-eye-title">Review &amp; bid</div>
+                    <div className="bgz-boot-step-eye-sub">Name your price — launch the auction.</div>
+                  </div>
+                </div>
                 <div className="bgz-boot-step-card">
                   <div className="bgz-boot-step-title">Review &amp; place your bid</div>
                   <div className="bgz-boot-mock-price">
