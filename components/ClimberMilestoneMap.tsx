@@ -380,6 +380,28 @@ export default function ClimberMilestoneMap({
     };
   }, [sheetIdx]);
 
+  /* v220 — external sheet-open bridge. Parents fire
+     `window.dispatchEvent(new CustomEvent("sb:cmm-open-sheet", {detail:{idx}}))`
+     to programmatically swap to a milestone sheet. Currently used by
+     /bid: when submit() succeeds and `success` becomes non-null, the
+     parent dispatches idx=5 to close the Price sheet and open the
+     Review Bid panel automatically (no manual dismiss-and-tap). The
+     handler reuses the same lock-rule as handleNodeTap so a stale
+     event for a still-locked milestone is silently ignored. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const idx = detail.idx;
+      if (typeof idx !== "number" || idx < 0 || idx >= cards.length) return;
+      if (idx > completedCount) return; // locked — ignore
+      setSheetIdx(idx);
+      setMaxReached((m) => Math.max(m, idx));
+    };
+    window.addEventListener("sb:cmm-open-sheet", handler);
+    return () => window.removeEventListener("sb:cmm-open-sheet", handler);
+  }, [cards.length, completedCount]);
+
   /* ── Launch peak tap ─────────────────────────────────────────────
      Fires onAllComplete only when all 4 cards are done. Otherwise it
      buzzes + scrolls focus to the first pending milestone so the user

@@ -520,6 +520,13 @@ export default function BidPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [animating, setAnimating] = useState(false);
+  /* v220 — explicit interaction flag for the Guests milestone. Defaults
+     for adults/rooms are non-zero (2A · 1R), so the previous
+     `isComplete` returned true on page load and the climber's
+     completedCount silently skipped past the Guests disc straight to
+     Set Price (user report SS3). Forcing the user to tap +/- at least
+     once makes Step 4 a real stop, even when they keep the defaults. */
+  const [guestsTouched, setGuestsTouched] = useState(false);
   // 409 sheet — populated when any per-hotel placeBid hits the
   // one-active-bid-per-city rail.
   const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
@@ -796,6 +803,19 @@ export default function BidPage() {
     setLaunchTs(Date.now());
     setNowTs(Date.now());
     setLiveBids(success.bids.map((b: any) => ({ ...b, status: "PENDING" })));
+  }, [success]);
+
+  /* v220 — bridge the Set Price modal close + Review Bid modal open
+     after submit() succeeds. Pre-v220 the Set Price sheet stayed open
+     after Launch Bid tap (price card has autoAdvance: false) and the
+     user had to dismiss it manually then tap Step 6, by which time
+     they assumed the bid never launched (user reports SS1 + SS2).
+     The window event is consumed by ClimberMilestoneMap which swaps
+     sheetIdx 4 (Price) → 5 (Review) atomically, so the live bid
+     panel appears the instant `success` populates. */
+  useEffect(() => {
+    if (!success || typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("sb:cmm-open-sheet", { detail: { idx: 5 } }));
   }, [success]);
 
   // 1-second tick drives the per-card countdown.
@@ -1464,7 +1484,10 @@ export default function BidPage() {
       icon: "👥",
       title: "Who's coming?",
       hint: "Adults, children + how many rooms",
-      isComplete: () => form.adults >= 1 && form.rooms >= 1,
+      /* v220 — require an explicit user interaction (any +/- tap). Without
+         this, defaults (2A · 1R) made this card auto-complete and the
+         climber camera teleported past Step 4 straight to Set Price. */
+      isComplete: () => form.adults >= 1 && form.rooms >= 1 && guestsTouched,
       summary: () => `${form.adults}A${form.children ? ` + ${form.children}C` : ""} · ${form.rooms}R`,
       render: () => (
         // v203.2 — gaming-zone character morph counters. Each row shows
@@ -1485,7 +1508,7 @@ export default function BidPage() {
                 <button
                   type="button"
                   className="bgz-counter-btn"
-                  onClick={() => upd(key, Math.max(min, n - 1))}
+                  onClick={() => { upd(key, Math.max(min, n - 1)); setGuestsTouched(true); }}
                   disabled={n <= min}
                   aria-label={`Decrease ${label}`}
                 >−</button>
@@ -1500,7 +1523,7 @@ export default function BidPage() {
                 <button
                   type="button"
                   className="bgz-counter-btn"
-                  onClick={() => upd(key, Math.min(max, n + 1))}
+                  onClick={() => { upd(key, Math.min(max, n + 1)); setGuestsTouched(true); }}
                   disabled={n >= max}
                   aria-label={`Increase ${label}`}
                 >＋</button>
@@ -1530,8 +1553,14 @@ export default function BidPage() {
          then milestone 7 "Pay & Grab" hosts the payment gateway. This
          keeps the customer on the same climber surface from city pick
          all the way to the booking grab — no page jumps. */
-      doneLabel: "🚀 Launch Bid",
-      onDoneClick: () => { submit(); },
+      /* v220 — visible loading state on the CTA. Pre-v220 the button
+         label stayed "🚀 Launch Bid" through the async submit() round-
+         trip with no spinner, so users tapped, saw nothing change, and
+         dismissed the sheet thinking it didn't fire (SS1). Cards array
+         is rebuilt every render so the closure over `loading` stays
+         fresh and the label flips in real time. */
+      doneLabel: loading ? "⏳ Launching…" : "🚀 Launch Bid",
+      onDoneClick: () => { if (loading) return; void submit(); },
       render: () => (
         <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
           {city && presets.length > 0 && (
@@ -1750,6 +1779,27 @@ export default function BidPage() {
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
+      {/* v221 — Desktop-only back chip. On mobile the OS back gesture
+          (Android edge-swipe / iOS swipe) covers this; we hide DialerNav
+          on /bid so that gesture isn't intercepted (v221 fix). On
+          desktop there's no gesture so a visible ← back chip ships.
+          CSS auto-hides below 1024px via `.bx-desktop-back` media query. */}
+      <button
+        type="button"
+        className="bx-desktop-back"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/");
+          }
+        }}
+        aria-label="Go back"
+      >
+        <span className="bx-desktop-back-arrow" aria-hidden="true">←</span>
+        <span>Back</span>
+      </button>
+
       <div className="bx-page-wrap mx-auto px-4 pt-4">
 
         {/* v163 — Step 1: compact split hero. Title + the two live pills
