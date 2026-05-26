@@ -7410,10 +7410,11 @@ body.is-reel-page {
   text-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 12px rgba(201,166,107,0.25);
 }
 .bgz-boot-step-eye-sub {
-  font-size: 0.58rem;
-  line-height: 1.25;
-  color: rgba(231,207,160,0.78);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: rgba(247,232,200,0.95);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.78), 0 0 8px rgba(0,0,0,0.4);
 }
 
 /* Card column — cream parchment with mockup content */
@@ -7542,8 +7543,8 @@ body.is-reel-page {
   .bgz-boot-step--right { grid-template-columns: minmax(0, 96px) minmax(0, 1fr); }
   .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, 96px); }
   .bgz-boot-step-num { width: 40px; height: 40px; font-size: 1.4rem; }
-  .bgz-boot-step-eye-title { font-size: 0.85rem; }
-  .bgz-boot-step-eye-sub { font-size: 0.54rem; }
+  .bgz-boot-step-eye-title { font-size: 0.92rem; }
+  .bgz-boot-step-eye-sub { font-size: 0.72rem; line-height: 1.32; }
   .bgz-boot-step-card { padding: 10px 12px; }
   .bgz-boot-step-title { font-size: 0.86rem; margin-bottom: 6px; }
   .bgz-boot-mock-pills > span,
@@ -7705,13 +7706,20 @@ body.is-reel-page {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(31,26,15,0.55);
-  border: 1px solid rgba(217,190,130,0.30);
+  background: rgba(31,26,15,0.10);
+  border: 1px solid rgba(217,190,130,0.22);
   color: #E7CFA0;
   cursor: pointer;
   font-size: 0.95rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.75);
   transition: transform 0.2s ease, background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+}
+.cmm-stage .bgz-mute,
+.cmm-hud .bgz-mute {
+  background: rgba(31,26,15,0.08);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 .bgz-mute:active { transform: scale(0.92); }
 .bgz-mute.is-muted { opacity: 0.55; }
@@ -8645,7 +8653,11 @@ body.is-reel-page {
    glides between them, bottom-sheet picker (no full-screen takeover).
 ═══════════════════════════════════════════════════════════════════ */
 .cmm-stage {
-  /* Inherits from .bgz-stage. */
+  /* v215 — drop the radial champagne brightening at the top edge that
+     the user perceived as a "banner blocking the visual" behind the
+     HUD. Climber mode is fully transparent so the mountain photo
+     beneath shows edge-to-edge. */
+  background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
 }
 .cmm-hud {
   display: flex;
@@ -8656,13 +8668,16 @@ body.is-reel-page {
   position: relative;
   z-index: 10;
   flex: 0 0 auto;
+  background: transparent;
 }
 .cmm-hud-title {
   font-family: "Cormorant Garamond", serif;
   font-style: italic;
   font-size: 0.92rem;
-  color: rgba(255, 250, 230, 0.9);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  color: rgba(255, 250, 230, 0.95);
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.85),
+    0 0 10px rgba(0, 0, 0, 0.6);
   letter-spacing: 0.02em;
 }
 /* v207 — the .bgz-stage-main is the SCROLLABLE VIEWPORT (camera).

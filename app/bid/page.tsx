@@ -1524,11 +1524,13 @@ export default function BidPage() {
       isComplete: () => budget > 0,
       summary: () => (budget > 0 ? `₹${budget.toLocaleString("en-IN")}` : "—"),
       autoAdvance: false, // manual Done — let the user adjust freely
-      /* v211 — instead of "✓ Done" the 5th milestone fires submit()
-         directly. User no longer has to close the sheet and tap the
-         peak — one tap launches the bid from the sheet itself. */
-      doneLabel: "🚀 Launch Bid",
-      onDoneClick: () => { submit(); },
+      /* v215 — Sachin: the "Launch Bid" label was wrong here AND on the
+         peak (both said the same thing). Set Price now CLOSES the sheet
+         so the user lands on the unlocked peak — which is the actual
+         Review & Launch milestone (renamed below). Avoids double-submit
+         and gives the customer a clean Review step before launching. */
+      doneLabel: "Continue to Review ›",
+      // onDoneClick intentionally omitted — sheet just closes; peak fires submit().
       render: () => (
         <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
           {city && presets.length > 0 && (
@@ -1697,7 +1699,7 @@ export default function BidPage() {
               <BidGameZone
                 cards={step1Cards}
                 onAllComplete={() => { submit(); }}
-                finalCtaLabel="🚀 Launch Bid"
+                finalCtaLabel="🚀 Review & Launch"
               />
             ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
@@ -2296,7 +2298,7 @@ export default function BidPage() {
                 <div className="bx-live-head">
                   <span className="bx-live-head-l">
                     <span className="bx-live-dot sb-pulse-dot" />
-                    Live Auction
+                    💳 Pay & Confirm Booking
                   </span>
                   <span className="bx-live-head-r">
                     {acceptedCount > 0 && <b className="bx-live-head-ok">{acceptedCount} accepted</b>}
