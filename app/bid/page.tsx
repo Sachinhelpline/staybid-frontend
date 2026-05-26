@@ -914,7 +914,17 @@ export default function BidPage() {
   // reverse-auction flow. Only the surrounding UI shifted in v124.
   // ══════════════════════════════════════════════════════════════════
   const submit = async () => {
-    if (!user) return router.push("/auth");
+    // v226 — surface the auth gate in the Review modal BEFORE redirecting.
+    // Pre-v226 a logged-out user tapping Launch Bid silently navigated to
+    // /auth with no breadcrumb — the Review modal was left on the hourglass
+    // ("Launch your bid first") branch with no error card, no spinner.
+    // Setting submitError first means even if router.push races, the modal
+    // shows a real reason on its way out.
+    if (!user) {
+      setSubmitError("Please sign in to launch your bid. Redirecting…");
+      router.push("/auth");
+      return;
+    }
     setLoading(true);
     setSubmitError(null);
     /* v224 — track WHICH step of the submit pipeline died so the v223
@@ -1173,6 +1183,14 @@ export default function BidPage() {
             desiredAmount: budget,
             maxBudget: budget * 2,
           });
+          // v226 — also surface a reason in the Review modal as belt-and-
+          // braces. Pre-v226 the conflict sheet opened on top but the
+          // underlying Review modal stayed on the hourglass branch (no
+          // success, no submitError). If the user dismissed the sheet, the
+          // hourglass made it look like nothing happened.
+          setSubmitError(
+            "You already have an active bid in this city. Use the chip below to update it or cancel and try again.",
+          );
           return;
         }
         const firstErr: any = results.find(r => r.status === "rejected");

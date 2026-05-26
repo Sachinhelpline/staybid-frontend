@@ -129,7 +129,9 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
     } else {
       setPhase("playing");
     }
-    setTimeout(() => startAmbient(), 250);
+    // v226 — ambient drone removed. User feedback: "background sound chal
+    // raha hai jiska koi kaam nahi". stopAmbient() calls below + on unmount
+    // are kept as defence-in-depth (no-op when nothing is playing).
   }, []);
 
   /* ── Sound HUD toggle ────────────────────────────────────────────── */
@@ -137,12 +139,10 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
     const next = !muted;
     setSoundMuted(next);
     setMutedState(next);
-    if (next) {
-      stopAmbient();
-    } else {
-      startAmbient();
-      playTap();
-    }
+    // v226 — toggle still controls SFX (tap / whoosh / complete), but no
+    // longer restarts the ambient drone. stopAmbient() always safe.
+    stopAmbient();
+    if (!next) playTap();
   }, [muted]);
 
   /* ── Final exit — fired by ClimberMilestoneMap when the user taps
