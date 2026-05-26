@@ -7246,38 +7246,29 @@ body.is-reel-page {
   animation: bgzFadeIn 0.7s 1s ease both;
 }
 
-/* v212 — boot-screen journey preview (5 numbered milestones).
-   Cream cards over the mountain backdrop with champagne italic
-   serif numerals. SS1 zig-zag flow (alternating left/right) +
-   SS2 cream-over-image palette. */
-.bgz-boot-journey {
-  list-style: none;
-  margin: 0 0 26px 0;
-  padding: 0;
+/* v213 — boot-screen journey preview (SS1 Candy Crush layout +
+   SS2 cream-on-mountain theme). Top horizontal step tracker +
+   five alternating numbered cards with mockup content inside. */
+.bgz-boot-tracker {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 0 18px 0;
+  padding: 0 4px;
+  animation: bgzFadeIn 0.8s 0.5s ease both;
+}
+.bgz-boot-track-item {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  animation: bgzFadeIn 0.8s 0.6s ease both;
-}
-.bgz-boot-step {
-  display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px 10px 12px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255,252,246,0.94) 0%, rgba(250,245,235,0.92) 100%);
-  border: 1px solid rgba(201,166,107,0.32);
-  box-shadow:
-    0 10px 24px -10px rgba(31,26,15,0.45),
-    inset 0 1px 0 rgba(255,255,255,0.55);
-  text-align: left;
+  gap: 4px;
 }
-.bgz-boot-step--right { margin-left: 6%; }
-.bgz-boot-step--left  { margin-right: 6%; flex-direction: row-reverse; text-align: right; }
-.bgz-boot-step-num {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
+.bgz-boot-track-num {
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7285,39 +7276,194 @@ body.is-reel-page {
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-style: italic;
   font-weight: 700;
-  font-size: 1.4rem;
+  font-size: 0.95rem;
   color: #FFF9EC;
   background: radial-gradient(circle at 32% 28%, #E7CFA0 0%, #C9A66B 55%, #8B6914 100%);
   box-shadow:
-    0 3px 8px rgba(31,26,15,0.35),
-    inset 0 1px 1px rgba(255,255,255,0.45),
-    inset 0 -2px 3px rgba(31,26,15,0.20);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+    0 2px 5px rgba(31,26,15,0.35),
+    inset 0 1px 1px rgba(255,255,255,0.40);
 }
-.bgz-boot-step-body { flex: 1 1 auto; min-width: 0; }
+.bgz-boot-track-lbl {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(231,207,160,0.85);
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.bgz-boot-journey {
+  list-style: none;
+  margin: 0 0 26px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: bgzFadeIn 0.8s 0.65s ease both;
+}
+.bgz-boot-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.bgz-boot-step--right { justify-content: flex-start; }
+.bgz-boot-step--left  { flex-direction: row-reverse; justify-content: flex-start; }
+
+.bgz-boot-step-num {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.85rem;
+  color: #FFF9EC;
+  background: radial-gradient(circle at 32% 28%, #E7CFA0 0%, #C9A66B 55%, #8B6914 100%);
+  box-shadow:
+    0 5px 12px rgba(31,26,15,0.45),
+    inset 0 2px 2px rgba(255,255,255,0.45),
+    inset 0 -3px 4px rgba(31,26,15,0.22),
+    0 0 0 2px rgba(255,255,255,0.18);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+  position: relative;
+  z-index: 2;
+}
+.bgz-boot-step--right .bgz-boot-step-num { margin-right: -14px; }
+.bgz-boot-step--left  .bgz-boot-step-num { margin-left: -14px; }
+
+.bgz-boot-step-card {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,252,246,0.96) 0%, rgba(250,245,235,0.94) 100%);
+  border: 1px solid rgba(201,166,107,0.32);
+  box-shadow:
+    0 10px 24px -10px rgba(31,26,15,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.55);
+  text-align: left;
+}
+.bgz-boot-step--right .bgz-boot-step-card { padding-left: 26px; }
+.bgz-boot-step--left  .bgz-boot-step-card { padding-right: 26px; text-align: right; }
+
 .bgz-boot-step-title {
   font-family: var(--font-display, "Cormorant Garamond"), serif;
   font-style: italic;
   font-weight: 700;
-  font-size: 1.02rem;
+  font-size: 1.05rem;
   color: #4A3820;
   line-height: 1.15;
   letter-spacing: 0.01em;
+  margin-bottom: 8px;
 }
-.bgz-boot-step-desc {
-  margin-top: 2px;
-  font-size: 0.74rem;
-  line-height: 1.3;
-  color: rgba(74, 56, 32, 0.78);
+
+/* Mockup content (cream chips on cream card with champagne border) */
+.bgz-boot-mock-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bgz-boot-step--left .bgz-boot-mock-pills { justify-content: flex-end; }
+.bgz-boot-mock-pills > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4A3820;
+  background: rgba(201,166,107,0.14);
+  border: 1px solid rgba(201,166,107,0.34);
+}
+.bgz-boot-mock-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bgz-boot-step--left .bgz-boot-mock-dates { justify-content: flex-end; }
+.bgz-boot-mock-dates > div:not(.sep) {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(201,166,107,0.10);
+  border: 1px solid rgba(201,166,107,0.30);
+}
+.bgz-boot-mock-dates .lbl {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(74,56,32,0.65);
+}
+.bgz-boot-mock-dates .val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4A3820;
+}
+.bgz-boot-mock-dates .sep {
+  color: #C9A66B;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.bgz-boot-mock-guests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bgz-boot-step--left .bgz-boot-mock-guests { justify-content: flex-end; }
+.bgz-boot-mock-guests > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4A3820;
+  background: rgba(201,166,107,0.14);
+  border: 1px solid rgba(201,166,107,0.34);
+}
+.bgz-boot-mock-price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.bgz-boot-step--left .bgz-boot-mock-price { flex-direction: row-reverse; }
+.bgz-boot-mock-price .mock-price-amt {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #4A3820;
+}
+.bgz-boot-mock-price .mock-price-cta {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #FFF9EC;
+  background: linear-gradient(180deg, #C9A66B 0%, #8B6914 100%);
+  box-shadow: 0 4px 10px rgba(139,105,20,0.45), inset 0 1px 0 rgba(255,255,255,0.30);
 }
 
 @media (max-width: 380px) {
-  .bgz-boot-step { padding: 8px 12px 8px 10px; gap: 12px; }
-  .bgz-boot-step-num { width: 34px; height: 34px; font-size: 1.25rem; }
+  .bgz-boot-track-num { width: 22px; height: 22px; font-size: 0.85rem; }
+  .bgz-boot-track-lbl { font-size: 0.56rem; }
+  .bgz-boot-step-num { width: 46px; height: 46px; font-size: 1.65rem; }
+  .bgz-boot-step--right .bgz-boot-step-num { margin-right: -12px; }
+  .bgz-boot-step--left  .bgz-boot-step-num { margin-left: -12px; }
+  .bgz-boot-step-card { padding: 10px 12px; }
+  .bgz-boot-step--right .bgz-boot-step-card { padding-left: 22px; }
+  .bgz-boot-step--left  .bgz-boot-step-card { padding-right: 22px; }
   .bgz-boot-step-title { font-size: 0.96rem; }
-  .bgz-boot-step-desc { font-size: 0.7rem; }
-  .bgz-boot-step--right { margin-left: 3%; }
-  .bgz-boot-step--left  { margin-right: 3%; }
 }
 
 @keyframes bgzBootIn {
@@ -7710,6 +7856,7 @@ body.is-reel-page {
   .bgz-boot-cta,
   .bgz-boot-cta-glow,
   .bgz-boot-tip,
+  .bgz-boot-tracker,
   .bgz-boot-journey,
   .bgz-stage-aurora,
   .bgz-particle,
