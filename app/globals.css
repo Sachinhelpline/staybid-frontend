@@ -3194,6 +3194,58 @@ body.is-reel-page {
 .bx-launch-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .bx-launch-btn:disabled::after { animation: none; }
 
+/* ─── v210 Mobile success overlay — celebration on the same climbing
+       page (no page navigation). Fixed-position glass shell with deep
+       3D shadows + premium gradient over the climbing map underneath. */
+.bx-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(201, 166, 107, 0.32) 0%, transparent 70%),
+    linear-gradient(180deg,
+      rgba(255, 252, 246, 0.92) 0%,
+      rgba(250, 245, 235, 0.96) 20%,
+      rgba(248, 240, 222, 0.98) 100%);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  overflow: hidden;
+  animation: bxSuccessOverlayIn 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+[data-theme="dark"] .bx-success-overlay {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(201, 166, 107, 0.28) 0%, transparent 70%),
+    linear-gradient(180deg,
+      rgba(31, 26, 15, 0.94) 0%,
+      rgba(20, 16, 8, 0.97) 100%);
+}
+.bx-success-overlay-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 24px)
+    16px
+    calc(env(safe-area-inset-bottom, 0px) + 90px)
+    16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 580px;
+  margin: 0 auto;
+  width: 100%;
+}
+@keyframes bxSuccessOverlayIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bx-success-overlay { animation: none; }
+}
+
 /* ─── Success screen — winners' circle ─────────────────────────── */
 .bx-win-card {
   background: var(--bg-card);

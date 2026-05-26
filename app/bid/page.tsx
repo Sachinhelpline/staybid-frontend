@@ -1127,7 +1127,16 @@ export default function BidPage() {
   };
 
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
-  if (success) {
+  /* v210 — Success overlay on the SAME climbing page (mobile).
+     Sachin's ask: "launch bid hone ke baad jo page show hota hai isho
+     bhi ek ish page par tag karo koi next page nhi". Pre-v210 this was
+     a full-screen early-return that replaced the climbing map, so
+     pressing back returned to the boot screen (BidGameZone remounted).
+     v210 fix: on mobile we KEEP rendering the page below (climbing map
+     stays mounted, all 5 milestones DONE, climber at peak), and overlay
+     the celebration + live auction as a fixed-position portal. Desktop
+     keeps the existing full-screen takeover — its UX expects it. */
+  if (success && !isMobile) {
     // v163 — a bid counts as accepted if it cleared the hotel's floor
     // at launch (instant) OR the poll later flipped it to ACCEPTED.
     const isAccepted = (b: any) =>
@@ -2206,6 +2215,119 @@ export default function BidPage() {
           onUpdated={() => router.push("/my-bids")}
         />
       )}
+
+      {/* v210 — Mobile success overlay. Renders ON TOP of the climbing
+          map (climber at peak, all 5 milestones done) instead of
+          replacing the page. No back-button regression because the
+          climbing page never unmounts. */}
+      {success && isMobile && (() => {
+        const isAccepted = (b: any) =>
+          !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
+        const acceptedCount  = liveBids.filter(isAccepted).length;
+        const reviewingCount = liveBids.length - acceptedCount;
+        const sortedBids = [...liveBids].sort(
+          (a, b) => (isAccepted(b) ? 1 : 0) - (isAccepted(a) ? 1 : 0)
+        );
+        return (
+          <div className="bx-success-overlay">
+            <div className="bx-confetti" aria-hidden="true">
+              {CONFETTI.map((c, i) => (
+                <span
+                  key={i}
+                  className="bx-confetti-piece"
+                  style={{
+                    left: `${c.left}%`,
+                    background: c.color,
+                    width: c.w, height: c.h,
+                    borderRadius: c.round ? "50%" : "1.5px",
+                    animationDelay: `${c.delay}s`,
+                    animationDuration: `${c.dur}s`,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="bx-success-overlay-scroll">
+              <div className="bx-win-card bx-win-pop sb-card-lift">
+                <div className="bx-win-burst">
+                  <span className="bx-win-burst-ring" />
+                  <span className="bx-win-burst-ring is-two" />
+                  <div className="bx-win-badge">🎉</div>
+                </div>
+                <p className="bx-hero-eyebrow bx-win-seq" style={{ justifyContent: "center", animationDelay: "0.15s" }}>
+                  <span className="bx-hero-eyebrow-dot" />
+                  Bid Request Launched
+                </p>
+                <h1 className="bx-hero-title bx-win-seq" style={{ fontSize: "clamp(1.5rem, 5vw, 2rem)", margin: "8px 0 4px", animationDelay: "0.22s" }}>
+                  Hotels Are <em>Competing</em>!
+                </h1>
+                <div className="bx-win-bignum bx-win-seq" style={{ animationDelay: "0.3s" }}>
+                  <span className="bx-win-bignum-v"><WinCount value={success.hotelsNotified} /></span>
+                  <span className="bx-win-bignum-l">
+                    {success.hotelsNotified === 1 ? "hotel is" : "hotels are"} bidding for your stay
+                  </span>
+                </div>
+                <p className="bx-hero-sub bx-win-seq" style={{ margin: "0 auto 12px", maxWidth: "36ch", animationDelay: "0.38s" }}>
+                  {success.nights} {success.nights === 1 ? "night" : "nights"} in{" "}
+                  <strong style={{ color: "var(--cozy-warm-dark)" }}>{success.city}</strong> · ₹{success.budget.toLocaleString("en-IN")} per room / night —
+                  watch the auction unfold live below.
+                </p>
+                <div className="bx-review-grid bx-win-seq" style={{ marginBottom: 0, animationDelay: "0.46s", gridTemplateColumns: "repeat(3, 1fr)" }}>
+                  <div>
+                    <div className="bx-review-item-label">Check-in</div>
+                    <div className="bx-review-item-v">{new Date(success.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+                  </div>
+                  <div>
+                    <div className="bx-review-item-label">Check-out</div>
+                    <div className="bx-review-item-v">{new Date(success.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+                  </div>
+                  <div>
+                    <div className="bx-review-item-label">Nights</div>
+                    <div className="bx-review-item-v">{success.nights}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bx-live-panel bx-win-seq sb-card-lift" style={{ animationDelay: "0.56s" }}>
+                <div className="bx-live-head">
+                  <span className="bx-live-head-l">
+                    <span className="bx-live-dot sb-pulse-dot" />
+                    Live Auction
+                  </span>
+                  <span className="bx-live-head-r">
+                    {acceptedCount > 0 && <b className="bx-live-head-ok">{acceptedCount} accepted</b>}
+                    {acceptedCount > 0 && reviewingCount > 0 && " · "}
+                    {reviewingCount > 0 && `${reviewingCount} counter`}
+                  </span>
+                </div>
+                <div className="bx-live-list sb-stagger">
+                  {sortedBids.map((b, i) => (
+                    <LiveBidCard
+                      key={b.bidId || i}
+                      bid={b}
+                      idx={i}
+                      launchTs={launchTs}
+                      nowTs={nowTs}
+                      onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
+                      onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                    />
+                  ))}
+                </div>
+                <p className="bx-live-note">
+                  ✓ Every price here is <strong>below the market rate</strong>. Accepted offers are <strong>held 15 minutes</strong>; tap a hotel to lock your booking.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                  <button onClick={() => router.push("/my-bids")} className="bx-launch-btn sb-shimmer" style={{ padding: "14px 18px", fontSize: "1.05rem", position: "relative" }}>
+                    <span style={{ position: "relative", zIndex: 2 }}>Track All Bids</span>
+                  </button>
+                  <button onClick={() => router.push("/hotels")} className="bx-nav-back" style={{ width: "100%", flex: "0 0 auto" }}>
+                    Browse Hotels
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
