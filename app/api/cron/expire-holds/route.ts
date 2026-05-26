@@ -57,7 +57,10 @@ async function runRpc() {
 // so the row state matches what the customer / partner already see hidden
 // at the client filter. Best-effort: a failure here MUST NOT break the
 // main hold/window sweep — return zeros instead of throwing.
-async function runStalePendingBidsRpc(): Promise<{ unscheduled_expired: number; scheduled_expired: number }> {
+//
+// v229 — Now also returns counter_expired (stale COUNTER >6h past expiresAt)
+// from the same RPC. Schema-compatible — extra column is additive.
+async function runStalePendingBidsRpc(): Promise<{ unscheduled_expired: number; scheduled_expired: number; counter_expired: number }> {
   try {
     const r = await fetch(`${SB_URL}/rest/v1/rpc/mark_stale_pending_bids`, {
       method: "POST",
@@ -68,15 +71,41 @@ async function runStalePendingBidsRpc(): Promise<{ unscheduled_expired: number; 
       },
       body: JSON.stringify({}),
     });
-    if (!r.ok) return { unscheduled_expired: 0, scheduled_expired: 0 };
+    if (!r.ok) return { unscheduled_expired: 0, scheduled_expired: 0, counter_expired: 0 };
     const rows = await r.json().catch(() => []);
     const row = Array.isArray(rows) ? rows[0] : rows;
     return {
       unscheduled_expired: Number(row?.unscheduled_expired || 0),
       scheduled_expired:   Number(row?.scheduled_expired   || 0),
+      counter_expired:     Number(row?.counter_expired     || 0),
     };
   } catch {
-    return { unscheduled_expired: 0, scheduled_expired: 0 };
+    return { unscheduled_expired: 0, scheduled_expired: 0, counter_expired: 0 };
+  }
+}
+
+// v229 — Flips ACCEPTED bids to EXPIRED when their bid_acceptance_window
+// is expired/cancelled AND no payment landed. The window-sweep alone wasn't
+// enough — bids.status='ACCEPTED' rows hung around forever showing "Pay Now"
+// in /my-bids long after the 15-min window died. See
+// mark_orphaned_accepted_bids() in migration v229_bid_washout_completeness.
+async function runOrphanedAcceptedBidsRpc(): Promise<{ orphaned_expired: number }> {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/mark_orphaned_accepted_bids`, {
+      method: "POST",
+      headers: {
+        apikey: SB_KEY,
+        Authorization: `Bearer ${SB_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+    if (!r.ok) return { orphaned_expired: 0 };
+    const rows = await r.json().catch(() => []);
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return { orphaned_expired: Number(row?.orphaned_expired || 0) };
+  } catch {
+    return { orphaned_expired: 0 };
   }
 }
 
@@ -159,15 +188,19 @@ const EMAIL_LOOKBACK_MS = 6 * 60 * 1000;
 
 async function runAll(origin: string) {
   const rpcResult = await runRpc();
-  // v193 — also sweep stale PENDING bids. Independent of the hold/window
-  // RPC; failures are swallowed inside runStalePendingBidsRpc.
+  // v193 — also sweep stale PENDING (and v229 also COUNTER) bids.
+  // Independent of the hold/window RPC; failures swallowed inside.
   const stalePendingResult = await runStalePendingBidsRpc();
+  // v229 — orphaned ACCEPTED-unpaid bids whose acceptance_window expired.
+  // bids.status='ACCEPTED' rows would otherwise sit forever showing "Pay
+  // Now" in /my-bids even though the 15-min window is dead.
+  const orphanedAcceptedResult = await runOrphanedAcceptedBidsRpc();
   // Only sweep emails if the RPC actually flipped bids in this run
   if ((rpcResult as any)?.bids_accepted > 0) {
     const emailResult = await sendEmailsForRecentlyAccepted(origin, EMAIL_LOOKBACK_MS);
-    return { ...rpcResult, ...stalePendingResult, ...emailResult };
+    return { ...rpcResult, ...stalePendingResult, ...orphanedAcceptedResult, ...emailResult };
   }
-  return { ...rpcResult, ...stalePendingResult, emails_sent: 0 };
+  return { ...rpcResult, ...stalePendingResult, ...orphanedAcceptedResult, emails_sent: 0 };
 }
 
 export async function GET(req: NextRequest) {
