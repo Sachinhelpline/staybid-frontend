@@ -600,11 +600,26 @@ function MyBidsPageInner() {
 
   const filters = ["ALL", "PENDING", "COUNTER", "ACCEPTED", "REJECTED"] as const;
 
+  // v230 — hide washed-out rows from the customer's view. EXPIRED + CANCELLED
+  // bids stay in the DB for audit but don't show up in /my-bids — they
+  // were already terminal + non-actionable, and after the v229 cleanup the
+  // list was choked with 116+ EXPIRED rows that the customer can't act on.
+  // Re-introducing a dedicated "Archive" filter would let users see them
+  // again if needed (deferred).
+  const HIDE_TERMINAL = new Set(["EXPIRED", "CANCELLED"]);
+
   // v180 — split by flow first, then by status filter.
-  const placeBidCount  = useMemo(() => bids.filter((b) =>  b._isPlaceBid).length, [bids]);
-  const negotiateCount = useMemo(() => bids.filter((b) => !b._isPlaceBid).length, [bids]);
+  // v230 — Place Bid / Negotiate tab counts ALSO exclude HIDE_TERMINAL so
+  // the customer doesn't see "Place Bid 72" when 65 of those 72 are EXPIRED
+  // rows hidden from view. Pre-v230 the tab count diverged from the actual
+  // rendered row count, which was confusing.
+  const placeBidCount  = useMemo(() => bids.filter((b) =>  b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [bids]);
+  const negotiateCount = useMemo(() => bids.filter((b) => !b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [bids]);
   const sectionBids = useMemo(
-    () => bids.filter((b) => (section === "PLACE" ? b._isPlaceBid : !b._isPlaceBid)),
+    () => bids.filter((b) => (
+      (section === "PLACE" ? b._isPlaceBid : !b._isPlaceBid) &&
+      !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())
+    )),
     [bids, section]
   );
   const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
@@ -623,6 +638,12 @@ function MyBidsPageInner() {
   // once per landing (payNowFiredRef gate) so the 15 s polling refresh
   // can't re-open the modal. Also flips to the PLACE section if the bid
   // is a place-bid so the underlying card is visible when the modal closes.
+  //
+  // v230 — Relaxed status guard: was ACCEPTED-only; now also fires for
+  // PENDING/COUNTER bids landing from `/bid` auction flow. The customer
+  // tapping "Pay Now & Grab" on a still-PENDING bid wants to LOCK IT IN
+  // at their bid price (Razorpay charges → /api/bids/<id>/pay flips bid
+  // to ACCEPTED + creates booking). Same code path as accepted-unpaid pay.
   useEffect(() => {
     const wantBidId = searchParams?.get("payNow");
     if (!wantBidId) return;
@@ -630,9 +651,14 @@ function MyBidsPageInner() {
     if (!bids || bids.length === 0) return;
     const b = bids.find((row: any) => String(row?.id) === String(wantBidId));
     if (!b) return;
-    // Only fire for actionable rows — ACCEPTED + unpaid. If the row is
-    // already paid or in a non-actionable state, just clean the URL.
-    if (b.status === "ACCEPTED" && !isPaid(b)) {
+    // Open BookingReview for any actionable status. ACCEPTED-unpaid OR
+    // PENDING/COUNTER both qualify; only skip already-paid (booking
+    // already locked) or terminal (REJECTED/EXPIRED/CANCELLED) rows.
+    const actionable =
+      (b.status === "ACCEPTED" && !isPaid(b)) ||
+      b.status === "PENDING" ||
+      b.status === "COUNTER";
+    if (actionable) {
       if (b._isPlaceBid && section !== "PLACE") setSection("PLACE");
       payNowFiredRef.current = String(wantBidId);
       handlePayNow(b);
