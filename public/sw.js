@@ -62,7 +62,14 @@ const CACHE_NAME = 'staybid-static-v2';
 // stale cached copy from staybid-html-v5 and the background fetch
 // wasn't progressing to a re-render on second visit. Same recovery
 // pattern as the v131 bump.
-const HTML_CACHE = 'staybid-html-v6';
+// v224 — one-time HTML_CACHE bump (v6 → v7). Sachin was stuck on v222
+// HTML for 10+ hours despite v223 being deployed — SWR HTML strategy
+// kept serving cached v222 markup on every reopen. v224 ships the
+// /bid submit() step-by-step diagnostics + safe-area-inset-top on the
+// climber backdrop + Railway pre-warm; the cache bump forces the
+// activate handler to drop the stale v222/v223 HTML so every device
+// gets v224 on next page load instead of waiting 2 SWR ticks.
+const HTML_CACHE = 'staybid-html-v7';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

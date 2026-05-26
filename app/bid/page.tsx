@@ -735,6 +735,20 @@ export default function BidPage() {
     };
   }, [form.city]);
 
+  /* v224 — pre-warm the hot Next.js routes that submit() calls so when
+     the user finally taps Launch Bid on Step 5, the lambdas are warm
+     and the dataset is in sb-cache (60s TTL). This is the single
+     biggest reason Sachin saw "kuch nhi hota" on v220-v222: a cold
+     lambda + cold Supabase round-trip could take 3-8s, and the user
+     never saw any progress. Now hotels are pre-fetched on mount, then
+     re-fetched on city change. Fire-and-forget — no error handling,
+     no UI effect, just a wakeup ping. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Wake the /api/hotels lambda + warm sb-cache for the picked city.
+    fetch(`/api/hotels${form.city ? `?city=${encodeURIComponent(form.city)}` : ""}&limit=5`).catch(() => {});
+  }, [form.city]);
+
   /* ── v203.3 — Property types available in the picked city ─────────
      Per Sachin's SS3 feedback: when a city is selected, only show
      property types that ACTUALLY exist in that city. A "treehouse" tile
@@ -899,6 +913,13 @@ export default function BidPage() {
     if (!user) return router.push("/auth");
     setLoading(true);
     setSubmitError(null);
+    /* v224 — track WHICH step of the submit pipeline died so the v223
+       error card can tell the user something useful instead of a
+       generic "Could not reach hotels". Sachin's v222 report was that
+       the modal showed nothing — alert() was firing but dismissing
+       without notice. v223 surfaces the bare message; v224 prefixes
+       it with the step name. */
+    let submitStep = "starting up";
     try {
       // v170 — structured requirements built from the catalog selections.
       const addonLabels = form.addons
@@ -924,6 +945,7 @@ export default function BidPage() {
       ].filter(Boolean).join(" | ") || undefined;
 
       // 1. Find hotels matching the selected city (case-insensitive, partial match)
+      submitStep = `finding hotels in ${form.city}`;
       const hotelsResp = await api.getHotels({ city: form.city });
       const allHotels = hotelsResp.hotels || [];
       const cityLower = form.city.toLowerCase();
@@ -1000,6 +1022,7 @@ export default function BidPage() {
       // from a different hotel was about to land. The simple Bid button on
       // /hotels/[id] (1:1 to one hotel) DOES use schedule-accept; this
       // multi-hotel path stays manual review by design.
+      submitStep = `broadcasting your bid to ${matching.length} hotel${matching.length === 1 ? "" : "s"}`;
       const results = await Promise.allSettled(
         matching.map(async (hotel: any) => {
           const detail = await api.getHotel(hotel.id);
@@ -1164,7 +1187,14 @@ export default function BidPage() {
         bids: launched,
       });
     } catch (e: any) {
-      setSubmitError(e?.message || "Could not reach hotels. Please try again.");
+      /* v224 — prefix the error with the step so user sees WHAT broke
+         instead of "Could not reach hotels". Also log to console so
+         dev tools / Sachin's debug session has the full stack. */
+      const rawMsg = e?.message || "Network glitch";
+      const friendly = `Stuck while ${submitStep}: ${rawMsg}`;
+      // eslint-disable-next-line no-console
+      console.error("[/bid submit failed]", { step: submitStep, error: e });
+      setSubmitError(friendly);
     } finally {
       setLoading(false);
     }

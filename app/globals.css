@@ -2186,6 +2186,12 @@ body.is-reel-page {
     var(--bg-page);
   min-height: 100dvh;
   position: relative;
+  /* v224 — respect the OS status bar / camera notch (iOS Dynamic Island,
+     Samsung punch-hole, Pixel notch). Without this the mountain backdrop
+     + sheet header sit BEHIND the front-camera area on edge-to-edge phones
+     ("upar header se jo front camera... wahan se complete cut ho rakhi
+     hai screen" — Sachin v222). */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* ─── Toolbar (back chip + breadcrumb) ──────────────────────────── */
@@ -7596,6 +7602,12 @@ body.is-reel-page {
   flex-direction: column;
   isolation: isolate;
   overflow: hidden;
+  /* v224 — mountain backdrop must NOT slide under the OS camera notch.
+     Inner stage gets safe-area padding too (the outer .bx-shell already
+     does this, but BidGameZone renders direct-mounted in some flows
+     where bx-shell isn't the immediate parent). Double-padding doesn't
+     stack — env() resolves to the same px value, so this is idempotent. */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .bgz-stage-backdrop {
