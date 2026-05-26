@@ -428,40 +428,20 @@ export default function ClimberMilestoneMap({
           • cmm-haze    — horizontal mist across the alpine band
           • cmm-sun     — champagne sunlight catching the snow line
           • cmm-mist    — soft fog rising in the valley */}
-      {/* v218.2 — bold alive layer: 8 visible clouds + 3 flying birds
-          + summit snow drift + valley mist + alpine haze + sun glow.
-          Birds carry a wing-flap via inner spans toggled in opacity
-          (same pattern as NaturalMountainScene). */}
+      {/* v219 — Smooth, minimal alive layer. Stripped v218.2's heavy
+          stack (8 clouds + 3 birds + 3 snow layers + 5 Ken-Burns
+          scaling bg-images + 5 mix-blend layers = 23 compositor
+          animations causing scroll jank). Now just 3 lightweight
+          drifting clouds + 1 soft sun glow + 1 valley mist gradient
+          — all hardware-accelerated translate3d/opacity only, no
+          blur filters, no mix-blend-mode, no big-image transforms. */}
       <div className="cmm-atmos" aria-hidden="true">
         <span className="cmm-cloud cmm-cloud-1" />
         <span className="cmm-cloud cmm-cloud-2" />
         <span className="cmm-cloud cmm-cloud-3" />
-        <span className="cmm-cloud cmm-cloud-4" />
-        <span className="cmm-cloud cmm-cloud-5" />
-        <span className="cmm-cloud cmm-cloud-6" />
-        <span className="cmm-cloud cmm-cloud-7" />
-        <span className="cmm-cloud cmm-cloud-8" />
-        <span className="cmm-haze" />
         <span className="cmm-sun" />
         <span className="cmm-mist" />
-        <span className="cmm-snow cmm-snow-1" />
-        <span className="cmm-snow cmm-snow-2" />
-        <span className="cmm-snow cmm-snow-3" />
       </div>
-      <svg className="cmm-birds" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-        <g className="cmm-bird cmm-bird-1" fill="rgba(20,15,8,0.55)">
-          <path className="cmm-wing-up"   d="M -2 14 q 2 -2.4 4 0 q 2 2.4 4 0 q -1 1 -2 1.4 q -1 -0.4 -2 -0.4 q -1 0 -2 0.4 q -1 -0.4 -2 -1.4 z" />
-          <path className="cmm-wing-down" d="M -2 14 q 2 -0.5 4 0 q 2 0.5 4 0 q -1 1 -2 1.4 q -1 -0.4 -2 -0.4 q -1 0 -2 0.4 q -1 -0.4 -2 -1.4 z" />
-        </g>
-        <g className="cmm-bird cmm-bird-2" fill="rgba(20,15,8,0.45)">
-          <path className="cmm-wing-up"   d="M -2 14 q 1.4 -1.8 2.8 0 q 1.4 1.8 2.8 0 q -0.7 0.7 -1.4 1 q -0.7 -0.3 -1.4 -0.3 q -0.7 0 -1.4 0.3 q -0.7 -0.3 -1.4 -1 z" />
-          <path className="cmm-wing-down" d="M -2 14 q 1.4 -0.4 2.8 0 q 1.4 0.4 2.8 0 q -0.7 0.7 -1.4 1 q -0.7 -0.3 -1.4 -0.3 q -0.7 0 -1.4 0.3 q -0.7 -0.3 -1.4 -1 z" />
-        </g>
-        <g className="cmm-bird cmm-bird-3" fill="rgba(20,15,8,0.35)">
-          <path className="cmm-wing-up"   d="M -2 14 q 1.0 -1.4 2.0 0 q 1.0 1.4 2.0 0 q -0.5 0.5 -1.0 0.7 q -0.5 -0.2 -1.0 -0.2 q -0.5 0 -1.0 0.2 q -0.5 -0.2 -1.0 -0.7 z" />
-          <path className="cmm-wing-down" d="M -2 14 q 1.0 -0.3 2.0 0 q 1.0 0.3 2.0 0 q -0.5 0.5 -1.0 0.7 q -0.5 -0.2 -1.0 -0.2 q -0.5 0 -1.0 0.2 q -0.5 -0.2 -1.0 -0.7 z" />
-        </g>
-      </svg>
 
       {/* SVG path layer — visual only, all interactions go through the
           absolutely-positioned button nodes below. */}
