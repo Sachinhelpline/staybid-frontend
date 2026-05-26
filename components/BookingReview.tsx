@@ -187,12 +187,19 @@ export default function BookingReview(p: BookingReviewProps) {
       onClick={p.onClose}
     >
       <div
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden relative"
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden relative flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "linear-gradient(180deg,#fff 0%,#fafaf7 100%)",
           boxShadow: "0 30px 80px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,180,41,0.12)",
-          maxHeight: "94vh",
+          // v228 — flex column with capped height. Header + footer are
+          // flex-shrink-0 (auto-size to content); body is flex-1 + scrolls.
+          // Old fixed `maxHeight: calc(94vh - 64px - 96px)` on body assumed a
+          // 96px footer, but the Shimla case renders Pay Full + Hold + Pay-
+          // at-Hotel = ~220px footer, so the body extended behind the CTAs
+          // and content got cut from the bottom. Flex layout = the body
+          // shrinks to whatever space is left after the footer renders.
+          maxHeight: "94dvh",
         }}
       >
         <style>{`
@@ -206,8 +213,8 @@ export default function BookingReview(p: BookingReviewProps) {
           .br-section{animation:brFadeUp .35s ease both}
         `}</style>
 
-        {/* HEADER */}
-        <div className="relative px-5 py-4 flex items-center justify-between border-b"
+        {/* HEADER — v228 flex-shrink-0 so body shrinks, not header */}
+        <div className="relative px-5 py-4 flex items-center justify-between border-b shrink-0"
           style={{ borderColor: "rgba(240,180,41,0.25)", background: "linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)" }}>
           <div className="flex items-center gap-2.5">
             {p.flowLabel && (
@@ -224,8 +231,11 @@ export default function BookingReview(p: BookingReviewProps) {
           <ModalCloseButton onClose={p.onClose} tone="dark" />
         </div>
 
-        {/* SCROLLABLE BODY */}
-        <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(94vh - 64px - 96px)" }} data-autonext-form>
+        {/* SCROLLABLE BODY — v228 flex-1 + min-h-0 so it shrinks to fit
+            whatever vertical space the header + footer don't claim. Removed
+            the brittle `maxHeight: calc(94vh - 64px - 96px)` math that
+            assumed a 96px footer and broke on the 3-CTA Shimla case. */}
+        <div className="overflow-y-auto p-5 space-y-4 flex-1 min-h-0" data-autonext-form>
 
           {/* Hotel + room summary */}
           <div className="br-section flex items-start gap-3 p-3 rounded-2xl border border-luxury-100 bg-luxury-50">
@@ -410,9 +420,15 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
         </div>
 
-        {/* STICKY CTA FOOTER */}
-        <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm p-4 space-y-2.5"
-          style={{ boxShadow: "0 -8px 24px -8px rgba(0,0,0,0.12)" }}>
+        {/* STICKY CTA FOOTER — v228 flex-shrink-0 so it always renders fully
+            + safe-area-inset-bottom padding so home-indicator phones don't
+            cover the bottom CTA. Padding-bottom keeps the 16px gap on
+            devices without a home indicator AND adds env() inset on top. */}
+        <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm p-4 space-y-2.5 shrink-0"
+          style={{
+            boxShadow: "0 -8px 24px -8px rgba(0,0,0,0.12)",
+            paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))",
+          }}>
 
           <button data-tour="br-pay" onClick={() => run("pay", p.onPayFull)}
             disabled={!!busy}
