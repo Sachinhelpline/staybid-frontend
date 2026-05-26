@@ -2620,7 +2620,14 @@ export default function BidPage() {
           floorPrice={bidConflict.floorPrice}
           maxBudget={bidConflict.maxBudget}
           onClose={() => setBidConflict(null)}
-          onUpdated={() => router.push("/my-bids")}
+          onUpdated={(bid?: any) => {
+            // v229 — Cancel sheet path returns { status: "CANCELLED" }: don't
+            // navigate away, just clear conflict state so the user can re-launch
+            // their bid right here. Budget-update path returns the updated bid
+            // → push to /my-bids as before.
+            if (bid?.status === "CANCELLED") { setBidConflict(null); return; }
+            router.push("/my-bids");
+          }}
         />
       )}
 
