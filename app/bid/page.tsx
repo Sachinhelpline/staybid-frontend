@@ -746,7 +746,11 @@ export default function BidPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     // Wake the /api/hotels lambda + warm sb-cache for the picked city.
-    fetch(`/api/hotels${form.city ? `?city=${encodeURIComponent(form.city)}` : ""}&limit=5`).catch(() => {});
+    /* v225 — fix malformed URL when city is empty (`/api/hotels&limit=5`).
+       Build query string properly with URLSearchParams. */
+    const q = new URLSearchParams({ limit: "5" });
+    if (form.city) q.set("city", form.city);
+    fetch(`/api/hotels?${q.toString()}`).catch(() => {});
   }, [form.city]);
 
   /* ── v203.3 — Property types available in the picked city ─────────
@@ -2558,12 +2562,22 @@ export default function BidPage() {
           map (climber at peak, all 5 milestones done) instead of
           replacing the page. No back-button regression because the
           climbing page never unmounts. */}
-      {/* v217 — Mobile success overlay disabled. The post-launch flow now
-          lives INSIDE the climber as milestones 6 (Review Bid & Visit)
-          + 7 (Pay & Grab the Deal). Customer sees the same single-page
-          journey from city pick through booking confirmation. The
-          desktop success screen (above) is unaffected. */}
-      {success && isMobile && false && (() => {
+      {/* v225 — RE-ENABLED for both mobile AND desktop. Sachin's report
+          "ab laptop pe bhi bid launch hona bad ho gaya": v217 had
+          disabled the mobile overlay assuming milestone 6 (Review Bid
+          & Visit) inside the climber would be enough confirmation.
+          v223 then disabled the desktop full-page takeover too. Net
+          result: success state had NO VISIBLE confirmation on EITHER
+          surface. Users tapped Launch Bid, success populated silently,
+          climber stayed open at Step 5 (or auto-jumped to Step 6 with
+          a small panel buried inside the sheet) — looked broken. This
+          overlay is the missing celebratory confirmation: confetti +
+          burst badge + live auction panel + Pay buttons rendered
+          fullscreen over the climber. Climber stays mounted underneath
+          (no back-button regression, no "next page" feel — Sachin's
+          previous complaint about desktop was that the FULL-PAGE
+          takeover replaced the climber; an OVERLAY does not). */}
+      {success && (() => {
         const isAccepted = (b: any) =>
           !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
         const acceptedCount  = liveBids.filter(isAccepted).length;

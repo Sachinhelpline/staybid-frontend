@@ -64,12 +64,15 @@ const CACHE_NAME = 'staybid-static-v2';
 // pattern as the v131 bump.
 // v224 — one-time HTML_CACHE bump (v6 → v7). Sachin was stuck on v222
 // HTML for 10+ hours despite v223 being deployed — SWR HTML strategy
-// kept serving cached v222 markup on every reopen. v224 ships the
-// /bid submit() step-by-step diagnostics + safe-area-inset-top on the
-// climber backdrop + Railway pre-warm; the cache bump forces the
-// activate handler to drop the stale v222/v223 HTML so every device
-// gets v224 on next page load instead of waiting 2 SWR ticks.
-const HTML_CACHE = 'staybid-html-v7';
+// kept serving cached v222 markup on every reopen.
+// v225 — one-time HTML_CACHE bump (v7 → v8). v223 disabled desktop
+// success takeover + v217 had disabled mobile success overlay; net
+// result was NO visible confirmation on either surface after Launch
+// Bid. v225 re-enables the success OVERLAY (not a takeover — climber
+// stays mounted underneath) for both surfaces. Cache bump forces
+// every device to fetch v225 HTML on next page load so the fix
+// reaches users immediately instead of waiting for the SWR cycle.
+const HTML_CACHE = 'staybid-html-v8';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
