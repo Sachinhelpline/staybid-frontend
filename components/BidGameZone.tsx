@@ -36,16 +36,19 @@
    jsx blocks in component files).
 ═══════════════════════════════════════════════════════════════════ */
 
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import gsap from "gsap";
 import type { BidCard } from "./BidCardStack";
 import NaturalMountainScene from "./bid-game/NaturalMountainScene";
+// v206 — Candy Crush-style milestone path replaces the v203-v205
+// swipe/tilt/photo-swap stage. Same `cards: BidCard[]` interface so
+// the existing `step1Cards` in app/bid/page.tsx renders byte-identical
+// inside each milestone's bottom sheet. See ClimberMilestoneMap header.
+import ClimberMilestoneMap from "./ClimberMilestoneMap";
 import {
   isMuted as soundIsMuted,
   playComplete,
-  playError,
-  playSelect,
   playTap,
   playWhoosh,
   setMuted as setSoundMuted,
@@ -78,17 +81,12 @@ interface Props {
 /* ── Local types ─────────────────────────────────────────────────── */
 
 type Phase = "boot" | "playing" | "exiting";
-type Burst = { id: number; x: number; y: number };
 
 /* ── Component ───────────────────────────────────────────────────── */
 
 export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, className, zoneLabel = "STAYBID REVERSE BIDDING ZONE" }: Props) {
   const [phase, setPhase] = useState<Phase>("boot");
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [maxReached, setMaxReached] = useState(0);
   const [muted, setMutedState] = useState(false);
-  const [bursts, setBursts] = useState<Burst[]>([]);
-  const [, forceRender] = useState(0);
   // v203.1 — portal-mount the game zone to document.body so the
   // `position: fixed` boot screen escapes the /bid page's Tailwind
   // `transition-all translate-y-0` parent. That parent's CSS transform
@@ -99,10 +97,7 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
   useEffect(() => { setPortalReady(true); }, []);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const stepRef = useRef<HTMLDivElement | null>(null);
   const bootRef = useRef<HTMLDivElement | null>(null);
-  const burstSeqRef = useRef(0);
-  const lastSelectedCountRef = useRef<Record<string, number>>({});
 
   /* Hydrate mute pref from sound module once on mount */
   useEffect(() => {
@@ -150,244 +145,32 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
     }
   }, [muted]);
 
-  /* ── Step navigation primitives ──────────────────────────────────── */
-
-  const activeCard = cards[activeIdx];
-  const isLastCard = activeIdx === cards.length - 1;
-  const canAdvanceNow = activeCard?.isComplete() ?? false;
-  const firstReach = activeIdx >= maxReached;
-
-  const animateStepIn = useCallback((direction: 1 | -1) => {
-    const el = stepRef.current;
-    if (!el) return;
-    gsap.fromTo(
-      el,
-      {
-        x: direction === 1 ? 80 : -80,
+  /* ── Final exit — fired by ClimberMilestoneMap when the user taps
+     the PEAK Launch disc (all 4 cards complete). Plays the close-
+     out cue + fades the stage out + hands off to the host page's
+     onAllComplete (which usually advances /bid from step 1 → step 2). */
+  const handleLaunch = useCallback(() => {
+    playComplete();
+    vibrate([20, 40, 20, 40, 60]);
+    setPhase("exiting");
+    const stage = stageRef.current;
+    if (stage) {
+      gsap.to(stage, {
         opacity: 0,
         scale: 0.94,
-        rotateY: direction === 1 ? 8 : -8,
-        filter: "blur(8px)",
-      },
-      {
-        x: 0,
-        opacity: 1,
-        scale: 1,
-        rotateY: 0,
-        filter: "blur(0px)",
-        duration: 0.55,
-        ease: "power3.out",
-        clearProps: "filter",
-      }
-    );
-  }, []);
-
-  const advance = useCallback(() => {
-    const next = activeIdx + 1;
-    if (next >= cards.length) {
-      playComplete();
-      vibrate([20, 40, 20, 40, 60]);
-      setPhase("exiting");
-      const stage = stageRef.current;
-      if (stage) {
-        gsap.to(stage, {
-          opacity: 0,
-          scale: 0.94,
-          filter: "blur(10px)",
-          duration: 0.45,
-          ease: "power3.in",
-          onComplete: () => {
-            stopAmbient();
-            onAllComplete();
-          },
-        });
-      } else {
-        stopAmbient();
-        onAllComplete();
-      }
-      return;
+        filter: "blur(10px)",
+        duration: 0.45,
+        ease: "power3.in",
+        onComplete: () => {
+          stopAmbient();
+          onAllComplete();
+        },
+      });
+    } else {
+      stopAmbient();
+      onAllComplete();
     }
-    playWhoosh();
-    vibrate([14, 26, 14]);
-    setActiveIdx(next);
-    setMaxReached((m) => Math.max(m, next));
-    requestAnimationFrame(() => animateStepIn(1));
-  }, [activeIdx, animateStepIn, cards.length, onAllComplete]);
-
-  const jumpTo = useCallback(
-    (idx: number, direction: 1 | -1 = -1) => {
-      if (idx === activeIdx) return;
-      if (idx < 0 || idx >= cards.length) return;
-      if (idx > maxReached) return; // can't fast-forward past furthest
-      playTap();
-      vibrate(12);
-      setActiveIdx(idx);
-      requestAnimationFrame(() => animateStepIn(direction));
-    },
-    [activeIdx, animateStepIn, cards.length, maxReached]
-  );
-
-  /* ── Auto-advance — ONLY on forward arrival ──────────────────────── */
-  // v203 bug fix: when a user swipes BACK to a completed card, the
-  // effect's deps fire again. Without this guard the card auto-
-  // advances them forward immediately → they can't stay on a previous
-  // card to edit it. The `activeIdx >= maxReached` check ensures auto-
-  // advance only fires the FIRST time they land on a card.
-  useEffect(() => {
-    if (phase !== "playing") return;
-    if (!activeCard) return;
-    if (!activeCard.autoAdvance) return;
-    if (isLastCard) return;
-    if (!canAdvanceNow) return;
-    if (activeIdx < maxReached) return; // ← v203 fix: forward-only
-    const delay = activeCard.autoAdvanceDelayMs ?? 450;
-    const t = setTimeout(() => {
-      if (activeCard.isComplete()) advance();
-    }, delay);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCard, canAdvanceNow, isLastCard, activeIdx, maxReached, phase]);
-
-  /* ── Selection feedback: detect summary changes and pulse ───────── */
-  // Each card's `summary()` returns a string that changes when the
-  // user picks something new on that card. Compare against last tick
-  // to know whether to play a click + burst.
-  useEffect(() => {
-    if (phase !== "playing") return;
-    const id = setInterval(() => {
-      let changed = false;
-      for (const c of cards) {
-        const key = c.key;
-        const summary = (() => {
-          try {
-            return c.summary();
-          } catch {
-            return "";
-          }
-        })();
-        const prev = lastSelectedCountRef.current[key];
-        if (prev !== undefined && prev !== summary.length) {
-          changed = true;
-        }
-        lastSelectedCountRef.current[key] = summary.length;
-      }
-      if (changed) {
-        playSelect();
-        vibrate(10);
-      }
-    }, 220);
-    return () => clearInterval(id);
-  }, [cards, phase]);
-
-  /* ── Swipe gestures (horizontal only) ────────────────────────────── */
-  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    const t = e.touches[0];
-    if (!t) return;
-    touchStartRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-  }, []);
-  const onTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      const start = touchStartRef.current;
-      touchStartRef.current = null;
-      if (!start) return;
-      const t = e.changedTouches[0];
-      if (!t) return;
-      const dx = t.clientX - start.x;
-      const dy = t.clientY - start.y;
-      const elapsed = Date.now() - start.t;
-      if (elapsed > 600) return;
-      if (Math.abs(dx) < 60) return;
-      if (Math.abs(dy) > Math.abs(dx)) return;
-      if (dx < 0) {
-        if (canAdvanceNow && !isLastCard) {
-          advance();
-        } else if (!canAdvanceNow) {
-          playError();
-          vibrate([40, 20, 40]);
-        }
-      } else if (activeIdx > 0) {
-        jumpTo(activeIdx - 1, -1);
-      }
-    },
-    [activeIdx, advance, canAdvanceNow, isLastCard, jumpTo]
-  );
-
-  /* ── Tilt-on-touch parallax ──────────────────────────────────────── */
-  // Maps finger position relative to card center to rotateX/rotateY
-  // ±10°. Snaps back to neutral on touch end via GSAP.
-  const tiltRef = useRef<HTMLDivElement | null>(null);
-  const onTiltMove = useCallback((e: React.TouchEvent | React.PointerEvent) => {
-    const el = tiltRef.current;
-    if (!el) return;
-    const point =
-      "touches" in e && e.touches.length > 0
-        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
-        : "clientX" in e
-        ? { x: e.clientX, y: e.clientY }
-        : null;
-    if (!point) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const dx = (point.x - cx) / (rect.width / 2);
-    const dy = (point.y - cy) / (rect.height / 2);
-    gsap.to(el, {
-      rotateY: dx * 8,
-      rotateX: -dy * 8,
-      duration: 0.18,
-      ease: "power2.out",
-      transformPerspective: 1200,
-    });
-  }, []);
-  const onTiltEnd = useCallback(() => {
-    const el = tiltRef.current;
-    if (!el) return;
-    gsap.to(el, {
-      rotateX: 0,
-      rotateY: 0,
-      duration: 0.45,
-      ease: "elastic.out(1, 0.55)",
-    });
-  }, []);
-
-  /* ── Selection burst (gold particles ejecting from tap point) ────── */
-  const triggerBurstAt = useCallback((clientX: number, clientY: number) => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const id = ++burstSeqRef.current;
-    setBursts((b) => [...b, { id, x, y }]);
-    setTimeout(() => {
-      setBursts((b) => b.filter((it) => it.id !== id));
-    }, 1100);
-  }, []);
-
-  /* Listen for tap inside the active step body to fire the burst */
-  const onStepClickCapture = useCallback(
-    (e: React.MouseEvent) => {
-      // Only burst on actual user clicks/taps on selectable controls
-      const target = e.target as HTMLElement;
-      const clickable = target.closest("button, [role='button'], a, [data-burst]");
-      if (!clickable) return;
-      triggerBurstAt(e.clientX, e.clientY);
-    },
-    [triggerBurstAt]
-  );
-
-  /* v205 — ambient gold-ember particle field removed. Replaced by the
-     NaturalMountainScene's real Unsplash mountain photos + animated
-     SVG birds + climber trail overlay. The `useMemo` import below
-     stays unused for now (cheap; harmless); future cleanup can drop. */
-
-  // Force re-render once / sec so the activeCard's isComplete reads stay live
-  useEffect(() => {
-    if (phase !== "playing") return;
-    const id = setInterval(() => forceRender((n) => n + 1), 280);
-    return () => clearInterval(id);
-  }, [phase]);
+  }, [onAllComplete]);
 
   /* ── Rendering ───────────────────────────────────────────────────── */
 
@@ -429,44 +212,31 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
         </div>
       )}
 
-      {/* PHASE 2 — Game zone stage */}
+      {/* PHASE 2 — Game zone stage (v206 — Candy Crush milestone path)
+          The v203-v205 swipe/tilt/photo-swap stage is gone. Per
+          Sachin's spec ("alag alag screen aurbek dum se yeh full
+          screen show na ho... ek mile stone ki traha 3d live icon ki
+          traha ek step by step connected show ho"), the stage is now
+          one static mountain backdrop + a vertical milestone path
+          with 4 connected 3D discs. Tap a disc → bottom sheet rises
+          with that step's existing render() — the map stays visible
+          dimmed below. No per-step photo cross-fade. */}
       {(phase === "playing" || phase === "exiting") && (
-        <div className="bgz-stage" ref={stageRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          {/* v205 — natural mountain scene cross-fades real photos per
-              step + animated climber trail overlay. Replaces v204's
-              cheap Three.js scene. Photos from curl-verified Unsplash
-              IDs (Mussoorie dawn → Manali twilight) so the colors are
-              actually-real sky-blue, real green forests, real snow. */}
+        <div className="bgz-stage cmm-stage" ref={stageRef}>
+          {/* Single static dawn mountain backdrop. step=0, active=false
+              so NaturalMountainScene does NOT cross-fade photos or
+              draw its own trail — only the dawn photo + ambient
+              vignette + animated birds remain. */}
           <div className="bgz-stage-backdrop" aria-hidden="true">
-            <NaturalMountainScene step={activeIdx} totalSteps={cards.length} active />
+            <NaturalMountainScene step={0} totalSteps={1} active={false} />
           </div>
 
-          {/* Top HUD — step pips + sound toggle */}
-          <header className="bgz-hud">
-            <div className="bgz-pips" role="tablist" aria-label="Bid game progress">
-              {cards.map((c, i) => {
-                const done = c.isComplete() && i < activeIdx;
-                const active = i === activeIdx;
-                const reached = i <= maxReached;
-                return (
-                  <button
-                    key={c.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    aria-disabled={!reached}
-                    className={`bgz-pip ${active ? "is-active" : ""} ${done ? "is-done" : ""} ${!reached ? "is-locked" : ""}`.trim()}
-                    onClick={() => reached && jumpTo(i, i < activeIdx ? -1 : 1)}
-                    disabled={!reached}
-                    title={done ? `${c.title} · ${c.summary()}` : c.title}
-                  >
-                    <span className="bgz-pip-glyph" aria-hidden="true">
-                      {done ? "✓" : c.icon}
-                    </span>
-                    <span className="bgz-pip-label">{done ? c.summary() : c.title}</span>
-                  </button>
-                );
-              })}
+          {/* HUD — only sound mute kept. Pip rail removed because the
+              milestone discs themselves visually convey progress and
+              are individually tappable (Candy Crush level tree). */}
+          <header className="bgz-hud cmm-hud">
+            <div className="cmm-hud-title" aria-hidden="true">
+              Climb to launch your auction
             </div>
             <button
               type="button"
@@ -479,128 +249,13 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
             </button>
           </header>
 
-          {/* Active step card with tilt-on-touch */}
-          <main
-            className="bgz-stage-main"
-            onClickCapture={onStepClickCapture}
-          >
-            <div
-              className="bgz-tilt-wrap"
-              ref={tiltRef}
-              onTouchMove={onTiltMove}
-              onTouchEnd={onTiltEnd}
-              onTouchCancel={onTiltEnd}
-            >
-              <article className="bgz-step" ref={stepRef} aria-live="polite">
-                <header className="bgz-step-head">
-                  <div className="bgz-step-glyph" aria-hidden="true">{activeCard?.icon}</div>
-                  <div className="bgz-step-h-text">
-                    <div className="bgz-step-title">{activeCard?.title}</div>
-                    {activeCard?.hint ? <div className="bgz-step-hint">{activeCard.hint}</div> : null}
-                  </div>
-                  <div className="bgz-step-counter" aria-label={`Step ${activeIdx + 1} of ${cards.length}`}>
-                    <span className="bgz-step-counter-n">{activeIdx + 1}</span>
-                    <span className="bgz-step-counter-sep">/</span>
-                    <span className="bgz-step-counter-d">{cards.length}</span>
-                  </div>
-                </header>
-                <div className="bgz-step-body">
-                  {activeCard?.render({
-                    onAdvance: advance,
-                    cardIdx: activeIdx,
-                    activeIdx,
-                    firstReach,
-                  } as BidGameRenderCtx)}
-                </div>
-              </article>
-            </div>
-
-            {/* Burst particles emitted from selection taps */}
-            {bursts.map((b) => (
-              <div key={b.id} className="bgz-burst" style={{ left: b.x, top: b.y }} aria-hidden="true">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="bgz-burst-dot"
-                    style={{
-                      // 10 particles ejected on a 360° rosette
-                      ["--bgz-burst-x" as any]: `${Math.cos((i / 10) * Math.PI * 2) * 60}px`,
-                      ["--bgz-burst-y" as any]: `${Math.sin((i / 10) * Math.PI * 2) * 60}px`,
-                      animationDelay: `${i * 8}ms`,
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
+          <main className="bgz-stage-main cmm-stage-main">
+            <ClimberMilestoneMap
+              cards={cards}
+              onAllComplete={handleLaunch}
+              finalCtaLabel={finalCtaLabel}
+            />
           </main>
-
-          {/* v203.3 — Bottom swipe gesture rail (replaces Next CTA button).
-              Per Sachin's feedback: native game-zone feel means the user
-              navigates by SWIPING, not tapping a button. The rail surfaces:
-                - animated chevron arrows (→ left swipe to advance)
-                - a back chevron (← right swipe to revisit) when activeIdx > 0
-                - dynamic hint text per-state
-              On the last card the rail flips to a single premium "Enter the
-              Auction" button — swipe is unintuitive for a "submit" action. */}
-          <footer className="bgz-swipe-rail">
-            {isLastCard ? (
-              <button
-                type="button"
-                className="bgz-cta-btn bgz-cta-btn-final"
-                onClick={() => {
-                  if (!canAdvanceNow) {
-                    playError();
-                    vibrate([60, 40, 60]);
-                    return;
-                  }
-                  advance();
-                }}
-                disabled={!canAdvanceNow}
-                aria-disabled={!canAdvanceNow}
-              >
-                <span className="bgz-cta-shimmer" aria-hidden="true" />
-                <span className="bgz-cta-label">
-                  {finalCtaLabel || "▶ Enter the Auction"}
-                </span>
-              </button>
-            ) : canAdvanceNow ? (
-              <div
-                className="bgz-swipe-indicator is-forward"
-                role="button"
-                tabIndex={0}
-                aria-label="Swipe left or tap to continue"
-                onClick={advance}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    advance();
-                  }
-                }}
-              >
-                <span className="bgz-swipe-chev bgz-swipe-chev-1" aria-hidden="true">›</span>
-                <span className="bgz-swipe-chev bgz-swipe-chev-2" aria-hidden="true">›</span>
-                <span className="bgz-swipe-chev bgz-swipe-chev-3" aria-hidden="true">›</span>
-                <span className="bgz-swipe-label">Swipe to continue</span>
-              </div>
-            ) : (
-              <div className="bgz-swipe-indicator is-waiting">
-                <span className="bgz-swipe-pulse" aria-hidden="true" />
-                <span className="bgz-swipe-label">
-                  {activeCard?.hint || "Pick to unlock the next step"}
-                </span>
-              </div>
-            )}
-            {activeIdx > 0 && !isLastCard && (
-              <button
-                type="button"
-                className="bgz-swipe-back"
-                onClick={() => jumpTo(activeIdx - 1, -1)}
-                aria-label="Swipe right or tap to go back"
-              >
-                <span aria-hidden="true">‹</span> Back
-              </button>
-            )}
-          </footer>
         </div>
       )}
     </div>

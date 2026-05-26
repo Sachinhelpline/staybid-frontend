@@ -104,19 +104,30 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
           light gradient — preserves the natural color of the photo. */}
       <div className="nms-vignette" />
 
-      {/* Layer 3 — Two SVG birds gliding across the sky. Real bird
-          silhouettes (not abstract dashes), gentle ease motion, only
-          rendered in active mode for performance. */}
-      {active && (
-        <svg className="nms-birds" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <g className="nms-bird nms-bird-1" fill="rgba(20,15,8,0.45)">
-            <path d="M -2 14 q 2 -1.5 4 0 q 2 1.5 4 0 q -1 1 -2 1.4 q -1 -0.4 -2 -0.4 q -1 0 -2 0.4 q -1 -0.4 -2 -1.4 z" />
-          </g>
-          <g className="nms-bird nms-bird-2" fill="rgba(20,15,8,0.36)">
-            <path d="M -2 14 q 1.4 -1 2.8 0 q 1.4 1 2.8 0 q -0.7 0.7 -1.4 1 q -0.7 -0.3 -1.4 -0.3 q -0.7 0 -1.4 0.3 q -0.7 -0.3 -1.4 -1 z" />
-          </g>
-        </svg>
-      )}
+      {/* Layer 3 — Three SVG birds gliding across the sky with WING
+          FLAP animation (v206). Each bird is a group with two path
+          variants (wings-up + wings-down) toggled via opacity
+          keyframes — gives a "flapping while flying" feel without
+          the cost of SMIL or JS animation. Birds now ALSO render in
+          boot mode (Sachin: "front page main animated birds thoda
+          alive feel karwao") — they're cheap visual ornament. */}
+      <svg className="nms-birds" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {/* Bird 1 — closest, darkest, slowest flap */}
+        <g className="nms-bird nms-bird-1" fill="rgba(20,15,8,0.50)">
+          <path className="nms-wing-up"   d="M -2 14 q 2 -2.4 4 0 q 2 2.4 4 0 q -1 1 -2 1.4 q -1 -0.4 -2 -0.4 q -1 0 -2 0.4 q -1 -0.4 -2 -1.4 z" />
+          <path className="nms-wing-down" d="M -2 14 q 2 -0.5 4 0 q 2 0.5 4 0 q -1 1 -2 1.4 q -1 -0.4 -2 -0.4 q -1 0 -2 0.4 q -1 -0.4 -2 -1.4 z" />
+        </g>
+        {/* Bird 2 — middle distance, medium tint, medium flap */}
+        <g className="nms-bird nms-bird-2" fill="rgba(20,15,8,0.40)">
+          <path className="nms-wing-up"   d="M -2 14 q 1.4 -1.8 2.8 0 q 1.4 1.8 2.8 0 q -0.7 0.7 -1.4 1 q -0.7 -0.3 -1.4 -0.3 q -0.7 0 -1.4 0.3 q -0.7 -0.3 -1.4 -1 z" />
+          <path className="nms-wing-down" d="M -2 14 q 1.4 -0.4 2.8 0 q 1.4 0.4 2.8 0 q -0.7 0.7 -1.4 1 q -0.7 -0.3 -1.4 -0.3 q -0.7 0 -1.4 0.3 q -0.7 -0.3 -1.4 -1 z" />
+        </g>
+        {/* Bird 3 — farthest, lightest, fastest flap (small + high) */}
+        <g className="nms-bird nms-bird-3" fill="rgba(20,15,8,0.30)">
+          <path className="nms-wing-up"   d="M -2 14 q 1.0 -1.4 2.0 0 q 1.0 1.4 2.0 0 q -0.5 0.5 -1.0 0.7 q -0.5 -0.2 -1.0 -0.2 q -0.5 0 -1.0 0.2 q -0.5 -0.2 -1.0 -0.7 z" />
+          <path className="nms-wing-down" d="M -2 14 q 1.0 -0.3 2.0 0 q 1.0 0.3 2.0 0 q -0.5 0.5 -1.0 0.7 q -0.5 -0.2 -1.0 -0.2 q -0.5 0 -1.0 0.2 q -0.5 -0.2 -1.0 -0.7 z" />
+        </g>
+      </svg>
 
       {/* Layer 4 — Climber trail overlay. Only in active mode. Path
           draws itself in via stroke-dasharray, markers per step, the
