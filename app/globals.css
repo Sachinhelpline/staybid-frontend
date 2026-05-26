@@ -7246,6 +7246,80 @@ body.is-reel-page {
   animation: bgzFadeIn 0.7s 1s ease both;
 }
 
+/* v212 — boot-screen journey preview (5 numbered milestones).
+   Cream cards over the mountain backdrop with champagne italic
+   serif numerals. SS1 zig-zag flow (alternating left/right) +
+   SS2 cream-over-image palette. */
+.bgz-boot-journey {
+  list-style: none;
+  margin: 0 0 26px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: bgzFadeIn 0.8s 0.6s ease both;
+}
+.bgz-boot-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,252,246,0.94) 0%, rgba(250,245,235,0.92) 100%);
+  border: 1px solid rgba(201,166,107,0.32);
+  box-shadow:
+    0 10px 24px -10px rgba(31,26,15,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.55);
+  text-align: left;
+}
+.bgz-boot-step--right { margin-left: 6%; }
+.bgz-boot-step--left  { margin-right: 6%; flex-direction: row-reverse; text-align: right; }
+.bgz-boot-step-num {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: #FFF9EC;
+  background: radial-gradient(circle at 32% 28%, #E7CFA0 0%, #C9A66B 55%, #8B6914 100%);
+  box-shadow:
+    0 3px 8px rgba(31,26,15,0.35),
+    inset 0 1px 1px rgba(255,255,255,0.45),
+    inset 0 -2px 3px rgba(31,26,15,0.20);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+}
+.bgz-boot-step-body { flex: 1 1 auto; min-width: 0; }
+.bgz-boot-step-title {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: #4A3820;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+}
+.bgz-boot-step-desc {
+  margin-top: 2px;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: rgba(74, 56, 32, 0.78);
+}
+
+@media (max-width: 380px) {
+  .bgz-boot-step { padding: 8px 12px 8px 10px; gap: 12px; }
+  .bgz-boot-step-num { width: 34px; height: 34px; font-size: 1.25rem; }
+  .bgz-boot-step-title { font-size: 0.96rem; }
+  .bgz-boot-step-desc { font-size: 0.7rem; }
+  .bgz-boot-step--right { margin-left: 3%; }
+  .bgz-boot-step--left  { margin-right: 3%; }
+}
+
 @keyframes bgzBootIn {
   0% { opacity: 0; }
   100% { opacity: 1; }
@@ -7636,6 +7710,7 @@ body.is-reel-page {
   .bgz-boot-cta,
   .bgz-boot-cta-glow,
   .bgz-boot-tip,
+  .bgz-boot-journey,
   .bgz-stage-aurora,
   .bgz-particle,
   .bgz-burst-dot,
