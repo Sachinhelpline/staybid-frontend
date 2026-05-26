@@ -8968,11 +8968,17 @@ body.is-reel-page {
   filter: blur(10px);
   will-change: transform;
 }
-.cmm-cloud-1 { width: 42%; height: 5%;  top: 78%; opacity: 0.55; animation: cmmCloudL 78s linear infinite; }
-.cmm-cloud-2 { width: 56%; height: 6%;  top: 60%; opacity: 0.62; animation: cmmCloudR 96s linear infinite; animation-delay: -30s; }
-.cmm-cloud-3 { width: 38%; height: 4%;  top: 44%; opacity: 0.58; animation: cmmCloudL 110s linear infinite; animation-delay: -55s; }
-.cmm-cloud-4 { width: 50%; height: 5%;  top: 26%; opacity: 0.66; animation: cmmCloudR 86s linear infinite; animation-delay: -18s; }
-.cmm-cloud-5 { width: 34%; height: 4%;  top: 10%; opacity: 0.52; animation: cmmCloudL 124s linear infinite; animation-delay: -70s; }
+/* v218.2 — bumped opacity 0.55→0.85+, sped up loops 78→40s, added 3
+   more clouds for visible density across every band. Now clearly
+   noticeable on a still screenshot, not just a recording. */
+.cmm-cloud-1 { width: 46%; height: 6%;  top: 86%; opacity: 0.88; animation: cmmCloudL 42s linear infinite; }
+.cmm-cloud-2 { width: 56%; height: 7%;  top: 72%; opacity: 0.92; animation: cmmCloudR 58s linear infinite; animation-delay: -18s; }
+.cmm-cloud-3 { width: 42%; height: 5%;  top: 58%; opacity: 0.85; animation: cmmCloudL 50s linear infinite; animation-delay: -27s; }
+.cmm-cloud-4 { width: 52%; height: 6%;  top: 44%; opacity: 0.90; animation: cmmCloudR 46s linear infinite; animation-delay: -10s; }
+.cmm-cloud-5 { width: 38%; height: 5%;  top: 32%; opacity: 0.82; animation: cmmCloudL 62s linear infinite; animation-delay: -35s; }
+.cmm-cloud-6 { width: 48%; height: 6%;  top: 20%; opacity: 0.95; animation: cmmCloudR 38s linear infinite; animation-delay: -22s; }
+.cmm-cloud-7 { width: 32%; height: 4%;  top: 12%; opacity: 0.78; animation: cmmCloudL 70s linear infinite; animation-delay: -44s; }
+.cmm-cloud-8 { width: 44%; height: 5%;  top: 4%;  opacity: 0.85; animation: cmmCloudR 54s linear infinite; animation-delay: -8s; }
 
 @keyframes cmmCloudL {
   0%   { transform: translate3d(-55%, 0, 0); }
@@ -8995,15 +9001,15 @@ body.is-reel-page {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 250, 240, 0.16) 30%,
-    rgba(255, 250, 240, 0.28) 50%,
-    rgba(255, 250, 240, 0.16) 70%,
+    rgba(255, 250, 240, 0.30) 25%,
+    rgba(255, 250, 240, 0.55) 50%,
+    rgba(255, 250, 240, 0.30) 75%,
     transparent 100%
   );
   background-size: 260% 100%;
   background-position: 0% 50%;
-  animation: cmmHazeDrift 42s ease-in-out infinite alternate;
-  filter: blur(8px);
+  animation: cmmHazeDrift 22s ease-in-out infinite alternate;
+  filter: blur(10px);
   mix-blend-mode: screen;
   will-change: background-position;
 }
@@ -9023,18 +9029,18 @@ body.is-reel-page {
   height: 22%;
   background: radial-gradient(
     ellipse at 72% 38%,
-    rgba(255, 220, 150, 0.38) 0%,
-    rgba(255, 200, 120, 0.22) 25%,
-    rgba(255, 200, 120, 0.08) 50%,
-    rgba(255, 200, 120, 0)    70%
+    rgba(255, 220, 150, 0.75) 0%,
+    rgba(255, 200, 120, 0.48) 25%,
+    rgba(255, 200, 120, 0.20) 50%,
+    rgba(255, 200, 120, 0)    72%
   );
-  animation: cmmSunBreathe 12s ease-in-out infinite alternate;
+  animation: cmmSunBreathe 8s ease-in-out infinite alternate;
   mix-blend-mode: screen;
   will-change: opacity, transform;
 }
 @keyframes cmmSunBreathe {
-  0%   { opacity: 0.65; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 1;    transform: translate3d(-2%, 1%, 0) scale(1.08); }
+  0%   { opacity: 0.85; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 1;    transform: translate3d(-2%, 1%, 0) scale(1.12); }
 }
 
 /* Valley mist — soft warm fog rising at the very bottom of the canvas.
@@ -9044,26 +9050,133 @@ body.is-reel-page {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 18%;
+  height: 22%;
   background: linear-gradient(
     to top,
-    rgba(255, 240, 220, 0.20) 0%,
-    rgba(255, 240, 220, 0.10) 50%,
+    rgba(255, 240, 220, 0.55) 0%,
+    rgba(255, 240, 220, 0.30) 50%,
     transparent 100%
   );
-  animation: cmmMistRise 28s ease-in-out infinite alternate;
+  animation: cmmMistRise 16s ease-in-out infinite alternate;
   mix-blend-mode: screen;
-  filter: blur(10px);
+  filter: blur(12px);
   will-change: opacity, transform;
 }
 @keyframes cmmMistRise {
-  0%   { opacity: 0.55; transform: translate3d(-3%, 0, 0); }
-  100% { opacity: 0.85; transform: translate3d(3%, -1%, 0); }
+  0%   { opacity: 0.65; transform: translate3d(-4%, 0, 0); }
+  100% { opacity: 1;    transform: translate3d(4%, -2%, 0); }
+}
+
+/* v218.2 — 3 SVG birds flying across the visible viewport area. Same
+   wing-flap pattern as NaturalMountainScene but the gliding paths span
+   the entire 180vh canvas top↔bottom so the user sees a bird at every
+   altitude. Layered z-index: 0 so they ride between the photos and the
+   climber path. */
+.cmm-birds {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.cmm-bird {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.cmm-bird-1 { animation: cmmBirdGlide1 32s linear infinite; }
+.cmm-bird-2 { animation: cmmBirdGlide2 38s linear infinite; animation-delay: -12s; }
+.cmm-bird-3 { animation: cmmBirdGlide3 46s linear infinite; animation-delay: -20s; }
+
+@keyframes cmmBirdGlide1 {
+  0%   { transform: translate(-12%, 18%); }
+  25%  { transform: translate(28%, 22%); }
+  50%  { transform: translate(58%, 28%); }
+  75%  { transform: translate(86%, 24%); }
+  100% { transform: translate(115%, 20%); }
+}
+@keyframes cmmBirdGlide2 {
+  0%   { transform: translate(115%, 45%); }
+  30%  { transform: translate(72%, 48%); }
+  60%  { transform: translate(38%, 52%); }
+  100% { transform: translate(-12%, 49%); }
+}
+@keyframes cmmBirdGlide3 {
+  0%   { transform: translate(-15%, 72%); }
+  35%  { transform: translate(35%, 70%); }
+  70%  { transform: translate(70%, 75%); }
+  100% { transform: translate(115%, 71%); }
+}
+.cmm-bird .cmm-wing-up,
+.cmm-bird .cmm-wing-down {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cmm-bird-1 .cmm-wing-up   { animation: cmmWingUp1   0.55s steps(1) infinite; }
+.cmm-bird-1 .cmm-wing-down { animation: cmmWingDown1 0.55s steps(1) infinite; }
+.cmm-bird-2 .cmm-wing-up   { animation: cmmWingUp2   0.46s steps(1) infinite; }
+.cmm-bird-2 .cmm-wing-down { animation: cmmWingDown2 0.46s steps(1) infinite; }
+.cmm-bird-3 .cmm-wing-up   { animation: cmmWingUp3   0.38s steps(1) infinite; }
+.cmm-bird-3 .cmm-wing-down { animation: cmmWingDown3 0.38s steps(1) infinite; }
+@keyframes cmmWingUp1   { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes cmmWingDown1 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes cmmWingUp2   { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes cmmWingDown2 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes cmmWingUp3   { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes cmmWingDown3 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+/* v218.2 — Snow drift at the summit altitude. 3 wide horizontal pans
+   of soft white particles falling diagonally to simulate light
+   snowfall. mix-blend-mode: screen keeps it cinematic against the
+   dark twilight summit photo. */
+.cmm-snow {
+  position: absolute;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.9) 0.6px, transparent 1.2px),
+    radial-gradient(circle at 30% 60%, rgba(255,255,255,0.85) 0.5px, transparent 1.1px),
+    radial-gradient(circle at 55% 30%, rgba(255,255,255,0.95) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 75% 80%, rgba(255,255,255,0.8) 0.5px, transparent 1.1px),
+    radial-gradient(circle at 90% 45%, rgba(255,255,255,0.9) 0.6px, transparent 1.2px);
+  background-size: 100% 100%;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+.cmm-snow-1 { left: 0; right: 0; top: 0%;  height: 14%; opacity: 0.85; animation: cmmSnowFall 18s linear infinite; }
+.cmm-snow-2 { left: 0; right: 0; top: 8%;  height: 14%; opacity: 0.75; animation: cmmSnowFall 24s linear infinite; animation-delay: -8s; }
+.cmm-snow-3 { left: 0; right: 0; top: 16%; height: 14%; opacity: 0.65; animation: cmmSnowFall 30s linear infinite; animation-delay: -14s; }
+@keyframes cmmSnowFall {
+  0%   { transform: translate3d(0, -10%, 0); }
+  100% { transform: translate3d(-3%, 110%, 0); }
+}
+
+/* v218.2 — Slow Ken-Burns breathing on the 5 altitude photos so the
+   landscape itself feels alive. Each layer breathes at a slightly
+   different rate so they don't pulse in unison. */
+.cmm-altitude {
+  will-change: transform;
+}
+.cmm-altitude-0 { animation: cmmKenburns 32s ease-in-out infinite alternate; }
+.cmm-altitude-1 { animation: cmmKenburns 38s ease-in-out infinite alternate; animation-delay: -6s; }
+.cmm-altitude-2 { animation: cmmKenburns 42s ease-in-out infinite alternate; animation-delay: -14s; }
+.cmm-altitude-3 { animation: cmmKenburns 36s ease-in-out infinite alternate; animation-delay: -22s; }
+.cmm-altitude-4 { animation: cmmKenburns 46s ease-in-out infinite alternate; animation-delay: -30s; }
+@keyframes cmmKenburns {
+  0%   { transform: scale(1.00) translate3d(0, 0, 0); }
+  100% { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cmm-cloud-1, .cmm-cloud-2, .cmm-cloud-3, .cmm-cloud-4, .cmm-cloud-5,
-  .cmm-haze, .cmm-sun, .cmm-mist {
+  .cmm-cloud-1, .cmm-cloud-2, .cmm-cloud-3, .cmm-cloud-4,
+  .cmm-cloud-5, .cmm-cloud-6, .cmm-cloud-7, .cmm-cloud-8,
+  .cmm-haze, .cmm-sun, .cmm-mist,
+  .cmm-bird-1, .cmm-bird-2, .cmm-bird-3,
+  .cmm-bird-1 .cmm-wing-up, .cmm-bird-1 .cmm-wing-down,
+  .cmm-bird-2 .cmm-wing-up, .cmm-bird-2 .cmm-wing-down,
+  .cmm-bird-3 .cmm-wing-up, .cmm-bird-3 .cmm-wing-down,
+  .cmm-snow-1, .cmm-snow-2, .cmm-snow-3,
+  .cmm-altitude-0, .cmm-altitude-1, .cmm-altitude-2,
+  .cmm-altitude-3, .cmm-altitude-4 {
     animation: none !important;
   }
 }
