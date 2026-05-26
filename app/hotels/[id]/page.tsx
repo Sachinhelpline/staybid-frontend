@@ -21,6 +21,11 @@ import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import BackToTopButton from "@/components/BackToTopButton";
+// v201 — shared premium guest-count picker (animated figure icons +
+// directional value-roll). Used on this page in the global availability
+// picker (adults / children / kids). The flash-deal modal still uses its
+// row-layout chrome until a `layout="row"` variant ships.
+import PremiumGuestPicker from "@/components/PremiumGuestPicker";
 // v139 — per-page tutorial spotlight tour (5 steps: photos → picker →
 // score badge → Book Now → Negotiate). Hook handles skip logic + waits
 // until the first selector (.hx-room-media) renders.
@@ -2747,35 +2752,41 @@ export default function HotelDetail() {
             </button>
           </div>
 
-          {/* Guests row */}
+          {/* Guests row — v201 PremiumGuestPicker.
+              The .picker-tile / .picker-step CSS classes stayed live for
+              third-party use, but the global availability picker now
+              renders the shared component so /bid + /hotels/[id] read the
+              same animated, theme-aware UI on every counter. */}
           <div className="grid grid-cols-3 gap-3 mb-4 relative z-[2]">
-            <div className="picker-tile">
-              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
-              <div className="flex items-center justify-between">
-                <button type="button" onClick={() => setGlobalAdults(Math.max(1, globalAdults - 1))} className="picker-step">−</button>
-                <span className="font-black text-luxury-900 text-lg">{globalAdults}</span>
-                <button type="button" onClick={() => setGlobalAdults(Math.min(8, globalAdults + 1))} className="picker-step">+</button>
-              </div>
-              <p className="text-[0.55rem] text-luxury-400 text-center mt-1">12+ yrs</p>
-            </div>
-            <div className="picker-tile">
-              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👦 Children</p>
-              <div className="flex items-center justify-between">
-                <button type="button" onClick={() => setGlobalChildren(Math.max(0, globalChildren - 1))} className="picker-step">−</button>
-                <span className="font-black text-luxury-900 text-lg">{globalChildren}</span>
-                <button type="button" onClick={() => setGlobalChildren(Math.min(6, globalChildren + 1))} className="picker-step">+</button>
-              </div>
-              <p className="text-[0.55rem] text-amber-600 text-center mt-1 font-semibold">5–12 · +₹200</p>
-            </div>
-            <div className="picker-tile">
-              <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">🧒 Kids</p>
-              <div className="flex items-center justify-between">
-                <button type="button" onClick={() => setGlobalKids(Math.max(0, globalKids - 1))} className="picker-step">−</button>
-                <span className="font-black text-luxury-900 text-lg">{globalKids}</span>
-                <button type="button" onClick={() => setGlobalKids(Math.min(6, globalKids + 1))} className="picker-step">+</button>
-              </div>
-              <p className="text-[0.55rem] text-emerald-600 text-center mt-1 font-semibold">&lt;5 yrs · FREE</p>
-            </div>
+            <PremiumGuestPicker
+              kind="adults"
+              label="Adults"
+              sublabel="12+ yrs"
+              value={globalAdults}
+              onChange={setGlobalAdults}
+              min={1}
+              max={8}
+            />
+            <PremiumGuestPicker
+              kind="children"
+              label="Children"
+              sublabel="5-12 · +₹200"
+              sublabelTone="amber"
+              value={globalChildren}
+              onChange={setGlobalChildren}
+              min={0}
+              max={6}
+            />
+            <PremiumGuestPicker
+              kind="kids"
+              label="Kids"
+              sublabel="<5 yrs · FREE"
+              sublabelTone="emerald"
+              value={globalKids}
+              onChange={setGlobalKids}
+              min={0}
+              max={6}
+            />
           </div>
 
           {/* Availability warning when dates overlap blocks */}

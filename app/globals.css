@@ -713,7 +713,11 @@ body.is-reel-page {
 @keyframes lux-cal-shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
 .lux-cal-backdrop {
-  position: fixed; inset: 0; z-index: 100;
+  /* v203.3 — z-index bumped 100 → 1200 so the calendar opens ABOVE the
+     BidGameZone .bgz-shell viewport overlay (z:1000) on /bid Step 1.
+     Combined with createPortal-to-body in LuxuryCalendar.tsx, the calendar
+     is guaranteed to escape any ancestor stacking context. */
+  position: fixed; inset: 0; z-index: 1200;
   display: flex; align-items: flex-end; justify-content: center;
   background: radial-gradient(900px 600px at 50% 30%, rgba(40,28,5,0.55), rgba(8,5,2,0.78));
   backdrop-filter: blur(8px) saturate(140%);
@@ -6403,3 +6407,1833 @@ body.is-reel-page {
 }
 .hx-room-arrow:active { transform: translateY(-50%) scale(0.94); }
 @media (hover: none) { .hx-room-arrow { display: none !important; } }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PremiumGuestPicker (v201) — cozy minimal animated counter
+   Used across /bid + /hotels/[id] global picker + flash deal modal.
+   Single-counter component; host stacks 2-3 in a flex/grid row.
+   Add new tones to .pgp-sub-* if a new colour band is needed.
+═════════════════════════════════════════════════════════════════════ */
+.pgp {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 10px 10px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(31, 26, 15, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  min-width: 0;
+}
+.pgp:hover {
+  transform: translateY(-1px);
+  border-color: rgba(201, 166, 107, 0.42);
+  box-shadow: 0 4px 12px -4px rgba(201, 166, 107, 0.22);
+}
+
+.pgp-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.pgp-icon {
+  font-size: 1rem;
+  line-height: 1;
+  display: inline-block;
+  animation: pgpIconPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes pgpIconPop {
+  0%   { transform: scale(0.78); opacity: 0.5; }
+  60%  { transform: scale(1.14); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+.pgp-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.pgp-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.pgp-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 166, 107, 0.10);
+  color: var(--text-base);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.pgp-btn:hover:not(:disabled) {
+  background: rgba(201, 166, 107, 0.24);
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(201, 166, 107, 0.14);
+}
+.pgp-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.pgp-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.pgp-val {
+  font-size: 1.18rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-base);
+  min-width: 24px;
+  text-align: center;
+  display: inline-block;
+}
+.pgp-val[data-dir="up"]   { animation: pgpRollUp   0.28s ease both; }
+.pgp-val[data-dir="down"] { animation: pgpRollDown 0.28s ease both; }
+@keyframes pgpRollUp {
+  from { transform: translateY(7px);  opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes pgpRollDown {
+  from { transform: translateY(-7px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.pgp-sub {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+.pgp-sub-amber   { color: #b8871a; }
+.pgp-sub-emerald { color: #4a7f4a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pgp,
+  .pgp:hover,
+  .pgp-btn,
+  .pgp-btn:hover:not(:disabled),
+  .pgp-btn:active:not(:disabled),
+  .pgp-icon,
+  .pgp-val[data-dir="up"],
+  .pgp-val[data-dir="down"] {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BidCardStack (v202) — mobile/tablet card-stack flow on /bid
+   Used ONLY on viewports <= 1023px. Desktop reads the existing inline
+   bid flow; this CSS is gated by a JS check (host renders the stack
+   only on mobile/tablet), so no @media wrapper needed here.
+═════════════════════════════════════════════════════════════════════ */
+
+.bcs-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding-bottom: 96px; /* room for sticky CTA rail */
+}
+
+/* ── Breadcrumb chips ─────────────────────────────────────────── */
+.bcs-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 2px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(180deg, var(--bg-page) 0%, var(--bg-page) 85%, rgba(0,0,0,0) 100%);
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.bcs-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bcs-crumb-glyph {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.bcs-crumb-label {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 130px;
+}
+.bcs-crumb.is-active {
+  background: linear-gradient(135deg, rgba(217,190,130,0.18), rgba(201,166,107,0.28));
+  color: var(--text-base);
+  border-color: rgba(201,166,107,0.55);
+  box-shadow: 0 4px 12px -4px rgba(201,166,107,0.30);
+  transform: translateY(-1px);
+}
+.bcs-crumb.is-done {
+  background: rgba(127,146,105,0.14);
+  color: #5a6e44;
+  border-color: rgba(127,146,105,0.42);
+}
+.bcs-crumb.is-locked {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.bcs-crumb:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+/* ── Card stack ───────────────────────────────────────────────── */
+.bcs-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  scroll-margin-top: 64px;
+}
+.bcs-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 22px;
+  padding: 18px 16px 20px;
+  box-shadow: 0 14px 28px -16px rgba(31,26,15,0.18),
+              0 4px 10px -3px rgba(31,26,15,0.10);
+  transition: transform 0.42s cubic-bezier(.22,1,.36,1), opacity 0.42s ease, box-shadow 0.42s ease;
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+.bcs-card.is-active {
+  /* Active card sits at top of stack — full opacity + larger shadow. */
+  box-shadow: 0 22px 42px -18px rgba(31,26,15,0.28),
+              0 8px 18px -6px rgba(31,26,15,0.14),
+              0 0 0 1px rgba(201,166,107,0.18);
+  animation: bcsCardEnter 0.46s cubic-bezier(.22,1,.36,1);
+}
+.bcs-card.is-peek {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  /* Peeks bleed up from under the active card — only the top edge is
+     visible. The 60px buffer keeps the peek hint visible without
+     covering the active card's body. */
+  height: 92px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.bcs-card.is-peek::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, var(--bg-page) 92%);
+  pointer-events: none;
+}
+@keyframes bcsCardEnter {
+  0%   { transform: translateY(24px) scale(0.96); opacity: 0; }
+  60%  { opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.bcs-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.bcs-card-glyph {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(31,26,15,0.12));
+}
+.bcs-card-h-text {
+  flex: 1;
+  min-width: 0;
+}
+.bcs-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-base);
+  line-height: 1.15;
+}
+.bcs-card-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.bcs-card-counter {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+  background: rgba(201,166,107,0.14);
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.bcs-card-counter-sep {
+  opacity: 0.5;
+  margin: 0 1px;
+}
+
+.bcs-card-body {
+  min-height: 200px;
+}
+.bcs-card-body-peek {
+  min-height: 0;
+}
+
+/* ── Sticky CTA rail ──────────────────────────────────────────── */
+.bcs-cta-rail {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(250,245,235,0) 0%, var(--bg-page) 32%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+[data-theme="dark"] .bcs-cta-rail {
+  background: linear-gradient(180deg, rgba(15,12,8,0) 0%, var(--bg-page) 32%);
+}
+.bcs-cta-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 18px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(184,134,11,0.4);
+  background: linear-gradient(135deg, #E7CFA0 0%, #D9BE82 50%, #C9A66B 100%);
+  color: #2B2415;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  box-shadow: 0 8px 20px -6px rgba(201,166,107,0.55),
+              0 2px 6px -2px rgba(31,26,15,0.18);
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+.bcs-cta-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -6px rgba(201,166,107,0.65),
+              0 4px 10px -2px rgba(31,26,15,0.22);
+}
+.bcs-cta-btn:not(:disabled):active {
+  transform: translateY(0) scale(0.985);
+}
+.bcs-cta-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+.bcs-cta-label {
+  position: relative;
+  z-index: 2;
+}
+.bcs-cta-shimmer {
+  position: absolute;
+  top: 0; left: -120%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+  animation: bcsShimmer 2.6s linear infinite;
+  z-index: 1;
+}
+.bcs-cta-btn:disabled .bcs-cta-shimmer {
+  animation: none;
+}
+@keyframes bcsShimmer {
+  0% { left: -120%; }
+  100% { left: 120%; }
+}
+.bcs-cta-tip {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bcs-card,
+  .bcs-card.is-active,
+  .bcs-crumb,
+  .bcs-cta-btn,
+  .bcs-cta-shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — Premium photo-tile grid (cities + property types)
+   - Replaces .bx-pick-grid + .bx-pick-tile inside the Card Stack
+   - Photo-only: NO emoji bubble inside the tile (per Sachin's v202.1
+     feedback: "icon remove karo sirf photo and city name rakho").
+   - Premium rounded corners (18px) + gold halo on selection.
+   - 2 cols on mobile, 3 cols on slightly wider screens.
+────────────────────────────────────────────────────────────────── */
+.bcs-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 420px) {
+  .bcs-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 11px;
+  }
+}
+
+.bcs-photo-tile {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #1f1a0f;
+  box-shadow: 0 4px 14px rgba(31, 26, 15, 0.12),
+              0 1px 3px rgba(31, 26, 15, 0.08);
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease,
+              border-color 0.22s ease;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+.bcs-photo-tile:active {
+  transform: scale(0.97);
+}
+.bcs-photo-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(31, 26, 15, 0.18),
+              0 2px 6px rgba(31, 26, 15, 0.10);
+}
+
+.bcs-photo-tile.is-selected {
+  border-color: var(--cozy-champagne, #C9A66B);
+  box-shadow: 0 0 0 4px rgba(201, 166, 107, 0.22),
+              0 12px 26px rgba(201, 166, 107, 0.28),
+              0 2px 6px rgba(31, 26, 15, 0.14);
+  transform: translateY(-3px);
+}
+
+.bcs-photo-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  display: block;
+}
+
+.bcs-photo-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+              rgba(31, 26, 15, 0.10) 0%,
+              rgba(31, 26, 15, 0.35) 55%,
+              rgba(31, 26, 15, 0.72) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bcs-photo-tile.is-selected .bcs-photo-shade {
+  background: linear-gradient(180deg,
+              rgba(31, 26, 15, 0.05) 0%,
+              rgba(201, 166, 107, 0.18) 55%,
+              rgba(31, 26, 15, 0.78) 100%);
+}
+
+.bcs-photo-label {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  color: #FFF9EC;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  text-align: left;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65),
+               0 0 12px rgba(0, 0, 0, 0.35);
+  line-height: 1.18;
+}
+
+.bcs-photo-surge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #FFE7A3;
+  background: rgba(31, 26, 15, 0.55);
+  border: 1px solid rgba(217, 190, 130, 0.40);
+  padding: 3px 8px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Tick badge bottom-right on selected photo tile — gold check */
+.bcs-photo-tile.is-selected::after {
+  content: "✓";
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #E7CFA0 0%, #C9A66B 100%);
+  color: #1F1A0F;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(31, 26, 15, 0.35);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — `.bcs-native-counters` strips Premium Guest Picker chrome
+   when the picker renders inside a Card Stack body. The card itself
+   already provides the framing; without this override the picker
+   reads as card-in-card and feels heavy.
+────────────────────────────────────────────────────────────────── */
+.bcs-native-counters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bcs-native-counters .pgp {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 10px 4px !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--cozy-taupe, #E8DCC8);
+}
+.bcs-native-counters .pgp:last-child {
+  border-bottom: none;
+}
+.bcs-native-counters .pgp:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   v202.2 — Swipe hint chevrons on the active Card Stack card.
+   Tiny animated arrows on the left + right rim signal that the
+   user can swipe horizontally. CSS-only, no JS. Pulse loop ~2.4s
+   with a subtle horizontal nudge so it doesn't shout — reads as
+   ambient hint, not a banner.
+────────────────────────────────────────────────────────────────── */
+.bcs-card.is-active::before,
+.bcs-card.is-active::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 32px;
+  margin-top: -16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 14px 22px;
+  opacity: 0;
+  pointer-events: none;
+  animation: bcsSwipeHint 2.6s ease-in-out infinite;
+}
+.bcs-card.is-active::before {
+  left: 6px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 22' fill='none' stroke='%23C9A66B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='11,3 3,11 11,19'/></svg>");
+}
+.bcs-card.is-active::after {
+  right: 6px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 22' fill='none' stroke='%23C9A66B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='3,3 11,11 3,19'/></svg>");
+  animation-delay: 1.3s;
+}
+@keyframes bcsSwipeHint {
+  0%,  100% { opacity: 0; transform: translateX(0); }
+  20%       { opacity: 0.55; transform: translateX(-3px); }
+  40%, 60%  { opacity: 0.85; transform: translateX(0); }
+  80%       { opacity: 0.30; transform: translateX(3px); }
+}
+.bcs-card.is-active::after {
+  animation-name: bcsSwipeHintR;
+}
+@keyframes bcsSwipeHintR {
+  0%,  100% { opacity: 0; transform: translateX(0); }
+  20%       { opacity: 0.55; transform: translateX(3px); }
+  40%, 60%  { opacity: 0.85; transform: translateX(0); }
+  80%       { opacity: 0.30; transform: translateX(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bcs-card.is-active::before,
+  .bcs-card.is-active::after {
+    animation: none !important;
+    opacity: 0.35;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v203 — BidGameZone (PlayStation-tier premium /bid Step 1)
+
+   Layer plan:
+     .bgz-shell           outer fixed-bg shell
+     .bgz-boot            cinematic intro (full-screen, dismissed on
+                           PRESS START → fades into game zone)
+     .bgz-stage           the rolling game zone itself
+       .bgz-stage-backdrop  aurora + vignette + ambient particles
+       .bgz-hud             step pips + sound toggle
+       .bgz-stage-main      active step + tilt parallax
+         .bgz-tilt-wrap     transform target for tilt-on-touch
+           .bgz-step        the actual card content
+       .bgz-cta-rail        bottom CTA + tip
+   All keyframes scoped under @keyframes bgz*. Reduced-motion guard
+   at the bottom kills every animation for users who request it.
+═══════════════════════════════════════════════════════════════════ */
+
+.bgz-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100%;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* ── PHASE 1 — Boot screen ─────────────────────────────────────────── */
+
+.bgz-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(60% 50% at 50% 35%, rgba(201,166,107,0.25) 0%, rgba(31,26,15,0.85) 65%),
+    linear-gradient(180deg, #0d0a05 0%, #1f1a0f 100%);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  animation: bgzBootIn 0.7s ease both;
+}
+
+.bgz-boot-aurora {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(45% 35% at 30% 30%, rgba(201,166,107,0.35) 0%, transparent 60%),
+    radial-gradient(45% 35% at 75% 60%, rgba(217,190,130,0.25) 0%, transparent 60%);
+  filter: blur(20px);
+  animation: bgzAuroraDrift 14s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.bgz-boot-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(217,190,130,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217,190,130,0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+  background-position: center center;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 75%);
+  animation: bgzGridScan 18s linear infinite;
+  pointer-events: none;
+}
+
+.bgz-boot-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 24px;
+  max-width: 420px;
+}
+
+.bgz-boot-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  color: #E7CFA0;
+  font-weight: 700;
+  margin-bottom: 14px;
+  text-shadow: 0 0 24px rgba(231, 207, 160, 0.55);
+  animation: bgzPulse 2.2s ease-in-out infinite;
+}
+
+.bgz-boot-title {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-size: clamp(2.4rem, 9vw, 3.6rem);
+  font-weight: 700;
+  color: #FAF5EB;
+  letter-spacing: 0.04em;
+  line-height: 1.04;
+  margin: 0 0 18px 0;
+  text-shadow:
+    0 2px 24px rgba(201,166,107,0.55),
+    0 0 60px rgba(217,190,130,0.30);
+  animation: bgzTitleIn 0.9s 0.1s ease both;
+}
+
+.bgz-boot-sub {
+  font-size: 0.92rem;
+  color: rgba(231, 207, 160, 0.85);
+  margin: 0 0 32px 0;
+  line-height: 1.45;
+  animation: bgzFadeIn 0.7s 0.5s ease both;
+}
+
+.bgz-boot-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 38px;
+  border: 2px solid rgba(217,190,130,0.55);
+  background:
+    linear-gradient(180deg, rgba(201,166,107,0.18) 0%, rgba(31,26,15,0.45) 100%);
+  border-radius: 999px;
+  color: #FFF9EC;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  box-shadow:
+    0 0 0 4px rgba(201,166,107,0.10),
+    0 12px 32px rgba(201,166,107,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+  animation: bgzCtaBreathe 2.2s ease-in-out infinite, bgzFadeIn 0.8s 0.7s ease both;
+  transition: transform 0.18s ease, box-shadow 0.22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgz-boot-cta:hover { transform: scale(1.03); }
+.bgz-boot-cta:active { transform: scale(0.97); }
+
+.bgz-boot-cta-glow {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, transparent, rgba(217,190,130,0.4), transparent);
+  animation: bgzCtaSpin 4s linear infinite;
+  z-index: -1;
+}
+
+.bgz-boot-cta-label { position: relative; z-index: 1; }
+
+.bgz-boot-tip {
+  margin-top: 22px;
+  font-size: 0.72rem;
+  color: rgba(231, 207, 160, 0.55);
+  letter-spacing: 0.06em;
+  animation: bgzFadeIn 0.7s 1s ease both;
+}
+
+@keyframes bgzBootIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes bgzTitleIn {
+  0% { opacity: 0; transform: translateY(14px) scale(0.96); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes bgzFadeIn {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes bgzPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes bgzCtaBreathe {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(201,166,107,0.10), 0 12px 32px rgba(201,166,107,0.30), inset 0 1px 0 rgba(255,255,255,0.18); }
+  50% { box-shadow: 0 0 0 8px rgba(201,166,107,0.16), 0 16px 44px rgba(217,190,130,0.42), inset 0 1px 0 rgba(255,255,255,0.25); }
+}
+@keyframes bgzCtaSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes bgzAuroraDrift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(8%, -6%) scale(1.08); }
+}
+@keyframes bgzGridScan {
+  0% { background-position: 0 0; }
+  100% { background-position: 36px 36px; }
+}
+
+/* ── PHASE 2 — Game zone stage ─────────────────────────────────────── */
+
+.bgz-stage {
+  position: relative;
+  min-height: 100dvh;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(201,166,107,0.20) 0%, transparent 60%),
+    linear-gradient(180deg, #14110b 0%, #1f1a0f 55%, #0d0a05 100%);
+  color: #FAF5EB;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.bgz-stage-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bgz-stage-aurora {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(40% 30% at 20% 25%, rgba(201,166,107,0.30) 0%, transparent 65%),
+    radial-gradient(50% 35% at 80% 70%, rgba(217,190,130,0.22) 0%, transparent 65%);
+  filter: blur(28px);
+  animation: bgzAuroraDrift 18s ease-in-out infinite alternate;
+}
+
+.bgz-stage-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 50% 50%, transparent 50%, rgba(0,0,0,0.55) 100%);
+}
+
+.bgz-stage-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bgz-particle {
+  position: absolute;
+  bottom: -8px;
+  background: radial-gradient(circle, #E7CFA0 0%, rgba(231,207,160,0.0) 70%);
+  border-radius: 50%;
+  animation-name: bgzParticleRise;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  filter: blur(0.5px);
+}
+@keyframes bgzParticleRise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: var(--bgz-p-opacity, 0.5); }
+  90%  { opacity: var(--bgz-p-opacity, 0.5); }
+  100% { transform: translateY(-110vh) translateX(20px); opacity: 0; }
+}
+
+/* ── HUD — step pips + mute ──────────────────────────────────────── */
+
+.bgz-hud {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 14px 8px 14px;
+}
+
+.bgz-pips {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.bgz-pips::-webkit-scrollbar { display: none; }
+
+.bgz-pip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(217,190,130,0.30);
+  background: rgba(31, 26, 15, 0.55);
+  color: rgba(231,207,160, 0.6);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgz-pip:disabled { cursor: default; opacity: 0.55; }
+.bgz-pip-glyph { font-size: 0.92rem; line-height: 1; }
+.bgz-pip-label { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bgz-pip.is-active {
+  background: linear-gradient(180deg, rgba(217,190,130,0.30) 0%, rgba(201,166,107,0.18) 100%);
+  border-color: rgba(217,190,130,0.65);
+  color: #FFF9EC;
+  box-shadow: 0 0 0 3px rgba(217,190,130,0.12), 0 0 18px rgba(217,190,130,0.30);
+}
+.bgz-pip.is-done {
+  background: rgba(127, 146, 105, 0.20);
+  border-color: rgba(157,173,143, 0.45);
+  color: #C8DCB4;
+}
+.bgz-pip.is-locked { opacity: 0.32; }
+
+.bgz-mute {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(31,26,15,0.55);
+  border: 1px solid rgba(217,190,130,0.30);
+  color: #E7CFA0;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: transform 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgz-mute:active { transform: scale(0.92); }
+.bgz-mute.is-muted { opacity: 0.55; }
+
+/* ── Stage main + tilt wrap ──────────────────────────────────────── */
+
+.bgz-stage-main {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  padding: 4px 14px 18px 14px;
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+}
+
+.bgz-tilt-wrap {
+  width: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.bgz-step {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.97) 0%, rgba(250, 245, 235, 0.96) 100%);
+  border: 1px solid rgba(217, 190, 130, 0.38);
+  border-radius: 20px;
+  padding: 18px 16px 18px 16px;
+  color: #1F1A0F;
+  box-shadow:
+    0 0 0 1px rgba(217,190,130,0.18),
+    0 16px 48px rgba(31,26,15,0.50),
+    0 4px 12px rgba(31,26,15,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.65);
+  transform-style: preserve-3d;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Subtle inner highlight sweep */
+.bgz-step::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  right: -20%;
+  height: 220px;
+  background: radial-gradient(60% 100% at 50% 0%, rgba(217,190,130,0.18) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bgz-step-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  z-index: 1;
+}
+
+.bgz-step-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #E7CFA0 0%, #C9A66B 100%);
+  font-size: 1.4rem;
+  box-shadow:
+    0 4px 10px rgba(201,166,107,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.55);
+}
+
+.bgz-step-h-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bgz-step-title {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: #1F1A0F;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.bgz-step-hint {
+  font-size: 0.78rem;
+  color: #6E5430;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.bgz-step-counter {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  padding: 5px 11px;
+  background: rgba(201,166,107,0.14);
+  border: 1px solid rgba(201,166,107,0.32);
+  border-radius: 999px;
+  color: #6E5430;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.bgz-step-counter-n { font-size: 0.82rem; color: #1F1A0F; }
+.bgz-step-counter-sep { margin: 0 2px; opacity: 0.5; }
+
+.bgz-step-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Selection burst (gold rosette particles) ────────────────────── */
+
+.bgz-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.bgz-burst-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFE7A3 0%, #C9A66B 60%, transparent 100%);
+  box-shadow: 0 0 12px rgba(217,190,130,0.55);
+  animation: bgzBurstFly 0.95s ease-out forwards;
+}
+@keyframes bgzBurstFly {
+  0%   { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--bgz-burst-x, 0), var(--bgz-burst-y, 0)) scale(0.2); opacity: 0; }
+}
+
+/* ── Bottom CTA rail ──────────────────────────────────────────────── */
+
+.bgz-cta-rail {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px)) 14px;
+  background:
+    linear-gradient(180deg, rgba(13,10,5,0) 0%, rgba(13,10,5,0.85) 35%, rgba(13,10,5,0.95) 100%);
+}
+
+.bgz-cta-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(217,190,130,0.55);
+  background: linear-gradient(180deg, #E7CFA0 0%, #C9A66B 100%);
+  color: #1F1A0F;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 3px rgba(217,190,130,0.18),
+    0 14px 32px rgba(201,166,107,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.45);
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgz-cta-btn:not(:disabled):hover { transform: translateY(-2px); }
+.bgz-cta-btn:not(:disabled):active { transform: translateY(0); }
+.bgz-cta-btn:disabled {
+  background: linear-gradient(180deg, #C9C9C9 0%, #9E9E9E 100%);
+  color: #4a3208;
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.bgz-cta-shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -120%;
+  width: 60%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+  animation: bgzShimmer 2.4s linear infinite;
+  pointer-events: none;
+}
+.bgz-cta-btn:disabled .bgz-cta-shimmer { animation: none; opacity: 0; }
+@keyframes bgzShimmer {
+  0%   { left: -120%; }
+  100% { left: 120%; }
+}
+
+.bgz-cta-label { position: relative; z-index: 1; }
+
+.bgz-cta-tip {
+  margin: 10px 0 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(231, 207, 160, 0.6);
+  font-weight: 600;
+}
+.bgz-cta-tip.is-ready { color: #C8DCB4; }
+
+/* ── Reduced motion guard ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .bgz-boot,
+  .bgz-boot-aurora,
+  .bgz-boot-grid,
+  .bgz-boot-eyebrow,
+  .bgz-boot-title,
+  .bgz-boot-sub,
+  .bgz-boot-cta,
+  .bgz-boot-cta-glow,
+  .bgz-boot-tip,
+  .bgz-stage-aurora,
+  .bgz-particle,
+  .bgz-burst-dot,
+  .bgz-cta-shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
+  .bgz-particle { opacity: 0.20 !important; }
+  .bgz-cta-shimmer { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v203.2 — Gaming-zone city avatars, 3D property tiles, animated
+   character morph counters, Hindi tagline. All scoped under .bgz-*
+   so the rest of the app is untouched. No styled-jsx blocks — keeps
+   the SWC visitor.rs:597 protection in place.
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Boot screen English tagline (v203.3 — was Hindi v203.2) ─── */
+.bgz-boot-sub-en {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: rgba(231, 207, 160, 0.65);
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  font-style: italic;
+  padding: 0 4px;
+  animation: bgzFadeIn 0.7s 0.65s ease both;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CITY AVATARS — Borderless, circular, floating ambient
+═══════════════════════════════════════════════════════════════════ */
+.bgz-city-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 12px;
+  padding: 12px 6px 6px 6px;
+}
+
+.bgz-city-avatar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 2px;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  animation: bgzCityFloat 5.4s ease-in-out infinite;
+  animation-delay: calc(var(--bgz-city-i, 0) * 0.35s);
+  transition: transform 0.18s ease;
+}
+.bgz-city-avatar:nth-child(2) { animation-delay: 0.4s; }
+.bgz-city-avatar:nth-child(3) { animation-delay: 0.8s; }
+.bgz-city-avatar:nth-child(4) { animation-delay: 1.2s; }
+.bgz-city-avatar:nth-child(5) { animation-delay: 0.2s; }
+.bgz-city-avatar:nth-child(6) { animation-delay: 1.0s; }
+.bgz-city-avatar:active { transform: scale(0.92); }
+
+.bgz-city-halo {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    rgba(217,190,130,0.0) 0%,
+    rgba(217,190,130,0.5) 25%,
+    rgba(255,231,163,0.8) 50%,
+    rgba(217,190,130,0.5) 75%,
+    rgba(217,190,130,0.0) 100%);
+  opacity: 0;
+  z-index: 0;
+  animation: bgzCitySpin 6s linear infinite;
+  pointer-events: none;
+  transition: opacity 0.32s ease;
+}
+.bgz-city-avatar.is-selected .bgz-city-halo {
+  opacity: 1;
+}
+
+.bgz-city-disc {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow:
+    0 6px 16px rgba(31,26,15,0.45),
+    0 2px 6px rgba(31,26,15,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.20);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.bgz-city-avatar.is-selected .bgz-city-disc {
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 3px #C9A66B,
+    0 0 0 6px rgba(201,166,107,0.25),
+    0 10px 24px rgba(201,166,107,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.30);
+}
+
+.bgz-city-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bgz-city-hot {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 50px);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff5a4b;
+  border: 2px solid #1f1a0f;
+  z-index: 2;
+}
+.bgz-city-hot-pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(255,90,75,0.55);
+  animation: bgzCityHotPulse 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.bgz-city-label {
+  position: relative;
+  z-index: 1;
+  color: #FFF9EC;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.55);
+  line-height: 1.1;
+  text-align: center;
+}
+.bgz-city-avatar.is-selected .bgz-city-label {
+  color: #FFE7A3;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6), 0 0 12px rgba(201,166,107,0.45);
+}
+
+@keyframes bgzCityFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes bgzCitySpin {
+  to { transform: translateX(-50%) rotate(360deg); }
+}
+@keyframes bgzCityHotPulse {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PROPERTY TYPE TILES — 3D metallic discs with reflecting sheen
+═══════════════════════════════════════════════════════════════════ */
+.bgz-prop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 10px;
+  padding: 8px 4px;
+}
+@media (min-width: 380px) {
+  .bgz-prop-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.bgz-prop-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 2px;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+.bgz-prop-tile:active { transform: scale(0.92); }
+.bgz-prop-tile:hover .bgz-prop-disc { transform: translateY(-2px) rotateX(8deg); }
+
+.bgz-prop-disc {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,0.55) 0%, rgba(231,207,160,0.0) 42%),
+    radial-gradient(circle at 50% 50%, #E7CFA0 0%, #C9A66B 60%, #8B6914 100%);
+  box-shadow:
+    0 8px 18px rgba(31,26,15,0.42),
+    0 3px 6px rgba(31,26,15,0.30),
+    0 0 0 2px rgba(255,231,163,0.35),
+    inset 0 2px 3px rgba(255,255,255,0.55),
+    inset 0 -3px 5px rgba(31,26,15,0.30);
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform 0.32s cubic-bezier(.32,1.2,.36,1), box-shadow 0.32s ease;
+  transform-style: preserve-3d;
+  perspective: 600px;
+}
+.bgz-prop-tile.is-selected .bgz-prop-disc {
+  box-shadow:
+    0 0 0 3px #C9A66B,
+    0 0 0 6px rgba(201,166,107,0.30),
+    0 12px 28px rgba(201,166,107,0.50),
+    0 4px 8px rgba(31,26,15,0.35),
+    inset 0 2px 3px rgba(255,255,255,0.55),
+    inset 0 -3px 5px rgba(31,26,15,0.30);
+  transform: translateY(-3px) rotateX(8deg);
+}
+
+.bgz-prop-glyph {
+  position: relative;
+  z-index: 1;
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(31,26,15,0.30));
+}
+
+.bgz-prop-sheen {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg,
+    rgba(255,255,255,0.25) 60deg,
+    transparent 120deg,
+    transparent 360deg);
+  mix-blend-mode: screen;
+  animation: bgzPropSpin 6s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bgz-prop-label {
+  color: #FFF9EC;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.55);
+}
+.bgz-prop-tile.is-selected .bgz-prop-label {
+  color: #FFE7A3;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6), 0 0 10px rgba(201,166,107,0.40);
+}
+
+.bgz-prop-check {
+  position: absolute;
+  top: -2px;
+  right: calc(50% - 38px);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #E7CFA0 0%, #C9A66B 100%);
+  color: #1F1A0F;
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 5px rgba(31,26,15,0.45);
+  z-index: 2;
+  animation: bgzPropPop 0.4s cubic-bezier(.32,1.6,.36,1);
+}
+
+.bgz-prop-tally {
+  margin: 14px 6px 4px 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  color: #6E5430;
+  letter-spacing: 0.01em;
+}
+
+@keyframes bgzPropSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes bgzPropPop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg);  opacity: 1; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   COUNTER STAGE — animated character morph for guests/rooms
+═══════════════════════════════════════════════════════════════════ */
+.bgz-counter-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.bgz-counter-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 56px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,252,246,0.0) 0%, rgba(231,207,160,0.10) 100%);
+}
+
+.bgz-counter-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(217,190,130,0.50);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.0) 50%),
+    linear-gradient(180deg, #FFFCF6 0%, #F2EAD8 100%);
+  color: #1F1A0F;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 4px 10px rgba(31,26,15,0.18),
+    0 1px 3px rgba(31,26,15,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.80),
+    inset 0 -2px 3px rgba(31,26,15,0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bgz-counter-btn:not(:disabled):hover { transform: translateY(-1px); }
+.bgz-counter-btn:not(:disabled):active { transform: translateY(0) scale(0.94); }
+.bgz-counter-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  box-shadow: 0 1px 2px rgba(31,26,15,0.08);
+}
+
+.bgz-counter-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 68px;
+  padding: 0 8px;
+}
+
+.bgz-counter-emoji {
+  font-size: 2.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(31,26,15,0.20));
+  animation: bgzCounterPop 0.45s cubic-bezier(.32,1.6,.36,1);
+  display: inline-block;
+}
+
+.bgz-counter-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bgz-counter-n {
+  font-family: var(--font-display, "Cormorant Garamond"), serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: #1F1A0F;
+  font-variant-numeric: tabular-nums;
+  animation: bgzCounterNumPop 0.4s cubic-bezier(.32,1.6,.36,1);
+}
+
+.bgz-counter-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1F1A0F;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.bgz-counter-sub {
+  font-size: 0.7rem;
+  color: #6E5430;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+@keyframes bgzCounterPop {
+  0%   { transform: translateY(40px) scale(0.4) rotate(-12deg); opacity: 0; filter: blur(4px); }
+  60%  { transform: translateY(-6px) scale(1.18) rotate(4deg);  opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0) scale(1) rotate(0deg);        opacity: 1; }
+}
+@keyframes bgzCounterNumPop {
+  0%   { transform: translateY(8px) scale(0.7); opacity: 0; }
+  100% { transform: translateY(0) scale(1);     opacity: 1; }
+}
+
+/* ── Reduced motion guard for v203.2 additions ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .bgz-city-avatar,
+  .bgz-city-halo,
+  .bgz-city-hot-pulse,
+  .bgz-prop-sheen,
+  .bgz-counter-emoji,
+  .bgz-counter-n,
+  .bgz-boot-sub-en,
+  .bgz-swipe-chev,
+  .bgz-swipe-pulse {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v203.3 — SWIPE GESTURE RAIL (replaces .bgz-cta-rail button)
+   Native game-zone feel: animated chevrons telegraph "swipe →" rather
+   than asking for a button tap. Includes a separate back chip when
+   activeIdx > 0 + a final-step button override for the last card.
+═══════════════════════════════════════════════════════════════════ */
+.bgz-swipe-rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+}
+
+.bgz-swipe-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(201, 166, 107, 0.18), rgba(217, 190, 130, 0.08));
+  border: 1px solid rgba(231, 207, 160, 0.32);
+  color: #F4E5C2;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.22s ease, border-color 0.22s ease;
+  box-shadow:
+    0 6px 24px -10px rgba(201, 166, 107, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.bgz-swipe-indicator:hover { transform: translateY(-1px); }
+.bgz-swipe-indicator:active { transform: translateY(0); }
+.bgz-swipe-indicator.is-waiting {
+  cursor: default;
+  background:
+    linear-gradient(135deg, rgba(120, 100, 70, 0.18), rgba(80, 65, 40, 0.08));
+  border-color: rgba(180, 160, 110, 0.18);
+  color: rgba(231, 207, 160, 0.6);
+  box-shadow: none;
+}
+.bgz-swipe-indicator.is-waiting:hover { transform: none; }
+
+.bgz-swipe-chev {
+  display: inline-block;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #E7CFA0;
+  animation: bgzSwipeChev 1.6s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(231, 207, 160, 0.55);
+}
+.bgz-swipe-chev-1 { animation-delay: 0s; }
+.bgz-swipe-chev-2 { animation-delay: 0.15s; }
+.bgz-swipe-chev-3 { animation-delay: 0.30s; margin-right: 6px; }
+
+@keyframes bgzSwipeChev {
+  0%, 100% { opacity: 0.35; transform: translateX(0); }
+  50%      { opacity: 1;    transform: translateX(4px); }
+}
+
+.bgz-swipe-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(217, 190, 130, 0.55);
+  margin-right: 4px;
+  animation: bgzSwipePulse 1.4s ease-in-out infinite;
+}
+@keyframes bgzSwipePulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.45; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+.bgz-swipe-label {
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.bgz-swipe-back {
+  background: transparent;
+  border: 1px solid rgba(231, 207, 160, 0.22);
+  color: rgba(231, 207, 160, 0.72);
+  font-size: 0.78rem;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.bgz-swipe-back:hover {
+  background: rgba(231, 207, 160, 0.08);
+  color: #F4E5C2;
+  border-color: rgba(231, 207, 160, 0.45);
+}
+
+.bgz-cta-btn-final {
+  margin-bottom: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v205 — NaturalMountainScene
+   Real photographic mountain backdrops cross-faded per step. Replaces
+   v204's cheap Three.js scene. All photos curl-verified Unsplash IDs.
+═══════════════════════════════════════════════════════════════════ */
+.nms-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(180deg, #95b8d8 0%, #d4c099 100%);
+}
+
+/* Cross-fading real mountain photos. All photos stay in DOM at opacity 0;
+   active step ramps to 1 with 1.2s ease. Ken-burns subtle zoom on the
+   active photo gives "alive" feel without distorting the natural look. */
+.nms-photo {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 14s linear;
+  will-change: opacity, transform;
+}
+.nms-photo.is-active {
+  opacity: 1;
+  transform: scale(1.0);
+  transition:
+    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 14s linear;
+}
+
+/* Bottom vignette only — preserves the natural sky color at top, just
+   darkens the lower edge so card content sits over readable surface.
+   Side vignette removed since user wanted "real natural" — no fake
+   tunnel effect. */
+.nms-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 55%,
+    rgba(15, 12, 8, 0.18) 80%,
+    rgba(15, 12, 8, 0.42) 100%
+  );
+}
+
+/* Two birds gliding across the upper third of the sky. SVG silhouettes
+   with arc-flight animation. Pure visual ornament — no perf cost. */
+.nms-birds {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.nms-bird {
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.nms-bird-1 {
+  animation: nmsBirdGlide1 28s linear infinite;
+}
+.nms-bird-2 {
+  animation: nmsBirdGlide2 34s linear infinite;
+  animation-delay: -8s;
+}
+@keyframes nmsBirdGlide1 {
+  0%   { transform: translate(-10%, 8%); }
+  50%  { transform: translate(55%, 12%); }
+  100% { transform: translate(110%, 6%); }
+}
+@keyframes nmsBirdGlide2 {
+  0%   { transform: translate(110%, 16%); }
+  50%  { transform: translate(45%, 9%); }
+  100% { transform: translate(-10%, 14%); }
+}
+
+/* Climber trail SVG overlay */
+.nms-trail-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes nmsClimberPulse {
+  0%, 100% { r: 1.6; opacity: 1; }
+  50%      { r: 2.1; opacity: 0.82; }
+}
+.nms-climber-active {
+  animation: nmsClimberPulse 1.7s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .nms-photo {
+    transition: opacity 0.3s ease;
+    transform: none !important;
+  }
+  .nms-bird, .nms-climber-active {
+    animation: none !important;
+  }
+}

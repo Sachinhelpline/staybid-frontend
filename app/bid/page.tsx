@@ -24,6 +24,21 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
+// v201 — shared premium guest-count picker. Animated figure icons morph
+// with the value (1=👤, 2=👫, 3-4=👨‍👩‍👧, 5+=group) + directional value-roll.
+// Replaces the inline <Counter> previously declared in this file.
+import PremiumGuestPicker, { type GuestKind } from "@/components/PremiumGuestPicker";
+// v202 — mobile/tablet Card Stack flow for Step 1. Desktop (>= 1024px)
+// keeps the existing inline scrollable list of sub-sections. On mobile
+// + tablet, Step 1 collapses into a Tinder/Wallet-style card stack
+// v203 — mobile/tablet renders <BidGameZone> for a cinematic
+// PlayStation-style game-zone (boot screen → connected stage with
+// parallax + GSAP choreography + Web Audio cues + haptics). Desktop
+// keeps the legacy inline flow. v202 BidCardStack is preserved as the
+// graceful fallback if the game zone ever needs to be killed (single
+// import swap restores the older UX).
+import BidCardStack, { useIsMobileTablet, type BidCard } from "@/components/BidCardStack";
+import BidGameZone from "@/components/BidGameZone";
 // One-active-bid-per-(customer × city) conflict UI. /bid broadcasts to many
 // hotels in the same city, so 409 fires per-hotel-call; we surface the FIRST
 // conflict and let the customer update the existing bid budget instead.
@@ -65,17 +80,22 @@ import {
 // v186 — Phase 4B: "Any" pseudo-option dropped per Sachin's rule —
 // customer MUST pick at least 3 specific property types so the
 // auction targets a curated spread, not a fire-everywhere broadcast.
-const BID_PROPERTY_PICK: { id: string; label: string; icon: string }[] = [
-  { id: "hotel",       label: "Hotel",        icon: "🛎" },
-  { id: "resort",      label: "Resort",       icon: "🌴" },
-  { id: "villa",       label: "Villa",        icon: "🏡" },
-  { id: "cottage",     label: "Cottage",      icon: "🛖" },
-  { id: "guest_house", label: "Guest House",  icon: "🏠" },
-  { id: "homestay",    label: "Homestay",     icon: "🏘" },
-  { id: "camp",        label: "Camp / Glamping", icon: "⛺" },
-  { id: "bungalow",    label: "Bungalow",     icon: "🏯" },
-  { id: "hostel",      label: "Hostel",       icon: "🎒" },
-  { id: "treehouse",   label: "Treehouse",    icon: "🌳" },
+const BID_PROPERTY_PICK: { id: string; label: string; icon: string; photo: string }[] = [
+  // v202.2 — `photo` field added. Each URL is a Unsplash photo themed
+  // to the property type. The destination + property-type tiles now
+  // render photo-only (no emoji bubble inside) per Sachin's v202.1
+  // feedback. `icon` stays as a fallback when photo URL 404s — the
+  // gold tile + label survives gracefully.
+  { id: "hotel",       label: "Hotel",            icon: "🛎",  photo: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=240&q=70&auto=format&fit=crop" },
+  { id: "resort",      label: "Resort",           icon: "🌴",  photo: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=240&q=70&auto=format&fit=crop" },
+  { id: "villa",       label: "Villa",            icon: "🏡",  photo: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=240&q=70&auto=format&fit=crop" },
+  { id: "cottage",     label: "Cottage",          icon: "🛖",  photo: "https://images.unsplash.com/photo-1452784444945-3f422708fe5e?w=240&q=70&auto=format&fit=crop" },
+  { id: "guest_house", label: "Guest House",      icon: "🏠",  photo: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=240&q=70&auto=format&fit=crop" },
+  { id: "homestay",    label: "Homestay",         icon: "🏘",  photo: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=240&q=70&auto=format&fit=crop" },
+  { id: "camp",        label: "Camp / Glamping",  icon: "⛺",  photo: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=240&q=70&auto=format&fit=crop" },
+  { id: "bungalow",    label: "Bungalow",         icon: "🏯",  photo: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=240&q=70&auto=format&fit=crop" },
+  { id: "hostel",      label: "Hostel",           icon: "🎒",  photo: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=240&q=70&auto=format&fit=crop" },
+  { id: "treehouse",   label: "Treehouse",        icon: "🌳",  photo: "https://images.unsplash.com/photo-1488462237308-ecaa28b729d7?w=240&q=70&auto=format&fit=crop" },
 ];
 
 // Room categories the customer can bid for — 7 curated picks with
@@ -107,13 +127,19 @@ const MEAL_EMOJI: Record<string, string> = {
 };
 
 /* ── AI City Intelligence ──────────────────────────────────────── */
-const CITY_DATA: Record<string, { emoji: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
-  Mussoorie:  { emoji: "🏔️", avg: 3200, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Weekend & holiday peak — bid early for best rates!",  state: "Uttarakhand",       tags: ["Hill Station", "Honeymoon", "Nature"] },
-  Dhanaulti:  { emoji: "🌲", avg: 2800, demand: "Medium",    demandColor: "text-amber-600  bg-amber-50  border-amber-200",  tip: "Weekdays offer up to 25% better deals here.",         state: "Uttarakhand",       tags: ["Forest", "Peaceful", "Couples"] },
-  Rishikesh:  { emoji: "🕉️", avg: 2400, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Yoga retreat season — adventure packages popular.",   state: "Uttarakhand",       tags: ["Adventure", "Spiritual", "Yoga"] },
-  Shimla:     { emoji: "❄️", avg: 3500, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Peak hill-station demand — book ahead for savings.",  state: "Himachal Pradesh",  tags: ["Snow", "Heritage", "Family"] },
-  Manali:     { emoji: "🏂", avg: 3800, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Adventure season — premium pricing, bid smart.",      state: "Himachal Pradesh",  tags: ["Skiing", "Adventure", "Honeymoon"] },
-  Dehradun:   { emoji: "🌿", avg: 2200, demand: "Low",       demandColor: "text-emerald-600 bg-emerald-50 border-emerald-200", tip: "Low season — great deals & immediate accepts!",    state: "Uttarakhand",       tags: ["Gateway", "Business", "Budget"] },
+// v202.1 — `photo` field added. Each URL is a Unsplash hi-res landscape
+// keyed to the city's natural character (mountain / forest / river /
+// snow). The destination card uses it as a circular orb background;
+// the emoji stays as a fallback if the URL 404s. Per CLAUDE.md v131.5
+// rule: ONLY curl-verified Unsplash IDs on customer surfaces — these
+// are tested-good photo IDs from the public landscape collection.
+const CITY_DATA: Record<string, { emoji: string; photo: string; avg: number; demand: "Very High" | "High" | "Medium" | "Low"; demandColor: string; tip: string; state: string; tags: string[] }> = {
+  Mussoorie:  { emoji: "🏔️", photo: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=240&q=72&auto=format&fit=crop", avg: 3200, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Weekend & holiday peak — bid early for best rates!",  state: "Uttarakhand",       tags: ["Hill Station", "Honeymoon", "Nature"] },
+  Dhanaulti:  { emoji: "🌲", photo: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=240&q=72&auto=format&fit=crop", avg: 2800, demand: "Medium",    demandColor: "text-amber-600  bg-amber-50  border-amber-200",  tip: "Weekdays offer up to 25% better deals here.",         state: "Uttarakhand",       tags: ["Forest", "Peaceful", "Couples"] },
+  Rishikesh:  { emoji: "🕉️", photo: "https://images.unsplash.com/photo-1545071677-eea2dbb59f57?w=240&q=72&auto=format&fit=crop", avg: 2400, demand: "High",      demandColor: "text-orange-600 bg-orange-50 border-orange-200", tip: "Yoga retreat season — adventure packages popular.",   state: "Uttarakhand",       tags: ["Adventure", "Spiritual", "Yoga"] },
+  Shimla:     { emoji: "❄️", photo: "https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=240&q=72&auto=format&fit=crop", avg: 3500, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Peak hill-station demand — book ahead for savings.",  state: "Himachal Pradesh",  tags: ["Snow", "Heritage", "Family"] },
+  Manali:     { emoji: "🏂", photo: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=240&q=72&auto=format&fit=crop", avg: 3800, demand: "Very High", demandColor: "text-red-600    bg-red-50    border-red-200",    tip: "Adventure season — premium pricing, bid smart.",      state: "Himachal Pradesh",  tags: ["Skiing", "Adventure", "Honeymoon"] },
+  Dehradun:   { emoji: "🌿", photo: "https://images.unsplash.com/photo-1503631015414-3527d1e4506f?w=240&q=72&auto=format&fit=crop", avg: 2200, demand: "Low",       demandColor: "text-emerald-600 bg-emerald-50 border-emerald-200", tip: "Low season — great deals & immediate accepts!",    state: "Uttarakhand",       tags: ["Gateway", "Business", "Budget"] },
 };
 
 /* ── Room & Experience Options ─────────────────────────────────── */
@@ -376,15 +402,10 @@ function StepBar({ step }: { step: number }) {
 }
 
 /* ── Counter (compact, editorial) ──────────────────────────────── */
-function Counter({ value, onChange, min = 0, max = 10 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
-  return (
-    <div className="bx-counter-ctrl">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} className="bx-counter-btn" aria-label="decrement">−</button>
-      <span className="bx-counter-val">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} className="bx-counter-btn" aria-label="increment">+</button>
-    </div>
-  );
-}
+// v201 — local Counter() removed. The Guests & Rooms row now renders three
+// <PremiumGuestPicker> tiles directly (see the loop in the Step 1 form). The
+// legacy `.bx-counter-*` styles remain in globals.css for any third-party
+// callers; nothing in this file references them anymore.
 
 /* ── Probability Dial (SVG, Vegas-style) ───────────────────────── */
 function ProbabilityDial({ pct, color, instant }: { pct: number; color: string; instant: boolean }) {
@@ -427,6 +448,56 @@ type Insights = {
   recentWins: Array<{ id: string; initial: string; amount: number; hotelName: string; city: string; when: string }>;
   city: string | null;
 };
+
+/* ──────────────────────────────────────────────────────────────────
+   v203.2 — gaming-zone character morph for the guests/rooms counters.
+   Each count value maps to an emoji string. `key={n}` on the rendering
+   element causes React to remount on change → CSS keyframe @bgzCounterPop
+   fires from below with a bouncy scale-in. Bigger numbers stack more
+   humans / bigger buildings so the UI tells the same story as the number.
+────────────────────────────────────────────────────────────────── */
+function emojiForCount(kind: "adults" | "children" | "rooms", n: number): string {
+  if (n <= 0) return "·";
+  if (kind === "adults") {
+    if (n === 1) return "🧍";
+    if (n === 2) return "👫";
+    if (n === 3) return "👨‍👩‍👦";
+    if (n === 4) return "👨‍👩‍👧‍👦";
+    return "👨‍👩‍👧‍👦🧍"; // 5+
+  }
+  if (kind === "children") {
+    if (n === 1) return "🧒";
+    if (n === 2) return "🧒🧒";
+    if (n === 3) return "🧒🧒🧒";
+    return "🧒🧒🧒🧒";
+  }
+  // rooms — building grows
+  if (n === 1) return "🛏️";
+  if (n === 2) return "🏠";
+  if (n === 3) return "🏡";
+  if (n === 4) return "🏘️";
+  return "🏨";
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   DateAutoOpener (v202.2) — opens the LuxuryCalendar exactly once
+   on mount when the Dates card slides into view with no check-in
+   set. `useRef` guards against repeat fires across re-renders and
+   the 80ms RAF defer lets the card-swap animation finish first so
+   the calendar doesn't fight the slide-in for paint priority.
+────────────────────────────────────────────────────────────────── */
+function DateAutoOpener({ shouldOpen, onOpen }: { shouldOpen: boolean; onOpen: () => void }) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (firedRef.current) return;
+    if (!shouldOpen) return;
+    firedRef.current = true;
+    const t = setTimeout(onOpen, 80);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    Main Component
@@ -537,6 +608,13 @@ export default function BidPage() {
 
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
+  // v202 — mobile/tablet flag drives the Card Stack render path for
+  // Step 1 sub-sections. Desktop (>= 1024px) reads the existing inline
+  // sub-sections; mobile/tablet swap into <BidCardStack>. SSR-safe —
+  // returns false on first render so the server-rendered markup
+  // matches the desktop path.
+  const isMobile = useIsMobileTablet();
+
   // Luxury calendar
   const [calCfg, setCalCfg] = useState<{
     open: boolean;
@@ -633,6 +711,66 @@ export default function BidPage() {
       if (timer) clearInterval(timer);
     };
   }, [form.city]);
+
+  /* ── v203.3 — Property types available in the picked city ─────────
+     Per Sachin's SS3 feedback: when a city is selected, only show
+     property types that ACTUALLY exist in that city. A "treehouse" tile
+     in Dehradun (where no treehouse hotel is listed) is dead weight
+     that confuses the user and lets them pick a type that will throw
+     "No matches" at submit time.
+
+     null = no city yet OR fetch failed → show all types (safe fallback).
+     Set<string> = the canonical hotel.property_type values found in the
+     city's hotel list.
+
+     Also strips any picks no longer available after a city change so
+     the user can't carry a stale selection forward. */
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!form.city) {
+      setAvailablePropertyTypes(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp: any = await api.getHotels({ city: form.city });
+        if (cancelled) return;
+        const list: any[] = resp?.hotels || resp || [];
+        const cityLower = form.city.toLowerCase();
+        const cityHotels = list.filter(
+          (h: any) => (h.city || "").toLowerCase() === cityLower
+        );
+        if (cityHotels.length === 0) {
+          // City has no hotels — fall back to showing all so user can
+          // still pick something instead of seeing an empty grid.
+          setAvailablePropertyTypes(null);
+          return;
+        }
+        const types = new Set<string>(
+          cityHotels.map((h: any) => h.property_type || "hotel")
+        );
+        setAvailablePropertyTypes(types);
+        // Strip stale picks that no longer match the new city.
+        setForm((f) => {
+          if (!f.propertyTypes.length) return f;
+          const kept = f.propertyTypes.filter((id) => types.has(id));
+          if (kept.length === f.propertyTypes.length) return f;
+          return { ...f, propertyTypes: kept };
+        });
+      } catch {
+        if (!cancelled) setAvailablePropertyTypes(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [form.city]);
+
+  // v203.3 — Helper applied at every BID_PROPERTY_PICK render site so
+  // the filter logic lives in ONE place. Falls back to the full list
+  // when no city is picked OR the city has no derivable types.
+  const visiblePropertyTypes = availablePropertyTypes
+    ? BID_PROPERTY_PICK.filter((pt) => availablePropertyTypes.has(pt.id))
+    : BID_PROPERTY_PICK;
 
   /* ── CountUp values for the hero live pills (v163) ── */
   const liveAuctions  = useCountUp(insights?.tonightAuctions || 0);
@@ -1111,6 +1249,252 @@ export default function BidPage() {
     );
   }
 
+  /* ─────────────── v202 BidCardStack — Step 1 mobile cards ───────────
+     Built per render so closures over `form` / `nights` / `city` stay
+     fresh. The cards reuse the existing `bx-*` Tailwind+CSS surface
+     classes (orbs, date buttons, guest-row) so visually nothing
+     regresses — only the LAYOUT (one card at a time + breadcrumb
+     chips + sticky CTA) is new. Property type uses the SAME 3-pick
+     validation as the desktop path. */
+  const step1Cards: BidCard[] = [
+    {
+      key: "destination",
+      icon: "🌍",
+      title: "Where do you want to stay?",
+      hint: "Pick a city to see hotels listening tonight",
+      isComplete: () => !!form.city,
+      summary: () => `📍 ${form.city}`,
+      autoAdvance: true,
+      autoAdvanceDelayMs: 380,
+      render: () => (
+        <>
+          {/* v203.2 — borderless circular city AVATARS (gaming-zone
+              feel), not bordered photo boxes. Selected avatar gets a
+              champagne conic-gradient halo + sparkle; "Hot" cities get
+              a pulsing red dot top-right. Float ambient via parent
+              .bgz-city-grid's stagger animation. */}
+          <div className="bgz-city-grid">
+            {Object.entries(CITY_DATA).map(([name, info]) => {
+              const isSelected = form.city === name;
+              const isSurge = info.demand === "Very High" || info.demand === "High";
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => upd("city", name)}
+                  className={`bgz-city-avatar ${isSelected ? "is-selected" : ""}`}
+                  title={`${name} · ${info.demand} demand`}
+                >
+                  <span className="bgz-city-halo" aria-hidden="true" />
+                  <span className="bgz-city-disc">
+                    <img
+                      src={info.photo}
+                      alt={name}
+                      className="bgz-city-img"
+                      loading="lazy"
+                      onError={(e) => {
+                        const t = e.currentTarget as HTMLImageElement;
+                        if (t.dataset.fallback) return;
+                        t.dataset.fallback = "1";
+                        t.src = `https://picsum.photos/seed/${encodeURIComponent(name)}/240/240`;
+                      }}
+                    />
+                  </span>
+                  {isSurge && (
+                    <span className="bgz-city-hot" aria-hidden="true">
+                      <span className="bgz-city-hot-pulse" />
+                    </span>
+                  )}
+                  <span className="bgz-city-label">{name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {city && (
+            <div className="bx-insight" style={{ marginTop: 12 }}>
+              <span className="bx-insight-icon">🤖</span>
+              <div>
+                <div className="bx-insight-title">AI Insight</div>
+                <div className="bx-insight-body">{city.tip}</div>
+                <div className="bx-insight-meta">
+                  Avg. ₹{city.avg.toLocaleString("en-IN")}/night · {insights?.hotelsListening ?? "—"} hotels listening
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "propertyType",
+      icon: "🏨",
+      title: "What kind of property?",
+      hint: "Pick at least 3 types to broaden the auction",
+      isComplete: () => form.propertyTypes.length >= 3,
+      summary: () => `${form.propertyTypes.length} types`,
+      autoAdvance: true,
+      autoAdvanceDelayMs: 760, // longer delay — user sees 3rd pick light up
+      render: () => (
+        <>
+          {/* v203.2 — 3D metallic icon discs for each property type
+              (gaming-category selection feel, not CAPTCHA photos). Each
+              disc has a radial highlight, a rotating sheen overlay
+              (mix-blend-mode screen for metallic shimmer), gold rim on
+              selection, and a soft drop shadow. Emoji is large + centered. */}
+          <div className="bgz-prop-grid">
+            {visiblePropertyTypes.map((pt) => {
+              const isSelected = form.propertyTypes.includes(pt.id);
+              return (
+                <button
+                  key={pt.id}
+                  type="button"
+                  onClick={() => toggleProperty(pt.id)}
+                  className={`bgz-prop-tile ${isSelected ? "is-selected" : ""}`}
+                  title={pt.label}
+                >
+                  <span className="bgz-prop-disc" aria-hidden="true">
+                    <span className="bgz-prop-glyph">{pt.icon}</span>
+                    <span className="bgz-prop-sheen" />
+                  </span>
+                  <span className="bgz-prop-label">{pt.label}</span>
+                  {isSelected && <span className="bgz-prop-check" aria-hidden="true">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+          <p className="bgz-prop-tally">
+            {form.propertyTypes.length >= 3
+              ? `✓ Bid will reach ${form.propertyTypes.length} property categories`
+              : visiblePropertyTypes.length < 3
+              ? `Only ${visiblePropertyTypes.length} ${visiblePropertyTypes.length === 1 ? "type" : "types"} available in ${form.city || "this city"} — pick what you want`
+              : `${form.propertyTypes.length}/3 picked · tap ${3 - form.propertyTypes.length} more to continue`}
+          </p>
+        </>
+      ),
+    },
+    {
+      key: "dates",
+      icon: "📅",
+      title: "When are you travelling?",
+      hint: "Pick check-in and check-out dates",
+      isComplete: () => !!(form.checkIn && form.checkOut && nights >= 1),
+      summary: () => {
+        if (!form.checkIn || !form.checkOut) return "Dates";
+        const ci = new Date(form.checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        const co = new Date(form.checkOut).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+        return `${ci} → ${co} · ${nights}n`;
+      },
+      autoAdvance: true,
+      autoAdvanceDelayMs: 540, // wait for calendar sheet to close cleanly
+      render: (ctx) => (
+        <div className="bx-card">
+          {/* v203 — auto-open calendar ONLY on FORWARD arrival to the
+              Dates card. `firstReach` is the BidGameZone-supplied flag
+              that's true the first time the user lands on this card.
+              When the user swipes BACK from a later card, firstReach is
+              false → no re-open → no fight with back navigation. The
+              legacy BidCardStack doesn't pass `firstReach` (undefined)
+              so we treat undefined as "first reach" to preserve old
+              behaviour on desktop / older renderers. */}
+          <DateAutoOpener
+            shouldOpen={!form.checkIn && (ctx as { firstReach?: boolean }).firstReach !== false}
+            onOpen={() => setCalCfg({ open: true, mode: "checkIn" })}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setCalCfg({ open: true, mode: "checkIn" })}
+              className={`bx-date-btn ${form.checkIn ? "is-set" : ""}`}
+            >
+              <div>
+                <div className="bx-date-btn-eyebrow">Check-in</div>
+                <div className={`bx-date-btn-v ${form.checkIn ? "" : "is-empty"}`}>
+                  {form.checkIn
+                    ? new Date(form.checkIn).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                    : "Pick date"}
+                </div>
+              </div>
+              <span className="bx-date-btn-icon">📅</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalCfg({ open: true, mode: "checkOut" })}
+              className={`bx-date-btn ${form.checkOut ? "is-set" : ""}`}
+            >
+              <div>
+                <div className="bx-date-btn-eyebrow">Check-out</div>
+                <div className={`bx-date-btn-v ${form.checkOut ? "" : "is-empty"}`}>
+                  {form.checkOut
+                    ? new Date(form.checkOut).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })
+                    : "Pick date"}
+                </div>
+              </div>
+              <span className="bx-date-btn-icon">📅</span>
+            </button>
+          </div>
+          {nights > 0 && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <span className="bx-nights-pill">
+                {nights} {nights === 1 ? "night" : "nights"}
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "guests",
+      icon: "👥",
+      title: "Who's coming?",
+      hint: "Adults, children + how many rooms",
+      isComplete: () => form.adults >= 1 && form.rooms >= 1,
+      summary: () => `${form.adults}A${form.children ? ` + ${form.children}C` : ""} · ${form.rooms}R`,
+      render: () => (
+        // v203.2 — gaming-zone character morph counters. Each row shows
+        // a big animated emoji that JUMPS up from below every time the
+        // count changes (via React `key` remount + @keyframes
+        // bgzCounterPop). The emoji reflects the count: 1 guest = solo
+        // person, 2 = couple, 3+ = family. Rooms grow from bed → house
+        // → villa → multiple buildings → resort hotel.
+        <div className="bgz-counter-stack">
+          {([
+            { label: "Adults",   key: "adults"   as const, min: 1, max: 10, sub: "12+ yrs" },
+            { label: "Children", key: "children" as const, min: 0, max: 6,  sub: "5-12 yrs" },
+            { label: "Rooms",    key: "rooms"    as const, min: 1, max: 5,  sub: "1 per family" },
+          ]).map(({ label, key, min, max, sub }) => {
+            const n = (form as any)[key] as number;
+            return (
+              <div className="bgz-counter-row" key={key}>
+                <button
+                  type="button"
+                  className="bgz-counter-btn"
+                  onClick={() => upd(key, Math.max(min, n - 1))}
+                  disabled={n <= min}
+                  aria-label={`Decrease ${label}`}
+                >−</button>
+                <div className="bgz-counter-stage">
+                  <div className="bgz-counter-emoji" key={n}>{emojiForCount(key, n)}</div>
+                  <div className="bgz-counter-meta">
+                    <span className="bgz-counter-n" key={`n-${n}`}>{n}</span>
+                    <span className="bgz-counter-label">{label}</span>
+                    <span className="bgz-counter-sub">{sub}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="bgz-counter-btn"
+                  onClick={() => upd(key, Math.min(max, n + 1))}
+                  disabled={n >= max}
+                  aria-label={`Increase ${label}`}
+                >＋</button>
+              </div>
+            );
+          })}
+        </div>
+      ),
+    },
+  ];
+
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
@@ -1178,8 +1562,26 @@ export default function BidPage() {
 
         <div className={`transition-all duration-200 ${animating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
 
-          {/* ═══════════ STEP 1: WHERE & WHEN ═══════════ */}
+          {/* ═══════════ STEP 1: WHERE & WHEN ═══════════
+              v202 — mobile/tablet swaps the inline list of 4 sub-
+              sections for a Card Stack (one card on top, peeks
+              behind, breadcrumb chips at top, sticky CTA). Desktop
+              keeps the existing scrollable layout intact. */}
           {step === 1 && (
+            isMobile ? (
+              /* v203 — BidGameZone replaces BidCardStack on mobile/tablet.
+                 Boot screen → connected parallax stage → 4 steps → handoff
+                 to step 2. Same `BidCard[]` interface so step1Cards
+                 authored for v202 renders byte-identical. The auto-advance
+                 + DateAutoOpener back-nav regression bugs are fixed inside
+                 BidGameZone (forward-only triggers). To revert to the v202
+                 stacked-cards UX, swap this line back to <BidCardStack>. */
+              <BidGameZone
+                cards={step1Cards}
+                onAllComplete={() => goStep(2)}
+                finalCtaLabel="Your Stay →"
+              />
+            ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* Destination */}
@@ -1254,7 +1656,7 @@ export default function BidPage() {
                     must select at least 3 types). Grid is 3 cols
                     mobile → 4/5/6/7 desktop. */}
                 <div className="bx-pick-grid">
-                  {BID_PROPERTY_PICK.map((pt) => {
+                  {visiblePropertyTypes.map((pt) => {
                     const isSelected = form.propertyTypes.includes(pt.id);
                     return (
                       <button
@@ -1327,7 +1729,7 @@ export default function BidPage() {
                 </div>
               </div>
 
-              {/* Guests & Rooms — 3 counters in ONE row (v163) */}
+              {/* Guests & Rooms — 3 premium counters in ONE row (v201) */}
               <div data-autonext="guests">
                 <div className="bx-section-h">
                   <span className="bx-section-h-label">Guests &amp; Rooms</span>
@@ -1335,19 +1737,26 @@ export default function BidPage() {
                 </div>
                 <div className="bx-guest-row">
                   {[
-                    { label: "Adults",   key: "adults",   min: 1, max: 10 },
-                    { label: "Children", key: "children", min: 0, max: 6  },
-                    { label: "Rooms",    key: "rooms",    min: 1, max: 5  },
-                  ].map(({ label, key, min, max }) => (
-                    <div key={key} className="bx-guest-cell">
-                      <p className="bx-guest-cell-label">{label}</p>
-                      <Counter value={(form as any)[key]} onChange={(v) => upd(key, v)} min={min} max={max} />
-                    </div>
+                    { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"        },
+                    { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"       },
+                    { label: "Rooms",    key: "rooms",    min: 1, max: 5,  kind: "rooms"    as GuestKind, sub: "1 unit / family"},
+                  ].map(({ label, key, min, max, kind, sub }) => (
+                    <PremiumGuestPicker
+                      key={key}
+                      kind={kind}
+                      label={label}
+                      sublabel={sub}
+                      value={(form as any)[key]}
+                      onChange={(v) => upd(key, v)}
+                      min={min}
+                      max={max}
+                    />
                   ))}
                 </div>
               </div>
 
             </div>
+            )
           )}
 
           {/* ═══════════ STEP 2: YOUR STAY — room + compact preferences ═══ */}
@@ -1787,7 +2196,13 @@ export default function BidPage() {
           )}
         </div>
 
-        {/* Navigation */}
+        {/* Navigation — v202.1: hidden on mobile during Step 1 because
+            BidCardStack ships its own sticky CTA rail. Showing both
+            left a "Next → / Stay details →" double-CTA bug visible
+            in screenshot 3 of Sachin's v202 feedback. Desktop sees
+            the row as before; mobile Step 2/3 also see it (only the
+            card-stack screen suppresses it). */}
+        {!(isMobile && step === 1) && (
         <div className="bx-nav-row">
           {step > 1 && (
             <button onClick={() => goStep(step - 1)} className="bx-nav-back">
@@ -1800,6 +2215,7 @@ export default function BidPage() {
             </button>
           )}
         </div>
+        )}
 
         <p style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 14, letterSpacing: "0.02em" }}>
           Step {step} of {STEPS.length} · {STEPS[step - 1]}
