@@ -40,6 +40,11 @@ export interface BidCard {
    *  (e.g. a 3rd property type lighting up) before the card slides away. */
   autoAdvance?: boolean;
   autoAdvanceDelayMs?: number;
+  /** v211 — optional override for the Done CTA on this card's bottom sheet.
+   *  Used by the 5th "Price" milestone in /bid to render "🚀 Launch Bid"
+   *  and call submit() directly instead of closing the sheet. */
+  doneLabel?: string;
+  onDoneClick?: () => void;
 }
 
 interface Props {

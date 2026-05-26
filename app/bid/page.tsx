@@ -1524,6 +1524,11 @@ export default function BidPage() {
       isComplete: () => budget > 0,
       summary: () => (budget > 0 ? `₹${budget.toLocaleString("en-IN")}` : "—"),
       autoAdvance: false, // manual Done — let the user adjust freely
+      /* v211 — instead of "✓ Done" the 5th milestone fires submit()
+         directly. User no longer has to close the sheet and tap the
+         peak — one tap launches the bid from the sheet itself. */
+      doneLabel: "🚀 Launch Bid",
+      onDoneClick: () => { submit(); },
       render: () => (
         <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
           {city && presets.length > 0 && (

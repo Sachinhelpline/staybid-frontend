@@ -592,23 +592,39 @@ export default function ClimberMilestoneMap({
                   } catch {
                     ok = false;
                   }
+                  /* v211 — when a card supplies `onDoneClick`, the Done CTA
+                     fires that callback (the price milestone uses this to
+                     call submit() directly so launch happens from the sheet
+                     itself — no extra peak tap needed). */
+                  const customDone =
+                    typeof cards[sheetIdx].onDoneClick === "function"
+                      ? cards[sheetIdx].onDoneClick
+                      : null;
+                  const doneLabel = ok
+                    ? cards[sheetIdx].doneLabel || "✓ Done"
+                    : cards[sheetIdx].hint || "Pick to unlock";
                   return (
                     <button
                       type="button"
-                      className={`cmm-sheet-done ${ok ? "is-ready" : ""}`}
+                      className={`cmm-sheet-done ${ok ? "is-ready" : ""} ${customDone ? "is-launch" : ""}`}
                       onClick={() => {
                         if (!ok) {
                           playError();
                           vibrate([30, 20, 30]);
                           return;
                         }
-                        setSheetIdx(null);
-                        playSelect();
-                        vibrate([14, 28, 14]);
+                        playComplete();
+                        vibrate([14, 28, 14, 28, 60]);
+                        if (customDone) {
+                          customDone();
+                        } else {
+                          setSheetIdx(null);
+                          playSelect();
+                        }
                       }}
                       disabled={!ok}
                     >
-                      {ok ? "✓ Done" : cards[sheetIdx].hint || "Pick to unlock"}
+                      {doneLabel}
                     </button>
                   );
                 })()}

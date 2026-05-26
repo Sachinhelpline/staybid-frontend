@@ -8628,13 +8628,59 @@ body.is-reel-page {
   100% { transform: rotate(360deg); }
 }
 
-/* Active disc — slightly enlarged + breathing */
-.cmm-node.is-active .cmm-node-disc {
-  animation: cmmNodeBreathe 2.4s ease-in-out infinite;
+/* v211 — Active disc gets a STRONG 3D zoom-out + tier-color glow so
+   the next pending milestone is impossible to miss. User feedback:
+   "jo next milestone ho wo thoda zoomout 3d alive feel de jish se
+   samaj aaye ki ab next milestone par tap karna hai". */
+.cmm-node.is-active {
+  z-index: 5;
 }
-@keyframes cmmNodeBreathe {
-  0%, 100% { transform: scale(1.0); }
-  50%      { transform: scale(1.08); }
+.cmm-node.is-active .cmm-node-disc {
+  animation: cmmNodeAliveZoom 1.9s ease-in-out infinite;
+  box-shadow:
+    0 22px 40px -10px rgba(31, 26, 15, 0.7),
+    0 8px 14px -3px rgba(31, 26, 15, 0.42),
+    0 0 0 3px rgba(255, 220, 130, 0.85),
+    0 0 28px 6px rgba(255, 200, 110, 0.55),
+    inset 0 4px 7px rgba(255, 255, 255, 0.65),
+    inset 0 -5px 8px rgba(31, 26, 15, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.30);
+}
+@keyframes cmmNodeAliveZoom {
+  0%, 100% { transform: scale(1.0)  rotate(0deg); filter: brightness(1.0); }
+  50%      { transform: scale(1.16) rotate(0.5deg); filter: brightness(1.12); }
+}
+/* "Tap next" arrow badge floating above the active disc — pulses
+   downward so the eye is drawn from the climber to the next stop. */
+.cmm-node.is-active::before {
+  content: "👆 Tap next";
+  position: absolute;
+  top: -34px; left: 50%;
+  transform: translateX(-50%);
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: #4a3208;
+  background: linear-gradient(180deg, #fff9ec 0%, #f5e6c0 100%);
+  border: 1px solid rgba(201, 166, 107, 0.55);
+  border-radius: 999px;
+  padding: 3px 11px;
+  white-space: nowrap;
+  box-shadow:
+    0 6px 14px -3px rgba(31, 26, 15, 0.32),
+    0 2px 4px rgba(31, 26, 15, 0.18);
+  animation: cmmNodeHintBob 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 6;
+}
+@keyframes cmmNodeHintBob {
+  0%, 100% { transform: translate(-50%, 0px); opacity: 1; }
+  50%      { transform: translate(-50%, -4px); opacity: 0.78; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmm-node.is-active .cmm-node-disc { animation: none; }
+  .cmm-node.is-active::before        { animation: none; }
 }
 
 /* Done disc — sage-green tinted, calmer */
@@ -8669,22 +8715,46 @@ body.is-reel-page {
 }
 
 /* Step number badge — small chip top-right of disc */
+/* v211 — premium italic-serif numbered chip (1 / 2 / 3 / 4 / 5) next
+   to each milestone, matching the SS2 "Bid Your Stay, Save Big" + SS3
+   "StayBid Reverse Bidding Zone" layout aesthetic Sachin shared. The
+   chip floats to the upper-LEFT of the disc on alternating sides so
+   it reads naturally with the zig-zag path. */
 .cmm-node-num {
   position: absolute;
-  top: 0;
-  right: 14px;
-  width: 24px;
-  height: 24px;
+  top: -6px;
+  /* Default right-side: even-index nodes (1, 3, 5) live on the LEFT
+     side of the canvas → number sits to their right edge. */
+  right: -14px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #FFF5D7 0%, #E7CFA0 100%);
-  color: #4A3820;
-  font-weight: 800;
-  font-size: 0.78rem;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0) 50%),
+    linear-gradient(180deg, #FFF5D7 0%, #E7CFA0 60%, #C9A66B 100%);
+  color: #2B1D05;
+  font-family: "Cormorant Garamond", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    0 6px 14px -3px rgba(31, 26, 15, 0.45),
+    0 2px 4px rgba(31, 26, 15, 0.25),
+    inset 0 2px 3px rgba(255, 255, 255, 0.6),
+    inset 0 -2px 4px rgba(140, 100, 30, 0.35);
   z-index: 5;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+/* Odd-index nodes (2, 4) live on the RIGHT side of the canvas → flip
+   the number chip to their LEFT edge so it doesn't run off-screen. */
+.cmm-node.cmm-node-2 .cmm-node-num,
+.cmm-node.cmm-node-4 .cmm-node-num {
+  right: auto;
+  left: -14px;
 }
 
 .cmm-node-label {
