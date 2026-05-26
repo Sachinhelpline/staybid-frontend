@@ -1609,6 +1609,142 @@ export default function BidPage() {
         </div>
       ),
     },
+    /* ─────────── v217 — 6th milestone: Review Bid & Visit ───────────
+       Auto-completes when `success` is set (submit succeeded). User can
+       tap the disc to see the live auction panel — hotels stream in
+       with view-hotel + pay CTAs. Lives ON the same climber page; no
+       jump to /my-bids. */
+    {
+      key: "review",
+      icon: "🔍",
+      title: "Review Bid & Visit",
+      hint: "Tap 🚀 Launch Bid in Step 5 first",
+      isComplete: () => success !== null,
+      summary: () => success ? `${success.hotelsNotified} hotels bidding` : "—",
+      autoAdvance: false,
+      doneLabel: "Continue to Pay ›",
+      render: () => {
+        if (!success) {
+          return (
+            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
+              <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⏳</div>
+              <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 6 }}>
+                Launch your bid first
+              </div>
+              <div style={{ fontSize: "0.86rem", color: "var(--cozy-cocoa-soft)" }}>
+                Go back to Step 5 and tap 🚀 Launch Bid. Hotels will start responding live here.
+              </div>
+            </div>
+          );
+        }
+        const isAccepted = (b: any) =>
+          !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
+        const acceptedCount  = liveBids.filter(isAccepted).length;
+        const reviewingCount = liveBids.length - acceptedCount;
+        const sortedBids = [...liveBids].sort(
+          (a, b) => (isAccepted(b) ? 1 : 0) - (isAccepted(a) ? 1 : 0)
+        );
+        return (
+          <div style={{ padding: "4px 0" }}>
+            <div className="bx-live-head" style={{ marginBottom: 10 }}>
+              <span className="bx-live-head-l">
+                <span className="bx-live-dot sb-pulse-dot" />
+                Live hotel responses
+              </span>
+              <span className="bx-live-head-r">
+                {acceptedCount > 0 && <b className="bx-live-head-ok">{acceptedCount} accepted</b>}
+                {acceptedCount > 0 && reviewingCount > 0 && " · "}
+                {reviewingCount > 0 && `${reviewingCount} reviewing`}
+              </span>
+            </div>
+            <div className="bx-live-list sb-stagger">
+              {sortedBids.map((b, i) => (
+                <LiveBidCard
+                  key={b.bidId || i}
+                  bid={b}
+                  idx={i}
+                  launchTs={launchTs}
+                  nowTs={nowTs}
+                  onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
+                  onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                />
+              ))}
+            </div>
+            <p className="bx-live-note" style={{ marginTop: 12 }}>
+              ✓ Every price here is <strong>below market rate</strong>. Tap a hotel name to visit the property, or use 💳 Pay & Grab to lock the booking.
+            </p>
+          </div>
+        );
+      },
+    },
+    /* ─────────── v217 — 7th milestone: Pay & Grab the Deal ───────────
+       Final milestone — payment gateway on the same page. Shows accepted
+       bids with single-tap pay buttons, plus a fallback "Open My Bids"
+       CTA. Reverts to a graceful "Waiting for an accepted bid" panel
+       until at least one hotel accepts. */
+    {
+      key: "pay",
+      icon: "💳",
+      title: "Pay & Grab the Deal",
+      hint: "Wait for an accepted bid first",
+      isComplete: () => false, // terminal — never auto-completes
+      summary: () => {
+        const acceptedNow = liveBids.filter((b: any) =>
+          !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase())
+        ).length;
+        return acceptedNow > 0 ? `${acceptedNow} ready to pay` : "—";
+      },
+      autoAdvance: false,
+      doneLabel: "Open My Bids ›",
+      onDoneClick: () => { router.push("/my-bids"); },
+      render: () => {
+        const isAccepted = (b: any) =>
+          !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
+        const acceptedBids = liveBids.filter(isAccepted);
+        if (acceptedBids.length === 0) {
+          return (
+            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
+              <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⏳</div>
+              <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: 6 }}>
+                Waiting for an accepted bid
+              </div>
+              <div style={{ fontSize: "0.86rem", color: "var(--cozy-cocoa-soft)", marginBottom: 4 }}>
+                Once any hotel accepts your bid, you can pay & grab the deal right here on this page.
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div style={{ padding: "4px 0" }}>
+            <div className="bx-live-head" style={{ marginBottom: 10 }}>
+              <span className="bx-live-head-l">
+                <span className="bx-live-dot sb-pulse-dot" />
+                💳 Pay & confirm booking
+              </span>
+              <span className="bx-live-head-r">
+                <b className="bx-live-head-ok">{acceptedBids.length} ready</b>
+              </span>
+            </div>
+            <div className="bx-live-list sb-stagger">
+              {acceptedBids.map((b, i) => (
+                <LiveBidCard
+                  key={b.bidId || i}
+                  bid={b}
+                  idx={i}
+                  launchTs={launchTs}
+                  nowTs={nowTs}
+                  onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
+                  onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                />
+              ))}
+            </div>
+            <p className="bx-live-note" style={{ marginTop: 12 }}>
+              ✓ Accepted offers are <strong>held 15 minutes</strong>. Tap Pay & Grab to confirm at the displayed price.
+            </p>
+          </div>
+        );
+      },
+    },
   ];
 
   /* ─────────────── Main Form ─────────────── */
@@ -1684,23 +1820,19 @@ export default function BidPage() {
               behind, breadcrumb chips at top, sticky CTA). Desktop
               keeps the existing scrollable layout intact. */}
           {step === 1 && (
-            isMobile ? (
-              /* v203 — BidGameZone replaces BidCardStack on mobile/tablet.
-                 Boot screen → connected parallax stage → 4 steps → handoff
-                 to step 2. Same `BidCard[]` interface so step1Cards
-                 authored for v202 renders byte-identical. The auto-advance
-                 + DateAutoOpener back-nav regression bugs are fixed inside
-                 BidGameZone (forward-only triggers). To revert to the v202
-                 stacked-cards UX, swap this line back to <BidCardStack>. */
-              /* v209 — Price is now the 5th milestone inside the climbing
-                 map. When ALL 5 are done, tapping the peak fires submit()
-                 directly — no jump to a separate "Your Price" page. Going
-                 back never returns to the boot screen because the user
-                 never left this surface. */
+            /* v217 — Climber UX now renders on EVERY device. Mobile gets
+               full-bleed; tablet + desktop get a centered portrait
+               aspect-ratio column (constrained via `.cmm-stage` CSS at
+               min-width 1024px). The legacy desktop sectional form is
+               kept below as a fallback for the isMobile=false escape
+               hatch — but the default for every viewport is the
+               climber. Sachin's spec: "ek hi flow main chalne chahiye
+               na ki different different pages par". */
+            (true ? (
               <BidGameZone
                 cards={step1Cards}
-                onAllComplete={() => { submit(); }}
-                finalCtaLabel="🚀 Review & Launch"
+                onAllComplete={() => { /* v217 — peak hidden when 7 cards */ }}
+                finalCtaLabel="🚀 Launch Bid"
               />
             ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
@@ -1877,7 +2009,7 @@ export default function BidPage() {
               </div>
 
             </div>
-            )
+            ))
           )}
 
           {/* ═══════════ STEP 2: YOUR PRICE — budget + review + launch ═══
@@ -2228,7 +2360,12 @@ export default function BidPage() {
           map (climber at peak, all 5 milestones done) instead of
           replacing the page. No back-button regression because the
           climbing page never unmounts. */}
-      {success && isMobile && (() => {
+      {/* v217 — Mobile success overlay disabled. The post-launch flow now
+          lives INSIDE the climber as milestones 6 (Review Bid & Visit)
+          + 7 (Pay & Grab the Deal). Customer sees the same single-page
+          journey from city pick through booking confirmation. The
+          desktop success screen (above) is unaffected. */}
+      {success && isMobile && false && (() => {
         const isAccepted = (b: any) =>
           !!b.accepted || ["ACCEPTED", "CONFIRMED"].includes(String(b.status).toUpperCase());
         const acceptedCount  = liveBids.filter(isAccepted).length;

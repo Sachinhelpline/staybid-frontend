@@ -8659,6 +8659,22 @@ body.is-reel-page {
      beneath shows edge-to-edge. */
   background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
 }
+
+/* v217 — Desktop + tablet: constrain the climber to a centered portrait
+   column so the mountain photo aspect ratio stays cinematic instead of
+   stretching across a 1920px wide monitor. Mobile (<1024px) keeps the
+   full-bleed treatment. */
+@media (min-width: 1024px) {
+  .bgz-stage.cmm-stage {
+    max-width: 480px;
+    margin: 0 auto;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow:
+      0 24px 60px -16px rgba(0,0,0,0.55),
+      0 0 0 1px rgba(217,190,130,0.16);
+  }
+}
 .cmm-hud {
   display: flex;
   align-items: center;
