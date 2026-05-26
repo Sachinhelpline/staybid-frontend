@@ -8609,6 +8609,136 @@ body.is-reel-page {
 @keyframes nmsWingUp3   { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 @keyframes nmsWingDown3 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
 
+/* ════════════════════════════════════════════════════════════════════
+   v218 — Atmospheric "alive" layer on the mountain backdrop. Drifting
+   clouds + slow horizontal haze + champagne summit glow. Pure CSS,
+   GPU-only (translate3d + opacity), no JS. Every device — phone /
+   tablet / desktop — same animation timing. Reduced-motion respected
+   in the global guard at the bottom of globals.css.
+═══════════════════════════════════════════════════════════════════ */
+
+/* Drifting clouds — 3 soft white wisps panning slowly across the sky.
+   Sized as ellipses with a radial-gradient soft edge so they read as
+   real clouds rather than circles. Different sizes + altitudes + speeds
+   create a layered parallax depth. */
+.nms-clouds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.nms-cloud {
+  position: absolute;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.35) 30%,
+    rgba(255, 255, 255, 0.18) 55%,
+    rgba(255, 255, 255, 0)    78%
+  );
+  filter: blur(8px);
+  will-change: transform;
+}
+.nms-cloud-1 {
+  width: 38%;
+  height: 10%;
+  top: 14%;
+  opacity: 0.55;
+  animation: nmsCloudDrift1 78s linear infinite;
+}
+.nms-cloud-2 {
+  width: 52%;
+  height: 13%;
+  top: 28%;
+  opacity: 0.42;
+  animation: nmsCloudDrift2 96s linear infinite;
+  animation-delay: -32s;
+}
+.nms-cloud-3 {
+  width: 30%;
+  height: 8%;
+  top: 6%;
+  opacity: 0.38;
+  animation: nmsCloudDrift3 112s linear infinite;
+  animation-delay: -64s;
+}
+@keyframes nmsCloudDrift1 {
+  0%   { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(160%, 0, 0); }
+}
+@keyframes nmsCloudDrift2 {
+  0%   { transform: translate3d(140%, 0, 0); }
+  100% { transform: translate3d(-60%, 0, 0); }
+}
+@keyframes nmsCloudDrift3 {
+  0%   { transform: translate3d(-40%, 0, 0); }
+  100% { transform: translate3d(150%, 0, 0); }
+}
+
+/* Atmospheric haze — soft horizontal sweep across mid-altitude. Reads
+   as mountain air / morning mist moving through the valleys. Very low
+   opacity; the eye registers it as "alive" without it being prominent. */
+.nms-haze {
+  position: absolute;
+  inset: 0;
+  top: 36%;
+  height: 32%;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 250, 240, 0.10) 25%,
+    rgba(255, 250, 240, 0.18) 50%,
+    rgba(255, 250, 240, 0.10) 75%,
+    transparent 100%
+  );
+  background-size: 240% 100%;
+  background-position: 0% 50%;
+  animation: nmsHazeDrift 42s ease-in-out infinite alternate;
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  will-change: background-position;
+}
+@keyframes nmsHazeDrift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Champagne summit glow — slow radial sweep tinted gold so the peak
+   reads like real sunlight catching the snow. Rotates very slowly via
+   conic-gradient angle so the "highlight" travels around the summit. */
+.nms-sun-glow {
+  position: absolute;
+  left: 35%;
+  right: 0%;
+  top: 0%;
+  height: 35%;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse at 70% 30%,
+    rgba(255, 220, 150, 0.22) 0%,
+    rgba(255, 200, 120, 0.12) 30%,
+    rgba(255, 200, 120, 0)    65%
+  );
+  animation: nmsSunBreathe 12s ease-in-out infinite alternate;
+  mix-blend-mode: screen;
+  will-change: opacity, transform;
+}
+@keyframes nmsSunBreathe {
+  0%   { opacity: 0.65; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0.95; transform: translate3d(-2%, 1%, 0) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nms-cloud-1, .nms-cloud-2, .nms-cloud-3,
+  .nms-haze, .nms-sun-glow {
+    animation: none !important;
+  }
+}
+
 /* Climber trail SVG overlay */
 .nms-trail-svg {
   position: absolute;
