@@ -1524,13 +1524,14 @@ export default function BidPage() {
       isComplete: () => budget > 0,
       summary: () => (budget > 0 ? `₹${budget.toLocaleString("en-IN")}` : "—"),
       autoAdvance: false, // manual Done — let the user adjust freely
-      /* v215 — Sachin: the "Launch Bid" label was wrong here AND on the
-         peak (both said the same thing). Set Price now CLOSES the sheet
-         so the user lands on the unlocked peak — which is the actual
-         Review & Launch milestone (renamed below). Avoids double-submit
-         and gives the customer a clean Review step before launching. */
-      doneLabel: "Continue to Review ›",
-      // onDoneClick intentionally omitted — sheet just closes; peak fires submit().
+      /* v216 — Set Price's CTA fires submit() directly (kept from v211).
+         After submit succeeds, parent state advances and milestone 6
+         "Review Bid & Visit" auto-opens to host the live-auction panel,
+         then milestone 7 "Pay & Grab" hosts the payment gateway. This
+         keeps the customer on the same climber surface from city pick
+         all the way to the booking grab — no page jumps. */
+      doneLabel: "🚀 Launch Bid",
+      onDoneClick: () => { submit(); },
       render: () => (
         <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
           {city && presets.length > 0 && (
