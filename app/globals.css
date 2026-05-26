@@ -8286,48 +8286,133 @@ body.is-reel-page {
    glides between them, bottom-sheet picker (no full-screen takeover).
 ═══════════════════════════════════════════════════════════════════ */
 .cmm-stage {
-  /* Inherits from .bgz-stage. Just stretches the main area to fill
-     the available vertical space between the slim HUD and the
-     viewport bottom. */
+  /* Inherits from .bgz-stage. */
 }
 .cmm-hud {
-  /* Simpler HUD than .bgz-hud — title text on left, mute on right. */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px 10px;
+  padding: 10px 16px 8px;
   gap: 12px;
   position: relative;
   z-index: 10;
+  flex: 0 0 auto;
 }
 .cmm-hud-title {
   font-family: "Cormorant Garamond", serif;
   font-style: italic;
   font-size: 0.92rem;
-  color: rgba(255, 250, 230, 0.86);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  color: rgba(255, 250, 230, 0.9);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
   letter-spacing: 0.02em;
 }
+/* v207 — the .bgz-stage-main is the SCROLLABLE VIEWPORT (camera).
+   `.cmm-root` is the tall canvas the camera pans over. We override
+   the parent's padding + perspective (irrelevant here) and engage the
+   proven flex-shrink-overflow trick (flex:1 1 0 + min-height:0 +
+   overflow:auto) so the viewport fills the available vertical space
+   between HUD + screen bottom WITHOUT collapsing to content height.
+   The page below auto-scrolls smoothly as the climber moves up. */
 .cmm-stage-main {
-  /* Override bgz-stage-main padding so the milestone discs can sit
-     right up against the viewport edges if needed. */
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
   padding: 0 !important;
-  display: block !important;
-  position: relative;
-  z-index: 5;
+  perspective: none !important;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  position: relative;
+  z-index: 5;
 }
+.cmm-stage-main::-webkit-scrollbar { width: 0; height: 0; }
 
+/* The tall canvas itself. 180vh gives plenty of vertical room for
+   4 milestones + start + peak spread out, while the auto-scroll
+   below keeps the climber centered in view as he progresses. */
 .cmm-root {
   position: relative;
   width: 100%;
-  /* Tall enough so the path discs spread out comfortably; on very
-     short viewports the user can drag-scroll. */
-  min-height: 100%;
-  height: max(540px, 100%);
-  padding: 8px 0 96px;
+  height: 180vh;
+  min-height: 720px;
+  padding: 0;
+}
+
+/* v207 — Mountain trekking landscape.
+   FIVE altitude photos stacked vertically inside the tall canvas with
+   gradient masks at top/bottom to blend into one continuous mountain
+   panorama. Valley (warm dawn) at the bottom — summit (twilight
+   alpenglow) at the top. As the climber ascends, the camera (parent
+   scroll) reveals progressively higher altitudes. */
+.cmm-altitude {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 38%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* Each layer is positioned by its top/bottom and feathered with a
+   mask so adjacent altitudes blend seamlessly. The bottom-most layer
+   keeps a clean lower edge; the top-most a clean upper edge. */
+.cmm-altitude-0 {  /* valley dawn — bottom */
+  bottom: 0;
+  top: 78%;
+  height: 22%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 100%);
+}
+.cmm-altitude-1 {  /* forest morning */
+  bottom: 16%;
+  top: 58%;
+  height: 26%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+.cmm-altitude-2 {  /* alpine midday */
+  bottom: 36%;
+  top: 38%;
+  height: 26%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+.cmm-altitude-3 {  /* snow line evening */
+  bottom: 56%;
+  top: 18%;
+  height: 26%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+.cmm-altitude-4 {  /* summit twilight */
+  bottom: 76%;
+  top: 0;
+  height: 24%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
+}
+/* Sky / atmosphere wash at the very top so even before the user
+   scrolls past the topmost photo there's no jarring background-color
+   showing through. */
+.cmm-sky-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(38, 30, 50, 0.65) 0%,
+    rgba(60, 50, 75, 0.25) 6%,
+    transparent 14%
+  );
+}
+/* Bottom vignette so card content stays readable on the valley photo */
+.cmm-bottom-vignette {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(15, 12, 8, 0.55), transparent);
 }
 
 /* SVG path layer — stretches to fill the .cmm-root. preserveAspect
@@ -8361,30 +8446,30 @@ body.is-reel-page {
    target coordinate. */
 .cmm-climber {
   position: absolute;
-  transform: translate(-50%, -82%);
+  transform: translate(-50%, -100%);
   z-index: 4;
   pointer-events: none;
   text-align: center;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
-  animation: cmmClimberBob 2.6s ease-in-out infinite;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5));
+  animation: cmmClimberBob 2.4s ease-in-out infinite;
 }
 .cmm-climber-emoji {
   display: inline-block;
-  font-size: 2.2rem;
+  font-size: 3.2rem;
   line-height: 1;
 }
 .cmm-climber-shadow {
   display: block;
-  width: 28px;
-  height: 6px;
-  margin: -2px auto 0;
+  width: 38px;
+  height: 8px;
+  margin: -3px auto 0;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 70%);
-  filter: blur(1.5px);
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 70%);
+  filter: blur(2px);
 }
 @keyframes cmmClimberBob {
-  0%, 100% { transform: translate(-50%, -82%); }
-  50%      { transform: translate(-50%, -86%); }
+  0%, 100% { transform: translate(-50%, -100%); }
+  50%      { transform: translate(-50%, -104%); }
 }
 
 /* Milestone nodes — buttons absolutely positioned at NODES[i].
@@ -8398,11 +8483,11 @@ body.is-reel-page {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 3;
-  width: 84px;
+  width: 110px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   background: transparent;
   border: 0;
   padding: 0;
@@ -8420,10 +8505,10 @@ body.is-reel-page {
 
 .cmm-node-ring {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 32px; left: 50%;
   transform: translate(-50%, -50%);
-  width: 78px;
-  height: 78px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
@@ -8443,19 +8528,19 @@ body.is-reel-page {
 
 .cmm-node-disc {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 38%),
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0) 38%),
     radial-gradient(circle at 50% 50%, #FAF0D2 0%, #D9BE82 55%, #8B6914 100%);
   box-shadow:
-    0 12px 22px -8px rgba(31, 26, 15, 0.55),
-    0 4px 8px -2px rgba(31, 26, 15, 0.35),
-    0 0 0 2px rgba(201, 166, 107, 0.55),
+    0 14px 26px -8px rgba(31, 26, 15, 0.6),
+    0 5px 10px -2px rgba(31, 26, 15, 0.38),
+    0 0 0 2px rgba(201, 166, 107, 0.6),
     inset 0 3px 5px rgba(255, 255, 255, 0.55),
     inset 0 -4px 6px rgba(31, 26, 15, 0.32),
     inset 0 0 0 1px rgba(255, 255, 255, 0.25);
@@ -8465,7 +8550,7 @@ body.is-reel-page {
 .cmm-node-glyph {
   position: relative;
   z-index: 2;
-  font-size: 1.5rem;
+  font-size: 1.85rem;
   line-height: 1;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.45),
@@ -8534,39 +8619,45 @@ body.is-reel-page {
 /* Step number badge — small chip top-right of disc */
 .cmm-node-num {
   position: absolute;
-  top: -4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
+  top: 0;
+  right: 14px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: linear-gradient(180deg, #FFF5D7 0%, #E7CFA0 100%);
   color: #4A3820;
   font-weight: 800;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
   z-index: 5;
 }
 
 .cmm-node-label {
-  margin-top: 6px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: #FFFCEC;
   text-align: center;
-  line-height: 1.1;
-  max-width: 96px;
+  line-height: 1.15;
+  max-width: 130px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(31, 26, 15, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.85),
-    0 0 8px rgba(0, 0, 0, 0.55);
+    0 1px 2px rgba(0, 0, 0, 0.9);
   letter-spacing: 0.02em;
+  white-space: normal;
+  word-wrap: break-word;
 }
 .cmm-node.is-done .cmm-node-label {
   color: #FFF5D7;
@@ -8580,11 +8671,11 @@ body.is-reel-page {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 3;
-  width: 110px;
+  width: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: transparent;
   border: 0;
   padding: 0;

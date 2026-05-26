@@ -58,19 +58,38 @@ interface Props {
   finalCtaLabel?: string;
 }
 
-/* Milestone positions on a 0-100 % grid. y measured from TOP, so
-   START (bottom) = 92%, PEAK (top) = 8%. Alternating x gives the
-   Candy Crush zig-zag feel. Tuned so 4 discs + start + peak fit
-   comfortably on a 100vh viewport without scroll on most phones
-   (380-460dvh range) — and remains scrollable on very short screens. */
+/* v207 — Milestones spread across a 180vh tall canvas. The parent
+   `.bgz-stage-main` (overridden via .cmm-stage-main) becomes the
+   scrollable viewport / "camera" that programmatically pans up to
+   follow the climber as each step completes (see useEffect below).
+   Each milestone sits at a distinct ALTITUDE on the mountain — the
+   altitude photos stacked underneath cross-fade through valley →
+   forest → alpine → snow → summit as the user scrolls up. */
 const NODES: { x: number; y: number }[] = [
-  { x: 28, y: 76 }, // 1 City
-  { x: 72, y: 58 }, // 2 Property
-  { x: 28, y: 40 }, // 3 Dates
-  { x: 72, y: 24 }, // 4 Guests
+  { x: 28, y: 80 }, // 1 City   — valley (Mussoorie dawn)
+  { x: 72, y: 60 }, // 2 Property — forest morning
+  { x: 28, y: 40 }, // 3 Dates  — alpine midday
+  { x: 72, y: 22 }, // 4 Guests — snow line evening
 ];
-const START = { x: 50, y: 92 };
-const PEAK = { x: 50, y: 9 };
+const START = { x: 50, y: 95 };
+const PEAK = { x: 50, y: 6 };
+
+/* The 5 altitude photos that stack to form the tall mountain
+   panorama. Order = bottom-up. Every URL is a curl-verified Unsplash
+   ID already used in v205 NaturalMountainScene — no Picsum / random
+   stock per CLAUDE.md v131 rule. */
+const ALTITUDE_PHOTOS = [
+  // 0 — valley dawn  (warm pink-gold mist)
+  "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1600&q=82&auto=format&fit=crop",
+  // 1 — forest morning (bright pines + blue sky)
+  "https://images.unsplash.com/photo-1448375240586-882707db888b?w=1600&q=82&auto=format&fit=crop",
+  // 2 — alpine midday (deep blue sky snow-cap)
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1600&q=82&auto=format&fit=crop",
+  // 3 — snow line evening (golden side-light)
+  "https://images.unsplash.com/photo-1551582045-6ec9c11d8697?w=1600&q=82&auto=format&fit=crop",
+  // 4 — summit twilight (deep blue + amber alpenglow)
+  "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=1600&q=82&auto=format&fit=crop",
+];
 
 /* Smooth bezier connecting START → NODES[0..3] → PEAK. Each segment
    uses control points pulled slightly off-axis to give the curvy
@@ -115,6 +134,11 @@ export default function ClimberMilestoneMap({
 
   const climberRef = useRef<HTMLDivElement | null>(null);
   const climberPosRef = useRef<{ x: number; y: number }>(START);
+  /* v207 — the root + scrollable camera refs. `rootRef` is the tall
+     canvas; `cameraRef` is the parent .bgz-stage-main viewport that
+     auto-scrolls UP as the climber climbs. */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const cameraRef = useRef<HTMLElement | null>(null);
 
   /* Poll for card completion changes so the climber, drawn-path and
      node states stay live without forcing every host card to push
@@ -149,6 +173,44 @@ export default function ClimberMilestoneMap({
       : allDone
       ? PEAK
       : NODES[completedCount - 1];
+
+  /* v207 — Locate the scrollable camera viewport once on mount. The
+     parent .bgz-stage-main has our .cmm-stage-main override providing
+     `overflow-y: auto` + `flex: 1 1 0` + `min-height: 0`. */
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    cameraRef.current = rootRef.current?.parentElement || null;
+    /* On first mount scroll camera to the BOTTOM so the user lands
+       at the valley (start) and sees the first milestone above. */
+    requestAnimationFrame(() => {
+      const cam = cameraRef.current;
+      const root = rootRef.current;
+      if (!cam || !root) return;
+      cam.scrollTop = Math.max(0, root.scrollHeight - cam.clientHeight);
+    });
+  }, []);
+
+  /* v207 — Camera follow: whenever the climber moves to a new target,
+     scroll the parent viewport so the climber sits ~60% down the
+     visible area. The scroll-behavior: smooth in CSS handles easing.
+     This is the "trekking" feel — every milestone reveals new
+     altitude scenery above the previous. */
+  useEffect(() => {
+    const cam = cameraRef.current;
+    const root = rootRef.current;
+    if (!cam || !root) return;
+    /* climberTarget.y is % of root height (0=top, 100=bottom).
+       We want it at ~60% of the visible viewport. */
+    const climberPx = (climberTarget.y / 100) * root.scrollHeight;
+    const targetScroll = Math.max(
+      0,
+      Math.min(
+        root.scrollHeight - cam.clientHeight,
+        climberPx - cam.clientHeight * 0.6
+      )
+    );
+    cam.scrollTo({ top: targetScroll, behavior: "smooth" });
+  }, [climberTarget.x, climberTarget.y]);
 
   /* GSAP animate climber to its target whenever it changes. We
      remember the previous position so we can do a smooth ease,
@@ -257,7 +319,23 @@ export default function ClimberMilestoneMap({
   const dashOffset = PATH_LEN * (1 - drawnPct);
 
   return (
-    <div className="cmm-root">
+    <div className="cmm-root" ref={rootRef}>
+      {/* v207 — Mountain trekking landscape. 5 altitude photos stacked
+          vertically with gradient masks blending one into the next.
+          As the camera (parent .bgz-stage-main) auto-scrolls UP on
+          climber progression, the user reveals progressively higher
+          altitudes — valley → forest → alpine → snow → summit. */}
+      {ALTITUDE_PHOTOS.map((url, i) => (
+        <div
+          key={i}
+          className={`cmm-altitude cmm-altitude-${i}`}
+          style={{ backgroundImage: `url(${url})` }}
+          aria-hidden="true"
+        />
+      ))}
+      <div className="cmm-sky-wash" aria-hidden="true" />
+      <div className="cmm-bottom-vignette" aria-hidden="true" />
+
       {/* SVG path layer — visual only, all interactions go through the
           absolutely-positioned button nodes below. */}
       <svg
