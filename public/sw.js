@@ -144,7 +144,18 @@ const CACHE_NAME = 'staybid-static-v2';
 // tab counts updated to match). The v229 DB cleanup left 116+ EXPIRED
 // rows visible under ALL filter; users explicitly asked for them gone
 // (Issue 4). Cache bump forces v230 HTML delivery on next page open.
-const HTML_CACHE = 'staybid-html-v13';
+// v231 — one-time HTML_CACHE bump (v13 → v14). When customer has an
+// active bid for a hotel placed via /bid reverse-auction, the bid
+// often carries no specific roomId. Pre-v231, every room on /hotels/[id]
+// fell back to Book Now + Negotiate buttons because lockedRoomId
+// matched nothing. Fix: auto-anchor the bid to the cheapest non-flash
+// available room → cheapest room shows the locked CTA, every other
+// room surfaces as an Upgrade candidate priced as bid amount + room
+// rent difference. Same fallback covers PENDING + COUNTER orphans
+// without roomId. Plus: OTA market-comparison block now gates on
+// otaSaving > 0 so when StayBid is NOT cheaper, the whole block
+// disappears (no empty space) — premium-clean room body.
+const HTML_CACHE = 'staybid-html-v14';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

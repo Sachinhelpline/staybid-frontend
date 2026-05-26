@@ -2905,6 +2905,39 @@ export default function HotelDetail() {
           // (lower) offer.
           const lockedAmount = lockedBid ? resolveBidDisplayAmount(lockedBid) : 0;
           const lockedRoomId = lockedBid?.roomId ? String(lockedBid.roomId) : null;
+          // v231 — Auto-lock cheapest room when bid carries no roomId.
+          // /bid reverse-auction doesn't pick a specific room → bid.roomId
+          // is null OR matches no room on this hotel → lockedBid never
+          // "binds" anywhere → every room falls through to Book Now +
+          // Negotiate even though the customer already has an ACCEPTED /
+          // PENDING / COUNTER bid for this hotel (breaks the one-active-
+          // bid-per-hotel UX). Fix: anchor the bid to the cheapest non-
+          // flash available room. Other rooms then auto-surface as Upgrade
+          // candidates via the existing isOtherWhenActive path.
+          const allRoomIds = new Set((hotel.rooms || []).map((r: any) => String(r.id)));
+          const cheapestEligibleRoom = (hotel.rooms || [])
+            .filter((r: any) => r.isAvailable !== false && (r.quantity == null || Number(r.quantity) > 0))
+            .slice()
+            .sort((a: any, b: any) => (a.floorPrice || 0) - (b.floorPrice || 0))[0] || null;
+          const cheapestRoomId = cheapestEligibleRoom ? String(cheapestEligibleRoom.id) : null;
+          const effectiveLockedRoomId = lockedBid
+            ? (lockedRoomId && allRoomIds.has(lockedRoomId) ? lockedRoomId : cheapestRoomId)
+            : null;
+          // Same fallback for PENDING / COUNTER orphans — pin to cheapest
+          // room so its CTA renders. Only the FIRST orphan of each kind
+          // is pinned (multiple would collide).
+          const orphanPending = activeMyBids.find((b: any) =>
+            b.status === "PENDING" && (!b.roomId || !allRoomIds.has(String(b.roomId)))
+          ) || null;
+          const orphanCounter = activeMyBids.find((b: any) =>
+            b.status === "COUNTER" && (!b.roomId || !allRoomIds.has(String(b.roomId)))
+          ) || null;
+          if (orphanPending && cheapestRoomId && !pendingByRoom.has(cheapestRoomId)) {
+            pendingByRoom.set(cheapestRoomId, orphanPending);
+          }
+          if (orphanCounter && cheapestRoomId && !counteredByRoom.has(cheapestRoomId)) {
+            counteredByRoom.set(cheapestRoomId, orphanCounter);
+          }
           return (
         <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
@@ -2929,7 +2962,7 @@ export default function HotelDetail() {
             // chrome wins; otherwise the bid-lock chrome takes over.
             const myRoomPending   = pendingByRoom.get(String(r.id))    || null;
             const myRoomCountered = counteredByRoom.get(String(r.id))  || null;
-            const myRoomLock      = lockedBid && lockedRoomId === String(r.id) ? lockedBid : null;
+            const myRoomLock      = lockedBid && effectiveLockedRoomId === String(r.id) ? lockedBid : null;
             const isLockedRoom    = !!myRoomLock;
             // v192 — Phase 9: widen the upgrade-chip trigger. Was only
             // firing on ACCEPTED (isOtherWhenLocked); now any ACTIVE
@@ -2960,7 +2993,11 @@ export default function HotelDetail() {
             // active bid touching this hotel. Routes to /my-bids where
             // the pay-now / counter-accept flows already live (and the
             // global AcceptedBidTimer keeps the countdown in sync).
-            const lockedBidId = lockedBid?.id || myRoomCountered?.id || myRoomPending?.id;
+            // v231 — Fallback to anchorBid so PENDING/COUNTER orphan
+            // anchors on OTHER rooms still get a valid bid id for the
+            // upgrade chip CTA. Without this, the Upgrade button is a
+            // no-op for any non-ACCEPTED anchor.
+            const lockedBidId = lockedBid?.id || myRoomCountered?.id || myRoomPending?.id || anchorBid?.id;
             const roomBidCta: React.ReactNode | null =
               isLockedRoom ? (
                 <button
@@ -2999,16 +3036,24 @@ export default function HotelDetail() {
                 lockUpgradeDelta > 0 ? (
                   <button
                     onClick={() => {
-                      if (!lockedBid || !lockedBidId) return;
-                      const upgradeNights = globalNights || 1;
-                      setUpgradeModal({
-                        bidId: String(lockedBidId),
-                        fromRoomName: lockedBid.room?.name || lockedBid.room?.type || "your accepted room",
-                        toRoom: r,
-                        acceptedAmount: lockedAmount,
-                        deltaPerNight: lockUpgradeDelta,
-                        nights: upgradeNights,
-                      });
+                      // v231 — Upgrade modal (delta charge + PATCH roomId)
+                      // only applies once the bid is ACCEPTED. For PENDING
+                      // / COUNTER anchors the customer hasn't paid the
+                      // base amount yet — route them to /my-bids to take
+                      // the next lifecycle action there.
+                      if (lockedBid && lockedBidId) {
+                        const upgradeNights = globalNights || 1;
+                        setUpgradeModal({
+                          bidId: String(lockedBidId),
+                          fromRoomName: lockedBid.room?.name || lockedBid.room?.type || "your accepted room",
+                          toRoom: r,
+                          acceptedAmount: lockedAmount,
+                          deltaPerNight: lockUpgradeDelta,
+                          nights: upgradeNights,
+                        });
+                      } else if (lockedBidId) {
+                        router.push(`/my-bids#bid-${lockedBidId}`);
+                      }
                     }}
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", padding: "12px 14px", lineHeight: 1.25 }}
@@ -3017,7 +3062,7 @@ export default function HotelDetail() {
                       💎 Upgrade to {r.name || r.type}
                     </div>
                     <div style={{ fontSize: "0.7rem", fontWeight: 600, opacity: 0.85, marginTop: 2 }}>
-                      ₹{lockedAmount.toLocaleString("en-IN")} accepted + ₹{lockUpgradeDelta.toLocaleString("en-IN")} extra = ₹{(lockedAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
+                      ₹{anchorAmount.toLocaleString("en-IN")} {lockedBid ? "accepted" : "bid"} + ₹{lockUpgradeDelta.toLocaleString("en-IN")} extra = ₹{(anchorAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
                     </div>
                   </button>
                 ) : (
@@ -3026,7 +3071,7 @@ export default function HotelDetail() {
                     className="hx-cta hx-cta-primary"
                     style={{ width: "100%", background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                   >
-                    💰 Pay accepted ₹{lockedAmount.toLocaleString("en-IN")}/night →
+                    💰 {lockedBid ? "Pay accepted" : "View active bid"} ₹{anchorAmount.toLocaleString("en-IN")}/night →
                   </button>
                 )
               ) : null;
@@ -3539,8 +3584,12 @@ export default function HotelDetail() {
                           )}
 
                           {/* OTA comparison — v123 premium · v133 animated bars
-                              (bars scale from 0 → ratio when scrolled into view) */}
-                          {(() => {
+                              (bars scale from 0 → ratio when scrolled into view).
+                              v231 — gated on otaSaving > 0 so when StayBid is
+                              NOT cheaper than every competitor, the whole block
+                              disappears cleanly (no empty space) instead of
+                              rendering a comparison that makes us look worse. */}
+                          {otaSaving > 0 && (() => {
                             const maxPrice = Math.max(livePrice, ...otas.map(o => o.price));
                             const fillFor = (p: number) => maxPrice > 0 ? p / maxPrice : 1;
                             return (
