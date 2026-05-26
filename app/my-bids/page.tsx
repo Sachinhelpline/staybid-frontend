@@ -17,6 +17,7 @@ import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
+import { filterActiveBids } from "@/lib/bid-expiry";
 import { CountUp } from "@/components/CountUp";
 // v129 — counter amounts snap to ₹100 multiples (same source of truth as the
 // Negotiate slider + partner counter slider). Hotels can ONLY bundle perks
@@ -608,19 +609,30 @@ function MyBidsPageInner() {
   // again if needed (deferred).
   const HIDE_TERMINAL = new Set(["EXPIRED", "CANCELLED"]);
 
+  // v231 — Drop visually-stale bids on top of HIDE_TERMINAL. The DB row
+  // for an ACCEPTED-unpaid bid only flips to EXPIRED when the
+  // mark_orphaned_accepted_bids cron next runs — meanwhile the customer
+  // saw an 8-day-old "Hotel accepted · 12:43 to pay" timer that was a
+  // visual fiction (cron will close it but the view shouldn't wait for
+  // it). filterActiveBids encodes the per-status windows from
+  // lib/bid-expiry.ts (15 min for ACCEPTED-unpaid, 60 min COUNTER, 1-3 h
+  // PENDING, 30 min REJECTED, IST-midnight hard cutoff). Apply it
+  // BEFORE the tab/status filters so all counts stay in sync.
+  const liveBids = useMemo(() => filterActiveBids(bids), [bids]);
+
   // v180 — split by flow first, then by status filter.
   // v230 — Place Bid / Negotiate tab counts ALSO exclude HIDE_TERMINAL so
   // the customer doesn't see "Place Bid 72" when 65 of those 72 are EXPIRED
   // rows hidden from view. Pre-v230 the tab count diverged from the actual
   // rendered row count, which was confusing.
-  const placeBidCount  = useMemo(() => bids.filter((b) =>  b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [bids]);
-  const negotiateCount = useMemo(() => bids.filter((b) => !b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [bids]);
+  const placeBidCount  = useMemo(() => liveBids.filter((b) =>  b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [liveBids]);
+  const negotiateCount = useMemo(() => liveBids.filter((b) => !b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [liveBids]);
   const sectionBids = useMemo(
-    () => bids.filter((b) => (
+    () => liveBids.filter((b) => (
       (section === "PLACE" ? b._isPlaceBid : !b._isPlaceBid) &&
       !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())
     )),
-    [bids, section]
+    [liveBids, section]
   );
   const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
 
