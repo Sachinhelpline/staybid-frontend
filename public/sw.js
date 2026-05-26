@@ -128,7 +128,23 @@ const CACHE_NAME = 'staybid-static-v2';
 // ✕ Cancel bid CTA on every PENDING/COUNTER row; STATUS_META gains
 // CANCELLED + EXPIRED entries. Cache bump forces v229 HTML on next
 // page open.
-const HTML_CACHE = 'staybid-html-v12';
+// v230 — one-time HTML_CACHE bump (v12 → v13). Four UX fixes ship
+// together: (a) /bid "Pay Now & Grab" CTA — previously navigated to
+// /my-bids and the auto-open BookingReview effect only fired for
+// ACCEPTED bids → user landed on the bid list (Issue 1). Now the
+// effect also fires for PENDING/COUNTER bids landing from /bid auction
+// so the BookingReview modal opens immediately. (b) /bid uses
+// router.replace (was push) for the Pay Now nav so back from /my-bids
+// doesn't return to /bid Step 1 form (Issue 2). (c) ActiveBidConflict-
+// Sheet's onClose no longer nulls bidConflict — split sheet visibility
+// into conflictSheetOpen state so the Step 6 conflict-aware card with
+// hotel name + amount + "View Active Bid →" CTA stays rendered even
+// after the user dismisses the sheet (Issue 3). (d) /my-bids hides
+// EXPIRED + CANCELLED bids from default view (Place Bid / Negotiate
+// tab counts updated to match). The v229 DB cleanup left 116+ EXPIRED
+// rows visible under ALL filter; users explicitly asked for them gone
+// (Issue 4). Cache bump forces v230 HTML delivery on next page open.
+const HTML_CACHE = 'staybid-html-v13';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

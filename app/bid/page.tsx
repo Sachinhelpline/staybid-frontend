@@ -535,6 +535,12 @@ export default function BidPage() {
   // 409 sheet — populated when any per-hotel placeBid hits the
   // one-active-bid-per-city rail.
   const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
+  // v230 — separates ActiveBidConflictSheet visibility from bidConflict
+  // state. Sheet dismissal flips this to false; bidConflict persists so
+  // the Step 6 conflict-aware card keeps rendering with hotel name + amount
+  // + "View Active Bid →" CTA. Pre-v230 the sheet's onClose nulled the
+  // conflict entirely and Step 6 fell back to the generic "Try Again" card.
+  const [conflictSheetOpen, setConflictSheetOpen] = useState(false);
   // v163 — live auction state shown on the success screen itself.
   const [liveBids, setLiveBids] = useState<any[]>([]);
   const [launchTs, setLaunchTs] = useState(0);
@@ -1187,13 +1193,18 @@ export default function BidPage() {
             desiredAmount: budget,
             maxBudget: budget * 2,
           });
+          // v230 — explicitly open the sheet on first conflict firing.
+          // Dismissing the sheet doesn't null bidConflict anymore, so the
+          // Step 6 conflict-aware card with hotel name + amount + View
+          // Active Bid CTA keeps rendering.
+          setConflictSheetOpen(true);
           // v226 — also surface a reason in the Review modal as belt-and-
           // braces. Pre-v226 the conflict sheet opened on top but the
           // underlying Review modal stayed on the hourglass branch (no
           // success, no submitError). If the user dismissed the sheet, the
           // hourglass made it look like nothing happened.
           setSubmitError(
-            "You already have an active bid in this city. Use the chip below to update it or cancel and try again.",
+            "You already have an active bid in this city. Tap below to update or cancel.",
           );
           return;
         }
@@ -1349,7 +1360,7 @@ export default function BidPage() {
                 // a second tap to open the Pay/Hold/Pay-at-Hotel modal. The
                 // `?payNow=<id>` query param fires handlePayNow as soon as
                 // the bids list hydrates.
-                onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
               />
             ))}
           </div>
@@ -1914,7 +1925,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
                 />
               ))}
             </div>
@@ -1982,7 +1993,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
                 />
               ))}
             </div>
@@ -2612,20 +2623,29 @@ export default function BidPage() {
 
       {/* 409 — one-active-bid-per-city. Closes by tap-outside or Cancel,
           updates the existing bid budget in place when the slider is used. */}
-      {bidConflict && (
+      {bidConflict && conflictSheetOpen && (
         <ActiveBidConflictSheet
           conflict={bidConflict.conflict}
           flow="place"
           desiredAmount={bidConflict.desiredAmount}
           floorPrice={bidConflict.floorPrice}
           maxBudget={bidConflict.maxBudget}
-          onClose={() => setBidConflict(null)}
+          // v230 — onClose closes ONLY the sheet, NOT bidConflict. This way
+          // the Step 6 conflict-aware card (with "View Active Bid →" CTA +
+          // hotel name + amount) stays rendered even after the user dismisses
+          // the sheet. Pre-v230 the sheet's onClose nulled bidConflict →
+          // Step 6 fell back to the generic "Try Again" card and the user
+          // had no way to see which hotel was conflicting.
+          onClose={() => setConflictSheetOpen(false)}
           onUpdated={(bid?: any) => {
-            // v229 — Cancel sheet path returns { status: "CANCELLED" }: don't
-            // navigate away, just clear conflict state so the user can re-launch
-            // their bid right here. Budget-update path returns the updated bid
-            // → push to /my-bids as before.
-            if (bid?.status === "CANCELLED") { setBidConflict(null); return; }
+            // v229 — Cancel sheet path returns { status: "CANCELLED" }: clear
+            // the entire conflict state so user can re-launch. Budget-update
+            // path returns the updated bid → push to /my-bids.
+            if (bid?.status === "CANCELLED") {
+              setBidConflict(null);
+              setConflictSheetOpen(false);
+              return;
+            }
             router.push("/my-bids");
           }}
         />
@@ -2738,7 +2758,7 @@ export default function BidPage() {
                       launchTs={launchTs}
                       nowTs={nowTs}
                       onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                      onGrab={(bid) => router.push(`/my-bids?payNow=${bid}`)}
+                      onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
                     />
                   ))}
                 </div>
