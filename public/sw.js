@@ -72,7 +72,16 @@ const CACHE_NAME = 'staybid-static-v2';
 // stays mounted underneath) for both surfaces. Cache bump forces
 // every device to fetch v225 HTML on next page load so the fix
 // reaches users immediately instead of waiting for the SWR cycle.
-const HTML_CACHE = 'staybid-html-v8';
+// v226 — one-time HTML_CACHE bump (v8 → v9). v225 still left two
+// silent-fail paths in /bid submit(): the !user redirect and the 409
+// conflict branch both returned without setting submitError, so the
+// Review modal stayed on its hourglass "Launch your bid first" branch
+// — looked indistinguishable from "never tapped Launch". v226 sets
+// submitError on both paths so the modal ALWAYS shows a reason. Also
+// removes the BidGameZone ambient drone (user feedback: "background
+// sound chal raha hai jiska koi kaam nahi"). Cache bump forces fresh
+// HTML on next visit so the fix lands without an SWR cycle wait.
+const HTML_CACHE = 'staybid-html-v9';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
