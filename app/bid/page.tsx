@@ -527,6 +527,11 @@ export default function BidPage() {
      Set Price (user report SS3). Forcing the user to tap +/- at least
      once makes Step 4 a real stop, even when they keep the defaults. */
   const [guestsTouched, setGuestsTouched] = useState(false);
+  // v223 — surface submit failures INSIDE the Review modal instead of a
+  // blocking alert() that pre-v223 vanished without showing what broke
+  // ("baar baar launch bid karte raho same notification aata rahega kuch
+  // nhi dikhta"). Reset when user retries from the error UI.
+  const [submitError, setSubmitError] = useState<string | null>(null);
   // 409 sheet — populated when any per-hotel placeBid hits the
   // one-active-bid-per-city rail.
   const [bidConflict, setBidConflict] = useState<null | { conflict: BidConflict; desiredAmount: number; floorPrice?: number; maxBudget?: number }>(null);
@@ -893,6 +898,7 @@ export default function BidPage() {
   const submit = async () => {
     if (!user) return router.push("/auth");
     setLoading(true);
+    setSubmitError(null);
     try {
       // v170 — structured requirements built from the catalog selections.
       const addonLabels = form.addons
@@ -1158,7 +1164,7 @@ export default function BidPage() {
         bids: launched,
       });
     } catch (e: any) {
-      alert(e.message || "Something went wrong. Please try again.");
+      setSubmitError(e?.message || "Could not reach hotels. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -1172,9 +1178,15 @@ export default function BidPage() {
      pressing back returned to the boot screen (BidGameZone remounted).
      v210 fix: on mobile we KEEP rendering the page below (climbing map
      stays mounted, all 5 milestones DONE, climber at peak), and overlay
-     the celebration + live auction as a fixed-position portal. Desktop
-     keeps the existing full-screen takeover — its UX expects it. */
-  if (success && !isMobile) {
+     the celebration + live auction as a fixed-position portal.
+     v223 — desktop full-page takeover disabled. User's v222 report was
+     "destop par launch bid karte ho review show ho jata hai next page
+     na ki wahi same page par show ho". Desktop now falls through to the
+     same single-page climber flow as mobile — milestone 6 (Review Bid
+     & Visit) auto-opens via the sb:cmm-open-sheet event from submit().
+     Block kept with `&& false` mirror of v217 idiom in case we ever
+     need to revert. */
+  if (success && !isMobile && false) {
     // v163 — a bid counts as accepted if it cleared the hotel's floor
     // at launch (instant) OR the poll later flipped it to ACCEPTED.
     const isAccepted = (b: any) =>
@@ -1589,7 +1601,10 @@ export default function BidPage() {
            hotels respond. submit() runs in the background; when
            success populates, the existing useEffect[success] is a
            no-op (already on idx=5), and the live bid list takes over
-           from the spinner. */
+           from the spinner.
+           v223 — clear any stale submitError so the Review modal opens
+           on the spinner state, not on a leftover error card. */
+        setSubmitError(null);
         void submit();
         if (typeof window !== "undefined") {
           setTimeout(() => {
@@ -1690,6 +1705,49 @@ export default function BidPage() {
       doneLabel: "Continue to Pay ›",
       render: () => {
         if (!success) {
+          /* v223 — error branch FIRST so a failed submit surfaces in the
+             same modal instead of vanishing silently. User's v222 report
+             was "spinner aata hai phir kuch nhi" — submit() catch was
+             alert()-ing but on mobile the alert can dismiss without the
+             user noticing, and the modal was stuck on the spinner. Now
+             a failure flips to an error card with the actual reason +
+             a Try Again button that calls submit() inline. */
+          if (submitError && !loading) {
+            return (
+              <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--cozy-cocoa)" }}>
+                <div style={{ fontSize: "2.4rem", marginBottom: 8 }}>⚠️</div>
+                <div style={{ fontWeight: 700, fontSize: "1.05rem", marginBottom: 6 }}>
+                  Couldn't reach hotels
+                </div>
+                <div style={{
+                  fontSize: "0.86rem",
+                  color: "var(--cozy-cocoa-soft)",
+                  lineHeight: 1.5,
+                  marginBottom: 14,
+                  wordBreak: "break-word",
+                }}>
+                  {submitError}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { void submit(); }}
+                  style={{
+                    padding: "10px 22px",
+                    borderRadius: 999,
+                    fontWeight: 700,
+                    fontSize: "0.92rem",
+                    background: "linear-gradient(180deg,#fbe6b5,#e6c382)",
+                    color: "var(--cozy-warm-dark)",
+                    border: "1px solid rgba(110,84,48,0.35)",
+                    boxShadow: "0 3px 10px rgba(110,84,48,0.18)",
+                    cursor: "pointer",
+                  }}
+                >
+                  🔄 Try Again
+                </button>
+              </div>
+            );
+          }
           /* v222 — split empty state into two modes:
              - loading=true: bid is launching RIGHT NOW (user tapped
                Launch Bid; submit() is in flight). Show animated spinner
