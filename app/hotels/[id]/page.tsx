@@ -286,6 +286,24 @@ export default function HotelDetail() {
   const [hotel, setHotel]     = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // v227 — defensive scroll-lock cleanup. When a user navigates here
+  // straight from /discover / /reels / /me via Next.js client-side
+  // routing, the `useReelFullscreen` unmount cleanup that strips
+  // `is-reel-page` from <html> + <body> can lose to a fast nav and
+  // leave the class stuck. The class sets `position: fixed; overflow:
+  // hidden; height: 100vh` on body → the entire hotel page becomes a
+  // ~600px window with no scroll. Symptom: page renders content past
+  // the visible area but the user can't reach it. This effect runs
+  // unconditionally on mount + on every pathname change, so the class
+  // can never survive into a non-reel route.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.remove("is-reel-page");
+    document.body.classList.remove("is-reel-page");
+    document.documentElement.style.removeProperty("--reel-vh");
+    document.body.style.height = "";
+  }, []);
+
   // v139 — Tutorial Layer 2. Slightly longer delay (1400ms) because
   // hotel detail data loads from /api/hotels/[id] async — rooms +
   // photos + score badge all need to be in the DOM before the tour
