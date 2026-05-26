@@ -325,11 +325,20 @@ export function DialerNav() {
   // Hide on admin / partner / onboard routes. ALSO hide on the reel-feed
   // app surface (/, /discover, /reels, /me) — those use the Instagram-
   // style bottom dock instead of the left-edge crown wheel, per design ask.
+  // v221 — also hide on /bid. The FAB has `touch-action: none` which
+  // means the OS receives no touch events under it. The FAB defaults
+  // near the screen edges where Android's edge-back-swipe lives, so
+  // when /bid renders fullscreen-style the FAB silently swallows the
+  // back gesture (user report: "back karne ke liye mobile ke default
+  // navigation gesture button ko forcefully block karta hai").
+  // /bid is a focused workflow surface — BottomDock + the climber's
+  // own X / Done buttons + the new desktop ← back chip cover nav.
   if (pathname.startsWith("/admin") ||
       pathname.startsWith("/partner") ||
       pathname.startsWith("/agent") ||
       pathname.startsWith("/onboard") ||
       pathname.startsWith("/order") ||
+      pathname.startsWith("/bid") ||
       pathname === "/" ||
       pathname.startsWith("/discover") ||
       pathname.startsWith("/reels") ||

@@ -1779,6 +1779,27 @@ export default function BidPage() {
   /* ─────────────── Main Form ─────────────── */
   return (
     <div className="bx-shell min-h-screen pb-24">
+      {/* v221 — Desktop-only back chip. On mobile the OS back gesture
+          (Android edge-swipe / iOS swipe) covers this; we hide DialerNav
+          on /bid so that gesture isn't intercepted (v221 fix). On
+          desktop there's no gesture so a visible ← back chip ships.
+          CSS auto-hides below 1024px via `.bx-desktop-back` media query. */}
+      <button
+        type="button"
+        className="bx-desktop-back"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/");
+          }
+        }}
+        aria-label="Go back"
+      >
+        <span className="bx-desktop-back-arrow" aria-hidden="true">←</span>
+        <span>Back</span>
+      </button>
+
       <div className="bx-page-wrap mx-auto px-4 pt-4">
 
         {/* v163 — Step 1: compact split hero. Title + the two live pills
