@@ -95,6 +95,27 @@ export default function ActiveBidConflictSheet({
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // v229 — Cancel the conflicting bid for real. Previously the "Cancel" CTA
+  // just dismissed the sheet, leaving the user stuck on the same 409 if
+  // they tried to launch again. Now it flips status=CANCELLED, releases
+  // the (customer × city) lock, then closes the sheet so the next bid
+  // submit succeeds.
+  const [cancelling, setCancelling] = useState(false);
+  const handleCancelBid = async () => {
+    if (!confirm(`Cancel your active bid in ${conflict.city}? You can launch a fresh one right after.`)) return;
+    setErr("");
+    setCancelling(true);
+    try {
+      await api.cancelBid(conflict.bidId);
+      onUpdated?.({ id: conflict.bidId, status: "CANCELLED" });
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message || "Could not cancel the bid");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleUpdate = async () => {
     setErr("");
     setSaving(true);
@@ -326,12 +347,25 @@ export default function ActiveBidConflictSheet({
           >
             View Active Bid →
           </button>
+          {/* v229 — Cancel-for-real CTA. Only meaningful while the bid is
+              cancellable (PENDING/COUNTER). ACCEPTED bids stay — that's a
+              "pay or wait" decision, not a cancellation. */}
+          {(conflict.status === "PENDING" || conflict.status === "COUNTER") && (
+            <button
+              onClick={handleCancelBid}
+              disabled={cancelling}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm disabled:opacity-40"
+              style={{ background: "rgba(199,126,109,0.12)", color: "#C77E6D", border: "1px solid rgba(199,126,109,0.30)" }}
+            >
+              {cancelling ? "Cancelling…" : "✕ Cancel this bid"}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="w-full py-2 text-xs font-semibold"
             style={{ color: "var(--text-muted, #6b6357)" }}
           >
-            Cancel
+            Dismiss
           </button>
         </div>
         </>

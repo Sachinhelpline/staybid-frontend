@@ -31,10 +31,13 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v174 — cozy-theme status palette. Mid-tone colours that read on both the
 // cream (light) and walnut (dark) surfaces — no per-theme branching needed.
 const STATUS_META: Record<string, { label: string; color: string; soft: string }> = {
-  PENDING:  { label: "Pending",   color: "#C9A66B", soft: "rgba(201,166,107,0.14)" },
-  COUNTER:  { label: "Countered", color: "#C77B43", soft: "rgba(199,123,67,0.14)" },
-  ACCEPTED: { label: "Accepted",  color: "#7F9269", soft: "rgba(127,146,105,0.18)" },
-  REJECTED: { label: "Declined",  color: "#C77E6D", soft: "rgba(199,126,109,0.14)" },
+  PENDING:   { label: "Pending",   color: "#C9A66B", soft: "rgba(201,166,107,0.14)" },
+  COUNTER:   { label: "Countered", color: "#C77B43", soft: "rgba(199,123,67,0.14)" },
+  ACCEPTED:  { label: "Accepted",  color: "#7F9269", soft: "rgba(127,146,105,0.18)" },
+  REJECTED:  { label: "Declined",  color: "#C77E6D", soft: "rgba(199,126,109,0.14)" },
+  // v229 — customer-initiated cancel via /api/bids/:id/cancel
+  CANCELLED: { label: "Cancelled", color: "#8A8FA8", soft: "rgba(138,143,168,0.14)" },
+  EXPIRED:   { label: "Expired",   color: "#8A8FA8", soft: "rgba(138,143,168,0.14)" },
 };
 
 const isPaid = (b: any) => typeof b?.message === "string" && b.message.includes("Razorpay:");
@@ -458,6 +461,26 @@ function MyBidsPageInner() {
     }
   };
 
+  // v229 — Customer cancels own PENDING/COUNTER bid. Releases (customer ×
+  // city) lock instantly. Optimistic: drop the row from local list while
+  // the request flies; revert on error.
+  const handleCancelBid = async (bidId: string) => {
+    if (!confirm("Cancel this bid? You can launch a fresh one in this city right after.")) return;
+    setActionLoading(bidId);
+    const prev = bids;
+    setBids((cur) => cur.map((b) => (b.id === bidId ? { ...b, status: "CANCELLED" } : b)));
+    try {
+      await api.cancelBid(bidId);
+      // Refresh from server so the row drops out of PENDING/COUNTER filters
+      fetchBids(true);
+    } catch (e: any) {
+      setBids(prev); // rollback
+      alert(e?.message || "Couldn't cancel the bid. Please try again.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
   const handleCounterReject = async (bidId: string) => {
     setActionLoading(bidId);
     try {
@@ -865,9 +888,13 @@ function MyBidsPageInner() {
                   />
                 )}
 
-                {/* PENDING / COUNTER per-flow countdown + Update Budget. The
-                    countdown is 1h for /bid (b._isPlaceBid), 3h for Negotiate.
-                    Budget update PATCHes the bid and refreshes the list. */}
+                {/* PENDING / COUNTER per-flow countdown + Update Budget + Cancel.
+                    The countdown is 1h for /bid (b._isPlaceBid), 3h for Negotiate.
+                    Budget update PATCHes the bid and refreshes the list.
+                    v229 — Cancel CTA flips status to CANCELLED via the new
+                    Railway endpoint; releases the (customer × city) lock so
+                    the user can immediately launch a fresh bid without
+                    waiting for the cron sweep. */}
                 {(b.status === "PENDING" || b.status === "COUNTER") && (
                   <>
                     <PendingBidCountdown
@@ -880,6 +907,16 @@ function MyBidsPageInner() {
                       floor={Number(b.room?.floorPrice || 0)}
                       onUpdated={() => fetchBids(true)}
                     />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => handleCancelBid(b.id)}
+                        disabled={actionLoading === b.id}
+                        className="text-[0.7rem] font-semibold underline-offset-2 hover:underline disabled:opacity-40 transition"
+                        style={{ color: STATUS_META.CANCELLED.color }}
+                      >
+                        {actionLoading === b.id ? "Cancelling…" : "✕ Cancel bid"}
+                      </button>
+                    </div>
                   </>
                 )}
 

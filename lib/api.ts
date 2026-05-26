@@ -102,6 +102,10 @@ export const api = {
   updateBidBudget:   (id: string, amount: number, flow?: "place" | "negotiate") =>
     direct(`/api/bids/${id}/budget`, { method: "PATCH", body: JSON.stringify({ amount, flow }) }),
   acceptBid:         (id: string)  => direct(`/api/bids/${id}/accept`, { method: "POST" }),
+  // v229 — Customer-side cancel for own PENDING/COUNTER bids. Releases the
+  // (customer × city) lock instantly so user can launch a new bid without
+  // waiting for cron sweep (which can be 5-360 min away).
+  cancelBid:         (id: string)  => direct(`/api/bids/${id}/cancel`, { method: "POST" }),
   getMyBids:         ()            => direct("/api/bids/my"),
   getFlashDeals:     (city?: string) => direct(`/api/flash/near${city ? `?city=${encodeURIComponent(city)}` : ""}`),
   getMyBookings:     ()            => direct("/api/bookings/my"),

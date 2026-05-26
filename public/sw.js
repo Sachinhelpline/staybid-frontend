@@ -112,7 +112,23 @@ const CACHE_NAME = 'staybid-static-v2';
 // makes the body shrink to whatever the footer leaves free, regardless
 // of how many CTAs render. Cache bump forces v228 HTML delivery on
 // next page open so the fix lands without an SWR refresh cycle wait.
-const HTML_CACHE = 'staybid-html-v11';
+// v229 — one-time HTML_CACHE bump (v11 → v12). Three bid-washout +
+// customer-cancel fixes ship together: (a) NEW endpoint POST
+// /api/bids/:id/cancel on staybid-Live for customer-side withdrawal of
+// own PENDING/COUNTER bids (the conflict sheet "Cancel" button had been
+// a UI-dismiss only since launch — now actually flips status=CANCELLED).
+// (b) /api/cron/expire-holds now also runs mark_orphaned_accepted_bids()
+// — flips ACCEPTED bids to EXPIRED when the 15-min acceptance window
+// died and no payment landed (20+ orphan rows verified in prod showing
+// "Pay Now" forever). (c) mark_stale_pending_bids extended to also
+// sweep COUNTER rows past expiresAt+6h (1 stuck COUNTER bid verified
+// 9 days old in prod). The Railway counter endpoint also resets
+// expiresAt so a hotel countering at minute 55 of a 60-min /bid no
+// longer leaves the customer 5 min before sweep. /my-bids gets a new
+// ✕ Cancel bid CTA on every PENDING/COUNTER row; STATUS_META gains
+// CANCELLED + EXPIRED entries. Cache bump forces v229 HTML on next
+// page open.
+const HTML_CACHE = 'staybid-html-v12';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
