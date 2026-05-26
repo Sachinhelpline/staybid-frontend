@@ -8935,6 +8935,139 @@ body.is-reel-page {
   background: linear-gradient(to top, rgba(15, 12, 8, 0.55), transparent);
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   v218 — Alive atmosphere on the 180vh climber canvas. Drifting clouds
+   (5 instances at different altitudes), mid-altitude haze sweep,
+   summit sun glow, valley mist. All pure CSS, GPU-only translate3d,
+   pointer-events: none, z-index: 2 (above .cmm-altitude photos, below
+   the SVG path at z-index: 4 + nodes at z-index: 5).
+═══════════════════════════════════════════════════════════════════ */
+.cmm-atmos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* z-index: 0 so atmos sits ABOVE .cmm-altitude photos (which are
+     unindexed, default 0, but earlier in DOM order) and BELOW the SVG
+     path (z-index: 1) + milestone discs (z-index: 3). */
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* 5 cloud wisps spread across the canvas — each band of altitude gets
+   ambient cloud motion so the user always sees something drifting
+   regardless of how far they've climbed. */
+.cmm-cloud {
+  position: absolute;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(255, 255, 255, 0.62) 0%,
+    rgba(255, 255, 255, 0.38) 30%,
+    rgba(255, 255, 255, 0.18) 55%,
+    rgba(255, 255, 255, 0)    78%
+  );
+  filter: blur(10px);
+  will-change: transform;
+}
+.cmm-cloud-1 { width: 42%; height: 5%;  top: 78%; opacity: 0.55; animation: cmmCloudL 78s linear infinite; }
+.cmm-cloud-2 { width: 56%; height: 6%;  top: 60%; opacity: 0.62; animation: cmmCloudR 96s linear infinite; animation-delay: -30s; }
+.cmm-cloud-3 { width: 38%; height: 4%;  top: 44%; opacity: 0.58; animation: cmmCloudL 110s linear infinite; animation-delay: -55s; }
+.cmm-cloud-4 { width: 50%; height: 5%;  top: 26%; opacity: 0.66; animation: cmmCloudR 86s linear infinite; animation-delay: -18s; }
+.cmm-cloud-5 { width: 34%; height: 4%;  top: 10%; opacity: 0.52; animation: cmmCloudL 124s linear infinite; animation-delay: -70s; }
+
+@keyframes cmmCloudL {
+  0%   { transform: translate3d(-55%, 0, 0); }
+  100% { transform: translate3d(170%, 0, 0); }
+}
+@keyframes cmmCloudR {
+  0%   { transform: translate3d(160%, 0, 0); }
+  100% { transform: translate3d(-65%, 0, 0); }
+}
+
+/* Mid-altitude haze — wide horizontal sweep between alpine + snow
+   bands. mix-blend-mode: screen lights up the mid-tones like real
+   morning mist. */
+.cmm-haze {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  height: 24%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 250, 240, 0.16) 30%,
+    rgba(255, 250, 240, 0.28) 50%,
+    rgba(255, 250, 240, 0.16) 70%,
+    transparent 100%
+  );
+  background-size: 260% 100%;
+  background-position: 0% 50%;
+  animation: cmmHazeDrift 42s ease-in-out infinite alternate;
+  filter: blur(8px);
+  mix-blend-mode: screen;
+  will-change: background-position;
+}
+@keyframes cmmHazeDrift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Summit sun — warm champagne glow at the top-right where the snow
+   line is. Slow breathe + tiny positional drift so it reads as living
+   light rather than a chrome overlay. */
+.cmm-sun {
+  position: absolute;
+  left: 35%;
+  right: -5%;
+  top: -2%;
+  height: 22%;
+  background: radial-gradient(
+    ellipse at 72% 38%,
+    rgba(255, 220, 150, 0.38) 0%,
+    rgba(255, 200, 120, 0.22) 25%,
+    rgba(255, 200, 120, 0.08) 50%,
+    rgba(255, 200, 120, 0)    70%
+  );
+  animation: cmmSunBreathe 12s ease-in-out infinite alternate;
+  mix-blend-mode: screen;
+  will-change: opacity, transform;
+}
+@keyframes cmmSunBreathe {
+  0%   { opacity: 0.65; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 1;    transform: translate3d(-2%, 1%, 0) scale(1.08); }
+}
+
+/* Valley mist — soft warm fog rising at the very bottom of the canvas.
+   Subtle vertical drift simulates mist rolling. */
+.cmm-mist {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18%;
+  background: linear-gradient(
+    to top,
+    rgba(255, 240, 220, 0.20) 0%,
+    rgba(255, 240, 220, 0.10) 50%,
+    transparent 100%
+  );
+  animation: cmmMistRise 28s ease-in-out infinite alternate;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  will-change: opacity, transform;
+}
+@keyframes cmmMistRise {
+  0%   { opacity: 0.55; transform: translate3d(-3%, 0, 0); }
+  100% { opacity: 0.85; transform: translate3d(3%, -1%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmm-cloud-1, .cmm-cloud-2, .cmm-cloud-3, .cmm-cloud-4, .cmm-cloud-5,
+  .cmm-haze, .cmm-sun, .cmm-mist {
+    animation: none !important;
+  }
+}
+
 /* SVG path layer — stretches to fill the .cmm-root. preserveAspect
    none means coordinates map directly to %, so a node at viewBox
    x=28,y=76 sits at 28% across × 76% down regardless of aspect. */

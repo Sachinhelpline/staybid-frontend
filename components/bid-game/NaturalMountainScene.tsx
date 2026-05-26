@@ -104,23 +104,10 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
           light gradient — preserves the natural color of the photo. */}
       <div className="nms-vignette" />
 
-      {/* v218 — Layer 2.5 — Atmospheric "alive" overlays. All pure CSS,
-          no JS. Reduced-motion guard at the bottom of globals.css. Each
-          layer pointer-events: none + low opacity so they read as
-          ambience, not chrome:
-          • .nms-clouds    — 3 soft drifting cloud wisps, slow horizontal
-                             pan across the upper sky (60-110s loops)
-          • .nms-haze      — wide horizontal gradient sweeping the mid-
-                             altitude — reads as mountain air moving
-          • .nms-sun-glow  — slow champagne-tinted radial sweep at the
-                             summit corner (like sun catching the peak) */}
-      <div className="nms-clouds" aria-hidden="true">
-        <span className="nms-cloud nms-cloud-1" />
-        <span className="nms-cloud nms-cloud-2" />
-        <span className="nms-cloud nms-cloud-3" />
-      </div>
-      <div className="nms-haze" aria-hidden="true" />
-      <div className="nms-sun-glow" aria-hidden="true" />
+      {/* v218.1 — atmosphere layers moved into ClimberMilestoneMap's
+          .cmm-root since the climber's tall canvas (180vh) fully covers
+          this scene during the playing phase. Layers here would have
+          been invisible. Boot phase keeps the static photos + birds. */}
 
       {/* Layer 3 — Three SVG birds gliding across the sky with WING
           FLAP animation (v206). Each bird is a group with two path

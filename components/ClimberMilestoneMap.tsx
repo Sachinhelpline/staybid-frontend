@@ -419,6 +419,26 @@ export default function ClimberMilestoneMap({
       <div className="cmm-sky-wash" aria-hidden="true" />
       <div className="cmm-bottom-vignette" aria-hidden="true" />
 
+      {/* v218 — Atmospheric "alive" overlays scoped to the tall 180vh
+          canvas so they ride along with the mountain altitude photos as
+          the climber scrolls up. Pure CSS, GPU-only, pointer-events:
+          none. Reduced-motion respected at the bottom of globals.css.
+          Layers (each anchored to a different altitude band):
+          • cmm-clouds  — drifting wisps in the upper third
+          • cmm-haze    — horizontal mist across the alpine band
+          • cmm-sun     — champagne sunlight catching the snow line
+          • cmm-mist    — soft fog rising in the valley */}
+      <div className="cmm-atmos" aria-hidden="true">
+        <span className="cmm-cloud cmm-cloud-1" />
+        <span className="cmm-cloud cmm-cloud-2" />
+        <span className="cmm-cloud cmm-cloud-3" />
+        <span className="cmm-cloud cmm-cloud-4" />
+        <span className="cmm-cloud cmm-cloud-5" />
+        <span className="cmm-haze" />
+        <span className="cmm-sun" />
+        <span className="cmm-mist" />
+      </div>
+
       {/* SVG path layer — visual only, all interactions go through the
           absolutely-positioned button nodes below. */}
       <svg
