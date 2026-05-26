@@ -139,6 +139,13 @@ export default function ClimberMilestoneMap({
      auto-scrolls UP as the climber climbs. */
   const rootRef = useRef<HTMLDivElement | null>(null);
   const cameraRef = useRef<HTMLElement | null>(null);
+  /* v208 — Track whether the currently-open sheet was opened from a
+     COMPLETED state (re-edit) vs an empty state (fresh pick). Used by
+     the autoAdvance auto-close effect below to AVOID closing the sheet
+     instantly when the user re-opens a done milestone to change the
+     value. Until the user actually picks a new value (summary changes),
+     the sheet stays open. */
+  const openedAtRef = useRef<{ idx: number; summary: string } | null>(null);
 
   /* Poll for card completion changes so the climber, drawn-path and
      node states stay live without forcing every host card to push
@@ -260,14 +267,43 @@ export default function ClimberMilestoneMap({
     vibrate(12);
   }, []);
 
-  /* Auto-close sheet when an autoAdvance card finishes. Replicates
-     the BidGameZone auto-advance semantics (v203 fix: only fires
-     once per "fresh visit" so re-tapping a completed card to edit
-     doesn't bounce the sheet shut mid-edit). */
+  /* Auto-close sheet on autoAdvance — but ONLY after the user actually
+     changes the picked value while the sheet is open. v208 fix for
+     SS1: the previous logic fired the auto-close the moment the
+     useEffect saw `isComplete()=true`, which is ALWAYS true when the
+     user re-opens an already-done milestone to edit. Result: the sheet
+     closed before the user could pick a new value.
+
+     New rule:
+       1. On open, snapshot the card's summary (the "what was picked"
+          string) into openedAtRef.
+       2. On every tick, compare current summary against snapshot.
+       3. Only auto-close when summary CHANGED (= user picked something
+          new) AND card is currently complete AND card is autoAdvance.
+       4. Re-opening a done card with no change → no auto-close, user
+          stays in sheet and can change the value or close manually. */
   useEffect(() => {
-    if (sheetIdx === null) return;
+    if (sheetIdx === null) {
+      openedAtRef.current = null;
+      return;
+    }
     const card = cards[sheetIdx];
-    if (!card?.autoAdvance) return;
+    if (!card) return;
+    let summaryNow = "";
+    try {
+      summaryNow = card.summary();
+    } catch {
+      summaryNow = "";
+    }
+    // First run after open — snapshot only, no auto-close.
+    if (!openedAtRef.current || openedAtRef.current.idx !== sheetIdx) {
+      openedAtRef.current = { idx: sheetIdx, summary: summaryNow };
+      return;
+    }
+    // Already snapshotted; check for change.
+    const changed = openedAtRef.current.summary !== summaryNow;
+    if (!changed) return;
+    if (!card.autoAdvance) return;
     let ok = false;
     try {
       ok = card.isComplete();
@@ -282,7 +318,8 @@ export default function ClimberMilestoneMap({
       vibrate([12, 24, 12]);
     }, delay);
     return () => clearTimeout(t);
-    // re-evaluate whenever the poll tick fires
+    // re-evaluate whenever the poll tick fires (completedCount changes
+    // as user picks) so the summary comparison stays live
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetIdx, cards, completedCount]);
 
@@ -406,15 +443,32 @@ export default function ClimberMilestoneMap({
           >
             <span className="cmm-node-ring" aria-hidden="true" />
             <span className="cmm-node-disc">
+              {/* v208 — SS3 fix: done discs now show the ORIGINAL step
+                  icon (🌍/🏨/📅/👥), NOT a ✓ that erases which step it
+                  was. A small green ✓ badge sits in the corner to
+                  indicate done state. Locked discs still show 🔒. */}
               <span className="cmm-node-glyph">
-                {done ? "✓" : locked ? "🔒" : card.icon}
+                {locked ? "🔒" : card.icon}
               </span>
               <span className="cmm-node-sheen" aria-hidden="true" />
+              {done && (
+                <span className="cmm-node-check" aria-hidden="true">
+                  ✓
+                </span>
+              )}
             </span>
             <span className="cmm-node-num">{i + 1}</span>
-            <span className="cmm-node-label">
-              {done ? card.summary() : card.title}
-            </span>
+            {done ? (
+              /* v208 — Two-line label for done discs: step title on top
+                  (small/muted) + picked value below (bold). User now
+                  clearly sees WHICH step was done + WHAT was picked. */
+              <span className="cmm-node-label cmm-node-label-done">
+                <span className="cmm-node-label-title">{card.title}</span>
+                <span className="cmm-node-label-value">{card.summary()}</span>
+              </span>
+            ) : (
+              <span className="cmm-node-label">{card.title}</span>
+            )}
           </button>
         );
       })}

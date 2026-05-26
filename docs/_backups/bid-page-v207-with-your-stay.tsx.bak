@@ -378,18 +378,7 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
 
 /* ── Editorial step bar ────────────────────────────────────────── */
 // v163 — 3 steps: where&when, stay details, price+review+launch.
-// v208 — SS4/SS5: dropped "Your Stay" step from /bid. The filter/
-// preference UI (room type, bed pref, meal plan, view, occasion,
-// add-ons) is preserved as a backup at
-// `docs/_backups/bid-page-v207-with-your-stay.tsx.bak`. Those features
-// will land on the hotel page as a separate modification surface — see
-// PR description / commit message.
-// Effective flow: 01 Where & When (BidGameZone milestones) →
-// 02 Your Price (presets + budget + Launch). Form fields that were set
-// in Your Stay (roomTypes, view, mealPlan, occasion, addons) keep
-// their initial defaults from form state, so backend submit + price
-// calc still work.
-const STEPS = ["Where & When", "Your Price"];
+const STEPS = ["Where & When", "Your Stay", "Your Price"];
 
 function StepBar({ step }: { step: number }) {
   return (
@@ -550,9 +539,9 @@ export default function BidPage() {
       const detail = (e as CustomEvent).detail || {};
       if (detail.key !== "bid") return;
       const toIdx = detail.toIndex as number;
-      // v208 — 2-step page (was 3). Tour indices 0-1 (city/dates) live
-      // on page step 1; presets / budget / submit live on page step 2.
-      const targetPageStep = toIdx <= 1 ? 1 : 2;
+      // v163 — 3-step page. Tour indices 0-1 (city/dates) live on page
+      // step 1; presets / budget / submit live on page step 3.
+      const targetPageStep = toIdx <= 1 ? 1 : 3;
       setStep((prev) => (prev !== targetPageStep ? targetPageStep : prev));
     };
     const onEnd = (e: Event) => {
@@ -829,10 +818,13 @@ export default function BidPage() {
   }, [success]);
 
   const canNext = (): boolean => {
-    // v208 — SS4/SS5: 2-step page. Step 2 IS the final step (launch
-    // lives inside). Step 1 unchanged (city/dates/property types).
-    // The old step===2 "≥2 room types" rule is gone with Your Stay.
+    // v163 — 3-step page. Step 3 is the final step (launch lives inside).
+    // v186 — Phase 4B: step 1 now requires at least 3 property types so
+    // the auction has variety. Sachin: "any 3 types of property select
+    // karni padegi" — customer must pick a minimum spread, no Any.
     if (step === 1) return !!(form.city && form.checkIn && form.checkOut && nights >= 1 && form.propertyTypes.length >= 3);
+    // v187 — Phase 5: step 2 requires ≥ 2 room types (Sachin's rule).
+    if (step === 2) return form.roomTypes.length >= 2;
     return budget > 0;
   };
 
@@ -1767,11 +1759,185 @@ export default function BidPage() {
             )
           )}
 
-          {/* ═══════════ STEP 2: YOUR PRICE — budget + review + launch ═══
-              v208 — renumbered from old STEP 3 (Your Stay was step 2,
-              now deleted; Your Price moved up). Internal `step` state
-              values are now 1 and 2 — no other `step === 3` exists. */}
+          {/* ═══════════ STEP 2: YOUR STAY — room + compact preferences ═══ */}
           {step === 2 && (
+            <div className="space-y-3 bx-step-pane" data-autonext-form>
+
+              {/* Room Type — v170 multi-select catalog categories */}
+              <div data-autonext="roomType">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Room Type</span>
+                  <span className="bx-section-h-rule" />
+                  {/* v187 — live counter: pick at least 2 to proceed. */}
+                  <span
+                    style={{
+                      fontSize: "0.66rem", fontWeight: 800, letterSpacing: "0.06em",
+                      padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap",
+                      background: form.roomTypes.length >= 2
+                        ? "rgba(127,146,105,0.18)"
+                        : "rgba(201,123,67,0.18)",
+                      color: form.roomTypes.length >= 2 ? "#5a6e44" : "#a85b26",
+                      border: `1px solid ${form.roomTypes.length >= 2 ? "rgba(127,146,105,0.45)" : "rgba(201,123,67,0.45)"}`,
+                    }}
+                  >
+                    {form.roomTypes.length}/2 picked
+                  </span>
+                </div>
+                {/* v181 — curated 7-pick room grid w/ premium icon
+                    tiles + same responsive auto-fit grid as property. */}
+                <div className="bx-pick-grid">
+                  {BID_ROOM_PICK.map((rc) => (
+                    <button
+                      key={rc.id}
+                      type="button"
+                      onClick={() => toggleRoom(rc.id)}
+                      className={`bx-pick-tile ${form.roomTypes.includes(rc.id) ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-pick-icon">{rc.icon}</span>
+                      <span className="bx-pick-label">{rc.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  {form.roomTypes.length >= 2
+                    ? `Bid spans: ${form.roomTypes.map((id) => ROOM_CATEGORY_MAP[id]?.label || id).join(", ")} — upgraded categories cost more.`
+                    : `Pick at least 2 room categories (currently ${form.roomTypes.length} selected) — upgraded categories cost more.`}
+                </p>
+              </div>
+
+              {/* Bed preference — compact chips, single row */}
+              <div data-autonext="bedType">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Bed Preference</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                {/* v186 — Phase 4B: bed picker now in the shared
+                    box-less premium grid (was horizontal scroll chips). */}
+                <div className="bx-pick-grid size-compact">
+                  {BED_TYPES.map((bt) => (
+                    <button
+                      key={bt.id}
+                      type="button"
+                      onClick={() => { upd("bedType", bt.id); scrollToAutoNext("view"); }}
+                      className={`bx-pick-tile ${form.bedType === bt.id ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-pick-icon">{bt.icon}</span>
+                      <span className="bx-pick-label">{bt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* View preference — v186 same premium grid as bed/property */}
+              <div data-autonext="view">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">View Preference</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                <div className="bx-pick-grid size-compact">
+                  {VIEW_PREFS_PICK.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => { upd("view", v.id); scrollToAutoNext("mealPlan"); }}
+                      className={`bx-pick-tile ${form.view === v.id ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-pick-icon">{v.icon}</span>
+                      <span className="bx-pick-label">{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Meal Plan — v170 catalog plans with transparent cost */}
+              <div data-autonext="mealPlan">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Meal Plan</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                {/* v186 — Phase 4B: meal plans in the shared box-less
+                    grid (was 4-up tile grid). */}
+                <div className="bx-pick-grid size-compact">
+                  {CAT_MEAL_PLANS.map((mp) => (
+                    <button
+                      key={mp.id}
+                      type="button"
+                      onClick={() => { upd("mealPlan", mp.id); scrollToAutoNext("occasion"); }}
+                      className={`bx-pick-tile ${form.mealPlan === mp.id ? "is-selected" : ""}`}
+                      title={mp.desc}
+                    >
+                      <span className="bx-pick-icon">{MEAL_EMOJI[mp.id] || "🍽️"}</span>
+                      <span className="bx-pick-label">{mp.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  Meal cost is folded into your total estimate (scaled to the property class). No per-plan price shown — the hotel confirms the final rate.
+                </p>
+              </div>
+
+              {/* Occasion — compact chips, single scrollable row (v163) */}
+              <div data-autonext="occasion">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Trip Purpose / Occasion</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                {/* v181 — occasion now in the same premium pick grid.
+                    Mobile lands as a 2-col block (per Sachin's spec) and
+                    spreads to 3/4/6 on tablet/laptop/desktop via the
+                    shared bx-pick-grid responsive rules. */}
+                <div className="bx-pick-grid size-compact">
+                  {OCCASIONS.map((oc) => (
+                    <button
+                      key={oc.id}
+                      type="button"
+                      onClick={() => { upd("occasion", oc.id); scrollToAutoNext("addons"); }}
+                      className={`bx-pick-tile ${form.occasion === oc.id ? "is-selected" : ""}`}
+                    >
+                      <span className="bx-pick-icon">{oc.icon}</span>
+                      <span className="bx-pick-label">{oc.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add-ons — compact toggle chips, single scrollable row (v163) */}
+              <div data-autonext="addons">
+                <div className="bx-section-h">
+                  <span className="bx-section-h-label">Add-ons &amp; Preferences</span>
+                  <span className="bx-section-h-rule" />
+                </div>
+                {/* v181 — curated add-on subset (10 items) in the
+                    shared premium pick grid. Paid add-ons carry a small
+                    💳 corner badge so the customer sees the cost flag
+                    before tapping. */}
+                <div className="bx-pick-grid size-compact">
+                  {BID_ADDON_PICK.map((ad) => (
+                    <button
+                      key={ad.id}
+                      type="button"
+                      onClick={() => toggleArr("addons", ad.id)}
+                      className={`bx-pick-tile ${form.addons.includes(ad.id) ? "is-selected" : ""}`}
+                      title={ad.note}
+                    >
+                      <span className="bx-pick-icon">{ad.emoji}</span>
+                      <span className="bx-pick-label">{ad.label}</span>
+                      {ad.charge === "paid" && <span className="bx-pick-tag">💳</span>}
+                    </button>
+                  ))}
+                </div>
+                <p className="bx-budget-suffix" style={{ marginTop: 6 }}>
+                  💳 = paid service, billed by the hotel as per actuals. Others are on request, subject to availability.
+                </p>
+                {/* v129 — free-text "Additional requests" textarea removed
+                    (anti-bypass). Structured toggles only. */}
+              </div>
+
+            </div>
+          )}
+
+          {/* ═══════════ STEP 3: YOUR PRICE — budget + review + launch ═══ */}
+          {step === 3 && (
             <div className="space-y-3 bx-step-pane" data-autonext-form>
 
               {/* AI Presets */}
@@ -2043,12 +2209,9 @@ export default function BidPage() {
               ← Back
             </button>
           )}
-          {/* v208 — 2-step page. Forward button only renders on step 1
-              (going to Your Price). Step 2 has its own Launch button
-              inside the form. */}
-          {step < 2 && (
+          {step < 3 && (
             <button onClick={() => canNext() && goStep(step + 1)} disabled={!canNext()} className="bx-nav-cont">
-              Set your price →
+              {step === 1 ? "Stay details →" : "Set your price →"}
             </button>
           )}
         </div>

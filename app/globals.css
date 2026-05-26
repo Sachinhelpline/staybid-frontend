@@ -8659,6 +8659,63 @@ body.is-reel-page {
   white-space: normal;
   word-wrap: break-word;
 }
+
+/* v208 — Two-line label for DONE milestones. SS3 fix: user could not
+   tell which step a ✓ disc represented. Now done discs show step title
+   on top (small/muted) + the picked value below (bold/larger), wrapped
+   together in one frosted pill. */
+.cmm-node-label-done {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  -webkit-line-clamp: unset;
+  max-width: 140px;
+  padding: 5px 10px 6px;
+}
+.cmm-node-label-title {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255, 252, 236, 0.72);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.cmm-node-label-value {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #FFFCEC;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+/* v208 — Small ✓ corner badge on done discs (sits top-right of the
+   disc, opposite the step-number badge). Sage-green pill that reads
+   instantly as "complete" without erasing the step icon underneath. */
+.cmm-node-check {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  z-index: 4;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #B4D08D 0%, #7F9269 100%);
+  color: #1F1A0F;
+  font-weight: 900;
+  font-size: 0.78rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.45),
+    0 0 0 2px rgba(255, 252, 236, 0.85);
+}
 .cmm-node.is-done .cmm-node-label {
   color: #FFF5D7;
   font-weight: 700;
@@ -8776,17 +8833,21 @@ body.is-reel-page {
   50%      { transform: scale(1.07); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 14px rgba(255, 230, 150, 0.85); }
 }
 
-/* Bottom sheet — slides up from below when a milestone is tapped.
-   Background dimmed via .cmm-sheet-backdrop. The sheet itself is
-   capped at 78vh so the climber map STAYS PEEKABLE above (matches
-   Sachin's "ek hi screen" / "halki ush game ki tarah" spec). */
+/* v208 — Translucent bottom sheet (Sachin SS2: "ishko translucent karo
+   sabhi penel ke liye"). The sheet was a solid cream gradient; now uses
+   semi-opaque cream with strong backdrop-blur so the mountain trekking
+   landscape stays visible/peekable behind, frosted-glass style. Backdrop
+   dim reduced slightly so the scene reads through.
+
+   Bottom sheet — slides up from below when a milestone is tapped.
+   Sheet capped at 78vh so the climber map STAYS PEEKABLE above. */
 .cmm-sheet-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1080;
-  background: rgba(15, 12, 8, 0.62);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 12, 8, 0.38);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -8800,11 +8861,19 @@ body.is-reel-page {
   width: 100%;
   max-width: 540px;
   max-height: 78vh;
-  background: linear-gradient(180deg, #FFFCF6 0%, #F8F1DD 100%);
+  /* Translucent cream — semi-opaque (alpha 0.78-0.86) over a 16px
+     backdrop-blur creates the frosted-glass look the user asked for.
+     Background mountain peeks through the gradient. */
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.86) 0%, rgba(248, 241, 221, 0.82) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 22px 22px 0 0;
   box-shadow:
-    0 -18px 48px -10px rgba(31, 26, 15, 0.6),
-    0 -2px 0 rgba(201, 166, 107, 0.32);
+    0 -18px 48px -10px rgba(31, 26, 15, 0.55),
+    0 -2px 0 rgba(201, 166, 107, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   padding: 14px 16px calc(20px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
