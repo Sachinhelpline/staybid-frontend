@@ -73,7 +73,15 @@ export async function hydrateAcceptanceWindowsFromServer(): Promise<AcceptedBidW
         cancelledAt: w.status === "cancelled" || w.status === "expired" ? new Date().toISOString() : undefined,
       };
       const local = readWindow(mapped.bidId);
-      if (!local || new Date(local.acceptedAt).getTime() <= new Date(mapped.acceptedAt).getTime()) {
+      // v231 — Server is authoritative for acceptedAt. The previous
+      // condition "save only if local is older" was BACKWARDS: when a
+      // user revisits /my-bids days after a bid was accepted, the
+      // frontend (via the v74 reset-on-stale branch) creates a fresh
+      // local window with acceptedAt=now() — making local NEWER than
+      // remote → condition failed → real acceptedAt from DB was ignored
+      // → timer kept showing a bogus 15-min countdown forever. Always
+      // overwrite local with the remote row when present.
+      if (!local || mapped.acceptedAt !== local.acceptedAt) {
         saveWindow(mapped);
       }
     }

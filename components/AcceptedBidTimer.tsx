@@ -40,42 +40,47 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
   }, [hotelId, windowMin]);
   const effectiveWindow = Math.max(1, windowMin || hotelWindow || ACCEPTANCE_WINDOW_MIN);
 
-  // On mount: ensure we have an ACTIVE countdown window.
+  // On mount: derive the countdown window from the BID's real acceptedAt.
   //
-  // v74 fix: v73 only handled the no-localStorage case. But customers
-  // who visited /my-bids with v72 already got a stale already-expired
-  // window seeded in localStorage. v73's `readWindow → setW(existing)`
-  // path re-rendered that stale state instead of resetting.
+  // v231 — Removed the v74 "reset on stale" branch entirely. It was the
+  // root cause of the "timer always restarts on refresh" bug:
+  //   • Old v74 behaviour: if (now - acceptedAt) > 15 min → wipe local,
+  //     POST a fresh acceptance window to the backend, render a fresh
+  //     countdown from now(). On every page refresh of an 8-day-old
+  //     accepted bid the customer saw "14:30 remaining" — forever.
+  //   • The v74 fix was meant to recover from a buggy localStorage seed,
+  //     but it overshot: a bid that's genuinely past its 15-min window
+  //     should EXPIRE, not silently get a brand new window.
   //
-  // Rule:
-  //   1. If `acceptedAt` prop is older than the window length, this is
-  //      a STALE/LEGACY bid → ALWAYS reset to a fresh window from NOW,
-  //      overriding any expired localStorage entry. The customer gets
-  //      a real countdown starting from when they opened the page.
-  //   2. Otherwise (recent accept): respect existing window if present,
-  //      else seed fresh.
+  // New rule: the bid's actual acceptedAt (server timestamp, passed in
+  // via prop) is the source of truth. We compute expiresAt from it and
+  // let the existing isExpired/shouldWarn helpers do their job. If the
+  // bid is past its window the timer renders the "expired" state and
+  // /my-bids' filterActiveBids hides the row entirely on next render.
   useEffect(() => {
-    const STALE_MS = effectiveWindow * 60_000;
-    const isStaleAccept = acceptedAt
-      ? (Date.now() - new Date(acceptedAt).getTime()) > STALE_MS
-      : false;
-
-    if (isStaleAccept) {
-      // Legacy/stale accept: clear any stale localStorage + seed fresh NOW
-      clearWindow(bidId);
-      const seeded = startAcceptanceWindow(bidId, new Date(), effectiveWindow, { hotelId });
-      setW(seeded);
-      return;
+    if (acceptedAt) {
+      const acc = new Date(acceptedAt);
+      if (!Number.isNaN(acc.getTime())) {
+        const computed: AcceptedBidWindow = {
+          bidId,
+          acceptedAt: acc.toISOString(),
+          expiresAt:  new Date(acc.getTime() + effectiveWindow * 60_000).toISOString(),
+        };
+        // Overwrite any stale local seed with the real timestamp.
+        saveWindow(computed);
+        setW(computed);
+        return;
+      }
     }
-
-    // Recent accept path
+    // No acceptedAt prop AND no local row → seed from now(). Only path
+    // where we still mirror to the backend, so a brand-new accept (e.g.
+    // hotel just accepted while user has /my-bids open) gets persisted.
     const existing = readWindow(bidId);
     if (existing) {
       setW(existing);
       return;
     }
-    const acc = acceptedAt ? new Date(acceptedAt) : new Date();
-    const seeded = startAcceptanceWindow(bidId, acc, effectiveWindow, { hotelId });
+    const seeded = startAcceptanceWindow(bidId, new Date(), effectiveWindow, { hotelId });
     setW(seeded);
   }, [bidId, acceptedAt, effectiveWindow, hotelId]);
 

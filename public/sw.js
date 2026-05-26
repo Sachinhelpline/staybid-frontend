@@ -144,7 +144,32 @@ const CACHE_NAME = 'staybid-static-v2';
 // tab counts updated to match). The v229 DB cleanup left 116+ EXPIRED
 // rows visible under ALL filter; users explicitly asked for them gone
 // (Issue 4). Cache bump forces v230 HTML delivery on next page open.
-const HTML_CACHE = 'staybid-html-v13';
+// v231 — one-time HTML_CACHE bump (v13 → v14). When customer has an
+// active bid for a hotel placed via /bid reverse-auction, the bid
+// often carries no specific roomId. Pre-v231, every room on /hotels/[id]
+// fell back to Book Now + Negotiate buttons because lockedRoomId
+// matched nothing. Fix: auto-anchor the bid to the cheapest non-flash
+// available room → cheapest room shows the locked CTA, every other
+// room surfaces as an Upgrade candidate priced as bid amount + room
+// rent difference. Same fallback covers PENDING + COUNTER orphans
+// without roomId. Plus: OTA market-comparison block now gates on
+// otaSaving > 0 so when StayBid is NOT cheaper, the whole block
+// disappears (no empty space) — premium-clean room body.
+// v232 — one-time HTML_CACHE bump (v14 → v15). The 15-min acceptance
+// timer was NOT real-time. AcceptedBidTimer's v74 "reset on stale"
+// branch RE-CREATED a fresh 15-min window every time the customer
+// opened /my-bids on a bid that was accepted >15 min ago. An 8-day-
+// old bid showed "12:43 remaining" every page refresh, forever. Fix:
+// trust the bid's actual acceptedAt (server timestamp), compute the
+// real expiresAt from it, render expired state when past. Plus: the
+// hydration merge now ALWAYS prefers the server's acceptedAt (the
+// "save only if local is older" condition was backwards — local was
+// always newer because the reset branch just stamped now()). Plus:
+// /my-bids now applies filterActiveBids so visually-stale ACCEPTED-
+// unpaid + COUNTER + PENDING bids drop off the customer's views the
+// moment they cross their per-status window — no waiting for the
+// 15-min mark_orphaned_accepted_bids cron to catch up.
+const HTML_CACHE = 'staybid-html-v15';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
