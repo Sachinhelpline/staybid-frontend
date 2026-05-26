@@ -420,9 +420,9 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
             <p className="bgz-boot-sub">
               Real hotels. Real deals. Set your price, watch them compete.
             </p>
-            <p className="bgz-boot-sub bgz-boot-sub-hi">
-              Sirf 1 minute mein apki pasand ka hotel · room · price par
-              book kare — StayBid ke 100% satisfaction ke saath.
+            <p className="bgz-boot-sub bgz-boot-sub-en">
+              Book your dream hotel · room · at your dream price in just 1
+              minute — backed by StayBid&rsquo;s 100% satisfaction promise.
             </p>
             <button
               type="button"
@@ -556,35 +556,71 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
             ))}
           </main>
 
-          {/* Bottom CTA rail */}
-          <footer className="bgz-cta-rail">
-            <button
-              type="button"
-              className="bgz-cta-btn"
-              onClick={() => {
-                if (!canAdvanceNow) {
-                  playError();
-                  vibrate([60, 40, 60]);
-                  return;
-                }
-                advance();
-              }}
-              disabled={!canAdvanceNow}
-              aria-disabled={!canAdvanceNow}
-            >
-              <span className="bgz-cta-shimmer" aria-hidden="true" />
-              <span className="bgz-cta-label">
-                {isLastCard ? finalCtaLabel || "▶ Enter the Auction" : "Next →"}
-              </span>
-            </button>
-            {!canAdvanceNow ? (
-              <p className="bgz-cta-tip">
-                {activeCard?.hint || "Pick to unlock the next step."}
-              </p>
+          {/* v203.3 — Bottom swipe gesture rail (replaces Next CTA button).
+              Per Sachin's feedback: native game-zone feel means the user
+              navigates by SWIPING, not tapping a button. The rail surfaces:
+                - animated chevron arrows (→ left swipe to advance)
+                - a back chevron (← right swipe to revisit) when activeIdx > 0
+                - dynamic hint text per-state
+              On the last card the rail flips to a single premium "Enter the
+              Auction" button — swipe is unintuitive for a "submit" action. */}
+          <footer className="bgz-swipe-rail">
+            {isLastCard ? (
+              <button
+                type="button"
+                className="bgz-cta-btn bgz-cta-btn-final"
+                onClick={() => {
+                  if (!canAdvanceNow) {
+                    playError();
+                    vibrate([60, 40, 60]);
+                    return;
+                  }
+                  advance();
+                }}
+                disabled={!canAdvanceNow}
+                aria-disabled={!canAdvanceNow}
+              >
+                <span className="bgz-cta-shimmer" aria-hidden="true" />
+                <span className="bgz-cta-label">
+                  {finalCtaLabel || "▶ Enter the Auction"}
+                </span>
+              </button>
+            ) : canAdvanceNow ? (
+              <div
+                className="bgz-swipe-indicator is-forward"
+                role="button"
+                tabIndex={0}
+                aria-label="Swipe left or tap to continue"
+                onClick={advance}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    advance();
+                  }
+                }}
+              >
+                <span className="bgz-swipe-chev bgz-swipe-chev-1" aria-hidden="true">›</span>
+                <span className="bgz-swipe-chev bgz-swipe-chev-2" aria-hidden="true">›</span>
+                <span className="bgz-swipe-chev bgz-swipe-chev-3" aria-hidden="true">›</span>
+                <span className="bgz-swipe-label">Swipe to continue</span>
+              </div>
             ) : (
-              <p className="bgz-cta-tip is-ready">
-                {isLastCard ? "Ready to launch your auction" : "Swipe left or tap Next to continue"}
-              </p>
+              <div className="bgz-swipe-indicator is-waiting">
+                <span className="bgz-swipe-pulse" aria-hidden="true" />
+                <span className="bgz-swipe-label">
+                  {activeCard?.hint || "Pick to unlock the next step"}
+                </span>
+              </div>
+            )}
+            {activeIdx > 0 && !isLastCard && (
+              <button
+                type="button"
+                className="bgz-swipe-back"
+                onClick={() => jumpTo(activeIdx - 1, -1)}
+                aria-label="Swipe right or tap to go back"
+              >
+                <span aria-hidden="true">‹</span> Back
+              </button>
             )}
           </footer>
         </div>

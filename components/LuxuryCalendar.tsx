@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { calculateDynamicPrice } from "@/lib/ai-pricing";
 
 type Mode = "checkIn" | "checkOut";
@@ -78,6 +79,14 @@ export default function LuxuryCalendar({
   });
   const [hoverDay, setHoverDay] = useState<string>("");
   const sheetRef = useRef<HTMLDivElement>(null);
+  // v203.3 — portal-mount so calendar escapes any transform/overflow/z-index
+  // trap from ancestors (BidGameZone's .bgz-shell with z:1000, /bid page's
+  // animated containers, etc). SSR-safe: portalReady starts false, flips true
+  // on mount. Combined with the .lux-cal-backdrop z-index bump to 1200,
+  // calendar reliably appears on top of every customer surface including the
+  // game zone.
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
   // Reset when opened
   useEffect(() => {
@@ -219,8 +228,9 @@ export default function LuxuryCalendar({
     : 0;
 
   if (!open) return null;
+  if (!portalReady || typeof document === "undefined") return null;
 
-  return (
+  const calendarUi = (
     <div
       className="lux-cal-backdrop"
       onClick={onClose}
@@ -413,4 +423,6 @@ export default function LuxuryCalendar({
       </div>
     </div>
   );
+
+  return createPortal(calendarUi, document.body);
 }

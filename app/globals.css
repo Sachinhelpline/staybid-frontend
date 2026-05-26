@@ -713,7 +713,11 @@ body.is-reel-page {
 @keyframes lux-cal-shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
 .lux-cal-backdrop {
-  position: fixed; inset: 0; z-index: 100;
+  /* v203.3 — z-index bumped 100 → 1200 so the calendar opens ABOVE the
+     BidGameZone .bgz-shell viewport overlay (z:1000) on /bid Step 1.
+     Combined with createPortal-to-body in LuxuryCalendar.tsx, the calendar
+     is guaranteed to escape any ancestor stacking context. */
+  position: fixed; inset: 0; z-index: 1200;
   display: flex; align-items: flex-end; justify-content: center;
   background: radial-gradient(900px 600px at 50% 30%, rgba(40,28,5,0.55), rgba(8,5,2,0.78));
   backdrop-filter: blur(8px) saturate(140%);
@@ -7598,8 +7602,8 @@ body.is-reel-page {
    the SWC visitor.rs:597 protection in place.
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Boot screen Hindi tagline ─────────────────────────────────── */
-.bgz-boot-sub-hi {
+/* ── Boot screen English tagline (v203.3 — was Hindi v203.2) ─── */
+.bgz-boot-sub-en {
   margin-top: 10px;
   font-size: 0.78rem;
   color: rgba(231, 207, 160, 0.65);
@@ -8000,8 +8004,120 @@ body.is-reel-page {
   .bgz-prop-sheen,
   .bgz-counter-emoji,
   .bgz-counter-n,
-  .bgz-boot-sub-hi {
+  .bgz-boot-sub-en,
+  .bgz-swipe-chev,
+  .bgz-swipe-pulse {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v203.3 — SWIPE GESTURE RAIL (replaces .bgz-cta-rail button)
+   Native game-zone feel: animated chevrons telegraph "swipe →" rather
+   than asking for a button tap. Includes a separate back chip when
+   activeIdx > 0 + a final-step button override for the last card.
+═══════════════════════════════════════════════════════════════════ */
+.bgz-swipe-rail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+}
+
+.bgz-swipe-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(201, 166, 107, 0.18), rgba(217, 190, 130, 0.08));
+  border: 1px solid rgba(231, 207, 160, 0.32);
+  color: #F4E5C2;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.22s ease, border-color 0.22s ease;
+  box-shadow:
+    0 6px 24px -10px rgba(201, 166, 107, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.bgz-swipe-indicator:hover { transform: translateY(-1px); }
+.bgz-swipe-indicator:active { transform: translateY(0); }
+.bgz-swipe-indicator.is-waiting {
+  cursor: default;
+  background:
+    linear-gradient(135deg, rgba(120, 100, 70, 0.18), rgba(80, 65, 40, 0.08));
+  border-color: rgba(180, 160, 110, 0.18);
+  color: rgba(231, 207, 160, 0.6);
+  box-shadow: none;
+}
+.bgz-swipe-indicator.is-waiting:hover { transform: none; }
+
+.bgz-swipe-chev {
+  display: inline-block;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #E7CFA0;
+  animation: bgzSwipeChev 1.6s ease-in-out infinite;
+  text-shadow: 0 0 8px rgba(231, 207, 160, 0.55);
+}
+.bgz-swipe-chev-1 { animation-delay: 0s; }
+.bgz-swipe-chev-2 { animation-delay: 0.15s; }
+.bgz-swipe-chev-3 { animation-delay: 0.30s; margin-right: 6px; }
+
+@keyframes bgzSwipeChev {
+  0%, 100% { opacity: 0.35; transform: translateX(0); }
+  50%      { opacity: 1;    transform: translateX(4px); }
+}
+
+.bgz-swipe-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(217, 190, 130, 0.55);
+  margin-right: 4px;
+  animation: bgzSwipePulse 1.4s ease-in-out infinite;
+}
+@keyframes bgzSwipePulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.45; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+.bgz-swipe-label {
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.bgz-swipe-back {
+  background: transparent;
+  border: 1px solid rgba(231, 207, 160, 0.22);
+  color: rgba(231, 207, 160, 0.72);
+  font-size: 0.78rem;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.bgz-swipe-back:hover {
+  background: rgba(231, 207, 160, 0.08);
+  color: #F4E5C2;
+  border-color: rgba(231, 207, 160, 0.45);
+}
+
+.bgz-cta-btn-final {
+  margin-bottom: 2px;
 }

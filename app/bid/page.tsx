@@ -712,6 +712,66 @@ export default function BidPage() {
     };
   }, [form.city]);
 
+  /* ── v203.3 — Property types available in the picked city ─────────
+     Per Sachin's SS3 feedback: when a city is selected, only show
+     property types that ACTUALLY exist in that city. A "treehouse" tile
+     in Dehradun (where no treehouse hotel is listed) is dead weight
+     that confuses the user and lets them pick a type that will throw
+     "No matches" at submit time.
+
+     null = no city yet OR fetch failed → show all types (safe fallback).
+     Set<string> = the canonical hotel.property_type values found in the
+     city's hotel list.
+
+     Also strips any picks no longer available after a city change so
+     the user can't carry a stale selection forward. */
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (!form.city) {
+      setAvailablePropertyTypes(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp: any = await api.getHotels({ city: form.city });
+        if (cancelled) return;
+        const list: any[] = resp?.hotels || resp || [];
+        const cityLower = form.city.toLowerCase();
+        const cityHotels = list.filter(
+          (h: any) => (h.city || "").toLowerCase() === cityLower
+        );
+        if (cityHotels.length === 0) {
+          // City has no hotels — fall back to showing all so user can
+          // still pick something instead of seeing an empty grid.
+          setAvailablePropertyTypes(null);
+          return;
+        }
+        const types = new Set<string>(
+          cityHotels.map((h: any) => h.property_type || "hotel")
+        );
+        setAvailablePropertyTypes(types);
+        // Strip stale picks that no longer match the new city.
+        setForm((f) => {
+          if (!f.propertyTypes.length) return f;
+          const kept = f.propertyTypes.filter((id) => types.has(id));
+          if (kept.length === f.propertyTypes.length) return f;
+          return { ...f, propertyTypes: kept };
+        });
+      } catch {
+        if (!cancelled) setAvailablePropertyTypes(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [form.city]);
+
+  // v203.3 — Helper applied at every BID_PROPERTY_PICK render site so
+  // the filter logic lives in ONE place. Falls back to the full list
+  // when no city is picked OR the city has no derivable types.
+  const visiblePropertyTypes = availablePropertyTypes
+    ? BID_PROPERTY_PICK.filter((pt) => availablePropertyTypes.has(pt.id))
+    : BID_PROPERTY_PICK;
+
   /* ── CountUp values for the hero live pills (v163) ── */
   const liveAuctions  = useCountUp(insights?.tonightAuctions || 0);
   const liveHotels    = useCountUp(insights?.hotelsListening || 0);
@@ -1282,7 +1342,7 @@ export default function BidPage() {
               (mix-blend-mode screen for metallic shimmer), gold rim on
               selection, and a soft drop shadow. Emoji is large + centered. */}
           <div className="bgz-prop-grid">
-            {BID_PROPERTY_PICK.map((pt) => {
+            {visiblePropertyTypes.map((pt) => {
               const isSelected = form.propertyTypes.includes(pt.id);
               return (
                 <button
@@ -1305,6 +1365,8 @@ export default function BidPage() {
           <p className="bgz-prop-tally">
             {form.propertyTypes.length >= 3
               ? `✓ Bid will reach ${form.propertyTypes.length} property categories`
+              : visiblePropertyTypes.length < 3
+              ? `Only ${visiblePropertyTypes.length} ${visiblePropertyTypes.length === 1 ? "type" : "types"} available in ${form.city || "this city"} — pick what you want`
               : `${form.propertyTypes.length}/3 picked · tap ${3 - form.propertyTypes.length} more to continue`}
           </p>
         </>
@@ -1594,7 +1656,7 @@ export default function BidPage() {
                     must select at least 3 types). Grid is 3 cols
                     mobile → 4/5/6/7 desktop. */}
                 <div className="bx-pick-grid">
-                  {BID_PROPERTY_PICK.map((pt) => {
+                  {visiblePropertyTypes.map((pt) => {
                     const isSelected = form.propertyTypes.includes(pt.id);
                     return (
                       <button
