@@ -6223,3 +6223,266 @@ git push --force-with-lease
   checking PostgREST timeout. The cap exists so a backlog can't blow one
   transaction. 200 active rows at any time is the steady-state expectation
   given the 6h cutoff + cron-job.org's 15-min cadence.
+
+---
+
+## Climber-Step-6 Silent-Fail + Conflict-UX + Modal-Overflow Era (v225 → v228, 2026-05-25/26)
+
+Four versions across two days closing the loop on the `/bid` reverse-auction
+"Launch Bid → Review → silent fail" feedback chain that Sachin reported
+across ~10 hours of testing in Dhanaulti / Mussoorie / Shimla. Each ship
+peeled back one more silent-fail layer until v228 finally landed coherent
+UI for every Step 6 outcome (success / network error / city conflict /
+multi-CTA payment overflow).
+
+### v225 — Re-enable success OVERLAY on BOTH mobile + desktop
+Pre-v225 chain: v217 disabled the mobile success overlay (relying on
+climber milestone 6 to confirm). v223 disabled the desktop full-page
+success takeover. Net result: **NO visible confirmation on EITHER
+surface** after tapping Launch Bid. Climber stayed at Step 5 (or
+auto-jumped to Step 6 with no visible feedback). v225 re-enables the
+success overlay (not a takeover — climber stays mounted underneath) so
+every device shows the "X hotels bidding · ETA" celebration the moment
+submit() resolves with `successCount > 0`.
+
+### v226 — Silent-fail paths in submit() + drop ambient drone
+Two issues:
+
+1. **Two silent-fail return paths** in `app/bid/page.tsx submit()`:
+   - `if (!user) return router.push("/auth")` — unauthenticated users
+     redirected with NO submitError set → climber milestone 6 hourglass
+     stayed visible during nav
+   - 409 conflict branch returned after `setBidConflict(...)` without
+     `setSubmitError(...)` — the ActiveBidConflictSheet opened on top,
+     but if user dismissed it, the underlying climber was on hourglass
+     with no failure indication
+
+   Both paths now set submitError with a friendly reason. Climber's
+   Step 6 error branch (v223) catches it and renders the error card.
+
+2. **Ambient drone** (`components/BidGameZone.tsx`) — Sachin's feedback:
+   "background sound chal raha hai jiska koi kaam nahi". Removed every
+   `startAmbient()` call. `stopAmbient` kept as defence-in-depth.
+
+### v227 — Hotel scroll-lock fix + soft /bid filters + drop 3-property mandatory rule
+Three independent fixes:
+
+1. **`/hotels/[id]` scroll-locked** when arriving from `/discover` or
+   `/reels`. Root cause: `useReelFullscreen` adds `is-reel-page` body
+   class (`position:fixed; overflow:hidden; height:100vh`); its unmount
+   cleanup wasn't always firing on Next.js fast client-side nav. Fix:
+   `/hotels/[id]/page.tsx` defensively strips the class + style on
+   mount via a one-shot useEffect (`document.body/html.classList.remove
+   + style.removeProperty('--reel-vh')`).
+
+2. **/bid's mandatory "pick exactly 3 property types"** rule dropped
+   across 7 sites in `app/bid/page.tsx`. Zero picks = "Any type" (no
+   filter); 1+ picks advances Step 1.
+
+3. **/bid submit() property-type + meal-plan filters** softened from
+   HARD-throw to SOFT-fallback. Dhanaulti hotels only have 4 distinct
+   `property_type` values (resort/lodge/camp/hotel) — a user picking
+   villa/cottage/homestay would get "no hotels match" rejection. Now
+   the bid launches across every city hotel and the preference is
+   recorded in `bid_requests.requirements` JSONB for the hotel to read
+   in their Bid Inbox.
+
+### v228 — Conflict-aware Step 6 error card + BookingReview flex footer
+PR #138, commit `6419cf6` on main. Two final issues from a 4-screenshot
+follow-up:
+
+1. **Dhanaulti + Mussoorie 409 conflict UX.** v226 had wired
+   `setSubmitError("You already have an active bid in this city. Use
+   the chip below to update it or cancel and try again.")` belt-and-
+   braces alongside `setBidConflict(...)`. The ActiveBidConflictSheet
+   opened with proper Update / View / Cancel CTAs, but if user
+   dismissed the sheet, Step 6 fell back to the generic v223 error
+   card with "🔄 Try Again" — and tapping retry just re-fired the
+   same 409. Fix: Step 6 error branch now detects `bidConflict !==
+   null` and swaps to a conflict-specific card:
+
+   ```
+   🎯 You already have an active bid in {city}
+   One bid per city — your {hotelName} bid at ₹X/night is still live.
+   View it to update the budget or cancel before launching a new one.
+   [👀 View Active Bid →]   ← single CTA, routes to /my-bids#bid-<id>
+   ```
+
+   Generic "Couldn't reach hotels · Try Again" card preserved verbatim
+   for every NON-conflict failure mode (network glitch, auth, hotel
+   filter mismatch, etc.).
+
+2. **BookingReview modal payment overflow (Shimla flow).** Old layout:
+   modal had `maxHeight: 94vh`, scrollable body had `maxHeight:
+   calc(94vh - 64px - 96px)`. The 96px footer reserve was wrong — when
+   Pay Full + Hold + Pay-at-Hotel all rendered, footer was ~220px so
+   the body extended **behind** the CTAs. Bottom payment options
+   visibly cut off. Fix: rewrote modal as flex column:
+
+   ```
+   <div ...flex flex-col... style={{ maxHeight: "94dvh" }}>
+     <Header className="shrink-0" />     ← auto-size to content
+     <Body className="flex-1 min-h-0 overflow-y-auto" />
+     <Footer
+       className="shrink-0"
+       style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}
+     />
+   </div>
+   ```
+
+   Body shrinks to whatever vertical space remains after the
+   variable-height footer renders. `env(safe-area-inset-bottom)` keeps
+   the last CTA above the home indicator on iPhone notch devices.
+   `94dvh` instead of `94vh` because dvh tracks the dynamic viewport
+   so iOS Safari URL-bar transitions don't truncate the modal.
+
+### Files modified (this era)
+
+```
+v225:
+  app/bid/page.tsx                 # re-mount success overlay branch
+  app/layout.tsx                   # SB_BUILD v224 → v225, badge v225
+  public/sw.js                     # HTML_CACHE v7 → v8
+
+v226:
+  app/bid/page.tsx                 # auth-gate + 409 branch setSubmitError
+  components/BidGameZone.tsx       # remove startAmbient() calls
+  app/layout.tsx                   # SB_BUILD v225 → v226, badge v226
+  public/sw.js                     # HTML_CACHE v8 → v9
+
+v227:
+  app/hotels/[id]/page.tsx         # defensive is-reel-page class strip
+  app/bid/page.tsx                 # drop 3-prop mandatory; soft fallback
+                                     filters; preserve preference in
+                                     bid_requests.requirements JSONB
+  app/layout.tsx                   # SB_BUILD v226 → v227, badge v227
+  public/sw.js                     # HTML_CACHE v9 → v10
+  (deploy trigger commit 750a160 on main after Vercel webhook miss)
+
+v228:
+  app/bid/page.tsx                 # Step 6 error branch — conflict-aware
+                                     card with View Active Bid CTA
+  components/BookingReview.tsx     # flex column layout + env(safe-area)
+                                     footer padding + 94dvh
+  app/layout.tsx                   # SB_BUILD v227 → v228, badge v228
+  public/sw.js                     # HTML_CACHE v10 → v11
+```
+
+### Service-worker version map (continued)
+
+- v194 → pay-now-modal-query-param
+- (v195-v224 not documented in this file — pre-existing gap)
+- **v225 → restore-success-overlay-mobile-desktop**
+- **v226 → silent-fail-auth-409-no-drone**
+- **v227 → hotel-scroll-fix-soft-bid-filters-drop-3-prop**
+- **v228 → conflict-view-cta-bookingreview-flex-footer (current)**
+
+### Deploy gotcha (v227 era) — Vercel webhook miss
+
+After PR #137 (v227) merged to main, Vercel did NOT auto-trigger the
+production build. User redeployed from the Vercel dashboard but picked
+the wrong row (v226 = `1722a16`), so production stayed on v226.
+Recovery: pushed an empty trigger commit `750a160 chore: v227 deploy
+trigger` directly to main. Vercel webhook picked it up + built v227
+cleanly. The empty trigger pattern is a known fallback for missed
+webhooks — keep in mind for future "PR merged but Vercel didn't build"
+incidents.
+
+### Things to Avoid (v225-v228 Era)
+
+- **Never** disable the success overlay assuming the climber milestone
+  6 will be enough confirmation. The pattern that bit us in v217/v223:
+  removing one surface "because the other one shows it" leads to
+  net-zero confirmation when both disappear. The overlay + milestone 6
+  belt-and-braces both stay shipped.
+- **Never** return from `submit()` without setting `submitError`
+  somewhere in the chain. Every silent return = climber stuck on
+  hourglass with no failure indicator. The v226 fix made every return
+  path call `setSubmitError(...)` explicitly. Audit any new return
+  path against this rule.
+- **Never** restore `startAmbient()` in `components/BidGameZone.tsx`.
+  Sachin specifically rejected the drone. `stopAmbient` stays as
+  defence-in-depth for any legacy code path that might re-trigger it.
+- **Never** HARD-throw a /bid submit on property-type or meal-plan
+  filter mismatch. The v227 soft-fallback ships the bid to every city
+  hotel + records the preference in `bid_requests.requirements` so
+  hotels can read intent. HARD-throw was the v224-era cause of "couldn't
+  reach hotels" for any user picking a property type the city didn't
+  carry.
+- **Never** restore the `/bid` mandatory 3-property-type rule. Zero
+  picks = Any (universal). One+ picks records intent without
+  restricting submission.
+- **Never** mount a modal with `maxHeight: calc(Xvh - <fixed footer>)`
+  when the footer has variable rows. Flex column (header shrink-0 +
+  body flex-1 min-h-0 + footer shrink-0) handles every footer
+  configuration without a math update. `94dvh` not `94vh` so iOS
+  Safari URL-bar transitions don't truncate.
+- **Never** put a primary CTA at the bottom of a modal without
+  `padding-bottom: calc(<base> + env(safe-area-inset-bottom, 0px))`.
+  iPhone home-indicator devices will hide the CTA otherwise.
+- **Never** drop the conflict-aware branch from `/bid` Step 6 error
+  rendering. The generic "Try Again" button on a 409 just refires the
+  same conflict. The View Active Bid CTA is the only actionable exit
+  path. If the branch is regressed, the user is stuck in a retry loop.
+- **Never** route `/api/proxy/api/bids/*` 409s without bubbling up
+  `.body.conflict` to the ApiError instance. The
+  `app/bid/page.tsx submit()` switch on `err.status === 409 &&
+  err.body?.conflict` is what populates the
+  ActiveBidConflictSheet's hotel + city + bidId + amount fields. If
+  the conflict object is missing, the sheet renders empty values.
+- **Never** add a new ship-cycle without bumping BOTH `SB_BUILD` AND
+  `HTML_CACHE` AND the `v###` badge chip. The triplet is what makes
+  SWR HTML refresh land on next visit instead of waiting hours for
+  the cache to time out. v225 introduced this 3-step discipline and
+  every subsequent ship in this era followed it.
+
+### What this era did NOT do (intentionally deferred)
+
+- **Customer notification on bid-conflict.** The conflict sheet +
+  Step 6 error card are visible-while-on-page only. A push notification
+  ("Tap to update your Mussoorie bid") would help users who walk away
+  mid-flow. Out of scope for v228.
+- **`/my-bids#bid-<id>` smooth scroll.** The hash routes there but
+  doesn't scroll-into-view + highlight the target bid. Easy follow-up
+  — useEffect on mount reading `location.hash`.
+- **Multi-city conflict UX.** A user could in theory have active bids
+  in 3 different cities. The current sheet handles ONE conflict at a
+  time. Acceptable because the 409 fires per-city-attempted (each /bid
+  submission targets one city) — so the user only ever sees the
+  conflict for that specific city.
+- **`InspirationBanner` placement on BookingReview success modal.**
+  Pending from the Tier-System era — not regressed but also not picked
+  up. Separate task.
+- **/bid Pay-Now CTA → /my-bids handoff smooth scroll.** Same as
+  `#bid-<id>` issue above. The query-param `?payNow=<id>` carries the
+  intent (v194) but `/my-bids` doesn't smooth-scroll to it yet.
+
+---
+
+## Updated production state (v228, 2026-05-26)
+
+- **Current version:** v228 · commit `6419cf6` on `main` (PR #138 squash-merged)
+- **Vercel:** auto-deploying from main · `staybids.in` will pick up v228 within ~60-90s
+- **Reel-dedup chain** v131.8 untouched · all 5 ⚠️ LOAD-BEARING hops intact
+- **Conflict UX** fully wired: ActiveBidConflictSheet (v131.x era) opens
+  on 409, Step 6 error card now offers "View Active Bid →" CTA when
+  sheet is dismissed
+- **BookingReview** flex layout: works for 1/2/3 CTA configurations
+  across every flow (Book Now / Flash Deal / Bid Accepted / Counter
+  Accept / Pay Now from My Bids) and across every viewport size
+  including iPhone notch + home-indicator devices
+- **Hotel scroll-lock fix** lives in `/hotels/[id]/page.tsx` mount
+  effect — defensively strips `is-reel-page` class regardless of
+  whether `useReelFullscreen` cleanup ran
+- **`/bid` reverse auction** — zero mandatory filters, soft-fallback on
+  property type + meal plan, preference recorded in `requirements`
+  JSONB for hotel-side reading
+- **Bidding lifecycle** post-v193 stale-PENDING-bid cron still running
+  (15 min on cron-job.org via `/api/cron/expire-holds`)
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner panel pricing, admin panel,
+  reel-app surfaces (`/`, `/discover`, `/reels`, `/me`), animation
+  layer (10 `.sb-*` utilities), service-subscription billing
+- **Service-worker** stable URL `/sw.js`, stable cache names
+  (`staybid-static-v2` permanent; `staybid-html-v11` per this era's
+  bump), v93 discipline preserved
