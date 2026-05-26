@@ -1501,6 +1501,97 @@ export default function BidPage() {
         </div>
       ),
     },
+    /* ─────────── v209 — 5th milestone: Your Price ───────────
+       Folds the old Step 2 (Your Price) into the climbing map so the
+       customer never leaves the same page. AI Smart Presets above,
+       Total Trip Budget input below. Done state shows the picked
+       amount. When this 5th milestone completes, the PEAK unlocks —
+       tapping it fires submit() directly (no goStep(2)). */
+    {
+      key: "price",
+      icon: "💰",
+      title: "Set your price",
+      hint: "Pick a preset or type your total trip budget",
+      isComplete: () => budget > 0,
+      summary: () => (budget > 0 ? `₹${budget.toLocaleString("en-IN")}` : "—"),
+      autoAdvance: false, // manual Done — let the user adjust freely
+      render: () => (
+        <div className="bx-card" style={{ background: "transparent", border: "none", padding: 0 }}>
+          {city && presets.length > 0 && (
+            <>
+              <div className="bx-section-h" style={{ margin: "0 0 8px" }}>
+                <span className="bx-section-h-label">🤖 AI Smart Presets</span>
+                <span className="bx-section-h-rule" />
+              </div>
+              <div className="bx-preset-row" style={{ marginBottom: 14 }}>
+                {presets.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      upd("maxBudget", String(p.amount));
+                      setTierPick(p.tier);
+                    }}
+                    className={`bx-preset ${
+                      parseInt(form.maxBudget) === p.amount ? "is-selected" : ""
+                    } ${p.recommended ? "is-recommended" : ""}`}
+                  >
+                    {p.recommended && <span className="bx-preset-tag">Recommended</span>}
+                    <span className="bx-preset-icon">{p.icon}</span>
+                    <div className="bx-preset-label">{p.label}</div>
+                    <div className="bx-preset-amount">
+                      ₹{p.amount.toLocaleString("en-IN")}
+                    </div>
+                    <div className="bx-preset-desc">{p.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="bx-section-h" style={{ margin: "0 0 8px" }}>
+            <span className="bx-section-h-label">
+              Your Total Trip Budget <span className="bx-section-h-required">*</span>
+            </span>
+            <span className="bx-section-h-rule" />
+          </div>
+          <div className="bx-budget-wrap">
+            <div className="bx-budget-eyebrow">
+              Total for {form.rooms} room{form.rooms > 1 ? "s" : ""} × {Math.max(1, nights)} night
+              {nights !== 1 ? "s" : ""}
+            </div>
+            <div className="bx-budget-row">
+              <span className="bx-budget-cur">₹</span>
+              <input
+                type="number"
+                value={form.maxBudget}
+                onChange={(e) => upd("maxBudget", e.target.value)}
+                onBlur={(e) => {
+                  const v = parseFloat(e.target.value) || 0;
+                  if (v > 0) upd("maxBudget", String(Math.max(PRICE_MIN, snap100(v))));
+                }}
+                placeholder="0"
+                min={PRICE_MIN}
+                step={PRICE_STEP}
+                className="bx-budget-input"
+                inputMode="numeric"
+              />
+            </div>
+            <div className="bx-budget-suffix">
+              whole trip · auto-rounds to ₹{PRICE_STEP}
+            </div>
+            {city && budget > 0 && (
+              <div className={`bx-budget-vs ${budget >= city.avg ? "is-up" : "is-down"}`}>
+                ≈ ₹{budget.toLocaleString("en-IN")} / room / night ·{" "}
+                {budget >= city.avg
+                  ? `₹${(budget - city.avg).toLocaleString("en-IN")} above ${form.city} avg`
+                  : `₹${(city.avg - budget).toLocaleString("en-IN")} below ${form.city} avg`}
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
   ];
 
   /* ─────────────── Main Form ─────────────── */
@@ -1584,10 +1675,15 @@ export default function BidPage() {
                  + DateAutoOpener back-nav regression bugs are fixed inside
                  BidGameZone (forward-only triggers). To revert to the v202
                  stacked-cards UX, swap this line back to <BidCardStack>. */
+              /* v209 — Price is now the 5th milestone inside the climbing
+                 map. When ALL 5 are done, tapping the peak fires submit()
+                 directly — no jump to a separate "Your Price" page. Going
+                 back never returns to the boot screen because the user
+                 never left this surface. */
               <BidGameZone
                 cards={step1Cards}
-                onAllComplete={() => goStep(2)}
-                finalCtaLabel="Your Stay →"
+                onAllComplete={() => { submit(); }}
+                finalCtaLabel="🚀 Launch Bid"
               />
             ) : (
             <div className="space-y-3 bx-step-pane" data-autonext-form>

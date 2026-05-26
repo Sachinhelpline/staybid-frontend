@@ -58,21 +58,25 @@ interface Props {
   finalCtaLabel?: string;
 }
 
-/* v207 — Milestones spread across a 180vh tall canvas. The parent
+/* v209 — Milestones spread across a 180vh tall canvas. The parent
    `.bgz-stage-main` (overridden via .cmm-stage-main) becomes the
    scrollable viewport / "camera" that programmatically pans up to
    follow the climber as each step completes (see useEffect below).
    Each milestone sits at a distinct ALTITUDE on the mountain — the
    altitude photos stacked underneath cross-fade through valley →
-   forest → alpine → snow → summit as the user scrolls up. */
+   forest → alpine → snow → summit as the user scrolls up.
+   v209: added a FIFTH milestone (Price) so the entire bid flow lives
+   on this single climbing map — tapping the peak after all 5 fires
+   submit() directly, no separate "Your Price" page. */
 const NODES: { x: number; y: number }[] = [
-  { x: 28, y: 80 }, // 1 City   — valley (Mussoorie dawn)
-  { x: 72, y: 60 }, // 2 Property — forest morning
-  { x: 28, y: 40 }, // 3 Dates  — alpine midday
-  { x: 72, y: 22 }, // 4 Guests — snow line evening
+  { x: 28, y: 82 }, // 1 City     — valley dawn
+  { x: 72, y: 66 }, // 2 Property — forest morning
+  { x: 28, y: 50 }, // 3 Dates    — alpine midday
+  { x: 72, y: 34 }, // 4 Guests   — snow line evening
+  { x: 28, y: 18 }, // 5 Price    — summit base (v209)
 ];
 const START = { x: 50, y: 95 };
-const PEAK = { x: 50, y: 6 };
+const PEAK = { x: 50, y: 5 };
 
 /* The 5 altitude photos that stack to form the tall mountain
    panorama. Order = bottom-up. Every URL is a curl-verified Unsplash
@@ -197,27 +201,58 @@ export default function ClimberMilestoneMap({
     });
   }, []);
 
-  /* v207 — Camera follow: whenever the climber moves to a new target,
-     scroll the parent viewport so the climber sits ~60% down the
-     visible area. The scroll-behavior: smooth in CSS handles easing.
-     This is the "trekking" feel — every milestone reveals new
-     altitude scenery above the previous. */
+  /* v209 — Camera follow: aim at the NEXT pending milestone (or PEAK
+     when all done), not just the climber. Reveals what the user has
+     to do next, while still keeping the climber comfortably in view.
+     Uses a short timeout so the camera moves AFTER the climber GSAP
+     ease begins (otherwise the smooth-scroll competes with the
+     climber tween and feels jumpy). */
   useEffect(() => {
-    const cam = cameraRef.current;
-    const root = rootRef.current;
-    if (!cam || !root) return;
-    /* climberTarget.y is % of root height (0=top, 100=bottom).
-       We want it at ~60% of the visible viewport. */
-    const climberPx = (climberTarget.y / 100) * root.scrollHeight;
-    const targetScroll = Math.max(
-      0,
-      Math.min(
-        root.scrollHeight - cam.clientHeight,
-        climberPx - cam.clientHeight * 0.6
-      )
-    );
-    cam.scrollTo({ top: targetScroll, behavior: "smooth" });
-  }, [climberTarget.x, climberTarget.y]);
+    const id = setTimeout(() => {
+      const cam = cameraRef.current;
+      const root = rootRef.current;
+      if (!cam || !root) return;
+      /* Aim point: pending milestone (or PEAK when allDone). This
+         puts the user's next decision in their eyeline, with the
+         climber a hair below at ~70% of the viewport. */
+      const aim = allDone
+        ? PEAK
+        : completedCount < NODES.length
+        ? NODES[completedCount]
+        : PEAK;
+      const aimPx = (aim.y / 100) * root.scrollHeight;
+      const targetScroll = Math.max(
+        0,
+        Math.min(
+          root.scrollHeight - cam.clientHeight,
+          aimPx - cam.clientHeight * 0.42
+        )
+      );
+      cam.scrollTo({ top: targetScroll, behavior: "smooth" });
+      /* Robust fallback: explicitly scrollIntoView the next pending
+         disc (or the peak when allDone). If the cam.scrollTo above
+         no-ops because the parent isn't actually the scrollable
+         element on some device, the disc itself will still pull the
+         viewport. */
+      const nextDisc = root.querySelector<HTMLElement>(
+        allDone
+          ? "[data-cmm-peak]"
+          : `[data-cmm-node-idx="${completedCount}"]`
+      );
+      if (nextDisc) {
+        try {
+          nextDisc.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
+          });
+        } catch {
+          /* old browsers without smooth scrollIntoView */
+        }
+      }
+    }, 120);
+    return () => clearTimeout(id);
+  }, [climberTarget.x, climberTarget.y, completedCount, allDone]);
 
   /* GSAP animate climber to its target whenever it changes. We
      remember the previous position so we can do a smooth ease,
@@ -439,6 +474,7 @@ export default function ClimberMilestoneMap({
               done ? ` — ${card.summary()}` : locked ? " (locked)" : ""
             }`}
             title={card.title}
+            data-cmm-node-idx={i}
             data-burst
           >
             <span className="cmm-node-ring" aria-hidden="true" />
@@ -482,9 +518,10 @@ export default function ClimberMilestoneMap({
         aria-label={
           allDone
             ? finalCtaLabel || "Launch the auction"
-            : "Complete all 4 milestones to launch"
+            : `Complete all ${cards.length} milestones to launch`
         }
         aria-disabled={!allDone}
+        data-cmm-peak
       >
         <span className="cmm-peak-ring" aria-hidden="true" />
         <span className="cmm-peak-disc">
