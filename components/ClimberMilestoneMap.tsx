@@ -68,12 +68,23 @@ interface Props {
    v209: added a FIFTH milestone (Price) so the entire bid flow lives
    on this single climbing map — tapping the peak after all 5 fires
    submit() directly, no separate "Your Price" page. */
+/* v217 — Climber path extended to 7 milestones. Cards 1-5 collect the
+   bid inputs (City / Property / Dates / Guests / Price); cards 6-7
+   represent the POST-launch journey — Review Bid & Visit (live hotel
+   responses), Pay & Grab (Razorpay payment). The peak is rendered only
+   when cards.length === 5 (legacy mode); with 7 cards the peak is
+   suppressed because card 7 IS the final state.
+
+   Positions hand-tuned to keep the zig-zag rhythm + every disc readable
+   on a 100% × 180vh canvas. */
 const NODES: { x: number; y: number }[] = [
-  { x: 28, y: 82 }, // 1 City     — valley dawn
-  { x: 72, y: 66 }, // 2 Property — forest morning
-  { x: 28, y: 50 }, // 3 Dates    — alpine midday
-  { x: 72, y: 34 }, // 4 Guests   — snow line evening
-  { x: 28, y: 18 }, // 5 Price    — summit base (v209)
+  { x: 28, y: 86 }, // 1 City           — valley dawn
+  { x: 72, y: 74 }, // 2 Property       — forest morning
+  { x: 28, y: 62 }, // 3 Dates          — alpine midday
+  { x: 72, y: 50 }, // 4 Guests         — snow line
+  { x: 28, y: 38 }, // 5 Price          — summit base
+  { x: 72, y: 24 }, // 6 Review & Visit — above clouds
+  { x: 50, y: 8  }, // 7 Pay & Grab     — sky / final
 ];
 const START = { x: 50, y: 95 };
 const PEAK = { x: 50, y: 5 };
@@ -408,6 +419,30 @@ export default function ClimberMilestoneMap({
       <div className="cmm-sky-wash" aria-hidden="true" />
       <div className="cmm-bottom-vignette" aria-hidden="true" />
 
+      {/* v218 — Atmospheric "alive" overlays scoped to the tall 180vh
+          canvas so they ride along with the mountain altitude photos as
+          the climber scrolls up. Pure CSS, GPU-only, pointer-events:
+          none. Reduced-motion respected at the bottom of globals.css.
+          Layers (each anchored to a different altitude band):
+          • cmm-clouds  — drifting wisps in the upper third
+          • cmm-haze    — horizontal mist across the alpine band
+          • cmm-sun     — champagne sunlight catching the snow line
+          • cmm-mist    — soft fog rising in the valley */}
+      {/* v219 — Smooth, minimal alive layer. Stripped v218.2's heavy
+          stack (8 clouds + 3 birds + 3 snow layers + 5 Ken-Burns
+          scaling bg-images + 5 mix-blend layers = 23 compositor
+          animations causing scroll jank). Now just 3 lightweight
+          drifting clouds + 1 soft sun glow + 1 valley mist gradient
+          — all hardware-accelerated translate3d/opacity only, no
+          blur filters, no mix-blend-mode, no big-image transforms. */}
+      <div className="cmm-atmos" aria-hidden="true">
+        <span className="cmm-cloud cmm-cloud-1" />
+        <span className="cmm-cloud cmm-cloud-2" />
+        <span className="cmm-cloud cmm-cloud-3" />
+        <span className="cmm-sun" />
+        <span className="cmm-mist" />
+      </div>
+
       {/* SVG path layer — visual only, all interactions go through the
           absolutely-positioned button nodes below. */}
       <svg
@@ -509,7 +544,10 @@ export default function ClimberMilestoneMap({
         );
       })}
 
-      {/* Peak — Launch disc. Locked until all 4 done. */}
+      {/* Peak — Launch disc. v217 — only rendered in LEGACY 5-card mode.
+          With 7 cards (the post-launch flow), the 7th milestone IS the
+          final disc — no separate peak. */}
+      {cards.length === 5 && (
       <button
         type="button"
         className={`cmm-peak ${allDone ? "is-ready" : "is-locked"}`}
@@ -532,6 +570,7 @@ export default function ClimberMilestoneMap({
           {allDone ? finalCtaLabel || "▶ Launch" : "Locked"}
         </span>
       </button>
+      )}
 
       {/* Bottom sheet — renders the existing card.render() content
           unchanged. Backdrop dims the map underneath but stays visible

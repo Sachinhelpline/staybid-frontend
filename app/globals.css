@@ -7410,10 +7410,11 @@ body.is-reel-page {
   text-shadow: 0 1px 4px rgba(0,0,0,0.7), 0 0 12px rgba(201,166,107,0.25);
 }
 .bgz-boot-step-eye-sub {
-  font-size: 0.58rem;
-  line-height: 1.25;
-  color: rgba(231,207,160,0.78);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: rgba(247,232,200,0.95);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.78), 0 0 8px rgba(0,0,0,0.4);
 }
 
 /* Card column — cream parchment with mockup content */
@@ -7542,8 +7543,8 @@ body.is-reel-page {
   .bgz-boot-step--right { grid-template-columns: minmax(0, 96px) minmax(0, 1fr); }
   .bgz-boot-step--left  { grid-template-columns: minmax(0, 1fr) minmax(0, 96px); }
   .bgz-boot-step-num { width: 40px; height: 40px; font-size: 1.4rem; }
-  .bgz-boot-step-eye-title { font-size: 0.85rem; }
-  .bgz-boot-step-eye-sub { font-size: 0.54rem; }
+  .bgz-boot-step-eye-title { font-size: 0.92rem; }
+  .bgz-boot-step-eye-sub { font-size: 0.72rem; line-height: 1.32; }
   .bgz-boot-step-card { padding: 10px 12px; }
   .bgz-boot-step-title { font-size: 0.86rem; margin-bottom: 6px; }
   .bgz-boot-mock-pills > span,
@@ -7705,13 +7706,20 @@ body.is-reel-page {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(31,26,15,0.55);
-  border: 1px solid rgba(217,190,130,0.30);
+  background: rgba(31,26,15,0.10);
+  border: 1px solid rgba(217,190,130,0.22);
   color: #E7CFA0;
   cursor: pointer;
   font-size: 0.95rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.75);
   transition: transform 0.2s ease, background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+}
+.cmm-stage .bgz-mute,
+.cmm-hud .bgz-mute {
+  background: rgba(31,26,15,0.08);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 .bgz-mute:active { transform: scale(0.92); }
 .bgz-mute.is-muted { opacity: 0.55; }
@@ -8601,6 +8609,136 @@ body.is-reel-page {
 @keyframes nmsWingUp3   { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 @keyframes nmsWingDown3 { 0%, 49% { opacity: 0; } 50%, 100% { opacity: 1; } }
 
+/* ════════════════════════════════════════════════════════════════════
+   v218 — Atmospheric "alive" layer on the mountain backdrop. Drifting
+   clouds + slow horizontal haze + champagne summit glow. Pure CSS,
+   GPU-only (translate3d + opacity), no JS. Every device — phone /
+   tablet / desktop — same animation timing. Reduced-motion respected
+   in the global guard at the bottom of globals.css.
+═══════════════════════════════════════════════════════════════════ */
+
+/* Drifting clouds — 3 soft white wisps panning slowly across the sky.
+   Sized as ellipses with a radial-gradient soft edge so they read as
+   real clouds rather than circles. Different sizes + altitudes + speeds
+   create a layered parallax depth. */
+.nms-clouds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.nms-cloud {
+  position: absolute;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.35) 30%,
+    rgba(255, 255, 255, 0.18) 55%,
+    rgba(255, 255, 255, 0)    78%
+  );
+  filter: blur(8px);
+  will-change: transform;
+}
+.nms-cloud-1 {
+  width: 38%;
+  height: 10%;
+  top: 14%;
+  opacity: 0.55;
+  animation: nmsCloudDrift1 78s linear infinite;
+}
+.nms-cloud-2 {
+  width: 52%;
+  height: 13%;
+  top: 28%;
+  opacity: 0.42;
+  animation: nmsCloudDrift2 96s linear infinite;
+  animation-delay: -32s;
+}
+.nms-cloud-3 {
+  width: 30%;
+  height: 8%;
+  top: 6%;
+  opacity: 0.38;
+  animation: nmsCloudDrift3 112s linear infinite;
+  animation-delay: -64s;
+}
+@keyframes nmsCloudDrift1 {
+  0%   { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(160%, 0, 0); }
+}
+@keyframes nmsCloudDrift2 {
+  0%   { transform: translate3d(140%, 0, 0); }
+  100% { transform: translate3d(-60%, 0, 0); }
+}
+@keyframes nmsCloudDrift3 {
+  0%   { transform: translate3d(-40%, 0, 0); }
+  100% { transform: translate3d(150%, 0, 0); }
+}
+
+/* Atmospheric haze — soft horizontal sweep across mid-altitude. Reads
+   as mountain air / morning mist moving through the valleys. Very low
+   opacity; the eye registers it as "alive" without it being prominent. */
+.nms-haze {
+  position: absolute;
+  inset: 0;
+  top: 36%;
+  height: 32%;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 250, 240, 0.10) 25%,
+    rgba(255, 250, 240, 0.18) 50%,
+    rgba(255, 250, 240, 0.10) 75%,
+    transparent 100%
+  );
+  background-size: 240% 100%;
+  background-position: 0% 50%;
+  animation: nmsHazeDrift 42s ease-in-out infinite alternate;
+  filter: blur(6px);
+  mix-blend-mode: screen;
+  will-change: background-position;
+}
+@keyframes nmsHazeDrift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Champagne summit glow — slow radial sweep tinted gold so the peak
+   reads like real sunlight catching the snow. Rotates very slowly via
+   conic-gradient angle so the "highlight" travels around the summit. */
+.nms-sun-glow {
+  position: absolute;
+  left: 35%;
+  right: 0%;
+  top: 0%;
+  height: 35%;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse at 70% 30%,
+    rgba(255, 220, 150, 0.22) 0%,
+    rgba(255, 200, 120, 0.12) 30%,
+    rgba(255, 200, 120, 0)    65%
+  );
+  animation: nmsSunBreathe 12s ease-in-out infinite alternate;
+  mix-blend-mode: screen;
+  will-change: opacity, transform;
+}
+@keyframes nmsSunBreathe {
+  0%   { opacity: 0.65; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0.95; transform: translate3d(-2%, 1%, 0) scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nms-cloud-1, .nms-cloud-2, .nms-cloud-3,
+  .nms-haze, .nms-sun-glow {
+    animation: none !important;
+  }
+}
+
 /* Climber trail SVG overlay */
 .nms-trail-svg {
   position: absolute;
@@ -8645,7 +8783,27 @@ body.is-reel-page {
    glides between them, bottom-sheet picker (no full-screen takeover).
 ═══════════════════════════════════════════════════════════════════ */
 .cmm-stage {
-  /* Inherits from .bgz-stage. */
+  /* v215 — drop the radial champagne brightening at the top edge that
+     the user perceived as a "banner blocking the visual" behind the
+     HUD. Climber mode is fully transparent so the mountain photo
+     beneath shows edge-to-edge. */
+  background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
+}
+
+/* v217 — Desktop + tablet: constrain the climber to a centered portrait
+   column so the mountain photo aspect ratio stays cinematic instead of
+   stretching across a 1920px wide monitor. Mobile (<1024px) keeps the
+   full-bleed treatment. */
+@media (min-width: 1024px) {
+  .bgz-stage.cmm-stage {
+    max-width: 480px;
+    margin: 0 auto;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow:
+      0 24px 60px -16px rgba(0,0,0,0.55),
+      0 0 0 1px rgba(217,190,130,0.16);
+  }
 }
 .cmm-hud {
   display: flex;
@@ -8656,13 +8814,16 @@ body.is-reel-page {
   position: relative;
   z-index: 10;
   flex: 0 0 auto;
+  background: transparent;
 }
 .cmm-hud-title {
   font-family: "Cormorant Garamond", serif;
   font-style: italic;
   font-size: 0.92rem;
-  color: rgba(255, 250, 230, 0.9);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  color: rgba(255, 250, 230, 0.95);
+  text-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.85),
+    0 0 10px rgba(0, 0, 0, 0.6);
   letter-spacing: 0.02em;
 }
 /* v207 — the .bgz-stage-main is the SCROLLABLE VIEWPORT (camera).
@@ -8772,6 +8933,109 @@ body.is-reel-page {
   height: 22%;
   pointer-events: none;
   background: linear-gradient(to top, rgba(15, 12, 8, 0.55), transparent);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   v219 — Smooth, minimal alive backdrop. v218.2's heavy stack caused
+   scroll jank (8 blurred clouds + 3 SVG birds + 3 snow layers + 5 Ken-
+   Burns transforms on big bg-images + 5 mix-blend-mode compositor
+   layers = 23 simultaneous animations choking the GPU). This is the
+   slim, hardware-friendly replacement: 3 lightweight clouds + 1 sun
+   glow + 1 valley mist, all GPU-only translate3d/opacity, no blur
+   filters, no mix-blend-mode, no animations on big bg-images. Scrolls
+   smooth on mid-tier Android.
+═══════════════════════════════════════════════════════════════════ */
+.cmm-atmos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* z-index 0 → above unindexed .cmm-altitude photos (DOM order),
+     below SVG path (z-index 1) + discs (z-index 3). */
+  z-index: 0;
+  overflow: hidden;
+  /* Hint compositor: this entire layer gets its own GPU surface. */
+  contain: layout paint;
+}
+
+/* 3 soft cloud wisps positioned at different altitudes. Pure radial
+   gradient on a translate3d-only animation — no filter, no blur, no
+   mix-blend. The gradient itself provides the soft edge. */
+.cmm-cloud {
+  position: absolute;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.45) 30%,
+    rgba(255, 255, 255, 0.18) 60%,
+    rgba(255, 255, 255, 0)    82%
+  );
+  will-change: transform;
+  transform: translateZ(0);
+}
+.cmm-cloud-1 { width: 48%; height: 6%; top: 78%; opacity: 0.78; animation: cmmCloudL 64s linear infinite; }
+.cmm-cloud-2 { width: 54%; height: 7%; top: 48%; opacity: 0.82; animation: cmmCloudR 78s linear infinite; animation-delay: -32s; }
+.cmm-cloud-3 { width: 42%; height: 5%; top: 18%; opacity: 0.75; animation: cmmCloudL 92s linear infinite; animation-delay: -48s; }
+
+@keyframes cmmCloudL {
+  0%   { transform: translate3d(-55%, 0, 0); }
+  100% { transform: translate3d(170%, 0, 0); }
+}
+@keyframes cmmCloudR {
+  0%   { transform: translate3d(160%, 0, 0); }
+  100% { transform: translate3d(-65%, 0, 0); }
+}
+
+/* Champagne summit sun — soft radial glow at the very top. Single
+   opacity-only animation, no transform, no blur, no mix-blend.
+   The radial-gradient + champagne tint sells the "real sunlight". */
+.cmm-sun {
+  position: absolute;
+  left: 25%;
+  right: -10%;
+  top: -3%;
+  height: 18%;
+  background: radial-gradient(
+    ellipse at 70% 40%,
+    rgba(255, 220, 150, 0.55) 0%,
+    rgba(255, 200, 120, 0.30) 30%,
+    rgba(255, 200, 120, 0.10) 55%,
+    rgba(255, 200, 120, 0)    78%
+  );
+  animation: cmmSunBreathe 10s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+@keyframes cmmSunBreathe {
+  0%   { opacity: 0.7; }
+  100% { opacity: 1.0; }
+}
+
+/* Valley mist — soft warm fog at the bottom. Single transform-only
+   drift, no blur, no mix-blend, no opacity flicker. */
+.cmm-mist {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  bottom: -3%;
+  height: 22%;
+  background: linear-gradient(
+    to top,
+    rgba(255, 240, 220, 0.42) 0%,
+    rgba(255, 240, 220, 0.22) 50%,
+    transparent 100%
+  );
+  will-change: transform;
+  animation: cmmMistDrift 28s ease-in-out infinite alternate;
+}
+@keyframes cmmMistDrift {
+  0%   { transform: translate3d(-3%, 0, 0); }
+  100% { transform: translate3d(3%, -1%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmm-cloud-1, .cmm-cloud-2, .cmm-cloud-3,
+  .cmm-sun, .cmm-mist {
+    animation: none !important;
+  }
 }
 
 /* SVG path layer — stretches to fill the .cmm-root. preserveAspect

@@ -355,24 +355,12 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
             <NaturalMountainScene step={0} totalSteps={1} active={false} />
           </div>
 
-          {/* HUD — only sound mute kept. Pip rail removed because the
-              milestone discs themselves visually convey progress and
-              are individually tappable (Candy Crush level tree). */}
-          <header className="bgz-hud cmm-hud">
-            <div className="cmm-hud-title" aria-hidden="true">
-              Climb to launch your auction
-            </div>
-            <button
-              type="button"
-              className={`bgz-mute ${muted ? "is-muted" : ""}`}
-              onClick={handleToggleMute}
-              aria-label={muted ? "Unmute game zone sound" : "Mute game zone sound"}
-              title={muted ? "Sound off" : "Sound on"}
-            >
-              {muted ? "🔇" : "🔊"}
-            </button>
-          </header>
-
+          {/* v216 — Sachin: header banner ko remove karo. Both the
+              "Climb to launch your auction" eyebrow AND the mute
+              button are GONE. The climber path itself conveys the
+              concept; mountain photo is edge-to-edge. handleToggleMute
+              + muted state are kept on the parent because the global
+              SoundProvider still reads them. */}
           <main className="bgz-stage-main cmm-stage-main">
             <ClimberMilestoneMap
               cards={cards}

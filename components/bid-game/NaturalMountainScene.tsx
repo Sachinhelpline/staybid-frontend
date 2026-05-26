@@ -104,6 +104,11 @@ export default function NaturalMountainScene({ step, totalSteps, active }: Props
           light gradient — preserves the natural color of the photo. */}
       <div className="nms-vignette" />
 
+      {/* v218.1 — atmosphere layers moved into ClimberMilestoneMap's
+          .cmm-root since the climber's tall canvas (180vh) fully covers
+          this scene during the playing phase. Layers here would have
+          been invisible. Boot phase keeps the static photos + birds. */}
+
       {/* Layer 3 — Three SVG birds gliding across the sky with WING
           FLAP animation (v206). Each bird is a group with two path
           variants (wings-up + wings-down) toggled via opacity
