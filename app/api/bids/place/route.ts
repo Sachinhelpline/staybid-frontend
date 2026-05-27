@@ -62,6 +62,17 @@ function isBidStale(b: any): boolean {
     return t > 0 && now > t + 60 * ONE_MIN_MS;
   }
   if (status === "ACCEPTED") {
+    // v236.1 — expiresAt is the authoritative window for ACCEPTED-
+    // unpaid bids (set by /api/bids/place on auto-accept to
+    // acceptedAt + 15min; set by partner accept to now() + window).
+    // The bids table has NO acceptedAt or updatedAt columns
+    // (verified via information_schema 2026-05-27); the runtime
+    // fallback chain is kept defensively in case those columns
+    // are added in a future migration.
+    if (b?.expiresAt) {
+      const t = new Date(b.expiresAt).getTime();
+      if (!Number.isNaN(t)) return now > t;
+    }
     const t = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
             : b?.updatedAt  ? new Date(b.updatedAt).getTime()
             : b?.createdAt  ? new Date(b.createdAt).getTime()
@@ -98,7 +109,14 @@ async function findActiveBidOnHotel(
   if (!customerIds.length || !hotelId) return null;
   const ids = customerIds.join(",");
   const bids = await sbSelect(
-    `bids?customerId=in.(${ids})&hotelId=eq.${hotelId}&status=in.(PENDING,COUNTER,ACCEPTED)&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt,acceptedAt,updatedAt,createdAt,auto_accept_at,message`
+    // v236.1 — Only request columns that exist on bids (verified
+    // 2026-05-27 via information_schema.columns). `acceptedAt` +
+    // `updatedAt` do NOT exist on this table; requesting them causes
+    // PostgREST to 400 → empty array → conflict check broken → user
+    // can place duplicate bids (worse than the ghost-conflict bug
+    // v236 was fixing). The runtime isBidStale() fallback chain
+    // handles missing fields by falling through to `createdAt`.
+    `bids?customerId=in.(${ids})&hotelId=eq.${hotelId}&status=in.(PENDING,COUNTER,ACCEPTED)&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt,createdAt,auto_accept_at,message`
   );
   if (!bids.length) return null;
 
