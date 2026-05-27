@@ -4246,7 +4246,13 @@ body.is-reel-page {
     rgba(212, 149, 131, 0.55)
   );
   border-radius: 999px;
-  transform: scaleX(0);
+  /* v238.1 — Fill to target width by default. v238 removed
+     `.hx-reveal-io` from the OTA wrapper so the bars would stay at
+     scaleX(0) forever (`.is-visible` was never being added by the IO
+     observer because the wrapper class was gone). Filling on mount
+     keeps the comparison readable; the legacy `.is-visible` fill rule
+     below stays as a defensive idempotent. */
+  transform: scaleX(var(--bar-fill, 1));
   transform-origin: left center;
   transition: transform 0.9s cubic-bezier(.22, 1, .36, 1);
 }
