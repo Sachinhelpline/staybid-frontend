@@ -185,11 +185,20 @@ const CACHE_NAME = 'staybid-static-v2';
 // Place Bid detection now ALSO trusts the server's `flow` field when
 // echoed back from Railway, regex stays as fallback for legacy rows.
 // (3) Desktop top-nav rename "Place Bid" → "Bid" so it matches the
-// mobile bottom dock + drawer label (Sachin: "mobile par yeh page bid
-// naam se show hota hai ur desktop par place bid ke naam se kahi ish
-// wajha se toh problem nhi aa rahi"). Same /bid route, single canonical
-// label.
-const HTML_CACHE = 'staybid-html-v17';
+// mobile bottom dock + drawer label.
+// v235 — bump v17 → v18. Desktop /bid surface rewrite: the climber +
+// boot screen now fills the entire viewport (was a 600-720px portrait
+// card with the old cream Navbar + "Name Your Price" hero + StepBar
+// leaking through the surrounding empty band on MacBook Pro). Page-
+// level hero + StepBar hidden on Step 1; `.bx-page-wrap` swapped for
+// `.bx-page-wrap-climber` (no max-width, no padding); `.bgz-stage.
+// cmm-stage` desktop max-width 600/680/720 → none. Back chip z-index
+// 80 → 200 so it stays clickable above the fullscreen .bgz-stage
+// isolation context. Sachin: "background hi change ho gaya hai aur
+// ish ke accept ratio ko aishe create karo ki complete screen par
+// show ho ye na ki half screen aur yahan se back karne ka koi option
+// kaam nhi kar raha hai desktop par".
+const HTML_CACHE = 'staybid-html-v18';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -8802,34 +8802,35 @@ body.is-reel-page {
   background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
 }
 
-/* v217 — Desktop + tablet: constrain the climber to a centered portrait
-   column so the mountain photo aspect ratio stays cinematic instead of
-   stretching across a 1920px wide monitor. Mobile (<1024px) keeps the
-   full-bleed treatment.
-   v221 — laptop/desktop widened (480 → 600 → 720px) so the climber no
-   longer looks like a tiny phone strip floating in an empty cream band.
-   The 9:16 portrait aspect of the mountain photo still feels cinematic
-   inside the wider card; just less wasted real estate either side. */
+/* v217 / v221 — Desktop constrained the climber to a 600/680/720 px
+   centered portrait card. v235 removed the constraint entirely:
+   Sachin reported the old cream page chrome (Navbar, "Name Your
+   Price" hero, StepBar) leaked through the empty band around the
+   constrained card on a MacBook Pro, and the climber felt tiny
+   ("complete screen par show ho ye na ki half screen"). Now every
+   viewport gets the full-bleed treatment — the climber stage fills
+   the entire window, just like on mobile, with no surrounding chrome
+   competing for attention. The page-level hero + StepBar are hidden
+   on Step 1 (see app/bid/page.tsx v235 comment). */
 @media (min-width: 1024px) {
   .bgz-stage.cmm-stage {
-    max-width: 600px;
-    margin: 0 auto;
-    border-radius: 28px;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow:
-      0 30px 80px -20px rgba(0,0,0,0.62),
-      0 0 0 1px rgba(217,190,130,0.20);
+    box-shadow: none;
   }
 }
-@media (min-width: 1280px) {
-  .bgz-stage.cmm-stage {
-    max-width: 680px;
-  }
-}
-@media (min-width: 1536px) {
-  .bgz-stage.cmm-stage {
-    max-width: 720px;
-  }
+
+/* v235 — Step 1 wrapper. Drops every max-width / padding the legacy
+   .bx-page-wrap added so the climber's .bgz-stage truly spans every
+   pixel of the viewport. Used only on Step 1 (Step 2-3 keep the
+   centered .bx-page-wrap for the legacy form fallback). */
+.bx-page-wrap-climber {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* v222 — Launching-bid spinner inside Review Bid card. Champagne ring
@@ -8864,7 +8865,12 @@ body.is-reel-page {
     position: fixed;
     top: calc(16px + env(safe-area-inset-top, 0px));
     left: 20px;
-    z-index: 80;
+    /* v235 — bumped 80 → 200 so the back chip stays above the
+       fullscreen climber's .bgz-stage stacking context (isolation:
+       isolate creates a new context that trapped z-80 elements
+       behind the stage content). Sachin: "yahan se back karne ka
+       koi option kaam nhi kar raha hai desktop par". */
+    z-index: 200;
     padding: 8px 14px 8px 10px;
     border-radius: 999px;
     font-family: "Inter", system-ui, sans-serif;
