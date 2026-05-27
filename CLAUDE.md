@@ -6486,3 +6486,312 @@ incidents.
 - **Service-worker** stable URL `/sw.js`, stable cache names
   (`staybid-static-v2` permanent; `staybid-html-v11` per this era's
   bump), v93 discipline preserved
+
+---
+
+## Bid ID Surfacing + Orphan-Sweep + Cross-Identity Bid Resolver Era (v239 → v240, 2026-05-27)
+
+Three PRs merged in one session, all triggered by Sachin testing /my-bids
+the morning after v238.1. Each PR peeled back one layer of the
+cross-identity + stale-state mess that had built up across ~14 hours of
+multi-device testing on Dhanaulti / Mussoorie / Shimla:
+
+| PR | Build | Theme |
+|---|---|---|
+| #146 | v238.1 | (Already covered in v228 era — OTA bars fix + scrollbar + scorecard refresh; merged at start of this session as the PR sat draft overnight) |
+| #147 | v239 | Bid ID visibility on admin + partner panels, partner tab-count consistency, `mark_orphaned_accepted_bids` RPC widen, 25 stale rows cleared from prod DB |
+| #148 | v240 | `bid_requests.source` column for future-proof Place Bid detection + `resolveUserIds` widened with Firebase-twin axis + ilike email match |
+
+### v239 — Bid ID tap-to-copy + RPC widen + DB cleanup (PR #147)
+
+Four issues from staybids.in admin + partner panels:
+
+**(1) Admin `/admin/bookings` Bid ID column showed visually-identical rows.**
+10+ adjacent rows displayed `BID-bid_mpn0`, `BID-bid_mpn1`, `BID-bid_mpn2`,
+`BID-bid_mpnq` — looked like the same id repeated. Root cause: CUIDs
+(`bid_mpnXXXXXXX`) share a timestamp-derived 8-char prefix; `b.id?.slice(0, 8)`
+only showed the prefix, never the random suffix. **Fix:** switched to
+`b.id?.slice(-6)` (the random portion). Plus wrapped in a
+`<button onClick={navigator.clipboard.writeText(b.id)}>` with ✓-flash +
+1.2 s revert. `title` attribute alone was useless on touch devices. Same
+treatment applied to the detail-modal heading.
+
+**(2) Partner `/partner/dashboard` Bid Inbox — "Accepted (24)" tab pill,
+but only 6 cards listed.** Root cause: tab count read raw `bids.filter(...)`
+while the list rendered `activeBidsForInbox` (the v177 stale-filtered set).
+DB had 24 ACCEPTED bids but only 6 within the 15-min unpaid window.
+**Fix:** tab count now reads `activeBidsForInbox.filter(b => b.status === f).length`
+so count and list always match.
+
+**(3) Bid ID was completely hidden on Partner Bid Inbox cards.** Hotels
+couldn't correlate a card with admin panel / DB row. **Fix:** new
+`📋 BID-…xxxxxx` monospace pill below the guest name on every card.
+Tap → copies the FULL id to clipboard with the same ✓-flash treatment.
+
+**(4) Major DB cleanup — 25 orphan ACCEPTED bids stuck forever in DB.**
+Cron `mark_orphaned_accepted_bids` (v229 era) had an INNER JOIN to
+`bid_acceptance_windows` — which only gets a row when customer-side
+`AcceptedBidTimer` mounts on `/my-bids`. Auto-accepted bids (server-side
+flip via `auto_accept_eligible_bids` cron) where customer never opened
+`/my-bids` → no acceptance_window row → INNER JOIN miss → bid stuck
+ACCEPTED forever past its 15-min payment window. 25 such orphans had
+accumulated across Sachin's testing.
+
+**Fix in two parts:**
+
+**Manual cleanup** (destructive, executed via MCP after explicit
+approval): `UPDATE bids SET status='EXPIRED' WHERE id IN (25 orphan ids)
+AND status='ACCEPTED'` — guarded with LEFT JOIN check on
+`bid_acceptance_windows IS NULL` + `expires_at < NOW() - 30 min` +
+`bid_paid_amounts IS NULL OR paid_total = 0`. Returned 25 rows including
+older Mussoorie bids from 24 May.
+
+**RPC widen** (forward-only migration applied via MCP `apply_migration`
+on `uxxhbdqedazpmvbvaosh`): `mark_orphaned_accepted_bids` RPC rewritten
+with LEFT JOIN + `OR` clause adding Case B branch — "no acceptance_window
+row AND `bid.expiresAt < NOW() - 30 min` AND no payment". Same function
+name + return signature preserved → cron caller (`/api/cron/expire-holds`)
+keeps working byte-identical. Future orphans auto-EXPIRE within 30-min
+grace.
+
+Migration file shipped to `migrations/2026-05-27-v239-widen-orphan-accepted-sweep.sql`
+for in-repo audit trail.
+
+### v240 — bid_requests.source + cross-identity resolveUserIds (PR #148)
+
+Sachin's "future proof solution karo na ki alteration" feedback after
+seeing the Place Bid section go empty AGAIN (v233 / v234 / v240 — fourth
+recurrence). Two structural changes replaced brittle regex detection +
+phone-only matching.
+
+**Change 1 — `bid_requests.source` column.**
+
+Migration `2026-05-27-v240-bid-requests-source.sql` applied via MCP:
+
+```sql
+ALTER TABLE public.bid_requests
+  ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'negotiate'
+    CHECK (source IN ('place', 'negotiate', 'direct', 'flash'));
+CREATE INDEX IF NOT EXISTS idx_bid_requests_source ON public.bid_requests (source);
+```
+
+Stamped at write time:
+- `/api/bids/request/route.ts` reads `source` from body
+- `/bid/page.tsx` sends `source: "place"`
+- `/hotels/[id]/page.tsx` sends `"negotiate"` / `"direct"` / `"flash"` per
+  5 call sites (handleFlashBook / handleBid / executeBookNow /
+  executeNegotiate above-floor / below-floor branch)
+
+Backfill: 142 historical rows whose child bid's message starts with
+`"Guest bid "` flipped from `'negotiate'` to `'place'` so legacy bids
+land in the right section immediately. Net distribution at commit time:
+142 place + 609 negotiate.
+
+`/my-bids/page.tsx` detection rewritten:
+```ts
+const requestSource = String(b?.request?.source || "").toLowerCase();
+const isPlaceBid = requestSource === "place" ||
+                   flow === "place" ||
+                   /\bGuest bid\b/i.test(msg) ||
+                   /max ₹/i.test(msg);
+```
+Primary: server-authoritative `b.request.source` (spread via the existing
+`/api/bids/my` join — no Railway dependency, all Next.js side). Legacy
+fallbacks (flow field + message regex) preserved defensively but should
+never fire on new bids.
+
+**Change 2 — `resolveUserIds` widened (cross-identity bid lookup).**
+
+Root cause discovery via Supabase query on Sachin's last-7-days bids:
+
+| Auth | customerId | Bids | users.phone |
+|---|---|---|---|
+| Google Firebase | `Ld6xDB42cKaf2LGbDCXsIxyGPBh2` | 52 | `unknown_Ld6xDB42…` |
+| Facebook Firebase | `fb_Ld6xDB42cKaf2LGbDCXsIxyGPBh2` | 120 | `unknown_fb_…` |
+| Phone OTP +91 | `cmnr4b8ol0001whjy8jc1xxxh` | 0 | `+918881555188` |
+| Phone OTP no-prefix | `cmnuolhpx0000u6ov2o2s8hxy` | 0 | `8881555188` |
+
+Same human, 4 separate users.id rows, 172 recent bids split across two of
+them. Old `resolveUserIds` matched only on phone — every Firebase row has
+`unknown_<uid>` placeholder phone → no link → 120 OR 52 visible depending
+on session.
+
+`users.email` had `UNIQUE` constraint AND case mismatch
+(`SACHINHELPLINE@GMAIL.COM` vs `sachinhelpline@gmail.com`) — can't
+backfill emails on Firebase rows without conflict.
+
+**Resolver now walks 3 axes:**
+
+```ts
+export async function resolveUserIds(
+  primaryId: string, jwtPhone?: string, jwtEmail?: string,
+): Promise<string[]>
+```
+
+1. **Firebase prefix-twin axis** — if primaryId matches Firebase UID
+   pattern (`/^[A-Za-z0-9]{20,}$/`), add `fb_<X>` + `firebase_<X>` twins.
+   If primaryId starts with `fb_` / `firebase_`, add stripped version.
+   Phone-OTP CUIDs match the pattern too BUT their twin variants don't
+   exist in DB so the `users?id=in.(…)` lookup returns empty for them —
+   safe no-op.
+
+2. **Phone variants** — last10 + `+91X` + `91X` + digits-only + raw.
+   Skips `unknown_<uid>` placeholder phones entirely.
+
+3. **Email `ilike` match** — case-insensitive PostgREST `ilike` instead of
+   `eq` (catches uppercase vs lowercase email drift in DB). Reads from BOTH
+   caller's `users` row email AND JWT email (Firebase OAuth leaves
+   `users.email = NULL` but JWT carries it).
+
+`/api/bids/my/route.ts` now passes `payload?.email` as 3rd arg.
+
+**Result for Sachin's testing:** any signed-in session (Google OR Facebook
+Firebase) now sees ALL 172 recent bids on `/my-bids`. Phone-OTP rows are
+no-bid (dormant) but get unioned via email-ilike anyway.
+
+### Build / merge gotchas this era
+
+- **v94-era `for..of` Set trap reappeared** — my v240 follow-up iterated
+  `for (const email of emailCandidates)` where `emailCandidates` was a
+  `Set<string>`. Local `tsc --noEmit` passed (dev tsconfig is permissive);
+  Vercel `next build` failed with `--downlevelIteration` error. Fix: wrap
+  with `Array.from(emailCandidates)`. Same trap documented in CLAUDE.md
+  "Things to Avoid" since v94. Add this to the pre-push mental checklist
+  for any new Set/Map iteration.
+- **Rebase replays squash-merged commits** — v240 branched off PR #147's
+  branch (not main), so when I rebased v240 onto main after PR #147
+  squash-merged, git tried to replay the original v239 commits
+  (`fdc5873` + `5c69730`) on top of the already-included squash. Fix:
+  `git rebase --skip` for each. Pattern for any future branched-off-PR
+  work: skip the original commits + apply only your own.
+
+### Files changed this era
+
+```
+v239 (PR #147):
+  app/admin/bookings/page.tsx                          # last-6 + tap-to-copy button + same in modal heading
+  app/partner/dashboard/page.tsx                       # 📋 BID-…xxxxxx pill on cards + tab count uses activeBidsForInbox
+  app/layout.tsx                                       # SB_BUILD v238 → v239 + badge
+  public/sw.js                                         # HTML_CACHE v21 → v22
+  migrations/2026-05-27-v239-widen-orphan-accepted-sweep.sql  # NEW (applied live)
+
+v240 (PR #148):
+  lib/sb-server.ts                                     # resolveUserIds widened (Firebase twin + ilike email)
+  app/api/bids/my/route.ts                             # passes payload.email; cross-identity preamble comment
+  app/api/bids/request/route.ts                        # accepts + validates body.source
+  app/bid/page.tsx                                     # createBidRequest call gets source:"place"
+  app/hotels/[id]/page.tsx                             # 5 createBidRequest calls stamped with source per CTA
+  app/my-bids/page.tsx                                 # detection prefers b.request.source over regex
+  app/layout.tsx                                       # SB_BUILD v239 → v240 + badge
+  public/sw.js                                         # HTML_CACHE v22 → v23
+  migrations/2026-05-27-v240-bid-requests-source.sql   # NEW (applied live)
+```
+
+### Service-worker version map (continued)
+
+- v228 → conflict-view-cta-bookingreview-flex-footer
+- (v229-v238 not separately documented in this file — exist in git log as
+  PRs that landed across the desktop UX + scoring + animation eras)
+- **v239** → bid-id-last6-tap-copy-tab-count-rpc-widen
+- **v240** → bid-requests-source-cross-identity-resolver (current)
+
+### Things to Avoid (v239 → v240 Era)
+
+- **Never** match auth identities by phone alone. The same human has up to
+  4 separate users.id rows (Google + Facebook Firebase placeholder-phones,
+  +91 Phone OTP, non-+91 Phone OTP). Always pass `payload.email` to
+  `resolveUserIds` so the JWT-email bridge can link Firebase → phone-OTP
+  rows.
+- **Never** use `for (const x of someSet)` or `for (const x of someMap.keys())`
+  in any file that Vercel builds. tsconfig lacks `downlevelIteration`.
+  Local `tsc --noEmit` does NOT catch this; only `next build` does. Use
+  `Array.from(set).forEach()` instead. This trap recurs every few months
+  — v94, v131, v239 era now.
+- **Never** truncate CUIDs by first-N chars on display surfaces (admin
+  tables, partner cards). CUIDs share a timestamp-derived prefix that's
+  often >8 chars long. Use last-N suffix (the random portion) + show full
+  id via tap-to-copy or hover title.
+- **Never** drop the `bid_requests.source` stamp on a new `createBidRequest`
+  call site. The /my-bids detection reads it server-authoritatively. Every
+  new flow that creates a `bid_request` MUST pass `source: "<flow>"`.
+- **Never** widen the `bid_requests.source` CHECK enum past the 4 values
+  (`place / negotiate / direct / flash`) without also extending the
+  detection branch on `/my-bids` and the partner SourceBadge map.
+- **Never** narrow `select=*` on `/api/social/feed` if it touches
+  `social_posts.client_post_id` — the v131.8 reel-dedup chain depends on
+  that column being returned. Same rule applies to any future
+  cross-identity column added to `users` or `bids`: if a route reads it,
+  keep `select=*` or explicitly include the new column.
+- **Never** PATCH `users.email` for Firebase users to backfill a canonical
+  email — `users_email_key` UNIQUE index will reject when phone-OTP rows
+  already hold the email. Use the JWT-email bridge inside `resolveUserIds`
+  instead (forward-only, no DB writes).
+- **Never** rebase a feature branch onto main without checking whether it
+  was originally branched off another PR's branch. If so, `git rebase
+  --skip` for each of the original PR's commits (they're already in main
+  as a squash). Otherwise rebase tries to replay them + conflicts
+  trivially.
+- **Never** strip the v177 `filterActiveBids()` call from partner dashboard
+  derivations. Tab counts must read `activeBidsForInbox`, NOT raw `bids`.
+  v177 + v239 both fixed the same divergence pattern.
+- **Never** drop the `mark_orphaned_accepted_bids` Case B branch (the LEFT
+  JOIN + `aw.bid_id IS NULL` branch). Auto-accepted bids where the customer
+  never opens /my-bids have NO acceptance_window row; without Case B
+  they're stuck ACCEPTED forever.
+- **Never** delete the migration files from `/migrations/` after live
+  application. They're the audit trail — even though the change is in
+  Supabase, the .sql file documents the intent + verification queries.
+
+### What this era did NOT do (intentionally deferred)
+
+- **Real Place Bid auto-accept by request-source** — `/api/bids/place`
+  still reads `body.flow === "place"` to decide auto-accept eligibility.
+  Could be refactored to read `request.source === "place"` instead but
+  the current path works + has 2+ months of production. Not worth the
+  risk for cosmetic cleanup.
+- **users.email backfill** — UNIQUE constraint blocks rewriting Firebase
+  rows with the canonical email. Real fix would be a `user_email_links`
+  join table OR a row-merge cleanup. Deferred — JWT-email bridge handles
+  the read path well enough.
+- **Stale COUNTER / REJECTED / ACCEPTED-paid DB sweep** — v239 only covers
+  ACCEPTED-unpaid. Client filter (`lib/bid-expiry.ts`) still hides others
+  from display, but row-state mismatches persist. Extend the RPC + similar
+  Case-B branches if/when needed.
+- **Smooth scroll on `/my-bids#bid-<id>`** — already pending from v228
+  era. Same priority.
+- **Backend bid.flow column** — v239/v240 didn't touch the bids table
+  schema. The flow IS persisted in `bid_requests.source`; bids inherit
+  via the join in `/api/bids/my`. Adding a denormalized `bids.flow`
+  column would speed up some reads but isn't required for any current
+  surface.
+
+---
+
+## Updated production state (v240, 2026-05-27)
+
+- **Current version:** v240 · commit `fff2598` on `main` (PR #148 squash-merged)
+- **Vercel:** auto-deploying from main · staybids.in will pick up v240 within ~60-90s
+- **3 PRs merged today:** #146 (v238.1), #147 (v239), #148 (v240) — all squash-merged via mechanical rebase-on-merge-conflict pattern
+- **DB state — Supabase project `uxxhbdqedazpmvbvaosh`:**
+  - 25 stale ACCEPTED bids cleaned to EXPIRED
+  - `bid_requests` gained `source` column with 142 legacy rows backfilled to `'place'`
+  - `mark_orphaned_accepted_bids` RPC widened with LEFT JOIN + Case B branch (auto-EXPIRE for bids without acceptance_window row past 30-min grace)
+- **Place Bid section future-proof** — server-authoritative `b.request.source === "place"` replaces the v234 message-regex detection. New `/bid` placements stamped at request creation. Backfill caught legacy rows.
+- **Cross-identity unified bid lookup** — `resolveUserIds` walks 3 axes (Firebase twin / phone variants / ilike email). Sachin's 120 Facebook + 52 Google bids now appear under either auth session.
+- **Auto-EXPIRE cron self-heals** — future auto-accepted bids that never get paid will EXPIRE within 30-min grace via cron-job.org's `/api/cron/expire-holds` 15-min schedule.
+- **Build discipline reaffirmed** — v94-era `for..of Set` trap re-caught + documented. Pre-push: any new Set/Map iteration MUST use `Array.from()`.
+- **NOT TOUCHED this era:** scoring engine, attribution chain, commission engine, tier system, partner panel pricing tabs, admin panel UI shell, reel-app surfaces (`/`, `/discover`, `/reels`, `/me`), animation layer (10 `.sb-*` utilities), service-subscription billing, customer Razorpay flow.
+- **Service-worker** stable URL `/sw.js`, stable cache names (`staybid-static-v2` permanent; `staybid-html-v23` this era's bump), v93 discipline preserved.
+
+### Pending / known issues (carried forward)
+
+- **9-hour bid expiry countdown** — Sachin reported earlier in this
+  session, traced to most likely a v74-era stale localStorage seed on
+  `AcceptedBidTimer`. v239 cleanup of 25 stale rows might have already
+  resolved this side-effect since fresh ACCEPTED bids now have clean
+  expiresAt + acceptance windows. If recurs, dump localStorage
+  `accept_window_*` keys + verify against DB.
+- **`InspirationBanner` placement on BookingReview success modal** —
+  pending since Tier-System era.
+- **`/my-bids#bid-<id>` smooth scroll** — still no scroll-into-view +
+  highlight on landing.
