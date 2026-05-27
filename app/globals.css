@@ -8802,35 +8802,35 @@ body.is-reel-page {
   background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
 }
 
-/* v217 / v221 — Desktop constrained the climber to a 600/680/720 px
-   centered portrait card. v235 removed the constraint entirely:
-   Sachin reported the old cream page chrome (Navbar, "Name Your
-   Price" hero, StepBar) leaked through the empty band around the
-   constrained card on a MacBook Pro, and the climber felt tiny
-   ("complete screen par show ho ye na ki half screen"). Now every
-   viewport gets the full-bleed treatment — the climber stage fills
-   the entire window, just like on mobile, with no surrounding chrome
-   competing for attention. The page-level hero + StepBar are hidden
-   on Step 1 (see app/bid/page.tsx v235 comment). */
+/* v217 / v221 / v236 — Desktop + tablet: centered portrait column for
+   the climber. v235 had dropped this constraint to make the climber
+   full-bleed, but Sachin asked for the simple option back ("ek simple
+   solution chahiye"): navbar + slim hero + back-chip stay visible
+   around the climber so customers always have navigation chrome. The
+   widened 720/820/920 px lets the climber feel sizeable on a 1920px
+   monitor without occupying the entire viewport. The page-level hero
+   + StepBar are also restored on Step 1 — see app/bid/page.tsx v236
+   comment block. */
 @media (min-width: 1024px) {
   .bgz-stage.cmm-stage {
-    max-width: none;
-    margin: 0;
-    border-radius: 0;
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 28px;
     overflow: hidden;
-    box-shadow: none;
+    box-shadow:
+      0 30px 80px -20px rgba(0,0,0,0.62),
+      0 0 0 1px rgba(217,190,130,0.20);
   }
 }
-
-/* v235 — Step 1 wrapper. Drops every max-width / padding the legacy
-   .bx-page-wrap added so the climber's .bgz-stage truly spans every
-   pixel of the viewport. Used only on Step 1 (Step 2-3 keep the
-   centered .bx-page-wrap for the legacy form fallback). */
-.bx-page-wrap-climber {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
+@media (min-width: 1280px) {
+  .bgz-stage.cmm-stage {
+    max-width: 820px;
+  }
+}
+@media (min-width: 1536px) {
+  .bgz-stage.cmm-stage {
+    max-width: 920px;
+  }
 }
 
 /* v222 — Launching-bid spinner inside Review Bid card. Champagne ring

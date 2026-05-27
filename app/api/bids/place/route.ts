@@ -29,6 +29,78 @@ const expiresAtFor = (flow?: string) =>
 // hotel). New rule: trust the STATUS column; the row stays ACCEPTED until
 // either paid (bookings.paidAmount > 0) OR cron sweeps it to EXPIRED.
 // While ACCEPTED-unpaid, no new bids on the same hotel can be placed.
+//
+// v236 — Apply per-status time-based filters so a STALE PENDING / COUNTER
+// / ACCEPTED-unpaid bid (past its window) NEVER triggers a ghost conflict.
+// Sachin's 2-screenshot report (2026-05-27): /bid Dhanaulti showed
+// "You already have an active bid in Dhanaulti" while /my-bids showed
+// ZERO bids. Root cause: v193 server cron `mark_stale_pending_bids`
+// flips PENDING > 6h to EXPIRED in DB, AND v234 client filter in
+// /my-bids hides PENDING > 6h client-side. BUT this conflict-check
+// trusted STATUS only (v200 contract). If the cron is delayed or
+// missed a window, the bid stays PENDING in DB → conflict check sees
+// it → /my-bids client filter hides it → user sees a ghost conflict
+// they can't action. v236 closes the gap: same per-status windows as
+// `lib/bid-expiry.ts` applied here at conflict-check time. The cron
+// is still the DB-truth path; this is the second line of defence.
+//
+// Windows (matching lib/bid-expiry.ts):
+//   • PENDING with auto_accept_at → expire 15 min past scheduled accept
+//   • PENDING with expiresAt      → server stamp (1h place / 3h negotiate)
+//   • PENDING legacy              → 1h or 3h derived from message; 6h cap
+//   • COUNTER                     → 60 min after updatedAt
+//   • ACCEPTED + unpaid           → 15 min after acceptedAt
+const ONE_MIN_MS = 60_000;
+const ONE_HOUR_MS = 60 * ONE_MIN_MS;
+function isBidStale(b: any): boolean {
+  const now = Date.now();
+  const status = String(b?.status || "").toUpperCase();
+  if (status === "COUNTER") {
+    const t = b?.updatedAt ? new Date(b.updatedAt).getTime()
+            : b?.createdAt ? new Date(b.createdAt).getTime()
+            : 0;
+    return t > 0 && now > t + 60 * ONE_MIN_MS;
+  }
+  if (status === "ACCEPTED") {
+    // v236.1 — expiresAt is the authoritative window for ACCEPTED-
+    // unpaid bids (set by /api/bids/place on auto-accept to
+    // acceptedAt + 15min; set by partner accept to now() + window).
+    // The bids table has NO acceptedAt or updatedAt columns
+    // (verified via information_schema 2026-05-27); the runtime
+    // fallback chain is kept defensively in case those columns
+    // are added in a future migration.
+    if (b?.expiresAt) {
+      const t = new Date(b.expiresAt).getTime();
+      if (!Number.isNaN(t)) return now > t;
+    }
+    const t = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
+            : b?.updatedAt  ? new Date(b.updatedAt).getTime()
+            : b?.createdAt  ? new Date(b.createdAt).getTime()
+            : 0;
+    return t > 0 && now > t + 15 * ONE_MIN_MS;
+  }
+  if (status === "PENDING") {
+    if (b?.auto_accept_at) {
+      const t = new Date(b.auto_accept_at).getTime();
+      if (!Number.isNaN(t)) return now > t + 15 * ONE_MIN_MS;
+    }
+    if (b?.expiresAt) {
+      const t = new Date(b.expiresAt).getTime();
+      if (!Number.isNaN(t)) return now > t;
+    }
+    // Legacy: derive window from createdAt + flow detection. 6h hard cap
+    // matches v193 server cron `mark_stale_pending_bids`.
+    const created = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (!created) return false;
+    const age = now - created;
+    const msg = String(b?.message || "");
+    const isPlace = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
+    const flowCap = isPlace ? 1 * ONE_HOUR_MS : 3 * ONE_HOUR_MS;
+    return age > Math.min(flowCap, 6 * ONE_HOUR_MS);
+  }
+  return false;
+}
+
 async function findActiveBidOnHotel(
   customerIds: string[],
   hotelId: string,
@@ -37,7 +109,14 @@ async function findActiveBidOnHotel(
   if (!customerIds.length || !hotelId) return null;
   const ids = customerIds.join(",");
   const bids = await sbSelect(
-    `bids?customerId=in.(${ids})&hotelId=eq.${hotelId}&status=in.(PENDING,COUNTER,ACCEPTED)&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt`
+    // v236.1 — Only request columns that exist on bids (verified
+    // 2026-05-27 via information_schema.columns). `acceptedAt` +
+    // `updatedAt` do NOT exist on this table; requesting them causes
+    // PostgREST to 400 → empty array → conflict check broken → user
+    // can place duplicate bids (worse than the ghost-conflict bug
+    // v236 was fixing). The runtime isBidStale() fallback chain
+    // handles missing fields by falling through to `createdAt`.
+    `bids?customerId=in.(${ids})&hotelId=eq.${hotelId}&status=in.(PENDING,COUNTER,ACCEPTED)&select=id,hotelId,roomId,requestId,status,amount,counterAmount,expiresAt,createdAt,auto_accept_at,message`
   );
   if (!bids.length) return null;
 
@@ -55,6 +134,8 @@ async function findActiveBidOnHotel(
   for (const b of bids) {
     if (b.status === "ACCEPTED" && (paidByBidId.get(b.id) || 0) > 0) continue;
     if (currentRequestId && b.requestId && b.requestId === currentRequestId) continue;
+    // v236 — skip stale bids that the cron hasn't swept yet.
+    if (isBidStale(b)) continue;
     if (!hotelMeta) {
       const hotels = await sbSelect(`hotels?id=eq.${hotelId}&select=id,name,city`);
       hotelMeta = hotels[0] || { id: hotelId, name: "this hotel", city: "" };
