@@ -6,8 +6,14 @@ export async function GET(req: NextRequest) {
   const primaryId = payload?.id || payload?.user_id || payload?.sub;
   if (!primaryId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Union both phone-variant user IDs so bids stored under either don't get lost.
-  const customerIds = await resolveUserIds(primaryId, payload?.phone);
+  // v240 — Union ALL user IDs sharing the same human (phone variants +
+  // email). Pre-v240 this matched only on phone, so a customer who placed
+  // bids via Google Firebase (customerId=`Ld6xDB42…`, phone placeholder
+  // `unknown_<uid>`) and then opened /my-bids via Phone OTP
+  // (`cmnr4b8ol…`) saw an empty Place Bid section because the resolver
+  // never linked the two identities. Cross-identity is the future-proof
+  // anchor; replaces the v234 message-regex Place Bid detection.
+  const customerIds = await resolveUserIds(primaryId, payload?.phone, payload?.email);
   const bids = await sbSelect(`bids?customerId=in.(${customerIds.join(",")})&select=*`);
   if (!bids.length) return NextResponse.json({ bids: [] });
 

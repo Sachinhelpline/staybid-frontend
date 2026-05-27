@@ -123,32 +123,84 @@ export async function sbUpdate(table: string, filter: string, patch: any): Promi
   return Array.isArray(j) ? j[0] : j;
 }
 
-// Find all user IDs sharing the same phone (handles +91 prefix variants).
-// Mirrors resolveOwnerIds from partner routes so customer-side endpoints
-// (my-bids, bookings) don't miss rows stored under the alternate phone format.
-export async function resolveUserIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
-  const ids: string[] = [primaryId];
-  let rawPhone = "";
+// Find all user IDs sharing the same human (phone variants + email).
+//
+// v240 — Widened from phone-only matching to also walk email + reject
+// Firebase `unknown_<uid>` placeholder phones. Same root cause as the
+// v132.10 social-profile fix: a single human signs in via Google
+// Firebase one day (`Ld6xDB42…` UID, `phone=unknown_Ld6xDB42…`) and
+// Phone OTP another day (`cmnr4b8ol…`, `phone=+918881555188`). Old
+// resolver matched only on phone, so /my-bids signed in via phone-OTP
+// missed every Firebase-authored bid (and vice versa) — the "Place Bid
+// section empty" feedback cycle that has recurred 4+ times (v233, v234,
+// v240). Server-authoritative cross-identity is the future-proof fix.
+//
+// New algorithm walks THREE axes, returning the union:
+//   1. Direct primary id (always included).
+//   2. Phone variants (caller's stored phone + JWT phone, normalized).
+//      Skips `unknown_*` placeholder phones entirely.
+//   3. Email (caller's stored email + JWT email).
+//
+// Callers that pass only `jwtPhone` keep working — `jwtEmail` is
+// optional. Phone-only matching still happens; email is additive.
+export async function resolveUserIds(
+  primaryId: string,
+  jwtPhone?: string,
+  jwtEmail?: string,
+): Promise<string[]> {
+  const ids = new Set<string>([primaryId]);
+
+  // 1. Read caller's own row for stored phone + email.
+  let userPhone = "";
+  let userEmail = "";
   try {
-    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
-    const users = await uRes.json();
-    if (Array.isArray(users) && users[0]?.phone) {
-      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone,email`, { headers: SB_H });
+    const arr = await uRes.json();
+    if (Array.isArray(arr) && arr[0]) {
+      userPhone = String(arr[0].phone || "");
+      userEmail = String(arr[0].email || "");
     }
   } catch {}
-  if (!rawPhone && jwtPhone) {
-    rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
+
+  // 2. Build phone variants. Skip `unknown_<uid>` placeholders — they
+  // never match real rows (Firebase OAuth stamps them at signup).
+  const phoneVariants = new Set<string>();
+  for (const candidate of [userPhone, jwtPhone].filter(Boolean) as string[]) {
+    const t = String(candidate).trim();
+    if (!t || /^unknown_/i.test(t)) continue;
+    const digits = t.replace(/\D/g, "");
+    if (digits.length < 10) continue;
+    const last10 = digits.slice(-10);
+    phoneVariants.add(t);
+    phoneVariants.add(digits);
+    phoneVariants.add(last10);
+    phoneVariants.add(`+91${last10}`);
+    phoneVariants.add(`91${last10}`);
   }
-  if (!rawPhone) return ids;
-  try {
-    const allRes = await fetch(
-      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
-      { headers: SB_H }
-    );
-    const all = await allRes.json();
-    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
-  } catch {}
-  return ids;
+  if (phoneVariants.size) {
+    const inList = Array.from(phoneVariants).map(encodeURIComponent).join(",");
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/users?phone=in.(${inList})&select=id`, { headers: SB_H });
+      const arr = await r.json();
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    } catch {}
+  }
+
+  // 3. Email match — covers OAuth ↔ phone-OTP swaps where the user's
+  // Google email also lives on the phone-OTP users row (back-filled by
+  // ensureUser when JWT carried it).
+  const emailCandidates = new Set<string>();
+  if (userEmail && /@/.test(userEmail)) emailCandidates.add(userEmail.toLowerCase());
+  if (jwtEmail  && /@/.test(jwtEmail))  emailCandidates.add(jwtEmail.toLowerCase());
+  for (const email of emailCandidates) {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
+      const arr = await r.json();
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    } catch {}
+  }
+
+  return Array.from(ids);
 }
 
 export function genId(prefix: string = "b"): string {

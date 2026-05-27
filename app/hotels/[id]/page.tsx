@@ -1171,6 +1171,8 @@ export default function HotelDetail() {
         amount: floorAmt,
         checkIn: today, checkOut: flashCheckOut,
         guests: flashAdults + flashChildren,
+        // v240 — Flash Deal flow → request.source='flash'.
+        source: "flash",
       });
       // v96 — referral attribution (legacy bid_requests.influencer_id column)
       attributeReferral(reqRes?.request?.id);
@@ -1338,6 +1340,8 @@ export default function HotelDetail() {
         hotelId: hotel.id, roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
         checkIn, checkOut, guests: bidRoom.capacity || 2,
+        // v240 — Single-hotel Negotiate from /hotels/[id] → 'negotiate'.
+        source: "negotiate",
       });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({
@@ -1522,7 +1526,8 @@ export default function HotelDetail() {
       });
 
       // Step 2: Confirm booking in backend
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren });
+      // v240 — Book Now (instant paid booking) → request.source='direct'.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren, source: "direct" });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
       try { await api.acceptBid(bidRes.bid.id); } catch {}
@@ -1640,7 +1645,8 @@ export default function HotelDetail() {
     try {
       const submitAmt = negRoom.floorPrice;
       const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
+      // v240 — Negotiate modal submit (above-floor path) → 'negotiate'.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate" });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
@@ -1719,7 +1725,8 @@ export default function HotelDetail() {
       });
       const paymentId = payResult.razorpay_payment_id;
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2 });
+      // v240 — Negotiate modal (below-floor branch) → 'negotiate'.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate" });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
       // v124 — apply redemption to bid
