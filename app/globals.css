@@ -7116,8 +7116,17 @@ body.is-reel-page {
 ═══════════════════════════════════════════════════════════════════ */
 
 .bgz-shell {
+  /* v237 — Climber + boot screen render fullscreen (mountain backdrop
+     edge-to-edge) BUT leave the top 56px for the customer Navbar.
+     Sachin: "full screen ka matlb yeh bhi tha ki nav baar bhi rakhna
+     na ki hide ho jaye". `top: 56px` carves out room for the sticky
+     Navbar (its body height per `.nav3d-bar > div { height: 56px }`).
+     The Navbar's z-index (200 via v237 bump) keeps it above the shell. */
   position: fixed;
-  inset: 0;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1000;
   width: 100%;
   isolation: isolate;
@@ -8802,34 +8811,22 @@ body.is-reel-page {
   background: linear-gradient(180deg, #0d0a05 0%, #1a1610 55%, #0d0a05 100%) !important;
 }
 
-/* v217 / v221 / v236 — Desktop + tablet: centered portrait column for
-   the climber. v235 had dropped this constraint to make the climber
-   full-bleed, but Sachin asked for the simple option back ("ek simple
-   solution chahiye"): navbar + slim hero + back-chip stay visible
-   around the climber so customers always have navigation chrome. The
-   widened 720/820/920 px lets the climber feel sizeable on a 1920px
-   monitor without occupying the entire viewport. The page-level hero
-   + StepBar are also restored on Step 1 — see app/bid/page.tsx v236
-   comment block. */
+/* v237 — Desktop climber goes FULLSCREEN below the Navbar. v236's
+   720/820/920 px constraint left empty cream bands either side of the
+   climber on a 1920 px monitor which Sachin rejected: "yeh mobile ki
+   traha full screen ho raha tha nav baar hide ho raha tha jish se
+   confused ho raha tha. Full screen ka matlb yeh bhi tha ki nav baar
+   bhi rakhna". v237 keeps the climber edge-to-edge BUT .bgz-shell now
+   has `top: 56px` carving out room for the customer Navbar so the
+   navigation chrome is always visible. No portrait-card constraint
+   on any breakpoint. */
 @media (min-width: 1024px) {
   .bgz-stage.cmm-stage {
-    max-width: 720px;
-    margin: 0 auto;
-    border-radius: 28px;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
     overflow: hidden;
-    box-shadow:
-      0 30px 80px -20px rgba(0,0,0,0.62),
-      0 0 0 1px rgba(217,190,130,0.20);
-  }
-}
-@media (min-width: 1280px) {
-  .bgz-stage.cmm-stage {
-    max-width: 820px;
-  }
-}
-@media (min-width: 1536px) {
-  .bgz-stage.cmm-stage {
-    max-width: 920px;
+    box-shadow: none;
   }
 }
 
@@ -8865,12 +8862,12 @@ body.is-reel-page {
     position: fixed;
     top: calc(16px + env(safe-area-inset-top, 0px));
     left: 20px;
-    /* v235 — bumped 80 → 200 so the back chip stays above the
-       fullscreen climber's .bgz-stage stacking context (isolation:
-       isolate creates a new context that trapped z-80 elements
-       behind the stage content). Sachin: "yahan se back karne ka
-       koi option kaam nhi kar raha hai desktop par". */
-    z-index: 200;
+    /* v237 — bumped 200 → 1200 because .bgz-shell is z-index 1000
+       (fullscreen climber + boot screen wrapper). At z-200 the back
+       chip was BEHIND the climber and unclickable. z-1200 sits
+       above .bgz-shell (1000) AND above the Navbar (1100, sticky)
+       so the chip is the topmost interactive surface on /bid. */
+    z-index: 1200;
     padding: 8px 14px 8px 10px;
     border-radius: 999px;
     font-family: "Inter", system-ui, sans-serif;

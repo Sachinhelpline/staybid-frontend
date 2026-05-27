@@ -417,7 +417,14 @@ export function Navbar() {
           v122 — `data-reel-route` marker. On mobile, CSS hides the bar
           on reel-style routes so the in-page top chrome owns the
           surface; on desktop the marker is ignored and the bar shows. */}
-      <nav className="sticky top-0 z-50 nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
+      {/* v237 — Bumped z-50 → z-[1100]. .bgz-shell (the /bid climber
+          + boot screen wrapper) is z-index: 1000, and previously the
+          z-50 sticky Navbar slid UNDER the shell making it invisible
+          on /bid. Sachin: "ss1 aur abhi bhi full screen show ho Raha
+          hai bina nav baar ke" — the bgz-shell was eating the Navbar.
+          z-[1100] makes the Navbar STAY VISIBLE above every page
+          chrome including /bid's climber. */}
+      <nav className="sticky top-0 z-[1100] nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3" style={{ height: "64px" }}>
 
           {/* Logo + Location (tight gap) */}

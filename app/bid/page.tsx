@@ -2041,28 +2041,33 @@ export default function BidPage() {
           also restored in globals.css. */}
       <div className="bx-page-wrap mx-auto px-4 pt-4">
 
-        {/* v236 — Restored slim hero + StepBar on EVERY step (was hidden
-            on Step 1 by v235). Sachin's feedback: he wants navigation
-            chrome visible on the climber too — "ek simple solution
-            chahiye" — so user can always see where they are in the
-            flow + has the back chip visible to exit. */}
-        <div className="bx-slim-hero bx-rise">
-          <div className="bx-slim-hero-text">
-            <span className="bx-slim-hero-eyebrow">
-              <span className="bx-hero-eyebrow-dot" />
-              Name Your Price
-            </span>
-            {form.city && <span className="bx-slim-hero-city">{form.city}</span>}
+        {/* v237 — Hide slim hero + StepBar on Step 1. The customer Navbar
+            (sticky top-0 z-[1100] per v237) IS visible above the climber
+            now, so navigation chrome is satisfied via Navbar alone. The
+            slim hero + StepBar were duplicating navigation and stealing
+            pixels from the mountain backdrop. Steps 2-3 retain them for
+            the legacy form fallback path. Sachin: "full screen ka matlb
+            yeh bhi tha ki nav baar bhi rakhna" — Navbar = nav, page
+            chrome = excess on Step 1. */}
+        {step !== 1 && (
+          <div className="bx-slim-hero bx-rise">
+            <div className="bx-slim-hero-text">
+              <span className="bx-slim-hero-eyebrow">
+                <span className="bx-hero-eyebrow-dot" />
+                Name Your Price
+              </span>
+              {form.city && <span className="bx-slim-hero-city">{form.city}</span>}
+            </div>
+            {insights && insights.tonightAuctions > 0 && (
+              <span className="bx-slim-hero-pill">
+                <span className="bx-slim-hero-pulse" />
+                {liveAuctions} live
+              </span>
+            )}
           </div>
-          {insights && insights.tonightAuctions > 0 && (
-            <span className="bx-slim-hero-pill">
-              <span className="bx-slim-hero-pulse" />
-              {liveAuctions} live
-            </span>
-          )}
-        </div>
+        )}
 
-        <StepBar step={step} />
+        {step !== 1 && <StepBar step={step} />}
 
         <div className={`transition-all duration-200 ${animating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
 
