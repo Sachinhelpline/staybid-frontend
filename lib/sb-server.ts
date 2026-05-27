@@ -150,20 +150,42 @@ export async function resolveUserIds(
 ): Promise<string[]> {
   const ids = new Set<string>([primaryId]);
 
-  // 1. Read caller's own row for stored phone + email.
+  // 1. Firebase prefix-twin axis (v240).
+  //    Bids table got customerIds WITHOUT normalization, so the same
+  //    human has 120 bids under `fb_Ld6xDB42…` (Facebook session) and
+  //    52 under `Ld6xDB42…` (Google session). The social profile path
+  //    normalizes via `normalizeAuthId` (lib/social/auth-helper.ts)
+  //    but /api/bids/place doesn't. Bridge both variants at read time.
+  //    Limited to plausible Firebase UIDs (≥20 alphanumeric chars) so
+  //    we never accidentally append fb_ to phone-OTP CUIDs.
+  if (primaryId.startsWith("fb_")) {
+    ids.add(primaryId.slice(3));        // stripped twin
+  } else if (primaryId.startsWith("firebase_")) {
+    ids.add(primaryId.slice(9));
+  } else if (/^[A-Za-z0-9]{20,}$/.test(primaryId)) {
+    // Plain Firebase UID → also check the fb_-prefixed twin row.
+    ids.add(`fb_${primaryId}`);
+    ids.add(`firebase_${primaryId}`);
+  }
+
+  // 2. Read caller's own row(s) for stored phone + email. We read ALL
+  //    rows we've already accumulated (primary + Firebase twin) so a
+  //    Google session can pick up the Facebook row's phone/email too.
   let userPhone = "";
   let userEmail = "";
   try {
-    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone,email`, { headers: SB_H });
+    const idList = Array.from(ids).map(encodeURIComponent).join(",");
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=in.(${idList})&select=phone,email`, { headers: SB_H });
     const arr = await uRes.json();
-    if (Array.isArray(arr) && arr[0]) {
-      userPhone = String(arr[0].phone || "");
-      userEmail = String(arr[0].email || "");
+    if (Array.isArray(arr)) {
+      for (const u of arr) {
+        if (!userPhone && u?.phone) userPhone = String(u.phone);
+        if (!userEmail && u?.email) userEmail = String(u.email);
+      }
     }
   } catch {}
 
-  // 2. Build phone variants. Skip `unknown_<uid>` placeholders — they
-  // never match real rows (Firebase OAuth stamps them at signup).
+  // 3. Phone variants. Skip `unknown_<uid>` placeholders.
   const phoneVariants = new Set<string>();
   for (const candidate of [userPhone, jwtPhone].filter(Boolean) as string[]) {
     const t = String(candidate).trim();
@@ -186,15 +208,15 @@ export async function resolveUserIds(
     } catch {}
   }
 
-  // 3. Email match — covers OAuth ↔ phone-OTP swaps where the user's
-  // Google email also lives on the phone-OTP users row (back-filled by
-  // ensureUser when JWT carried it).
+  // 4. Email match (case-insensitive via PostgREST `ilike`). Covers OAuth
+  //    ↔ phone-OTP cases where the Google email also lives on a
+  //    phone-OTP users row (and handles uppercase / lowercase drift).
   const emailCandidates = new Set<string>();
   if (userEmail && /@/.test(userEmail)) emailCandidates.add(userEmail.toLowerCase());
   if (jwtEmail  && /@/.test(jwtEmail))  emailCandidates.add(jwtEmail.toLowerCase());
   for (const email of emailCandidates) {
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
+      const r = await fetch(`${SB_URL}/rest/v1/users?email=ilike.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
       const arr = await r.json();
       if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
     } catch {}
