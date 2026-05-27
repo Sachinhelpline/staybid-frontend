@@ -1109,6 +1109,12 @@ export default function BidPage() {
             checkOut: checkOutISO,
             guests,
             requirements,
+            // v240 — Stamp source at request-creation so /my-bids can
+            // server-authoritatively bucket this row under "Place Bid"
+            // via b.request.source === 'place'. Replaces the v234
+            // message-regex detection that broke whenever message
+            // changed shape.
+            source: "place",
           });
 
           const requestId = reqRes?.request?.id;

@@ -204,8 +204,20 @@ function MyBidsPageInner() {
           // message string (or strips it for length), the regex misses
           // and the row falls into Negotiate. Server-authoritative flow
           // catches that case.
+          // v240 — Server-authoritative bucketing.
+          //   • Primary: b.request.source (stamped at /api/bids/request
+          //     time, schema-enforced enum). New bids from v240 onward
+          //     carry this; /api/bids/my spreads the request row so the
+          //     field is always present.
+          //   • Legacy fallback (rows created before v240's migration):
+          //     b.flow / b._flow if Railway echoes it, then the v234
+          //     message regex. Once all legacy rows age out (≤72h via
+          //     v193 cron), these fallbacks become dead code but stay
+          //     in place defensively — pure-additive, no risk.
+          const requestSource = String(b?.request?.source || "").toLowerCase();
           const flow = String(b.flow || b._flow || "").toLowerCase();
           const isPlaceBid =
+            requestSource === "place" ||
             flow === "place" ||
             /\bGuest bid\b/i.test(msg) ||
             /max ₹/i.test(msg);

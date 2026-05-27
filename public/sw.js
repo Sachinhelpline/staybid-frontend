@@ -245,7 +245,20 @@ const CACHE_NAME = 'staybid-static-v2';
 // stale-filtered set — 24 ACCEPTED in DB but only 6 within the
 // 15-min unpaid window. Tab now counts activeBidsForInbox so
 // count = list rows. Cache bump forces fresh HTML on next visit.
-const HTML_CACHE = 'staybid-html-v22';
+// v240 — bump v22 → v23. Future-proof fix for /my-bids "Place Bid
+// section empty" feedback cycle (v233/v234/v240). Two structural
+// changes: (a) bid_requests gains a `source` column stamped at
+// /api/bids/request time (place|negotiate|direct|flash). /my-bids
+// detection reads b.request.source server-authoritatively instead
+// of the v234 message-regex which broke whenever a path stripped
+// the message. (b) resolveUserIds widened from phone-only to also
+// walk email + reject Firebase `unknown_<uid>` placeholder phones.
+// Pre-v240 a user who placed bids via Google Firebase (customerId
+// =`Ld6xDB42…`) then opened /my-bids via Phone OTP (`cmnr4b8ol…`)
+// missed every Firebase-authored bid because resolver didn't link
+// the two identities. Cache bump forces v240 HTML delivery on next
+// visit.
+const HTML_CACHE = 'staybid-html-v23';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

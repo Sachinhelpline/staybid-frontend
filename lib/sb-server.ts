@@ -123,32 +123,108 @@ export async function sbUpdate(table: string, filter: string, patch: any): Promi
   return Array.isArray(j) ? j[0] : j;
 }
 
-// Find all user IDs sharing the same phone (handles +91 prefix variants).
-// Mirrors resolveOwnerIds from partner routes so customer-side endpoints
-// (my-bids, bookings) don't miss rows stored under the alternate phone format.
-export async function resolveUserIds(primaryId: string, jwtPhone?: string): Promise<string[]> {
-  const ids: string[] = [primaryId];
-  let rawPhone = "";
+// Find all user IDs sharing the same human (phone variants + email).
+//
+// v240 — Widened from phone-only matching to also walk email + reject
+// Firebase `unknown_<uid>` placeholder phones. Same root cause as the
+// v132.10 social-profile fix: a single human signs in via Google
+// Firebase one day (`Ld6xDB42…` UID, `phone=unknown_Ld6xDB42…`) and
+// Phone OTP another day (`cmnr4b8ol…`, `phone=+918881555188`). Old
+// resolver matched only on phone, so /my-bids signed in via phone-OTP
+// missed every Firebase-authored bid (and vice versa) — the "Place Bid
+// section empty" feedback cycle that has recurred 4+ times (v233, v234,
+// v240). Server-authoritative cross-identity is the future-proof fix.
+//
+// New algorithm walks THREE axes, returning the union:
+//   1. Direct primary id (always included).
+//   2. Phone variants (caller's stored phone + JWT phone, normalized).
+//      Skips `unknown_*` placeholder phones entirely.
+//   3. Email (caller's stored email + JWT email).
+//
+// Callers that pass only `jwtPhone` keep working — `jwtEmail` is
+// optional. Phone-only matching still happens; email is additive.
+export async function resolveUserIds(
+  primaryId: string,
+  jwtPhone?: string,
+  jwtEmail?: string,
+): Promise<string[]> {
+  const ids = new Set<string>([primaryId]);
+
+  // 1. Firebase prefix-twin axis (v240).
+  //    Bids table got customerIds WITHOUT normalization, so the same
+  //    human has 120 bids under `fb_Ld6xDB42…` (Facebook session) and
+  //    52 under `Ld6xDB42…` (Google session). The social profile path
+  //    normalizes via `normalizeAuthId` (lib/social/auth-helper.ts)
+  //    but /api/bids/place doesn't. Bridge both variants at read time.
+  //    Limited to plausible Firebase UIDs (≥20 alphanumeric chars) so
+  //    we never accidentally append fb_ to phone-OTP CUIDs.
+  if (primaryId.startsWith("fb_")) {
+    ids.add(primaryId.slice(3));        // stripped twin
+  } else if (primaryId.startsWith("firebase_")) {
+    ids.add(primaryId.slice(9));
+  } else if (/^[A-Za-z0-9]{20,}$/.test(primaryId)) {
+    // Plain Firebase UID → also check the fb_-prefixed twin row.
+    ids.add(`fb_${primaryId}`);
+    ids.add(`firebase_${primaryId}`);
+  }
+
+  // 2. Read caller's own row(s) for stored phone + email. We read ALL
+  //    rows we've already accumulated (primary + Firebase twin) so a
+  //    Google session can pick up the Facebook row's phone/email too.
+  let userPhone = "";
+  let userEmail = "";
   try {
-    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=eq.${primaryId}&select=phone`, { headers: SB_H });
-    const users = await uRes.json();
-    if (Array.isArray(users) && users[0]?.phone) {
-      rawPhone = String(users[0].phone).replace(/^\+91/, "").replace(/\D/g, "");
+    const idList = Array.from(ids).map(encodeURIComponent).join(",");
+    const uRes = await fetch(`${SB_URL}/rest/v1/users?id=in.(${idList})&select=phone,email`, { headers: SB_H });
+    const arr = await uRes.json();
+    if (Array.isArray(arr)) {
+      for (const u of arr) {
+        if (!userPhone && u?.phone) userPhone = String(u.phone);
+        if (!userEmail && u?.email) userEmail = String(u.email);
+      }
     }
   } catch {}
-  if (!rawPhone && jwtPhone) {
-    rawPhone = String(jwtPhone).replace(/^\+91/, "").replace(/\D/g, "");
+
+  // 3. Phone variants. Skip `unknown_<uid>` placeholders.
+  const phoneVariants = new Set<string>();
+  for (const candidate of [userPhone, jwtPhone].filter(Boolean) as string[]) {
+    const t = String(candidate).trim();
+    if (!t || /^unknown_/i.test(t)) continue;
+    const digits = t.replace(/\D/g, "");
+    if (digits.length < 10) continue;
+    const last10 = digits.slice(-10);
+    phoneVariants.add(t);
+    phoneVariants.add(digits);
+    phoneVariants.add(last10);
+    phoneVariants.add(`+91${last10}`);
+    phoneVariants.add(`91${last10}`);
   }
-  if (!rawPhone) return ids;
-  try {
-    const allRes = await fetch(
-      `${SB_URL}/rest/v1/users?or=(phone.eq.${rawPhone},phone.eq.%2B91${rawPhone})&select=id`,
-      { headers: SB_H }
-    );
-    const all = await allRes.json();
-    if (Array.isArray(all)) all.forEach((u: any) => { if (u.id && !ids.includes(u.id)) ids.push(u.id); });
-  } catch {}
-  return ids;
+  if (phoneVariants.size) {
+    const inList = Array.from(phoneVariants).map(encodeURIComponent).join(",");
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/users?phone=in.(${inList})&select=id`, { headers: SB_H });
+      const arr = await r.json();
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    } catch {}
+  }
+
+  // 4. Email match (case-insensitive via PostgREST `ilike`). Covers OAuth
+  //    ↔ phone-OTP cases where the Google email also lives on a
+  //    phone-OTP users row (and handles uppercase / lowercase drift).
+  const emailCandidates = new Set<string>();
+  if (userEmail && /@/.test(userEmail)) emailCandidates.add(userEmail.toLowerCase());
+  if (jwtEmail  && /@/.test(jwtEmail))  emailCandidates.add(jwtEmail.toLowerCase());
+  // Array.from() iterator — v94-era trap: `for (const x of someSet)` fails
+  // Vercel's strict TS build (tsconfig lacks downlevelIteration).
+  for (const email of Array.from(emailCandidates)) {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/users?email=ilike.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
+      const arr = await r.json();
+      if (Array.isArray(arr)) arr.forEach((u: any) => u?.id && ids.add(String(u.id)));
+    } catch {}
+  }
+
+  return Array.from(ids);
 }
 
 export function genId(prefix: string = "b"): string {
