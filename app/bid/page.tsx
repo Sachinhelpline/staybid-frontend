@@ -2561,7 +2561,18 @@ export default function BidPage() {
         </div>
         )}
 
-        <p style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 14, letterSpacing: "0.02em" }}>
+        {/* v240.1 — Desktop-only bottom step indicator. On mobile Step 1
+            the BidGameZone climber portals to document.body (escape the
+            /bid page's transform-trap, see v203.1) — leaving this <p> as
+            the ONLY visible element inside .bx-page-wrap. Result: the
+            indicator floated at the top of the viewport like a header
+            pill near the camera notch, which Sachin reported as
+            unwanted: "yeh mobile ke liye lagane ke liye nhi bola tha
+            sirf desktop ya laptop ke liye tha". Tailwind `hidden lg:block`
+            keeps it visible only on ≥1024px (desktop / laptop). Pure
+            CSS — no JS state, no SSR flicker. Inner pages (Step 2) keep
+            it hidden on mobile too, matching the original intent. */}
+        <p className="hidden lg:block" style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 14, letterSpacing: "0.02em" }}>
           Step {step} of {STEPS.length} · {STEPS[step - 1]}
         </p>
       </div>
