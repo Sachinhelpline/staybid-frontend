@@ -2030,46 +2030,39 @@ export default function BidPage() {
         <span>Back</span>
       </button>
 
-      {/* v235 — on Step 1 the climber owns the whole viewport: drop the
-          .bx-page-wrap max-width constraint + horizontal/top padding so
-          BidGameZone (.bgz-stage) renders edge-to-edge. Steps 2-3 keep
-          the legacy centered wrapper for the desktop sectional form. */}
-      <div className={step === 1 ? "bx-page-wrap-climber" : "bx-page-wrap mx-auto px-4 pt-4"}>
+      {/* v236 — Revert v235's "Step 1 owns full viewport". Sachin's
+          feedback after v235: "full screen ka mtlb yeh nhi tha ki jab
+          baar bhi remove ho jaye ur na hi koi nav baar hai na hi koi
+          scroll karne ke liye scroller ya gesture button. Maine pahle
+          bhi kaha tha ki koi alteration nhi ek simple solution
+          chahiye". Restore the centered wrapper + slim hero + StepBar
+          chrome so customers always see Where they are + How to go
+          back. The climber size constraint on .bgz-stage.cmm-stage is
+          also restored in globals.css. */}
+      <div className="bx-page-wrap mx-auto px-4 pt-4">
 
-        {/* v163 — Step 1: compact split hero. Title + the two live pills
-            (auctions live / hotels listening) sit on the LEFT; the
-            explainer passage sits on the RIGHT. Steps 2-3: slim bar.
-
-            v235 — On Step 1 we now render NOTHING above the climber. The
-            BidGameZone (climber + boot screen) owns the whole viewport
-            on every device with its own breadcrumb / progress chrome.
-            Sachin: "ish ke accept ratio ko aishe create karo ki complete
-            screen par show ho ye na ki half screen" + "pichhe background
-            main abhi bhi old theme kaam kar rahi hai ish page par" —
-            keeping the legacy hero + StepBar on top of the climber both
-            shrank the climber visible area AND leaked the old cream
-            page chrome behind / around the constrained 600 px portrait
-            card on desktop. Steps 2-3 still use the slim hero + StepBar
-            (legacy desktop form fallback). */}
-        {step !== 1 && (
-          <div className="bx-slim-hero bx-rise">
-            <div className="bx-slim-hero-text">
-              <span className="bx-slim-hero-eyebrow">
-                <span className="bx-hero-eyebrow-dot" />
-                Name Your Price
-              </span>
-              {form.city && <span className="bx-slim-hero-city">{form.city}</span>}
-            </div>
-            {insights && insights.tonightAuctions > 0 && (
-              <span className="bx-slim-hero-pill">
-                <span className="bx-slim-hero-pulse" />
-                {liveAuctions} live
-              </span>
-            )}
+        {/* v236 — Restored slim hero + StepBar on EVERY step (was hidden
+            on Step 1 by v235). Sachin's feedback: he wants navigation
+            chrome visible on the climber too — "ek simple solution
+            chahiye" — so user can always see where they are in the
+            flow + has the back chip visible to exit. */}
+        <div className="bx-slim-hero bx-rise">
+          <div className="bx-slim-hero-text">
+            <span className="bx-slim-hero-eyebrow">
+              <span className="bx-hero-eyebrow-dot" />
+              Name Your Price
+            </span>
+            {form.city && <span className="bx-slim-hero-city">{form.city}</span>}
           </div>
-        )}
+          {insights && insights.tonightAuctions > 0 && (
+            <span className="bx-slim-hero-pill">
+              <span className="bx-slim-hero-pulse" />
+              {liveAuctions} live
+            </span>
+          )}
+        </div>
 
-        {step !== 1 && <StepBar step={step} />}
+        <StepBar step={step} />
 
         <div className={`transition-all duration-200 ${animating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}`}>
 

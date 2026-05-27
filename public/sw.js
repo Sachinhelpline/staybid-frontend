@@ -194,11 +194,23 @@ const CACHE_NAME = 'staybid-static-v2';
 // `.bx-page-wrap-climber` (no max-width, no padding); `.bgz-stage.
 // cmm-stage` desktop max-width 600/680/720 → none. Back chip z-index
 // 80 → 200 so it stays clickable above the fullscreen .bgz-stage
-// isolation context. Sachin: "background hi change ho gaya hai aur
-// ish ke accept ratio ko aishe create karo ki complete screen par
-// show ho ye na ki half screen aur yahan se back karne ka koi option
-// kaam nhi kar raha hai desktop par".
-const HTML_CACHE = 'staybid-html-v18';
+// isolation context.
+// v236 — bump v18 → v19. Two fixes. (1) Revert v235's chrome removal:
+// Sachin's feedback "full screen ka mtlb yeh nhi tha ki jab baar bhi
+// remove ho jaye ur na hi koi nav baar hai na hi koi scroll karne ke
+// liye scroller ya gesture button. Ek simple solution chahiye". Slim
+// hero + StepBar restored on Step 1 + climber back to centered
+// portrait card (widened 720/820/920 from v221's 600/680/720). Back
+// chip z-index 200 stays. (2) CRITICAL ghost-conflict fix in
+// /api/bids/place: findActiveBidOnHotel now also skips bids that are
+// past their per-status window (PENDING 1h-place/3h-negotiate/6h-cap,
+// COUNTER 60min, ACCEPTED-unpaid 15min) mirroring lib/bid-expiry.ts
+// + v193 server cron. Sachin: "Dhanaulti abhi bhi active bid show
+// kar raha hai jabki SS2 main clearly mention hai ki koi bhi active
+// bid show nhi ho rahi" — root cause: v193 cron delayed → bid stays
+// PENDING in DB → conflict check ghosts → /my-bids client filter
+// hides it → user trapped. v236 closes the gap client-side.
+const HTML_CACHE = 'staybid-html-v19';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
