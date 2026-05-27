@@ -7166,6 +7166,20 @@ body.is-reel-page {
   overflow-y: auto;
 }
 
+/* v240.2 — Mobile: no navbar room reservation.
+   The customer Navbar is `display: none !important` on mobile per v159.18
+   (`@media (max-width: 1023px) .nav3d-bar { display: none !important; }`).
+   With the navbar hidden, the v237 `top: 56px` was leaving a 56px cream
+   strip at the top of /bid (the `.bx-shell` page background showing
+   through above the portaled climber). Sachin: "upar header main dekho
+   mobile pe abhi bhi yeh blank space show ho Raha hai cream colour ka
+   ... desktop laptop par change mat krna sirf mobile m problem hai yeh".
+   Mobile gets `top: 0` so the climber goes fully edge-to-edge. Desktop
+   (≥1024px) keeps `top: 56px` so the navbar stays above unchanged. */
+@media (max-width: 1023px) {
+  .bgz-shell { top: 0; }
+}
+
 /* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via
    touch; desktop users need a visible affordance OR they can't tell the
    surface is scrollable. Sachin: "laptop ya destop par scroll baar ya
