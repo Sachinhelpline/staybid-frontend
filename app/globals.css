@@ -3604,7 +3604,31 @@ body.is-reel-page {
   animation: hx-pulse-soft 1.4s ease-in-out infinite;
   flex-shrink: 0;
 }
-.bx-live-list { display: flex; flex-direction: column; gap: 8px; }
+.bx-live-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* v238 — Cap the live-responses list height so the Review Bid modal
+     doesn't grow past the viewport. Desktop gets a visible scrollbar
+     (see .bgz-shell scrollbar block above) so users can SEE the list
+     is scrollable. The .sb-desktop-scroll class wires the same
+     scrollbar treatment. Mobile auto-hides naturally per touch UX. */
+  max-height: min(56dvh, 480px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+@media (min-width: 1024px) {
+  .bx-live-list { padding-right: 8px; }
+  .bx-live-list::-webkit-scrollbar { width: 10px; }
+  .bx-live-list::-webkit-scrollbar-track { background: rgba(31, 26, 15, 0.08); border-radius: 5px; }
+  .bx-live-list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--cozy-champagne, #C9A66B), var(--cozy-cocoa, #4A3820));
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .bx-live-list { scrollbar-width: thin; scrollbar-color: var(--cozy-champagne, #C9A66B) rgba(31, 26, 15, 0.08); }
+}
 .bx-live-card {
   background: var(--bg-card);
   border: 1px solid var(--border-soft);
@@ -4222,7 +4246,13 @@ body.is-reel-page {
     rgba(212, 149, 131, 0.55)
   );
   border-radius: 999px;
-  transform: scaleX(0);
+  /* v238.1 — Fill to target width by default. v238 removed
+     `.hx-reveal-io` from the OTA wrapper so the bars would stay at
+     scaleX(0) forever (`.is-visible` was never being added by the IO
+     observer because the wrapper class was gone). Filling on mount
+     keeps the comparison readable; the legacy `.is-visible` fill rule
+     below stays as a defensive idempotent. */
+  transform: scaleX(var(--bar-fill, 1));
   transform-origin: left center;
   transition: transform 0.9s cubic-bezier(.22, 1, .36, 1);
 }
@@ -7121,7 +7151,9 @@ body.is-reel-page {
      Sachin: "full screen ka matlb yeh bhi tha ki nav baar bhi rakhna
      na ki hide ho jaye". `top: 56px` carves out room for the sticky
      Navbar (its body height per `.nav3d-bar > div { height: 56px }`).
-     The Navbar's z-index (200 via v237 bump) keeps it above the shell. */
+     The Navbar's z-index (1100 via v237 bump) keeps it above the shell.
+     v238 — overflow-y: auto so the climber + boot screen become
+     scrollable on desktop when content exceeds viewport. */
   position: fixed;
   top: 56px;
   left: 0;
@@ -7130,7 +7162,46 @@ body.is-reel-page {
   z-index: 1000;
   width: 100%;
   isolation: isolate;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* v238 — Desktop-only ALWAYS-VISIBLE scrollbar. Mobile users scroll via
+   touch; desktop users need a visible affordance OR they can't tell the
+   surface is scrollable. Sachin: "laptop ya destop par scroll baar ya
+   fir navigation gesture se hi karega na toh ko premium lage destop ur
+   laptop par wo option add kardo sirf un screen ke liye jinko scroll
+   karne ki jarurt ho". Applies to /bid climber shell + any modal that
+   needs to scroll its content (`.sb-desktop-scroll` opt-in). */
+@media (min-width: 1024px) {
+  .bgz-shell::-webkit-scrollbar,
+  .sb-desktop-scroll::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  .bgz-shell::-webkit-scrollbar-track,
+  .sb-desktop-scroll::-webkit-scrollbar-track {
+    background: rgba(31, 26, 15, 0.08);
+    border-radius: 6px;
+  }
+  .bgz-shell::-webkit-scrollbar-thumb,
+  .sb-desktop-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--cozy-champagne, #C9A66B), var(--cozy-cocoa, #4A3820));
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .bgz-shell::-webkit-scrollbar-thumb:hover,
+  .sb-desktop-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--cozy-champagne-light, #D9BE82), var(--cozy-cocoa-soft, #6E5430));
+    background-clip: padding-box;
+  }
+  /* Firefox */
+  .bgz-shell,
+  .sb-desktop-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cozy-champagne, #C9A66B) rgba(31, 26, 15, 0.08);
+  }
 }
 
 /* ── PHASE 1 — Boot screen ─────────────────────────────────────────── */

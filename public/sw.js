@@ -220,7 +220,20 @@ const CACHE_NAME = 'staybid-static-v2';
 // tha jish se confused ho raha tha ki ab ish page se dushre page pe
 // kaishe jayege. Full screen ka matlb yeh bhi tha ki nav baar bhi
 // rakhna".
-const HTML_CACHE = 'staybid-html-v20';
+// v238 — bump v20 → v21. Three fixes: (1) OTA comparison block on
+// /hotels/[id] room cards was invisible because .hx-reveal-io
+// stayed at opacity:0 — the IO observer only re-runs on hotel.id
+// + tab change, but the OTA block mounts later (after datesSelected
+// becomes true) and was never observed. Removed .hx-reveal-io from
+// both the OTA block AND the Available Rooms wrapper. Sachin's SS3/
+// SS4 blank space between chips + Pay CTA now shows the OTA bars.
+// (2) /bid climber shell gets ALWAYS-VISIBLE scrollbar on desktop
+// (≥1024px). Mobile keeps touch-scroll. Sachin: "laptop ya destop
+// par scroll baar ya fir navigation gesture se hi karega na toh
+// ko premium lage". (3) Review Bid modal's live-responses list gets
+// capped height + visible scrollbar so multiple hotel responses
+// scroll WITHIN the modal instead of blowing past viewport.
+const HTML_CACHE = 'staybid-html-v21';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
