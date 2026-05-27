@@ -1425,6 +1425,33 @@ export default function PartnerDashboard() {
                           <div>
                             <p className="font-semibold text-luxury-900">{b.guestName || `Guest …${String(b.customerId||"").slice(-4)}`}</p>
                             <p className="text-xs text-luxury-400">{b.room?.type || "Room"} · {b.guests || 2} guests · {nights} night{nights>1?"s":""}</p>
+                            {/* v239 — Bid ID chip + copy-to-clipboard so the
+                                hotel can correlate a card with the admin
+                                panel + DB row. Sachin: "hotel pe auto
+                                accepted show ho raha hai wahan bid id show
+                                nhi ho rahi". Last-6 suffix is the CUID
+                                random portion (visually distinct per row).
+                                Tap → copies the full id; visual ✓ flash
+                                via aria-live for screen readers. */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                try {
+                                  navigator.clipboard.writeText(b.id);
+                                  const t = e.currentTarget;
+                                  const orig = t.dataset.orig || t.textContent || "";
+                                  if (!t.dataset.orig) t.dataset.orig = orig;
+                                  t.textContent = "✓ Copied";
+                                  setTimeout(() => { t.textContent = t.dataset.orig || orig; }, 1200);
+                                } catch {}
+                              }}
+                              title={`Bid ID: ${b.id} (tap to copy)`}
+                              className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
+                            >
+                              <span aria-hidden="true">📋</span>
+                              <span>BID-…{String(b.id || "").slice(-6)}</span>
+                            </button>
                             <div className="mt-1">
                               <SourceBadge source={b.source} creatorHandle={b.creatorHandle} />
                             </div>

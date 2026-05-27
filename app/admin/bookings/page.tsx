@@ -56,8 +56,29 @@ export default function AdminBookings() {
     // timestamp-derived prefix (`bid_mpn0/1/2/q…`), so the first 8 chars
     // looked identical across 10+ adjacent rows (Sachin: "BID-bid_mpn0,
     // BID-bid_mpn1, BID-bid_mpn2 same dikh rahe"). Last 6 chars are the
-    // random suffix and are visually distinguishable.
-    { key: "id", label: "Bid ID", render: (b: any) => <code style={{ color: "#8A8FA8", fontSize: 12 }} title={b.id}>BID-…{b.id?.slice(-6)}</code> },
+    // random suffix and are visually distinguishable. Tap-to-copy puts
+    // the FULL id on the clipboard so admins can paste into Supabase
+    // queries; title attribute alone was useless on touch devices.
+    { key: "id", label: "Bid ID", render: (b: any) => (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          try {
+            navigator.clipboard.writeText(b.id);
+            const t = e.currentTarget;
+            const orig = t.dataset.orig || t.textContent || "";
+            if (!t.dataset.orig) t.dataset.orig = orig;
+            t.textContent = "✓ Copied";
+            setTimeout(() => { t.textContent = t.dataset.orig || orig; }, 1200);
+          } catch {}
+        }}
+        title={`Bid ID: ${b.id} (tap to copy)`}
+        style={{ background: "transparent", border: "none", color: "#8A8FA8", fontSize: 12, fontFamily: "monospace", cursor: "pointer", padding: 0 }}
+      >
+        BID-…{b.id?.slice(-6)}
+      </button>
+    ) },
     { key: "hotelName", label: "Hotel", render: (b: any) => <span>{b.hotelName} <span style={{ color: "#8A8FA8", fontSize: 11 }}>· {b.hotelCity}</span></span> },
     {
       key: "checkIn",
@@ -274,8 +295,22 @@ function BidTimelineModal({ bid, onClose }: { bid: any; onClose: () => void }) {
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 28, width: "100%", maxWidth: 640, maxHeight: "90vh", overflow: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            {/* v239 — Same first-8-chars-collide issue as the list column. Show last 6. Full id in the title attribute for copy-on-hover. */}
-            <h2 style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", margin: "0 0 4px" }} title={bid.id}>BID-…{bid.id?.slice(-6)}</h2>
+            {/* v239 — Same first-8-chars-collide issue as the list column. Show last 6 with tap-to-copy full id. */}
+            <h2
+              onClick={(e) => {
+                e.stopPropagation();
+                try {
+                  navigator.clipboard.writeText(bid.id);
+                  const t = e.currentTarget;
+                  const orig = t.dataset.orig || t.textContent || "";
+                  if (!t.dataset.orig) t.dataset.orig = orig;
+                  t.textContent = "✓ Copied";
+                  setTimeout(() => { t.textContent = t.dataset.orig || orig; }, 1200);
+                } catch {}
+              }}
+              title={`Bid ID: ${bid.id} (tap to copy)`}
+              style={{ fontFamily: "Syne, sans-serif", color: "#E8EAF0", margin: "0 0 4px", cursor: "pointer" }}
+            >BID-…{bid.id?.slice(-6)}</h2>
             <div style={{ color: "#8A8FA8", fontSize: 13 }}>{bid.hotelName} · {bid.hotelCity}</div>
           </div>
           <span
