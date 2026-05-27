@@ -210,7 +210,17 @@ const CACHE_NAME = 'staybid-static-v2';
 // bid show nhi ho rahi" — root cause: v193 cron delayed → bid stays
 // PENDING in DB → conflict check ghosts → /my-bids client filter
 // hides it → user trapped. v236 closes the gap client-side.
-const HTML_CACHE = 'staybid-html-v19';
+// v237 — bump v19 → v20. /bid desktop chrome rewrite #3 (v235 fullscreen
+// hid navbar, v236 constrained climber broke fullscreen, v237 lands the
+// real ask): climber + boot screen render edge-to-edge BELOW the Navbar.
+// .bgz-shell `top: 0` → `top: 56px` carves out Navbar room. Navbar
+// z-50 → z-1100. .bgz-stage.cmm-stage desktop max-width restored to
+// `none`. Back chip z-200 → z-1200 stays above everything. Sachin:
+// "yeh mobile ki traha full screen ho raha tha nav baar hide ho raha
+// tha jish se confused ho raha tha ki ab ish page se dushre page pe
+// kaishe jayege. Full screen ka matlb yeh bhi tha ki nav baar bhi
+// rakhna".
+const HTML_CACHE = 'staybid-html-v20';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
