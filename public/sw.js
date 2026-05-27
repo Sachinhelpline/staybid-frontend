@@ -169,7 +169,14 @@ const CACHE_NAME = 'staybid-static-v2';
 // unpaid + COUNTER + PENDING bids drop off the customer's views the
 // moment they cross their per-status window — no waiting for the
 // 15-min mark_orphaned_accepted_bids cron to catch up.
-const HTML_CACHE = 'staybid-html-v15';
+// v233 — bump v15 → v16. Surgical fix on top of v232's /my-bids
+// filter. The full filterActiveBids() rule set included a hard
+// IST-midnight cutoff that hid FRESH PENDING bids when the customer
+// crossed midnight (Sachin: "bid launch hone ke baad place bid section
+// empty show kar raha hai"). Replaced with a 15-min ACCEPTED-unpaid
+// gate — the only case v232 actually needed. PENDING/COUNTER bids
+// always stay visible until the DB cron flips them to EXPIRED.
+const HTML_CACHE = 'staybid-html-v16';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -17,7 +17,6 @@ import UpdateBudgetInline from "@/components/UpdateBudgetInline";
 import { notify } from "@/lib/notifications";
 import { isSeen, markSeen } from "@/lib/notifications";
 import { clearWindow as clearAcceptWindow, hydrateAcceptanceWindowsFromServer } from "@/lib/auto-cancel";
-import { filterActiveBids } from "@/lib/bid-expiry";
 import { CountUp } from "@/components/CountUp";
 // v129 — counter amounts snap to ₹100 multiples (same source of truth as the
 // Negotiate slider + partner counter slider). Hotels can ONLY bundle perks
@@ -609,16 +608,28 @@ function MyBidsPageInner() {
   // again if needed (deferred).
   const HIDE_TERMINAL = new Set(["EXPIRED", "CANCELLED"]);
 
-  // v231 — Drop visually-stale bids on top of HIDE_TERMINAL. The DB row
-  // for an ACCEPTED-unpaid bid only flips to EXPIRED when the
-  // mark_orphaned_accepted_bids cron next runs — meanwhile the customer
-  // saw an 8-day-old "Hotel accepted · 12:43 to pay" timer that was a
-  // visual fiction (cron will close it but the view shouldn't wait for
-  // it). filterActiveBids encodes the per-status windows from
-  // lib/bid-expiry.ts (15 min for ACCEPTED-unpaid, 60 min COUNTER, 1-3 h
-  // PENDING, 30 min REJECTED, IST-midnight hard cutoff). Apply it
-  // BEFORE the tab/status filters so all counts stay in sync.
-  const liveBids = useMemo(() => filterActiveBids(bids), [bids]);
+  // v231/v233 — Surgical filter: only hide ACCEPTED-unpaid bids past
+  // their 15-min acceptance window. v232 had used the full
+  // `filterActiveBids` (lib/bid-expiry.ts), but that filter also
+  // includes a hard IST-midnight cutoff that hid FRESH PENDING bids
+  // when the customer crossed midnight (Sachin's report: "bid launch
+  // hone ke baad place bid section empty show kar raha hai"). The
+  // SS2 case we needed to fix was specifically the 8-day-old
+  // ACCEPTED-unpaid bid still showing "12:43 to pay" — and the DB
+  // cron `mark_orphaned_accepted_bids` already handles PENDING/COUNTER
+  // staleness server-side. Keep this filter scoped to just the case
+  // the v232 fix needed.
+  const ACCEPTED_WINDOW_MS = 15 * 60 * 1000;
+  const liveBids = useMemo(() => bids.filter((b) => {
+    if (b.status === "ACCEPTED" && !isPaid(b)) {
+      const accAt = b.acceptedAt || b.updatedAt || b.createdAt;
+      if (!accAt) return true;
+      const t = new Date(accAt).getTime();
+      if (Number.isNaN(t)) return true;
+      return Date.now() <= t + ACCEPTED_WINDOW_MS;
+    }
+    return true;
+  }), [bids]);
 
   // v180 — split by flow first, then by status filter.
   // v230 — Place Bid / Negotiate tab counts ALSO exclude HIDE_TERMINAL so
