@@ -214,7 +214,9 @@ export async function resolveUserIds(
   const emailCandidates = new Set<string>();
   if (userEmail && /@/.test(userEmail)) emailCandidates.add(userEmail.toLowerCase());
   if (jwtEmail  && /@/.test(jwtEmail))  emailCandidates.add(jwtEmail.toLowerCase());
-  for (const email of emailCandidates) {
+  // Array.from() iterator — v94-era trap: `for (const x of someSet)` fails
+  // Vercel's strict TS build (tsconfig lacks downlevelIteration).
+  for (const email of Array.from(emailCandidates)) {
     try {
       const r = await fetch(`${SB_URL}/rest/v1/users?email=ilike.${encodeURIComponent(email)}&select=id`, { headers: SB_H });
       const arr = await r.json();
