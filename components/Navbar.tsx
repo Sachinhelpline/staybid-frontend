@@ -21,7 +21,12 @@ const NAV_LINKS = [
   // "Reels" is just the content type — rename to "Discover" so the chip
   // describes what the user *does* with it (browse hotel reels).
   { href: "/reels",       label: "Discover",    icon: "🎬" },
-  { href: "/bid",         label: "Place Bid",   icon: "🎯" },
+  // v234 — was "Place Bid"; renamed to "Bid" so the desktop top nav matches
+  // the mobile bottom dock (BOTTOM_PRIMARY) + the mobile drawer (USER_LINKS).
+  // Sachin: "mobile par yeh page bid naam se show hota hai ur desktop par
+  // place bid ke naam se" — same /bid route, single canonical label so the
+  // customer never wonders if it's two different pages.
+  { href: "/bid",         label: "Bid",         icon: "🎯" },
 ];
 
 // v108 — Creator + Partner chips filtered per-tier inside the component.

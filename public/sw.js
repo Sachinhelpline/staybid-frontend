@@ -176,7 +176,20 @@ const CACHE_NAME = 'staybid-static-v2';
 // empty show kar raha hai"). Replaced with a 15-min ACCEPTED-unpaid
 // gate — the only case v232 actually needed. PENDING/COUNTER bids
 // always stay visible until the DB cron flips them to EXPIRED.
-const HTML_CACHE = 'staybid-html-v16';
+// v234 — bump v16 → v17. Three fixes ship together: (1) Broader
+// /my-bids stale-bid filter covering PENDING + COUNTER + REJECTED via
+// per-status windows but WITHOUT the IST-midnight cutoff that bit v232
+// (Sachin: "ek bid pending reh gyi hai" — 32-day-old PENDING row stuck
+// visible because v233 only handled ACCEPTED-unpaid). 30-min fresh-grace
+// shields just-launched bids from any clock-skew false-positive. (2)
+// Place Bid detection now ALSO trusts the server's `flow` field when
+// echoed back from Railway, regex stays as fallback for legacy rows.
+// (3) Desktop top-nav rename "Place Bid" → "Bid" so it matches the
+// mobile bottom dock + drawer label (Sachin: "mobile par yeh page bid
+// naam se show hota hai ur desktop par place bid ke naam se kahi ish
+// wajha se toh problem nhi aa rahi"). Same /bid route, single canonical
+// label.
+const HTML_CACHE = 'staybid-html-v17';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

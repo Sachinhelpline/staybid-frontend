@@ -194,7 +194,21 @@ function MyBidsPageInner() {
           // booking listing. The kept `_isFlash` marker is informational
           // only (used for the "⚡ Flash Deal" pill on cards).
           const msg = String(b.message || "");
-          const isPlaceBid = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
+          // v234 — broaden Place Bid detection. Was message-regex-only; now
+          // ALSO trusts the server's `flow` field when present (place vs
+          // negotiate is stamped at /api/bids/place time on Railway). The
+          // regex stays as a fallback for legacy rows that pre-date the
+          // flow column being echoed back in /api/bids/my. Sachin: "bid
+          // launch ho rahi hai lakin my bid section place bid abhi bhi
+          // data show nhi kar raha" — if Railway stops echoing the exact
+          // message string (or strips it for length), the regex misses
+          // and the row falls into Negotiate. Server-authoritative flow
+          // catches that case.
+          const flow = String(b.flow || b._flow || "").toLowerCase();
+          const isPlaceBid =
+            flow === "place" ||
+            /\bGuest bid\b/i.test(msg) ||
+            /max ₹/i.test(msg);
           let isFlash = !!(b.dealId || b.deal_id);
           if (!isFlash) {
             try { isFlash = !!localStorage.getItem(`deal_price_${b.id}`); } catch {}
@@ -608,26 +622,92 @@ function MyBidsPageInner() {
   // again if needed (deferred).
   const HIDE_TERMINAL = new Set(["EXPIRED", "CANCELLED"]);
 
-  // v231/v233 — Surgical filter: only hide ACCEPTED-unpaid bids past
-  // their 15-min acceptance window. v232 had used the full
-  // `filterActiveBids` (lib/bid-expiry.ts), but that filter also
-  // includes a hard IST-midnight cutoff that hid FRESH PENDING bids
-  // when the customer crossed midnight (Sachin's report: "bid launch
-  // hone ke baad place bid section empty show kar raha hai"). The
-  // SS2 case we needed to fix was specifically the 8-day-old
-  // ACCEPTED-unpaid bid still showing "12:43 to pay" — and the DB
-  // cron `mark_orphaned_accepted_bids` already handles PENDING/COUNTER
-  // staleness server-side. Keep this filter scoped to just the case
-  // the v232 fix needed.
-  const ACCEPTED_WINDOW_MS = 15 * 60 * 1000;
+  // v234 — Stale-bid filter (replaces v233's ACCEPTED-only surgical cut).
+  //
+  //   v232 had used the full `filterActiveBids` from lib/bid-expiry.ts, but
+  //   that helper's hard IST-midnight cutoff hid FRESH PENDING bids when
+  //   the customer crossed midnight (Sachin: "bid launch ke baad place bid
+  //   section empty"). v233 over-corrected by only filtering ACCEPTED-unpaid
+  //   past 15 min — leaving 32-day-old PENDING bids in the Negotiate tab
+  //   forever (Sachin: "sab kuch clean karne ke baad bhi ek bid pending
+  //   reh gyi hai"). v234 lands the middle ground.
+  //
+  // Rules per status (NO IST-midnight cutoff — that was the v232 trap):
+  //   • PENDING (Place / reverse-auction) → 1h via b.expiresAt or message
+  //   • PENDING (Negotiate / single-hotel) → 3h likewise
+  //   • PENDING with auto_accept_at → expires 15 min after scheduled accept
+  //   • PENDING hard cap → 6h (matches v193 server cron mark_stale_pending_bids)
+  //   • COUNTER → 60 min after the hotel posted (matches lib/bid-expiry)
+  //   • REJECTED → 30 min after decline
+  //   • ACCEPTED + paid → never (real booking)
+  //   • ACCEPTED + unpaid → 15 min after acceptedAt (v233 contract preserved)
+  //   • CHECKED_IN / CHECKED_OUT → never (in-flight / completed stay)
+  //
+  // Defensive 30-min grace for FRESH bids: any row whose createdAt is in
+  // the last 30 minutes is NEVER hidden, regardless of status math. This
+  // is the v233-fresh-pending guarantee — a /bid auction that fires at
+  // 23:55 IST + lands the user on /my-bids at 00:01 IST will ALWAYS show
+  // the new card, even if some other timestamp got skewed. Stops the
+  // "Place Bid empty after launch" feedback cycle from recurring.
+  const FRESH_GRACE_MS = 30 * 60 * 1000;
+  const MIN = 60_000;
+  const HOUR = 60 * MIN;
   const liveBids = useMemo(() => bids.filter((b) => {
-    if (b.status === "ACCEPTED" && !isPaid(b)) {
-      const accAt = b.acceptedAt || b.updatedAt || b.createdAt;
-      if (!accAt) return true;
-      const t = new Date(accAt).getTime();
-      if (Number.isNaN(t)) return true;
-      return Date.now() <= t + ACCEPTED_WINDOW_MS;
+    const now = Date.now();
+    const paid = isPaid(b);
+    const status = String(b?.status || "").toUpperCase();
+
+    // Confirmed bookings + in-flight stays never drop off this view.
+    if (status === "ACCEPTED" && paid) return true;
+    if (status === "CONFIRMED" && paid) return true;
+    if (status === "CHECKED_IN" || status === "CHECKED_OUT") return true;
+
+    // Fresh-bid grace: any row created in the last 30 min stays visible.
+    // Guards against clock skew and the v232 "fresh place bid disappears
+    // after IST midnight" regression by NOT depending on a wall-clock
+    // calendar cutoff.
+    const created = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (created && now - created < FRESH_GRACE_MS) return true;
+
+    // Per-status windows.
+    if (status === "REJECTED") {
+      const decided = b?.updatedAt ? new Date(b.updatedAt).getTime() : created;
+      return now <= decided + 30 * MIN;
     }
+    if (status === "ACCEPTED" && !paid) {
+      const acc = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
+                : b?.updatedAt  ? new Date(b.updatedAt).getTime()
+                : created;
+      return now <= acc + 15 * MIN;
+    }
+    if (status === "COUNTER") {
+      const countered = b?.updatedAt ? new Date(b.updatedAt).getTime() : created;
+      return now <= countered + 60 * MIN;
+    }
+    if (status === "PENDING") {
+      // Above-floor scheduled (Phase 6 auto-accept lifecycle): 15-min
+      // grace past the scheduled accept moment.
+      if (b?.auto_accept_at) {
+        const t = new Date(b.auto_accept_at).getTime();
+        if (!Number.isNaN(t)) return now <= t + 15 * MIN;
+      }
+      // Backend-stamped expiry (server is authoritative).
+      if (b?.expiresAt) {
+        const t = new Date(b.expiresAt).getTime();
+        if (!Number.isNaN(t)) return now <= t;
+      }
+      // Legacy rows w/o expiresAt — derive per-flow window from the
+      // detected flow (b._isPlaceBid was just stamped above in fetchBids).
+      // Cap absolutely at 6h regardless (matches v193 server cron).
+      if (!created) return true;
+      const age = now - created;
+      const isPlaceFlow = !!b?._isPlaceBid;
+      const flowCap = isPlaceFlow ? 1 * HOUR : 3 * HOUR;
+      return age <= Math.min(flowCap, 6 * HOUR);
+    }
+
+    // Unknown / transitional statuses → keep visible (UI surfaces what
+    // little it can, customer can decide). Server cleanup catches them.
     return true;
   }), [bids]);
 
