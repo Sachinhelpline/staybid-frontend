@@ -1389,7 +1389,14 @@ export default function PartnerDashboard() {
                     }`}>
                     {f === "ALL" ? "All" : f === "PENDING" ? "To Respond" : f.charAt(0)+f.slice(1).toLowerCase()}
                     {f !== "ALL" && (
-                      <span className="ml-1 text-[0.6rem]">({bids.filter(b=>b.status===f).length})</span>
+                      // v239 — Use the stale-filtered set so the tab count
+                      // matches the rendered list. Pre-v239 the count read
+                      // raw `bids` (24) but the list rendered the
+                      // `activeBidsForInbox` filter (6) — Sachin saw
+                      // "Accepted (24)" with only 6 cards because 18
+                      // ACCEPTED-unpaid rows had crossed the 15-min payment
+                      // window and were dropped by filterActiveBids.
+                      <span className="ml-1 text-[0.6rem]">({activeBidsForInbox.filter(b=>b.status===f).length})</span>
                     )}
                   </button>
                 ))}
@@ -1418,6 +1425,33 @@ export default function PartnerDashboard() {
                           <div>
                             <p className="font-semibold text-luxury-900">{b.guestName || `Guest …${String(b.customerId||"").slice(-4)}`}</p>
                             <p className="text-xs text-luxury-400">{b.room?.type || "Room"} · {b.guests || 2} guests · {nights} night{nights>1?"s":""}</p>
+                            {/* v239 — Bid ID chip + copy-to-clipboard so the
+                                hotel can correlate a card with the admin
+                                panel + DB row. Sachin: "hotel pe auto
+                                accepted show ho raha hai wahan bid id show
+                                nhi ho rahi". Last-6 suffix is the CUID
+                                random portion (visually distinct per row).
+                                Tap → copies the full id; visual ✓ flash
+                                via aria-live for screen readers. */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                try {
+                                  navigator.clipboard.writeText(b.id);
+                                  const t = e.currentTarget;
+                                  const orig = t.dataset.orig || t.textContent || "";
+                                  if (!t.dataset.orig) t.dataset.orig = orig;
+                                  t.textContent = "✓ Copied";
+                                  setTimeout(() => { t.textContent = t.dataset.orig || orig; }, 1200);
+                                } catch {}
+                              }}
+                              title={`Bid ID: ${b.id} (tap to copy)`}
+                              className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
+                            >
+                              <span aria-hidden="true">📋</span>
+                              <span>BID-…{String(b.id || "").slice(-6)}</span>
+                            </button>
                             <div className="mt-1">
                               <SourceBadge source={b.source} creatorHandle={b.creatorHandle} />
                             </div>

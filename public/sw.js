@@ -233,7 +233,19 @@ const CACHE_NAME = 'staybid-static-v2';
 // ko premium lage". (3) Review Bid modal's live-responses list gets
 // capped height + visible scrollbar so multiple hotel responses
 // scroll WITHIN the modal instead of blowing past viewport.
-const HTML_CACHE = 'staybid-html-v21';
+// v239 — bump v21 → v22. Two surface-bug fixes Sachin caught on the
+// staybids.in admin + partner panels: (1) Admin /admin/bookings was
+// rendering the Bid ID column as `BID-{id.slice(0,8)}`. CUIDs share
+// a timestamp-derived 8-char prefix (`bid_mpn0/1/2/q…`), so 10+
+// adjacent rows looked identical. Switched to last-6 suffix
+// (`BID-…xxxxxx`) which is the random portion — visually distinct
+// per row. Full id kept in title attribute. Same fix applied to the
+// detail-modal heading. (2) Partner /partner/dashboard Bid Inbox
+// "Accepted (24)" tab counted raw bids while the list rendered the
+// stale-filtered set — 24 ACCEPTED in DB but only 6 within the
+// 15-min unpaid window. Tab now counts activeBidsForInbox so
+// count = list rows. Cache bump forces fresh HTML on next visit.
+const HTML_CACHE = 'staybid-html-v22';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
