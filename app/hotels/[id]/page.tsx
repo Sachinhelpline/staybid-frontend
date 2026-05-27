@@ -2848,8 +2848,14 @@ export default function HotelDetail() {
           )}
         </div>
 
-        {/* ── Available Rooms — v123 premium · v133 IO scroll-reveal ── */}
-        <div className="hx-reveal-io" style={{ marginTop: "8px" }}>
+        {/* ── Available Rooms — v123 premium ──
+            v238 — Removed `.hx-reveal-io` defensively. Same root cause
+            as the OTA block fix: the IO observer at line 613 only
+            re-runs on hotel.id + tab change, so children mounted later
+            (e.g., when dates picker triggers re-renders) miss the
+            observation cycle and stay opacity:0. The room list is way
+            too important to gate on a fragile animation hook. */}
+        <div style={{ marginTop: "8px" }}>
           <div className="hx-section-h">
             <span className="hx-section-h-label">Available Rooms</span>
             <span className="hx-section-h-rule" />
@@ -3588,12 +3594,21 @@ export default function HotelDetail() {
                               v231 — gated on otaSaving > 0 so when StayBid is
                               NOT cheaper than every competitor, the whole block
                               disappears cleanly (no empty space) instead of
-                              rendering a comparison that makes us look worse. */}
+                              rendering a comparison that makes us look worse.
+                              v238 — Removed `.hx-reveal-io` from this block.
+                              Root cause of "blank space between chips and Pay
+                              CTA" in Sachin's SS3/SS4: the block mounts AFTER
+                              user picks dates (datesSelected branch), but the
+                              IO observer at line 613 only re-runs on hotel.id
+                              + tab change. Freshly-mounted .hx-reveal-io
+                              children were never observed → stayed at
+                              opacity:0; transform:translateY(28px) → looked
+                              like a gaping blank space below the chips. */}
                           {otaSaving > 0 && (() => {
                             const maxPrice = Math.max(livePrice, ...otas.map(o => o.price));
                             const fillFor = (p: number) => maxPrice > 0 ? p / maxPrice : 1;
                             return (
-                              <div className="hx-ota hx-reveal-io">
+                              <div className="hx-ota">
                                 <p className="hx-ota-h">Live market comparison</p>
                                 {otas.map(o => (
                                   <div key={o.name} className="hx-ota-row">
