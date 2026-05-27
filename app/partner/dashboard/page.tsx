@@ -1389,7 +1389,14 @@ export default function PartnerDashboard() {
                     }`}>
                     {f === "ALL" ? "All" : f === "PENDING" ? "To Respond" : f.charAt(0)+f.slice(1).toLowerCase()}
                     {f !== "ALL" && (
-                      <span className="ml-1 text-[0.6rem]">({bids.filter(b=>b.status===f).length})</span>
+                      // v239 — Use the stale-filtered set so the tab count
+                      // matches the rendered list. Pre-v239 the count read
+                      // raw `bids` (24) but the list rendered the
+                      // `activeBidsForInbox` filter (6) — Sachin saw
+                      // "Accepted (24)" with only 6 cards because 18
+                      // ACCEPTED-unpaid rows had crossed the 15-min payment
+                      // window and were dropped by filterActiveBids.
+                      <span className="ml-1 text-[0.6rem]">({activeBidsForInbox.filter(b=>b.status===f).length})</span>
                     )}
                   </button>
                 ))}
