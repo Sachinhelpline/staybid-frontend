@@ -8001,3 +8001,159 @@ app/layout.tsx                        # SB_BUILD v241.3 → v241.9 + badge bumps
   - InspirationBanner on BookingReview success modal (different
     placement from v241.6 — current banner is on auto-accept
     success only, not the BookingReview-confirmed booking path).
+
+---
+
+## Mobile-Chrome + Multi-Room Hardening Era (v241.10 → v241.16, 2026-05-28)
+
+Same-day follow-up after the v241.4–v241.9 era. A run of mobile-device
+bug reports (gesture nav, camera notch, multi-room bid display) plus a
+toolchain maintenance pass. Several of these went through a
+ship → customer-feedback → refine → in some cases revert loop, so the
+branch lineage below is the source of truth, not the intermediate PRs.
+
+### v241.10 → v241.13 — mobile chrome attempts (REVERTED)
+
+Four PRs shipped then **reverted wholesale** (PR #165) back to the v241.9
+baseline after customer testing showed they caused worse regressions
+than they fixed:
+
+- **v241.10** (#161) — BottomDock lifted by `env(safe-area-inset-bottom)`
+  + reel `touch-action: pan-x pan-y` → `pan-y` (Android gesture unblock).
+- **v241.11** (#162) — reverted v241.10's dock lift (left an ugly bare
+  page-bg strip exposing the Android home pill).
+- **v241.12** (#163) — /bid back chip restored (z 62→1200) + boot
+  screen notch clearance.
+- **v241.13** (#164) — theme-color → media-query (light cream / dark
+  cocoa) + manifest theme_color cream.
+
+**Why reverted:** customer reported the gesture/notch changes altered
+the phone's default navigation behaviour + exposed the home pill. The
+safest call was a full rollback to v241.9, then re-approach. PR #165
+reverted #161–#164 in one shot — `git diff <v241.9-doc-commit> HEAD`
+was empty after the revert (byte-identical baseline confirmed).
+
+### v241.14 — multi-room bid bulletproof (#166) ✅ LIVE
+
+Five structural fixes (not patches) for the multi-room bid pipeline
+introduced in v241/v241.2:
+
+1. **Hotel-page "Your offers" card** now shows multi-room total, not
+   just per-room rate. `app/hotels/[id]/page.tsx` — computes
+   `offerNumRooms` (from `b.numRooms || b.request.numRoomsRequested`)
+   + `offerNights`, surfaces "₹X /room/night · ₹Y total (N × Mn)" on
+   the bid line, the Accepted line, AND the Pay Now CTA.
+2. **/bid wizard state persistence** — `app/bid/page.tsx` persists
+   `{step, success, form}` to sessionStorage (key `sb_bid_session_v1`,
+   30-min TTL) via lazy `useState` initializers. Customer who taps a
+   hotel from the Review-Bid sheet → /hotels/[id] → back now lands on
+   the EXACT step with the sheet re-opened. Cleared on Pay handoff
+   (`onGrab`) + Track All Bids.
+3. **Hotel-page rooms counter pre-fill** — new effect mirrors active
+   bid's numRooms into `globalNumRooms` when it's still at default 1.
+4. **Upgrade-room CTA delta** — fallback chain for missing DB prices.
+5. **Symmetric guests↔rooms auto-fit** — `app/bid/page.tsx` autoFit
+   effect now tracks `max(1, min(10, cappedMinRooms))` BOTH directions
+   (was up-only). Toggle autoFit OFF for manual room override.
+
+### v241.15 — offer-filter desync + upgrade fallback (#167) ✅ LIVE
+
+Two fixes:
+1. **Hotel-page "Your offers" uses `filterActiveBids`** (from
+   `lib/bid-expiry`) before the status filter — same source of truth
+   as /my-bids `liveBids`. Pre-fix the hotel page used a status-only
+   filter that kept ACCEPTED-but-payment-window-EXPIRED bids visible
+   while /my-bids hid them → customer saw "2 accepted" on hotel page
+   but "Place Bid (0)" on /my-bids. Now both agree.
+2. **Upgrade-CTA delta fallback extended** to the AI live price:
+   `floorPrice → basePrice → price → roomPrices[r.id].price → 0`.
+   Production rooms routinely have null floor/base/price DB columns
+   but render a live AI price on the card — the upgrade chip now
+   fires whenever ANY visible price > anchor bid amount.
+
+### v241.16 — doc + dependency maintenance (this PR)
+
+- **CLAUDE.md** — this era doc (v241.10 → v241.16) appended.
+- **`npm audit fix`** — resolved 5/8 vulnerabilities (8 → 3). The
+  remaining 3 (postcss XSS + ws, both transitive via Next's bundled
+  deps) require `npm audit fix --force` which would DOWNGRADE Next to
+  9.3.3 — catastrophic. Left in place; only a Next major bump (the
+  deferred "D" task) clears them.
+- **Patch-level dep bumps:** @supabase/supabase-js 2.105→2.106,
+  nanoid 5.1.9→5.1.11, react-is 19.2.5→19.2.6, autoprefixer
+  10.4→10.5, @types/node 20.x, @types/react 18.3.x. All within-major,
+  no behaviour change.
+
+### Branch lineage
+
+- v241.9 → tailwind-4-css-first-config (baseline after #165 revert)
+- ~~v241.10–v241.13~~ → REVERTED via #165
+- **v241.14** → multi-room-bulletproof (#166)
+- **v241.15** → hotel-page-offers-match-mybids-filter (#167)
+- **v241.16** → doc-and-dependency-maintenance (current)
+
+### Things to Avoid (v241.10 → v241.16 Era)
+
+- **Never** lift the BottomDock off `bottom: 0` to dodge the Android
+  gesture zone — it exposes the home pill over the page background
+  (v241.10 → v241.11 revert lesson). The dock's edge-to-edge bg IS
+  the design.
+- **Never** narrow reel `touch-action` to `pan-y` expecting it to fix
+  Android back-swipe without device testing — the v241.10 attempt
+  altered the phone's default nav behaviour and was reverted.
+- **Never** read multi-room bid totals from `b.amount` alone. Always
+  multiply by `numRooms` (`b.numRooms || b.request.numRoomsRequested`)
+  AND `nights`. The per-room rate is the auction unit; the total is
+  what's charged.
+- **Never** filter "active" bids on a customer surface with a
+  status-only check. Always run through `filterActiveBids`
+  (`lib/bid-expiry`) so expired-payment-window bids disappear
+  consistently across /my-bids + hotel page (v241.15 desync lesson).
+- **Never** gate the upgrade-room CTA on `r.floorPrice` alone —
+  production rooms often have null price columns. Use the full
+  fallback chain ending in the AI live price.
+- **Never** run `npm audit fix --force` on this repo — it downgrades
+  Next to 9.3.x. The 3 remaining advisories are Next-bundled
+  transitive deps; they clear only on a Next major bump.
+- **Never** make autoFit room-sync one-directional. Guests↑ AND
+  guests↓ must both re-derive rooms (v241.14 lesson).
+
+### Deferred — "D" task (Next 16 / React 19 / TS 6 major bumps)
+
+Intentionally NOT done this era — high blast radius, needs a dedicated
+codemod pass like v241.8's Next 14→15 migration. Clears the 3
+remaining npm-audit advisories as a side effect. See the
+`docs/NEXT-MAJOR-UPGRADE.md` runbook (added v241.16) for the
+copy-paste command sequence to run next session.
+
+---
+
+## Updated production state (v241.16, 2026-05-28)
+
+- **Current version:** v241.16 · branch
+  `claude/claude-md-v240-2-verify-bxtxa`
+- **Multi-room bid pipeline hardened** end-to-end: /bid wizard state
+  survives the hotel round-trip, hotel-page + /my-bids agree on
+  active-bid filtering, multi-room totals shown everywhere, upgrade
+  CTA fires on AI live price, symmetric guests↔rooms auto-fit.
+- **Mobile-chrome experiments rolled back** to v241.9 baseline
+  (gesture/notch changes caused worse regressions; re-approach later
+  with on-device testing).
+- **Dependencies:** 5 vulnerabilities cleared via `npm audit fix`;
+  3 Next-bundled transitive advisories deferred to the major bump.
+  Patch-level bumps applied across supabase/nanoid/react-is/
+  autoprefixer/types.
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner panel, admin panel,
+  reel-app surfaces, animation layer, service billing, cross-identity
+  resolver, reel-dedup v131.8 chain, v241.3 pending-intent layer.
+- **Service-worker** stable URL `/sw.js`, stable static + HTML caches
+  per v93 — no SW logic changed across the entire v241.10–v241.16 run.
+- **Carry-forward pending items:**
+  - Next 16 / React 19 / TS 6 major bump (the "D" task — runbook at
+    `docs/NEXT-MAJOR-UPGRADE.md`).
+  - Re-approach mobile gesture-nav + camera-notch chrome with
+    on-device testing (v241.10–v241.13 reverted).
+  - Customer notification on bid-conflict push (v228, blocked by
+    mobile OTP DLT approval).
+  - 9-hour bid expiry countdown stale-state validation (v240 era).
