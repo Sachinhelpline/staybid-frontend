@@ -713,6 +713,18 @@ function MyBidsPageInner() {
       return now <= decided + 30 * MIN;
     }
     if (status === "ACCEPTED" && !paid) {
+      // v241.17 — `expiresAt` is the single source of truth, matching the
+      // server's isBidStale conflict check. The bids table has NO
+      // acceptedAt/updatedAt columns, so the old fallback chain ALWAYS
+      // landed on createdAt → a partner-accepted place bid (accepted
+      // later than it was placed) was hidden at createdAt+15min while the
+      // server still considered it active (conflict fired on re-launch) →
+      // the recurring "Place Bid (0) but active-bid conflict" desync.
+      // Accept routes now stamp expiresAt = acceptTime + 15min (v241.17).
+      if (b?.expiresAt) {
+        const exp = new Date(b.expiresAt).getTime();
+        if (!Number.isNaN(exp)) return now <= exp;
+      }
       const acc = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
                 : b?.updatedAt  ? new Date(b.updatedAt).getTime()
                 : created;

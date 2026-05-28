@@ -34,10 +34,14 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Auto-accept window not reached yet" }, { status: 409 });
     }
 
-    // Flip to ACCEPTED
+    // Flip to ACCEPTED. v241.17 — stamp expiresAt = now + 15min so the
+    // payment window starts at acceptance and `expiresAt` is the single
+    // source of truth shared by the conflict check + /my-bids +
+    // lib/bid-expiry (kills the "Place Bid (0) but conflict fires"
+    // desync).
     const r = await fetch(
       `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&status=eq.PENDING&select=*`,
-      { method: "PATCH", headers: SB_H, body: JSON.stringify({ status: "ACCEPTED" }) }
+      { method: "PATCH", headers: SB_H, body: JSON.stringify({ status: "ACCEPTED", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() }) }
     );
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));

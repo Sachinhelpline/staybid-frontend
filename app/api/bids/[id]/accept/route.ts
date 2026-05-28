@@ -17,10 +17,17 @@ export async function POST(
   }
 
   try {
+    // v241.17 — stamp expiresAt = now + 15min so the 15-minute payment
+    // window starts at ACCEPTANCE, and so `expiresAt` is the single
+    // source of truth for "is this ACCEPTED-unpaid bid still active" —
+    // consumed identically by the server conflict check (isBidStale),
+    // /my-bids liveBids, and lib/bid-expiry. Without this the row kept
+    // its PENDING-era expiresAt, drifting the client (createdAt+15min)
+    // from the server (expiresAt) → "Place Bid (0) but conflict fires".
     const updated = await sbUpdate(
       "bids",
       `id=eq.${id}`,
-      { status: "ACCEPTED" }
+      { status: "ACCEPTED", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() }
     );
     return NextResponse.json({ bid: updated, accepted: true });
   } catch (e: any) {
