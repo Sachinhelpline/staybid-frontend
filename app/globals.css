@@ -7405,7 +7405,11 @@ layer(utilities);
 .bgz-boot-content {
   position: relative;
   z-index: 2;
-  padding: 14px 18px 24px 18px;
+  /* v241.12 — notch clearance. Boot screen background (.bgz-boot) keeps
+     edge-to-edge dark gradient (immersive look), but the content inside
+     now starts BELOW the OS camera cutout. Symmetric to v224's .bgz-stage
+     padding-top — the boot phase was missed in that pass. */
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px 24px 18px;
   max-width: 440px;
   width: 100%;
   margin: 0 auto;
@@ -7780,7 +7784,8 @@ layer(utilities);
 }
 
 @media (max-width: 380px) {
-  .bgz-boot-content { padding: 12px 14px 20px 14px; }
+  /* v241.12 — preserve notch clearance on small screens */
+  .bgz-boot-content { padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 20px 14px; }
   .bgz-boot-track-num { width: 20px; height: 20px; font-size: 0.78rem; }
   .bgz-boot-track-name { font-size: 0.58rem; }
   .bgz-boot-track-sub { font-size: 0.48rem; }

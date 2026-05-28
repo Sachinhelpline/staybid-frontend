@@ -28,7 +28,11 @@ export function BackChip() {
     pathname.startsWith("/me") ||
     pathname.startsWith("/saved/posts") ||   // v87: IG-style "All Posts" has its own ← header
     pathname.startsWith("/u/") ||            // v110: /u/[handle] + /u/[handle]/posts own their headers
-    pathname === "/bid" ||                   // v159.19: /bid has its own "‹ Auction Pit" toolbar back
+    // v241.12 — /bid back affordance restored. v159.19 had hidden the chip
+    // claiming /bid has its own "‹ Auction Pit" toolbar back — but that
+    // toolbar was never built. Result: /bid was a dead-end for back
+    // navigation. BackChip z-index raised to 1200 (above .bgz-shell:1000)
+    // so it sits above the BidGameZone fullscreen shell on mobile.
     pathname === "/hotels" ||                // v159.21: dock-tab page — bottom nav handles navigation
     pathname === "/flash-deals" ||           // v159.21: dock-tab page — bottom nav handles navigation
     pathname.startsWith("/admin") ||
@@ -68,7 +72,11 @@ export function BackChip() {
           position: fixed;
           top: calc(env(safe-area-inset-top, 0px) + 6px);
           left: 8px;
-          z-index: 62;
+          /* v241.12 — raised from 62 → 1200 so the back chip floats above
+             the BidGameZone fullscreen shell (.bgz-shell, z-index 1000)
+             on /bid. Stays below SupportWidget overlays (9998+) and the
+             global modal/composer hide rules below still apply. */
+          z-index: 1200;
           width: 30px;
           height: 30px;
           display: inline-flex;
@@ -101,6 +109,14 @@ export function BackChip() {
            overlap modal close button at top-left. */
         body.sb-modal-open .sb-back-chip,
         body.sb-composer-open .sb-back-chip { display: none !important; }
+        /* v241.12 — on /bid desktop, the dedicated .bx-desktop-back chip
+           already ships at the same top-left position. Hide the global
+           BackChip on desktop only for /bid so the two don't overlap.
+           Mobile (≤1023px) keeps the global BackChip — that's the new
+           mobile back affordance restored in v241.12. */
+        @media (min-width: 1024px) {
+          body:has(.bx-shell) .sb-back-chip { display: none !important; }
+        }
 
         /* Each non-reel page gets a small top padding so the back chip
            never sits on top of the page's first content row.
