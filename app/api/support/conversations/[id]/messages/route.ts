@@ -30,10 +30,8 @@ export const dynamic = "force-dynamic";
 //   2. If conversation is ai_active → call AI → insert AI reply (or escalate)
 //   3. If conversation is agent_active or escalated → just bump unread + last_message
 //   4. Always update conversation aggregates
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = authUserId(req);
   const payload = authPayload(req);
   const anonId = req.headers.get("x-support-anon-id");
@@ -146,10 +144,8 @@ export async function POST(
 
 // GET /api/support/conversations/:id/messages?since=<iso>
 // Used by polling loop. Returns NEW messages only when ?since is supplied.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = authUserId(req);
   const anonId = req.headers.get("x-support-anon-id");
 

@@ -7,7 +7,8 @@ const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
 // Public list endpoint: only approved videos are returned by default. Pass
 // ?status=all|pending|approved|rejected to filter (admin / partner usage).
-export async function GET(req: NextRequest, { params }: { params: { hotelId: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ hotelId: string }> }) {
+  const params = await props.params;
   const status = req.nextUrl.searchParams.get("status") || "approved";
   const filter = status === "all" ? "" : `&verification_status=eq.${encodeURIComponent(status)}`;
   // v131 — narrowed select (was *). Drops internal admin fields.

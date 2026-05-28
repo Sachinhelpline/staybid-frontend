@@ -16,7 +16,8 @@ function decodeJwt(t: string): any {
 //   4. feedback_tracking row initialised (submitted=false)
 //   5. notifications row queued ("Submit feedback within 4 hours…")
 //      — actual delivery handled by the existing notification consumer
-export async function POST(req: Request, { params }: { params: { bidId: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ bidId: string }> }) {
+  const params = await props.params;
   try {
     const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
     const payload = decodeJwt(token);

@@ -11,7 +11,8 @@ async function resolveInfluencerId(id: string): Promise<string | null> {
   return Array.isArray(b) && b[0] ? b[0].id : null;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const infId = await resolveInfluencerId(params.id);
   if (!infId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -22,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const stats = Array.isArray(statsRes) && statsRes[0] ? statsRes[0] : null;
   const comms: any[] = Array.isArray(commsRes) ? commsRes : [];
 
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date();monthStart.setDate(1);monthStart.setHours(0, 0, 0, 0);
   const monthly = comms.filter(c => new Date(c.created_at) >= monthStart);
   const monthlyCommission = monthly.reduce((s, c) => s + Number(c.commission_amount || 0), 0);
   const totalCommission   = comms.reduce((s, c) => s + Number(c.commission_amount || 0), 0);

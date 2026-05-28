@@ -3,7 +3,8 @@ import { SB_URL, SB_H, SB_READ, userFromReq } from "@/lib/sb";
 
 // GET  /api/videos/like/:id  — check if current user liked this video
 // POST /api/videos/like/:id  — toggle like (like if not liked, unlike if liked)
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = userFromReq(req);
   if (!user) return NextResponse.json({ liked: false });
 
@@ -15,7 +16,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ liked: Array.isArray(rows) && rows.length > 0 });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = userFromReq(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

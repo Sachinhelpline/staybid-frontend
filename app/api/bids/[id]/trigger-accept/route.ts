@@ -10,7 +10,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_READ, userFromReq } from "@/lib/sb";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = userFromReq(req);
   if (!user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const bidId = params.id;

@@ -17,10 +17,8 @@ export const dynamic = "force-dynamic";
 
 // POST /api/support/conversations/:id/escalate
 // User explicitly requests a human agent.
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = authUserId(req);
   const anonId = req.headers.get("x-support-anon-id");
   const body = await req.json().catch(() => ({} as any));

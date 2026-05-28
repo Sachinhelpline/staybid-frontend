@@ -6,7 +6,8 @@ import { sbSelect } from "@/lib/onboard/supabase-admin";
 // Customer-side caller should request only fields below — `competitor_min`
 // is fine to expose (we use it for "Best price guaranteed" copy), but
 // floor / discount_pct / ai_managed are NOT included.
-export async function GET(_req: Request, { params }: { params: { hotel_id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ hotel_id: string }> }) {
+  const params = await props.params;
   try {
     const rows = await sbSelect<any>(
       "competitor_prices",

@@ -12,7 +12,8 @@ const HEADERS = {
   Prefer: "return=representation",
 };
 
-export async function PATCH(req: Request, { params }: { params: { postId: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const user = socialUserFromReq(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const postId = decodeURIComponent(params.postId);

@@ -8,10 +8,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, authPayload, resolveUserIds } from "@/lib/sb-server";
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const payload = authPayload(req);
   const primaryId = payload?.id || payload?.user_id || payload?.sub;
   if (!primaryId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

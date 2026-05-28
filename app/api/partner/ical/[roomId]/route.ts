@@ -23,7 +23,8 @@ function esc(s: any) {
   return String(s ?? "").replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
 }
 
-export async function GET(req: NextRequest, { params }: { params: { roomId: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ roomId: string }> }) {
+  const params = await props.params;
   const roomId = params.roomId;
   const k = new URL(req.url).searchParams.get("k") || "";
   if (!roomId || k !== icalToken(roomId)) {

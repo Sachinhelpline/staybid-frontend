@@ -11,7 +11,8 @@ function decodeJwt(t: string) {
 }
 
 // POST /api/partner/bids/:id — body: { action: "accept"|"counter"|"reject", counterAmount?, message? }
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (res.ok) return NextResponse.json(await res.json());
     // Capture Railway's error body so the Supabase fallback can include it
     // in the final error response if Supabase also fails.
-    railwayErr = await res.text().catch(() => "") || `Railway ${res.status}`;
+    railwayErr = (await res.text().catch(() => "")) || `Railway ${res.status}`;
   } catch (e: any) {
     railwayErr = e?.message || "Railway unreachable";
   }

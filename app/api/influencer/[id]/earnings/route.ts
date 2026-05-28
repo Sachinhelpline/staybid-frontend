@@ -11,7 +11,8 @@ async function resolveInfluencerId(id: string): Promise<string | null> {
   return Array.isArray(b) && b[0] ? b[0].id : null;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const infId = await resolveInfluencerId(params.id);
   if (!infId) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

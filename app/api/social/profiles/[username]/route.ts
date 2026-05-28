@@ -9,7 +9,8 @@ import { HOTEL_CARD_COLS } from "@/lib/sb-columns";
 
 const READ_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-export async function GET(req: Request, { params }: { params: { username: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ username: string }> }) {
+  const params = await props.params;
   const username = decodeURIComponent(params.username || "").replace(/^@/, "");
   if (!username) return NextResponse.json({ error: "Username required" }, { status: 400 });
 

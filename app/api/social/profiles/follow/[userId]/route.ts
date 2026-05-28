@@ -31,7 +31,8 @@ async function resolveProfileId(userIdOrUsername: string): Promise<string | null
   return Array.isArray(arr) && arr[0]?.id ? arr[0].id : null;
 }
 
-export async function POST(req: Request, { params }: { params: { userId: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const viewer = socialUserFromReq(req);
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const target = decodeURIComponent(params.userId);
@@ -53,7 +54,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
   return NextResponse.json({ following: true });
 }
 
-export async function DELETE(req: Request, { params }: { params: { userId: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ userId: string }> }) {
+  const params = await props.params;
   const viewer = socialUserFromReq(req);
   if (!viewer) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const target = decodeURIComponent(params.userId);

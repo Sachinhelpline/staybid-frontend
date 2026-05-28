@@ -30,7 +30,8 @@ async function resolveCreator(id: string): Promise<{ influencerId: string; userI
   return null;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const c = await resolveCreator(params.id);
   if (!c) return NextResponse.json({ error: "Creator not found" }, { status: 404 });
 
