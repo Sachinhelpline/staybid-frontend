@@ -189,7 +189,7 @@ export default function BookingReview(p: BookingReviewProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md"
+      className="fixed inset-0 z-70 flex items-end sm:items-center justify-center backdrop-blur-md"
       style={{ background: "rgba(2,4,12,0.78)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       onClick={p.onClose}
     >
@@ -200,7 +200,7 @@ export default function BookingReview(p: BookingReviewProps) {
           background: "linear-gradient(180deg,#fff 0%,#fafaf7 100%)",
           boxShadow: "0 30px 80px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(240,180,41,0.12)",
           // v228 — flex column with capped height. Header + footer are
-          // flex-shrink-0 (auto-size to content); body is flex-1 + scrolls.
+          // shrink-0 (auto-size to content); body is flex-1 + scrolls.
           // Old fixed `maxHeight: calc(94vh - 64px - 96px)` on body assumed a
           // 96px footer, but the Shimla case renders Pay Full + Hold + Pay-
           // at-Hotel = ~220px footer, so the body extended behind the CTAs
@@ -220,7 +220,7 @@ export default function BookingReview(p: BookingReviewProps) {
           .br-section{animation:brFadeUp .35s ease both}
         `}</style>
 
-        {/* HEADER — v228 flex-shrink-0 so body shrinks, not header */}
+        {/* HEADER — v228 shrink-0 so body shrinks, not header */}
         <div className="relative px-5 py-4 flex items-center justify-between border-b shrink-0"
           style={{ borderColor: "rgba(240,180,41,0.25)", background: "linear-gradient(135deg,#0c0a14 0%,#1a1424 50%,#0c0a14 100%)" }}>
           <div className="flex items-center gap-2.5">
@@ -331,7 +331,7 @@ export default function BookingReview(p: BookingReviewProps) {
                     value={couponInput}
                     onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponMsg(null); }}
                     placeholder="Enter coupon code"
-                    className="flex-1 rounded-xl border border-luxury-200 bg-white px-3 py-2 text-sm font-mono tracking-wider uppercase placeholder:font-sans placeholder:tracking-normal focus:outline-none focus:border-gold-400"
+                    className="flex-1 rounded-xl border border-luxury-200 bg-white px-3 py-2 text-sm font-mono tracking-wider uppercase placeholder:font-sans placeholder:tracking-normal focus:outline-hidden focus:border-gold-400"
                   />
                   <button
                     onClick={() => validateCoupon(couponInput)}
@@ -383,7 +383,7 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
 
           {/* Rate breakdown */}
-          <div className="br-section rounded-2xl p-4 border-2 border-gold-200 bg-gradient-to-br from-gold-50 to-amber-50">
+          <div className="br-section rounded-2xl p-4 border-2 border-gold-200 bg-linear-to-br from-gold-50 to-amber-50">
             <p className="text-[0.6rem] font-bold text-gold-600 uppercase tracking-[0.2em] mb-2.5">Rate Breakdown</p>
             <div className="space-y-1.5 text-sm">
               {p.rateLines.map((line, i) => (
@@ -445,11 +445,11 @@ export default function BookingReview(p: BookingReviewProps) {
           )}
         </div>
 
-        {/* STICKY CTA FOOTER — v228 flex-shrink-0 so it always renders fully
+        {/* STICKY CTA FOOTER — v228 shrink-0 so it always renders fully
             + safe-area-inset-bottom padding so home-indicator phones don't
             cover the bottom CTA. Padding-bottom keeps the 16px gap on
             devices without a home indicator AND adds env() inset on top. */}
-        <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm p-4 space-y-2.5 shrink-0"
+        <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-xs p-4 space-y-2.5 shrink-0"
           style={{
             boxShadow: "0 -8px 24px -8px rgba(0,0,0,0.12)",
             paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))",

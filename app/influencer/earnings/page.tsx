@@ -146,7 +146,7 @@ function CommissionStructure({ data }: { data: CommissionData }) {
     : -1;
 
   return (
-    <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-gradient-to-br from-gold-50/30 to-white border-gold-300/40" style={{ animationDelay: "0.1s" }}>
+    <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-linear-to-br from-gold-50/30 to-white border-gold-300/40" style={{ animationDelay: "0.1s" }}>
       <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
         <div>
           <p className="text-[0.65rem] uppercase tracking-widest font-bold text-gold-700 inline-flex items-center gap-1.5">

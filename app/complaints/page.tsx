@@ -139,7 +139,7 @@ function ComplaintsInner() {
         </header>
 
         {/* Helpful pointers */}
-        <div className="card-luxury sb-card-lift sb-fade-in p-4 mb-6 bg-gradient-to-br from-gold-50/60 to-luxury-50/30" style={{ animationDelay: "0.1s" }}>
+        <div className="card-luxury sb-card-lift sb-fade-in p-4 mb-6 bg-linear-to-br from-gold-50/60 to-luxury-50/30" style={{ animationDelay: "0.1s" }}>
           <div className="text-xs font-bold text-gold-800 uppercase tracking-wider mb-2 inline-flex items-center gap-1.5">
             <span className="sb-pulse-dot is-warn" />
             Faster routes
@@ -320,7 +320,7 @@ function Composer({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-1000 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -454,7 +454,7 @@ function Composer({
           <button
             onClick={submit}
             disabled={submitting || !description.trim()}
-            className="flex-[2] btn-luxury text-sm py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="flex-2 btn-luxury text-sm py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {submitting ? "Submitting…" : "Submit complaint"}
           </button>

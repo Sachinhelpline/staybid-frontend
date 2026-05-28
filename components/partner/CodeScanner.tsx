@@ -150,7 +150,7 @@ export default function CodeScanner({ onDetected, buttonClassName, buttonLabel }
 
       {open && modalPortal(
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          className="fixed inset-0 z-200 flex items-center justify-center p-4"
           style={{ background: "rgba(10,8,5,0.93)", backdropFilter: "blur(4px)" }}
           onClick={close}
         >

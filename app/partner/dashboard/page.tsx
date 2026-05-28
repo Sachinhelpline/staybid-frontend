@@ -1017,7 +1017,7 @@ export default function PartnerDashboard() {
           </div>
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             {hotel && (
-              <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/[0.06] px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
+              <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
                 🏨 {hotel.name}
               </span>
             )}
@@ -1039,13 +1039,13 @@ export default function PartnerDashboard() {
       </nav>
 
       {/* ── Tab bar ───────────────────────────────────────────────────── */}
-      <div className="bg-white/95 backdrop-blur border-b border-luxury-200 sticky top-[56px] z-30 overflow-x-auto"
+      <div className="bg-white/95 backdrop-blur-sm border-b border-luxury-200 sticky top-[56px] z-30 overflow-x-auto"
         style={{boxShadow:"0 1px 6px rgba(160,130,80,0.05)"}}>
         <div className="max-w-7xl mx-auto px-3 sm:px-5 flex gap-1 py-1.5">
           {TABS.map((t: any) => {
             const active = tab === t.id;
             const locked = serviceLocked(t.id);
-            const cls = `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
+            const cls = `shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
               active
                 ? "text-white"
                 : locked
@@ -1110,7 +1110,7 @@ export default function PartnerDashboard() {
             <h2 className="sec-title text-xl">Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}, {pUser?.name?.split(" ")[0] || "Partner"} 👋</h2>
 
             {/* ── Quick Walk-in / PMS Control ── */}
-            <div className="rounded-3xl overflow-hidden bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-xl border border-white/20 relative">
+            <div className="rounded-3xl overflow-hidden bg-linear-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-xl border border-white/20 relative">
               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 0%, transparent 50%), radial-gradient(circle at 80% 80%, white 0%, transparent 50%)" }} />
               <div className="relative p-5 flex items-center justify-between gap-4 flex-wrap">
                 <div>
@@ -1124,7 +1124,7 @@ export default function PartnerDashboard() {
                     ➕ New Walk-in
                   </button>
                   <button onClick={() => setTab("availability")}
-                    className="bg-white/20 text-white border border-white/30 font-bold px-5 py-3 rounded-xl hover:bg-white/30 transition-all text-sm backdrop-blur">
+                    className="bg-white/20 text-white border border-white/30 font-bold px-5 py-3 rounded-xl hover:bg-white/30 transition-all text-sm backdrop-blur-sm">
                     🗓️ Availability
                   </button>
                 </div>
@@ -1133,7 +1133,7 @@ export default function PartnerDashboard() {
 
             {/* ── Today's Bookings — Airbnb-style hero panel ── */}
             <div className="rounded-3xl overflow-hidden shadow-lg border border-luxury-200 bg-white">
-              <div className="bg-gradient-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-linear-to-r from-luxury-900 via-luxury-800 to-luxury-900 px-5 py-4 flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <p className="text-[0.65rem] font-bold text-gold-400 uppercase tracking-[0.2em]">🌅 Today · {new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"short"})}</p>
                   <p className="text-white font-display text-xl font-light mt-0.5">Your day at a glance</p>
@@ -1320,7 +1320,7 @@ export default function PartnerDashboard() {
 
             {/* Active flash deals strip */}
             {activeDeals.length > 0 && (
-              <div className="card-p bg-gradient-to-r from-amber-50 to-gold-50 border border-gold-200">
+              <div className="card-p bg-linear-to-r from-amber-50 to-gold-50 border border-gold-200">
                 <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">⚡ Active Flash Deals</p>
                 <div className="space-y-2">
                   {activeDeals.slice(0,3).map(d => (
@@ -1351,18 +1351,18 @@ export default function PartnerDashboard() {
                     const st = STATUS_STYLE[b.status] || STATUS_STYLE.PENDING;
                     return (
                       <div key={b.id} className="card-p flex items-center justify-between gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gold-100 flex items-center justify-center text-sm font-bold text-gold-700 flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-gold-100 flex items-center justify-center text-sm font-bold text-gold-700 shrink-0">
                           {(b.guestName || b.customerId || "G").slice(0,2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-luxury-900 truncate">{b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-400">{fmtDate(b.checkIn || b.createdAt)}</p>
                         </div>
-                        <p className="font-bold text-luxury-900 flex-shrink-0">{fmtCur(customerBidOf(b))}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
-                        <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
+                        <p className="font-bold text-luxury-900 shrink-0">{fmtCur(customerBidOf(b))}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
+                        <span className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
                         {b.status === "PENDING" && (
                           <button onClick={() => { setSelectedBid(b); setBidAction("accept"); setCounterAmt(String(snap100(customerBidOf(b)))); setCounterAddons([]);}}
-                            className="flex-shrink-0 btn-gold text-xs px-3 py-1.5">Respond</button>
+                            className="shrink-0 btn-gold text-xs px-3 py-1.5">Respond</button>
                         )}
                       </div>
                     );
@@ -1419,7 +1419,7 @@ export default function PartnerDashboard() {
                     <div key={b.id} className="card-p">
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gold-100 flex items-center justify-center text-sm font-bold text-gold-700 flex-shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-gold-100 flex items-center justify-center text-sm font-bold text-gold-700 shrink-0">
                             {(b.guestName || b.customerId || "G").slice(0,2).toUpperCase()}
                           </div>
                           <div>
@@ -1448,7 +1448,7 @@ export default function PartnerDashboard() {
                                 with more rooms or accept-anyway (most
                                 accommodate via rollaway). */}
                             {b.capacityMismatch && (
-                              <p className="text-[0.65rem] text-amber-700 bg-amber-50 border border-amber-200 inline-block px-2 py-0.5 rounded mt-1" style={{ fontWeight: 600 }}>
+                              <p className="text-[0.65rem] text-amber-700 bg-amber-50 border border-amber-200 inline-block px-2 py-0.5 rounded-sm mt-1" style={{ fontWeight: 600 }}>
                                 ⚠️ {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
                               </p>
                             )}
@@ -1474,7 +1474,7 @@ export default function PartnerDashboard() {
                                 } catch {}
                               }}
                               title={`Bid ID: ${b.id} (tap to copy)`}
-                              className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
+                              className="mt-1 text-[0.6rem] font-mono px-1.5 py-0.5 rounded-sm bg-luxury-100/60 hover:bg-luxury-200 text-luxury-500 hover:text-luxury-700 transition inline-flex items-center gap-1"
                             >
                               <span aria-hidden="true">📋</span>
                               <span>BID-…{String(b.id || "").slice(-6)}</span>
@@ -1484,7 +1484,7 @@ export default function PartnerDashboard() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right shrink-0">
                           {/* v145 — show CUSTOMER's actual preferred bid (from
                               message), not the stored floor. Floor shown
                               below as a secondary "system min" chip when it
@@ -1588,12 +1588,12 @@ export default function PartnerDashboard() {
                   const img  = getRoomImage(r.name || r.type || "", r.images);
                   const ep   = editPrices[r.id] || {};
                   return (
-                    <div key={r.id} className="card-p overflow-hidden !p-0">
+                    <div key={r.id} className="card-p overflow-hidden p-0!">
                       {/* Room image */}
                       <div className="relative h-40 overflow-hidden">
                         <img src={img} alt={r.name||r.type} className="w-full h-full object-cover"
                           onError={(e: any) => { e.target.src="https://images.unsplash.com/photo-1631049421450-348ccd7f8949?w=800&q=80"; }} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                         <div className="absolute top-2.5 left-2.5 flex gap-1.5">
                           <button onClick={() => setRoomEditor({ mode: "edit", room: r })}
                             className="text-[0.6rem] font-bold px-2 py-1 rounded-lg bg-white/90 text-luxury-700 hover:bg-white backdrop-blur-md transition">
@@ -1686,7 +1686,7 @@ export default function PartnerDashboard() {
                         <button
                           onClick={() => saveRoomPricing(r.id)}
                           disabled={savingRoom === r.id || (!ep.floor && !ep.flash)}
-                          className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "!bg-emerald-500" : ""}`}>
+                          className={`btn-gold w-full py-2.5 text-sm ${savedRoom === r.id ? "bg-emerald-500!" : ""}`}>
                           {savingRoom === r.id ? "Saving…" : savedRoom === r.id ? "✓ Saved!" : "Save Pricing"}
                         </button>
 
@@ -1791,7 +1791,7 @@ export default function PartnerDashboard() {
             <h2 className="sec-title text-xl">Flash Deals</h2>
 
             {/* Create deal */}
-            <div className="card-p border-2 border-gold-200 bg-gradient-to-br from-gold-50/30 to-white">
+            <div className="card-p border-2 border-gold-200 bg-linear-to-br from-gold-50/30 to-white">
               <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-4">⚡ Create New Flash Deal</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                 <div>
@@ -1908,7 +1908,7 @@ export default function PartnerDashboard() {
                     <button key={b.id} onClick={() => setSelectedBooking(b)}
                       className="card-p flex items-start justify-between gap-4 w-full text-left hover:shadow-lg hover:border-gold-300 transition-all cursor-pointer">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-base flex-shrink-0">🎫</div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-base shrink-0">🎫</div>
                         <div className="min-w-0">
                           <p className="font-semibold text-luxury-900 truncate">{b.guestName || b.user?.name || "Guest"} · {b.room?.type || b.roomId || "Room"}</p>
                           <p className="text-xs text-luxury-500">
@@ -1920,7 +1920,7 @@ export default function PartnerDashboard() {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-right shrink-0">
                         <p className="font-bold text-luxury-900 text-base">{fmtCur(total)}</p>
                         <p className="text-xs text-luxury-400">{fmtCur(b.counterAmount || b.amount)}/night</p>
                         <span className={`inline-block mt-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${
@@ -2072,7 +2072,7 @@ export default function PartnerDashboard() {
                     <div key={f.id} className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-xl bg-luxury-50 border border-luxury-200">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">{f.provider}</span>
+                          <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm uppercase">{f.provider}</span>
                           <span className="font-semibold text-luxury-800 text-sm">{f.label || f.provider}</span>
                           <span className="text-xs text-luxury-400">· {room?.type || f.roomId}</span>
                         </div>
@@ -2090,7 +2090,7 @@ export default function PartnerDashboard() {
                           {syncing === f.id ? "Syncing…" : "↻ Sync Now"}
                         </button>
                         <button onClick={() => deleteFeed(f.id)}
-                          className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded text-sm">🗑</button>
+                          className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-sm text-sm">🗑</button>
                       </div>
                     </div>
                   );
@@ -2116,7 +2116,7 @@ export default function PartnerDashboard() {
                           onClick={() => setNewFeed(p => ({ ...p, roomId: r.id }))}
                           className={`group inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
                             active
-                              ? "bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400 shadow-sm"
+                              ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
                               : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"
                           }`}
                           aria-pressed={active}
@@ -2155,7 +2155,7 @@ export default function PartnerDashboard() {
                           onClick={() => setNewFeed(prev => ({ ...prev, provider: p.id }))}
                           className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
                             active
-                              ? "bg-luxury-900 text-amber-100 border-luxury-900 shadow-sm"
+                              ? "bg-luxury-900 text-amber-100 border-luxury-900 shadow-xs"
                               : "bg-luxury-50 text-luxury-700 border-luxury-200 hover:border-luxury-400"
                           }`}
                           aria-pressed={active}
@@ -2186,10 +2186,10 @@ export default function PartnerDashboard() {
 
         {/* ══════════════ WALK-IN MODAL ══════════════ */}
         {walkInOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
             onClick={() => setWalkInOpen(null)}>
             <div className="bg-white rounded-3xl max-w-md w-full mx-4 overflow-hidden" onClick={e=>e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-4 flex items-center justify-between">
+              <div className="bg-linear-to-r from-purple-600 to-purple-500 px-6 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">Walk-in Booking</p>
                   <p className="text-white font-semibold text-lg">{rooms.find(r=>r.id===walkInOpen.roomId)?.type || "Room"}</p>
@@ -2273,11 +2273,11 @@ export default function PartnerDashboard() {
           if (!walkIn.fromDate) { setWalkIn(p => ({ ...p, fromDate: qToday, toDate: qTomorrow })); }
           const pickedRoom = rooms.find(r => r.id === (walkInOpen?.roomId || ""));
           return (
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto"
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs overflow-y-auto"
               onClick={() => { setQuickWalkInOpen(false); setWalkInOpen(null); }}>
               <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden my-0 sm:my-8"
                 onClick={e => e.stopPropagation()}>
-                <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-4 flex items-center justify-between">
+                <div className="bg-linear-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-4 flex items-center justify-between">
                   <div>
                     <p className="text-[0.65rem] font-bold text-white/70 uppercase tracking-widest">🏨 Front Desk</p>
                     <p className="text-white font-display text-xl font-light">Walk-in Booking</p>
@@ -2402,7 +2402,7 @@ export default function PartnerDashboard() {
 
                   <button onClick={async () => { await submitWalkIn(); setQuickWalkInOpen(false); }}
                     disabled={walkInSaving || !walkInOpen?.roomId || !walkIn.fromDate || !walkIn.toDate}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
+                    className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:shadow-xl transition-all disabled:opacity-40">
                     {walkInSaving ? "Saving…" : walkIn.assignedUnitNumber ? `✓ Check-in · Room #${walkIn.assignedUnitNumber}` : "✓ Confirm Walk-in (auto-assign)"}
                   </button>
                 </div>
@@ -2600,7 +2600,7 @@ export default function PartnerDashboard() {
                 partner sees their automation posture immediately. Defaults
                 to 'auto' if the column isn't provisioned — no UI hides
                 behind a migration. */}
-            <div className="card-p space-y-3 mb-5 border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-luxury-50">
+            <div className="card-p space-y-3 mb-5 border-2 border-amber-200 bg-linear-to-br from-amber-50 to-luxury-50">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🤖</span>
                 <h3 className="font-bold text-luxury-900 text-base">Autopilot Mode</h3>
@@ -2623,7 +2623,7 @@ export default function PartnerDashboard() {
                       onClick={() => saveAutopilot(m)}
                       className={`text-left rounded-2xl border-2 p-3 transition-all ${
                         on
-                          ? "border-amber-500 bg-white shadow-sm scale-[1.01]"
+                          ? "border-amber-500 bg-white shadow-xs scale-[1.01]"
                           : "border-luxury-200 bg-white hover:border-amber-300"
                       } disabled:opacity-60`}
                       aria-pressed={on}
@@ -2770,7 +2770,7 @@ export default function PartnerDashboard() {
           (max-w-2xl). Max-h locked to viewport with internal scroll so the
           sticky header + sticky Send CTA always stay in view. */}
       {selectedBid && !bidActDone && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4"
           onClick={() => setSelectedBid(null)}>
           <div className="bg-white w-full sm:max-w-lg lg:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh]"
             onClick={e => e.stopPropagation()}>
@@ -2778,7 +2778,7 @@ export default function PartnerDashboard() {
             <div className="sm:hidden flex justify-center pt-2 pb-1">
               <div className="w-10 h-1 rounded-full bg-luxury-200" />
             </div>
-            <div className="bg-luxury-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-luxury-900 px-6 py-4 flex items-center justify-between shrink-0">
               <div>
                 <p className="text-xs font-bold text-white/50 uppercase tracking-widest">Respond to Bid</p>
                 <p className="text-white font-semibold text-lg">{selectedBid.room?.type || "Room"}</p>
@@ -2790,7 +2790,7 @@ export default function PartnerDashboard() {
                   <span className="ml-1.5 text-white/40">· {selectedBid.guests || 2} guests</span>
                 </p>
               </div>
-              <button onClick={() => setSelectedBid(null)} className="text-white/50 hover:text-white text-2xl flex-shrink-0">✕</button>
+              <button onClick={() => setSelectedBid(null)} className="text-white/50 hover:text-white text-2xl shrink-0">✕</button>
             </div>
 
             <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
@@ -2881,7 +2881,7 @@ export default function PartnerDashboard() {
                     </div>
 
                     {/* Hero counter card — current value + guest bid + margin. */}
-                    <div className="rounded-2xl p-4 mb-4 bg-gradient-to-br from-amber-50 via-luxury-50 to-white border border-amber-200 shadow-sm">
+                    <div className="rounded-2xl p-4 mb-4 bg-linear-to-br from-amber-50 via-luxury-50 to-white border border-amber-200 shadow-xs">
                       <div className="flex items-end justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest mb-1">Your counter</p>
@@ -2894,7 +2894,7 @@ export default function PartnerDashboard() {
                                             <span className="text-rose-700">−{fmtCur(-margin)} below guest (sweetheart)</span>}
                           </p>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right shrink-0">
                           <p className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest">Guest bid</p>
                           <p className="text-base font-bold text-luxury-700">{fmtCur(guestBid)}</p>
                           {floor !== guestBid && (
@@ -2933,7 +2933,7 @@ export default function PartnerDashboard() {
                         {/* Floor marker (only when floor sits inside slider range). */}
                         {floor > minCt && floor < maxCt && (
                           <div className="absolute -top-4 -translate-x-1/2 pointer-events-none" style={{ left: `${floorPct}%` }}>
-                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[5px] border-t-amber-600 mx-auto" />
+                            <div className="w-0 h-0 border-l-4 border-l-transparent border-r-4 border-r-transparent border-t-[5px] border-t-amber-600 mx-auto" />
                             <p className="text-[0.5rem] font-bold text-amber-700 -mt-0.5 whitespace-nowrap text-center">Floor</p>
                           </div>
                         )}
@@ -2997,7 +2997,7 @@ export default function PartnerDashboard() {
                         className="w-9 h-9 rounded-full bg-luxury-50 hover:bg-luxury-100 disabled:opacity-30 disabled:cursor-not-allowed border border-luxury-200 text-luxury-700 font-bold transition-all">
                         −
                       </button>
-                      <div className="px-3 py-1.5 rounded-lg bg-luxury-50 border border-luxury-100 min-w-[7rem] text-center">
+                      <div className="px-3 py-1.5 rounded-lg bg-luxury-50 border border-luxury-100 min-w-28 text-center">
                         <p className="text-xs font-extrabold text-luxury-800">{fmtCur(currentVal)}</p>
                       </div>
                       <button
@@ -3039,7 +3039,7 @@ export default function PartnerDashboard() {
                               }
                               className={`flex items-start gap-2 rounded-xl p-2 border text-left transition-all ${
                                 on
-                                  ? "bg-amber-50 border-amber-400 shadow-sm"
+                                  ? "bg-amber-50 border-amber-400 shadow-xs"
                                   : "bg-white border-luxury-200 hover:border-amber-300"
                               }`}
                               aria-pressed={on}
@@ -3079,7 +3079,7 @@ export default function PartnerDashboard() {
             </div>
 
             {/* Sticky footer — Send CTA stays visible regardless of scroll. */}
-            <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-sm px-5 sm:px-6 py-3 flex-shrink-0">
+            <div className="border-t border-luxury-100 bg-white/95 backdrop-blur-xs px-5 sm:px-6 py-3 shrink-0">
               <button onClick={submitBidAction} disabled={bidActLoading || (bidAction==="counter" && !counterAmt)}
                 className="btn-gold w-full py-3 text-sm shadow-md">
                 {bidActLoading ? "Sending…" :
@@ -3093,7 +3093,7 @@ export default function PartnerDashboard() {
       )}
 
       {bidActDone && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-xs w-full mx-4">
             <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4 text-3xl">
               {bidAction==="accept" ? "🎉" : bidAction==="counter" ? "💬" : "✓"}
@@ -3127,17 +3127,17 @@ export default function PartnerDashboard() {
         else if (coISO && coISO < todayISO) { statusLabel = "Checked Out"; statusBadge = "bg-white/10 text-white/60 border-white/20"; }
 
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm overflow-y-auto"
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs overflow-y-auto"
             onClick={() => setSelectedBooking(null)}>
             <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden my-0 sm:my-8"
               onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="relative bg-gradient-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
+              <div className="relative bg-linear-to-br from-luxury-900 via-luxury-800 to-black px-6 py-5">
                 <button onClick={() => setSelectedBooking(null)}
                   className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg">✕</button>
                 <p className="text-[0.6rem] font-bold text-gold-400 uppercase tracking-[0.25em]">Booking Details</p>
                 <div className="flex items-center gap-3 mt-2">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
+                  <div className="w-12 h-12 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold">{guestInitials}</div>
                   <div>
                     <p className="text-white font-semibold text-lg">{b.guestName || b.user?.name || "Guest"}</p>
                     <p className="text-white/60 text-xs">ID: {String(b.id).slice(0,12).toUpperCase()}</p>
@@ -3225,13 +3225,13 @@ export default function PartnerDashboard() {
                 <div className="p-4 rounded-2xl bg-white border border-luxury-200 space-y-2">
                   <p className="text-[0.6rem] font-bold text-luxury-400 uppercase tracking-widest">👤 Guest Contact</p>
                   {(b.guestPhone || b.user?.phone) && (
-                    <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded">
+                    <a href={`tel:${b.guestPhone || b.user?.phone}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
                       <span className="text-luxury-600">📱 Phone</span>
                       <span className="font-bold text-luxury-900">{b.guestPhone || b.user?.phone}</span>
                     </a>
                   )}
                   {(b.guestEmail || b.user?.email) && (
-                    <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded">
+                    <a href={`mailto:${b.guestEmail || b.user?.email}`} className="flex items-center justify-between text-sm hover:bg-luxury-50 -mx-2 px-2 py-1 rounded-sm">
                       <span className="text-luxury-600">✉️ Email</span>
                       <span className="font-semibold text-luxury-900 truncate">{b.guestEmail || b.user?.email}</span>
                     </a>
@@ -3242,7 +3242,7 @@ export default function PartnerDashboard() {
                 </div>
 
                 {/* Payment */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-gold-50 to-amber-50 border border-gold-200">
+                <div className="p-4 rounded-2xl bg-linear-to-br from-gold-50 to-amber-50 border border-gold-200">
                   <p className="text-[0.6rem] font-bold text-gold-700 uppercase tracking-widest mb-2">💰 Payment</p>
                   <div className="flex justify-between text-sm py-1">
                     <span className="text-luxury-600">Rate per night</span>

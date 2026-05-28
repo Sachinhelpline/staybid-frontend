@@ -198,7 +198,7 @@ export default function UploadPage() {
         <div className="flex items-start gap-4">
           <div
             onClick={() => thumbInputRef.current?.click()}
-            className="relative flex-shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-luxury-200 bg-luxury-50 flex items-center justify-center cursor-pointer hover:border-gold-400 transition-all overflow-hidden">
+            className="relative shrink-0 w-24 h-24 rounded-xl border-2 border-dashed border-luxury-200 bg-luxury-50 flex items-center justify-center cursor-pointer hover:border-gold-400 transition-all overflow-hidden">
             {thumbPreview
               ? <img src={thumbPreview} alt="thumb" className="w-full h-full object-cover" />
               : <span className="text-3xl">🖼️</span>}
@@ -252,7 +252,7 @@ export default function UploadPage() {
               <span>Uploading…</span><span>{progress}%</span>
             </div>
             <div className="w-full h-2 bg-luxury-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-300" style={{ width: `${progress}%` }} />
+              <div className="h-full bg-linear-to-r from-gold-500 to-gold-400 transition-all duration-300" style={{ width: `${progress}%` }} />
             </div>
           </div>
         )}
@@ -276,11 +276,11 @@ export default function UploadPage() {
             {myVideos.map((v: any) => {
               const badge = STATUS_BADGE[v.verification_status] || STATUS_BADGE.pending;
               return (
-                <div key={v.id} className="relative rounded-xl overflow-hidden bg-luxury-100 aspect-[9/16] sb-card-lift">
+                <div key={v.id} className="relative rounded-xl overflow-hidden bg-luxury-100 aspect-9/16 sb-card-lift">
                   {v.thumbnail_url
                     ? <img src={v.thumbnail_url} alt={v.title || "reel"} className="w-full h-full object-cover" />
                     : <video src={v.s3_url} className="w-full h-full object-cover" muted playsInline />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-2">
                     <p className="text-white text-xs font-semibold line-clamp-2">{v.title || "Untitled"}</p>
                     <div className="flex items-center gap-1.5 mt-1">

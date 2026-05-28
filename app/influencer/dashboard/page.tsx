@@ -85,7 +85,7 @@ export default function InfluencerDashboard() {
           <span className="text-sm font-semibold text-luxury-600"><CountUp value={kycPct} duration={800} suffix="%" /></span>
         </div>
         <div className="w-full h-2 bg-luxury-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-gold-500 to-gold-400 transition-all duration-700" style={{ width: `${kycPct}%` }} />
+          <div className="h-full bg-linear-to-r from-gold-500 to-gold-400 transition-all duration-700" style={{ width: `${kycPct}%` }} />
         </div>
         <div className="grid grid-cols-2 gap-3 mt-4 sb-stagger">
           <KycChip label="Aadhaar" done={inf.aadhaar_verified} />

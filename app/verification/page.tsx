@@ -18,7 +18,7 @@ type Booking = {
 const TIER_BADGE: Record<string, string> = {
   silver:   "bg-slate-200 text-slate-800",
   gold:     "bg-gold-100 text-gold-900 border-gold-300",
-  platinum: "bg-gradient-to-r from-purple-500 to-indigo-500 text-white",
+  platinum: "bg-linear-to-r from-purple-500 to-indigo-500 text-white",
 };
 
 export default function VerificationPage() {
@@ -323,7 +323,7 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
 
 function TierExplainer({ tier }: { tier: string }) {
   return (
-    <div className="mt-10 card-luxury p-5 bg-gradient-to-br from-luxury-50 to-gold-50/40">
+    <div className="mt-10 card-luxury p-5 bg-linear-to-br from-luxury-50 to-gold-50/40">
       <div className="font-display text-lg text-luxury-900 mb-2">Your tier benefits</div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         {[

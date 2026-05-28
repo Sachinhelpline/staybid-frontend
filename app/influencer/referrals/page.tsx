@@ -175,7 +175,7 @@ export default function InfluencerReferralsPage() {
         )}
       </div>
 
-      <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-gradient-to-br from-luxury-50 to-white border-luxury-100" style={{ animationDelay: "0.2s" }}>
+      <div className="card-luxury sb-card-lift sb-fade-in p-5 bg-linear-to-br from-luxury-50 to-white border-luxury-100" style={{ animationDelay: "0.2s" }}>
         <h3 className="font-bold text-luxury-900 mb-2">How to share</h3>
         <ul className="text-sm text-luxury-700 space-y-1.5 leading-relaxed sb-stagger">
           <li>📲 <b>Native</b> — opens your phone's share sheet (Instagram, WhatsApp, Messages, Mail, etc.)</li>
@@ -223,7 +223,7 @@ function CodeCard({
           </div>
           <p className="text-xs text-luxury-500 mt-1.5 truncate font-mono">{shareUrl}</p>
         </div>
-        <div className="flex items-center gap-4 text-xs flex-shrink-0">
+        <div className="flex items-center gap-4 text-xs shrink-0">
           <div className="text-center">
             <p className="font-bold text-luxury-800 text-base">{code.clicks_count || 0}</p>
             <p className="text-[0.6rem] uppercase tracking-wider text-luxury-500">clicks</p>

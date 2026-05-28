@@ -2572,7 +2572,7 @@ export default function HotelDetail() {
               <p className="text-luxury-800 font-semibold text-base">{hotel.city}{hotel.state ? `, ${hotel.state}` : ""}</p>
               <p className="text-xs text-luxury-400 mt-1 mb-4">Located in the heart of {hotel.city} — popular area with easy access to local attractions</p>
               <div className="rounded-2xl overflow-hidden bg-luxury-100 h-36 relative mb-3 flex items-center justify-center border border-luxury-200">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 opacity-60" />
+                <div className="absolute inset-0 bg-linear-to-br from-blue-50 to-green-50 opacity-60" />
                 <div className="relative text-center">
                   <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-2 shadow-lg">
                     <span className="text-white text-lg">📍</span>
@@ -2873,7 +2873,7 @@ export default function HotelDetail() {
           )}
 
           {/* Dates row — opens LuxuryCalendar with per-day live pricing */}
-          <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
+          <div className="grid grid-cols-2 gap-3 mb-3 relative z-2">
             <button
               type="button"
               disabled={datesLocked}
@@ -2928,7 +2928,7 @@ export default function HotelDetail() {
           {/* v241.1 — 2x2 grid: Adults / Children / Kids / Rooms.
               Rooms picker drives every booking-creation CTA on this
               page (Book Now / Negotiate / Hold / Pay Now / Flash). */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 relative z-[2]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 relative z-2">
             <PremiumGuestPicker
               kind="adults"
               label="Adults"
@@ -3646,7 +3646,7 @@ export default function HotelDetail() {
                             const ua = unitAvail[r.id];
                             if (!ua || !ua.units || ua.units.length === 0) return null;
                             return (
-                              <div className="mb-4 rounded-2xl border border-luxury-100 bg-gradient-to-br from-white to-luxury-50 p-3.5">
+                              <div className="mb-4 rounded-2xl border border-luxury-100 bg-linear-to-br from-white to-luxury-50 p-3.5">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -4004,7 +4004,7 @@ export default function HotelDetail() {
         const base = Array.isArray(hotel.images) ? hotel.images : [];
         const allImgs = [...base, ...PLACEHOLDERS].slice(0, Math.max(5, base.length));
         return (
-          <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center"
+          <div className="fixed inset-0 z-70 bg-black/95 flex items-center justify-center"
             onClick={() => setGalleryOpen(false)}>
             <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
               <ModalCloseButton onClose={() => setGalleryOpen(false)} tone="dark" className="absolute -top-12 right-0 z-10" />
@@ -4037,7 +4037,7 @@ export default function HotelDetail() {
               <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
                 {allImgs.map((img: string, i: number) => (
                   <button key={i} onClick={() => setGalleryIdx(i)}
-                    className={`flex-shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
+                    className={`shrink-0 w-16 h-12 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIdx ? "border-gold-400 scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}>
                     <img src={img} alt="" className="w-full h-full object-cover"
                       onError={(e: any) => { e.target.src = PLACEHOLDERS[i % PLACEHOLDERS.length]; }} />
                   </button>
@@ -4052,7 +4052,7 @@ export default function HotelDetail() {
           INLINE PHONE VERIFY (Google/Social users)
       ══════════════════════════════════════════ */}
       {verifyOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs"
           onClick={() => setVerifyOpen(false)}>
           <div className="bg-white w-full max-w-sm mx-4 rounded-3xl shadow-luxury-lg p-7"
             onClick={(e) => e.stopPropagation()}>
@@ -4071,7 +4071,7 @@ export default function HotelDetail() {
               <>
                 <label className="text-xs font-bold text-luxury-500 uppercase tracking-wider block mb-2">Your Mobile Number</label>
                 <div className="flex gap-2 mb-4">
-                  <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
+                  <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 shrink-0">+91</span>
                   <input
                     type="tel"
                     value={verifyPhone}
@@ -4127,12 +4127,12 @@ export default function HotelDetail() {
           FLASH DEAL BOOKING MODAL
       ══════════════════════════════════════════ */}
       {flashBookOpen && dealPrice && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs"
           onClick={() => setFlashBookOpen(false)}>
           <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden"
             onClick={(e) => e.stopPropagation()}>
             {/* Gold header */}
-            <div className="bg-gradient-to-r from-gold-600 to-gold-400 px-6 py-4 flex items-center justify-between">
+            <div className="bg-linear-to-r from-gold-600 to-gold-400 px-6 py-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-white/70 uppercase tracking-widest">⚡ Flash Deal Booking</p>
                 <p className="text-white font-semibold text-lg">{flashRoom?.name || "Room"}</p>
@@ -4343,9 +4343,9 @@ export default function HotelDetail() {
 
       {/* ══ BOOK NOW MODAL ══ */}
       {bnRoom && !bnSuccess && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBnRoom(null)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setBnRoom(null)}>
           <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-luxury-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
+            <div className="bg-linear-to-r from-luxury-900 to-luxury-800 px-6 py-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Instant Booking</p>
                 <p className="text-white font-semibold text-lg">{bnRoom.name||bnRoom.type}</p>
@@ -4405,7 +4405,7 @@ export default function HotelDetail() {
         </div>
       )}
       {bnSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setBnRoom(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setBnRoom(null)}>
           <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">🎉</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">Booking Confirmed!</h3>
@@ -4732,7 +4732,7 @@ export default function HotelDetail() {
         );
       })()}
       {negSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNegRoom(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs" onClick={() => setNegRoom(null)}>
           <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
@@ -4760,7 +4760,7 @@ export default function HotelDetail() {
           FLASH BOOKING SUCCESS
       ══════════════════════════════════════════ */}
       {flashBookSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
           onClick={() => setFlashBookSuccess(false)}>
           <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
             onClick={(e) => e.stopPropagation()}>
@@ -4797,11 +4797,11 @@ export default function HotelDetail() {
           NORMAL BID MODAL
       ══════════════════════════════════════════ */}
       {bidRoom && !bidSuccess && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs"
           onClick={() => setBidRoom(null)}>
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-luxury-lg p-6"
             onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-1 bg-gradient-to-r from-gold-500 to-gold-300 rounded-full mx-auto mb-6" />
+            <div className="w-12 h-1 bg-linear-to-r from-gold-500 to-gold-300 rounded-full mx-auto mb-6" />
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-1">Place Your Bid</h3>
             <p className="text-sm text-luxury-400 mb-6">
               {bidRoom.name || bidRoom.type} at <span className="text-luxury-700 font-medium">{hotel.name}</span>
@@ -4940,7 +4940,7 @@ export default function HotelDetail() {
       ══════════════════════════════════════════ */}
       {upgradeModal && (
         <div
-          className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-sm modal-backdrop p-0 sm:p-4"
+          className="fixed inset-0 z-80 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-xs modal-backdrop p-0 sm:p-4"
           onClick={() => !upgradeLoading && setUpgradeModal(null)}
         >
           <div
@@ -5026,7 +5026,7 @@ export default function HotelDetail() {
       {/* ── Floating picker modal — opens when user taps Book Now/Negotiate without dates ── */}
       {pickerModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm modal-backdrop p-0 sm:p-4"
+          className="fixed inset-0 z-60 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs modal-backdrop p-0 sm:p-4"
           onClick={() => setPickerModal(null)}
         >
           <div
@@ -5034,9 +5034,9 @@ export default function HotelDetail() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5">
-              <div className="flex items-start justify-between gap-3 mb-4 relative z-[2]">
+              <div className="flex items-start justify-between gap-3 mb-4 relative z-2">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
+                  <span className="w-10 h-10 rounded-full bg-linear-to-br from-gold-400 to-amber-600 text-white flex items-center justify-center text-base shadow-gold"
                         style={{ animation: "lux-floaty 3s ease-in-out infinite" }}>🔍</span>
                   <div>
                     <h3 className="font-bold text-luxury-900 text-[1rem] tracking-tight leading-tight">
@@ -5051,7 +5051,7 @@ export default function HotelDetail() {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-3 mb-3 relative z-[2]">
+              <div className="grid grid-cols-2 gap-3 mb-3 relative z-2">
                 <button
                   type="button"
                   onClick={() => openCalendar({
@@ -5087,7 +5087,7 @@ export default function HotelDetail() {
               </div>
 
               {/* Guests */}
-              <div className="grid grid-cols-3 gap-3 mb-4 relative z-[2]">
+              <div className="grid grid-cols-3 gap-3 mb-4 relative z-2">
                 <div className="picker-tile">
                   <p className="text-[0.58rem] font-bold text-luxury-500 uppercase tracking-widest mb-2">👤 Adults</p>
                   <div className="flex items-center justify-between">
@@ -5114,7 +5114,7 @@ export default function HotelDetail() {
                 </div>
               </div>
 
-              <div className="relative z-[2]">
+              <div className="relative z-2">
                 <button
                   disabled={!globalCheckIn || !globalCheckOut}
                   onClick={resumePickerIntent}
@@ -5149,7 +5149,7 @@ export default function HotelDetail() {
       />
 
       {bidSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs"
           onClick={() => setBidSuccess(false)}>
           <div className="bg-white max-w-sm w-full mx-4 rounded-3xl shadow-luxury-lg p-8 text-center"
             onClick={(e) => e.stopPropagation()}>

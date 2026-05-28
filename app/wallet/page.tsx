@@ -339,7 +339,7 @@ export default function WalletPage() {
 
                 {/* Next milestone highlight */}
                 {nextMile && (
-                  <div className="rounded-3xl p-5 border border-gold-200 bg-gradient-to-br from-gold-50 to-amber-50">
+                  <div className="rounded-3xl p-5 border border-gold-200 bg-linear-to-br from-gold-50 to-amber-50">
                     <p className="text-[0.65rem] font-bold text-gold-600 uppercase tracking-widest mb-2">Next Reward</p>
                     <div className="flex items-center gap-3 mb-3">
                       <span className="text-2xl">{nextMile.icon}</span>
@@ -353,7 +353,7 @@ export default function WalletPage() {
                       </div>
                     </div>
                     <div className="h-2 bg-gold-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-gold-500 to-gold-300 rounded-full"
+                      <div className="h-full bg-linear-to-r from-gold-500 to-gold-300 rounded-full"
                         style={{ width:`${Math.min(100,(totalSpend/nextMile.at)*100)}%` }} />
                     </div>
                     <p className="text-[0.62rem] text-luxury-400 mt-1.5">₹{Math.max(0,nextMile.at-totalSpend).toLocaleString()} more to unlock</p>

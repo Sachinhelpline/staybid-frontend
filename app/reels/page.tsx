@@ -177,7 +177,7 @@ function ReelCard({
   const thumb = video.thumbnail_url || hotel?.images?.[0] || "";
 
   return (
-    <div className="relative w-full flex-shrink-0" style={{ height: "100dvh", scrollSnapAlign: "start" }}>
+    <div className="relative w-full shrink-0" style={{ height: "100dvh", scrollSnapAlign: "start" }}>
       {/* Video */}
       <video
         ref={vidRef}
@@ -200,7 +200,7 @@ function ReelCard({
       />
 
       {/* Dark gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
       {/* Top bar — v87: pt-4 was getting clipped under the notch on iOS
           PWA fullscreen. Now adds safe-area-inset-top so stay·bid mark
@@ -229,7 +229,7 @@ function ReelCard({
         </Link>
         <button
           onClick={() => setMuted(m => !m)}
-          className="w-9 h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-sm"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-lg backdrop-blur-xs"
           style={{ background: "rgba(31, 26, 15, 0.45)", border: "1px solid rgba(217, 190, 130, 0.18)" }}
         >
           {muted ? "🔇" : "🔊"}
@@ -275,10 +275,10 @@ function ReelCard({
             // No registered influencer — fallback "Hotel Reel" badge
             return (
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold">
                   🏨
                 </div>
-                <span className="text-white text-sm font-semibold drop-shadow">Hotel Direct</span>
+                <span className="text-white text-sm font-semibold drop-shadow-sm">Hotel Direct</span>
               </div>
             );
           }
@@ -288,12 +288,12 @@ function ReelCard({
               <Link href={`/influencer/public/${c.id}`} className="flex items-center gap-2">
                 {c.avatar_url
                   ? <img src={c.avatar_url} alt={c.display_name || "creator"} className="w-9 h-9 rounded-full object-cover ring-2 ring-white/40" />
-                  : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/40">
+                  : <div className="w-9 h-9 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-white/40">
                       {initials}
                     </div>
                 }
                 <div className="leading-tight">
-                  <p className="text-white text-sm font-bold drop-shadow flex items-center gap-1">
+                  <p className="text-white text-sm font-bold drop-shadow-sm flex items-center gap-1">
                     {c.display_name || "Creator"}
                     {c.verification_tier && c.verification_tier >= 2 ? <span className="text-[0.7rem]">✓</span> : null}
                   </p>
@@ -321,14 +321,14 @@ function ReelCard({
           const { plain, tags } = splitCaption(raw);
           return (
             <>
-              <p className="text-white text-sm font-medium leading-snug mb-2 line-clamp-2 drop-shadow">
+              <p className="text-white text-sm font-medium leading-snug mb-2 line-clamp-2 drop-shadow-sm">
                 {plain || raw}
               </p>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {tags.slice(0, 6).map(t => (
                     <Link key={t} href={`/tag/${encodeURIComponent(t.toLowerCase())}`}
-                      className="text-white/90 text-xs font-bold drop-shadow hover:text-gold-300">
+                      className="text-white/90 text-xs font-bold drop-shadow-sm hover:text-gold-300">
                       #{t}
                     </Link>
                   ))}
@@ -342,7 +342,7 @@ function ReelCard({
         {hotel && (
           <Link
             href={`/hotels/${hotel.id}`}
-            className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 text-white text-xs font-semibold border border-white/20">
+            className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-xs rounded-full px-3 py-1 text-white text-xs font-semibold border border-white/20">
             🏨 {hotel.name}
             {hotel.star_rating ? <span className="text-gold-300 text-[0.6rem]">{starStr(hotel.star_rating)}</span> : null}
           </Link>
@@ -386,7 +386,7 @@ function ActionBtn({
       className="flex flex-col items-center gap-0.5"
       style={{ transform: pop ? "scale(1.35)" : "scale(1)", transition: "transform 0.15s" }}>
       <span className="text-2xl drop-shadow-lg">{icon}</span>
-      <span className="text-white text-[0.6rem] font-semibold drop-shadow">{label}</span>
+      <span className="text-white text-[0.6rem] font-semibold drop-shadow-sm">{label}</span>
     </button>
   );
 }
@@ -501,7 +501,7 @@ function CommentDrawer({
         {/* Input */}
         <div className="border-t border-luxury-100 px-4 py-3 flex items-center gap-3">
           <input
-            className="flex-1 border border-luxury-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-gold-400"
+            className="flex-1 border border-luxury-200 rounded-full px-4 py-2 text-sm focus:outline-hidden focus:border-gold-400"
             placeholder={replyTo ? "Add a reply…" : "Add a comment…"}
             value={draft}
             onChange={e => setDraft(e.target.value)}
@@ -524,7 +524,7 @@ function CommentRow({ c, onReply, small }: { c: Comment; onReply: () => void; sm
   const av = small ? "w-6 h-6 text-[0.6rem]" : "w-7 h-7 text-xs";
   return (
     <div className="flex gap-2">
-      <div className={`${av} rounded-full bg-luxury-100 flex items-center justify-center font-bold text-luxury-600 flex-shrink-0`}>
+      <div className={`${av} rounded-full bg-luxury-100 flex items-center justify-center font-bold text-luxury-600 shrink-0`}>
         {c.user_id.slice(0, 2).toUpperCase()}
       </div>
       <div className="flex-1">
@@ -702,7 +702,7 @@ export default function ReelsPage() {
       {tag && (
         <button
           onClick={() => setTag(null)}
-          className="mt-2 pointer-events-auto bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/20">
+          className="mt-2 pointer-events-auto bg-black/50 backdrop-blur-xs rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/20">
           #{tag} ✕
         </button>
       )}
@@ -716,7 +716,7 @@ export default function ReelsPage() {
               <button
                 key={t.tag}
                 onClick={() => setTag(t.tag)}
-                className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/15 hover:border-gold-300 transition-colors whitespace-nowrap">
+                className="bg-black/40 backdrop-blur-xs rounded-full px-3 py-1 text-white text-[0.7rem] font-bold border border-white/15 hover:border-gold-300 transition-colors whitespace-nowrap">
                 #{t.tag}
               </button>
             ))}

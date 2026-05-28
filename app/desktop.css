@@ -1310,11 +1310,11 @@ body main textarea.input-luxury {
    InstagramHotelFeed isn't mounted — so no extra hide gate needed. */
 
 /* v132.9.1 — Help overlay + back-to-top entrance keyframes.
-   Defined HERE (not inside a <style jsx> block) for two reasons:
-   1. InstagramHotelFeed.tsx already has two component-scoped <style jsx
+   Defined HERE (not inside a \3c style jsx> block) for two reasons:
+   1. InstagramHotelFeed.tsx already has two component-scoped \3c style jsx
       global> blocks; a third triggers the SWC styled_jsx visitor.rs:597
       panic on Vercel's build (CLAUDE.md documented trap).
-   2. BackToTopButton's <style jsx> (non-global) would scope the @keyframes
+   2. BackToTopButton's \3c style jsx> (non-global) would scope the @keyframes
       name to a hashed identifier while the component's inline `animation:`
       style references the un-hashed name — silent dead animation.
    Both names must stay stable + globally addressable from inline styles. */

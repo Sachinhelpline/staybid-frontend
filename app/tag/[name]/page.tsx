@@ -39,7 +39,7 @@ export default function HashtagPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
 
         {/* Hero */}
@@ -85,17 +85,17 @@ export default function HashtagPage() {
           <div className="grid grid-cols-3 gap-2 sb-stagger">
             {data.videos.map((v: any) => (
               <Link key={v.id} href={`/reels?tag=${encodeURIComponent(data.tag)}`}
-                className="relative aspect-[9/16] rounded-xl overflow-hidden bg-luxury-100 group sb-card-lift">
+                className="relative aspect-9/16 rounded-xl overflow-hidden bg-luxury-100 group sb-card-lift">
                 {v.thumbnail_url
                   ? <img src={v.thumbnail_url} alt={v.title || "reel"} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   : <video src={v.s3_url} className="w-full h-full object-cover" muted playsInline />}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-white text-[0.6rem] font-bold drop-shadow">
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-white text-[0.6rem] font-bold drop-shadow-sm">
                   <span>▶ {fmtNum(v.views_count || 0)}</span>
                   <span>❤ {fmtNum(v.likes_count || 0)}</span>
                 </div>
                 {v.hotel && (
-                  <div className="absolute top-1 left-1 right-1 text-white text-[0.55rem] font-bold drop-shadow truncate">
+                  <div className="absolute top-1 left-1 right-1 text-white text-[0.55rem] font-bold drop-shadow-sm truncate">
                     🏨 {v.hotel.name}
                   </div>
                 )}

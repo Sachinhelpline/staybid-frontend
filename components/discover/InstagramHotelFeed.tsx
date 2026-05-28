@@ -451,7 +451,7 @@ function CommentDrawer({
   const [input, setInput] = useState("");
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[80] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-80 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -548,7 +548,7 @@ function CommentDrawer({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={`Public comment on ${hotelName}… (no contacts)`}
-            className="ig-comment-input flex-1 rounded-full px-4 py-2 text-[0.82rem] outline-none transition-colors"
+            className="ig-comment-input flex-1 rounded-full px-4 py-2 text-[0.82rem] outline-hidden transition-colors"
             style={{
               color: "#ffffff",
               caretColor: "#ffd76b",
@@ -610,7 +610,7 @@ function MoreMenu({
         { icon: "🚫",  label: "Not interested" },
       ];
   return (
-    <div className="fixed inset-0 z-[80] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-80 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -779,7 +779,7 @@ function CreatorProfileSheet({
   const reelsCount = Math.max(myReels.length, pseudoStat(creator.handle, "reels", 12, 320));
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-85 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1070,7 +1070,7 @@ function CreatorProfileSheet({
                     onPickReel?.(h.id);
                     onClose();
                   }}
-                  className="ig-reel-tile relative aspect-[9/14] overflow-hidden bg-black/40 active:scale-95 transition-transform"
+                  className="ig-reel-tile relative aspect-9/14 overflow-hidden bg-black/40 active:scale-95 transition-transform"
                 >
                   {/* Profile grid always renders an <img> — for user video
                       posts that's the captured first-frame poster (data
@@ -1164,7 +1164,7 @@ function CreatorProfileSheet({
                   value={followerQuery}
                   onChange={(e) => setFollowerQuery(e.target.value)}
                   placeholder={tab === "followers" ? "Search followers…" : "Search who you follow…"}
-                  className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-none"
+                  className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-hidden"
                   style={{
                     color: "#ffffff",
                     caretColor: "#ffd76b",
@@ -1257,7 +1257,7 @@ function FilterSheet({
   const sources: SourceType[] = ["all", "hotel", "creator", "public"];
   const cities = ["all", ...cityOptions];
   return (
-    <div className="fixed inset-0 z-[88] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-88 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1456,7 +1456,7 @@ function EditPostSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-[88] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-88 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1495,7 +1495,7 @@ function EditPostSheet({
               rows={3}
               maxLength={500}
               placeholder="Write a caption…"
-              className="w-full rounded-xl px-3 py-2 text-[0.82rem] outline-none resize-none"
+              className="w-full rounded-xl px-3 py-2 text-[0.82rem] outline-hidden resize-none"
               style={{
                 color: "#fff",
                 caretColor: "#ffd76b",
@@ -1545,7 +1545,7 @@ function EditPostSheet({
 function Toast({ msg }: { msg: string | null }) {
   if (!msg) return null;
   return (
-    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[90] ig-toast">
+    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-90 ig-toast">
       <div
         className="px-4 py-2 rounded-full text-white text-[0.78rem] font-semibold"
         style={{
@@ -1705,7 +1705,7 @@ const HotelCard = memo(function HotelCard({
     return () => {
       document.removeEventListener("visibilitychange", compute);
       window.removeEventListener("pagehide", compute);
-      window.removeEventListener("blur", compute);
+      window.removeEventListener("blur-sm", compute);
       window.removeEventListener("focus", compute);
       mo.disconnect();
     };
@@ -2027,8 +2027,8 @@ const HotelCard = memo(function HotelCard({
       )}
 
       {/* Top + bottom dark gradients */}
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-80 bg-linear-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
       {/* Top-LEFT: hotel profile chip. v88 — pushed down to `top: 38` so
           the brand wordmark restored on /discover + / sits ABOVE the chip
@@ -2044,7 +2044,7 @@ const HotelCard = memo(function HotelCard({
           onClick={(e) => {
             e.stopPropagation();
             // Self with active stories → open the StoryViewer directly
-            // (Instagram-style "tap the story ring to view"). Else fall
+            // (Instagram-style "tap the story ring-3 to view"). Else fall
             // back to the existing avatar popover menu.
             if (h._isSelf && hasOwnStories && onOpenStories) {
               onOpenStories();
@@ -2779,7 +2779,7 @@ function StoryViewer({
   const captionClean = sanitizeComment(captionRaw).clean;
 
   return (
-    <div className="fixed inset-0 z-[96] bg-black flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-96 bg-black flex items-center justify-center" onClick={onClose}>
       <div
         className="relative w-full h-full max-w-md mx-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -3912,7 +3912,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
         /* ─── Right rail (Instagram-style borderless icons) ─────────────
            Icons sit directly on the video — no pills, no borders, no
-           background. Just a soft drop-shadow under each glyph for
+           background. Just a soft drop-shadow-sm under each glyph for
            legibility. Compact like Instagram Reels. */
         .ig-rail-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;

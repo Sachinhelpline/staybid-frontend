@@ -188,7 +188,7 @@ export default function StayFeedbackCard({
     const f = existing.feedback || {};
     const isMidStay = mode === "mid_stay";
     return (
-      <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-luxury-50 border border-emerald-200">
+      <div className="mt-4 p-4 rounded-2xl bg-linear-to-br from-emerald-50 to-luxury-50 border border-emerald-200">
         <div className="flex items-start gap-3">
           <div className="text-3xl">✓</div>
           <div className="flex-1">
@@ -222,8 +222,8 @@ export default function StayFeedbackCard({
 
   const isMidStay = mode === "mid_stay";
   const cardTone = isMidStay
-    ? "bg-gradient-to-br from-red-50/40 to-amber-50 border-red-200/60"
-    : "bg-gradient-to-br from-gold-50/40 to-luxury-50 border-gold-200/60";
+    ? "bg-linear-to-br from-red-50/40 to-amber-50 border-red-200/60"
+    : "bg-linear-to-br from-gold-50/40 to-luxury-50 border-gold-200/60";
 
   return (
     <div className={`mt-4 p-4 rounded-2xl border ${cardTone}`}>
@@ -293,7 +293,7 @@ export default function StayFeedbackCard({
                     onClick={() => setScores((p) => ({ ...p, [c.key]: s.v }))}
                     className={`flex-1 py-2 px-2 rounded-lg border text-sm font-medium transition ${
                       active
-                        ? "border-current shadow-sm"
+                        ? "border-current shadow-xs"
                         : "border-luxury-100 bg-luxury-50/40 hover:bg-white"
                     }`}
                     style={
@@ -317,7 +317,7 @@ export default function StayFeedbackCard({
         value={note}
         onChange={(e) => setNote(e.target.value.slice(0, 1000))}
         rows={2}
-        className="mt-3 w-full p-2.5 text-sm rounded-lg border border-luxury-100 bg-white focus:outline-none focus:border-gold-400 resize-none"
+        className="mt-3 w-full p-2.5 text-sm rounded-lg border border-luxury-100 bg-white focus:outline-hidden focus:border-gold-400 resize-none"
       />
 
       {negCount > 0 && allFilled && (

@@ -128,7 +128,7 @@ export default function PartnerVerification() {
 function TabBtn({ active, children, onClick }: any) {
   return (
     <button onClick={onClick}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
               active ? "text-white" : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-100"
             }`}
             style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 2px 8px rgba(201,145,26,0.3)" } : undefined}>
@@ -282,7 +282,7 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
       ) : c.status === "open" && (
         <div className="mt-3 flex items-center justify-between gap-2 p-3 rounded-2xl bg-luxury-50 border border-luxury-200">
           <div className="text-xs text-luxury-700">Run AI dispute analysis to compare both videos.</div>
-          <button onClick={runAi} disabled={busy} className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-white font-bold disabled:opacity-50">
+          <button onClick={runAi} disabled={busy} className="text-xs px-3 py-1.5 rounded-full bg-linear-to-r from-gold-500 to-gold-600 text-white font-bold disabled:opacity-50">
             {busy ? "Analysing…" : "🧠 Run AI Analysis"}
           </button>
         </div>

@@ -70,12 +70,12 @@ export default function SocialProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center text-white/50">Loading…</div>
+      <div className="min-h-dvh flex items-center justify-center text-white/50">Loading…</div>
     );
   }
   if (!profile) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center text-center text-white/70 px-8">
+      <div className="min-h-dvh flex flex-col items-center justify-center text-center text-white/70 px-8">
         <p className="text-6xl mb-3">🤷</p>
         <p className="text-base font-semibold mb-2">Profile not found</p>
         <Link href="/social/feed" className="text-gold-300 underline text-sm">Back to feed</Link>
@@ -90,7 +90,7 @@ export default function SocialProfilePage() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white">
+    <div className="min-h-dvh bg-black text-white">
       <ProfileHeader
         profile={profile}
         postCount={posts.length}

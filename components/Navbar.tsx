@@ -422,9 +422,9 @@ export function Navbar() {
           z-50 sticky Navbar slid UNDER the shell making it invisible
           on /bid. Sachin: "ss1 aur abhi bhi full screen show ho Raha
           hai bina nav baar ke" — the bgz-shell was eating the Navbar.
-          z-[1100] makes the Navbar STAY VISIBLE above every page
+          z-1100 makes the Navbar STAY VISIBLE above every page
           chrome including /bid's climber. */}
-      <nav className="sticky top-0 z-[1100] nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
+      <nav className="sticky top-0 z-1100 nav3d-bar relative" data-reel-route={isReelRoute ? "true" : undefined}>
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3" style={{ height: "64px" }}>
 
           {/* Logo + Location (tight gap) */}
@@ -576,7 +576,7 @@ export function Navbar() {
       {/* ── MOBILE MORE SHEET ─────────────────────────────────── */}
       {moreOpen && (
         <>
-          <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          <div className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs"
             onClick={() => setMoreOpen(false)} />
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 sheet-in"
             style={{ background: "linear-gradient(180deg,#12101c,#0a0812)", borderRadius: "24px 24px 0 0", boxShadow: "0 -12px 50px rgba(0,0,0,0.7)", border: "1px solid rgba(240,180,41,0.25)" }}>

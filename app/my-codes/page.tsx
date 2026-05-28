@@ -36,7 +36,7 @@ function BarcodeBars({ value }: { value: string }) {
     bars.push({ w: 1, on: false });
   }
   return (
-    <div className="flex items-end h-12 gap-[1px] my-2">
+    <div className="flex items-end h-12 gap-px my-2">
       {bars.map((b, i) => (
         <div key={i}
           style={{
@@ -163,7 +163,7 @@ function MyCodesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50 pb-24">
+    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50 pb-24">
       <div className="max-w-3xl mx-auto px-4 pt-6">
 
         <div className="flex items-start justify-between mb-4 gap-3 sb-fade-in">
@@ -272,7 +272,7 @@ function MyCodesPage() {
 
       {/* Detail / "Show this" modal */}
       {openCode && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center backdrop-blur-md bg-black/80 p-3"
+        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center backdrop-blur-md bg-black/80 p-3"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
           onClick={() => setOpenCode(null)}>
           <div className="w-full sm:max-w-md rounded-3xl bg-white overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -334,7 +334,7 @@ function MyCodesPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-luxury-900 text-white text-xs font-semibold shadow-lg"
+        <div className="fixed left-1/2 -translate-x-1/2 z-70 px-4 py-2 rounded-full bg-luxury-900 text-white text-xs font-semibold shadow-lg"
           style={{ bottom: "calc(96px + env(safe-area-inset-bottom, 0px))" }}>
           {toast}
         </div>

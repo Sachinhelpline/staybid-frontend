@@ -312,7 +312,7 @@ function RecordInner() {
           </h1>
           <p className="text-white/70 mt-2 text-sm">{doneCopy}</p>
           <button onClick={() => router.push(type === "hotel" ? "/partner/dashboard" : "/verification")}
-                  className="mt-6 px-7 py-3 rounded-full bg-gradient-to-r from-gold-600 to-gold-500 font-semibold">Done</button>
+                  className="mt-6 px-7 py-3 rounded-full bg-linear-to-r from-gold-600 to-gold-500 font-semibold">Done</button>
         </div>
       </div>
     );
@@ -342,7 +342,7 @@ function RecordInner() {
                       <div className="text-xs text-white/60">{seg ? `${seg.durationSecs}s recorded` : (step.optional ? "Skipped" : "Not recorded")}</div>
                     </div>
                     {seg && (
-                      <video src={URL.createObjectURL(seg.blob)} controls className="w-24 h-16 rounded bg-black object-cover" />
+                      <video src={URL.createObjectURL(seg.blob)} controls className="w-24 h-16 rounded-sm bg-black object-cover" />
                     )}
                   </div>
                   <div className="mt-2 flex gap-2">
@@ -356,7 +356,7 @@ function RecordInner() {
           {err && <div className="mt-4 text-red-300 text-sm bg-red-500/20 border border-red-400/30 rounded-xl p-3">{err}</div>}
           <button onClick={submit}
                   disabled={segments.filter((s) => cfg.steps.find((st) => st.id === s.stepId)?.required).length < cfg.steps.filter((s) => s.required).length}
-                  className="mt-5 w-full py-3.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 font-bold text-black disabled:opacity-50">
+                  className="mt-5 w-full py-3.5 rounded-full bg-linear-to-r from-gold-500 to-gold-600 font-bold text-black disabled:opacity-50">
             Submit verification
           </button>
         </div>
@@ -385,7 +385,7 @@ function RecordInner() {
   return (
     <div className="min-h-screen bg-luxury-900 text-white relative overflow-hidden">
       <video ref={videoEl} muted playsInline className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-black/80" />
+      <div className="absolute inset-0 bg-linear-to-b from-black/70 via-black/10 to-black/80" />
 
       {/* Header */}
       <div className="relative z-10 p-4 flex items-center justify-between">
@@ -394,7 +394,7 @@ function RecordInner() {
       </div>
       <div className="relative z-10 px-4">
         <div className="h-1 bg-white/20 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-gold-500 to-gold-300 transition-all" style={{ width: `${Math.min(100, (totalSoFar / cfg.durationSecs) * 100)}%` }} />
+          <div className="h-full bg-linear-to-r from-gold-500 to-gold-300 transition-all" style={{ width: `${Math.min(100, (totalSoFar / cfg.durationSecs) * 100)}%` }} />
         </div>
       </div>
 
@@ -408,7 +408,7 @@ function RecordInner() {
               {cfg.tier === "platinum" && " Geo + timestamp auto-captured."}
             </div>
             <button onClick={() => startStep(0)}
-                    className="px-8 py-3.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 font-bold shadow-lg active:scale-95 transition">
+                    className="px-8 py-3.5 rounded-full bg-linear-to-r from-red-500 to-red-600 font-bold shadow-lg active:scale-95 transition">
               ● Start Step 1
             </button>
           </div>
@@ -441,7 +441,7 @@ function RecordInner() {
             <div className="text-xs text-white/60 mt-1">{segments.find((s) => s.stepId === cur.id)?.durationSecs}s recorded</div>
             <div className="mt-5 flex gap-2 justify-center">
               <button onClick={() => retryStep(stepIdx)} className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 font-semibold text-sm">↻ Retry</button>
-              <button onClick={continueAfterStep} className="px-6 py-2.5 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 text-black font-bold text-sm">
+              <button onClick={continueAfterStep} className="px-6 py-2.5 rounded-full bg-linear-to-r from-gold-500 to-gold-600 text-black font-bold text-sm">
                 {stepIdx + 1 < cfg.steps.length ? `Next → ${cfg.steps[stepIdx + 1].title}` : "Review & submit"}
               </button>
             </div>

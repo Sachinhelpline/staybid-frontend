@@ -347,7 +347,7 @@ export default function ProfilePage() {
 
         {/* ── Next milestone ── */}
         {nextMilestone && (
-          <div className="fade-up rounded-3xl p-6 border border-gold-200 bg-gradient-to-br from-gold-50 to-amber-50" style={{ animationDelay:"0.24s" }}>
+          <div className="fade-up rounded-3xl p-6 border border-gold-200 bg-linear-to-br from-gold-50 to-amber-50" style={{ animationDelay:"0.24s" }}>
             <div className="flex items-center gap-3 mb-1">
               <span className="text-2xl">{nextMilestone.icon}</span>
               <div>
@@ -361,7 +361,7 @@ export default function ProfilePage() {
             </div>
             <div className="mt-3">
               <div className="h-1.5 bg-gold-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-gold-500 to-gold-300 rounded-full"
+                <div className="h-full bg-linear-to-r from-gold-500 to-gold-300 rounded-full"
                   style={{ width:`${Math.min(100,(totalSpend/nextMilestone.at)*100)}%` }} />
               </div>
               <p className="text-[0.6rem] text-luxury-400 mt-1.5">

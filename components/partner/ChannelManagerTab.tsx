@@ -149,12 +149,12 @@ export default function ChannelManagerTab({
                 </p>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                <button onClick={() => setEditor(ota)} className="btn-ghost !px-2.5 !py-1 text-[0.7rem]">
+                <button onClick={() => setEditor(ota)} className="btn-ghost px-2.5! py-1! text-[0.7rem]">
                   {conn ? "Edit" : "Connect"}
                 </button>
                 {conn && (
                   <button onClick={() => removeConnection(conn.id)}
-                    className="btn-ghost !px-2.5 !py-1 text-[0.7rem] !text-red-600 hover:!border-red-300">🗑</button>
+                    className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
                 )}
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function ChannelManagerTab({
               <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">{x.name}</p>
               <div className="flex items-center gap-1.5">
                 <code className="flex-1 min-w-0 truncate text-[0.62rem] bg-luxury-50 rounded-lg px-2 py-1.5 text-luxury-600">{x.url}</code>
-                <button onClick={() => copy(x.url, "iCal link")} className="btn-gold !px-2.5 !py-1.5 text-[0.7rem]">Copy</button>
+                <button onClick={() => copy(x.url, "iCal link")} className="btn-gold px-2.5! py-1.5! text-[0.7rem]">Copy</button>
               </div>
             </div>
           ))}
@@ -253,7 +253,7 @@ function ChannelEditor({
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>

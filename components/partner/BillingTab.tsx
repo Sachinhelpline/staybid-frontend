@@ -356,7 +356,7 @@ function NewFolioModal({
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
@@ -616,13 +616,13 @@ function FolioDetail({
         {/* add charge row */}
         <div className="grid grid-cols-2 sm:grid-cols-[1.1fr_1.9fr_auto_auto_auto] gap-1.5 mt-2">
           <select value={c.kind} onChange={(e) => setC({ kind: e.target.value, label: "", qty: "1", unitPrice: "", roomId: "" })}
-            className="inp-p !py-1.5 text-[0.74rem]">
+            className="inp-p py-1.5! text-[0.74rem]">
             {kindOptions.map((k) => (
               <option key={k} value={k}>{KIND[k].icon} {KIND[k].label}</option>
             ))}
           </select>
           {c.kind === "room" ? (
-            <select value={c.roomId} onChange={(e) => pickRoom(e.target.value)} className="inp-p !py-1.5 text-[0.74rem]">
+            <select value={c.roomId} onChange={(e) => pickRoom(e.target.value)} className="inp-p py-1.5! text-[0.74rem]">
               <option value="">Select room category…</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>{r.name || r.type} — {fmtCur(r.mrp || r.floorPrice || 0)}</option>
@@ -630,13 +630,13 @@ function FolioDetail({
             </select>
           ) : (
             <input value={c.label} onChange={(e) => setCV("label", e.target.value)} placeholder="Item"
-              className="inp-p !py-1.5 text-[0.74rem]" onKeyDown={(e) => e.key === "Enter" && addItem()} />
+              className="inp-p py-1.5! text-[0.74rem]" onKeyDown={(e) => e.key === "Enter" && addItem()} />
           )}
           <input value={c.qty} onChange={(e) => setCV("qty", e.target.value)} type="number" placeholder="Qty"
-            className="inp-p !py-1.5 text-[0.74rem] w-16" />
+            className="inp-p py-1.5! text-[0.74rem] w-16" />
           <input value={c.unitPrice} onChange={(e) => setCV("unitPrice", e.target.value)} type="number" placeholder="₹ rate"
-            className="inp-p !py-1.5 text-[0.74rem] w-20" />
-          <button onClick={addItem} className="btn-gold !px-3 !py-1.5">Add</button>
+            className="inp-p py-1.5! text-[0.74rem] w-20" />
+          <button onClick={addItem} className="btn-gold px-3! py-1.5!">Add</button>
         </div>
         {c.kind === "room" && !online && (
           <p className="text-[0.6rem] text-luxury-400 mt-1">Room category pick karo — price auto aayega, walk-in bill me edit bhi kar sakte ho (flexible).</p>
@@ -676,7 +676,7 @@ function FolioDetail({
             <span className="text-luxury-500 flex items-center gap-1.5">
               GST
               <select value={String(folio.tax_pct ?? 12)} onChange={(e) => onPatch({ taxPct: e.target.value })}
-                className="inp-p !py-0.5 !px-1.5 text-[0.72rem]" style={{ width: "auto" }}>
+                className="inp-p py-0.5! px-1.5! text-[0.72rem]" style={{ width: "auto" }}>
                 {GST_SLABS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
               </select>
               {t.inclusive && <span className="text-[0.62rem] text-luxury-400">incl.</span>}
@@ -687,7 +687,7 @@ function FolioDetail({
             <span className="text-luxury-500 flex items-center gap-1.5">
               Discount ₹
               <input type="number" value={folio.discount} onChange={(e) => onPatch({ discount: e.target.value })}
-                className="inp-p !py-0.5 !px-1.5 w-20 text-[0.72rem]" />
+                className="inp-p py-0.5! px-1.5! w-20 text-[0.72rem]" />
             </span>
             <span className="font-semibold text-red-600">− {fmtCur(t.discount)}</span>
           </div>

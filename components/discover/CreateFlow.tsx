@@ -273,7 +273,7 @@ export function CreateSheet({
     { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",        gradient: "linear-gradient(135deg,#3ea0ff,#1a78d6)" },
   ];
   return (
-    <div className="fixed inset-0 z-[90] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-90 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -418,7 +418,7 @@ export function LocationPicker({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -496,7 +496,7 @@ export function LocationPicker({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search city, area, hotel, landmark…"
-            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-none"
+            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-hidden"
             style={{
               color: "#fff", caretColor: "#ffd76b",
               background: "rgba(255,255,255,0.10)",
@@ -603,7 +603,7 @@ export function HotelPicker({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -659,7 +659,7 @@ export function HotelPicker({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search hotel name or city…"
-            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-none"
+            className="w-full rounded-full px-4 py-2.5 text-[0.86rem] outline-hidden"
             style={{
               color: "#fff", caretColor: "#ffd76b",
               background: "rgba(255,255,255,0.10)",
@@ -900,7 +900,7 @@ export function ProfilePhotoEditor({
   const initials = (name || myDisplayName || "Y").trim().slice(0, 1).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-[94] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-94 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -991,7 +991,7 @@ export function ProfilePhotoEditor({
               onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
               maxLength={32}
-              className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-none"
+              className="w-full rounded-xl px-3 py-2 text-[0.86rem] outline-hidden"
               style={{
                 color: "#fff", caretColor: "#ffd76b",
                 background: "rgba(255,255,255,0.10)",
@@ -1009,7 +1009,7 @@ export function ProfilePhotoEditor({
               placeholder="Travel storyteller · Mumbai · Always bidding for the best room"
               rows={3}
               maxLength={280}
-              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none resize-none"
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden resize-none"
               style={{
                 color: "#fff", caretColor: "#ffd76b",
                 background: "rgba(255,255,255,0.10)",
@@ -1030,7 +1030,7 @@ export function ProfilePhotoEditor({
               onChange={(e) => setLocation(e.target.value)}
               placeholder="📍 Mumbai, India"
               maxLength={80}
-              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
                 color: "#fff", caretColor: "#ffd76b",
                 background: "rgba(255,255,255,0.10)",
@@ -1047,7 +1047,7 @@ export function ProfilePhotoEditor({
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://yourblog.com"
               maxLength={120}
-              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+              className="w-full rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
               style={{
                 color: "#fff", caretColor: "#ffd76b",
                 background: "rgba(255,255,255,0.10)",
@@ -1088,7 +1088,7 @@ export function ProfilePhotoEditor({
                 value={hlEmoji}
                 onChange={(e) => setHlEmoji(e.target.value.slice(0, 4) || "✨")}
                 maxLength={4}
-                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-none text-center"
+                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-hidden text-center"
                 style={{
                   color: "#fff", caretColor: "#ffd76b",
                   background: "rgba(255,255,255,0.10)",
@@ -1101,7 +1101,7 @@ export function ProfilePhotoEditor({
                 onChange={(e) => setHlLabel(e.target.value)}
                 placeholder="Highlight name (e.g. Goa 2026)"
                 maxLength={24}
-                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
                 style={{
                   color: "#fff", caretColor: "#ffd76b",
                   background: "rgba(255,255,255,0.10)",
@@ -1189,7 +1189,7 @@ export function HighlightPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-[93] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-93 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1282,7 +1282,7 @@ export function HighlightPicker({
                 value={hlEmoji}
                 onChange={(e) => setHlEmoji(e.target.value.slice(0, 4) || "✨")}
                 maxLength={4}
-                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-none text-center"
+                className="w-14 rounded-xl px-2 py-2 text-[0.86rem] outline-hidden text-center"
                 style={{
                   color: "#fff", caretColor: "#ffd76b",
                   background: "rgba(255,255,255,0.10)",
@@ -1296,7 +1296,7 @@ export function HighlightPicker({
                 placeholder="Highlight name"
                 maxLength={24}
                 autoFocus
-                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-none"
+                className="flex-1 rounded-xl px-3 py-2 text-[0.84rem] outline-hidden"
                 style={{
                   color: "#fff", caretColor: "#ffd76b",
                   background: "rgba(255,255,255,0.10)",
@@ -1374,7 +1374,7 @@ export function AudioPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-[92] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-92 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }} />
       <div
         className="relative w-full ig-drawer-up"
@@ -1415,7 +1415,7 @@ export function AudioPicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search music…"
-            className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-none"
+            className="ig-comment-input w-full rounded-full px-4 py-2 text-[0.82rem] outline-hidden"
             style={{ color: "#fff", caretColor: "#ffd76b", background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
           />
         </div>
@@ -1585,7 +1585,7 @@ export function OverlayEmojiPicker({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-[1100] flex items-end"
+      className="fixed inset-0 z-1100 flex items-end"
       onClick={onClose}
       style={{ isolation: "isolate" }}
     >
@@ -1725,7 +1725,7 @@ export function CoverFramePicker({
   if (!open) return null;
   const markerPct = duration > 0 ? Math.max(0, Math.min(100, (scrub / duration) * 100)) : 0;
   return (
-    <div className="fixed inset-0 z-[97] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-97 flex items-end" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(10px)" }} />
       <div
         className="relative w-full"
@@ -2825,7 +2825,7 @@ export function Composer({
 
   // v113 — portal to <body> so the composer escapes any ancestor stacking
   // context. InstagramHotelFeed wraps everything in an `absolute z-10`
-  // surface; without the portal, this fixed z-[91] sheet gets clamped to
+  // surface; without the portal, this fixed z-91 sheet gets clamped to
   // z-10 in the root stacking order and the z-60 BottomDock renders ON
   // TOP of the composer (the actual cause of "Post button hidden").
   const sheet = (
@@ -2834,7 +2834,7 @@ export function Composer({
     // and any future fixed surface. Combined with the portal-to-body fix
     // (v113), nothing can ever render on top again.
     <div
-      className="fixed inset-0 z-[1000] flex items-end"
+      className="fixed inset-0 z-1000 flex items-end"
       onClick={onClose}
       style={{ isolation: "isolate" }}
     >
@@ -2988,7 +2988,7 @@ export function Composer({
                     onFile({ target: fileRef.current } as any);
                   }
                 }}
-                className="w-full aspect-[4/5] rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                className="w-full aspect-4/5 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
                 style={{
                   background: "linear-gradient(135deg, rgba(255,69,141,0.18), rgba(185,100,255,0.10))",
                   border: "1.5px dashed rgba(255,255,255,0.25)",
@@ -3708,7 +3708,7 @@ export function Composer({
                     </span>
                     <span className="block text-white/55 text-[0.62rem] leading-snug">
                       {saveAsPost
-                        ? "Live for 24h on your story ring AND saved to your profile reels"
+                        ? "Live for 24h on your story ring-3 AND saved to your profile reels"
                         : "Story disappears after 24 hours unless you turn this on"}
                     </span>
                   </span>
@@ -3796,7 +3796,7 @@ export function Composer({
                   rows={3}
                   maxLength={500}
                   placeholder="Write a caption… use @ to tag people"
-                  className="ig-comment-input w-full rounded-xl px-3 py-2 text-[0.82rem] outline-none resize-none"
+                  className="ig-comment-input w-full rounded-xl px-3 py-2 text-[0.82rem] outline-hidden resize-none"
                   style={{
                     color: "#fff",
                     caretColor: "#ffd76b",

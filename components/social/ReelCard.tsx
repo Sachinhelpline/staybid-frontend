@@ -163,8 +163,8 @@ export function ReelCard({
       {post.sound_url && <audio ref={audioRef} src={post.sound_url} loop preload="auto" />}
 
       {/* Top + bottom gradients for legibility */}
-      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/70 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-[55%] bg-linear-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
 
       {/* TOP: @username + 📍 location  ·  Follow */}
       <div className="absolute top-3 left-3 right-3 z-30 flex items-center gap-2">
