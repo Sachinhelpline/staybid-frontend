@@ -4737,6 +4737,17 @@ export default function HotelDetail() {
             <div className="w-16 h-16 rounded-full bg-gold-100 flex items-center justify-center mx-auto mb-5"><span className="text-3xl">{negAuto ? "🎉" : "✅"}</span></div>
             <h3 className="font-display font-light text-luxury-900 text-2xl mb-2">{negAuto ? "Booking Confirmed!" : "Bid Submitted!"}</h3>
             <p className="text-luxury-400 text-sm mb-6">{negAuto ? "The hotel confirmed your bid. Check My Bookings." : "The hotel will review your offer and respond soon. You'll be notified."}</p>
+            {/* v241.6 — InspirationBanner ONLY when bid auto-confirmed
+                into a real booking. "Bid Submitted!" is in-flight, not
+                a confirmed stay — skip the nudge for that branch. */}
+            {negAuto && (
+              <InspirationBanner
+                variant="modal"
+                hotelId={hotel.id}
+                hotelName={hotel.name}
+                bookingId={hotel.id}
+              />
+            )}
             <div className="flex gap-3">
               <button onClick={() => setNegRoom(null)} className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm">Close</button>
               <Link href={negAuto ? "/bookings" : "/my-bids"} className="flex-1 py-3 rounded-2xl btn-luxury text-sm text-center">{negAuto ? "My Bookings" : "My Bids"}</Link>
@@ -4761,6 +4772,14 @@ export default function HotelDetail() {
               Your flash deal booking at <span className="font-semibold text-luxury-700">{hotel.name}</span> is confirmed.
             </p>
             <p className="text-gold-600 font-bold text-lg mb-6">₹{flashGrandTotal.toLocaleString()} · {flashNights} night{flashNights > 1 ? "s" : ""}</p>
+            {/* v241.6 — Flash bookings are always instant-confirm, so the
+                InspirationBanner fires unconditionally on this surface. */}
+            <InspirationBanner
+              variant="modal"
+              hotelId={hotel.id}
+              hotelName={hotel.name}
+              bookingId={hotel.id}
+            />
             <div className="flex gap-3">
               <button onClick={() => setFlashBookSuccess(false)}
                 className="flex-1 py-3 rounded-2xl border border-luxury-200 text-luxury-600 text-sm font-medium">
