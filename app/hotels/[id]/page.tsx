@@ -2730,7 +2730,16 @@ export default function HotelDetail() {
             cluttered with one CHECKED_IN row sitting next to live
             offers. The /bookings page owns the past-stays display. */}
         {(() => {
-          const activeOffers = myBids.filter((b: any) =>
+          // v241.15 — Single source of truth for what counts as "active".
+          // Pre-v241.15 this filter checked status only (PENDING /
+          // ACCEPTED / COUNTER), so an ACCEPTED bid whose 15-min payment
+          // window had EXPIRED still rendered as an actionable card with
+          // a "Pay Now" CTA. Meanwhile /my-bids correctly hid the same
+          // bid via filterActiveBids, leaving the customer staring at
+          // "Place Bid (0)" on one screen and "2 accepted bids" on the
+          // other. Now both surfaces consume filterActiveBids from
+          // lib/bid-expiry so the state agrees.
+          const activeOffers = filterActiveBids(myBids as any[]).filter((b: any) =>
             b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "COUNTER"
           );
           if (activeOffers.length === 0) return null;
@@ -3214,15 +3223,24 @@ export default function HotelDetail() {
             // Legacy alias kept for the per-room badge JSX below that
             // still uses `isOtherWhenLocked` + `lockUpgradeDelta`.
             const isOtherWhenLocked = isOtherWhenActive;
-            // v241.14 — Upgrade-CTA delta is robust to missing floorPrice.
-            // Previously `r.floorPrice || 0` would zero out the delta on
-            // any room whose negotiation floor wasn't seeded in DB,
-            // silently hiding the Upgrade CTA. Customer reported the
-            // upgrade chip missing on Snow Suite (a higher-tier room
-            // whose floor wasn't populated). Fallback chain:
-            //   floorPrice → basePrice → price → 0
-            // so any populated reference price yields a non-zero delta.
-            const upgradeRefPrice = Number(r.floorPrice) || Number(r.basePrice) || Number(r.price) || 0;
+            // v241.14 / v241.15 — Upgrade-CTA delta robust to missing
+            // floorPrice. Pre-v241.14 used `r.floorPrice || 0` which
+            // zeroed-out delta on any room whose negotiation floor
+            // wasn't seeded in DB. v241.14 added basePrice + price
+            // fallbacks. v241.15 — also fall back to the AI-computed
+            // live price (`roomPrices[r.id].price`) since rooms in
+            // production routinely have null floor/base/price columns
+            // but DO render a live price on the card (the "StayBid
+            // LIVE PRICE ₹X" customer can see). The upgrade chip
+            // should fire whenever ANY visible price > anchorAmount.
+            //   Fallback chain:
+            //   floorPrice → basePrice → price → roomPrices[r.id].price → 0
+            const upgradeRefPrice =
+              Number(r.floorPrice) ||
+              Number(r.basePrice)  ||
+              Number(r.price)      ||
+              Number(roomPrices[r.id]?.price) ||
+              0;
             const lockUpgradeDelta = isOtherWhenActive
               ? Math.max(0, Math.round(upgradeRefPrice - anchorAmount))
               : 0;
