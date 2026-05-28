@@ -13,9 +13,30 @@ export async function GET(req: NextRequest) {
   // (`cmnr4b8ol…`) saw an empty Place Bid section because the resolver
   // never linked the two identities. Cross-identity is the future-proof
   // anchor; replaces the v234 message-regex Place Bid detection.
+  // v241.18 — encodeURIComponent each ID so IDs with special chars
+  // (rare but possible: fb_ prefix combined with weird Firebase UIDs)
+  // don't break the PostgREST in.() filter and silently return [].
   const customerIds = await resolveUserIds(primaryId, payload?.phone, payload?.email);
-  const bids = await sbSelect(`bids?customerId=in.(${customerIds.join(",")})&select=*`);
-  if (!bids.length) return NextResponse.json({ bids: [] });
+  const bids = await sbSelect(
+    `bids?customerId=in.(${customerIds.map(encodeURIComponent).join(",")})&select=*`
+  );
+
+  // v241.18 — Diagnostic block returned alongside bids. Surfaces the
+  // exact auth state + raw bid count so the /my-bids empty-state UI can
+  // show "API returned N bids" + the resolved identity list when the
+  // count is unexpectedly zero. Helps catch identity-drift bugs without
+  // needing server logs. Strictly informational — no PII beyond what
+  // the client already has via its own JWT.
+  const _debug = {
+    primaryId,
+    resolvedIds: customerIds,
+    rawBidCount: bids.length,
+    jwtPhone: payload?.phone || null,
+    jwtEmail: payload?.email || null,
+    timestamp: new Date().toISOString(),
+  };
+
+  if (!bids.length) return NextResponse.json({ bids: [], _debug });
 
   // Collect unique IDs
   const hotelIds   = Array.from(new Set(bids.map((b: any) => b.hotelId).filter(Boolean)));
@@ -40,5 +61,5 @@ export async function GET(req: NextRequest) {
     new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
   );
 
-  return NextResponse.json({ bids: enriched });
+  return NextResponse.json({ bids: enriched, _debug });
 }

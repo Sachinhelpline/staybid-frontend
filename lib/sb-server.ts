@@ -75,19 +75,61 @@ export function authPayload(req: Request): any {
 // JWT subject has never been mirrored into Supabase.
 export async function ensureUser(id: string, phone?: string, name?: string): Promise<void> {
   if (!id) return;
-  const row = {
+
+  // v241.18 — CRITICAL FIX: don't clobber existing real phone/name with
+  // placeholder values from a Firebase JWT that lacks those claims.
+  //
+  // Pre-v241.18: every ensureUser call (incl. /api/bids/place) ran an
+  // unconditional upsert with `phone: phone || unknown_<id>`. For a user
+  // who'd previously signed in via Phone OTP (real phone stored), then
+  // came back via Google sign-in (Firebase JWT has no phone claim), this
+  // upsert OVERWROTE their real phone with "unknown_<id>" — breaking
+  // resolveUserIds()'s phone-bridge for ALL future /my-bids calls.
+  // Symptom: /my-bids "Place Bid (0)" while /api/bids/place 409s because
+  // the bid IS in DB but the resolver can't find it under the new
+  // identity. Sachin saw this recurring across 3-4 sessions.
+  //
+  // Two-step fix:
+  //   1. INSERT with placeholder phone, but ONLY IF the row doesn't
+  //      exist (resolution=ignore-duplicates → existing rows untouched).
+  //   2. PATCH the row with the REAL phone/name ONLY if the incoming
+  //      JWT actually has them. Placeholders never reach this step.
+  // Existing real values are preserved across every future call.
+  const hasRealPhone = !!(phone && !/^unknown_/i.test(phone));
+  const hasRealName  = !!(name && String(name).trim());
+
+  // Step 1 — insert if missing. Placeholder phone fills NOT NULL
+  // constraints on first insert; ignore-duplicates ensures we never
+  // overwrite an existing row's columns from here.
+  const insertRow = {
     id,
-    phone: phone || `unknown_${id}`,
-    name: name || null,
+    phone: hasRealPhone ? phone : `unknown_${id}`,
+    name: hasRealName ? name : null,
     role: "CUSTOMER",
     isBlocked: false,
     updatedAt: new Date().toISOString(),
   };
   await fetch(`${SB_URL}/rest/v1/users?on_conflict=id`, {
     method: "POST",
-    headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify(row),
+    headers: { ...SB_H, Prefer: "resolution=ignore-duplicates,return=minimal" },
+    body: JSON.stringify(insertRow),
   }).catch(() => {});
+
+  // Step 2 — patch REAL phone/name onto the row (whether we just
+  // inserted it or it already existed). Skips entirely if the JWT
+  // carried no real values, so an existing real phone is NEVER
+  // clobbered by a phone-less Firebase JWT.
+  const patch: Record<string, any> = {};
+  if (hasRealPhone) patch.phone = phone;
+  if (hasRealName)  patch.name  = name;
+  if (Object.keys(patch).length > 0) {
+    patch.updatedAt = new Date().toISOString();
+    await fetch(`${SB_URL}/rest/v1/users?id=eq.${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { ...SB_H, Prefer: "return=minimal" },
+      body: JSON.stringify(patch),
+    }).catch(() => {});
+  }
 }
 
 export async function sbSelect(path: string): Promise<any[]> {

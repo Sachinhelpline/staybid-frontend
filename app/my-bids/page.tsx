@@ -107,6 +107,12 @@ function MyBidsPageInner() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const [bids, setBids] = useState<any[]>([]);
+  // v241.18 — diagnostic state. Surfaces raw API response shape in the
+  // empty-state UI so identity-drift / desync bugs are visible without
+  // server logs. `apiDebug` holds the _debug payload from /api/bids/my.
+  // `fetchError` holds any error from getMyBids (replaces silent .catch).
+  const [apiDebug, setApiDebug] = useState<any>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   // v194 — guard so the `?payNow=<id>` deep-link from /bid success screen
   // only fires the BookingReview modal once per landing (re-renders /
   // polling refresh must not re-open it).
@@ -183,6 +189,9 @@ function MyBidsPageInner() {
     if (!silent) setLoading(true);
     api.getMyBids()
       .then(async (d) => {
+        // v241.18 — capture diagnostic payload + clear last error.
+        setApiDebug(d?._debug || null);
+        setFetchError(null);
         // Normalize: every bid gets checkIn/checkOut from the fallback chain
         const list = (d.bids || []).map((b: any) => {
           const { checkIn, checkOut } = resolveDates(b);
@@ -377,7 +386,12 @@ function MyBidsPageInner() {
           return list;
         });
       })
-      .catch(() => {})
+      .catch((err) => {
+        // v241.18 — surface fetch errors instead of silently swallowing.
+        // Pre-v241.18 a 401 / 500 / network failure left bids=[] and the
+        // user saw "Place Bid (0)" with no hint that the API had failed.
+        setFetchError(String(err?.message || err || "Failed to load bids"));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -987,6 +1001,29 @@ function MyBidsPageInner() {
             <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Browse hotels and place your first bid.</p>
             <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
+            {/* v241.18 — diagnostic strip. Shows the exact server-side
+                state when the empty view is unexpected (re-launch fires
+                a 409 active-bid conflict but this page is empty). Helps
+                catch identity-drift bugs without server log access. */}
+            {(fetchError || apiDebug) && (
+              <details className="mt-8 mx-auto max-w-md text-left" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                <summary style={{ cursor: "pointer", opacity: 0.6 }}>diagnostics</summary>
+                <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(31,26,15,0.06)", border: "1px solid var(--border-soft)" }}>
+                  {fetchError && (
+                    <p style={{ color: "#b91c1c", marginBottom: 8 }}>⚠ fetch error: {fetchError}</p>
+                  )}
+                  {apiDebug && (
+                    <>
+                      <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · {new Date(apiDebug.timestamp).toLocaleTimeString()}</p>
+                      <p style={{ wordBreak: "break-all" }}>primary: <code>{apiDebug.primaryId}</code></p>
+                      <p style={{ wordBreak: "break-all" }}>resolved: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
+                      <p>jwt phone: <code>{apiDebug.jwtPhone || "(none)"}</code></p>
+                      <p>jwt email: <code>{apiDebug.jwtEmail || "(none)"}</code></p>
+                    </>
+                  )}
+                </div>
+              </details>
+            )}
           </div>
         )}
 
@@ -998,6 +1035,19 @@ function MyBidsPageInner() {
             <p className="text-base font-semibold mb-1" style={{ color: "var(--text-base)" }}>{sectionEmpty.title}</p>
             <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{sectionEmpty.sub}</p>
             <Link href={sectionEmpty.href} className="gold-btn px-5 py-2.5 rounded-2xl text-sm inline-block">{sectionEmpty.cta}</Link>
+            {/* v241.18 — diagnostic for section-empty case (one tab has
+                bids, the other doesn't). Helps spot _isPlaceBid
+                misclassification: if raw count > 0 but neither tab
+                shows bids, the flow detector is broken. */}
+            {apiDebug && (
+              <details className="mt-6 mx-auto max-w-md text-left" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                <summary style={{ cursor: "pointer", opacity: 0.6 }}>diagnostics</summary>
+                <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(31,26,15,0.06)", border: "1px solid var(--border-soft)" }}>
+                  <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · filtered to <strong>{sectionBids.length}</strong> in this tab</p>
+                  <p style={{ wordBreak: "break-all" }}>resolved IDs: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
+                </div>
+              </details>
+            )}
           </div>
         )}
 
