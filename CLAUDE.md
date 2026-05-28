@@ -7463,3 +7463,233 @@ public/sw.js                                          # HTML_CACHE v24 → v25
   resolver (v240), reel-dedup v131.8 chain.
 - **Service-worker** stable URL `/sw.js`, stable static cache, HTML
   cache bumped v24 → v25 per v93 discipline.
+
+---
+
+## Sign-In-Then-Resume Pending Intent Era (v241.3, 2026-05-28)
+
+Same-day follow-up to v241.2. Customer ask: "agar koi bhi user ne
+pahle se sign in nhi kiya hua hai toh wo bid launch ya fir book now
+ya negotiate ya kahi par bhi sign in ki requirement hoti hai toh ushi
+point par ushko sign in karne ka option available hona chahiye aur
+jaishe hi sign in ho jaye toh same wahi se age start hona chahiye
+abhi kya hota hai ki starting se dubara se karna padte hai ushko sab
+kuch."
+
+### The 30-second-churn bug
+
+Before v241.3, every auth-gated CTA followed the same anti-pattern:
+
+```ts
+if (!user) return router.push("/auth");
+```
+
+Customer at `/hotels/STB-2026-01019` fills dates + Rooms=3 + Adults=4 →
+taps Book Now → form state vapor → lands on `/auth` → signs in →
+lands on `/` (home page) → has to navigate back, refill picker, retap
+Book Now. **Net cost: 30+ seconds + frequent abandonment.**
+
+Same broken UX on every signed-in surface:
+- `/bid` Launch Bid
+- `/hotels/[id]` Book Now / Negotiate / Simple Bid / Flash Deal
+- `/my-bids` Pay Now / Counter Accept (whole page is auth-gated)
+- `/bookings`, `/wallet`, `/points`, `/points/redeem`, `/my-codes`,
+  `/profile`, `/verification`, `/complaints` (page-mount gates)
+
+### The fix — pending-intent layer
+
+New module **`lib/auth-intent.ts`** centralizes the pattern:
+
+```ts
+export function redirectToSignIn(router, { route, action?, payload? }) {
+  // Save to localStorage (30 min TTL)
+  // → router.push(`/auth?return=${encodeURIComponent(route)}`)
+}
+
+export function consumeMatchingIntent(expectedAction?): PendingIntent | null;
+export function peekPendingIntent(): PendingIntent | null;
+```
+
+**Storage:** `localStorage.sb_pending_intent` with 30-min TTL. Used
+localStorage NOT sessionStorage because Firebase popup OAuth flows
+can spawn separate window contexts — sessionStorage would be lost
+across the popup → main-window round-trip.
+
+**Type:** `{ route, action?, payload?, savedAt }`. `route` is the
+deep-link to return to (full pathname + search). `action` is a free-
+form label ("book_now", "negotiate", "bid_launch", "simple_bid"…)
+that destination pages match on. `payload` carries whatever React
+state the destination needs to restore (room id, picker values, bid
+amount, form contents).
+
+**`consumeMatchingIntent(expectedAction?)`** is the safe accessor for
+destination pages — only returns the intent if its pathname matches
+the current location, optionally filtered by action label. Prevents
+an intent saved on `/hotels/123` from auto-firing on `/hotels/456`.
+
+### /auth post-login routing
+
+All 3 `router.push("/")` sites in `app/auth/page.tsx` now read a
+`?return=` query param (set by `redirectToSignIn()`). Falls back to
+the saved intent's `route`, then to `/`. Wrapped in `<Suspense
+fallback={null}>` since `useSearchParams()` triggers Next 14 static-
+prerender bailout (same pattern as `/hotels`, `/flash-deals`,
+`/my-bids`, `/me/posts`, `/u/[username]/posts` per CLAUDE.md v194 era).
+
+### Per-page restoration
+
+**`/bid`** — Launch Bid CTA serializes the full `form` state (city,
+dates, guests, rooms, room types, budget, etc.) into `intent.payload`.
+Mount useEffect: `consumeMatchingIntent("bid_launch")` → if found,
+`setForm(payload.form)` + `setTimeout(() => submit(), 50)`. Customer
+sees "Launching your bid…" instead of an empty form.
+
+**`/hotels/[id]`** — `withBackendAuth(action, intentAction?)` is the
+shared anonymous-redirect intercept. When `!user`, saves
+`{ route, action }` and redirects to /auth. The 4 inner defensive
+checks (handleBookNow / handleNegotiate / handleBid / handleFlashBook)
+also save modal state in `payload` (roomId + dates + adults/children
++ numRooms + bid amount / message). Mount useEffect gated on
+`user && hotel?.rooms?.length` resolves the room from `hotel.rooms`
+by saved `bnRoomId` / `negRoomId` / `bidRoomId` and calls
+`openBookNow(room)` / `openNegotiate(room)` to re-open the modal with
+state restored. Flash Deal intent has no payload — the deal's URL
+params (`?dealId=…&dealPrice=…&directBook=true`) already encode the
+full state and the v159.x mount logic re-opens the flash modal from
+URL alone.
+
+**`/my-bids` + `/bookings` + `/profile` + `/wallet` + `/points` +
+`/points/redeem` + `/my-codes` + `/verification` + `/complaints`** —
+page-mount gates. `redirectToSignIn(router, { route: '/<page>' })`
+sends the customer back to the same page after sign-in. No payload
+needed — the page itself is the restoration target.
+
+### Files touched (this era)
+
+**Added:**
+```
+lib/auth-intent.ts                   # core pending-intent layer (~120 lines)
+```
+
+**Modified:**
+```
+app/auth/page.tsx                    # 3× router.push("/") → returnRoute() + Suspense wrap
+app/bid/page.tsx                     # Launch Bid !user → redirectToSignIn + restore form on mount
+app/hotels/[id]/page.tsx             # withBackendAuth + 4 inner !user checks + mount restoration effect
+app/my-bids/page.tsx                 # page-gate !user → redirectToSignIn(route='/my-bids' + query)
+app/bookings/page.tsx                # page-gate !user → redirectToSignIn(route='/bookings')
+app/profile/page.tsx                 # page-gate !user → redirectToSignIn(route='/profile')
+app/wallet/page.tsx                  # page-gate !user → redirectToSignIn(route='/wallet')
+app/points/page.tsx                  # page-gate !user → redirectToSignIn(route='/points')
+app/points/redeem/page.tsx           # page-gate !user → redirectToSignIn(route='/points/redeem')
+app/my-codes/page.tsx                # page-gate !user → redirectToSignIn(route='/my-codes')
+app/verification/page.tsx            # page-gate !user → redirectToSignIn(route='/verification')
+app/complaints/page.tsx              # page-gate !user → redirectToSignIn(route='/complaints' + query)
+app/layout.tsx                       # SB_BUILD v241.2 → v241.3 + badge
+public/sw.js                         # HTML_CACHE v25 → v26
+```
+
+### Service-worker version map (continued)
+- v241.2 → hotel-page-multi-room-picker-bookings-numrooms
+- **v241.3** → sign-in-then-resume-pending-intent (current)
+
+### Things to Avoid (v241.3 Era)
+
+- **Never** use raw `router.push("/auth")` at a new auth-gated CTA.
+  Always go through `redirectToSignIn(router, { route, action?,
+  payload? })` so the post-sign-in landing brings the customer back to
+  the same surface + restores any in-flight state.
+- **Never** read the pending intent from a destination page without
+  going through `consumeMatchingIntent()`. The raw `peekPendingIntent`
+  doesn't check pathname — an intent saved on `/hotels/123` would
+  silently auto-fire on `/hotels/456` and trigger the wrong modal.
+- **Never** serialize closures (functions) into `intent.payload`.
+  localStorage JSON-only. Pass IDs + primitives; the destination
+  page's handler resolves the closure from React state via the ID.
+- **Never** drop the `consumeMatchingIntent` call from a destination
+  page's mount effect. The intent would persist in localStorage for
+  30 min and auto-fire on the next visit to that route — confusing
+  if the customer manually navigated back.
+- **Never** raise the `TTL_MS = 30 * 60 * 1000` past 60 min. Pending
+  intents shouldn't survive a long walk-away — a customer who comes
+  back hours later via cold-start should NOT see Book Now auto-firing
+  for a room they barely remember. 30 min is the sweet spot covering
+  OTP roundtrip + Firebase auth + backend cold-start.
+- **Never** swap `localStorage` for `sessionStorage`. Firebase popup
+  OAuth flows can spawn separate window contexts in some browsers;
+  sessionStorage doesn't survive the popup → main-window round-trip.
+- **Never** drop the `Suspense fallback={null}` wrapper around the
+  `/auth` page export. Next 14 statically pre-renders pages by
+  default; `useSearchParams()` triggers a build-time bailout warning
+  AND a hydration mismatch unless wrapped. Same pattern as
+  v194-era `/my-bids`.
+- **Never** make `redirectToSignIn` synchronous-with-payload from
+  inside an effect cleanup or unmount path. localStorage writes are
+  synchronous but the `router.push` is async — calling from cleanup
+  causes "navigating during unmount" warnings + sometimes drops the
+  push entirely. Call from event handlers only.
+- **Never** restore `form` state on `/bid` without the `setTimeout(()
+  => submit(), 50)` deferral. React batches state updates; calling
+  submit() synchronously would read STALE form (the pre-restoration
+  default values). The 50ms gap lets React commit the restored form
+  before submit() reads.
+- **Never** restore Book Now / Negotiate modals without depending on
+  `hotel?.rooms?.length` in the useEffect deps. The hotel fetch is
+  async; restoring on `[user]` alone would try to `findRoom(id)`
+  before rooms are loaded → `room=undefined` → silent no-op + the
+  intent stays in localStorage for the next visit (correct fallback
+  but slower restore).
+
+### What this era did NOT do (intentionally)
+
+- **In-place sign-in modal.** Considered mounting a global auth
+  modal so the customer never leaves their current page. Rejected:
+  the auth surface (Google/Facebook OAuth popups + WhatsApp OTP +
+  Mobile OTP screens) is too complex to embed cleanly. Redirecting
+  to `/auth` + returning is simpler + works on every device.
+- **Auto-resume after the inline phone-verify flow.**
+  `withBackendAuth` has a v44-era "firebase → backend JWT" upgrade
+  via inline `openVerifyAndRetry(action)`. That flow already
+  resumes the action via the `pendingAction` ref — orthogonal to
+  v241.3's anonymous-user gate. Both work side-by-side.
+- **/me MoreDrawer "Log out" → sign in flip.** Already handled in
+  v132.15 (signed-out hero + "Sign in" button toggle). v241.3
+  builds on that — the drawer's "Sign in" CTA can now also save
+  intent if invoked from a context that needs return-routing.
+- **Intent expiration warning UI.** If the customer's intent
+  expires (30 min TTL) they get the default sign-in flow without
+  resume — silent fallback. A "your earlier booking attempt
+  expired" toast could be shipped later if customers ask, but
+  silent fallback is the safer default.
+- **Restoration on `/flash-deals` page-level cards.** Flash CTA
+  goes through `withBackendAuth` already; the destination is
+  `/hotels/[id]?dealId=…` which has its own URL-param hydration
+  (v159.x). The pending intent just needs to carry the route — no
+  payload needed.
+
+---
+
+## Updated production state (v241.3, 2026-05-28)
+
+- **Current version:** v241.3 · branch `claude/claude-md-v240-2-verify-bxtxa`
+- **Pending-intent layer live** across **12 customer-facing surfaces**.
+  Anonymous customer → tap any auth-gated CTA → sign-in flow → lands
+  back on the same page + state restored. Pre-v241.3 the customer
+  was dumped on `/` and had to start over.
+- **30-second-churn bug closed.** /bid auto-fires submit() after
+  sign-in. /hotels/[id] re-opens the exact modal (Book Now /
+  Negotiate / Simple Bid) with the exact room + dates + adults +
+  numRooms restored. /my-bids / /bookings / /wallet / /points /
+  /verification all return the customer to the same page.
+- **No new dependencies.** All `localStorage` + `useSearchParams`
+  + existing `useRouter`. Pure additive.
+- **Existing Firebase-token upgrade flow** (v44 era
+  `withBackendAuth` inline phone-verify) **unchanged.** v241.3 only
+  intercepts the anonymous (`!user`) branch.
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner panel, admin panel,
+  reel-app surfaces, animation layer, service billing, /bid mobile
+  chrome (v240.1 + v240.2), cross-identity resolver (v240),
+  reel-dedup v131.8 chain, v241/v241.2 multi-room data layer.
+- **Service-worker** stable URL `/sw.js`, stable static cache, HTML
+  cache bumped v25 → v26 per v93 discipline.

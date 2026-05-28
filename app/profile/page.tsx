@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import { UpgradeSection } from "@/components/upgrade/UpgradeSection";
 import { CountUp } from "@/components/CountUp";
 
@@ -63,7 +64,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) { redirectToSignIn(router, { route: "/profile" }); return; }
     setName(user.name || "");
     const extra = localStorage.getItem("sb_profile_extra");
     if (extra) { try { setEmail(JSON.parse(extra).email || ""); } catch {} }

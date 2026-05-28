@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { redirectToSignIn, consumeMatchingIntent } from "@/lib/auth-intent";
 import Link from "next/link";
 // Phase 4 tier-system — Inspiration nudge embedded in the booking-confirmed
 // success modal. Self-dismissing per (user, hotel) via localStorage.
@@ -1046,8 +1047,21 @@ export default function HotelDetail() {
   };
 
   // ── Inline phone verify helpers ────────────────────────────────────────────
-  const withBackendAuth = (action: () => void) => {
-    if (!user) return router.push("/auth");
+  // v241.3 — When user is not signed in, save the page route + a hint
+  // so the post-sign-in landing brings them right back here (no more
+  // "home page + restart from scratch" UX). Callers can pass an
+  // `intentAction` label so the mount-restoration useEffect knows
+  // which CTA to auto-fire.
+  const withBackendAuth = (action: () => void, intentAction?: string) => {
+    if (!user) {
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : "/hotels",
+        action: intentAction || "hotel_page_cta",
+      });
+      return;
+    }
     // Detect Firebase token by algorithm — works for old sessions too
     if (tokenType === "firebase" || isFirebaseToken()) {
       openVerifyAndRetry(action);
@@ -1119,7 +1133,15 @@ export default function HotelDetail() {
 
   // Flash deal booking — routes through BookingReview first.
   const handleFlashBook = () => {
-    if (!user) return router.push("/auth");
+    if (!user) {
+      // v241.3 — keep the user on the same hotel + restore flash modal
+      // intent so they can finish the booking post-sign-in.
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/hotels",
+        action: "flash_book",
+      });
+      return;
+    }
     const dealAmt = fbPrice;
     const rateLines = [
       { label: `₹${dealAmt.toLocaleString()} × ${flashNights} night${flashNights>1?"s":""}${flashRoomQty>1?` × ${flashRoomQty} rooms`:""}`, value: `₹${flashBaseTotal.toLocaleString()}` },
@@ -1337,7 +1359,15 @@ export default function HotelDetail() {
 
   // ── Normal bid ─────────────────────────────────────
   const handleBid = async () => {
-    if (!user) return router.push("/auth");
+    if (!user) {
+      // v241.3 — preserve simple Bid modal state across the auth gate.
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/hotels",
+        action: "simple_bid",
+        payload: { bidRoomId: bidRoom?.id, bidAmount, bidMsg, checkIn, checkOut },
+      });
+      return;
+    }
     if (checkRebidCooldown()) return; // v179 Rule C
     if (!bidAmount || !bidRoom || !checkIn || !checkOut) return alert("Please fill all fields");
     setBidLoading(true);
@@ -1447,6 +1477,60 @@ export default function HotelDetail() {
     triggerTour("negotiate", { delayMs: 500 });
   };
 
+  // v241.3 — Restore the user's pre-sign-in intent on mount.
+  // After a signed-out user taps Book Now / Negotiate / Bid, they get
+  // redirected to /auth via redirectToSignIn(). Post-sign-in /auth
+  // routes them back HERE with the saved intent intact. This effect
+  // hydrates the matching modal (date picker → room → amount → guests)
+  // so they pick up exactly where they left off — no restart.
+  // Gated on `user` (must be signed in) AND `hotel?.rooms` (must be
+  // loaded so we can resolve the room id from the payload).
+  useEffect(() => {
+    if (!user) return;
+    if (!hotel?.rooms?.length) return;
+    const intent = consumeMatchingIntent();
+    if (!intent?.action) return;
+    const findRoom = (id: any) =>
+      hotel.rooms.find((r: any) => String(r.id) === String(id));
+    const p = intent.payload || {};
+    try {
+      if (intent.action === "book_now" && p.bnRoomId) {
+        const r = findRoom(p.bnRoomId);
+        if (!r) return;
+        if (p.bnIn)        setBnIn(p.bnIn);
+        if (p.bnOut)       setBnOut(p.bnOut);
+        if (p.bnAdults)    setBnAdults(p.bnAdults);
+        if (p.bnChildren != null) setBnChildren(p.bnChildren);
+        if (p.numRooms)    setGlobalNumRooms(p.numRooms);
+        // Defer one tick so React commits the restored state before
+        // the modal opens + reads from it.
+        setTimeout(() => openBookNow(r), 60);
+      } else if (intent.action === "negotiate" && p.negRoomId) {
+        const r = findRoom(p.negRoomId);
+        if (!r) return;
+        if (p.negIn)    setNegIn(p.negIn);
+        if (p.negOut)   setNegOut(p.negOut);
+        if (p.numRooms) setGlobalNumRooms(p.numRooms);
+        setTimeout(() => {
+          openNegotiate(r);
+          if (p.negAmt) setNegAmt(p.negAmt);
+        }, 60);
+      } else if (intent.action === "simple_bid" && p.bidRoomId) {
+        const r = findRoom(p.bidRoomId);
+        if (!r) return;
+        setBidRoom(r);
+        if (p.bidAmount) setBidAmount(p.bidAmount);
+        if (p.bidMsg)    setBidMsg(p.bidMsg);
+      }
+      // flash_book: no payload restoration needed — the flash deal
+      // URL params (?dealId=…&dealPrice=…&directBook=true) already
+      // encode the full deal state, and the v159.x mount logic auto-
+      // opens the flash modal from those. Just landing back on
+      // /hotels/[id]?dealId=… is enough to resume.
+    } catch { /* corrupt payload — skip */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, hotel?.rooms?.length]);
+
   // Continue button in the floating picker modal explicitly resumes the user's intent.
   // (We intentionally do NOT auto-fire on date change — the customer needs a moment to
   // adjust adults/children/kids after picking dates before the booking modal takes over.)
@@ -1477,7 +1561,15 @@ export default function HotelDetail() {
   // Book Now — opens BookingReview first; actual Razorpay charge happens
   // in executeBookNow(mode) once user picks Pay-Full / Hold / Pay-At-Hotel.
   const handleBookNow = () => {
-    if (!user) return router.push("/auth");
+    if (!user) {
+      // v241.3 — preserve Book Now modal state across the auth gate.
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/hotels",
+        action: "book_now",
+        payload: { bnRoomId: bnRoom?.id, bnIn, bnOut, bnAdults, bnChildren, numRooms: globalNumRooms },
+      });
+      return;
+    }
     if (checkRebidCooldown()) return; // v179 Rule C
     if (!bnIn || !bnOut || !bnRoom) return alert("Select dates");
     const nights  = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
@@ -1624,7 +1716,15 @@ export default function HotelDetail() {
   };
 
   const handleNegotiate = async () => {
-    if (!user) return router.push("/auth");
+    if (!user) {
+      // v241.3 — preserve Negotiate modal state across the auth gate.
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/hotels",
+        action: "negotiate",
+        payload: { negRoomId: negRoom?.id, negIn, negOut, negAmt, numRooms: globalNumRooms },
+      });
+      return;
+    }
     if (checkRebidCooldown()) return; // v179 Rule C
     if (!negIn || !negOut) return alert("Select dates");
     const isAboveFloor = negAmt >= negRoom.floorPrice;

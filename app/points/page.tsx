@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
 // v142 — Phase-6 points tour. 3 steps: balance → redeem CTA → activity.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -30,7 +31,7 @@ export default function PointsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) { redirectToSignIn(router, { route: "/points" }); return; }
     Promise.all([
       api.getPoints().catch(() => ({ wallet: null, recent: [] })),
       api.getMyRedemptionCodes("active").catch(() => ({ codes: [], walletCredit: null })),

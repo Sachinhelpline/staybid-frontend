@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
 import StayFeedbackCard, { isPostCheckout } from "@/components/StayFeedbackCard";
 // v142 — Phase-6 verification tour. 2 steps: bookings list → request video.
@@ -102,7 +103,7 @@ export default function VerificationPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !token) { router.push("/auth"); return; }
+    if (!user || !token) { redirectToSignIn(router, { route: "/verification" }); return; }
     loadAll(false);
   }, [user, token, authLoading, router, loadAll]);
 

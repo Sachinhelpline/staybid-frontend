@@ -1,8 +1,9 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { peekPendingIntent } from "@/lib/auth-intent";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.up.railway.app";
 
@@ -53,9 +54,36 @@ const PhoneIcon = () => (
   </svg>
 );
 
-export default function AuthPage() {
+// v241.3 — useSearchParams() triggers Next 14 static-prerender bailout
+// unless wrapped in Suspense. Same pattern as /hotels, /flash-deals,
+// /my-bids, /me/posts, /u/[username]/posts (per CLAUDE.md v194 era).
+export default function AuthPageRoot() {
+  return (
+    <Suspense fallback={null}>
+      <AuthPage />
+    </Suspense>
+  );
+}
+
+function AuthPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  // v241.3 — pending-intent return route. Falls back to "/" when neither
+  // the ?return query param nor a stored intent is present (legacy
+  // direct-to-/auth visits). Intent's `route` wins over ?return so the
+  // saved deep-link with picker payload survives even if the URL got
+  // sanitized along the way.
+  const returnRoute = (() => {
+    try {
+      const fromQuery = searchParams?.get("return");
+      if (fromQuery) return fromQuery;
+      const intent = peekPendingIntent();
+      if (intent?.route) return intent.route;
+    } catch {}
+    return "/";
+  });
   const [screen, setScreen] = useState<Screen>("options");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -94,7 +122,9 @@ export default function AuthPage() {
         const data = await res.json();
         if (data.token) {
           login(data.token, data.user, "backend");
-          router.push("/");
+          // v241.3 — return to the deep-link the user was on before
+          // the auth gate, not the home page.
+          router.push(returnRoute());
           return;
         }
       }
@@ -108,7 +138,7 @@ export default function AuthPage() {
       phone: firebaseUser.phoneNumber || "",
       role: "customer",
     }, "firebase");
-    router.push("/");
+    router.push(returnRoute());
   };
 
   // ── Google Sign-In ─────────────────────────────────────────────────────────
@@ -220,7 +250,8 @@ export default function AuthPage() {
     try {
       const data = await api.verifyOtp(phone.startsWith("+91") ? phone : `+91${phone}`, otp);
       login(data.token || data.accessToken, data.user);
-      router.push("/");
+      // v241.3 — return to the deep-link / pending-intent route.
+      router.push(returnRoute());
     } catch (e: any) {
       setError(e.message || "Incorrect OTP. Please try again.");
     } finally {

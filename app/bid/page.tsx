@@ -21,6 +21,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { redirectToSignIn, consumeMatchingIntent } from "@/lib/auth-intent";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
@@ -974,8 +975,16 @@ export default function BidPage() {
     // Setting submitError first means even if router.push races, the modal
     // shows a real reason on its way out.
     if (!user) {
+      // v241.3 — save the entire /bid form to the pending-intent layer
+      // so after sign-in the user lands back here AND the form is
+      // restored verbatim. action="bid_launch" tells the mount effect
+      // to auto-fire submit() once the user is signed in.
       setSubmitError("Please sign in to launch your bid. Redirecting…");
-      router.push("/auth");
+      redirectToSignIn(router, {
+        route: "/bid",
+        action: "bid_launch",
+        payload: { form },
+      });
       return;
     }
     setLoading(true);
@@ -1297,6 +1306,26 @@ export default function BidPage() {
       setLoading(false);
     }
   };
+
+  /* v241.3 — Resume Launch Bid after sign-in.
+     Pre-v241.3 a logged-out user tapping Launch Bid lost their entire
+     form (city/dates/guests/rooms/budget) when redirected to /auth.
+     Now redirectToSignIn() captures `{form}` in the pending intent;
+     this effect detects the matching intent on mount, hydrates the
+     form, and auto-fires submit() so the customer just sees "Launching
+     your bid…" without retyping anything. */
+  useEffect(() => {
+    if (!user) return;
+    const intent = consumeMatchingIntent("bid_launch");
+    if (!intent?.payload?.form) return;
+    try {
+      setForm(intent.payload.form);
+      // Defer submit one tick so React commits the restored form
+      // first, otherwise submit() would read stale state.
+      setTimeout(() => { submit(); }, 50);
+    } catch { /* corrupt payload — skip silently */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   /* ─────────────── Success Screen (winners' circle) ─────────────── */
   /* v210 — Success overlay on the SAME climbing page (mobile).

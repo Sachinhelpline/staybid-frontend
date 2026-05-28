@@ -258,13 +258,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // missed every Firebase-authored bid because resolver didn't link
 // the two identities. Cache bump forces v240 HTML delivery on next
 // visit.
-// v241.2 — HTML_CACHE bump v24 → v25 because the hotel detail page
-// now threads globalNumRooms through every booking-creation CTA
-// (Book Now / Negotiate / Counter Accept / simple Bid) and its
-// rate-line math + Razorpay total now multiplies by numRooms.
-// bookings.numRooms column added on Supabase (DEFAULT 1) so legacy
-// rows + Railway-side inserts continue working byte-identical.
-const HTML_CACHE = 'staybid-html-v25';
+// v241.3 — HTML_CACHE bump v25 → v26 because /auth now reads a
+// ?return query param + a new lib/auth-intent.ts module gates every
+// sign-in-then-resume flow. Stale v25 HTML would still router.push("/")
+// after sign-in, defeating the whole point of v241.3.
+const HTML_CACHE = 'staybid-html-v26';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

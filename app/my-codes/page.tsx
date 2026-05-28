@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
 import {
   type RedemptionCode,
@@ -97,7 +98,14 @@ function MyCodesPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) {
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : "/my-codes",
+      });
+      return;
+    }
     let dead = false;
     api.getMyRedemptionCodes().then((d) => {
       if (dead) return;
