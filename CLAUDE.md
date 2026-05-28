@@ -6795,3 +6795,164 @@ v240 (PR #148):
   pending since Tier-System era.
 - **`/my-bids#bid-<id>` smooth scroll** — still no scroll-into-view +
   highlight on landing.
+
+---
+
+## /bid Mobile Chrome Polish Era (v240.1 → v240.2, 2026-05-27 afternoon)
+
+Two same-day micro-patches after v240 production, both triggered by
+Sachin checking mobile /bid and seeing residual desktop-only chrome
+leaking onto mobile. CLAUDE.md v237 era had added the customer Navbar
+back for desktop visibility above the climber — these two patches
+finish the mobile-side cleanup that was implied but not executed at
+the time.
+
+### v240.1 — Hide the bottom step indicator on mobile (PR #149)
+
+**User report:** "yeh bid ke front page par jo header show ho Raha hai
+yeh mobile ke liye lagane ke liye nhi bola tha sirf desktop ya laptop
+ke liye tha shyad … jahan step1.2 likha dikhai de raha hai camera
+notch ke pass". A "Step 1 of 2 · Where & When" cream pill was rendering
+near the camera notch on mobile /bid.
+
+**Root cause:** the `<p>Step {step} of {STEPS.length} · {STEPS[step-1]}</p>`
+at `app/bid/page.tsx:2566` had no device guard. On mobile **Step 1**
+`<BidGameZone>` portals itself to `document.body` (v203.1 escape from
+the /bid page's transform-trap), so `.bx-page-wrap` is left with just
+the `<p>` as visible content — and it floats at the top of the viewport
+like a header pill.
+
+(On Step 2 the same `<p>` renders at the bottom because `bx-slim-hero`
++ `StepBar` + the legacy form fill the page above it. So the issue
+surfaces only on Step 1 — matching the user's "front page" report.)
+
+**Fix:** Tailwind `hidden lg:block` on the `<p>`. Pure CSS media query
+(≥1024px), no `isMobile` state, no SSR flicker. Inline comment
+documents the v203.1 portal trap so the next session doesn't reintroduce
+the rendering.
+
+### v240.2 — Kill the 56px cream strip above the mobile climber (PR #150)
+
+**User report after v240.1:** "upar header main dekho mobile pe abhi
+bhi yeh blank space show ho Raha hai cream colour ka jo show ho Raha
+hai … desktop laptop par change mat krna sirf mobile m problem hai
+yeh". Even after the step text was hidden, a cream-colored blank
+strip (~56px tall) still showed at the top of mobile /bid, between
+the status bar and the dark mountain backdrop.
+
+**Root cause:** `.bgz-shell` (the BidGameZone position-fixed portal
+wrapper) has `top: 56px` since v237 — that gap was carved out
+specifically to keep the sticky customer Navbar visible above the
+climber **on desktop**. But the customer Navbar is `display: none
+!important` on mobile per v159.18
+(`@media (max-width: 1023px) .nav3d-bar { display: none !important; }`).
+With the navbar gone, the 56px reservation became dead space — the
+`.bx-shell` cream page background showed through above the portaled
+climber.
+
+**Fix (one CSS media query in `app/globals.css`):**
+
+```css
+@media (max-width: 1023px) {
+  .bgz-shell { top: 0; }
+}
+```
+
+- Mobile (≤1023px): climber edge-to-edge from `top: 0`.
+- Desktop (≥1024px): unchanged — `top: 56px` keeps navbar room.
+
+Inherited by both Step 1 (BidGameZone) and Step 2 (slim-hero +
+StepBar) — they share the same `.bgz-shell` wrapper.
+
+### Files changed (this micro-era)
+
+```
+v240.1 (PR #149):
+  app/bid/page.tsx                              # <p> gets className="hidden lg:block"
+  app/layout.tsx                                # SB_BUILD v240 → v240.1 + badge
+
+v240.2 (PR #150):
+  app/globals.css                               # @media (max-width: 1023px) .bgz-shell { top: 0 }
+  app/layout.tsx                                # SB_BUILD v240.1 → v240.2 + badge
+```
+
+Neither PR bumped `HTML_CACHE` (per v93 discipline — both are pure
+CSS / className changes, no SW fetch-handler logic touched).
+
+### Service-worker version map (continued)
+
+- v240 → bid-requests-source-cross-identity-resolver
+- **v240.1** → mobile-hide-bid-step-indicator
+- **v240.2** → mobile-bgz-shell-edge-to-edge (current)
+
+### Things to Avoid (v240.1 → v240.2 Era)
+
+- **Never** add new mobile chrome to `/bid` without first checking
+  whether `<BidGameZone>` portals it away. If yes (Step 1), and the
+  new chrome lives inside `.bx-page-wrap`, it WILL float at the top
+  of the mobile viewport like the v240.1 step indicator did. Either
+  gate it `hidden lg:block` (desktop-only) OR move it inside
+  `<BidGameZone>` so it portals with the climber.
+- **Never** reset `.bgz-shell { top: 56px }` to a global value without
+  a mobile override. The 56px reserves room for the sticky customer
+  Navbar — but the navbar is `display: none` on mobile per v159.18,
+  so a global 56px becomes dead cream space on mobile.
+- **Never** drop the `display: none !important` on `.nav3d-bar` for
+  mobile (v159.18). The mobile primary navigation lives in `BottomDock`
+  (bottom) + `BackChip` (top-left) per v80 era. Restoring the navbar
+  on mobile reintroduces the v237 layout assumption AND the 56px
+  reserve becomes correct again — but it's not what Sachin wants on
+  mobile.
+- **Never** ship a `isMobile`-based JSX conditional for /bid page
+  chrome without considering SSR flicker. `useIsMobileTablet()` returns
+  a default (likely false) during SSR; the page hydrates with the
+  desktop layout and flips to mobile on first effect. Use CSS media
+  queries (`hidden lg:block` or `@media (max-width: 1023px)` overrides)
+  instead — no JS state, no flicker.
+- **Never** change desktop /bid chrome when fixing a mobile bug. Both
+  v240.1 and v240.2 specifically preserved desktop rendering per
+  Sachin's explicit "desktop laptop par change mat krna sirf mobile
+  m problem hai yeh". The desktop bottom step indicator + 56px navbar
+  reserve are part of the v237 intentional desktop design.
+
+### What this era did NOT do (intentionally)
+
+- **Desktop bottom step indicator** — kept visible at ≥1024px. The
+  v237 era added it as a small bottom "where are you" hint; user
+  never complained about it on desktop. Removing it would regress
+  v237.
+- **`<p>` placement refactor** — could have moved the indicator INTO
+  `<BidGameZone>` so it portals along with the climber + stays at
+  bottom of the climber on every viewport. Deferred — the
+  `hidden lg:block` fix is one-line + addresses the surfaced bug
+  without restructuring the JSX.
+- **Other portaled components on /bid** — only `<BidGameZone>` portals
+  today. If a future component (e.g. some success modal) also portals
+  to `document.body` from inside `.bx-page-wrap`, the same "top
+  pseudo-header" pattern could recur for any siblings.
+
+---
+
+## Updated production state (v240.2, 2026-05-27 afternoon)
+
+- **Current version:** v240.2 · commit `73ca87e` on `main` (PR #150 squash-merged)
+- **Vercel:** auto-deploying from main · staybids.in will pick up v240.2 within ~60-90s
+- **5 PRs merged today:** #146 (v238.1) · #147 (v239) · #148 (v240) · #149 (v240.1) · #150 (v240.2)
+- **Mobile /bid is now edge-to-edge clean:**
+  - No "Step 1 of 2" pill near the camera notch (v240.1)
+  - No 56px cream strip above the climber (v240.2)
+  - BidGameZone boot screen renders from `top: 0` on mobile, fills the entire viewport
+- **Desktop /bid is bit-identical to v240:**
+  - Customer Navbar still sticky-top above climber
+  - `.bgz-shell { top: 56px }` still reserves navbar room
+  - Bottom `<p>Step X of 2 · ...</p>` indicator still visible at ≥1024px
+- **NOT TOUCHED this era:** scoring engine, attribution chain, commission
+  engine, tier system, partner panel pricing, admin panel UI shell,
+  reel-app surfaces (`/`, `/discover`, `/reels`, `/me`), animation
+  layer (10 `.sb-*` utilities), service-subscription billing, customer
+  Razorpay flow, bid-lifecycle data layer (v239/v240 server-side
+  changes preserved verbatim).
+- **Service-worker** stable URL `/sw.js`, stable cache names
+  (`staybid-static-v2` permanent · `staybid-html-v23` from v240 era —
+  unchanged through v240.1 + v240.2 per v93 discipline since neither
+  patch changed SW fetch-handler logic).
