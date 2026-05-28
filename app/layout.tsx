@@ -27,10 +27,20 @@ import SupportWidget from "@/components/support/SupportWidget";
 // per-page handler wiring needed; just attributes.
 import { AutoNextMount } from "@/components/AutoNextMount";
 export const viewport: Viewport = {
-  // Black theme color so the OS status-bar / app-switcher chrome blends
-  // with the reel feed (no jarring white strip). Was '#0a0f23' (navy)
-  // which clashed with the #07060e reel bg.
-  themeColor: '#07060e',
+  // v241.13 — theme-color is now system-color-scheme aware so the OS
+  // status bar tint (and the area around the camera notch in PWA
+  // standalone mode) matches the page palette. Previous flat '#07060e'
+  // (near-black navy) tinted every non-/bid page's status bar BLACK
+  // above a cream/dark body — visible band at the notch. /bid was the
+  // only exception because .bgz-shell's dark gradient covered the
+  // mismatch. Now light theme → cream, dark theme → cocoa; matches the
+  // body bg in both modes. Android Chrome's "read theme-color once at
+  // initial paint" quirk no longer bites because the right colour ships
+  // in HTML statically per media query.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FAF5EB' },
+    { media: '(prefers-color-scheme: dark)',  color: '#0F0C08' },
+  ],
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -141,9 +151,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               document.documentElement.setAttribute('data-theme',t);
               // Theme-color meta — matches Android Chrome / iOS PWA chrome
               // to the current theme background so there's no white flash.
-              var meta=document.querySelector('meta[name="theme-color"]');
-              if(!meta){meta=document.createElement('meta');meta.setAttribute('name','theme-color');document.head.appendChild(meta);}
-              meta.setAttribute('content',t==='dark'?'#0F0C08':'#FAF5EB');
+              // v241.13 — there are now TWO theme-color meta tags (light + dark
+              // media queries) so the SSR initial paint already matches system
+              // colour scheme. When the user manually toggles theme, override
+              // BOTH meta tags to the same colour so the chosen theme wins
+              // regardless of system preference.
+              var metas=document.querySelectorAll('meta[name="theme-color"]');
+              var themeCol=t==='dark'?'#0F0C08':'#FAF5EB';
+              if(metas.length){metas.forEach(function(m){m.setAttribute('content',themeCol);});}
+              else{var m=document.createElement('meta');m.setAttribute('name','theme-color');m.setAttribute('content',themeCol);document.head.appendChild(m);}
 
               // Mark PWA mode so the reel pages can skip the body-lock dance
               if(window.matchMedia && (window.matchMedia('(display-mode:fullscreen)').matches || window.matchMedia('(display-mode:standalone)').matches)){
@@ -210,7 +226,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v241.12</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v241.13</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -231,7 +247,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v241.12-bid-backchip-and-notch-clearance";
+var SB_BUILD="v241.13-theme-color-matches-page-palette";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
