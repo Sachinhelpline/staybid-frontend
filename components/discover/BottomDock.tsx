@@ -102,14 +102,6 @@ export function BottomDock() {
           position: fixed;
           left: 0;
           right: 0;
-          /* v241.11 — dock visually extends to screen bottom edge for the
-             immersive premium feel. The previous v241.10 lift (bottom: inset)
-             left a bare page-background strip exposing the Android home pill,
-             which looked ugly. System gesture unblocking is handled entirely
-             by the reel-page touch-action fix (v241.10, kept in globals.css)
-             — Android intercepts edge-swipe back / swipe-up-home at the OS
-             level before the browser sees the touch, so the dock background
-             extending into the safe area does NOT capture system gestures. */
           bottom: 0;
           z-index: 60;
           display: flex;
