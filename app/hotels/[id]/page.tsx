@@ -2079,7 +2079,18 @@ export default function HotelDetail() {
     ? Math.min(...hotel.rooms.map((r: any) => r.floorPrice || 99999))
     : 0;
   const lowestForRibbon = lowestRoomPrice < 99999 ? lowestRoomPrice : 0;
-  const roomsAvail = hotel?.rooms?.length || 0;
+  // v241 — sum of actual room QUANTITY across categories, not category
+  // count. Pre-v241 this read `hotel.rooms.length` so a hotel with 3
+  // categories × 4 units each (12 physical rooms) displayed "3 rooms
+  // available". Now correctly shows total physical units.
+  const roomsAvail = (hotel?.rooms || []).reduce((sum: number, r: any) => {
+    const isAvail = r.isAvailable !== false;
+    const q = r.quantity == null ? 1 : Math.max(0, Number(r.quantity));
+    return sum + (isAvail ? q : 0);
+  }, 0);
+  const roomCategoriesAvail = (hotel?.rooms || []).filter((r: any) =>
+    r.isAvailable !== false && (r.quantity == null || Number(r.quantity) > 0)
+  ).length;
   const otaSavingsBest = lowestForRibbon > 0
     ? Math.round((1 - lowestForRibbon / (lowestForRibbon * 1.22)) * 100)
     : 0;
@@ -3245,6 +3256,25 @@ export default function HotelDetail() {
                         </>
                       )}
                       {" · "}up to {r.capacity} guests
+                      {/* v241 — per-category quantity badge. Urgency
+                          tint when <= 2 units remain. quantity===null
+                          (legacy rows) reads as unbounded → no chip. */}
+                      {r.quantity != null && Number(r.quantity) > 0 && (
+                        <span style={{
+                          display: "inline-block",
+                          marginLeft: 6, padding: "1px 7px",
+                          borderRadius: 999,
+                          background: Number(r.quantity) <= 2
+                            ? "rgba(212,149,131,0.18)"
+                            : "rgba(201,166,107,0.16)",
+                          border: `1px solid ${Number(r.quantity) <= 2 ? "rgba(212,149,131,0.40)" : "rgba(201,166,107,0.32)"}`,
+                          color: Number(r.quantity) <= 2 ? "#A85B4E" : "var(--cozy-cocoa, #4A3820)",
+                          fontSize: "0.6rem", fontWeight: 700,
+                          verticalAlign: "middle",
+                        }}>
+                          {Number(r.quantity)} avail
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -3744,7 +3774,7 @@ export default function HotelDetail() {
                 ₹{(lowestForRibbon || 0).toLocaleString()}
               </div>
               <p className="hx-sticky-rate-s">
-                /night before taxes · {roomsAvail} room{roomsAvail === 1 ? "" : "s"} available
+                /night before taxes · {roomsAvail} room{roomsAvail === 1 ? "" : "s"} across {roomCategoriesAvail} categor{roomCategoriesAvail === 1 ? "y" : "ies"}
               </p>
 
               <div style={{

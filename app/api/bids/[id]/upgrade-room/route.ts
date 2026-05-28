@@ -65,12 +65,39 @@ export async function POST(
   }
 
   // Verify the target room belongs to the SAME hotel as the bid.
-  const targetRooms = await sbSelect(`rooms?id=eq.${newRoomId}&select=id,hotelId,name,type,floorPrice`);
+  // v241 — also pull capacity + quantity for inventory + mismatch re-check.
+  const targetRooms = await sbSelect(`rooms?id=eq.${newRoomId}&select=id,hotelId,name,type,floorPrice,capacity,quantity`);
   const targetRoom = targetRooms[0];
   if (!targetRoom) return NextResponse.json({ error: "Target room not found" }, { status: 404 });
   if (String(targetRoom.hotelId) !== String(bid.hotelId)) {
     return NextResponse.json({ error: "Room belongs to a different hotel" }, { status: 400 });
   }
+
+  // v241 — preserve numRooms from the existing bid; re-validate inventory
+  // + capacity against the new room. If the target category has fewer
+  // units than the bid asks for, 409. Capacity mismatch flag re-derived.
+  const existingNumRooms = Math.max(1, Math.min(10, Number(bid.numRooms || 1)));
+  const targetQuantity = targetRoom.quantity == null ? null : Number(targetRoom.quantity);
+  if (targetQuantity != null && existingNumRooms > targetQuantity) {
+    return NextResponse.json(
+      {
+        error: `Upgrade room has only ${targetQuantity} unit${targetQuantity === 1 ? "" : "s"} — your bid needs ${existingNumRooms}.`,
+        maxAvailable: targetQuantity,
+      },
+      { status: 409 }
+    );
+  }
+  // Re-derive capacityMismatch from the existing bid's guests (joined
+  // via bid_requests.guests since the bids row itself doesn't store guests).
+  let upgradedCapacityMismatch = false;
+  try {
+    const req = bid.requestId
+      ? await sbSelect(`bid_requests?id=eq.${bid.requestId}&select=guests`)
+      : null;
+    const guests = Math.max(1, Number(req?.[0]?.guests || 1));
+    const cap = Number(targetRoom.capacity || 2);
+    upgradedCapacityMismatch = guests > cap * existingNumRooms;
+  } catch { /* non-blocking */ }
 
   // Best-effort source-room name (audit only).
   let fromName = "previous room";
@@ -91,6 +118,9 @@ export async function POST(
         roomId: newRoomId,
         amount: newAmount,
         message: newMessage,
+        // v241 — numRooms preserved verbatim; only capacityMismatch
+        // re-derived against the new room.capacity.
+        capacityMismatch: upgradedCapacityMismatch,
       }
     );
     return NextResponse.json({

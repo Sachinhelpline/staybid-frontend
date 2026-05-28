@@ -161,13 +161,35 @@ export async function POST(req: NextRequest) {
   await ensureUser(customerId, p?.phone, p?.name);
 
   const body = await req.json().catch(() => ({}));
-  const { hotelId, roomId, amount, requestId, dealId, message, flow } = body || {};
+  const { hotelId, roomId, amount, requestId, dealId, message, flow, numRooms, guests } = body || {};
 
   if (!hotelId || !roomId || !amount) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // Floor-price check (skipped when dealId is present)
+  // v241 — Customer's numRooms for THIS hotel. Schema CHECK 1–10.
+  // Defaults to 1 when caller omits the field (Book Now / Flash flows).
+  // The customer's intent for the WHOLE broadcast is on
+  // `bid_requests.numRoomsRequested`; this is the per-bid resolved value.
+  const numRoomsClamped = Math.max(1, Math.min(10, Math.floor(Number(numRooms) || 1)));
+  // v241 — guests resolves from body first; fall back to the linked
+  // bid_request row so legacy hotel-page callers (Negotiate / Book Now)
+  // that send only `requestId` still get capacityMismatch flagged
+  // correctly. Cheap single-row REST lookup; only fires when body omits.
+  let guestsClamped = Math.max(1, Math.floor(Number(guests) || 0));
+  if (!guestsClamped && requestId) {
+    try {
+      const reqRows = await sbSelect(`bid_requests?id=eq.${requestId}&select=guests,"numRoomsRequested"`);
+      if (reqRows[0]) {
+        guestsClamped = Math.max(1, Math.floor(Number(reqRows[0].guests) || 1));
+      }
+    } catch { /* non-blocking */ }
+  }
+  if (!guestsClamped) guestsClamped = 1;
+
+  // Floor-price check (skipped when dealId is present). Floor stays
+  // per-room-per-night — amount × nights × numRooms is the final
+  // charge, but the floor compares 1:1 against amount.
   if (!dealId) {
     const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
     const floor = rooms[0]?.floorPrice;
@@ -177,6 +199,39 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+  }
+
+  // v241 — Inventory + capacity resolution against THIS hotel's actual
+  // room row. `rooms.quantity` is what the partner configured for total
+  // units of this category; `rooms.capacity` is guests-per-unit (default
+  // 2 from partner panel). Two checks:
+  //   1. INVENTORY — if numRoomsClamped > quantity, the hotel literally
+  //      doesn't have that many of this category. Return 409 with the
+  //      configured quantity so the customer can adjust.
+  //   2. CAPACITY MISMATCH — flag-only (no rejection) when guests >
+  //      capacity × numRooms. Partner inbox surfaces yellow chip; hotel
+  //      decides counter-with-more-rooms or accept-anyway.
+  // Skip on dealId-bypass flows (flash) — those have their own
+  // hotel_room_units availability path.
+  let capacityMismatch = false;
+  if (!dealId) {
+    const roomRows = await sbSelect(`rooms?id=eq.${roomId}&select=capacity,quantity,type,name`);
+    const roomRow = roomRows[0];
+    const roomCapacity = Number(roomRow?.capacity || 2);
+    const roomQuantity = roomRow?.quantity == null ? null : Number(roomRow.quantity);
+    const roomLabel = roomRow?.name || roomRow?.type || "this room";
+
+    if (roomQuantity != null && numRoomsClamped > roomQuantity) {
+      return NextResponse.json(
+        {
+          error: `This hotel has only ${roomQuantity} ${roomLabel} room${roomQuantity === 1 ? "" : "s"} available. Reduce your room count or pick a different hotel.`,
+          maxAvailable: roomQuantity,
+        },
+        { status: 409 }
+      );
+    }
+
+    capacityMismatch = guestsClamped > roomCapacity * numRoomsClamped;
   }
 
   // v200 — Pre-flight: 409 if customer already has an active bid on THIS
@@ -227,6 +282,10 @@ export async function POST(req: NextRequest) {
         ? new Date(Date.now() + 15 * 60_000).toISOString()
         : expiresAtFor(flow),
       isBestDeal: false,
+      // v241 — multi-room support. Denormalized so /api/bids/my doesn't
+      // need a join + /my-bids charge math reads it directly.
+      numRooms: numRoomsClamped,
+      capacityMismatch,
     });
     return NextResponse.json({ bid, autoAccepted: autoAccept });
   } catch (e: any) {

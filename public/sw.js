@@ -258,7 +258,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // missed every Firebase-authored bid because resolver didn't link
 // the two identities. Cache bump forces v240 HTML delivery on next
 // visit.
-const HTML_CACHE = 'staybid-html-v23';
+// v241 — HTML_CACHE bump v23 → v24 because route handlers
+// (/api/bids/place + /api/bids/request) now read + write
+// numRooms + capacityMismatch, /my-bids charge math multiplied by
+// numRooms, BookingReview props extended, and hotel page / partner
+// inbox / admin bookings UI all surface new chips. Stale v23 HTML
+// would render old payloads + drop the new chips silently.
+const HTML_CACHE = 'staybid-html-v24';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

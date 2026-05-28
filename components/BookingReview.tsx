@@ -49,6 +49,13 @@ export type BookingReviewProps = {
   adults: number;
   children?: number;
   kids?: number;
+  // v241 — multi-room booking. When numRooms > 1, the guest+nights
+  // line surfaces "· N rooms" and the per-room-per-night avg uses
+  // (total / nights / numRooms). capacityMismatch when true shows a
+  // soft info chip so customer knows the hotel may need to confirm
+  // extra-bed / rollaway configuration on check-in.
+  numRooms?: number;
+  capacityMismatch?: boolean;
   // Pricing
   rateLines: RateLine[];      // detailed breakdown
   totalAmount: number;        // full amount due BEFORE redemption
@@ -271,16 +278,28 @@ export default function BookingReview(p: BookingReviewProps) {
             </div>
           </div>
 
-          {/* Guests + nights */}
+          {/* Guests + nights + rooms (v241) */}
           <div className="br-section flex items-center justify-between rounded-2xl px-3 py-2.5 border border-luxury-100 bg-white">
             <p className="text-xs text-luxury-700">
               👥 {p.adults} adult{p.adults > 1 ? "s" : ""}
               {p.children ? ` · ${p.children} child${p.children > 1 ? "ren" : ""}` : ""}
               {p.kids ? ` · ${p.kids} kid${p.kids > 1 ? "s" : ""}` : ""}
               {` · ${p.nights} night${p.nights > 1 ? "s" : ""}`}
+              {p.numRooms && p.numRooms > 1 ? ` · ${p.numRooms} room${p.numRooms > 1 ? "s" : ""}` : ""}
             </p>
             <span className="text-[0.55rem] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">✓ Confirmed</span>
           </div>
+          {/* v241 — capacity-mismatch info chip. Customer has more
+              guests than the resolved (rooms × capacity) supports.
+              Most hotels accommodate via rollaway / extra bed; some
+              don't. Shown as a soft info chip — not blocking. */}
+          {p.capacityMismatch && (
+            <div className="br-section rounded-2xl px-3 py-2 border border-amber-200 bg-amber-50/50">
+              <p className="text-[0.68rem] text-amber-800 leading-snug">
+                ℹ️ Your {p.adults + (p.children || 0)}-guest count is above {p.numRooms || 1} room standard capacity. Hotel will confirm extra-bed / rollaway setup on check-in.
+              </p>
+            </div>
+          )}
 
           {/* v124 — Redemption row */}
           {p.allowRedemption !== false && (
@@ -392,8 +411,14 @@ export default function BookingReview(p: BookingReviewProps) {
                     <p className="text-xs line-through text-luxury-400 mb-0.5">{fmt(baseTotal)}</p>
                   )}
                   <p className="text-[2rem] leading-none font-extrabold br-gold-text">{fmt(finalAmount)}</p>
-                  {p.nights > 1 && finalAmount > 0 && (
-                    <p className="text-[0.6rem] text-luxury-500 mt-0.5">{fmt(Math.round(finalAmount / p.nights))}/night avg</p>
+                  {/* v241 — per-room-per-night avg when numRooms > 1
+                      so multi-room customers see the comparable rate
+                      (not a misleading per-night total/nights). */}
+                  {((p.nights > 1) || ((p.numRooms || 1) > 1)) && finalAmount > 0 && (
+                    <p className="text-[0.6rem] text-luxury-500 mt-0.5">
+                      {fmt(Math.round(finalAmount / Math.max(1, p.nights) / Math.max(1, p.numRooms || 1)))}
+                      /room/night avg
+                    </p>
                   )}
                 </div>
               </div>

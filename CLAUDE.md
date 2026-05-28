@@ -6956,3 +6956,306 @@ CSS / className changes, no SW fetch-handler logic touched).
   (`staybid-static-v2` permanent · `staybid-html-v23` from v240 era —
   unchanged through v240.1 + v240.2 per v93 discipline since neither
   patch changed SW fetch-handler logic).
+
+---
+
+## Multi-Room Bids + Auto-Fit + Capacity-Aware Era (v241, 2026-05-28)
+
+Single mega-ship closing a long-standing silent undercharge bug AND
+shipping the data model + UX for genuine multi-room bookings. Customer
+asked at /bid Step 3 for "kya hum 5 room se jyada selector kar sakte
+hai" + "automatic system bana sakte hai kya ki agar bychange customer
+number of guest jyada select karta hai aur wo room number 1 hi rakhta
+hai … yeh number of guest and number of rooms automatic multiplier
+lag jaye". v241 ships both, plus the entire previously-deferred Phase
+1-7 multi-room plan in one PR.
+
+### The bug that was hiding in plain sight
+
+Customer at /bid picks `form.rooms = 2`. UI shows "Total for 2 rooms ×
+1 night = ₹4,000" (math correct via `budget × nights × form.rooms`).
+**But the value never reached the server.** `bid_requests` had `guests`
+column but no `rooms`. `bids.amount` stored as per-room-per-night with
+no numRooms column. /my-bids accept/pay flow computed `total = perNight
+× nights` — **silently dropped the rooms multiplier**. Customer who
+asked for 2 rooms paid for 1.
+
+### The schema (applied to production Supabase 2026-05-28)
+
+```sql
+ALTER TABLE bid_requests
+  ADD COLUMN "numRoomsRequested" INTEGER NOT NULL DEFAULT 1
+    CHECK ("numRoomsRequested" BETWEEN 1 AND 10);
+
+ALTER TABLE bids
+  ADD COLUMN "numRooms" INTEGER NOT NULL DEFAULT 1
+    CHECK ("numRooms" BETWEEN 1 AND 10);
+
+ALTER TABLE bids
+  ADD COLUMN "capacityMismatch" BOOLEAN NOT NULL DEFAULT false;
+```
+
+Three additive columns. Defaults preserve legacy behavior (single-room
+bids that pre-date v241 read as 1, no mismatch flag). Migration file
+in repo: `migrations/2026-05-28-v241-multi-room-bids.sql`. Verification
+post-apply: all 3 columns present with NOT NULL constraints + DEFAULT
+1 / false. Zero data loss.
+
+### What ships in v241
+
+**Data layer:**
+- `bid_requests.numRoomsRequested` — customer's pick at /bid Step 3
+  (frozen at request creation, the customer's intent for the broadcast)
+- `bids.numRooms` — per-bid resolved value (matches numRoomsRequested
+  in happy path; could differ on future per-hotel auto-fit, though v241
+  doesn't bump on server)
+- `bids.capacityMismatch` — boolean flag set server-side when guests >
+  (room.capacity × numRooms) at insert time
+
+**Server (4 routes):**
+- `/api/bids/request/route.ts` — accepts `body.numRooms`, validates
+  1-10, writes to `numRoomsRequested`.
+- `/api/bids/place/route.ts` — accepts `body.numRooms` + `body.guests`,
+  reads per-hotel `room.capacity` + `room.quantity`, returns **409
+  inventory error** when `numRooms > room.quantity`, sets
+  `capacityMismatch=true` when `guests > capacity × numRooms`. Falls
+  back to `bid_requests.guests` via requestId lookup when body.guests
+  is missing (legacy hotel-page callers).
+- `/api/bids/[id]/upgrade-room/route.ts` — preserves numRooms;
+  re-validates inventory + capacity against the new room category.
+- `/api/bids/[id]/budget/route.ts` — unchanged (numRooms stays on the
+  existing row through any amount PATCH).
+
+**Client `/bid/page.tsx`:**
+- Adults counter cap 10 → 15.
+- Rooms counter cap 5 → 10.
+- `emojiForCount` extended for adults (5-6 small group, 7-10 extended
+  family, 11+ group event) + rooms (5-6 hotel, 7-8 floor, 9-10 takeover).
+- `ROOM_CATEGORY_CAPACITY` map + `minRoomsForGuests` helper imported
+  from `lib/catalog.ts`.
+- Auto-fit hook: `minRooms = ceil(guests / avgCap)`. Auto-fit toggle
+  (default ON), persists to `localStorage.sb_autofit`. When ON +
+  `form.rooms < minRooms`, silently bumps form.rooms (capped at 10).
+  When OFF, renders warning "⚠️ N guests in M rooms — most hotels
+  will decline".
+- "Need 11+ rooms? Talk to concierge →" WhatsApp link surfaces when
+  `minRooms > 10`.
+- `createBidRequest` payload + `placeBid` payload both carry
+  `numRooms: form.rooms` + `guests`.
+- Bid message string extended: `"Guest bid ₹X/night for Y nights × Z
+  rooms (max ₹W)"` when rooms > 1. Pre-existing v234 message-regex
+  detection in `/my-bids` still works (matches `Guest bid` prefix).
+
+**`lib/catalog.ts`:**
+- `ROOM_CATEGORY_CAPACITY` map per the 16 categories (standard=2 /
+  deluxe=2 / family=4 / junior_suite=3 / suite=4 / presidential=6 /
+  villa=6 / dormitory=1 / etc).
+- `capacityForCategories(roomTypeIds)` — average capacity across picks
+  (default 2 when zero categories selected).
+- `minRoomsForGuests(guests, roomTypeIds)` — ceil(guests / avgCap).
+
+**Client `/my-bids/page.tsx`:**
+- All 3 charge math sites multiplied by numRooms:
+  - L399 (Counter accept): `total = counterAmt × nights × numRooms`
+  - L537 (Pay Now): `total = perNight × nights × numRooms`
+  - L944 (card surface): `total = confirmAmt × nights × numRooms`
+- Fallback chain: `b.numRooms || b.request?.numRoomsRequested || 1`.
+- Passes `numRooms` + `capacityMismatch` to BookingReview props.
+
+**`components/BookingReview.tsx`:**
+- `numRooms?: number` + `capacityMismatch?: boolean` props (both optional,
+  default to 1 / false → bit-identical for single-room bookings).
+- Guest+nights row appends "· N rooms" when numRooms > 1.
+- Per-night avg now divides by `(nights × numRooms)` → "₹X/room/night
+  avg" — the comparable rate, not a misleading per-room slice.
+- Soft amber info chip: "ℹ️ Your N-guest count is above M room standard
+  capacity. Hotel will confirm extra-bed / rollaway setup on check-in."
+
+**`/hotels/[id]` hotel page:**
+- `roomsAvail` now sum of `r.quantity` across available categories (was
+  `hotel.rooms.length` = category count). Sticky chip reads "12 rooms
+  across 3 categories" not "3 rooms available".
+- Per-card "N avail" chip below room name. Urgency tint (red) when
+  quantity ≤ 2, champagne otherwise. quantity===null (legacy rows)
+  reads as unbounded → no chip.
+
+**Partner inbox card (`app/partner/dashboard/page.tsx`):**
+- "🛏️ N rooms" chip near guests line when numRooms > 1.
+- "⚠️ N guests in M rooms — extra-bed setup may be needed" amber chip
+  when capacityMismatch is true.
+- `/api/partner/bids/route.ts` surfaces both fields from the bid row
+  spread (numRooms + capacityMismatch + numRoomsRequested fallback).
+
+**Admin bookings (`app/admin/bookings/page.tsx`):**
+- New "Rooms" column showing "🛏️ N" with yellow tint when
+  capacityMismatch is true.
+- `/api/admin/bookings/route.ts` selects `numRooms` + `capacityMismatch`
+  + `bid_requests.numRoomsRequested` explicitly.
+
+**Service worker + version:**
+- `app/layout.tsx` — SB_BUILD v240.2 → v241 + badge.
+- `public/sw.js` — HTML_CACHE v23 → v24 (route handlers changed +
+  UI surfaces new chips → invalidate stale HTML).
+
+### Q1 (cap raise) and Q2 (auto-fit) — defaults locked
+
+- Auto-fit default = **ON**, toggle visible inline below the Rooms
+  counter. Customer 1-tap to OFF. Persists per device via
+  `localStorage.sb_autofit`.
+- Capacity mismatch when auto-fit OFF = **WARN ONLY**, not block.
+  Customer can submit; partner inbox surfaces yellow chip.
+- 11+ rooms = **static WhatsApp concierge CTA** (`+918881555188` with
+  pre-filled "Hi, I need N+ rooms for M guests" message). Full
+  `/group-bid` page deferred to a future v242 era.
+
+### Files added (this era)
+```
+migrations/2026-05-28-v241-multi-room-bids.sql
+```
+
+### Files modified (this era)
+```
+lib/catalog.ts                                # +ROOM_CATEGORY_CAPACITY, capacityForCategories, minRoomsForGuests
+app/api/bids/request/route.ts                 # +numRooms body field → numRoomsRequested column
+app/api/bids/place/route.ts                   # +numRooms + guests body fields; inventory 409 + capacityMismatch flag; bid_requests.guests fallback
+app/api/bids/[id]/upgrade-room/route.ts       # preserve numRooms; re-validate inventory + capacity against new room
+app/bid/page.tsx                              # cap raises (5→10 / 10→15); auto-fit hook + toggle + chip; payload carries numRooms + guests
+app/my-bids/page.tsx                          # 3× total math multiplied by numRooms; pass numRooms + capacityMismatch to BookingReview
+components/BookingReview.tsx                  # +numRooms + capacityMismatch props; "· N rooms" + per-room-per-night avg + mismatch chip
+app/hotels/[id]/page.tsx                      # roomsAvail = sum of quantity; per-card "N avail" chip
+app/partner/dashboard/page.tsx                # "🛏️ N rooms" + capacityMismatch chip on Bid Inbox cards
+app/api/partner/bids/route.ts                 # surface numRooms + capacityMismatch
+app/admin/bookings/page.tsx                   # new Rooms column with mismatch tint
+app/api/admin/bookings/route.ts               # select numRooms + capacityMismatch + numRoomsRequested
+app/layout.tsx                                # SB_BUILD v240.2 → v241 + badge
+public/sw.js                                  # HTML_CACHE v23 → v24
+```
+
+### Service-worker version map (continued)
+- v240.2 → mobile-bgz-shell-edge-to-edge
+- **v241** → multi-room-bids-autofit-capacity (current)
+
+### Things to Avoid (v241 Era)
+
+- **Never** ship a price input or counter without snap100 + the v241
+  numRooms integration. The /bid Counter is the single source for
+  customer-side multi-room intent; every new bid-creation flow MUST
+  pass `numRooms` + `guests` in body.
+- **Never** drop the `bid_requests.guests` fallback in `/api/bids/place`.
+  Hotel-page Negotiate / Book Now / Flash flows historically only sent
+  `requestId` + `amount` — they don't yet pass `numRooms` or `guests`
+  in body. The fallback lookup keeps capacityMismatch accurate for
+  those legacy callers.
+- **Never** auto-bump server-side numRooms above what the customer
+  authorized in body. The customer's Razorpay flow paid for N rooms;
+  server inflating to M+ would break the trust contract. Instead, flag
+  `capacityMismatch=true` and let the partner counter-with-more-rooms.
+- **Never** raise the rooms CHECK constraint past 10 without also
+  adding a corresponding group-bid pipeline (group pricing, multi-
+  property splits, multi-Razorpay-charge support). The 1–10 cap is
+  intentional — beyond that, ops mechanics fundamentally differ.
+- **Never** remove the `ROOM_CATEGORY_CAPACITY` map or its helpers
+  (`capacityForCategories`, `minRoomsForGuests`). The auto-fit hook on
+  /bid + any future hotel-page picker depend on them. The map should
+  stay in sync with `ROOM_CATEGORIES` — every new category needs a
+  capacity entry.
+- **Never** revert the /my-bids charge math from `× nights × numRooms`
+  back to `× nights`. The silent undercharge was a real bug — the v241
+  multiplication is the fix. Fallback chain
+  (`b.numRooms || b.request?.numRoomsRequested || 1`) handles every
+  legacy row.
+- **Never** strip `capacityMismatch` from the partner inbox card. It's
+  the partner's only signal that the customer's guest count exceeds
+  resolved capacity. Without it, partners can't make informed
+  counter-vs-accept decisions on over-packed configs.
+- **Never** narrow `/api/bids/my` from `select=*` on bids — the v131.8
+  reel-dedup chain's spirit applies here too: new columns must flow
+  through to the client without code change. `select=*` keeps numRooms
+  + capacityMismatch (and any future column) surfacing automatically.
+- **Never** assume `r.quantity` is always populated. Legacy rooms rows
+  may have `quantity=NULL` — treat as unbounded for display (no chip)
+  and skip the inventory 409 server-side.
+- **Never** ship multi-room without bumping HTML_CACHE. Stale v23
+  HTML would render the old single-room math + drop the new chips
+  silently.
+- **Never** auto-bump form.rooms above the Counter's `max:10` from the
+  auto-fit effect. The `cappedMinRooms = Math.min(10, minRooms)` clamp
+  is what funnels 11+ requests to the concierge CTA instead of
+  exceeding the data-model CHECK constraint.
+- **Never** put a `for (const x of someSet)` or `for (const x of
+  someMap.keys())` in any new code path. Vercel's tsconfig lacks
+  `downlevelIteration`. `Array.from()` first. All v241 iterations use
+  arrays (`string[]` in catalog helpers, `bids` array in routes).
+  Trap last bit us at v239; staying vigilant.
+
+### What this era did NOT do (intentionally deferred)
+
+- **Hotel page per-card numRooms picker (Phase 5).** Multi-room flow
+  on the hotel detail page (Negotiate / Book Now / Hold / Pay Now /
+  Upgrade) currently still books 1 room per CTA. The capacity badge
+  + availability chip ship in v241; the actual counter + thread-through
+  picker is v241.1 scope — separate testing layer, lots of CTAs to
+  update.
+- **`bookings.numRooms` denormalization (Phase 8).** Booking row can
+  still derive numRooms via bid → bid_request join. Adding a
+  denormalized column would speed up some payout / refund queries but
+  isn't blocking anything yet.
+- **Group-bid pipeline (11+ rooms).** Static WhatsApp concierge CTA
+  ships; full `/group-bid` page with multi-property splits, group
+  floor pricing, multi-Razorpay-charge is v242 scope.
+- **Backfill of historical bids to set numRooms from message regex.**
+  Pre-v241 bids whose message reads "Guest bid X for N nights × M
+  rooms" theoretically could be backfilled to `numRooms=M`. Skipped
+  for safety — message format pre-dates the v241 schema and could
+  have edge cases. All legacy rows read as `numRooms=1` via the
+  DEFAULT; charge math correctly multiplied by 1 → no change in
+  existing behavior.
+- **Flash deals integration.** Flash deals already use
+  `hotel_room_units` per-physical-unit row pattern (separate from
+  `rooms.quantity`). v241 doesn't touch flash. If a future surface
+  needs multi-unit flash bookings, the existing v75 `unitsFree` math
+  can be extended.
+- **Real-time inventory display.** Per-card "N avail" chip reads
+  `r.quantity` directly (the partner-configured total). It does NOT
+  subtract active bookings against the dates picked. v240-era
+  `room_date_overrides` + availability calendar handle that for the
+  partner panel; customer-facing real-time count would need a similar
+  resolver.
+
+---
+
+## Updated production state (v241, 2026-05-28)
+
+- **Current version:** v241 · branch `claude/claude-md-v240-2-verify-bxtxa`
+- **Migration applied live** to Supabase project `uxxhbdqedazpmvbvaosh`
+  via MCP `apply_migration` (`v241_multi_room_bids_additive`). 3 new
+  columns verified via `information_schema.columns`: all NOT NULL with
+  DEFAULT 1 / 1 / false.
+- **Silent undercharge fixed.** Customer asking for N rooms now
+  charges N × per-night × nights at /my-bids accept + pay-now. Pre-
+  v241 rows continue charging × 1 (no behavior change for them).
+- **Auto-fit live** on /bid Step 3 (both mobile climber + desktop
+  legacy). Default ON; toggleable; persists per-device. Soft warning
+  when OFF + mismatched; WhatsApp concierge CTA at 11+ rooms.
+- **Capacity-aware partner inbox.** Yellow mismatch chip + room count
+  chip surface on every Bid Inbox card. Hotels see the full
+  configuration at a glance + can decide counter / accept-with-extras
+  / decline.
+- **Inventory 409 protection.** Server rejects bids requesting more
+  rooms than the room category has configured units (`r.quantity`).
+  Customer gets a clear error with `maxAvailable` so they can adjust.
+- **Floor + auto-accept rules preserved verbatim.** Floor compares
+  1:1 against `amount` (per-room-per-night); auto-accept on `flow="place"
+  AND amount >= floor` unchanged. Multi-room doesn't shift any v196
+  / v200 / v240 contract.
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner pricing tabs (room-date
+  overrides, OTA sync, flash deals), admin panel shell, reel-app
+  surfaces, animation layer, service-subscription billing, customer
+  Razorpay flow, hotel page Negotiate / Book Now / Upgrade flows
+  (still single-room per CTA, picker deferred to v241.1), reel-dedup
+  v131.8 chain, mobile /bid chrome (v240.1 + v240.2 preserved
+  bit-identical), cross-identity resolver (v240).
+- **Service-worker** stable URL `/sw.js`, stable static cache name,
+  HTML cache bumped v23 → v24 per v93 discipline (route handler logic
+  changed + new UI chips need fresh HTML).
