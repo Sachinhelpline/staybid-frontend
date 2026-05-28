@@ -258,13 +258,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // missed every Firebase-authored bid because resolver didn't link
 // the two identities. Cache bump forces v240 HTML delivery on next
 // visit.
-// v241 — HTML_CACHE bump v23 → v24 because route handlers
-// (/api/bids/place + /api/bids/request) now read + write
-// numRooms + capacityMismatch, /my-bids charge math multiplied by
-// numRooms, BookingReview props extended, and hotel page / partner
-// inbox / admin bookings UI all surface new chips. Stale v23 HTML
-// would render old payloads + drop the new chips silently.
-const HTML_CACHE = 'staybid-html-v24';
+// v241.2 — HTML_CACHE bump v24 → v25 because the hotel detail page
+// now threads globalNumRooms through every booking-creation CTA
+// (Book Now / Negotiate / Counter Accept / simple Bid) and its
+// rate-line math + Razorpay total now multiplies by numRooms.
+// bookings.numRooms column added on Supabase (DEFAULT 1) so legacy
+// rows + Railway-side inserts continue working byte-identical.
+const HTML_CACHE = 'staybid-html-v25';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
