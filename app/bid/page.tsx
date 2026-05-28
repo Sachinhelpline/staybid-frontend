@@ -1450,7 +1450,7 @@ export default function BidPage() {
                 // a second tap to open the Pay/Hold/Pay-at-Hotel modal. The
                 // `?payNow=<id>` query param fires handlePayNow as soon as
                 // the bids list hydrates.
-                onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
+                onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
               />
             ))}
           </div>
@@ -2069,7 +2069,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
+                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
                 />
               ))}
             </div>
@@ -2137,7 +2137,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
+                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
                 />
               ))}
             </div>
@@ -2940,7 +2940,7 @@ export default function BidPage() {
                       launchTs={launchTs}
                       nowTs={nowTs}
                       onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                      onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}`)}
+                      onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
                     />
                   ))}
                 </div>
