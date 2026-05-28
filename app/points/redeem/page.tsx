@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
 import {
@@ -51,7 +52,7 @@ export default function RedeemPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) { redirectToSignIn(router, { route: "/points/redeem" }); return; }
     let dead = false;
     Promise.all([
       api.getRedemptionRules().catch(() => ({ rules: [] })),

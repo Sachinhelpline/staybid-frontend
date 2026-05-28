@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -654,7 +655,11 @@ export default function BookingsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) {
+      // v241.3 — return to /bookings after sign-in instead of /.
+      redirectToSignIn(router, { route: "/bookings", action: "view_bookings" });
+      return;
+    }
 
     // Phase 4: hydrate cross-device holds from /api/holds (fires once on mount,
     // merges into localStorage so HoldBanner renders even on a fresh browser).

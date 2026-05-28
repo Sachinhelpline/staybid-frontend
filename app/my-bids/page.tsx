@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
@@ -379,7 +380,17 @@ function MyBidsPageInner() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) {
+      // v241.3 — return to /my-bids after sign-in (preserves any
+      // query params like ?payNow=<id> from /bid handoff).
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : "/my-bids",
+        action: "view_bids",
+      });
+      return;
+    }
     // Phase 5: hydrate cross-device acceptance windows once on mount.
     hydrateAcceptanceWindowsFromServer().catch(() => {});
     fetchBids();

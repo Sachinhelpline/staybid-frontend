@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import Link from "next/link";
 import { CountUp } from "@/components/CountUp";
 // v142 — Phase-6 wallet tour. 3 steps: balance → in/out → transactions.
@@ -60,7 +61,7 @@ export default function WalletPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) { redirectToSignIn(router, { route: "/wallet" }); return; }
 
     // Fetch wallet + bids + bookings in parallel
     Promise.all([

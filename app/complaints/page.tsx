@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { redirectToSignIn } from "@/lib/auth-intent";
 import ModalCloseButton from "@/components/ModalCloseButton";
 // v142 — Phase-6 complaints tour. 3 steps: new CTA → faster routes → list.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
@@ -104,7 +105,14 @@ function ComplaintsInner() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.push("/auth"); return; }
+    if (!user) {
+      redirectToSignIn(router, {
+        route: typeof window !== "undefined"
+          ? window.location.pathname + window.location.search
+          : "/complaints",
+      });
+      return;
+    }
     load();
   }, [user, authLoading, router, load]);
 
