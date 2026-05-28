@@ -519,12 +519,70 @@ function DateAutoOpener({ shouldOpen, onOpen }: { shouldOpen: boolean; onOpen: (
 /* ══════════════════════════════════════════════════════════════════
    Main Component
 ══════════════════════════════════════════════════════════════════ */
+// v241.14 — Session-storage persistence for the bid wizard. Pre-v241.14
+// when a customer launched a bid → Review Bid sheet opened → they tapped a
+// hotel link to inspect it → back → /bid component remounted with default
+// state (step=1, success=null, form reset). Customer was dumped at Step 1
+// and lost ALL their in-flight context.
+//
+// Now we persist {step, success, form} to sessionStorage with a 30-min TTL.
+// On remount we restore so the customer lands back exactly where they
+// left off — including the Review Bid sheet auto-opening over the form.
+// Cleared on Pay handoff (router.replace to /my-bids) or after 30 min.
+const SB_BID_SESSION_KEY = "sb_bid_session_v1";
+const SB_BID_SESSION_TTL_MS = 30 * 60 * 1000;
+
+type BidSessionSnapshot = {
+  step: number;
+  success: any;
+  form: any;
+  savedAt: number;
+};
+
+function readBidSession(): BidSessionSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(SB_BID_SESSION_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw) as BidSessionSnapshot;
+    if (!snap || typeof snap !== "object") return null;
+    if (Date.now() - Number(snap.savedAt || 0) > SB_BID_SESSION_TTL_MS) {
+      sessionStorage.removeItem(SB_BID_SESSION_KEY);
+      return null;
+    }
+    return snap;
+  } catch {
+    return null;
+  }
+}
+
+function writeBidSession(snap: Omit<BidSessionSnapshot, "savedAt">) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(SB_BID_SESSION_KEY, JSON.stringify({ ...snap, savedAt: Date.now() }));
+  } catch {}
+}
+
+function clearBidSession() {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.removeItem(SB_BID_SESSION_KEY); } catch {}
+}
+
 export default function BidPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [step, setStep] = useState(1);
+  // v241.14 — Hydrate step + success from sessionStorage on FIRST render
+  // (not via useEffect) so the customer doesn't see a Step 1 flash before
+  // the restoration kicks in. Lazy initializer reads sessionStorage once.
+  const [step, setStep] = useState<number>(() => {
+    const snap = readBidSession();
+    return (snap && typeof snap.step === "number" && snap.step >= 1) ? snap.step : 1;
+  });
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<any>(null);
+  const [success, setSuccess] = useState<any>(() => {
+    const snap = readBidSession();
+    return snap?.success ?? null;
+  });
   const [animating, setAnimating] = useState(false);
   /* v220 — explicit interaction flag for the Guests milestone. Defaults
      for adults/rooms are non-zero (2A · 1R), so the previous
@@ -611,25 +669,54 @@ export default function BidPage() {
     };
   }, []);
 
-  const [form, setForm] = useState({
-    city:           "",
-    propertyTypes:  [] as string[],  // v170 — multi-select; [] = Any
-    checkIn:        "",
-    checkOut:       "",
-    adults:         2,
-    children:       0,
-    rooms:          1,
-    roomTypes:      ["deluxe"] as string[], // v170 — multi-select room categories
-    bedType:        "king",
-    view:           "Any",
-    mealPlan:       "breakfast",      // v170 — catalog meal-plan id
-    occasion:       "none",
-    // v129 — `specialRequests` removed: free-text field was an anti-bypass
-    // surface (phone/email/WhatsApp could slip through). Add-on toggles below
-    // are now the only structured channel for stay preferences.
-    maxBudget:      "",
-    addons:         [] as string[],  // v170 — catalog addon-service ids
+  // v241.14 — Hydrate form lazily from sessionStorage too. Customer's
+  // city/dates/guests/budget all preserved across the
+  // /bid → /hotels/[id] → back roundtrip.
+  type BidFormState = {
+    city: string;
+    propertyTypes: string[];
+    checkIn: string;
+    checkOut: string;
+    adults: number;
+    children: number;
+    rooms: number;
+    roomTypes: string[];
+    bedType: string;
+    view: string;
+    mealPlan: string;
+    occasion: string;
+    maxBudget: string;
+    addons: string[];
+  };
+  const [form, setForm] = useState<BidFormState>(() => {
+    const defaults: BidFormState = {
+      city:           "",
+      propertyTypes:  [],
+      checkIn:        "",
+      checkOut:       "",
+      adults:         2,
+      children:       0,
+      rooms:          1,
+      roomTypes:      ["deluxe"],
+      bedType:        "king",
+      view:           "Any",
+      mealPlan:       "breakfast",
+      occasion:       "none",
+      maxBudget:      "",
+      addons:         [],
+    };
+    const snap = readBidSession();
+    return snap?.form ? { ...defaults, ...snap.form } : defaults;
   });
+
+  // v241.14 — Persist {step, success, form} on every change so the
+  // customer's in-flight wizard state survives the /hotels/[id]
+  // round-trip. Throttled to once per state-change tick via React's
+  // built-in batching. Persistence is cleared on Pay handoff
+  // (router.replace to /my-bids) so the next launch starts fresh.
+  useEffect(() => {
+    writeBidSession({ step, success, form });
+  }, [step, success, form]);
 
   // v170 — toggle a value in/out of one of the array fields.
   const toggleArr = (key: "propertyTypes" | "roomTypes" | "addons", val: string) =>
@@ -697,11 +784,17 @@ export default function BidPage() {
   const minRooms     = minRoomsForGuests(totalGuests, form.roomTypes || []);
   const cappedMinRooms = Math.min(10, minRooms);
   const roomsShortBy = Math.max(0, cappedMinRooms - form.rooms);
+  // v241.14 — Symmetric auto-fit. Previously this effect only INCREASED
+  // rooms when guests grew (`cappedMinRooms > form.rooms`), never
+  // decreased on the way down. Customer reported: "guest add karne par
+  // room add hote hain, kam karne par kam nahi hote — mismatch". With
+  // autoFit ON the rooms count should track the guest-derived minimum
+  // both directions (1-10 bounded). If the customer wants to over-book
+  // rooms beyond the minimum, they toggle autoFit OFF.
   useEffect(() => {
     if (!autoFit) return;
-    if (cappedMinRooms > form.rooms) {
-      setForm((f) => ({ ...f, rooms: cappedMinRooms }));
-    }
+    const target = Math.max(1, Math.min(10, cappedMinRooms));
+    setForm((f) => (f.rooms === target ? f : { ...f, rooms: target }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFit, cappedMinRooms]);
   // v180 — feed the dynamic-price engine + room category into the dial.
@@ -1450,7 +1543,7 @@ export default function BidPage() {
                 // a second tap to open the Pay/Hold/Pay-at-Hotel modal. The
                 // `?payNow=<id>` query param fires handlePayNow as soon as
                 // the bids list hydrates.
-                onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
+                onGrab={(bid) => { clearBidSession(); router.replace(`/my-bids?payNow=${bid}#bid-${bid}`); }}
               />
             ))}
           </div>
@@ -1460,7 +1553,7 @@ export default function BidPage() {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-            <button onClick={() => router.push("/my-bids")} className="bx-launch-btn" style={{ padding: "14px 18px", fontSize: "1.05rem" }}>
+            <button onClick={() => { clearBidSession(); router.push("/my-bids"); }} className="bx-launch-btn" style={{ padding: "14px 18px", fontSize: "1.05rem" }}>
               Track All Bids
             </button>
             <button onClick={() => router.push("/hotels")} className="bx-nav-back" style={{ width: "100%", flex: "0 0 auto" }}>
@@ -2069,7 +2162,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
+                  onGrab={(bid) => { clearBidSession(); router.replace(`/my-bids?payNow=${bid}#bid-${bid}`); }}
                 />
               ))}
             </div>
@@ -2137,7 +2230,7 @@ export default function BidPage() {
                   launchTs={launchTs}
                   nowTs={nowTs}
                   onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                  onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
+                  onGrab={(bid) => { clearBidSession(); router.replace(`/my-bids?payNow=${bid}#bid-${bid}`); }}
                 />
               ))}
             </div>
@@ -2940,7 +3033,7 @@ export default function BidPage() {
                       launchTs={launchTs}
                       nowTs={nowTs}
                       onOpen={(hid) => router.push(hid ? `/hotels/${hid}` : "/my-bids")}
-                      onGrab={(bid) => router.replace(`/my-bids?payNow=${bid}#bid-${bid}`)}
+                      onGrab={(bid) => { clearBidSession(); router.replace(`/my-bids?payNow=${bid}#bid-${bid}`); }}
                     />
                   ))}
                 </div>

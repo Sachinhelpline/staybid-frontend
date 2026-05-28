@@ -709,6 +709,30 @@ export default function HotelDetail() {
 
   useEffect(() => { fetchMyBids(); }, [user, id]);
 
+  // v241.14 — Auto-prefill rooms counter from the customer's active bid
+  // on this hotel. Previously a customer who launched a 2-room bid via
+  // /bid would land on /hotels/[id] with the rooms counter at 1 — the
+  // bid's multi-room intent was invisible in the per-room UI. Now we
+  // mirror lockedBid (or anchor bid) numRooms into globalNumRooms so the
+  // counter, totals, and Book Now / Negotiate payloads all start from
+  // the correct value. Customer can still manually adjust afterwards.
+  // Only runs while the bid is the SOURCE OF TRUTH — once user touches
+  // the counter we don't keep re-syncing (effect skips if value matches).
+  useEffect(() => {
+    if (!myBids?.length) return;
+    const active = myBids.find((b: any) =>
+      b.status === "ACCEPTED" || b.status === "COUNTER" || b.status === "PENDING"
+    );
+    if (!active) return;
+    const bidRooms = Math.max(1, Math.min(10,
+      Number(active.numRooms || active.request?.numRoomsRequested || 0)
+    ));
+    if (bidRooms > 1 && globalNumRooms === 1) {
+      setGlobalNumRooms(bidRooms);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myBids]);
+
   // v185 — Phase 4A fix: poll myBids every 30s + refetch when the tab
   // becomes visible again. Previously fetchMyBids ran only once on
   // mount → if a bid got auto-accepted while the customer was on the
@@ -2719,12 +2743,41 @@ export default function HotelDetail() {
             <div className="space-y-3">
               {activeOffers.map((b: any) => {
                 const st = statusStyle(b.status);
+                // v241.14 — Multi-room display. Customer reported: "ek
+                // room ke liye bid accept hui jabki 2 room ke liye launch
+                // ki thi." Data is correct (bid_requests.numRoomsRequested
+                // = 2 in DB) but the offer card was showing only the
+                // per-room/per-night amount, making 2-room bids look
+                // like 1-room bids. Now we surface numRooms + nights and
+                // the chargeable total alongside the per-room rate.
+                const offerNumRooms = Math.max(1, Number(b.numRooms || b.request?.numRoomsRequested || 1));
+                const offerNights = (() => {
+                  const cin = b.checkIn || b.request?.checkIn || b.bidRequest?.checkIn;
+                  const cout = b.checkOut || b.request?.checkOut || b.bidRequest?.checkOut;
+                  if (!cin || !cout) return 1;
+                  try {
+                    const d1 = new Date(cin).getTime();
+                    const d2 = new Date(cout).getTime();
+                    const n = Math.round((d2 - d1) / 86400000);
+                    return Math.max(1, n);
+                  } catch { return 1; }
+                })();
+                const offerPerRoom = Number(b.amount || 0);
+                const offerTotal = offerPerRoom * offerNumRooms * offerNights;
+                const offerMultiRoom = offerNumRooms > 1 || offerNights > 1;
                 return (
                   <div key={b.id} className="card-luxury p-5">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <p className="font-semibold text-luxury-900">{b.room?.type || "Room"}</p>
-                        <p className="text-sm text-luxury-400 mt-0.5">Your bid: <span className="font-semibold text-luxury-700">₹{b.amount}</span></p>
+                        <p className="text-sm text-luxury-400 mt-0.5">
+                          Your bid: <span className="font-semibold text-luxury-700">₹{offerPerRoom.toLocaleString("en-IN")}</span>
+                          {offerMultiRoom && (
+                            <> /room/night · <span className="font-semibold text-luxury-700">₹{offerTotal.toLocaleString("en-IN")}</span> total
+                              <span className="text-luxury-500"> ({offerNumRooms} room{offerNumRooms > 1 ? "s" : ""} × {offerNights}n)</span>
+                            </>
+                          )}
+                        </p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold border ${st.bg} ${st.text} ${st.border}`}>{st.label}</span>
                     </div>
@@ -2793,7 +2846,12 @@ export default function HotelDetail() {
                         <div className="mt-3 p-3.5 rounded-2xl"
                           style={{ background: "rgba(127,146,105,0.14)", border: "1px solid rgba(127,146,105,0.42)" }}>
                           <p className="text-sm font-semibold mb-2" style={{ color: "#5a6e44" }}>
-                            ✓ Accepted at ₹{acceptedAmt.toLocaleString("en-IN")}/night — pay to confirm
+                            {/* v241.14 — show total for multi-room/multi-night bids */}
+                            ✓ Accepted at ₹{acceptedAmt.toLocaleString("en-IN")}/night
+                            {offerMultiRoom && (
+                              <> · <span style={{ fontWeight: 800 }}>₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")}</span> total ({offerNumRooms} × {offerNights}n)</>
+                            )}
+                            {" "}— pay to confirm
                           </p>
                           {(cin || cout) && (
                             <div className="grid grid-cols-2 gap-2 mb-2.5 rounded-xl p-2"
@@ -2815,11 +2873,14 @@ export default function HotelDetail() {
                             onPayNow={() => router.push(`/my-bids#bid-${b.id}`)}
                           />
                           <button
-                            onClick={() => router.push(`/my-bids#bid-${b.id}`)}
+                            onClick={() => router.push(`/my-bids?payNow=${b.id}#bid-${b.id}`)}
                             className="w-full mt-2.5 py-3 rounded-xl font-bold text-sm"
                             style={{ background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
                           >
-                            💰 Pay Now & Confirm Booking →
+                            {/* v241.14 — surface total amount on CTA so
+                                customer knows EXACTLY what they'll pay,
+                                not just per-room rate */}
+                            💰 Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
                           </button>
                         </div>
                       );
@@ -3153,8 +3214,17 @@ export default function HotelDetail() {
             // Legacy alias kept for the per-room badge JSX below that
             // still uses `isOtherWhenLocked` + `lockUpgradeDelta`.
             const isOtherWhenLocked = isOtherWhenActive;
+            // v241.14 — Upgrade-CTA delta is robust to missing floorPrice.
+            // Previously `r.floorPrice || 0` would zero out the delta on
+            // any room whose negotiation floor wasn't seeded in DB,
+            // silently hiding the Upgrade CTA. Customer reported the
+            // upgrade chip missing on Snow Suite (a higher-tier room
+            // whose floor wasn't populated). Fallback chain:
+            //   floorPrice → basePrice → price → 0
+            // so any populated reference price yields a non-zero delta.
+            const upgradeRefPrice = Number(r.floorPrice) || Number(r.basePrice) || Number(r.price) || 0;
             const lockUpgradeDelta = isOtherWhenActive
-              ? Math.max(0, Math.round((r.floorPrice || 0) - anchorAmount))
+              ? Math.max(0, Math.round(upgradeRefPrice - anchorAmount))
               : 0;
             // v182 — Phase 1 A3/A4: single bid-state CTA replacing the
             // Book Now + Negotiate row whenever the customer has an
