@@ -102,20 +102,13 @@ export function BottomDock() {
           position: fixed;
           left: 0;
           right: 0;
-          /* v241.10 — lift dock above Android 10+ gesture region.
-             Pre-v241.10 dock sat at bottom:0 with internal padding equal
-             to env(safe-area-inset-bottom). The container itself still
-             overlapped the swipe-up-home / corner-swipe-back zone, so
-             Android sometimes captured the gesture as a dock tap.
-             Now the dock is physically lifted by the inset; on devices
-             without a home-bar (inset = 0) behavior is identical. */
-          bottom: env(safe-area-inset-bottom, 0px);
+          bottom: 0;
           z-index: 60;
           display: flex;
           align-items: center;
           justify-content: space-around;
           gap: 2px;
-          padding: 5px 4px 5px;
+          padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
           background: rgba(31, 26, 15, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
