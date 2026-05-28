@@ -10,7 +10,8 @@ import { SB_URL, SB_READ } from "@/lib/sb";
 // The creator side-load (user_id + display_name) is what enables the v94
 // attribution flow to build a `creator` source even when no URL params are
 // present (cookie-driven attribution).
-export async function GET(_req: NextRequest, { params }: { params: { code: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ code: string }> }) {
+  const params = await props.params;
   const rows = await fetch(
     `${SB_URL}/rest/v1/influencer_referral_codes?code=eq.${encodeURIComponent(params.code)}&active=eq.true&select=*`,
     { headers: SB_READ }

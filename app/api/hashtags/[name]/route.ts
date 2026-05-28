@@ -4,7 +4,8 @@ import { HOTEL_VIDEO_FEED_COLS } from "@/lib/sb-columns";
 
 // GET /api/hashtags/[name] — videos that include #name in their title,
 // plus a count + a few related hashtags co-occurring in those captions.
-export async function GET(_req: NextRequest, { params }: { params: { name: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ name: string }> }) {
+  const params = await props.params;
   const tag = String(params.name || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 40);
   if (!tag) return NextResponse.json({ tag: "", videos: [], count: 0, related: [] });
 

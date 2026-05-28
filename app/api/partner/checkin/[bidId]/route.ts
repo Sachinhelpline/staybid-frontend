@@ -10,7 +10,8 @@ function decodeJwt(t: string): any {
 // Hotel partner marks the guest as checked in. Idempotent (re-marking
 // just updates the timestamp). Does NOT touch any existing booking flow —
 // purely additive. Status pushed to bids row as `CHECKED_IN`.
-export async function POST(req: Request, { params }: { params: { bidId: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ bidId: string }> }) {
+  const params = await props.params;
   try {
     const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
     const payload = decodeJwt(token);

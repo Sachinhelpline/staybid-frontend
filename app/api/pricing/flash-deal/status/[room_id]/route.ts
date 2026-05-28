@@ -4,7 +4,8 @@ import { sbSelect } from "@/lib/onboard/supabase-admin";
 // GET /api/pricing/flash-deal/status/:room_id
 // Customer-safe: returns current_price + validUntil + start_price for the
 // dropping animation. Never returns floor_price or drop_amount.
-export async function GET(_req: Request, { params }: { params: { room_id: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ room_id: string }> }) {
+  const params = await props.params;
   try {
     const nowIso = new Date().toISOString();
     const rows = await sbSelect<any>(

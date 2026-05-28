@@ -4,7 +4,8 @@ import { SB_URL, SB_READ } from "@/lib/sb";
 // Public influencer profile — read-only, no auth. `id` accepts the influencer
 // row id (`inf_...`) or the underlying user_id.
 // Phase C: also returns recent videos + live follower count.
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const cols = "id,user_id,bio,interests,location,total_followers,followers_count,following_count,total_hotels_reviewed,avg_rating_given,verification_tier,status,created_at,display_name,avatar_url";
 
   const byId = await fetch(`${SB_URL}/rest/v1/influencers?id=eq.${encodeURIComponent(params.id)}&status=eq.active&select=${cols}`, { headers: SB_READ })

@@ -22,7 +22,7 @@ const snap100 = (n: number) => Math.max(100, Math.round(n / 100) * 100);
 // Negotiate (single hotel) keeps single-bid update + COUNTER→PENDING reset.
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const customerId = authUserId(req);
   if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

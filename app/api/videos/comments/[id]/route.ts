@@ -3,14 +3,16 @@ import { SB_URL, SB_H, SB_READ, userFromReq } from "@/lib/sb";
 
 // GET  — list comments for video
 // POST — add comment
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const url = `${SB_URL}/rest/v1/video_comments?video_id=eq.${encodeURIComponent(params.id)}&order=created_at.asc&limit=100`;
   const res = await fetch(url, { headers: SB_READ });
   const comments = await res.json().catch(() => []);
   return NextResponse.json({ comments: Array.isArray(comments) ? comments : [] });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = userFromReq(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 }
 
 // DELETE — remove own comment
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = userFromReq(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

@@ -3,7 +3,8 @@ import { sbSelect } from "@/lib/onboard/supabase-admin";
 
 // GET /api/verify/status/[bookingId]
 // Returns the latest verification_request + linked videos + AI report (if any).
-export async function GET(_req: Request, { params }: { params: { bookingId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ bookingId: string }> }) {
+  const params = await props.params;
   try {
     const { bookingId } = params;
     const reqs = await sbSelect<any>(

@@ -4,7 +4,8 @@ import { SB_URL, SB_KEY } from "@/lib/sb";
 
 const READ = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 
-export async function GET(_req: Request, { params }: { params: { creatorId: string } }) {
+export async function GET(_req: Request, props: { params: Promise<{ creatorId: string }> }) {
+  const params = await props.params;
   const creatorId = decodeURIComponent(params.creatorId || "");
   if (!creatorId) return NextResponse.json({ error: "creatorId required" }, { status: 400 });
 

@@ -28,7 +28,7 @@ import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
 // extra wiring.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const customerId = authUserId(req);
   if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

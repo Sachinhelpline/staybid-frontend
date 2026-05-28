@@ -3,7 +3,8 @@ import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
 
 // Marks a bid as paid by stamping the Razorpay payment id onto the bid.
 // Clients call this AFTER /api/razorpay/verify has returned verified:true.
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const customerId = authUserId(req);
   if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

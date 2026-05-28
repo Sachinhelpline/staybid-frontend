@@ -17,10 +17,8 @@ function safeMode(raw: any): AutopilotMode {
   return "auto";
 }
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const id = params?.id;
   if (!id) {
     return NextResponse.json({ mode: "auto" }, { status: 200 });

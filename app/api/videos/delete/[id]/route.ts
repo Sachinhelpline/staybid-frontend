@@ -9,7 +9,8 @@ function decodeJwt(t: string) {
   catch { return null; }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const payload = decodeJwt(token);

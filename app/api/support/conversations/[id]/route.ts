@@ -11,10 +11,8 @@ export const dynamic = "force-dynamic";
 
 // GET /api/support/conversations/:id
 // Returns conversation + messages. Marks ai/agent messages as read for the user.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = authUserId(req);
   const anonId = req.headers.get("x-support-anon-id");
 
@@ -37,10 +35,8 @@ export async function GET(
 }
 
 // PATCH /api/support/conversations/:id  { action: "close" }
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const userId = authUserId(req);
   const anonId = req.headers.get("x-support-anon-id");
   const body = await req.json().catch(() => ({} as any));

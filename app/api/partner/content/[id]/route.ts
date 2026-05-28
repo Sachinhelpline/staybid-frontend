@@ -41,10 +41,8 @@ function decodeJwt(t: string): any {
 const VALID_ACTIONS = new Set(["report"]);
 const PUBLISHED = new Set(["AUTO_APPROVED", "APPROVED"]);
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const tok = req.headers.get("x-partner-token") || "";
   if (!tok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

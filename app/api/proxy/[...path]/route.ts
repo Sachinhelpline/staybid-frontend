@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND = "https://staybid-live-production.up.railway.app";
 
-async function handler(req: NextRequest, { params }: { params: { path: string[] } }) {
+async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const path = (await params).path.join("/");
   const target = `${BACKEND}/${path}${req.nextUrl.search}`;
 

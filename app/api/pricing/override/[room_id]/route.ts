@@ -8,7 +8,8 @@ function decodeJwt(t: string): any {
 
 // POST /api/pricing/override/:room_id     — hotel sets price manually (disables AI)
 // PATCH /api/pricing/override/:room_id    — hotel sets floor only
-export async function POST(req: Request, { params }: { params: { room_id: string } }) {
+export async function POST(req: Request, props: { params: Promise<{ room_id: string }> }) {
+  const params = await props.params;
   try {
     const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
     const payload = decodeJwt(token);
@@ -22,7 +23,8 @@ export async function POST(req: Request, { params }: { params: { room_id: string
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { room_id: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ room_id: string }> }) {
+  const params = await props.params;
   try {
     const { floor } = await req.json();
     if (!floor) return NextResponse.json({ error: "floor required" }, { status: 400 });

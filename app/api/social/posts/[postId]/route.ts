@@ -83,7 +83,8 @@ async function deleteStorageObject(key: string): Promise<boolean> {
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { postId: string } }) {
+export async function DELETE(req: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const postId = decodeURIComponent(params.postId);
   if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
 
@@ -154,7 +155,8 @@ export async function DELETE(req: Request, { params }: { params: { postId: strin
 // v111 — edit caption / location / sound / hotel-tag on an existing post.
 // Author-only. Cannot change media_url, media_type, author_id (those are
 // immutable for integrity of the feed + idempotency contract).
-export async function PATCH(req: Request, { params }: { params: { postId: string } }) {
+export async function PATCH(req: Request, props: { params: Promise<{ postId: string }> }) {
+  const params = await props.params;
   const postId = decodeURIComponent(params.postId);
   if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
 

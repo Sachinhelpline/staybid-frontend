@@ -18,7 +18,8 @@ function genCode(): string {
   return out;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const inf = await resolveInfluencerId(params.id);
   if (!inf) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const codes = await fetch(
@@ -28,7 +29,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   return NextResponse.json({ codes: Array.isArray(codes) ? codes : [] });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const u = userFromReq(req);
   if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const inf = await resolveInfluencerId(params.id);

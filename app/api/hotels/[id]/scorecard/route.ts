@@ -159,7 +159,8 @@ async function recompute(hotelId: string, hotelMeta: any, cached: any) {
   return { card, cityRank };
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const hotelId = params.id;
   if (!hotelId) {
     return NextResponse.json({ error: "hotelId required" }, { status: 400 });

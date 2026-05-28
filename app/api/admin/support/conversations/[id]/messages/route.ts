@@ -12,10 +12,8 @@ export const dynamic = "force-dynamic";
 
 // POST /api/admin/support/conversations/:id/messages
 // Body: { body: string, aiSuggested?: boolean }
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const agent = await agentFromReq(req);
   if (!agent) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

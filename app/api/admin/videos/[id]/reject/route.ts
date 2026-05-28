@@ -9,7 +9,8 @@ function decodeJwt(t: string) {
   catch { return null; }
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   const payload = token ? decodeJwt(token) : null;
   const verifierId = payload?.id || "admin";

@@ -19,13 +19,15 @@ async function findOne(id: string) {
   return Array.isArray(byUser) ? byUser[0] : null;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const inf = await findOne(params.id);
   if (!inf) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ influencer: inf });
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const token = (req.headers.get("authorization") || "").replace("Bearer ", "").trim();
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const payload = decodeJwt(token);

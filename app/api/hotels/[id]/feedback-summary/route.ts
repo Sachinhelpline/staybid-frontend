@@ -35,7 +35,8 @@ function isSentiment(v: any): v is Sentiment {
   return v === "positive" || v === "neutral" || v === "negative";
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const hotelId = params.id;
   if (!hotelId) return NextResponse.json({ error: "hotelId required" }, { status: 400 });
 

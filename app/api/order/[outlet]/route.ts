@@ -17,7 +17,8 @@ async function loadOutlet(outletId: string) {
   return rows?.[0] || null;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { outlet: string } }) {
+export async function GET(_req: NextRequest, props: { params: Promise<{ outlet: string }> }) {
+  const params = await props.params;
   const outlet = await loadOutlet(params.outlet);
   if (!outlet) return NextResponse.json({ error: "Menu not found" }, { status: 404 });
   if (outlet.active === false) return NextResponse.json({ error: "This menu is currently unavailable" }, { status: 403 });
@@ -36,7 +37,8 @@ export async function GET(_req: NextRequest, { params }: { params: { outlet: str
   });
 }
 
-export async function POST(req: NextRequest, { params }: { params: { outlet: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ outlet: string }> }) {
+  const params = await props.params;
   const outlet = await loadOutlet(params.outlet);
   if (!outlet) return NextResponse.json({ error: "Menu not found" }, { status: 404 });
   if (outlet.active === false) return NextResponse.json({ error: "This menu is currently unavailable" }, { status: 403 });

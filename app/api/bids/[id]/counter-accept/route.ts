@@ -4,7 +4,8 @@ import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
 // Customer accepts a hotel's counter-offer.
 // Flips bid to ACCEPTED and promotes counterAmount → amount.
 // Does NOT create a booking; customer must pay via /api/bids/:id/pay.
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const customerId = authUserId(req);
   if (!customerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
