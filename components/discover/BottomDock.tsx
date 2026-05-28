@@ -102,21 +102,20 @@ export function BottomDock() {
           position: fixed;
           left: 0;
           right: 0;
-          /* v241.11 — dock visually extends to screen bottom edge for the
-             immersive premium feel. The previous v241.10 lift (bottom: inset)
-             left a bare page-background strip exposing the Android home pill,
-             which looked ugly. System gesture unblocking is handled entirely
-             by the reel-page touch-action fix (v241.10, kept in globals.css)
-             — Android intercepts edge-swipe back / swipe-up-home at the OS
-             level before the browser sees the touch, so the dock background
-             extending into the safe area does NOT capture system gestures. */
-          bottom: 0;
+          /* v241.10 — lift dock above Android 10+ gesture region.
+             Pre-v241.10 dock sat at bottom:0 with internal padding equal
+             to env(safe-area-inset-bottom). The container itself still
+             overlapped the swipe-up-home / corner-swipe-back zone, so
+             Android sometimes captured the gesture as a dock tap.
+             Now the dock is physically lifted by the inset; on devices
+             without a home-bar (inset = 0) behavior is identical. */
+          bottom: env(safe-area-inset-bottom, 0px);
           z-index: 60;
           display: flex;
           align-items: center;
           justify-content: space-around;
           gap: 2px;
-          padding: 5px 4px calc(env(safe-area-inset-bottom, 0px) + 5px);
+          padding: 5px 4px 5px;
           background: rgba(31, 26, 15, 0.94);
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
