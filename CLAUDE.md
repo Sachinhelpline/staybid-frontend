@@ -7259,3 +7259,207 @@ public/sw.js                                  # HTML_CACHE v23 → v24
 - **Service-worker** stable URL `/sw.js`, stable static cache name,
   HTML cache bumped v23 → v24 per v93 discipline (route handler logic
   changed + new UI chips need fresh HTML).
+
+---
+
+## Hotel-Page Multi-Room Picker + bookings.numRooms Era (v241.1 → v241.2, 2026-05-28)
+
+Same-day follow-up to the v241 multi-room ship. Closes the two
+explicitly-deferred items from v241 ("Hotel page per-card numRooms
+picker (Phase 5)" + "bookings.numRooms denormalization (Phase 8)") in
+one combined ship. Customer asked: "agar kuch break nhi ho raha hai
+toh dono ek saat kardo". Both fit cleanly together — v241.2 is a
+single-column additive migration; v241.1 is a global picker + payload
+threading exercise.
+
+### v241.1 — Hotel detail page multi-room picker
+
+**State + UI added in `app/hotels/[id]/page.tsx`:**
+- `const [globalNumRooms, setGlobalNumRooms] = useState(1)` next to
+  the existing `globalAdults` / `globalChildren` / `globalKids` state.
+  Default 1, capped at 10 (matches v241 DB CHECK).
+- Availability picker grid changed `grid-cols-3` → `grid-cols-2
+  sm:grid-cols-4` to fit the new `<PremiumGuestPicker kind="rooms" />`.
+  `PremiumGuestPicker` already supported `"rooms"` kind (from /bid era),
+  so it dropped in without component changes — gets the same animated
+  emoji morph (🛏 → 🏠 → 🏡 → 🏘 → 🏨 → 🏨🏨) as on /bid.
+
+**Threaded through every booking-creation CTA on the hotel page:**
+- **Simple Bid (`handleBid` at L1345)** — payload now passes
+  `numRooms: globalNumRooms` + `guests: globalTotalGuests` on both
+  `createBidRequest` + `placeBid`.
+- **Book Now (`handleBookNow` at L1480 + 1541)** — same payload
+  treatment + rate-line math: `baseTot = floorPrice × nights ×
+  globalNumRooms`. Per-guest extras (extra adult ₹500, child ₹200)
+  stay tied to nights only — the customer's PAX is the same across
+  rooms.
+- **Negotiate above-floor (`handleNegotiate` at L1626)** — rate-line
+  total now multiplies by `nrNeg = globalNumRooms`. BookingReview
+  receives `numRooms: nrNeg`.
+- **Negotiate below-floor (L1655-L1664)** — same numRooms + guests
+  passthrough on the no-payment forwarded-bid path.
+- **Counter Accept (`handleCounterAccept` at L1859)** — reads
+  `b.numRooms || b.request?.numRoomsRequested || 1` from the bid
+  itself, multiplies into the total, passes to BookingReview with
+  `capacityMismatch` flag.
+- **Flash Deal (`handleFlashBook` at L1175) — INTENTIONALLY NOT
+  TOUCHED.** Flash uses the `hotel_room_units` per-physical-unit row
+  model (v75 era), separate from `rooms.quantity`. Multi-unit flash
+  bookings is a v242 scope per the v241 era doc.
+- **Upgrade Room (`/api/bids/[id]/upgrade-room`)** — preserved
+  numRooms server-side already in v241. No client change needed.
+
+**BookingReview props extended** (already supports `numRooms` +
+`capacityMismatch` from v241):
+- Counter Accept now passes `capacityMismatch: !!bid.capacityMismatch`
+  so the amber info chip surfaces if the customer over-packed.
+
+### v241.2 — bookings.numRooms denormalization
+
+**Migration applied to production Supabase** via MCP
+`apply_migration` (`v241_2_bookings_num_rooms`):
+
+```sql
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS "numRooms" INTEGER NOT NULL DEFAULT 1
+    CHECK ("numRooms" BETWEEN 1 AND 10);
+```
+
+Verified via `information_schema.columns`: `data_type=integer`,
+`column_default=1`, `is_nullable=NO`. Migration file in repo:
+`migrations/2026-05-28-v241-2-bookings-num-rooms.sql`.
+
+**Read path (free):** `/api/bookings/my` already does `select=*` on
+both `bookings` AND `bids` (the route surfaces ACCEPTED bids as
+bookings for unified display). New column flows through automatically.
+`/bookings` page UI didn't need changes — it already reads bookings
+generically.
+
+**Write path:** The customer-facing booking insertion happens on
+Railway side (separate repo). Until Railway's Prisma client is
+regenerated to know about the column, new booking rows inserted from
+Railway will get `numRooms = 1` (the column default). This is
+**exactly the legacy single-room behavior** — no regression. Once
+Sachin regenerates Prisma + threads the bid's numRooms into the
+booking insert on Railway, multi-room bookings will start populating
+correctly. Until then, the customer's accepted multi-room bid in /bids
+still charges the correct multi-room total via the bid's denormalized
+`numRooms` (v241 path) — bookings.numRooms is for downstream
+analytics / refunds / payouts, not for charging.
+
+**Why not just keep joining bid → bid_request?** Three reasons:
+1. Partner payouts read bookings directly; a 3-hop join makes the
+   payout cron slower + couples it to bid table schema.
+2. Refund math (admin /finance) needs per-booking refund granularity
+   that's awkward when the source of truth is on a parent table.
+3. Future cancellation flows might cancel a booking without touching
+   the bid row — denormalized is cleaner.
+
+### Files changed (this era)
+
+```
+migrations/2026-05-28-v241-2-bookings-num-rooms.sql   # NEW (applied live)
+app/hotels/[id]/page.tsx                              # globalNumRooms state + picker + 5 CTA threading + rate math
+app/layout.tsx                                        # SB_BUILD v241 → v241.2 + badge
+public/sw.js                                          # HTML_CACHE v24 → v25
+```
+
+### Service-worker version map (continued)
+- v241 → multi-room-bids-autofit-capacity
+- **v241.1** → hotel-page-multi-room-picker (folded into v241.2 ship)
+- **v241.2** → hotel-page-multi-room-picker-bookings-numrooms (current)
+
+### Things to Avoid (v241.1 → v241.2 Era)
+
+- **Never** drop the `globalNumRooms` from any hotel-page booking CTA
+  payload. Every `createBidRequest` + `placeBid` call site on the
+  hotel page MUST carry `numRooms: globalNumRooms` + `guests:
+  globalTotalGuests`. Without it, the customer's multi-room intent
+  silently degrades to 1 room at the server (the v241 default).
+- **Never** raise `globalNumRooms`' `max` past 10. The v241 DB CHECK
+  `BETWEEN 1 AND 10` will reject 11+ on the server. Customers needing
+  11+ rooms should route to `/bid` (which has the WhatsApp concierge
+  CTA) — the hotel detail page is single-hotel single-CTA, not built
+  for group flows.
+- **Never** multiply per-guest extra fees (extra adult ₹500, child
+  ₹200) by numRooms. Those scale by NIGHTS only — the customer's PAX
+  is the same headcount regardless of how many rooms they book.
+  Multiplying both would double-charge. The base nightly rate scales
+  by `nights × numRooms`; the per-guest extras scale by `nights` only.
+- **Never** thread `globalNumRooms` into the Flash Deal flow's
+  `createBidRequest` / `placeBid`. Flash uses `hotel_room_units`
+  per-physical-unit rows — a separate inventory model. Multi-unit
+  flash bookings is v242 scope and would need
+  `flash_deal_unit_assignment` infrastructure first.
+- **Never** rely on `bookings.numRooms` being populated for any row
+  that pre-dates v241.2 OR for any row inserted by Railway before its
+  Prisma client knows about the column. The DEFAULT 1 + the
+  fallback chain `(b.numRooms || b.request?.numRoomsRequested || 1)`
+  cover both cases gracefully. New code reading bookings.numRooms
+  should still use the OR fallback for safety.
+- **Never** drop the `capacityMismatch` flag forward into BookingReview
+  on the Counter Accept path. The v241 server sets this flag at bid
+  insert; surfacing it on the customer's final-confirm screen is the
+  whole point — it tells them "hotel may need extra-bed setup" before
+  Razorpay charges.
+- **Never** change the picker grid from `sm:grid-cols-4` back to
+  `grid-cols-3`. The 4-column layout is what fits Adults / Children
+  / Kids / Rooms cleanly on tablet+; mobile falls back to 2-col which
+  still fits all four pickers across two rows.
+- **Never** assume Railway-side Prisma "just picks up" new Supabase
+  columns. Prisma client must be regenerated (`npx prisma db pull` +
+  `npx prisma generate` on Railway). Until then, Railway INSERTs that
+  don't explicitly include the new column will get the DB default —
+  fine for additive defaults like `numRooms=1`, but if a future
+  column has NULL default, Railway inserts could silently fail.
+
+### What this era did NOT do (intentionally deferred)
+
+- **Per-room-card numRooms picker.** Considered putting the picker on
+  each individual room card instead of one global picker. Decided
+  against — the v241 architecture is "one bid per (customer × hotel)",
+  so picking different numRooms per category card would be confusing.
+  Global picker matches the bid-per-hotel rule.
+- **Real-time inventory check on hotel page.** The per-card "N avail"
+  chip from v241 reads `r.quantity` directly (configured total). The
+  hotel page picker doesn't check that `globalNumRooms ≤ r.quantity`
+  client-side. Server still 409s on inventory exceed (v241), so the
+  customer gets a clean error — but a client-side soft warning
+  ("Only 3 of this category available — pick fewer rooms") would be
+  a nicer UX. v242 scope.
+- **Per-room capacity warning on hotel page picker.** /bid has the
+  auto-fit toggle (v241) that warns "M guests in N rooms — most
+  hotels will decline". Hotel page doesn't yet replicate this — the
+  server still flags `capacityMismatch` server-side, but the customer
+  doesn't see a client-side preview. Easy follow-up: add the same
+  `minRoomsForGuests` helper call against `globalAdults +
+  globalChildren` and surface the warning chip near the picker.
+- **Railway-side Prisma regen.** This is Sachin's task on the other
+  repo — once done, new booking rows from Railway will start
+  populating `numRooms` from the bid. Until then, all bookings
+  default to 1 (graceful + correct for the legacy single-room flow).
+
+---
+
+## Updated production state (v241.2, 2026-05-28)
+
+- **Current version:** v241.2 · branch `claude/claude-md-v240-2-verify-bxtxa`
+- **Migrations applied live** — v241 (3 cols on bid_requests + bids) +
+  v241.2 (1 col on bookings). All verified via
+  `information_schema.columns`.
+- **Hotel detail page multi-room** end-to-end. Customer picks 1-10
+  rooms once in the availability picker; every CTA (Book Now /
+  Negotiate / Counter Accept / simple Bid) carries the count to the
+  server + multiplies the Razorpay total correctly.
+- **bookings.numRooms denormalized** for downstream payouts / refunds
+  / admin finance. Defaults to 1 for legacy rows + for Railway-side
+  inserts that don't yet know about the column. Cross-table coherence
+  maintained.
+- **Flash deal flow untouched** — separate inventory model, v242 scope.
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner panel pricing, admin panel
+  shell, reel-app surfaces, animation layer, service-subscription
+  billing, /bid mobile chrome (v240.1 + v240.2), cross-identity
+  resolver (v240), reel-dedup v131.8 chain.
+- **Service-worker** stable URL `/sw.js`, stable static cache, HTML
+  cache bumped v24 → v25 per v93 discipline.

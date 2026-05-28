@@ -533,6 +533,12 @@ export default function HotelDetail() {
   const [globalAdults, setGlobalAdults]         = useState(2);
   const [globalChildren, setGlobalChildren]     = useState(0); // 5-12 yrs ₹200/night
   const [globalKids, setGlobalKids]             = useState(0); // <5 yrs FREE
+  // v241.1 — Multi-room picker on hotel detail page. Default 1.
+  // Threads through every CTA (Book Now / Negotiate / Hold / Pay Now /
+  // Flash Deal). Capped at 10 to match the v241 DB CHECK on
+  // bid_requests.numRoomsRequested + bids.numRooms. 11+ stays on /bid
+  // (which has the WhatsApp concierge CTA).
+  const [globalNumRooms, setGlobalNumRooms]     = useState(1);
   const globalTotalGuests = globalAdults + globalChildren + globalKids;
 
   // v159.8 — Hydrate from URL params passed by the /hotels SearchSheet
@@ -1339,9 +1345,11 @@ export default function HotelDetail() {
       const reqRes = await api.createBidRequest?.({
         hotelId: hotel.id, roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
-        checkIn, checkOut, guests: bidRoom.capacity || 2,
+        checkIn, checkOut, guests: globalTotalGuests || bidRoom.capacity || 2,
         // v240 — Single-hotel Negotiate from /hotels/[id] → 'negotiate'.
         source: "negotiate",
+        // v241.1 — multi-room support on simple Bid flow.
+        numRooms: globalNumRooms,
       });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({
@@ -1349,6 +1357,8 @@ export default function HotelDetail() {
         amount: parseFloat(bidAmount),
         message: bidMsg || undefined,
         requestId: reqRes?.request?.id,
+        numRooms: globalNumRooms,
+        guests: globalTotalGuests || bidRoom.capacity || 2,
       });
       // v94 — record source for legacy/simple bid flow
       if (bidRes?.bid?.id) {
@@ -1472,12 +1482,17 @@ export default function HotelDetail() {
     if (!bnIn || !bnOut || !bnRoom) return alert("Select dates");
     const nights  = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
     const extra   = Math.max(0, bnAdults-(bnRoom.capacity||2));
-    const baseTot = bnRoom.floorPrice*nights;
+    // v241.1 — multi-room: base + extras scale by numRooms. Per-guest
+    // extras (extra adult / child fees) still scale by night count
+    // alone (the customer's PAX is the same across rooms).
+    const nr      = Math.max(1, globalNumRooms);
+    const baseTot = bnRoom.floorPrice*nights*nr;
     const extraT  = extra*500*nights;
     const childT  = bnChildren*200*nights;
     const total   = baseTot + extraT + childT;
+    const roomsLbl = nr > 1 ? ` × ${nr} room${nr > 1 ? "s" : ""}` : "";
     const rateLines = [
-      { label: `₹${bnRoom.floorPrice.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${baseTot.toLocaleString()}` },
+      { label: `₹${bnRoom.floorPrice.toLocaleString()} × ${nights} night${nights>1?"s":""}${roomsLbl}`, value: `₹${baseTot.toLocaleString()}` },
       ...(extra>0      ? [{ label: `${extra} extra adult${extra>1?"s":""} × ₹500 × ${nights}n`,    value: `₹${extraT.toLocaleString()}` }] : []),
       ...(bnChildren>0 ? [{ label: `${bnChildren} child${bnChildren>1?"ren":""} × ₹200 × ${nights}n`, value: `₹${childT.toLocaleString()}` }] : []),
       ...(globalKids>0 ? [{ label: `${globalKids} kid${globalKids>1?"s":""} (under 5)`, value: "FREE", subtle: true }] : []),
@@ -1488,6 +1503,7 @@ export default function HotelDetail() {
       roomType: bnRoom.name || bnRoom.type,
       checkIn: bnIn, checkOut: bnOut, nights,
       adults: bnAdults, children: bnChildren, kids: globalKids,
+      numRooms: nr,
       rateLines, totalAmount: total,
       flowLabel: "Book Now",
       onUpdate: () => { setReview(null); },   // keeps Book Now modal open underneath
@@ -1527,9 +1543,10 @@ export default function HotelDetail() {
 
       // Step 2: Confirm booking in backend
       // v240 — Book Now (instant paid booking) → request.source='direct'.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren, source: "direct" });
+      // v241.1 — multi-room support on Book Now flow.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren, source: "direct", numRooms: globalNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id, numRooms: globalNumRooms, guests: bnAdults+bnChildren });
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       // v124 — apply redemption to bid
       if (applied?.couponCode || applied?.walletCreditAppliedInr) {
@@ -1612,13 +1629,16 @@ export default function HotelDetail() {
     if (!negIn || !negOut) return alert("Select dates");
     const isAboveFloor = negAmt >= negRoom.floorPrice;
     const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
-    const total = negAmt * nights;
+    // v241.1 — multi-room total for Negotiate above-floor.
+    const nrNeg = Math.max(1, globalNumRooms);
+    const total = negAmt * nights * nrNeg;
 
     // Above-floor (instant-confirm) bids route through BookingReview so the
     // customer can choose Pay-Full / Hold / Pay-At-Hotel before charging.
     if (isAboveFloor) {
+      const roomsLblNeg = nrNeg > 1 ? ` × ${nrNeg} room${nrNeg > 1 ? "s" : ""}` : "";
       const rateLines = [
-        { label: `₹${negAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+        { label: `₹${negAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}${roomsLblNeg}`, value: `₹${total.toLocaleString()}` },
         { label: "⚡ Instant confirm bid", value: "Hotel confirms", subtle: true },
       ];
       setReview({
@@ -1627,6 +1647,7 @@ export default function HotelDetail() {
         roomType: negRoom.name || negRoom.type,
         checkIn: negIn, checkOut: negOut, nights,
         adults: globalAdults, children: globalChildren, kids: globalKids,
+        numRooms: nrNeg,
         rateLines, totalAmount: total,
         flowLabel: "⚡ Instant Bid",
         onUpdate: () => setReview(null),
@@ -1646,9 +1667,11 @@ export default function HotelDetail() {
       const submitAmt = negRoom.floorPrice;
       const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
       // v240 — Negotiate modal submit (above-floor path) → 'negotiate'.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate" });
+      // v241.1 — pass globalNumRooms + guests to server for multi-room
+      // resolution + capacityMismatch flagging.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: globalNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: globalNumRooms, guests: globalTotalGuests || negRoom.capacity || 2 });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
       // Record customer intent (no payment for below-floor)
@@ -1726,9 +1749,10 @@ export default function HotelDetail() {
       const paymentId = payResult.razorpay_payment_id;
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
       // v240 — Negotiate modal (below-floor branch) → 'negotiate'.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate" });
+      // v241.1 — multi-room on Negotiate above-floor (paid) path.
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: globalNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate" });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: globalNumRooms, guests: globalTotalGuests || negRoom.capacity || 2 });
       // v124 — apply redemption to bid
       if (applied?.couponCode || applied?.walletCreditAppliedInr) {
         try {
@@ -1840,9 +1864,15 @@ export default function HotelDetail() {
     const nights = stored?.checkIn && stored?.checkOut
       ? Math.max(1, Math.ceil((new Date(stored.checkOut).getTime()-new Date(stored.checkIn).getTime())/86400000))
       : 1;
-    const total = counterAmt * nights;
+    // v241.1 — multi-room charge math on Counter Accept (hotel page
+    // variant; mirrors /my-bids handleCounterAccept). Falls back to
+    // the request's frozen numRoomsRequested when the bid row's
+    // denormalized numRooms isn't populated.
+    const ncrCA = Math.max(1, Number(bid.numRooms || bid.request?.numRoomsRequested || 1));
+    const total = counterAmt * nights * ncrCA;
+    const roomsLblCA = ncrCA > 1 ? ` × ${ncrCA} room${ncrCA > 1 ? "s" : ""}` : "";
     const rateLines = [
-      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}${roomsLblCA}`, value: `₹${total.toLocaleString()}` },
       { label: "Hotel countered at this rate", value: "Accepted", subtle: true },
     ];
     setReview({
@@ -1853,6 +1883,8 @@ export default function HotelDetail() {
       checkOut: stored?.checkOut || tomorrow,
       nights,
       adults: bid.request?.guests || 2,
+      numRooms: ncrCA,
+      capacityMismatch: !!bid.capacityMismatch,
       rateLines, totalAmount: total,
       flowLabel: "🤝 Accept Counter",
       onUpdate: () => setReview(null),
@@ -2793,7 +2825,10 @@ export default function HotelDetail() {
               third-party use, but the global availability picker now
               renders the shared component so /bid + /hotels/[id] read the
               same animated, theme-aware UI on every counter. */}
-          <div className="grid grid-cols-3 gap-3 mb-4 relative z-[2]">
+          {/* v241.1 — 2x2 grid: Adults / Children / Kids / Rooms.
+              Rooms picker drives every booking-creation CTA on this
+              page (Book Now / Negotiate / Hold / Pay Now / Flash). */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 relative z-[2]">
             <PremiumGuestPicker
               kind="adults"
               label="Adults"
@@ -2822,6 +2857,15 @@ export default function HotelDetail() {
               onChange={setGlobalKids}
               min={0}
               max={6}
+            />
+            <PremiumGuestPicker
+              kind="rooms"
+              label="Rooms"
+              sublabel="1 per family"
+              value={globalNumRooms}
+              onChange={setGlobalNumRooms}
+              min={1}
+              max={10}
             />
           </div>
 
