@@ -111,6 +111,9 @@ function MyBidsPageInner() {
   // only fires the BookingReview modal once per landing (re-renders /
   // polling refresh must not re-open it).
   const payNowFiredRef = useRef<string | null>(null);
+  // v241.4 — same once-per-landing gate for `#bid-<id>` smooth-scroll +
+  // highlight. Carried since v228 era "Pending / Known Issues".
+  const hashFiredRef = useRef<string | null>(null);
   // v141 — Phase 5 — my-bids tour. delayMs:1500 so async bids list
   // renders at least one .glass-card before fire.
   usePageTour("mybids", "mybids", { delayMs: 1500 });
@@ -807,6 +810,41 @@ function MyBidsPageInner() {
     try { router.replace("/my-bids", { scroll: false }); } catch {}
   }, [searchParams, bids, section, router]);
 
+  // v241.4 — smooth-scroll + highlight when landing with `#bid-<id>` hash.
+  // Carried since v228 "Pending / Known Issues": admin notifications and
+  // partner inbox links sometimes route here with the hash, but pre-v241.4
+  // the browser only auto-jumped (no scroll), and the bid card had no id
+  // attribute at all so even the jump missed. Now: id={`bid-<id>`} on the
+  // card (above) + this effect (a) waits for `bids` to load so the target
+  // exists, (b) smooth-scrolls into view + applies a 2.5s champagne ring
+  // via `.mb-card-highlight`, (c) flips to PLACE section if needed, (d)
+  // clears the hash via router.replace so a refresh doesn't re-fire.
+  // Once-per-landing gate via hashFiredRef.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith("#bid-")) return;
+    const wantBidId = hash.slice(5); // strip "#bid-"
+    if (!wantBidId) return;
+    if (hashFiredRef.current === wantBidId) return;
+    if (!bids || bids.length === 0) return;
+    const b = bids.find((row: any) => String(row?.id) === String(wantBidId));
+    if (!b) return;
+    hashFiredRef.current = wantBidId;
+    // Flip section so the target card is in the visible list. Defer the
+    // scroll one tick so the section flip + re-render commit first.
+    if (b._isPlaceBid && section !== "PLACE") setSection("PLACE");
+    setTimeout(() => {
+      const el = document.getElementById(`bid-${wantBidId}`);
+      if (!el) return;
+      try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch { el.scrollIntoView(); }
+      el.classList.add("mb-card-highlight");
+      setTimeout(() => { try { el.classList.remove("mb-card-highlight"); } catch {} }, 2500);
+    }, 80);
+    // Clean the hash so refresh doesn't re-fire.
+    try { router.replace("/my-bids", { scroll: false }); } catch {}
+  }, [bids, section, router]);
+
   return (
     // v174 — cozy theme. `.lux-bg` paints the page in var(--bg-page); every
     // surface below uses theme tokens directly (no reliance on auto-fix).
@@ -824,6 +862,8 @@ function MyBidsPageInner() {
         .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
         .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
         .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+        @keyframes mbHighlightRing { 0% { box-shadow: 0 0 0 0 rgba(201,166,107,0.55), 0 0 22px rgba(201,166,107,0.42); } 70% { box-shadow: 0 0 0 14px rgba(201,166,107,0), 0 0 28px rgba(201,166,107,0.18); } 100% { box-shadow: 0 0 0 0 rgba(201,166,107,0), 0 0 0 rgba(201,166,107,0); } }
+        .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1 both; }
         .mb-seg { background: var(--bg-pill); border:1px solid var(--border-soft); border-radius:999px; padding:4px; display:flex; gap:4px; }
         .mb-seg button { flex:1; border-radius:999px; padding:10px 12px; font-weight:700; font-size:.82rem; color: var(--text-soft); transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; }
         .mb-seg button.on { background: linear-gradient(135deg,#b8871a,#f0b429 55%,#c9911a); color:#1a1205; box-shadow:0 4px 16px rgba(201,145,26,0.32); }
@@ -974,7 +1014,7 @@ function MyBidsPageInner() {
             const wasBelowFloor = customerBid != null && customerBid < floorAmt;
 
             return (
-              <div key={b.id} className="relative mb-card rounded-2xl p-4"
+              <div key={b.id} id={`bid-${b.id}`} className="relative mb-card rounded-2xl p-4"
                 style={{ animation: `fadeUp 0.45s ease ${idx*0.05}s both` }}>
                 {/* Celebration overlay */}
                 {isCelebrating && (
