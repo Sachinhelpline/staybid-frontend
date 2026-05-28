@@ -2730,7 +2730,16 @@ export default function HotelDetail() {
             cluttered with one CHECKED_IN row sitting next to live
             offers. The /bookings page owns the past-stays display. */}
         {(() => {
-          const activeOffers = myBids.filter((b: any) =>
+          // v241.15 — Single source of truth for what counts as "active".
+          // Pre-v241.15 this filter checked status only (PENDING /
+          // ACCEPTED / COUNTER), so an ACCEPTED bid whose 15-min payment
+          // window had EXPIRED still rendered as an actionable card with
+          // a "Pay Now" CTA. Meanwhile /my-bids correctly hid the same
+          // bid via filterActiveBids, leaving the customer staring at
+          // "Place Bid (0)" on one screen and "2 accepted bids" on the
+          // other. Now both surfaces consume filterActiveBids from
+          // lib/bid-expiry so the state agrees.
+          const activeOffers = filterActiveBids(myBids as any[]).filter((b: any) =>
             b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "COUNTER"
           );
           if (activeOffers.length === 0) return null;
