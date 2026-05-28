@@ -1424,7 +1424,34 @@ export default function PartnerDashboard() {
                           </div>
                           <div>
                             <p className="font-semibold text-luxury-900">{b.guestName || `Guest …${String(b.customerId||"").slice(-4)}`}</p>
-                            <p className="text-xs text-luxury-400">{b.room?.type || "Room"} · {b.guests || 2} guests · {nights} night{nights>1?"s":""}</p>
+                            <p className="text-xs text-luxury-400">
+                              {b.room?.type || "Room"} · {b.guests || 2} guests · {nights} night{nights>1?"s":""}
+                              {/* v241 — numRooms chip when > 1. Carries through
+                                  via /api/partner/bids → bid row spread. */}
+                              {Number(b.numRooms || 0) > 1 && (
+                                <span style={{
+                                  display: "inline-block",
+                                  marginLeft: 6, padding: "1px 6px",
+                                  borderRadius: 999,
+                                  background: "rgba(201,166,107,0.18)",
+                                  border: "1px solid rgba(201,166,107,0.36)",
+                                  color: "#8B6914",
+                                  fontSize: "0.62rem", fontWeight: 700,
+                                }}>
+                                  🛏️ {b.numRooms} rooms
+                                </span>
+                              )}
+                            </p>
+                            {/* v241 — capacityMismatch chip. Customer
+                                packed more guests than (rooms × room
+                                capacity) supports. Partner can counter
+                                with more rooms or accept-anyway (most
+                                accommodate via rollaway). */}
+                            {b.capacityMismatch && (
+                              <p className="text-[0.65rem] text-amber-700 bg-amber-50 border border-amber-200 inline-block px-2 py-0.5 rounded mt-1" style={{ fontWeight: 600 }}>
+                                ⚠️ {b.guests || 2} guests in {b.numRooms || 1} room{(b.numRooms || 1) > 1 ? "s" : ""} — extra-bed setup may be needed
+                              </p>
+                            )}
                             {/* v239 — Bid ID chip + copy-to-clipboard so the
                                 hotel can correlate a card with the admin
                                 panel + DB row. Sachin: "hotel pe auto

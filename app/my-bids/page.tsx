@@ -396,10 +396,15 @@ function MyBidsPageInner() {
     // case a legacy COUNTER row from before v129 had an odd amount.
     const counterAmt = snap100(b.counterAmount || b.amount || 0);
     const nights = nightsBetween(b.checkIn, b.checkOut);
-    const total = counterAmt * nights;
+    // v241 — multi-room charge fix. amount is per-room-per-night;
+    // total = perNight × nights × numRooms. Fallback chain catches
+    // pre-v241 rows (numRooms missing on bid + request → 1).
+    const numRooms = Math.max(1, Number(b.numRooms || b.request?.numRoomsRequested || 1));
+    const total = counterAmt * nights * numRooms;
     if (!total) { alert("Invalid amount"); return; }
+    const roomsLabel = numRooms > 1 ? ` × ${numRooms} room${numRooms > 1 ? "s" : ""}` : "";
     const rateLines = [
-      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: `₹${counterAmt.toLocaleString()} × ${nights} night${nights>1?"s":""}${roomsLabel}`, value: `₹${total.toLocaleString()}` },
       { label: "Hotel countered at this rate", value: "Accepted", subtle: true },
     ];
     setReview({
@@ -408,6 +413,8 @@ function MyBidsPageInner() {
       roomType: b.room?.type,
       checkIn: b.checkIn || "", checkOut: b.checkOut || "", nights,
       adults: b.request?.guests || 2,
+      numRooms,
+      capacityMismatch: !!b.capacityMismatch,
       rateLines, totalAmount: total,
       flowLabel: "🤝 Accept Counter",
       onUpdate: () => setReview(null),
@@ -534,10 +541,13 @@ function MyBidsPageInner() {
         ?? 0
     );
     const nights = nightsBetween(b.checkIn, b.checkOut);
-    const total = perNight * nights;
+    // v241 — multi-room charge fix.
+    const numRooms = Math.max(1, Number(b.numRooms || b.request?.numRoomsRequested || 1));
+    const total = perNight * nights * numRooms;
     if (!total) { alert("Invalid amount"); return; }
+    const roomsLabel = numRooms > 1 ? ` × ${numRooms} room${numRooms > 1 ? "s" : ""}` : "";
     const rateLines = [
-      { label: `₹${perNight.toLocaleString()} × ${nights} night${nights>1?"s":""}`, value: `₹${total.toLocaleString()}` },
+      { label: `₹${perNight.toLocaleString()} × ${nights} night${nights>1?"s":""}${roomsLabel}`, value: `₹${total.toLocaleString()}` },
       { label: "Bid accepted by hotel", value: "Confirm to lock", subtle: true },
     ];
     setReview({
@@ -546,6 +556,8 @@ function MyBidsPageInner() {
       roomType: b.room?.type,
       checkIn: b.checkIn || "", checkOut: b.checkOut || "", nights,
       adults: b.request?.guests || 2,
+      numRooms,
+      capacityMismatch: !!b.capacityMismatch,
       rateLines, totalAmount: total,
       flowLabel: "🎉 Accepted Bid",
       onUpdate: () => setReview(null),
@@ -941,7 +953,11 @@ function MyBidsPageInner() {
               ? (b.counterAmount || b.amount)
               : (b.status === "ACCEPTED" ? (customerBid ?? b.amount) : yourBid);
             const nights = nightsBetween(b.checkIn, b.checkOut);
-            const total = Number(confirmAmt) * nights;
+            // v241 — multi-room display. Card surface total also
+            // multiplies by numRooms so customer sees the full
+            // chargeable amount, not the per-room slice.
+            const numRoomsCard = Math.max(1, Number(b.numRooms || b.request?.numRoomsRequested || 1));
+            const total = Number(confirmAmt) * nights * numRoomsCard;
             const isCelebrating = celebrateId === b.id;
             const floorAmt = Number(b.amount || 0);
             const wasBelowFloor = customerBid != null && customerBid < floorAmt;

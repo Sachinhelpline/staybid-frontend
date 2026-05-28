@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   await ensureUser(customerId, p?.phone, p?.name);
 
   const body = await req.json().catch(() => ({}));
-  const { hotelId, roomId, amount, checkIn, checkOut, guests, source } = body || {};
+  const { hotelId, roomId, amount, checkIn, checkOut, guests, source, numRooms } = body || {};
   if (!hotelId || !checkIn || !checkOut) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
@@ -27,6 +27,14 @@ export async function POST(req: NextRequest) {
   const allowedSources = new Set(["place", "negotiate", "direct", "flash"]);
   const requestSource = allowedSources.has(String(source)) ? source : "negotiate";
 
+  // v241 — Customer's room-count pick, frozen at request creation.
+  // Schema CHECK enforces 1–10. Defaults to 1 when caller omits the
+  // field (legacy callers + single-room flows like Book Now / Flash).
+  // Per-bid `bids.numRooms` may differ when /api/bids/place resolves
+  // against hotel-specific room.capacity, but the customer's intent
+  // is frozen here for audit + multi-hotel broadcast consistency.
+  const numRoomsRequested = Math.max(1, Math.min(10, Math.floor(Number(numRooms) || 1)));
+
   try {
     const request = await sbInsert("bid_requests", {
       id: genId("req"),
@@ -38,6 +46,7 @@ export async function POST(req: NextRequest) {
       maxBudget: Number(amount) || 0,
       status: "OPEN",
       source: requestSource,
+      numRoomsRequested,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     });
     return NextResponse.json({ request });

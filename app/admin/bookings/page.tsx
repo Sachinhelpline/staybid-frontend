@@ -91,6 +91,31 @@ export default function AdminBookings() {
       render: (b: any) => `₹${Number(b.amount).toLocaleString()}`,
     },
     {
+      // v241 — numRooms column. Multi-room bids surface here so admin
+      // sees the full configuration at a glance. capacityMismatch flag
+      // adds a yellow tint for over-packed configurations.
+      key: "numRooms",
+      label: "Rooms",
+      render: (b: any) => {
+        const n = Math.max(1, Number(b.numRooms || 1));
+        const mismatch = !!b.capacityMismatch;
+        return (
+          <span
+            title={mismatch ? "Capacity mismatch — guests > capacity × rooms" : `${n} room${n > 1 ? "s" : ""}`}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              background: mismatch ? "rgba(240,208,96,0.18)" : "rgba(212,175,55,0.10)",
+              color: mismatch ? "#F0D060" : "#D4AF37",
+              padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              border: mismatch ? "1px solid rgba(240,208,96,0.35)" : "1px solid transparent",
+            }}
+          >
+            🛏️ {n}{mismatch ? " ⚠" : ""}
+          </span>
+        );
+      },
+    },
+    {
       key: "paidTotal",
       label: "Paid",
       render: (b: any) => b.paidTotal ? <span style={{ color: "#2ECC71" }}>₹{Number(b.paidTotal).toLocaleString()}</span> : <span style={{ color: "#8A8FA8" }}>—</span>,

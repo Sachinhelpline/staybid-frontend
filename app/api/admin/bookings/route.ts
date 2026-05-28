@@ -17,15 +17,21 @@ export async function GET(req: NextRequest) {
   const hotel = searchParams.get("hotel");
 
   try {
+    // v241 — include numRooms + capacityMismatch in the select so the
+    // admin column + future analytics can read them. Default 1 / false
+    // for legacy rows pre-v241 (DB column defaults handle this).
     let bidQuery =
-      "bids?select=id,hotelId,roomId,customerId,amount,counterAmount,status,message,createdAt,requestId&order=createdAt.desc&limit=200";
+      'bids?select=id,hotelId,roomId,customerId,amount,counterAmount,status,message,createdAt,requestId,"numRooms","capacityMismatch"&order=createdAt.desc&limit=200';
     if (status && status !== "all") bidQuery += `&status=eq.${status}`;
 
     const [bids, hotels, paidAmounts, bidRequests, attributions] = await Promise.all([
       sb(bidQuery),
       sb("hotels?select=id,name,city"),
       sb("bid_paid_amounts?select=bid_id,customer_id,paid_total,flow"),
-      sb("bid_requests?select=id,checkIn,checkOut,city,guests"),
+      // v241 — numRoomsRequested surfaces the customer's original ask
+      // (frozen at request creation) as a fallback when bids.numRooms
+      // is somehow missing.
+      sb('bid_requests?select=id,checkIn,checkOut,city,guests,"numRoomsRequested"'),
       // v94 — booking-source attributions for every recent bid
       sb("bid_attributions?select=*&limit=2000"),
     ]);
@@ -49,6 +55,10 @@ export async function GET(req: NextRequest) {
         checkIn: req?.checkIn || "",
         checkOut: req?.checkOut || "",
         guests: req?.guests || 0,
+        // v241 — multi-room booking. Prefer bid-level numRooms (per-
+        // hotel resolved); fall back to request-level (customer ask).
+        numRooms: b.numRooms || req?.numRoomsRequested || 1,
+        capacityMismatch: !!b.capacityMismatch,
         // v94 — source attribution pass-through
         source:        attr?.source || "direct",
         creatorHandle: attr?.creator_handle || null,

@@ -65,6 +65,7 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 import {
   PROPERTY_TYPES, PROPERTY_TYPE_MAP,
   ROOM_CATEGORIES, ROOM_CATEGORY_MAP, ROOM_CATEGORY_MULT,
+  ROOM_CATEGORY_CAPACITY, minRoomsForGuests,
   MEAL_PLANS as CAT_MEAL_PLANS, MEAL_PLAN_MAP,
   ADDON_SERVICES, ADDON_SERVICE_MAP,
 } from "@/lib/catalog";
@@ -474,7 +475,9 @@ function emojiForCount(kind: "adults" | "children" | "rooms", n: number): string
     if (n === 2) return "👫";
     if (n === 3) return "👨‍👩‍👦";
     if (n === 4) return "👨‍👩‍👧‍👦";
-    return "👨‍👩‍👧‍👦🧍"; // 5+
+    if (n <= 6) return "👨‍👩‍👧‍👦🧍"; // 5–6 small group
+    if (n <= 10) return "👨‍👩‍👧‍👦👨‍👩‍👧"; // 7–10 family + extended
+    return "🧑‍🤝‍🧑👨‍👩‍👧‍👦"; // 11+ group event
   }
   if (kind === "children") {
     if (n === 1) return "🧒";
@@ -482,12 +485,14 @@ function emojiForCount(kind: "adults" | "children" | "rooms", n: number): string
     if (n === 3) return "🧒🧒🧒";
     return "🧒🧒🧒🧒";
   }
-  // rooms — building grows
+  // rooms — building grows from bed to full hotel takeover
   if (n === 1) return "🛏️";
   if (n === 2) return "🏠";
   if (n === 3) return "🏡";
   if (n === 4) return "🏘️";
-  return "🏨";
+  if (n <= 6) return "🏨";
+  if (n <= 8) return "🏨🏠";
+  return "🏨🏨"; // 9–10 floor takeover
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -527,6 +532,24 @@ export default function BidPage() {
      Set Price (user report SS3). Forcing the user to tap +/- at least
      once makes Step 4 a real stop, even when they keep the defaults. */
   const [guestsTouched, setGuestsTouched] = useState(false);
+
+  /* v241 — Auto-fit toggle. Default ON. When ON, form.rooms auto-bumps
+     to ceil(guests/avgCap) whenever guests/categories change and the
+     current rooms count is below the minimum. When OFF, customer can
+     mismatch freely — partner inbox surfaces capacityMismatch flag
+     and decides counter-vs-decline. Persists per-device. */
+  const [autoFit, setAutoFit] = useState(true);
+  // Hydrate from localStorage on mount only (avoid SSR hydration drift).
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("sb_autofit");
+      if (v === "0") setAutoFit(false);
+    } catch {}
+  }, []);
+  const setAutoFitPersist = (v: boolean) => {
+    setAutoFit(v);
+    try { localStorage.setItem("sb_autofit", v ? "1" : "0"); } catch {}
+  };
   // v223 — surface submit failures INSIDE the Review modal instead of a
   // blocking alert() that pre-v223 vanished without showing what broke
   // ("baar baar launch bid karte raho same notification aata rahega kuch
@@ -662,6 +685,24 @@ export default function BidPage() {
   const nightsRooms = Math.max(1, nights) * Math.max(1, form.rooms);
   const totalBudget = snap100(parseFloat(form.maxBudget) || 0);
   const budget      = totalBudget > 0 ? snap100(totalBudget / nightsRooms) : 0;
+
+  // v241 — Auto-fit hook. Compute min rooms needed for the current
+  // guest count + selected categories. When autoFit is ON and form.rooms
+  // is below the minimum, silently bump it. When OFF, render a soft
+  // warning chip below the rooms counter so customer sees the mismatch.
+  // Capped at 10 (the Counter's max). Re-evaluates on every form
+  // change.
+  const totalGuests  = form.adults + form.children;
+  const minRooms     = minRoomsForGuests(totalGuests, form.roomTypes || []);
+  const cappedMinRooms = Math.min(10, minRooms);
+  const roomsShortBy = Math.max(0, cappedMinRooms - form.rooms);
+  useEffect(() => {
+    if (!autoFit) return;
+    if (cappedMinRooms > form.rooms) {
+      setForm((f) => ({ ...f, rooms: cappedMinRooms }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFit, cappedMinRooms]);
   // v180 — feed the dynamic-price engine + room category into the dial.
   const bidStr   = city && budget > 0
     ? calcBidStrength(budget, city.avg, form.city, form.checkIn, form.roomTypes || [])
@@ -1115,10 +1156,15 @@ export default function BidPage() {
             // message-regex detection that broke whenever message
             // changed shape.
             source: "place",
+            // v241 — Carry the customer's room-count through to
+            // bid_requests.numRoomsRequested so /my-bids charge math
+            // can multiply correctly + partner inbox shows the ask.
+            numRooms: form.rooms,
           });
 
           const requestId = reqRes?.request?.id;
-          const baseMessage = `Guest bid ₹${dealPrice}/night for ${nights} night${nights > 1 ? "s" : ""} (max ₹${budget})${requirements ? ". " + requirements : ""}`;
+          const roomsLabel = form.rooms > 1 ? ` × ${form.rooms} rooms` : "";
+          const baseMessage = `Guest bid ₹${dealPrice}/night for ${nights} night${nights > 1 ? "s" : ""}${roomsLabel} (max ₹${budget})${requirements ? ". " + requirements : ""}`;
 
           // dealPrice is always ≥ floor, so it clears the backend floor
           // check. The catch is a pure safety net for stale floor data.
@@ -1132,6 +1178,13 @@ export default function BidPage() {
               requestId,
               message:  baseMessage,
               flow:     "place",
+              // v241 — per-bid numRooms + guests for server-side
+              // capacityMismatch resolution against hotel-specific
+              // room.capacity. Inventory check (numRooms > quantity)
+              // would 409 here just like the existing one-bid-per-hotel
+              // conflict; bubbled to the outer catch.
+              numRooms: form.rooms,
+              guests,
             });
             if (bidRes?.bid?.id) {
               placedBidId = bidRes.bid.id;
@@ -1157,6 +1210,8 @@ export default function BidPage() {
                 requestId,
                 message:  baseMessage,
                 flow:     "place",
+                numRooms: form.rooms,
+                guests,
               });
               if (bidRes?.bid?.id) {
                 placedBidId = bidRes.bid.id;
@@ -1602,9 +1657,13 @@ export default function BidPage() {
         // → villa → multiple buildings → resort hotel.
         <div className="bgz-counter-stack">
           {([
-            { label: "Adults",   key: "adults"   as const, min: 1, max: 10, sub: "12+ yrs" },
+            // v241 — rooms cap 5 → 10 + adults cap 10 → 15 for group
+            // bookings. "11+ rooms? Talk to concierge →" CTA below
+            // routes to WhatsApp for genuinely large group needs that
+            // need bespoke pricing.
+            { label: "Adults",   key: "adults"   as const, min: 1, max: 15, sub: "12+ yrs" },
             { label: "Children", key: "children" as const, min: 0, max: 6,  sub: "5-12 yrs" },
-            { label: "Rooms",    key: "rooms"    as const, min: 1, max: 5,  sub: "1 per family" },
+            { label: "Rooms",    key: "rooms"    as const, min: 1, max: 10, sub: "1 per family" },
           ]).map(({ label, key, min, max, sub }) => {
             const n = (form as any)[key] as number;
             return (
@@ -1634,6 +1693,56 @@ export default function BidPage() {
               </div>
             );
           })}
+          {/* v241 — Auto-fit assistant. ON (default): silently bumps
+              rooms when guests outnumber capacity × rooms (effect
+              above). OFF: shows the warning so the customer knows
+              their config will likely be declined / counter-with-more-
+              rooms by hotels. The chip also surfaces when 11+ rooms
+              are needed — over the regular flow's cap. */}
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 8,
+            marginTop: 12, padding: "10px 12px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(201,166,107,0.22)",
+            borderRadius: 10,
+          }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-soft, rgba(255,255,255,0.78))", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={autoFit}
+                onChange={(e) => setAutoFitPersist(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "#C9A66B" }}
+              />
+              <span>Auto-fit rooms to guests</span>
+              <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #C9A66B)" }}>
+                {autoFit ? "ON" : "OFF"}
+              </span>
+            </label>
+            {autoFit && cappedMinRooms > 1 && form.rooms === cappedMinRooms && totalGuests > 2 && (
+              <p style={{ fontSize: "0.7rem", color: "var(--text-muted, rgba(255,255,255,0.55))", margin: 0, lineHeight: 1.4 }}>
+                ✨ Auto-set to {form.rooms} rooms for {totalGuests} guests
+              </p>
+            )}
+            {!autoFit && roomsShortBy > 0 && (
+              <p style={{ fontSize: "0.7rem", color: "#D49583", margin: 0, lineHeight: 1.4 }}>
+                ⚠️ {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
+              </p>
+            )}
+            {minRooms > 10 && (
+              <a
+                href={`https://wa.me/918881555188?text=${encodeURIComponent(`Hi, I need ${minRooms}+ rooms for ${totalGuests} guests. Please help me plan a group booking.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontSize: "0.7rem", color: "var(--cozy-champagne, #C9A66B)",
+                  textDecoration: "underline",
+                }}
+              >
+                🏨 Need {minRooms}+ rooms? Talk to concierge →
+              </a>
+            )}
+          </div>
         </div>
       ),
     },
@@ -2252,9 +2361,12 @@ export default function BidPage() {
                 </div>
                 <div className="bx-guest-row">
                   {[
-                    { label: "Adults",   key: "adults",   min: 1, max: 10, kind: "adults"   as GuestKind, sub: "12+ yrs"        },
+                    // v241 — same cap raises as the gaming counter
+                    // above; group of up to 15 guests across up to 10
+                    // rooms covered by the regular flow.
+                    { label: "Adults",   key: "adults",   min: 1, max: 15, kind: "adults"   as GuestKind, sub: "12+ yrs"        },
                     { label: "Children", key: "children", min: 0, max: 6,  kind: "children" as GuestKind, sub: "5-12 yrs"       },
-                    { label: "Rooms",    key: "rooms",    min: 1, max: 5,  kind: "rooms"    as GuestKind, sub: "1 unit / family"},
+                    { label: "Rooms",    key: "rooms",    min: 1, max: 10, kind: "rooms"    as GuestKind, sub: "1 unit / family"},
                   ].map(({ label, key, min, max, kind, sub }) => (
                     <PremiumGuestPicker
                       key={key}
@@ -2267,6 +2379,53 @@ export default function BidPage() {
                       max={max}
                     />
                   ))}
+                </div>
+                {/* v241 — Auto-fit assistant on desktop (mirror of the
+                    mobile panel inside BidGameZone). Same state +
+                    persisted toggle so flipping ON/OFF on one device
+                    flips both surfaces. */}
+                <div style={{
+                  display: "flex", flexDirection: "column", gap: 6,
+                  marginTop: 10, padding: "8px 12px",
+                  background: "var(--accent-soft, rgba(201,166,107,0.08))",
+                  border: "1px solid rgba(201,166,107,0.20)",
+                  borderRadius: 10,
+                }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "var(--text-soft)", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={autoFit}
+                      onChange={(e) => setAutoFitPersist(e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: "#C9A66B" }}
+                    />
+                    <span>Auto-fit rooms to guests</span>
+                    <span style={{ marginLeft: "auto", fontSize: "0.65rem", color: "var(--cozy-champagne, #C9A66B)" }}>
+                      {autoFit ? "ON" : "OFF"}
+                    </span>
+                  </label>
+                  {autoFit && cappedMinRooms > 1 && form.rooms === cappedMinRooms && totalGuests > 2 && (
+                    <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", margin: 0, lineHeight: 1.4 }}>
+                      ✨ Auto-set to {form.rooms} rooms for {totalGuests} guests
+                    </p>
+                  )}
+                  {!autoFit && roomsShortBy > 0 && (
+                    <p style={{ fontSize: "0.7rem", color: "#A85B4E", margin: 0, lineHeight: 1.4 }}>
+                      ⚠️ {totalGuests} guests in {form.rooms} room{form.rooms > 1 ? "s" : ""} — most hotels will decline. Recommended: {cappedMinRooms} rooms.
+                    </p>
+                  )}
+                  {minRooms > 10 && (
+                    <a
+                      href={`https://wa.me/918881555188?text=${encodeURIComponent(`Hi, I need ${minRooms}+ rooms for ${totalGuests} guests. Please help me plan a group booking.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: "0.7rem", color: "var(--cozy-champagne, #C9A66B)",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      🏨 Need {minRooms}+ rooms? Talk to concierge →
+                    </a>
+                  )}
                 </div>
               </div>
 

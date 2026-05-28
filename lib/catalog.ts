@@ -70,6 +70,36 @@ export const ROOM_CATEGORY_MULT: Record<string, number> = {
   cottage: 1.30, villa: 1.90, tent: 1.10, dormitory: 0.50, custom: 1.00,
 };
 
+// v241 — Default guest capacity per category. Drives the auto-fit hook
+// on /bid Step 3: `minRooms = ceil(guests / avg(capacity of selected
+// categories))`. Per-hotel `rooms.capacity` (which partner sets via
+// "Max guests" in RoomEditorModal, default 2) overrides at hotel-page
+// time and at server resolve time inside /api/bids/place. So variance
+// is automatic: Hotel A's Deluxe cap=3 (custom), Hotel B's Deluxe
+// cap=2 — same /bid broadcast resolves different per-hotel numRooms.
+export const ROOM_CATEGORY_CAPACITY: Record<string, number> = {
+  standard: 2, deluxe: 2, super_deluxe: 2, executive: 2,
+  club: 2, premium: 2, family: 4, studio: 2,
+  junior_suite: 3, suite: 4, presidential_suite: 6,
+  cottage: 3, villa: 6, tent: 2, dormitory: 1, custom: 2,
+};
+
+// v241 — Pure helpers used by /bid + hotel page to compute minimum
+// rooms needed for a given guest count + room-category mix. Used by
+// auto-fit + capacity-mismatch warning. avgCap defaults to 2 when no
+// roomTypes are picked (matches the most common case).
+export function capacityForCategories(roomTypeIds: string[]): number {
+  if (!roomTypeIds || roomTypeIds.length === 0) return 2;
+  let sum = 0;
+  for (const id of roomTypeIds) sum += (ROOM_CATEGORY_CAPACITY[id] || 2);
+  return sum / roomTypeIds.length;
+}
+
+export function minRoomsForGuests(guests: number, roomTypeIds: string[]): number {
+  const cap = capacityForCategories(roomTypeIds);
+  return Math.max(1, Math.ceil(Math.max(1, guests) / Math.max(1, cap)));
+}
+
 /* ── Meal plans ──────────────────────────────────────────────────
    Stored in `hotels.meal_plans[]`. `perGuestNight` is the platform-
    standard add-on cost shown transparently on /bid (₹100-friendly).

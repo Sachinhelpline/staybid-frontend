@@ -60,6 +60,11 @@ async function enrichBids(bids: any[]): Promise<any[]> {
       checkIn: rq?.checkIn || b.checkIn || null,
       checkOut: rq?.checkOut || b.checkOut || null,
       guests: rq?.guests || b.guests || null,
+      // v241 — numRooms surfaces both bid-level (server-resolved) and
+      // request-level (customer's original pick). Partner inbox chip
+      // prefers b.numRooms (specific to THIS hotel's resolution).
+      numRooms: b.numRooms || rq?.numRoomsRequested || 1,
+      capacityMismatch: !!b.capacityMismatch,
       room: rm || null,
       roomType: rm?.type || rm?.name || null,
       // v94 — pass-through attribution fields. Defaults to "direct" when
