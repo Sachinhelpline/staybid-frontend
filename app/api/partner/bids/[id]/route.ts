@@ -60,6 +60,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   const updateData: Record<string, any> = { status: statusMap[action] || "PENDING" };
   if (action === "counter" && counterAmount) updateData.counterAmount = parseFloat(counterAmount);
   if (message) updateData.hotelMessage = message;
+  // v241.17 — when the hotel accepts, stamp expiresAt = now + 15min so
+  // the customer's payment window starts at acceptance and `expiresAt`
+  // is the single source of truth shared by the conflict check +
+  // /my-bids + lib/bid-expiry. (Railway primary path should do the same;
+  // this covers the Supabase cold-start fallback.)
+  if (action === "accept") updateData.expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
 
   const res = await fetch(`${SB_URL}/rest/v1/bids?id=eq.${bidId}`, {
     method: "PATCH", headers: SB_H, body: JSON.stringify(updateData),

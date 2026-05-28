@@ -285,12 +285,17 @@ const CONFETTI = Array.from({ length: 24 }, (_, i) => ({
    ──────────────────────────────────────────────────────────────── */
 const LIVE_WINDOW_MS = 15 * 60 * 1000; // accepted-offer hold window
 
-function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
+function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab, numRooms = 1, nights = 1 }: {
   bid: any; launchTs: number; nowTs: number; idx: number;
   onOpen: (hotelId: string) => void;
   // v183 — Phase 2 B6: explicit "Pay Now & Grab" route. Parent owns the
   // routing logic (/my-bids#bid-<id>) so the LiveBidCard stays generic.
   onGrab?: (bidId: string) => void;
+  // v241.17 — multi-room context so the card + Pay Now CTA show the
+  // chargeable TOTAL (amount × rooms × nights), not just the per-room
+  // nightly rate. Customer reported "Pay Now ₹4,300 for 1 room" while
+  // they bid for 2 rooms (should be ₹8,600). Mirrors BookingReview math.
+  numRooms?: number; nights?: number;
 }) {
   const status    = String(bid.status || "PENDING").toUpperCase();
   const accepted  = !!bid.accepted || status === "ACCEPTED" || status === "CONFIRMED";
@@ -298,6 +303,11 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
   const countered = !accepted && !rejected; // any non-accepted = floor counter
 
   const amount    = Number(bid.amount) || 0;
+  // v241.17 — chargeable total across all rooms + nights.
+  const rooms     = Math.max(1, Number(numRooms) || 1);
+  const nightsN   = Math.max(1, Number(nights) || 1);
+  const total     = amount * rooms * nightsN;
+  const isMulti   = rooms > 1 || nightsN > 1;
   const mrp       = Number(bid.mrp) || 0;
   const saved     = mrp > amount ? mrp - amount : 0;
   const savedPct  = mrp > 0 ? Math.round((saved / mrp) * 100) : 0;
@@ -326,6 +336,11 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
         <span className="bx-live-card-hotel">{bid.hotelName}</span>
         <span className="bx-live-card-amt">
           ₹{amount.toLocaleString("en-IN")}<small> per room / night</small>
+          {isMulti && (
+            <small style={{ display: "block", opacity: 0.85 }}>
+              ₹{total.toLocaleString("en-IN")} total · {rooms} room{rooms > 1 ? "s" : ""} × {nightsN}n
+            </small>
+          )}
         </span>
       </div>
 
@@ -359,9 +374,9 @@ function LiveBidCard({ bid, launchTs, nowTs, idx, onOpen, onGrab }: {
               type="button"
               onClick={(e) => { e.stopPropagation(); onGrab(String(bid.id || bid.bidId)); }}
               className="bx-live-grab-btn"
-              aria-label={`Pay ₹${amount.toLocaleString("en-IN")} per night and grab this booking`}
+              aria-label={`Pay ₹${total.toLocaleString("en-IN")} total and grab this booking`}
             >
-              💰 Pay Now &amp; Grab — ₹{amount.toLocaleString("en-IN")} →
+              💰 Pay Now &amp; Grab — ₹{total.toLocaleString("en-IN")} →
             </button>
           )}
         </>
@@ -1534,6 +1549,8 @@ export default function BidPage() {
               <LiveBidCard
                 key={b.bidId || i}
                 bid={b}
+                numRooms={success?.rooms}
+                nights={success?.nights}
                 idx={i}
                 launchTs={launchTs}
                 nowTs={nowTs}
@@ -2158,6 +2175,8 @@ export default function BidPage() {
                 <LiveBidCard
                   key={b.bidId || i}
                   bid={b}
+                  numRooms={success?.rooms}
+                  nights={success?.nights}
                   idx={i}
                   launchTs={launchTs}
                   nowTs={nowTs}
@@ -2226,6 +2245,8 @@ export default function BidPage() {
                 <LiveBidCard
                   key={b.bidId || i}
                   bid={b}
+                  numRooms={success?.rooms}
+                  nights={success?.nights}
                   idx={i}
                   launchTs={launchTs}
                   nowTs={nowTs}
@@ -3029,6 +3050,8 @@ export default function BidPage() {
                     <LiveBidCard
                       key={b.bidId || i}
                       bid={b}
+                      numRooms={success?.rooms}
+                      nights={success?.nights}
                       idx={i}
                       launchTs={launchTs}
                       nowTs={nowTs}

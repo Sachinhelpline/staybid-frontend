@@ -17,9 +17,13 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
   const finalAmount = Number(bid.counterAmount ?? bid.amount);
   try {
+    // v241.17 — stamp expiresAt = now + 15min (acceptance starts the
+    // 15-minute payment window; expiresAt is the single source of truth
+    // shared by the conflict check + /my-bids + lib/bid-expiry).
     const updated = await sbUpdate("bids", `id=eq.${id}`, {
       status: "ACCEPTED",
       amount: finalAmount,
+      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
     });
     return NextResponse.json({ bid: updated, accepted: true });
   } catch (e: any) {

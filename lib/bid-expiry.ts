@@ -80,9 +80,16 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
   const created = b.createdAt ? new Date(b.createdAt) : null;
   if (!created || Number.isNaN(created.getTime())) return false;
 
-  // Hard end-of-day cutoff (IST). Past today's midnight relative to
-  // creation → stale regardless of status.
-  if (nowMs >= nextIstMidnightAfter(created)) return true;
+  // v241.17 — IST-midnight cutoff REMOVED. It had NO counterpart in the
+  // server's conflict check (`isBidStale` in /api/bids/place/route.ts),
+  // so a bid placed at 11 PM IST was "expired" client-side at 00:00 IST
+  // while the server still treated it as active → conflict fires on
+  // re-launch BUT /my-bids + hotel page show 0. That desync is the
+  // recurring "Place Bid (0) but active-bid conflict" bug. The
+  // per-status `expiresAt` windows below are now the SOLE authority and
+  // exactly mirror the server. (This is the v232 trap that v234 already
+  // removed from /my-bids `liveBids`; this removes it from the shared
+  // helper too so hotel page + admin + partner inbox all converge.)
 
   // Per-status short windows.
   if (b.status === "REJECTED") {
@@ -90,6 +97,19 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
     return nowMs > decided + 30 * MIN;
   }
   if (b.status === "ACCEPTED" && !paid) {
+    // v241.17 — `expiresAt` is the single source of truth, matching the
+    // server's isBidStale. The bids table has NO acceptedAt/updatedAt
+    // columns (verified via information_schema 2026-05-27), so the old
+    // `acceptedAt → updatedAt → createdAt + 15min` chain ALWAYS fell back
+    // to createdAt — wrong for any bid accepted later than it was placed
+    // (every partner-accepted bid). The accept routes now stamp
+    // expiresAt = acceptTime + 15min (v241.17), so this window is correct
+    // AND consistent with the conflict check. Legacy rows without
+    // expiresAt fall back to the createdAt chain.
+    if (b.expiresAt) {
+      const exp = new Date(b.expiresAt).getTime();
+      if (!Number.isNaN(exp)) return nowMs > exp;
+    }
     const accepted = b.acceptedAt ? new Date(b.acceptedAt).getTime()
                    : b.updatedAt  ? new Date(b.updatedAt).getTime()
                    : created.getTime();
