@@ -56,7 +56,7 @@ export default function PointsPage() {
   const progress = nextTier ? Math.min(100, ((balance - tier.min) / (nextTier.min - tier.min)) * 100) : 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-luxury-900 mb-1">Loyalty Points</h1>
         <p className="text-luxury-500 text-sm mb-5">Earned on every booking. Redeem for discounts.</p>

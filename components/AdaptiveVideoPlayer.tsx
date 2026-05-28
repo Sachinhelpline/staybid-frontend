@@ -31,7 +31,7 @@ export default function AdaptiveVideoPlayer({
         {profile.label}
       </div>
       {profile.showDataWarning && (
-        <div className="absolute bottom-2 left-2 right-2 text-[11px] text-amber-200 bg-amber-900/70 backdrop-blur px-2 py-1 rounded">
+        <div className="absolute bottom-2 left-2 right-2 text-[11px] text-amber-200 bg-amber-900/70 backdrop-blur-sm px-2 py-1 rounded-sm">
           Slow network detected — playing 360p to save data.
         </div>
       )}

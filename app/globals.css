@@ -1,111 +1,383 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap')
+layer(utilities);
 
 /* v122 — Desktop / laptop / tablet responsive layer. Activates ONLY at
    >=1024px so the mobile native UX (every page, every section) stays
    byte-identical. See app/desktop.css for the full rule set. */
-@import "./desktop.css";
+@import './desktop.css' layer(utilities);
 
-/* ─── Design tokens ────────────────────────────────────────────── */
-:root {
-  --gold:          #c9911a;
-  --gold-light:    #f0b429;
-  --gold-muted:    rgba(201, 145, 26, 0.12);
-  --gold-border:   rgba(201, 145, 26, 0.25);
-  --navy:          #0f0c1a;
-  --cream:         #faf9f6;
-  --card-bg:       #ffffff;
-  --text-primary:  #1a1510;
-  --text-secondary:#6b6458;
-  --border:        rgba(232, 228, 217, 0.8);
+@theme {
+  --color-luxury-50: #faf9f6;
+  --color-luxury-100: #f4f2ec;
+  --color-luxury-200: #e8e4d9;
+  --color-luxury-300: #d4cebe;
+  --color-luxury-400: #b5ab97;
+  --color-luxury-500: #8a7e68;
+  --color-luxury-600: #5c5240;
+  --color-luxury-700: #3d3428;
+  --color-luxury-800: #211c12;
+  --color-luxury-900: #0e0b07;
+  --color-luxury-950: #070503;
 
-  /* ─── Premium Cozy palette (v88) ─────────────────────────────
+  --color-gold-100: #fef8e8;
+  --color-gold-200: #fcecbe;
+  --color-gold-300: #f8d97a;
+  --color-gold-400: #f0b429;
+  --color-gold-500: #c9911a;
+  --color-gold-600: #a67315;
+  --color-gold-700: #7d5410;
+  --color-gold-800: #523808;
+  --color-gold-900: #2e1f04;
+
+  --color-navy-700: #0f0c1a;
+  --color-navy-800: #090614;
+  --color-navy-900: #040210;
+
+  --color-brand-50: #fef8e8;
+  --color-brand-100: #fcecbe;
+  --color-brand-500: #f0b429;
+  --color-brand-600: #c9911a;
+  --color-brand-700: #a67315;
+  --color-brand-900: #0f0c1a;
+
+  --color-accent-400: #f8d97a;
+  --color-accent-500: #f0b429;
+
+  --color-dark-800: #1a1835;
+  --color-dark-900: #0f0c1a;
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  --background-image-luxury-hero: linear-gradient(
+    135deg,
+    #0a0812 0%,
+    #130f24 45%,
+    #0a1020 100%
+  );
+  --background-image-gold-gradient: linear-gradient(
+    135deg,
+    #c9911a 0%,
+    #f0b429 50%,
+    #c9911a 100%
+  );
+  --background-image-gold-shimmer: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 145, 26, 0.18),
+    transparent
+  );
+
+  --shadow-luxury:
+    0 4px 24px rgba(10, 8, 6, 0.07), 0 1px 4px rgba(10, 8, 6, 0.04);
+  --shadow-luxury-lg:
+    0 16px 56px rgba(10, 8, 6, 0.11), 0 4px 16px rgba(10, 8, 6, 0.06);
+  --shadow-gold: 0 4px 20px rgba(201, 145, 26, 0.28);
+  --shadow-gold-lg: 0 8px 40px rgba(201, 145, 26, 0.38);
+
+  --animate-fade-up: fadeUp 0.6s ease-out forwards;
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --animate-gold-shimmer: goldShimmer 2.2s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  --transition-duration-400: 400ms;
+
+  @keyframes fadeUp {
+    0% {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes goldShimmer {
+    0%,
+    100% {
+      opacity: 0.6;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-balance {
+  /* Typography */
+  text-wrap: balance;
+}
+@utility glass {
+  /* Navbar glass — warm white on scroll */
+  background: rgba(250, 249, 246, 0.92);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border-bottom: 1px solid rgba(232, 228, 217, 0.55);
+}
+@utility glass-light {
+  /* Light glass panel */
+  background: rgba(250, 249, 246, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border);
+}
+@utility glass-dark {
+  /* Dark glass — for overlays on hero */
+  background: rgba(10, 8, 18, 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(201, 145, 26, 0.18);
+}
+@utility shimmer {
+  /* Skeleton loader */
+  background: linear-gradient(90deg, #eeeae0 25%, #e4e0d4 50%, #eeeae0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@utility card-luxury {
+  /* ── Luxury card ───────────────────────────────────────────────── */
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 4px 24px rgba(10, 8, 6, 0.055),
+    0 1px 4px rgba(10, 8, 6, 0.03);
+  transition:
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s ease;
+  &:hover {
+    box-shadow:
+      0 18px 60px rgba(10, 8, 6, 0.1),
+      0 4px 16px rgba(10, 8, 6, 0.055);
+    transform: translateY(-3px);
+    border-color: var(--gold-border);
+  }
+}
+@utility btn-luxury {
+  /* ── Gold gradient button ──────────────────────────────────────── */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #c9911a 0%, #e8a820 50%, #c9911a 100%);
+  background-size: 200% 100%;
+  background-position: left center;
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition:
+    background-position 0.4s ease,
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
+  box-shadow: 0 4px 18px rgba(201, 145, 26, 0.32);
+  &:hover {
+    background-position: right center;
+    box-shadow: 0 6px 28px rgba(201, 145, 26, 0.48);
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 12px rgba(201, 145, 26, 0.28);
+  }
+}
+@utility badge-gold {
+  /* ── Gold badge ────────────────────────────────────────────────── */
+  background: linear-gradient(135deg, #c9911a, #f0b429);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.7rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 2px 10px rgba(201, 145, 26, 0.38);
+}
+@utility gold-line {
+  /* ── Decorative gold line ──────────────────────────────────────── */
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  border: none;
+}
+@utility text-gold-gradient {
+  /* ── Gold text gradient ────────────────────────────────────────── */
+  background: linear-gradient(135deg, #c9911a 0%, #f0b429 50%, #d4a020 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+@utility divider-gold {
+  /* ── Section divider ───────────────────────────────────────────── */
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 145, 26, 0.35),
+    transparent
+  );
+}
+@utility input-luxury {
+  /* ── Input focus ring override ─────────────────────────────────── */
+  background: #ffffff;
+  border: 1px solid rgba(232, 228, 217, 0.9);
+  border-radius: 0.875rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+  &:focus {
+    border-color: rgba(201, 145, 26, 0.55);
+    box-shadow: 0 0 0 3px rgba(201, 145, 26, 0.1);
+  }
+  &::placeholder {
+    color: #b5ab97;
+  }
+}
+
+@layer utilities {
+  /* ─── Design tokens ────────────────────────────────────────────── */
+  :root {
+    --gold: #c9911a;
+    --gold-light: #f0b429;
+    --gold-muted: rgba(201, 145, 26, 0.12);
+    --gold-border: rgba(201, 145, 26, 0.25);
+    --navy: #0f0c1a;
+    --cream: #faf9f6;
+    --card-bg: #ffffff;
+    --text-primary: #1a1510;
+    --text-secondary: #6b6458;
+    --border: rgba(232, 228, 217, 0.8);
+
+    /* ─── Premium Cozy palette (v88) ─────────────────────────────
      A single warm cream → cocoa → champagne system that replaces
      the v85-era stark blacks + bright magenta/purple accents with
      minimal, ultra-premium cozy tones. Used by reel surfaces,
      PostsScrollFeed, BottomDock, action buttons, etc. */
-  --cozy-cream-50:        #FFFCF6;   /* lightest cream surface */
-  --cozy-cream-100:       #FAF5EB;   /* default page bg on light surfaces */
-  --cozy-cream-200:       #F2EAD8;   /* warm card surface */
-  --cozy-taupe:           #E8DCC8;   /* dividers + soft borders */
-  --cozy-warm-dark:       #1F1A0F;   /* primary text on light + dark surface bg */
-  --cozy-warm-soft:       #2B2415;   /* less-harsh dark for nested chrome */
-  --cozy-cocoa:           #4A3820;   /* secondary text */
-  --cozy-cocoa-soft:      #6E5430;   /* tertiary text + soft icons */
-  --cozy-champagne:       #C9A66B;   /* warm gold accent — desaturated */
-  --cozy-champagne-light: #D9BE82;   /* highlight gold */
-  --cozy-rose:            #D49583;   /* warm rose — hearts / likes */
-  --cozy-sage:            #9DAD8F;   /* rare success state */
-  --cozy-shadow:          rgba(31, 26, 15, 0.08);
+    --cozy-cream-50: #fffcf6; /* lightest cream surface */
+    --cozy-cream-100: #faf5eb; /* default page bg on light surfaces */
+    --cozy-cream-200: #f2ead8; /* warm card surface */
+    --cozy-taupe: #e8dcc8; /* dividers + soft borders */
+    --cozy-warm-dark: #1f1a0f; /* primary text on light + dark surface bg */
+    --cozy-warm-soft: #2b2415; /* less-harsh dark for nested chrome */
+    --cozy-cocoa: #4a3820; /* secondary text */
+    --cozy-cocoa-soft: #6e5430; /* tertiary text + soft icons */
+    --cozy-champagne: #c9a66b; /* warm gold accent — desaturated */
+    --cozy-champagne-light: #d9be82; /* highlight gold */
+    --cozy-rose: #d49583; /* warm rose — hearts / likes */
+    --cozy-sage: #9dad8f; /* rare success state */
+    --cozy-shadow: rgba(31, 26, 15, 0.08);
 
-  /* ─── v90 Theme tokens — light (default) ─────────────────────
+    /* ─── v90 Theme tokens — light (default) ─────────────────────
      Every customer-facing surface should read FROM these. A single
      localStorage toggle (sb_theme) flips the dark overrides below
      by setting `data-theme="dark"` on <html>. */
-  --bg-page:        var(--cozy-cream-100);
-  --bg-card:        var(--cozy-cream-50);
-  --bg-elevated:    rgba(255, 252, 246, 0.94);
-  --bg-input:       var(--cozy-cream-50);
-  --bg-pill:        var(--cozy-cream-50);
-  --bg-pill-active: linear-gradient(135deg, #D9BE82, #C9A66B);
-  --text-base:      var(--cozy-warm-dark);
-  --text-soft:      var(--cozy-cocoa);
-  --text-muted:     var(--cozy-cocoa-soft);
-  --text-inverse:   var(--cozy-warm-dark);
-  --border-soft:    var(--cozy-taupe);
-  --border-strong:  rgba(110, 84, 48, 0.30);
-  --accent:         var(--cozy-champagne);
-  --accent-soft:    rgba(201, 166, 107, 0.14);
-  --link:           var(--cozy-cocoa);
-  --shadow-soft:    0 2px 10px rgba(31, 26, 15, 0.08);
-  --shadow-card:    0 6px 22px rgba(31, 26, 15, 0.10);
-}
+    --bg-page: var(--cozy-cream-100);
+    --bg-card: var(--cozy-cream-50);
+    --bg-elevated: rgba(255, 252, 246, 0.94);
+    --bg-input: var(--cozy-cream-50);
+    --bg-pill: var(--cozy-cream-50);
+    --bg-pill-active: linear-gradient(135deg, #d9be82, #c9a66b);
+    --text-base: var(--cozy-warm-dark);
+    --text-soft: var(--cozy-cocoa);
+    --text-muted: var(--cozy-cocoa-soft);
+    --text-inverse: var(--cozy-warm-dark);
+    --border-soft: var(--cozy-taupe);
+    --border-strong: rgba(110, 84, 48, 0.3);
+    --accent: var(--cozy-champagne);
+    --accent-soft: rgba(201, 166, 107, 0.14);
+    --link: var(--cozy-cocoa);
+    --shadow-soft: 0 2px 10px rgba(31, 26, 15, 0.08);
+    --shadow-card: 0 6px 22px rgba(31, 26, 15, 0.1);
+  }
 
-/* ─── Dark mode — warm cocoa night (NOT stark blue/black) ───────
+  /* ─── Dark mode — warm cocoa night (NOT stark blue/black) ───────
    Same cozy palette family, only lightness inverted. Champagne
    accent stays identical so brand color is consistent across modes. */
-[data-theme="dark"] {
-  --bg-page:        #0F0C08;
-  --bg-card:        #1A1610;
-  --bg-elevated:    rgba(20, 16, 10, 0.92);
-  --bg-input:       #211C13;
-  --bg-pill:        #211C13;
-  --bg-pill-active: linear-gradient(135deg, #C9A66B, #9C7E48);
-  --text-base:      #F5EFE0;
-  --text-soft:      #D6C9AE;
-  --text-muted:     rgba(213, 200, 175, 0.62);
-  --text-inverse:   #0F0C08;
-  --border-soft:    rgba(217, 190, 130, 0.10);
-  --border-strong:  rgba(217, 190, 130, 0.28);
-  --accent:         var(--cozy-champagne);
-  --accent-soft:    rgba(201, 166, 107, 0.18);
-  --link:           var(--cozy-champagne-light);
-  --shadow-soft:    0 2px 12px rgba(0, 0, 0, 0.45);
-  --shadow-card:    0 6px 22px rgba(0, 0, 0, 0.55);
-}
+  [data-theme='dark'] {
+    --bg-page: #0f0c08;
+    --bg-card: #1a1610;
+    --bg-elevated: rgba(20, 16, 10, 0.92);
+    --bg-input: #211c13;
+    --bg-pill: #211c13;
+    --bg-pill-active: linear-gradient(135deg, #c9a66b, #9c7e48);
+    --text-base: #f5efe0;
+    --text-soft: #d6c9ae;
+    --text-muted: rgba(213, 200, 175, 0.62);
+    --text-inverse: #0f0c08;
+    --border-soft: rgba(217, 190, 130, 0.1);
+    --border-strong: rgba(217, 190, 130, 0.28);
+    --accent: var(--cozy-champagne);
+    --accent-soft: rgba(201, 166, 107, 0.18);
+    --link: var(--cozy-champagne-light);
+    --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 6px 22px rgba(0, 0, 0, 0.55);
+  }
 
-/* Smooth theme transition */
-html, body { transition: background-color 0.22s ease, color 0.22s ease; }
+  /* Smooth theme transition */
+  html,
+  body {
+    transition:
+      background-color 0.22s ease,
+      color 0.22s ease;
+  }
 
+  /* ─── Base ──────────────────────────────────────────────────────── */
+  html {
+    scroll-behavior: smooth;
+  }
 
-/* ─── Base ──────────────────────────────────────────────────────── */
-html { scroll-behavior: smooth; }
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  /* v90 — base body reads theme tokens. Pages with their own
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    /* v90 — base body reads theme tokens. Pages with their own
      wrapper bg (reel surfaces) still override; this only matters
      for pages that haven't explicitly set a background. */
-  background: var(--bg-page);
-  color: var(--text-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+    background: var(--bg-page);
+    color: var(--text-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-/* ─── Reel-page fullscreen lock ─────────────────────────────────────
+  /* ─── Reel-page fullscreen lock ─────────────────────────────────────
    Applied by /discover and /reels via useEffect on mount. Belt-and-
    braces fullscreen on every device + browser (iOS Safari, Android
    Chrome, Samsung Internet, Firefox mobile, every desktop browser):
@@ -118,169 +390,37 @@ body {
      from scrolling at the body level (only the reel feed scrolls).
    • The class is toggled imperatively so it never affects pages
      other than the reel feed. */
-html.is-reel-page,
-body.is-reel-page {
-  /* `--reel-vh` is set by useReelFullscreen() to visualViewport.height (px).
+  html.is-reel-page,
+  body.is-reel-page {
+    /* `--reel-vh` is set by useReelFullscreen() to visualViewport.height (px).
      That tracks URL-bar show/hide on Android Chrome / Samsung Internet
      better than 100dvh, so the feed never leaves a phantom strip.
      Fallback chain: visualViewport → 100dvh → 100vh. */
-  height: 100vh;
-  height: 100dvh;
-  height: var(--reel-vh, 100dvh);
-  max-height: var(--reel-vh, 100dvh);
-  overflow: hidden;
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-  background: #000;
-  margin: 0;
-  padding: 0;
-  /* Block iOS rubber-band bounce */
-  touch-action: pan-x pan-y;
-}
-body.is-reel-page {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-}
-
-::selection {
-  background: rgba(201, 145, 26, 0.18);
-  color: var(--text-primary);
-}
-
-/* ─── Utilities ─────────────────────────────────────────────────── */
-@layer utilities {
-
-  /* Typography */
-  .text-balance { text-wrap: balance; }
-
-  /* Navbar glass — warm white on scroll */
-  .glass {
-    background: rgba(250, 249, 246, 0.92);
-    backdrop-filter: blur(24px) saturate(200%);
-    -webkit-backdrop-filter: blur(24px) saturate(200%);
-    border-bottom: 1px solid rgba(232, 228, 217, 0.55);
+    height: 100vh;
+    height: 100dvh;
+    height: var(--reel-vh, 100dvh);
+    max-height: var(--reel-vh, 100dvh);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    background: #000;
+    margin: 0;
+    padding: 0;
+    /* Block iOS rubber-band bounce */
+    touch-action: pan-x pan-y;
+  }
+  body.is-reel-page {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
   }
 
-  /* Light glass panel */
-  .glass-light {
-    background: rgba(250, 249, 246, 0.88);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--border);
-  }
-
-  /* Dark glass — for overlays on hero */
-  .glass-dark {
-    background: rgba(10, 8, 18, 0.72);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid rgba(201, 145, 26, 0.18);
-  }
-
-  /* Skeleton loader */
-  .shimmer {
-    background: linear-gradient(90deg, #eeeae0 25%, #e4e0d4 50%, #eeeae0 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  /* ── Luxury card ───────────────────────────────────────────────── */
-  .card-luxury {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 24px rgba(10, 8, 6, 0.055), 0 1px 4px rgba(10, 8, 6, 0.03);
-    transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                transform     0.35s cubic-bezier(0.4, 0, 0.2, 1),
-                border-color  0.35s ease;
-  }
-  .card-luxury:hover {
-    box-shadow: 0 18px 60px rgba(10, 8, 6, 0.10), 0 4px 16px rgba(10, 8, 6, 0.055);
-    transform: translateY(-3px);
-    border-color: var(--gold-border);
-  }
-
-  /* ── Gold gradient button ──────────────────────────────────────── */
-  .btn-luxury {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #c9911a 0%, #e8a820 50%, #c9911a 100%);
-    background-size: 200% 100%;
-    background-position: left center;
-    color: #ffffff;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    transition: background-position 0.4s ease,
-                box-shadow         0.3s ease,
-                transform          0.2s ease;
-    box-shadow: 0 4px 18px rgba(201, 145, 26, 0.32);
-  }
-  .btn-luxury:hover {
-    background-position: right center;
-    box-shadow: 0 6px 28px rgba(201, 145, 26, 0.48);
-    transform: translateY(-1px);
-  }
-  .btn-luxury:active {
-    transform: translateY(0);
-    box-shadow: 0 3px 12px rgba(201, 145, 26, 0.28);
-  }
-
-  /* ── Gold badge ────────────────────────────────────────────────── */
-  .badge-gold {
-    background: linear-gradient(135deg, #c9911a, #f0b429);
-    color: #fff;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    border-radius: 9999px;
-    padding: 0.2rem 0.65rem;
-    font-size: 0.7rem;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-    box-shadow: 0 2px 10px rgba(201, 145, 26, 0.38);
-  }
-
-  /* ── Decorative gold line ──────────────────────────────────────── */
-  .gold-line {
-    height: 1.5px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    border: none;
-  }
-
-  /* ── Gold text gradient ────────────────────────────────────────── */
-  .text-gold-gradient {
-    background: linear-gradient(135deg, #c9911a 0%, #f0b429 50%, #d4a020 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* ── Section divider ───────────────────────────────────────────── */
-  .divider-gold {
-    border: none;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(201, 145, 26, 0.35), transparent);
-  }
-
-  /* ── Input focus ring override ─────────────────────────────────── */
-  .input-luxury {
-    background: #ffffff;
-    border: 1px solid rgba(232, 228, 217, 0.9);
-    border-radius: 0.875rem;
-    padding: 0.75rem 1rem;
+  ::selection {
+    background: rgba(201, 145, 26, 0.18);
     color: var(--text-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
-    outline: none;
-    width: 100%;
-  }
-  .input-luxury:focus {
-    border-color: rgba(201, 145, 26, 0.55);
-    box-shadow: 0 0 0 3px rgba(201, 145, 26, 0.1);
-  }
-  .input-luxury::placeholder {
-    color: #b5ab97;
   }
 
+  /* ─── Utilities ─────────────────────────────────────────────────── */
 }
 
 /* ─── Ultra-luxury shared primitives ─────────────────────────────── */

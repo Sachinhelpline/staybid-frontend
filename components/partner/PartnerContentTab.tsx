@@ -199,7 +199,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
                 <div className="flex gap-4 items-start">
                   {/* Media thumbnail */}
                   <div
-                    className="flex-shrink-0 rounded-xl overflow-hidden bg-luxury-100"
+                    className="shrink-0 rounded-xl overflow-hidden bg-luxury-100"
                     style={{
                       width: 110,
                       height: 156,
@@ -297,7 +297,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
           admin and removes it from the public feed pending review. */}
       {reportId && modalPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
           onClick={closeReportModal}
         >
           <div
@@ -317,7 +317,7 @@ export default function PartnerContentTab({ hotelId }: { hotelId: string }) {
               onChange={(e) => setReasonText(e.target.value)}
               placeholder="Reason (required)..."
               rows={3}
-              className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-none focus:border-gold-400"
+              className="w-full p-3 rounded-xl border border-luxury-200 text-sm resize-none focus:outline-hidden focus:border-gold-400"
             />
             <div className="flex gap-2 mt-4">
               <button

@@ -127,7 +127,7 @@ export default function InfluencerBookings() {
                         </span>
                       </td>
                       <td className="py-3">
-                        <span className="px-2 py-1 rounded text-[0.65rem] font-bold uppercase tracking-wider"
+                        <span className="px-2 py-1 rounded-sm text-[0.65rem] font-bold uppercase tracking-wider"
                           style={{ background: statusColor + "20", color: statusColor }}>
                           {b.status}
                         </span>

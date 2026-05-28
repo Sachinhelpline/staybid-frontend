@@ -253,7 +253,7 @@ export default function Home() {
                             <span className="text-5xl opacity-20">🏨</span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
                         {/* Heavy dim curtain on side cards so their text/badges/photo
                             never compete with the active card up front. They
                             become abstract "preview shadows" only. */}
@@ -263,14 +263,14 @@ export default function Home() {
                         {/* Top + bottom badges only on the active card */}
                         {isCenter && (
                           <>
-                            <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/70 backdrop-blur-sm border border-red-500/40 px-2 py-0.5 rounded-full">
+                            <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/70 backdrop-blur-xs border border-red-500/40 px-2 py-0.5 rounded-full">
                               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shrink-0" />
                               <span className="text-[0.6rem] font-bold text-red-400 uppercase">Today · {(() => { const a = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng); return a ? `${a}, ${d.city}` : d.city; })()}</span>
                             </div>
                             <span className="absolute top-3 right-3 badge-gold">{d.discount}% OFF</span>
                             <div className={`absolute bottom-3 left-3 flex items-center gap-1 ${isUrgent ? "text-red-400" : "text-white/80"}`}>
                               {isUrgent && <span className="w-1 h-1 bg-red-500 rounded-full animate-pulse" />}
-                              <span className="text-[0.65rem] font-mono font-semibold bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded">
+                              <span className="text-[0.65rem] font-mono font-semibold bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-sm">
                                 {String(hrs).padStart(2,"0")}:{String(mins).padStart(2,"0")}:{String(secs).padStart(2,"0")}
                               </span>
                             </div>
@@ -290,7 +290,7 @@ export default function Home() {
                               </span>
                             </div>
                             <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-700 ${leftSlots <= 2 ? "bg-red-500" : "bg-gradient-to-r from-gold-500 to-gold-300"}`}
+                              <div className={`h-full rounded-full transition-all duration-700 ${leftSlots <= 2 ? "bg-red-500" : "bg-linear-to-r from-gold-500 to-gold-300"}`}
                                 style={{ width: `${Math.min(100, (bookedSlots / totalSlots) * 100)}%` }} />
                             </div>
                           </div>
@@ -382,9 +382,9 @@ export default function Home() {
 
         <div className="relative max-w-7xl mx-auto px-5 pt-14 pb-10 w-full">
           <div className="flex items-center gap-3 mb-5">
-            <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold-500 opacity-70" />
+            <div className="h-px w-8 bg-linear-to-r from-transparent to-gold-500 opacity-70" />
             <span className="text-gold-400 text-[0.65rem] font-semibold tracking-[0.22em] uppercase">India&apos;s First Reverse-Auction Hotel Platform</span>
-            <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold-500 opacity-70" />
+            <div className="h-px w-8 bg-linear-to-l from-transparent to-gold-500 opacity-70" />
           </div>
           <h1 className="font-display font-light text-white leading-[1.06] mb-5"
               style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)" }}>
@@ -406,7 +406,7 @@ export default function Home() {
                 <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && router.push(`/hotels${searchInput ? `?city=${encodeURIComponent(searchInput)}` : selectedCity ? `?city=${encodeURIComponent(selectedCity)}` : ""}`)}
                   placeholder={selectedCity ? `Search in ${selectedCity}…` : "Search destination…"}
-                  className="w-full pl-8 pr-2 py-2 rounded-lg text-white bg-white/10 placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-gold-400/50 border border-white/10 text-xs backdrop-blur-sm transition-all" />
+                  className="w-full pl-8 pr-2 py-2 rounded-lg text-white bg-white/10 placeholder:text-white/40 focus:outline-hidden focus:ring-1 focus:ring-gold-400/50 border border-white/10 text-xs backdrop-blur-xs transition-all" />
               </div>
               <Link href={`/hotels${searchInput ? `?city=${encodeURIComponent(searchInput)}` : selectedCity ? `?city=${encodeURIComponent(selectedCity)}` : ""}`}
                 className="lux-btn px-4 py-2 rounded-lg text-xs whitespace-nowrap">

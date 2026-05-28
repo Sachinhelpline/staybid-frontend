@@ -357,7 +357,7 @@ function AuthPage() {
               <p className="text-center text-xs text-luxury-400 mb-5">We'll send a one-time code via SMS</p>
               <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">Mobile Number</label>
               <div className="flex gap-2 mb-5">
-                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 flex-shrink-0">+91</span>
+                <span className="px-3 py-3 bg-luxury-50 border border-luxury-200 rounded-xl text-sm font-medium text-luxury-600 shrink-0">+91</span>
                 <input type="tel" value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="10-digit number" className="input-luxury text-sm"
@@ -413,7 +413,7 @@ function AuthPage() {
               <p className="text-center text-xs text-luxury-400 mb-5">We'll send a one-time code to your WhatsApp</p>
               <label className="text-xs font-semibold text-luxury-500 uppercase tracking-wider block mb-2">WhatsApp Number</label>
               <div className="flex gap-2 mb-5">
-                <span className="px-3 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-medium text-green-700 flex-shrink-0 flex items-center gap-1">
+                <span className="px-3 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-medium text-green-700 shrink-0 flex items-center gap-1">
                   <WhatsAppIcon /> +91
                 </span>
                 <input type="tel" value={phone}

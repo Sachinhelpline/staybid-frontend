@@ -2186,7 +2186,7 @@ export default function BidPage() {
       <div className="bx-page-wrap mx-auto px-4 pt-4">
 
         {/* v237 — Hide slim hero + StepBar on Step 1. The customer Navbar
-            (sticky top-0 z-[1100] per v237) IS visible above the climber
+            (sticky top-0 z-1100 per v237) IS visible above the climber
             now, so navigation chrome is satisfied via Navbar alone. The
             slim hero + StepBar were duplicating navigation and stealing
             pixels from the mountain backdrop. Steps 2-3 retain them for

@@ -111,7 +111,7 @@ function Sidebar({ listing, active, setActive }: { listing: Listing | null; acti
         {SECTIONS.map((s) => (
           <button key={s.id} onClick={() => setActive(s.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition ${
-                    active === s.id ? "bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-gold"
+                    active === s.id ? "bg-linear-to-r from-gold-500 to-gold-600 text-white shadow-gold"
                                     : "hover:bg-luxury-50 text-luxury-800"
                   }`}>
             <span className="text-lg">{s.icon}</span>
@@ -726,8 +726,8 @@ function PreviewSection({ listing, onChange }: { listing: Listing | null; onChan
       <SectionHead title="Preview your listing" subtitle="This is exactly how guests will see your property. Verify everything is correct." />
 
       <div className="rounded-3xl overflow-hidden border border-luxury-100 shadow-lg bg-white">
-        <div className="aspect-[16/8] bg-cover bg-center bg-luxury-100" style={{ backgroundImage: imgs[0]?.url ? `url(${imgs[0].url})` : undefined }}>
-          <div className="h-full bg-gradient-to-t from-black/50 to-transparent flex items-end p-6">
+        <div className="aspect-16/8 bg-cover bg-center bg-luxury-100" style={{ backgroundImage: imgs[0]?.url ? `url(${imgs[0].url})` : undefined }}>
+          <div className="h-full bg-linear-to-t from-black/50 to-transparent flex items-end p-6">
             <div className="text-white">
               <div className="text-xs uppercase tracking-widest opacity-90">{h.formatted_address || `${h.city}, ${h.state || ""}`}</div>
               <div className="font-display text-4xl">{h.name}</div>
@@ -803,7 +803,7 @@ function PublishSection({ listing, onChange }: { listing: Listing | null; onChan
   if (isPublished) {
     return (
       <div className="text-center py-8">
-        <div className="inline-flex w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-4xl items-center justify-center mb-5">✓</div>
+        <div className="inline-flex w-20 h-20 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 text-white text-4xl items-center justify-center mb-5">✓</div>
         <div className="font-display text-3xl text-luxury-900">Your hotel is live!</div>
         <div className="mt-2 text-luxury-500">Hotel ID <span className="font-mono font-bold text-gold-800">{listing?.hotel?.public_id || listing?.hotel?.id}</span></div>
         <div className="mt-6 flex flex-wrap gap-3 justify-center">

@@ -347,7 +347,7 @@ function GuestDetail({
           <div className="space-y-1.5">
             {g.history.map((h: any, i: number) => (
               <div key={i} className="flex items-center gap-2.5 py-1 border-b border-luxury-50 last:border-0">
-                <span className="text-[0.56rem] font-bold px-1.5 py-0.5 rounded bg-luxury-100 text-luxury-600 shrink-0">{h.kind}</span>
+                <span className="text-[0.56rem] font-bold px-1.5 py-0.5 rounded-sm bg-luxury-100 text-luxury-600 shrink-0">{h.kind}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[0.74rem] font-semibold text-luxury-800 truncate">{h.label}</p>
                   <p className="text-[0.6rem] text-luxury-400">{fmtD(h.date)}</p>

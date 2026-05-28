@@ -32,7 +32,7 @@ export function ContentGrid({ posts, onPickPost }: { posts: Post[]; onPickPost?:
         <button
           key={p.id}
           onClick={() => onPickPost?.(p.id)}
-          className="relative aspect-[9/14] overflow-hidden bg-black/40 active:scale-95 transition-transform"
+          className="relative aspect-9/14 overflow-hidden bg-black/40 active:scale-95 transition-transform"
         >
           {p.thumbnail_url ? (
             <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />

@@ -187,13 +187,13 @@ export default function FnbOrdersTab({ hotelId, hotelName }: { hotelId: string; 
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2.5">
-                  <button onClick={() => printQR(o)} className="btn-gold !px-2.5 !py-1 text-[0.7rem]">🖨 Print QR</button>
+                  <button onClick={() => printQR(o)} className="btn-gold px-2.5! py-1! text-[0.7rem]">🖨 Print QR</button>
                   <button onClick={() => { navigator.clipboard?.writeText(url); showToast("Link copied ✓"); }}
-                    className="btn-ghost !px-2.5 !py-1 text-[0.7rem]">Copy link</button>
-                  <a href={url} target="_blank" rel="noreferrer" className="btn-ghost !px-2.5 !py-1 text-[0.7rem] no-underline">Preview</a>
-                  <button onClick={() => setEditor({ mode: "edit", outlet: o })} className="btn-ghost !px-2.5 !py-1 text-[0.7rem]">✏️</button>
-                  <button onClick={() => toggleOutlet(o)} className="btn-ghost !px-2.5 !py-1 text-[0.7rem]">{o.active ? "⏸" : "▶"}</button>
-                  <button onClick={() => removeOutlet(o.id)} className="btn-ghost !px-2.5 !py-1 text-[0.7rem] !text-red-600 hover:!border-red-300">🗑</button>
+                    className="btn-ghost px-2.5! py-1! text-[0.7rem]">Copy link</button>
+                  <a href={url} target="_blank" rel="noreferrer" className="btn-ghost px-2.5! py-1! text-[0.7rem] no-underline">Preview</a>
+                  <button onClick={() => setEditor({ mode: "edit", outlet: o })} className="btn-ghost px-2.5! py-1! text-[0.7rem]">✏️</button>
+                  <button onClick={() => toggleOutlet(o)} className="btn-ghost px-2.5! py-1! text-[0.7rem]">{o.active ? "⏸" : "▶"}</button>
+                  <button onClick={() => removeOutlet(o.id)} className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
                 </div>
               </div>
             );
@@ -251,7 +251,7 @@ function OutletEditor({ mode, outlet, hotelId, onClose, onSaved }: any) {
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
@@ -365,9 +365,9 @@ function OrderCard({ o, pending, onVerify, onReject }: any) {
       {o.note && <p className="text-[0.62rem] text-blue-600 italic mt-1">📝 {o.note}</p>}
       {pending && (
         <div className="flex gap-1.5 mt-2">
-          <button onClick={() => onVerify(o)} className="btn-gold !px-3 !py-1.5 text-[0.72rem] flex-1">✓ Verify &amp; Bill</button>
+          <button onClick={() => onVerify(o)} className="btn-gold px-3! py-1.5! text-[0.72rem] flex-1">✓ Verify &amp; Bill</button>
           <button onClick={() => onReject(o.id)}
-            className="btn-ghost !px-3 !py-1.5 text-[0.72rem] !text-red-600 hover:!border-red-300">Reject</button>
+            className="btn-ghost px-3! py-1.5! text-[0.72rem] text-red-600! hover:border-red-300!">Reject</button>
         </div>
       )}
     </div>
@@ -405,7 +405,7 @@ function VerifyModal({ order, folios, onClose, onDone }: any) {
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>

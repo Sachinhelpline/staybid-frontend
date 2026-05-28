@@ -117,7 +117,7 @@ export default function ServiceLockModal({
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>

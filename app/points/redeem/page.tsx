@@ -115,7 +115,7 @@ export default function RedeemPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50 pb-24" data-autonext-form>
+    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50 pb-24" data-autonext-form>
       <div className="max-w-5xl mx-auto px-4 pt-6">
 
         {/* Header */}
@@ -233,7 +233,7 @@ export default function RedeemPage() {
 
       {/* Confirm modal */}
       {confirmRule && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center backdrop-blur-md bg-black/70 p-3"
+        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center backdrop-blur-md bg-black/70 p-3"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} onClick={() => !busy && setConfirmRule(null)}>
           <div className="w-full sm:max-w-md rounded-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3 mb-3">
@@ -272,7 +272,7 @@ export default function RedeemPage() {
 
       {/* Success modal */}
       {success && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center backdrop-blur-md bg-black/80 p-3"
+        <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center backdrop-blur-md bg-black/80 p-3"
           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} onClick={() => setSuccess(null)}>
           <div className="w-full sm:max-w-md rounded-3xl bg-white overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 text-center" style={{ background: "linear-gradient(135deg,#fff9ec,#fdf4d3)" }}>

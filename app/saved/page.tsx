@@ -95,7 +95,7 @@ export default function SavedPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-luxury-50 via-white to-luxury-50">
+    <div className="min-h-screen bg-linear-to-b from-luxury-50 via-white to-luxury-50">
       <div className="max-w-5xl mx-auto px-4 pt-6 pb-24">
 
         {/* Header */}
@@ -166,17 +166,17 @@ function SaveCard({
         onClick={() => onOpenReel(String(s.target_id))}
         onUnsave={() => onUnsave(s)}
       >
-        <div className="relative aspect-[9/16] bg-luxury-100">
+        <div className="relative aspect-9/16 bg-luxury-100">
           {t.thumbnail_url
             ? <img src={t.thumbnail_url} alt={t.title || ""} className="w-full h-full object-cover" />
             : t.s3_url
               ? <video src={t.s3_url} className="w-full h-full object-cover" muted playsInline />
               : <div className="w-full h-full flex items-center justify-center text-4xl">🎬</div>}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-          <div className="absolute bottom-2 left-2 right-2 text-white text-[0.7rem] font-bold drop-shadow line-clamp-2">
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
+          <div className="absolute bottom-2 left-2 right-2 text-white text-[0.7rem] font-bold drop-shadow-sm line-clamp-2">
             {t.title || "Reel"}
           </div>
-          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow">▶ {fmtNum(t.views_count || 0)}</div>
+          <div className="absolute top-2 left-2 text-white text-[0.6rem] font-bold drop-shadow-sm">▶ {fmtNum(t.views_count || 0)}</div>
         </div>
       </ClickWrap>
     );
@@ -185,14 +185,14 @@ function SaveCard({
   if (s.target_type === "hotel" && t) {
     return (
       <Wrap href={`/hotels/${t.id}`} onUnsave={() => onUnsave(s)}>
-        <div className="relative aspect-[4/3] bg-luxury-100">
+        <div className="relative aspect-4/3 bg-luxury-100">
           {t.images?.[0]
             ? <img src={sbImage(t.images[0], SB_IMG_CARD)} alt={t.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center text-3xl">🏨</div>}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 text-white">
-            <p className="text-sm font-bold drop-shadow line-clamp-1">{t.name}</p>
-            <p className="text-[0.65rem] font-semibold opacity-90 drop-shadow">{t.city} {t.star_rating ? `· ${"★".repeat(t.star_rating)}` : ""}</p>
+            <p className="text-sm font-bold drop-shadow-sm line-clamp-1">{t.name}</p>
+            <p className="text-[0.65rem] font-semibold opacity-90 drop-shadow-sm">{t.city} {t.star_rating ? `· ${"★".repeat(t.star_rating)}` : ""}</p>
           </div>
         </div>
       </Wrap>
@@ -202,10 +202,10 @@ function SaveCard({
   if (s.target_type === "influencer" && t) {
     return (
       <Wrap href={`/influencer/public/${t.id}`} onUnsave={() => onUnsave(s)}>
-        <div className="aspect-[4/3] bg-gradient-to-br from-gold-100 to-luxury-100 flex flex-col items-center justify-center p-3 text-center">
+        <div className="aspect-4/3 bg-linear-to-br from-gold-100 to-luxury-100 flex flex-col items-center justify-center p-3 text-center">
           {t.avatar_url
-            ? <img src={t.avatar_url} className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow" />
-            : <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-xl ring-4 ring-white shadow">
+            ? <img src={t.avatar_url} className="w-16 h-16 rounded-full object-cover ring-4 ring-white shadow-sm" />
+            : <div className="w-16 h-16 rounded-full bg-linear-to-br from-gold-400 to-gold-600 flex items-center justify-center text-white font-bold text-xl ring-4 ring-white shadow-sm">
                 {(t.display_name || "C").slice(0, 1).toUpperCase()}
               </div>}
           <p className="font-bold text-luxury-900 text-sm mt-2 line-clamp-1">{t.display_name || "Creator"}</p>
@@ -218,7 +218,7 @@ function SaveCard({
   if (s.target_type === "deal" && t) {
     return (
       <Wrap href={`/flash-deals`} onUnsave={() => onUnsave(s)}>
-        <div className="aspect-[4/3] bg-gradient-to-br from-amber-100 to-amber-200 p-4 flex flex-col justify-between">
+        <div className="aspect-4/3 bg-linear-to-br from-amber-100 to-amber-200 p-4 flex flex-col justify-between">
           <div>
             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-700">⚡ Flash Deal</p>
             <p className="font-bold text-luxury-900 text-sm mt-1 line-clamp-2">{t.title || "Deal"}</p>

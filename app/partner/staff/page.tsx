@@ -37,7 +37,7 @@ export default function StaffLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-center justify-center px-4">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         .font-display { font-family: 'Cormorant Garamond', serif; }
@@ -66,7 +66,7 @@ export default function StaffLogin() {
           <p className="text-white/40 text-[0.82rem]">Hotel owner se mila login code &amp; PIN daalo</p>
         </div>
 
-        <div className="bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+        <div className="bg-white/6 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
           <div className="space-y-4">
             <div>
               <label className="text-[0.62rem] font-bold text-white/40 uppercase tracking-widest block mb-2">Login Code</label>

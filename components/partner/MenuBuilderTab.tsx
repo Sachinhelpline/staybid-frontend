@@ -133,11 +133,11 @@ export default function MenuBuilderTab({ hotelId }: { hotelId: string }) {
                   </p>
                   <div className="flex gap-1.5">
                     <button onClick={() => setItemEditor({ mode: "create", categoryId: cat.id })}
-                      className="btn-gold !px-2.5 !py-1 text-[0.7rem]">➕ Dish</button>
+                      className="btn-gold px-2.5! py-1! text-[0.7rem]">➕ Dish</button>
                     <button onClick={() => setCatEditor({ mode: "edit", cat })}
-                      className="btn-ghost !px-2.5 !py-1 text-[0.7rem]">✏️</button>
+                      className="btn-ghost px-2.5! py-1! text-[0.7rem]">✏️</button>
                     <button onClick={() => delCategory(cat.id)}
-                      className="btn-ghost !px-2.5 !py-1 text-[0.7rem] !text-red-600 hover:!border-red-300">🗑</button>
+                      className="btn-ghost px-2.5! py-1! text-[0.7rem] text-red-600! hover:border-red-300!">🗑</button>
                   </div>
                 </div>
                 {list.length === 0 ? (
@@ -244,7 +244,7 @@ function CategoryEditor({ mode, cat, hotelId, onClose, onSaved }: any) {
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>
@@ -320,7 +320,7 @@ function ItemEditor({ mode, item, categoryId, categories, hotelId, onClose, onSa
   }
 
   return modalPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4"
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-3 sm:p-4"
       style={{ background: "rgba(10,8,5,0.62)", backdropFilter: "blur(3px)" }} onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: "90dvh" }} onClick={(e) => e.stopPropagation()}>

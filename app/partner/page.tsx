@@ -109,7 +109,7 @@ export default function PartnerLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-linear-to-br from-luxury-950 via-luxury-900 to-luxury-800 flex items-center justify-center px-4">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         .font-display { font-family: 'Cormorant Garamond', serif; }
@@ -139,13 +139,13 @@ export default function PartnerLogin() {
           <p className="text-white/40 text-[0.82rem]">Sign in to manage your property</p>
         </div>
 
-        <div className="bg-white/[0.06] backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+        <div className="bg-white/6 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
           {step === "phone" ? (
             <div className="space-y-4">
               <div>
                 <label className="text-[0.65rem] font-bold text-white/40 uppercase tracking-widest block mb-2">Mobile Number</label>
                 <div className="flex gap-2">
-                  <div className="gold-input w-16 text-center text-white/60 flex-shrink-0 flex items-center justify-center" style={{width:"56px", padding:"14px 10px"}}>+91</div>
+                  <div className="gold-input w-16 text-center text-white/60 shrink-0 flex items-center justify-center" style={{width:"56px", padding:"14px 10px"}}>+91</div>
                   <input
                     type="tel"
                     value={phone}

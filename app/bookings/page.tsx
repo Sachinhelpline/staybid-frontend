@@ -266,7 +266,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-1000 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -314,7 +314,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                 onChange={(e) => setComments(e.target.value.slice(0, 1000))}
                 rows={4}
                 placeholder="What stood out? What could be better?"
-                className="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none"
+                className="w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-hidden"
                 style={{ background: "var(--bg-input)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}
                 maxLength={1000}
               />
@@ -337,7 +337,7 @@ function RateStayBanner({ bidId, hotelName, stayPoints }: { bidId: string; hotel
                 <button
                   onClick={submit}
                   disabled={submitting}
-                  className="flex-[2] bk-gold-btn text-sm py-2.5 rounded-xl disabled:opacity-60"
+                  className="flex-2 bk-gold-btn text-sm py-2.5 rounded-xl disabled:opacity-60"
                 >
                   {submitting ? "Submitting…" : "Submit & earn 100 points"}
                 </button>

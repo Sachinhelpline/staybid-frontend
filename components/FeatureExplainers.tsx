@@ -36,7 +36,7 @@ function PhoneFrame({ children, accent = "#c9911a" }: { children: ReactNode; acc
     <div className="relative mx-auto" style={{ width: "min(280px, 75vw)", aspectRatio: "9 / 18" }}>
       <div className="absolute inset-0 rounded-[2.2rem] p-[4px]"
            style={{ background: `linear-gradient(145deg, ${accent}cc, #222 40%, #111 70%, ${accent}88)` }}>
-        <div className="w-full h-full rounded-[2rem] overflow-hidden relative bg-[#0a0812] border border-white/5">
+        <div className="w-full h-full rounded-4xl overflow-hidden relative bg-[#0a0812] border border-white/5">
           {/* notch */}
           <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-black rounded-b-xl z-30" />
           {children}
@@ -60,7 +60,7 @@ function FlashScenes({ step }: { step: number }) {
       {/* Scene 0: Home with flash deals carousel */}
       <div className={sceneCls} style={{ opacity: s === 0 ? 1 : 0 }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1"><div className="w-4 h-4 rounded bg-gold-500" /><span className="text-white text-[10px] font-bold">staybid</span></div>
+          <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-sm bg-gold-500" /><span className="text-white text-[10px] font-bold">staybid</span></div>
           <div className="text-[8px] text-white/50">📍 Mussoorie</div>
         </div>
         <p className="text-red-400 text-[7px] font-bold tracking-widest uppercase mb-1">⚡ LIVE NOW</p>
@@ -69,7 +69,7 @@ function FlashScenes({ step }: { step: number }) {
           {[0, 1, 2].map(i => (
             <div key={i} className={`shrink-0 rounded-lg border transition-all ${i === 1 ? "border-gold-400 scale-105 shadow-lg" : "border-white/10 opacity-60"}`}
                  style={{ width: 68, background: "rgba(255,255,255,0.04)", boxShadow: i === 1 ? "0 0 12px rgba(240,180,41,0.5)" : undefined }}>
-              <div className="h-12 bg-gradient-to-br from-gold-500/40 to-purple-500/20 rounded-t-lg relative">
+              <div className="h-12 bg-linear-to-br from-gold-500/40 to-purple-500/20 rounded-t-lg relative">
                 <span className="absolute top-0.5 right-0.5 bg-gold-500 text-[6px] font-bold text-white px-1 rounded-full">40%</span>
               </div>
               <div className="p-1">
@@ -98,8 +98,8 @@ function FlashScenes({ step }: { step: number }) {
 
       {/* Scene 2: Tap deal → opens detail */}
       <div className={sceneCls} style={{ opacity: s === 2 ? 1 : 0 }}>
-        <div className="h-20 bg-gradient-to-br from-gold-500/30 to-navy-800 rounded-xl mb-2 relative overflow-hidden">
-          <span className="absolute top-1 left-1 bg-red-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded">40% OFF</span>
+        <div className="h-20 bg-linear-to-br from-gold-500/30 to-navy-800 rounded-xl mb-2 relative overflow-hidden">
+          <span className="absolute top-1 left-1 bg-red-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded-sm">40% OFF</span>
           <span className="absolute bottom-1 left-1 text-white text-[9px] font-bold">🏨 Mountain Grand</span>
         </div>
         <div className="flex items-center justify-between mb-1">
@@ -151,10 +151,10 @@ function FlashScenes({ step }: { step: number }) {
           <p className="text-gray-900 text-[10px] font-bold mb-1">Pay ₹5,998</p>
           <p className="text-gray-500 text-[7px] mb-2">Mountain Grand · 2 nights</p>
           <div className="space-y-1.5">
-            <div className="h-5 bg-gray-100 rounded flex items-center px-1.5"><span className="text-[7px] text-gray-600">UPI · 9876****88</span></div>
-            <div className="h-5 bg-gray-100 rounded flex items-center px-1.5"><span className="text-[7px] text-gray-400">💳 Card</span></div>
+            <div className="h-5 bg-gray-100 rounded-sm flex items-center px-1.5"><span className="text-[7px] text-gray-600">UPI · 9876****88</span></div>
+            <div className="h-5 bg-gray-100 rounded-sm flex items-center px-1.5"><span className="text-[7px] text-gray-400">💳 Card</span></div>
           </div>
-          <div className="mt-2 h-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded flex items-center justify-center">
+          <div className="mt-2 h-6 bg-linear-to-r from-blue-500 to-blue-600 rounded-sm flex items-center justify-center">
             <span className="text-white text-[8px] font-bold">Pay Now →</span>
           </div>
         </div>
@@ -173,7 +173,7 @@ function FlashScenes({ step }: { step: number }) {
           <p className="text-white/50 text-[8px] mb-3">BID-2026-00241</p>
           <div className="w-full bg-white/5 border border-white/10 rounded-lg p-2">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-gold-500 to-orange-500 rounded" />
+              <div className="w-10 h-10 bg-linear-to-br from-gold-500 to-orange-500 rounded-sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-[8px] font-bold">Mountain Grand</p>
                 <p className="text-white/50 text-[7px]">24-26 Apr · 2 nights</p>
@@ -181,8 +181,8 @@ function FlashScenes({ step }: { step: number }) {
               </div>
             </div>
           </div>
-          <div className="mt-2 w-20 h-5 bg-white rounded flex items-center justify-center">
-            <div className="flex gap-[1px]">
+          <div className="mt-2 w-20 h-5 bg-white rounded-sm flex items-center justify-center">
+            <div className="flex gap-px">
               {Array.from({ length: 14 }).map((_, i) => (
                 <div key={i} className="bg-black" style={{ width: i % 3 === 0 ? 2 : 1, height: 14 }} />
               ))}
@@ -204,7 +204,7 @@ function HotelsScenes({ step }: { step: number }) {
       {/* Scene 0: Nav to Hotels */}
       <div className={sceneCls} style={{ opacity: s === 0 ? 1 : 0 }}>
         <div className="flex items-center gap-1 mb-2">
-          <div className="w-4 h-4 rounded bg-gold-500" />
+          <div className="w-4 h-4 rounded-sm bg-gold-500" />
           <span className="text-white text-[10px] font-bold">staybid</span>
         </div>
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">Explore</p>
@@ -225,8 +225,8 @@ function HotelsScenes({ step }: { step: number }) {
         <p className="text-white/50 text-[8px] mb-2">4 hotels in Mussoorie</p>
         <div className="space-y-1.5">
           {[0, 1, 2].map(i => (
-            <div key={i} className={`flex gap-1.5 p-1.5 rounded-lg border transition-all ${i === 0 ? "border-gold-400 bg-gold-500/10 scale-[1.02]" : "border-white/10 bg-white/[0.02]"}`}>
-              <div className={`w-10 h-10 rounded bg-gradient-to-br ${i === 0 ? "from-gold-500 to-orange-500" : "from-slate-600 to-slate-800"}`} />
+            <div key={i} className={`flex gap-1.5 p-1.5 rounded-lg border transition-all ${i === 0 ? "border-gold-400 bg-gold-500/10 scale-[1.02]" : "border-white/10 bg-white/2"}`}>
+              <div className={`w-10 h-10 rounded-sm bg-linear-to-br ${i === 0 ? "from-gold-500 to-orange-500" : "from-slate-600 to-slate-800"}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-[8px] font-bold truncate">Hotel Option {i + 1}</p>
                 <p className="text-white/40 text-[6px]">⭐ 4.{5 - i}</p>
@@ -239,13 +239,13 @@ function HotelsScenes({ step }: { step: number }) {
 
       {/* Scene 2: Hotel detail + gallery */}
       <div className={sceneCls} style={{ opacity: s === 2 ? 1 : 0 }}>
-        <div className="h-16 bg-gradient-to-br from-gold-500 to-orange-600 rounded-lg mb-2 relative overflow-hidden">
-          <span className="absolute top-1 right-1 bg-black/50 text-white text-[7px] px-1 rounded">1/5</span>
-          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[6px] px-1 py-0.5 rounded">★★★★★</span>
+        <div className="h-16 bg-linear-to-br from-gold-500 to-orange-600 rounded-lg mb-2 relative overflow-hidden">
+          <span className="absolute top-1 right-1 bg-black/50 text-white text-[7px] px-1 rounded-sm">1/5</span>
+          <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[6px] px-1 py-0.5 rounded-sm">★★★★★</span>
         </div>
         <div className="flex gap-1 mb-2">
           {[0,1,2,3].map(i => (
-            <div key={i} className="h-5 flex-1 rounded bg-gradient-to-br from-gold-500/40 to-slate-700" />
+            <div key={i} className="h-5 flex-1 rounded-sm bg-linear-to-br from-gold-500/40 to-slate-700" />
           ))}
         </div>
         <p className="text-white text-[10px] font-bold mb-0.5">The Mountain Grand</p>
@@ -261,18 +261,18 @@ function HotelsScenes({ step }: { step: number }) {
       <div className={sceneCls} style={{ opacity: s === 3 ? 1 : 0 }}>
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">Availability</p>
         <div className="grid grid-cols-2 gap-1.5 mb-2">
-          <div className="border border-gold-400 bg-gold-500/10 rounded p-1.5 text-center">
+          <div className="border border-gold-400 bg-gold-500/10 rounded-sm p-1.5 text-center">
             <p className="text-[6px] text-gold-300">CHECK IN</p>
             <p className="text-white text-[10px] font-bold">24 Apr</p>
           </div>
-          <div className="border border-gold-400 bg-gold-500/10 rounded p-1.5 text-center">
+          <div className="border border-gold-400 bg-gold-500/10 rounded-sm p-1.5 text-center">
             <p className="text-[6px] text-gold-300">CHECK OUT</p>
             <p className="text-white text-[10px] font-bold">27 Apr</p>
           </div>
         </div>
         <div className="space-y-1">
           {[{l:"Adults",v:2},{l:"Children 5-12",v:1},{l:"Kids <5 FREE",v:0}].map(g => (
-            <div key={g.l} className="flex items-center justify-between bg-white/5 rounded p-1.5">
+            <div key={g.l} className="flex items-center justify-between bg-white/5 rounded-sm p-1.5">
               <span className="text-white/70 text-[7px]">{g.l}</span>
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3 rounded-full bg-white/10 text-white text-[7px] flex items-center justify-center">-</span>
@@ -294,7 +294,7 @@ function HotelsScenes({ step }: { step: number }) {
             {name:"Goibibo",     price:4399, you:false},
             {name:"StayBid",     price:2999, you:true},
           ].map(o => (
-            <div key={o.name} className={`flex items-center justify-between p-1.5 rounded border ${o.you ? "border-gold-400 bg-gold-500/15" : "border-white/10 bg-white/[0.02]"}`}
+            <div key={o.name} className={`flex items-center justify-between p-1.5 rounded-sm border ${o.you ? "border-gold-400 bg-gold-500/15" : "border-white/10 bg-white/2"}`}
                  style={o.you ? { boxShadow: "0 0 8px rgba(240,180,41,0.4)" } : undefined}>
               <span className={`text-[8px] font-bold ${o.you ? "text-gold-300" : "text-white/60"}`}>{o.you ? "⚡ " : ""}{o.name}</span>
               <span className={`text-[9px] font-bold tabular-nums ${o.you ? "text-gold-400" : "text-white/50 line-through"}`}>₹{o.price}</span>
@@ -335,10 +335,10 @@ function BidScenes({ step }: { step: number }) {
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">🎯 Place Your Bid</p>
         <p className="text-white text-[10px] font-bold leading-tight mb-2">Name Your Price.<br/><span className="text-gold-400">Hotels Compete.</span></p>
         <div className="space-y-1.5">
-          <div className="bg-white/5 rounded p-1.5"><p className="text-[6px] text-white/50">DESTINATION</p><p className="text-white text-[8px] font-semibold">Mussoorie</p></div>
+          <div className="bg-white/5 rounded-sm p-1.5"><p className="text-[6px] text-white/50">DESTINATION</p><p className="text-white text-[8px] font-semibold">Mussoorie</p></div>
           <div className="grid grid-cols-2 gap-1">
-            <div className="bg-white/5 rounded p-1.5"><p className="text-[6px] text-white/50">CHECK IN</p><p className="text-white text-[8px]">24 Apr</p></div>
-            <div className="bg-white/5 rounded p-1.5"><p className="text-[6px] text-white/50">CHECK OUT</p><p className="text-white text-[8px]">26 Apr</p></div>
+            <div className="bg-white/5 rounded-sm p-1.5"><p className="text-[6px] text-white/50">CHECK IN</p><p className="text-white text-[8px]">24 Apr</p></div>
+            <div className="bg-white/5 rounded-sm p-1.5"><p className="text-[6px] text-white/50">CHECK OUT</p><p className="text-white text-[8px]">26 Apr</p></div>
           </div>
         </div>
       </div>
@@ -352,13 +352,13 @@ function BidScenes({ step }: { step: number }) {
           <p className="text-[6px] text-emerald-400 mt-0.5">↓ 44% below average</p>
         </div>
         <div className="relative h-1.5 bg-white/10 rounded-full mb-1">
-          <div className="absolute left-0 top-0 h-full w-1/3 bg-gradient-to-r from-gold-500 to-gold-300 rounded-full" />
+          <div className="absolute left-0 top-0 h-full w-1/3 bg-linear-to-r from-gold-500 to-gold-300 rounded-full" />
           <div className="absolute left-1/3 top-1/2 -translate-y-1/2 w-3 h-3 bg-gold-400 border-2 border-white rounded-full" style={{ boxShadow: "0 0 8px rgba(240,180,41,0.8)" }} />
         </div>
         <div className="flex justify-between text-[6px] text-white/40 mb-2">
           <span>₹1,000</span><span>₹10,000</span>
         </div>
-        <div className="bg-emerald-500/10 border border-emerald-400/40 rounded p-1.5 text-center">
+        <div className="bg-emerald-500/10 border border-emerald-400/40 rounded-sm p-1.5 text-center">
           <p className="text-emerald-400 text-[7px] font-bold">⚡ Likely to accept</p>
         </div>
       </div>
@@ -396,7 +396,7 @@ function BidScenes({ step }: { step: number }) {
           ].map((o, i) => (
             <div key={o.h} className="flex items-center gap-2 p-1.5 rounded-lg bg-white/5 border border-emerald-400/30"
                  style={{ animation: `slideIn 0.5s ${i * 0.3}s both` }}>
-              <div className="w-6 h-6 rounded bg-gradient-to-br from-gold-500 to-orange-500" />
+              <div className="w-6 h-6 rounded-sm bg-linear-to-br from-gold-500 to-orange-500" />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-[7px] font-bold truncate">{o.h}</p>
                 <p className="text-[6px] text-white/50">{o.tag}</p>
@@ -416,7 +416,7 @@ function BidScenes({ step }: { step: number }) {
         <p className="text-gold-400 text-[8px] font-bold tracking-widest uppercase mb-2">Best Offer</p>
         <div className="bg-gold-500/10 border border-gold-400 rounded-xl p-2 mb-2" style={{ boxShadow: "0 0 14px rgba(240,180,41,0.5)" }}>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded bg-gradient-to-br from-gold-500 to-orange-500" />
+            <div className="w-8 h-8 rounded-sm bg-linear-to-br from-gold-500 to-orange-500" />
             <div>
               <p className="text-white text-[9px] font-bold">Forest Retreat</p>
               <p className="text-[6px] text-emerald-400">Saved ₹2,200 vs OTA</p>
@@ -427,7 +427,7 @@ function BidScenes({ step }: { step: number }) {
             <span className="text-gold-400 font-bold text-lg">₹2,699<span className="text-[7px] text-white/50">/nt</span></span>
           </div>
         </div>
-        <div className="h-6 bg-gradient-to-r from-gold-600 to-gold-400 rounded-lg flex items-center justify-center" style={{ boxShadow: "0 4px 12px rgba(240,180,41,0.4)" }}>
+        <div className="h-6 bg-linear-to-r from-gold-600 to-gold-400 rounded-lg flex items-center justify-center" style={{ boxShadow: "0 4px 12px rgba(240,180,41,0.4)" }}>
           <span className="text-white text-[9px] font-bold">✓ Accept & Pay</span>
         </div>
       </div>
@@ -438,7 +438,7 @@ function BidScenes({ step }: { step: number }) {
           <div className="text-4xl mb-2">🎉</div>
           <p className="text-emerald-400 text-[11px] font-bold mb-1">Saved ₹2,200!</p>
           <p className="text-white/50 text-[8px] mb-3 text-center">Your bid won<br/>Booking confirmed</p>
-          <div className="w-full bg-gradient-to-br from-gold-500/20 to-purple-500/10 border border-gold-400/40 rounded-lg p-2">
+          <div className="w-full bg-linear-to-br from-gold-500/20 to-purple-500/10 border border-gold-400/40 rounded-lg p-2">
             <p className="text-white text-[8px] font-bold">Forest Retreat · Dhanaulti</p>
             <p className="text-white/50 text-[6px]">24-26 Apr · 2 nights</p>
             <div className="flex items-center justify-between mt-1 pt-1 border-t border-white/10">
@@ -667,7 +667,7 @@ export default function FeatureExplainers() {
           <div className="absolute -top-32 -right-32 w-72 h-72 rounded-full pointer-events-none"
                style={{ background: `radial-gradient(circle, ${feat.color}22, transparent 70%)` }} />
 
-          <div className="grid md:grid-cols-[auto,1fr] gap-6 md:gap-8 relative">
+          <div className="grid md:grid-cols-[auto_1fr] gap-6 md:gap-8 relative">
             {/* Phone demo */}
             <div className="flex flex-col items-center">
               <PhoneFrame accent={feat.accent}>
@@ -725,7 +725,7 @@ export default function FeatureExplainers() {
                   const isActiveStep = i === step;
                   return (
                     <button key={i} onClick={() => { stop(); setStep(i); speakOne(lang === "hi" ? s.hi : s.en); }}
-                      className={`w-full text-left flex items-start gap-2 p-2 rounded-lg border transition-all ${isActiveStep ? "border-gold-400/60 bg-gold-500/10" : "border-white/5 hover:border-white/15 bg-white/[0.02]"}`}>
+                      className={`w-full text-left flex items-start gap-2 p-2 rounded-lg border transition-all ${isActiveStep ? "border-gold-400/60 bg-gold-500/10" : "border-white/5 hover:border-white/15 bg-white/2"}`}>
                       <span className="text-[0.65rem] font-bold tabular-nums shrink-0 mt-0.5" style={{ color: isActiveStep ? feat.color : "rgba(255,255,255,0.3)" }}>
                         {String(i + 1).padStart(2, "0")}
                       </span>

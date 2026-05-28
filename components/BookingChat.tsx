@@ -148,7 +148,7 @@ export default function BookingChat({
   return (
     <div className="mt-3 rounded-2xl border border-luxury-200 bg-white overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-2.5 flex items-center justify-between bg-gradient-to-r from-luxury-50 to-gold-50 border-b border-luxury-100">
+      <div className="px-4 py-2.5 flex items-center justify-between bg-linear-to-r from-luxury-50 to-gold-50 border-b border-luxury-100">
         <p className="text-xs font-bold text-luxury-700">
           💬 Trip chat · {mode === "customer" ? hotelName : customerName}
         </p>
@@ -175,11 +175,11 @@ export default function BookingChat({
               <div
                 className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed ${
                   isMine
-                    ? "bg-gradient-to-br from-gold-500 to-amber-600 text-white rounded-br-md"
+                    ? "bg-linear-to-br from-gold-500 to-amber-600 text-white rounded-br-md"
                     : "bg-white border border-luxury-100 text-luxury-800 rounded-bl-md"
                 }`}
               >
-                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                <p className="whitespace-pre-wrap wrap-break-word">{m.body}</p>
                 <p className={`text-[0.55rem] mt-1 ${isMine ? "text-white/70" : "text-luxury-400"}`}>
                   {new Date(m.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                   {isMine && m.read_at ? " · seen" : ""}
@@ -207,13 +207,13 @@ export default function BookingChat({
             }}
             placeholder="Type a message…"
             rows={1}
-            className="flex-1 px-3 py-2 rounded-xl border border-luxury-200 focus:border-gold-400 focus:outline-none text-sm bg-luxury-50/40 resize-none"
+            className="flex-1 px-3 py-2 rounded-xl border border-luxury-200 focus:border-gold-400 focus:outline-hidden text-sm bg-luxury-50/40 resize-none"
             style={{ color: "var(--text-base, #1F1A0F)", caretColor: "var(--accent, #c9911a)" }}
           />
           <button
             onClick={send}
             disabled={sending || !draft.trim()}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 text-white text-sm font-semibold disabled:opacity-40 transition-transform active:scale-[0.97]"
+            className="px-4 py-2 rounded-xl bg-linear-to-r from-gold-500 to-amber-600 text-white text-sm font-semibold disabled:opacity-40 transition-transform active:scale-[0.97]"
           >
             {sending ? "…" : "Send"}
           </button>

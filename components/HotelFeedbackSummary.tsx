@@ -77,7 +77,7 @@ export default function HotelFeedbackSummary({ hotelId }: { hotelId: string }) {
           <div className="text-xs text-luxury-500 mt-0.5">Based on {data.totalReviews} verified post-checkout {data.totalReviews === 1 ? "review" : "reviews"}</div>
         </div>
         {data.score !== null && (
-          <div className="text-center px-4 py-2 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200">
+          <div className="text-center px-4 py-2 rounded-xl bg-linear-to-br from-emerald-50 to-emerald-100 border border-emerald-200">
             <div className="text-2xl font-display text-emerald-900">{data.score}</div>
             <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">Stay Score</div>
           </div>
