@@ -406,8 +406,12 @@ layer(utilities);
     background: #000;
     margin: 0;
     padding: 0;
-    /* Block iOS rubber-band bounce */
-    touch-action: pan-x pan-y;
+    /* Block iOS rubber-band bounce.
+       v241.10 — dropped `pan-x` (reel feed never scrolls horizontally;
+       it was useless). Keeping `pan-x` was blocking Android's
+       edge-swipe back gesture in gesture-nav mode. `pan-y` alone
+       still kills iOS rubber-band + pinch zoom. */
+    touch-action: pan-y;
   }
   body.is-reel-page {
     position: fixed;
