@@ -1317,6 +1317,7 @@ function MyBidsPageInner() {
                       bidId={b.id}
                       hotelId={b.hotelId || b.hotel?.id}
                       acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                      expiresAt={b.expiresAt}
                       onPayNow={() => handlePayNow(b)}
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
                     />

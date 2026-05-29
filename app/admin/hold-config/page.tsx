@@ -192,7 +192,7 @@ function ConfigCard({ config, onEdit, onChanged }: { config: Config; onEdit: () 
         <Pill label="Hold" on={config.hold_enabled} />
         <Pill label="Pay at hotel" on={config.pay_at_hotel_enabled} />
         <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(61,156,245,0.12)", color: "#3D9CF5", border: "1px solid rgba(61,156,245,0.3)" }}>
-          ⏱ Acceptance: {config.acceptance_window_min} min
+          ⏱ Acceptance: {Math.max(30, config.acceptance_window_min || 30)} min
         </span>
       </div>
 
@@ -230,7 +230,10 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
   const [holdEnabled, setHoldEnabled]   = useState(config.hold_enabled);
   const [payHotel, setPayHotel]         = useState(config.pay_at_hotel_enabled);
   const [tiers, setTiers]               = useState<Tier[]>(config.tier_overrides || []);
-  const [acceptanceWindow, setAcceptanceWindow] = useState(config.acceptance_window_min);
+  // v241.26 — clamp the loaded value to the 30-min floor so the editor
+  // shows the EFFECTIVE window (matches the /api/hotel-hold-config read
+  // clamp + the trg_stamp_accepted_expiry DB trigger), not a legacy <30 row.
+  const [acceptanceWindow, setAcceptanceWindow] = useState(Math.max(30, config.acceptance_window_min || 30));
   const [saving, setSaving]             = useState(false);
   const [err, setErr]                   = useState("");
   const isGlobal = config.hotel_id === GLOBAL;
@@ -270,7 +273,7 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
           hold_enabled: holdEnabled,
           pay_at_hotel_enabled: payHotel,
           tier_overrides: tiers.length ? tiers : null,
-          acceptance_window_min: Math.max(1, Math.min(120, acceptanceWindow)),
+          acceptance_window_min: Math.max(30, Math.min(120, acceptanceWindow)),
         }),
       });
       const d = await r.json();
@@ -315,8 +318,8 @@ function EditModal({ config, onClose, onSaved }: { config: Config; onClose: () =
           {/* Acceptance window */}
           <div style={{ marginBottom: 18 }}>
             <label style={lbl}>Acceptance window (minutes)</label>
-            <p style={hint}>Customer has this much time to pay after the hotel accepts their bid. Default 15.</p>
-            <input type="number" min={1} max={120} value={acceptanceWindow} onChange={(e) => setAcceptanceWindow(Number(e.target.value) || 15)}
+            <p style={hint}>Customer has this much time to pay after the hotel accepts their bid. Default 30, minimum 30.</p>
+            <input type="number" min={30} max={120} value={acceptanceWindow} onChange={(e) => setAcceptanceWindow(Number(e.target.value) || 30)}
               style={{ ...inp, width: 120 }} />
           </div>
           {/* Tiers */}

@@ -17,12 +17,13 @@ type Props = {
   bidId: string;
   hotelId?: string;             // for backend persistence + per-hotel windows
   acceptedAt?: string | Date;   // ISO or Date — backend bid.acceptedAt (if available)
+  expiresAt?: string | Date;    // v241.26 — bid.expiresAt, the canonical window-close (preferred)
   windowMin?: number;           // per-hotel override (from hotel_hold_config)
   onPayNow: () => void;
   onExpired?: () => void;
 };
 
-export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin, onPayNow, onExpired }: Props) {
+export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt, windowMin, onPayNow, onExpired }: Props) {
   const [w, setW] = useState<AcceptedBidWindow | null>(null);
   const [tick, setTick] = useState(0);
   const [hotelWindow, setHotelWindow] = useState<number | undefined>(undefined);
@@ -58,6 +59,31 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
   // bid is past its window the timer renders the "expired" state and
   // /my-bids' filterActiveBids hides the row entirely on next render.
   useEffect(() => {
+    // v241.26 — PREFER the bid's stamped expiresAt. The
+    // trg_stamp_accepted_expiry DB trigger now writes expiresAt =
+    // acceptTime + per-hotel window on EVERY accept path, so it's the
+    // canonical "window closes at" and exactly what isBidPayWindowOpen /
+    // isBidExpired read. Driving the countdown off it keeps the timer in
+    // lockstep with the Pay-CTA gate + the stale-row filter (kills the N4
+    // divergence where the timer said "expired" while the CTA stayed open,
+    // or vice-versa). acceptedAt (if passed) only anchors the ring's full
+    // baseline; otherwise we back-derive it from expiresAt − window.
+    if (expiresAt) {
+      const exp = new Date(expiresAt);
+      if (!Number.isNaN(exp.getTime())) {
+        const accMs = acceptedAt && !Number.isNaN(new Date(acceptedAt).getTime())
+          ? new Date(acceptedAt).getTime()
+          : exp.getTime() - effectiveWindow * 60_000;
+        const computed: AcceptedBidWindow = {
+          bidId,
+          acceptedAt: new Date(accMs).toISOString(),
+          expiresAt:  exp.toISOString(),
+        };
+        saveWindow(computed);
+        setW(computed);
+        return;
+      }
+    }
     if (acceptedAt) {
       const acc = new Date(acceptedAt);
       if (!Number.isNaN(acc.getTime())) {
@@ -82,7 +108,7 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
     }
     const seeded = startAcceptanceWindow(bidId, new Date(), effectiveWindow, { hotelId });
     setW(seeded);
-  }, [bidId, acceptedAt, effectiveWindow, hotelId]);
+  }, [bidId, acceptedAt, expiresAt, effectiveWindow, hotelId]);
 
   // Tick every 1s for countdown + 5-min warning trigger
   useEffect(() => {

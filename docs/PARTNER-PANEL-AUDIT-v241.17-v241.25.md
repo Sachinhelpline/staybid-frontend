@@ -206,12 +206,17 @@ Spec: every bid waits for the partner; no auto-accept ever fires.
 30-min window flows through `filterActiveBids` automatically. Optionally surface
 a real countdown chip on ACCEPTED-unpaid rows.
 
-**Phase 2 — cosmetic:** N5 hold-config text/fallbacks; N4 timer/`expiresAt`
-reconciliation (point the timer at `expiresAt` so both agree).
+**Phase 2 — cosmetic: DONE (v241.26).** N5 hold-config text/fallbacks/clamp
+fixed; N4 `AcceptedBidTimer` now prefers `expiresAt` so the countdown agrees
+with `isBidPayWindowOpen` / `isBidExpired`.
 
-**Out of scope unless Sachin asks:** Note 1 (manual-mode vs `/bid` server
-auto-accept), Note 3 (per-city vs per-hotel lock divergence), N6 (pre-pay
-booking creation).
+**N6 — by design, NOT changed.** The FE `/api/bids/:id/pay` route only stamps
+the Razorpay id on `bids.message`; it does not create a booking. The booking
+record originates solely from Railway's accept-time creation, so the pre-pay
+CONFIRMED booking is load-bearing, not a bug.
+
+**Awaiting Sachin's product call:** Note 1 (Manual-mode vs `/bid` server
+auto-accept) and Note 3 (per-city vs per-hotel lock alignment).
 
 ---
 

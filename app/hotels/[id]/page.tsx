@@ -2889,6 +2889,7 @@ export default function HotelDetail() {
                             bidId={String(b.id)}
                             hotelId={String(b.hotelId || hotel?.id || "")}
                             acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                            expiresAt={b.expiresAt}
                             onPayNow={() => router.push(`/my-bids#bid-${b.id}`)}
                           />
                           {/* v241.22 — Pay CTA only renders while the
@@ -3598,6 +3599,7 @@ export default function HotelDetail() {
                         bidId={String(lockedBid.id)}
                         hotelId={String(lockedBid.hotelId || hotel?.id || "")}
                         acceptedAt={lockedBid.acceptedAt || lockedBid.updatedAt || lockedBid.createdAt}
+                        expiresAt={lockedBid.expiresAt}
                         onPayNow={() => router.push(`/my-bids#bid-${lockedBid.id}`)}
                       />
                     </div>

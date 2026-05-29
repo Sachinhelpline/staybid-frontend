@@ -8485,20 +8485,29 @@ this DB, so one trigger fixes all paths — current and future. Migration:
   window stamp to BOTH the cron RPC `mark_expired_holds()` AND the Railway
   accept routes, or the v241.17→.25 regression returns.
 
-### Still open (NOT done — flagged, not fixed)
+### Phase 2 follow-ups
+
+- **N4 — DONE (v241.26).** `AcceptedBidTimer` now takes an optional
+  `expiresAt` prop and prefers it (the canonical window-close stamped by
+  the trigger), so the countdown is in lockstep with `isBidPayWindowOpen` /
+  `isBidExpired`. Callers (`/my-bids`, `/hotels/[id]` ×2) pass `b.expiresAt`.
+- **N5 — DONE (v241.26).** `/admin/hold-config`: hint now "Default 30,
+  minimum 30", input `min=30` + empty fallback `|| 30`, save clamp
+  `Math.max(30, …)`, and the override card + editor seed show the clamped
+  effective value.
+- **N6 — by design, NOT a bug.** Railway accept creates the CONFIRMED
+  booking; the FE `/api/bids/:id/pay` route only stamps the Razorpay id on
+  `bids.message` (it does NOT create a booking). So the accept-time booking
+  is load-bearing — the booking record's sole origin. Left as-is.
+
+### Still open — awaiting Sachin's product call (NOT fixed)
 
 - **N1 / Note 1** — `/bid` reverse-auction server auto-accept (v196) ignores
   the hotel's autopilot mode, so a Manual-mode hotel still auto-accepts
   above-floor `/bid` bids instantly. Pre-existing (pre-v241), product
-  decision — confirm with Sachin before changing.
+  decision — needs Sachin's intended behaviour before changing.
 - **N3** — Railway `place` conflict lock is per-CITY
-  (`findActiveBidInCity`) while FE `place` is per-HOTEL
-  (`findActiveBidOnHotel`). Pre-existing divergence.
-- **N4** — `AcceptedBidTimer` (acceptedAt + hold-config windowMin) vs
-  `isBidPayWindowOpen` (expiresAt) can disagree. Cosmetic; reconcile later.
-- **N5** — `/admin/hold-config` UI still says "Default 15.", empty-input
-  fallback `|| 15`, and the override card shows the raw stored value rather
-  than the clamped effective 30. Cosmetic.
-- **N6** — Railway accept creates a CONFIRMED booking pre-payment; FE accept
-  does not. Pre-existing divergence.
+  (`findActiveBidInCity`) while FE `place` is per-HOTEL (the canonical v200
+  rule). FE is authoritative for the customer flow (Supabase-direct, never
+  calls Railway `place`), so impact is near-zero — alignment only.
 
