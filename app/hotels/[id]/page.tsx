@@ -411,6 +411,7 @@ export default function HotelDetail() {
     acceptedAmount: number;
     deltaPerNight: number;
     nights: number;
+    anchorBid?: any;   // v241.26 — the accepted bid, for the pre-Razorpay pay-window re-check
   }>(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   // 409 — one-active-bid-per-city sheet. Negotiate path only (Book Now / Flash
@@ -2138,7 +2139,7 @@ export default function HotelDetail() {
     // v241.26 — re-check the pay window right before charging Razorpay, in
     // case it lapsed while the modal was open. Never charge the upgrade delta
     // for an anchor that can no longer be paid (would orphan the payment).
-    if (lockedBid && !isBidPayWindowOpen(lockedBid as any)) {
+    if (upgradeModal.anchorBid && !isBidPayWindowOpen(upgradeModal.anchorBid)) {
       setUpgradeModal(null);
       alert("This accepted bid's payment window has closed. Please place a new bid to reserve the room.");
       router.push(`/my-bids#bid-${upgradeModal.bidId}`);
@@ -3349,6 +3350,7 @@ export default function HotelDetail() {
                           acceptedAmount: lockedAmount,
                           deltaPerNight: lockUpgradeDelta,
                           nights: upgradeNights,
+                          anchorBid: lockedBid,
                         });
                       } else if (lockedBidId) {
                         router.push(`/my-bids#bid-${lockedBidId}`);
