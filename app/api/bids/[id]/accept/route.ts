@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 export async function POST(
   req: NextRequest,
@@ -27,7 +28,7 @@ export async function POST(
     const updated = await sbUpdate(
       "bids",
       `id=eq.${id}`,
-      { status: "ACCEPTED", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() }
+      { status: "ACCEPTED", expiresAt: new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString() }
     );
     return NextResponse.json({ bid: updated, accepted: true });
   } catch (e: any) {

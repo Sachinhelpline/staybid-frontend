@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 // Customer accepts a hotel's counter-offer.
 // Flips bid to ACCEPTED and promotes counterAmount → amount.
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     const updated = await sbUpdate("bids", `id=eq.${id}`, {
       status: "ACCEPTED",
       amount: finalAmount,
-      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+      expiresAt: new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString(),
     });
     return NextResponse.json({ bid: updated, accepted: true });
   } catch (e: any) {

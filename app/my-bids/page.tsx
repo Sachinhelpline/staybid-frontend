@@ -11,7 +11,7 @@ import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/pa
 // redeclared inline) so /my-bids + hotel page + any future customer
 // surface stay in lockstep. Bumping this constant in lib/bid-expiry
 // updates every consumer at once.
-import { USER_VIEW_FRESH_GRACE_MS } from "@/lib/bid-expiry";
+import { USER_VIEW_FRESH_GRACE_MS, ACCEPTED_UNPAID_WINDOW_MS, isBidPayWindowOpen } from "@/lib/bid-expiry";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
@@ -760,7 +760,10 @@ function MyBidsPageInner() {
       const acc = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
                 : b?.updatedAt  ? new Date(b.updatedAt).getTime()
                 : created;
-      return now <= acc + 15 * MIN;
+      // v241.22 — fallback uses shared ACCEPTED_UNPAID_WINDOW_MS (30
+      // min default). expiresAt above is the canonical path; this is
+      // belt-and-braces for legacy rows.
+      return now <= acc + ACCEPTED_UNPAID_WINDOW_MS;
     }
     if (status === "COUNTER") {
       const countered = b?.updatedAt ? new Date(b.updatedAt).getTime() : created;
@@ -1317,14 +1320,22 @@ function MyBidsPageInner() {
                       onPayNow={() => handlePayNow(b)}
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
                     />
-                    <button onClick={() => handlePayNow(b)} disabled={actionLoading === b.id}
-                      className="w-full py-3.5 gold-btn rounded-xl text-base font-bold disabled:opacity-40 mt-3"
-                      style={{ animation: "pulseGlow 2s infinite", letterSpacing: "0.02em" }}>
-                      {actionLoading === b.id ? "Opening Payment…" : `💰 Pay Now & Grab — ₹${total.toLocaleString("en-IN")} →`}
-                    </button>
-                    <p className="text-[0.62rem] text-center mt-2 tracking-wide" style={{ color: "var(--text-muted)" }}>
-                      Secure payment via Razorpay · Instant confirmation
-                    </p>
+                    {/* v241.22 — Pay Now CTA only when the server-side
+                        pay window is actually open. Pre-fix the button
+                        rendered even when AcceptedBidTimer above said
+                        "expired" → customer tapped, server 400'd. */}
+                    {isBidPayWindowOpen(b) && (
+                      <>
+                        <button onClick={() => handlePayNow(b)} disabled={actionLoading === b.id}
+                          className="w-full py-3.5 gold-btn rounded-xl text-base font-bold disabled:opacity-40 mt-3"
+                          style={{ animation: "pulseGlow 2s infinite", letterSpacing: "0.02em" }}>
+                          {actionLoading === b.id ? "Opening Payment…" : `💰 Pay Now & Grab — ₹${total.toLocaleString("en-IN")} →`}
+                        </button>
+                        <p className="text-[0.62rem] text-center mt-2 tracking-wide" style={{ color: "var(--text-muted)" }}>
+                          Secure payment via Razorpay · Instant confirmation
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
 

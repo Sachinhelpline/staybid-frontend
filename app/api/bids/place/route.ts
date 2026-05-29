@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 // v200 — One active bid per (customer × HOTEL). Per-flow timers:
 //   • Negotiate (1:1 single hotel)    → 3h
@@ -77,11 +78,15 @@ function isBidStale(b: any): boolean {
             : b?.updatedAt  ? new Date(b.updatedAt).getTime()
             : b?.createdAt  ? new Date(b.createdAt).getTime()
             : 0;
-    return t > 0 && now > t + 15 * ONE_MIN_MS;
+    return t > 0 && now > t + ACCEPTED_UNPAID_WINDOW_MS;
   }
   if (status === "PENDING") {
     if (b?.auto_accept_at) {
       const t = new Date(b.auto_accept_at).getTime();
+      // v241.22 — auto_accept_at + 15min grace stays as-is (this is
+      // the legacy fixed grace for missed crons, distinct from the
+      // ACCEPTED-unpaid pay window). Auto-accept itself runs at
+      // auto_accept_at; the +15min is just slack.
       if (!Number.isNaN(t)) return now > t + 15 * ONE_MIN_MS;
     }
     if (b?.expiresAt) {
@@ -279,7 +284,7 @@ export async function POST(req: NextRequest) {
       // Auto-accepted bids open the 15-min pay-window timer (same window the
       // hotel-accept path uses). Pending bids keep their per-flow timer.
       expiresAt: autoAccept
-        ? new Date(Date.now() + 15 * 60_000).toISOString()
+        ? new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString()
         : expiresAtFor(flow),
       isBestDeal: false,
       // v241 — multi-room support. Denormalized so /api/bids/my doesn't

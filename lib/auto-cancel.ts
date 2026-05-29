@@ -7,10 +7,15 @@
 // real cancellation server-side in a later phase.
 //
 // Defaults (rule documented for backend reference):
-//   • ACCEPTANCE_WINDOW_MIN = 15  // customer has 15 min to pay
+//   • ACCEPTANCE_WINDOW_MIN = 30  // customer has 30 min to pay (v241.22)
 //   • WARNING_THRESHOLD_MIN = 5   // popup warning at 5 min remaining
+//
+// v241.22 — bumped 15 → 30 min per Sachin's call (more humane on slow
+// networks / multi-app payment flows). Mirrors lib/bid-expiry
+// ACCEPTED_UNPAID_WINDOW_MIN. Per-hotel admin override
+// (acceptance_window_min) still wins when configured.
 
-export const ACCEPTANCE_WINDOW_MIN = 15;
+export const ACCEPTANCE_WINDOW_MIN = 30;
 export const WARNING_THRESHOLD_MIN = 5;
 
 export type AcceptedBidWindow = {
