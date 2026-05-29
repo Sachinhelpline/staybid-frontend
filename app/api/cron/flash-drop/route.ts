@@ -16,13 +16,22 @@
 //
 // v241.24 — Hardened against timeouts:
 //   • maxDuration bumped 30 → 60 sec (Vercel Pro / Hobby tolerance)
-//   • TIME_BUDGET_MS guard aborts gracefully at 50 sec so the response
-//     always returns within the platform limit even if the workload
-//     grows. Partial completion is fine — cron-job.org will pick up
-//     the rest on its next scheduled hit (15-30 min later).
-//   • Flash deals processed in PARALLEL batches of 5 instead of
-//     sequential. With N deals each making 4 DB roundtrips, sequential
-//     was the silent killer on slow Supabase windows.
+//   • Flash deals + room recalc processed in PARALLEL batches.
+//
+// v241.27 — Fix recurring cron-job.org "Timeout" emails. Root cause: the
+// internal budgets (35s recalc / 50s total) were set ABOVE cron-job.org's
+// ~30s HTTP client timeout, so cron-job.org gave up and reported "Timeout"
+// while the Vercel function kept running to 50s. With 64 rooms × ~6
+// sequential DB roundtrips each and only 5-way parallelism, a slow Supabase
+// window pushed the recalc past 30s. Three changes keep the response well
+// inside cron-job.org's window:
+//   • Budgets lowered below ~30s: total 24s, recalc 17s (≥7s left for flash
+//     deals + serialising the response). Partial completion is fine — recalc
+//     is idempotent and the next 15-30 min run picks up the rest.
+//   • Parallelism raised 5 → 10 so all 64 rooms normally finish in ~12-17s.
+//   • Per-room timeout so a single hung query (fetch has no default timeout
+//     in Node) can't stall its whole batch.
+// NOT caused by the v241.26 bid/accept work — flash-drop is a separate path.
 
 import { NextResponse } from "next/server";
 import { sbSelect } from "@/lib/onboard/supabase-admin";
@@ -32,9 +41,18 @@ import { processFlashDeals } from "@/lib/pricing/flash";
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-const TIME_BUDGET_MS = 50_000;          // abort before maxDuration triggers
-const ROOM_BATCH = 5;
-const ROOM_RECALC_BUDGET_MS = 35_000;   // leave ≥15s for flash deals
+const TIME_BUDGET_MS = 24_000;          // return INSIDE cron-job.org's ~30s HTTP timeout
+const ROOM_BATCH = 10;                  // 64 rooms → ~7 batches
+const ROOM_RECALC_BUDGET_MS = 17_000;   // leave ≥7s for flash deals + response
+const PER_ROOM_TIMEOUT_MS = 4_000;      // one hung query must not stall its batch
+
+// Bound a promise so a single slow/hung DB roundtrip can't blow the budget.
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`timeout ${ms}ms`)), ms)),
+  ]);
+}
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token") || req.headers.get("x-cron-secret") || "";
@@ -67,7 +85,7 @@ export async function GET(req: Request) {
       const slice = rooms.slice(i, i + ROOM_BATCH);
       await Promise.all(
         slice.map(async (r: any) => {
-          try { await recalculateRoomPrice(r.id); out.recalculated++; }
+          try { await withTimeout(recalculateRoomPrice(r.id), PER_ROOM_TIMEOUT_MS); out.recalculated++; }
           catch (e: any) { out.errors.push({ room: r.id, error: e?.message }); }
         }),
       );
