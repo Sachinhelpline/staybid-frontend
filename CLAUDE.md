@@ -8560,3 +8560,91 @@ and the server `/api/bids/[id]/upgrade-room` route (400 if
 `!isBidPayWindowOpen`). After the tz fix a fresh anchor reads as open, so this
 only blocks genuinely-expired anchors.
 
+---
+
+## flash-drop cron timeout + build-badge bump (v241.27, 2026-05-29)
+
+### v241.27a — `/api/cron/flash-drop` cron-job.org "Timeout" (#179)
+
+cron-job.org emailed `Last status: Timeout` for `/api/cron/flash-drop`
+(attempt ~30s after schedule). **NOT a regression from the v241.26 bid work** —
+flash-drop is a separate path (room-price recalc + flash deals), untouched
+this session; last changed in v241.24.
+
+**Root cause — budget/timeout mismatch:** the internal guards
+(`ROOM_RECALC_BUDGET_MS=35s`, `TIME_BUDGET_MS=50s`) were set ABOVE
+cron-job.org's ~30s HTTP client timeout, so cron-job.org gave up and reported
+Timeout while the Vercel function (maxDuration 60) ran on to 50s. With 64
+rooms × ~6 sequential DB roundtrips each and only 5-way parallelism, a slow
+Supabase window pushed the room recalc past 30s.
+
+**Fix — always return inside cron-job.org's window:**
+  - Budgets lowered: `TIME_BUDGET_MS 50→24s`, `ROOM_RECALC_BUDGET_MS 35→17s`
+    (≥7s left for flash deals + serialising the response). Partial completion
+    is safe — recalc is idempotent; next 15-30 min run finishes the rest
+    (`skippedDueToBudget` already reported).
+  - Parallelism `ROOM_BATCH 5→10` → all 64 rooms normally finish in ~12-17s.
+  - New `PER_ROOM_TIMEOUT_MS=4s` via `withTimeout()` so a single hung query
+    (Node `fetch` has NO default timeout) can't stall its batch.
+
+### v241.27b — build badge bump (#180)
+
+`app/layout.tsx` version chip + `SB_BUILD` were never bumped during v241.26/.27
+→ the live app kept showing **v241.25** after refresh. Bumped both to
+`v241.27`. (Reminder: ALWAYS bump `app/layout.tsx` badge + `SB_BUILD` on every
+ship — it's the only user-visible deploy signal.)
+
+### Branch lineage (this session)
+
+  - **v241.26** → partner-panel audit + `trg_stamp_accepted_expiry` trigger +
+    N1 (`/bid` respects Autopilot mode) + N3 (Railway lock per-hotel, in
+    `staybid-Live` #4) + N4 (timer reads `expiresAt`) + N5 (admin hold-config
+    UI) + IST `parseDbTime` tz fix + room-upgrade money-guard (#178)
+  - **v241.27** → flash-drop cron timeout (#179) + build-badge bump (#180)
+
+### Things to Avoid (v241.27 Era)
+
+- **Never** set a cron endpoint's internal time budget ABOVE the EXTERNAL
+  caller's timeout (cron-job.org ~30s on free). The function must RETURN
+  before the caller gives up, or you get phantom "Timeout" emails while the
+  function actually succeeds. Keep budgets ≤ ~24s for cron-job.org jobs.
+- **Never** `await` a bare `fetch`/`sbSelect` in a batched cron without a
+  per-item `withTimeout()` — Node `fetch` has no default timeout, so one hung
+  roundtrip hangs the whole batch.
+- **Never** ship without bumping `app/layout.tsx` badge + `SB_BUILD`.
+
+---
+
+## Updated production state (v241.27, 2026-05-29)
+
+- **Current version:** v241.27 · branch `claude/hotel-panel-audit-v241-e2wqw`
+  (merged to `main` via #178/#179/#180; `staybid-Live` `master` via #4).
+- **Acceptance-window single source of truth, end-to-end:**
+  - DB trigger `trg_stamp_accepted_expiry` stamps `expiresAt = now +
+    per-hotel acceptance_window_min (≥30)` on EVERY →ACCEPTED transition
+    (cron RPC, Railway, all Next.js routes, future) — fixes Autopilot/Hybrid/
+    Manual partner-accept windows at the data layer.
+  - `parseDbTime()` makes every CLIENT expiry read parse the tz-less
+    `timestamp without time zone` columns as UTC — kills the IST
+    "expired-on-launch" desync. Server reads were already UTC-correct.
+- **`/bid` reverse auction respects Autopilot mode** (auto=instant,
+  manual=PENDING, hybrid=PREMIUM/STRONG via server-side `computeBidderScore`).
+- **Room upgrade** is pay-window-gated at CTA + pre-Razorpay + server route.
+- **flash-drop cron** returns ≤24s (inside cron-job.org's window), 10-way
+  parallel, per-room 4s timeout.
+- **NOT TOUCHED this session beyond the above:** scoring/attribution/commission
+  engines, tier system internals, reel/PWA/animation layers, multi-room data
+  layer. N6 (Railway accept pre-creates the CONFIRMED booking) left as-is —
+  by design (the FE pay route only stamps the Razorpay id; the booking record
+  has no other origin).
+- **Carry-forward / next-session items:**
+  - End-to-end VERIFY on a real IST device: place a fresh bid → accept →
+    confirm the 30-min countdown + "Pay Now & Grab" + lock chip all read
+    correctly (the tz fix), and that the upgrade sheet blocks an expired anchor.
+  - Confirm cron-job.org stops emailing Timeout after a few scheduled runs;
+    optionally raise the job's Timeout setting in the dashboard.
+  - Backfill `hotel_hold_config.acceptance_window_min` legacy `15` rows → `30`
+    (optional; read-time clamp + trigger already enforce ≥30).
+  - Stale ACCEPTED rows created BEFORE the v241.26 deploy may still carry a
+    1-3h `expiresAt`; they age out naturally — no migration needed.
+
