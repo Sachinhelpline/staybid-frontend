@@ -2135,6 +2135,15 @@ export default function HotelDetail() {
   // hotel page polling) picks up the new room+price automatically.
   const executeUpgrade = async () => {
     if (!upgradeModal || !hotel) return;
+    // v241.26 — re-check the pay window right before charging Razorpay, in
+    // case it lapsed while the modal was open. Never charge the upgrade delta
+    // for an anchor that can no longer be paid (would orphan the payment).
+    if (lockedBid && !isBidPayWindowOpen(lockedBid as any)) {
+      setUpgradeModal(null);
+      alert("This accepted bid's payment window has closed. Please place a new bid to reserve the room.");
+      router.push(`/my-bids#bid-${upgradeModal.bidId}`);
+      return;
+    }
     setUpgradeLoading(true);
     try {
       const totalDelta = Math.max(0, upgradeModal.deltaPerNight * upgradeModal.nights);
@@ -3322,7 +3331,16 @@ export default function HotelDetail() {
                       // / COUNTER anchors the customer hasn't paid the
                       // base amount yet — route them to /my-bids to take
                       // the next lifecycle action there.
-                      if (lockedBid && lockedBidId) {
+                      // v241.26 — only allow the upgrade while the accepted
+                      // bid's pay window is still open. Upgrading charges the
+                      // delta now but leaves the ₹{accepted} anchor "due at My
+                      // Bids"; if the window has closed the anchor can no
+                      // longer be paid, so the customer would pay the delta for
+                      // a booking they can never confirm. Route them to /my-bids
+                      // (place a fresh bid) instead. (After the tz-parse fix a
+                      // freshly accepted bid reads as open, so this only blocks
+                      // genuinely-expired anchors.)
+                      if (lockedBid && lockedBidId && isBidPayWindowOpen(lockedBid as any)) {
                         const upgradeNights = globalNights || 1;
                         setUpgradeModal({
                           bidId: String(lockedBidId),

@@ -228,4 +228,30 @@ the FE route (`staybid-Live`).
 
 ---
 
+## ADDENDUM — timezone parse bug (the real "expired on launch" cause)
+
+Customer screenshots (pre-session) showed a freshly accepted bid reading
+"expired" immediately, no Pay-Now, and a room upgrade that charged only the
+₹2,200 delta on a (wrongly) expired ₹3,200 anchor.
+
+**Root cause:** `bids.createdAt` / `bids.expiresAt` are `timestamp without time
+zone`; PostgREST returns them WITHOUT a tz marker. On an IST browser
+`new Date("…T16:30:00")` parses as local = **5.5h behind UTC**, so a 30-min
+window is always "expired" client-side at placement. Server (UTC) read it
+right → silent client/server disagreement. The v241.26 trigger fixed the
+stored value; this fixes the client read. Proven under `TZ=Asia/Kolkata`
+(old → expired −300 min; new → +30 min).
+
+**Fix:** shared `parseDbTime()` in `lib/bid-expiry.ts` (tz-less ⇒ UTC), wired
+into every client expiry read (`isBidExpired`, `isBidPayWindowOpen`,
+`filterUserVisibleBids`/`filterActiveBids`, `/my-bids` liveBids +
+PendingBidCountdown, `AcceptedBidTimer`, `ActiveBidConflictSheet`). Plus a
+pay-window money-guard on the room-upgrade flow (client CTA + pre-Razorpay
+re-check + server 400) so a closed-window anchor can never be upgraded.
+
+This is why merely applying the v241.26 trigger did NOT fix the screenshots on
+its own — the value was right, the IST read was wrong.
+
+---
+
 *Audit only — awaiting confirmation before any fix lands, per the PR #172+ rule.*

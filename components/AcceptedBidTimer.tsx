@@ -12,6 +12,7 @@ import {
   ACCEPTANCE_WINDOW_MIN, WARNING_THRESHOLD_MIN, startAcceptanceWindow,
 } from "@/lib/auto-cancel";
 import { notify } from "@/lib/notifications";
+import { parseDbTime } from "@/lib/bid-expiry";
 
 type Props = {
   bidId: string;
@@ -69,15 +70,17 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
     // or vice-versa). acceptedAt (if passed) only anchors the ring's full
     // baseline; otherwise we back-derive it from expiresAt − window.
     if (expiresAt) {
-      const exp = new Date(expiresAt);
-      if (!Number.isNaN(exp.getTime())) {
-        const accMs = acceptedAt && !Number.isNaN(new Date(acceptedAt).getTime())
-          ? new Date(acceptedAt).getTime()
-          : exp.getTime() - effectiveWindow * 60_000;
+      // v241.26 — parse via parseDbTime: bid.expiresAt is a tz-less Postgres
+      // timestamp; new Date() would read it as local (5.5h off on IST) and
+      // the timer would show "expired" the instant the bid is accepted.
+      const expMs = parseDbTime(expiresAt);
+      if (!Number.isNaN(expMs)) {
+        const accCand = parseDbTime(acceptedAt);
+        const accMs = !Number.isNaN(accCand) ? accCand : expMs - effectiveWindow * 60_000;
         const computed: AcceptedBidWindow = {
           bidId,
           acceptedAt: new Date(accMs).toISOString(),
-          expiresAt:  exp.toISOString(),
+          expiresAt:  new Date(expMs).toISOString(),
         };
         saveWindow(computed);
         setW(computed);
@@ -85,12 +88,12 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, expiresAt
       }
     }
     if (acceptedAt) {
-      const acc = new Date(acceptedAt);
-      if (!Number.isNaN(acc.getTime())) {
+      const accMs = parseDbTime(acceptedAt);
+      if (!Number.isNaN(accMs)) {
         const computed: AcceptedBidWindow = {
           bidId,
-          acceptedAt: acc.toISOString(),
-          expiresAt:  new Date(acc.getTime() + effectiveWindow * 60_000).toISOString(),
+          acceptedAt: new Date(accMs).toISOString(),
+          expiresAt:  new Date(accMs + effectiveWindow * 60_000).toISOString(),
         };
         // Overwrite any stale local seed with the real timestamp.
         saveWindow(computed);

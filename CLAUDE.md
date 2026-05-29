@@ -8518,3 +8518,45 @@ this DB, so one trigger fixes all paths — current and future. Migration:
   FE is authoritative for the customer flow, so this is a consistency
   alignment for any direct API caller.
 
+### CRITICAL — timezone parse bug: ACCEPTED bids read "expired" instantly (v241.26)
+
+Customer SS (pre-session): a freshly launched/accepted bid showed
+"Acceptance window expired" the instant it landed; `/my-bids` Place Bid had
+no "Pay Now & Grab"; the hotel-page lock chip read expired; the room-upgrade
+sheet still let the customer pay only the ₹2,200 delta on a (wrongly) expired
+₹3,200 anchor.
+
+**Root cause (deeper than the v241.26 trigger):** `bids.createdAt` and
+`bids.expiresAt` are `timestamp without time zone` columns. PostgREST returns
+them WITHOUT a tz marker (e.g. `"2026-05-29T16:30:00.149"`), while `now()`
+(timestamptz) comes back as `"…+00:00"`. On an **IST browser**,
+`new Date("2026-05-29T16:30:00")` is parsed as **local IST = 5.5h behind** the
+real UTC instant. For a 30-min window the bid is ALWAYS "expired" on the
+client the moment it's placed. The **server (Vercel, UTC) parsed it
+correctly**, so client and server silently disagreed — the deepest layer of
+the recurring "expired immediately / Place Bid (0) but conflict" class. The
+v241.26 trigger fixed the stored *value*; this fixes the client *read*.
+(Proven under `TZ=Asia/Kolkata`: old parse → expired, −300 min; new parse →
++30 min remaining.)
+
+**Fix — shared `parseDbTime(v)` in `lib/bid-expiry.ts`:** treats a tz-less
+string as UTC (appends `Z`); passes tz-aware strings (`+00:00`, `Z`,
+`auto_accept_at`) through untouched. Wired into every CLIENT expiry read:
+  - `lib/bid-expiry.ts` — `isBidExpired`, `isBidPayWindowOpen`,
+    `filterUserVisibleBids` (→ also fixes `filterActiveBids`, so the partner
+    Bid Inbox + admin ledger on IST devices stop hiding live ACCEPTED rows).
+  - `app/my-bids/page.tsx` — `liveBids` window logic + `PendingBidCountdown`.
+  - `components/AcceptedBidTimer.tsx` — countdown source.
+  - `components/ActiveBidConflictSheet.tsx` — conflict countdown.
+  Server routes (`/api/bids/place` `isBidStale`, `trigger-accept`) were
+  already correct (UTC runtime) and are left as-is; `auto_accept_at` is
+  `timestamptz` so it never needed it.
+
+**Room-upgrade money-guard (SS3):** the upgrade charges the delta now and
+leaves the accepted amount "due at My Bids", so it must NEVER run on a bid
+whose pay window has closed. Gated in three places: the hotel-page upgrade CTA
+(won't open the sheet), `executeUpgrade` (re-checks right before Razorpay),
+and the server `/api/bids/[id]/upgrade-room` route (400 if
+`!isBidPayWindowOpen`). After the tz fix a fresh anchor reads as open, so this
+only blocks genuinely-expired anchors.
+

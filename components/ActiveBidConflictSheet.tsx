@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { parseDbTime } from "@/lib/bid-expiry";
 
 export type BidConflict = {
   bidId: string;
@@ -85,7 +86,9 @@ export default function ActiveBidConflictSheet({
   }, []);
   const expiresMs = useMemo(() => {
     if (!conflict.expiresAt) return 0;
-    return new Date(conflict.expiresAt).getTime() - now;
+    // v241.26 — parseDbTime: conflict.expiresAt is a tz-less Postgres
+    // timestamp via the place 409; new Date() would mis-read it as local.
+    return parseDbTime(conflict.expiresAt) - now;
   }, [conflict.expiresAt, now]);
 
   // Body scroll lock while open
