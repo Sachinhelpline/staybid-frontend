@@ -796,7 +796,10 @@ export default function BidPage() {
   // Capped at 10 (the Counter's max). Re-evaluates on every form
   // change.
   const totalGuests  = form.adults + form.children;
-  const minRooms     = minRoomsForGuests(totalGuests, form.roomTypes || []);
+  // v241.21 — adults-drive-rooms (children up to cap-per-room are
+  // passengers, don't inflate room count). See lib/catalog.ts header
+  // comment for the full rule + worked examples.
+  const minRooms     = minRoomsForGuests(form.adults, form.children, form.roomTypes || []);
   const cappedMinRooms = Math.min(10, minRooms);
   const roomsShortBy = Math.max(0, cappedMinRooms - form.rooms);
   // v241.14 — Symmetric auto-fit. Previously this effect only INCREASED

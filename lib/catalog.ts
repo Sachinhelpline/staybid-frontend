@@ -95,9 +95,47 @@ export function capacityForCategories(roomTypeIds: string[]): number {
   return sum / roomTypeIds.length;
 }
 
-export function minRoomsForGuests(guests: number, roomTypeIds: string[]): number {
-  const cap = capacityForCategories(roomTypeIds);
-  return Math.max(1, Math.ceil(Math.max(1, guests) / Math.max(1, cap)));
+// v241.21 — Adults-drive-rooms rule (children are passengers).
+//
+// Customer's spec (Sachin 2026-05-29):
+//   "2 guest par 2 children tak koi room nahi badhega"
+//   "har 2 adult par 2 children matlab koi extra room ki requirement nahi"
+//   "5 adults: 2+2 → 1 room, 2+2 → 1 extra room, 3rd room 1 adult +
+//    up to 2 children — bina extra room ke."
+//
+// Translation: each room holds up to `cap` ADULTS AND up to `cap`
+// CHILDREN side-by-side. Children DO NOT inflate room count unless they
+// overflow per-room limit. Rule:
+//     minRooms = max( ceil(adults / cap), ceil(children / cap) )
+//   bounded so every room can have ≥ 1 adult: cap at adults itself when
+//   children would otherwise demand more rooms than adults exist.
+//
+// Examples (cap = 2):
+//   • 4 adults · 3 children → max(2, 2) = 2 rooms  (was 4 — wrong)
+//   • 5 adults · 0 children → max(3, 0) = 3 rooms
+//   • 5 adults · 6 children → max(3, 3) = 3 rooms
+//   • 2 adults · 5 children → max(1, 3) = 3, then clamp ≤ 2 adults
+//     = 2 rooms (1 child overflow → server-side capacityMismatch chip)
+//
+// Pre-v241.21 `minRoomsForGuests(totalGuests, …)` summed adults +
+// children before dividing → every child added 0.5 of a room. Customer
+// saw rooms auto-bump from 2 → 4 on a 4-adult + 3-child party (per
+// Sachin's ss).
+//
+// Signature changed (adults, children, roomTypeIds). Only consumer
+// (`app/bid/page.tsx`) updated in lock-step. Future surfaces (hotel
+// detail page guest picker) should adopt this same helper.
+export function minRoomsForGuests(adults: number, children: number, roomTypeIds: string[]): number {
+  const cap = Math.max(1, capacityForCategories(roomTypeIds));
+  const a = Math.max(0, Math.floor(adults));
+  const c = Math.max(0, Math.floor(children));
+  const adultsRoomsNeeded = Math.ceil(Math.max(1, a) / cap);
+  const childrenRoomsNeeded = Math.ceil(c / cap);
+  const naive = Math.max(adultsRoomsNeeded, childrenRoomsNeeded);
+  // Every room needs ≥ 1 adult. If children would demand more rooms
+  // than we have adults to fill them, clamp to `a` (server flags the
+  // capacity mismatch separately so customer sees a soft warning).
+  return Math.max(1, a > 0 ? Math.min(naive, a) : 1);
 }
 
 /* ── Meal plans ──────────────────────────────────────────────────
