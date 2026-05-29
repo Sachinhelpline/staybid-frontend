@@ -8424,3 +8424,81 @@ cron-job.org email: `/api/cron/flash-drop` Timeout. UNRELATED to bids
   - Customer notification on bid-conflict push (v228, blocked by
     mobile OTP DLT approval).
 
+---
+
+## Hotel Partner Panel Audit + Acceptance-Window Trigger Era (v241.26, 2026-05-29)
+
+Ran the deferred Hotel Partner Panel audit (Autopilot / Hybrid / Manual
+modes) flagged at the end of the v241.17–v241.25 era. Full report:
+`docs/PARTNER-PANEL-AUDIT-v241.17-v241.25.md`.
+
+### Regression found
+
+v241.17 made `bids.expiresAt` the single source of truth for the
+ACCEPTED-unpaid window, and stamped `expiresAt = now + 30min` on the six
+Next.js / FE accept paths. But the **two server paths that accept most
+partner-panel bids never adopted the contract**:
+  - `mark_expired_holds()` Supabase RPC (cron) — the **Autopilot + Hybrid**
+    auto-accept flip — did `UPDATE bids SET status='ACCEPTED'` with **no
+    `expiresAt`**.
+  - Railway `POST /api/bids/:id/accept` (+ `/counter-accept`, agent assist)
+    — the **Manual + all-mode partner override** accept — set status only.
+
+Result: bids accepted by the cron or by the partner kept their PENDING-era
+`expiresAt` (`createdAt + 1h` for `/bid`-flow, `+ 3h` for Negotiate/Book-Now),
+so the intended 30-min window silently became **1–3h** on every surface that
+reads `expiresAt`: the customer Pay CTA + `/hotels/[id]` lock chip
+(`isBidPayWindowOpen`), the partner Bid Inbox visibility / "Confirmed" count /
+"Est. Revenue" (`filterActiveBids`), and the one-bid-per-hotel conflict lock
+(`isBidStale`). Pre-v241.17 the client used `createdAt + 15min` and ignored
+`expiresAt`, so this only became a regression once v241.17 shifted the read.
+
+### Fix — v241.26 central DB trigger (`trg_stamp_accepted_expiry`)
+
+Per Sachin: future-proof, no app alteration, covers **every** entry point
+(place / negotiate / Book-Now / flash / future). A single `BEFORE INSERT OR
+UPDATE OF status` trigger on `public.bids` stamps
+`expiresAt = (now() AT TIME ZONE 'UTC') + per-hotel acceptance_window_min
+(GREATEST 30 floor, admin override ≥30 wins)` on every transition INTO
+ACCEPTED. Railway (Prisma), the cron RPC, and the Next.js routes all write to
+this DB, so one trigger fixes all paths — current and future. Migration:
+`migrations/2026-05-29-v241.26-accepted-expiry-trigger.sql` (applied live via
+`apply_migration` `v241_26_accepted_expiry_trigger`).
+
+  - Idempotent: fires only on a REAL transition into ACCEPTED; an
+    already-ACCEPTED re-write (the payment write) is skipped → paid windows
+    are never disturbed and the 30-min clock never restarts.
+  - Additive: brand-new BEFORE trigger; does not touch `trg_on_bid_accepted`
+    (AFTER, commissions/points), `trg_log_bid_status`, or
+    `trg_sync_bids_city_lower`.
+  - Verified live: a status-only flip rewrote a stale 3h `expiresAt` to
+    exactly now+30min (test rolled back, nothing committed).
+
+### Things to Avoid (v241.26 Era)
+
+- **Never** rely on application code to stamp the ACCEPTED-unpaid `expiresAt`
+  again. The DB trigger `trg_stamp_accepted_expiry` is now the single
+  authority for the window on flip-to-ACCEPTED. The inline `now + 30min`
+  stamps still present in the FE accept routes are harmless (the trigger
+  overrides with the per-hotel value) but are no longer load-bearing.
+- **Never** drop `trg_stamp_accepted_expiry` without first re-adding the
+  window stamp to BOTH the cron RPC `mark_expired_holds()` AND the Railway
+  accept routes, or the v241.17→.25 regression returns.
+
+### Still open (NOT done — flagged, not fixed)
+
+- **N1 / Note 1** — `/bid` reverse-auction server auto-accept (v196) ignores
+  the hotel's autopilot mode, so a Manual-mode hotel still auto-accepts
+  above-floor `/bid` bids instantly. Pre-existing (pre-v241), product
+  decision — confirm with Sachin before changing.
+- **N3** — Railway `place` conflict lock is per-CITY
+  (`findActiveBidInCity`) while FE `place` is per-HOTEL
+  (`findActiveBidOnHotel`). Pre-existing divergence.
+- **N4** — `AcceptedBidTimer` (acceptedAt + hold-config windowMin) vs
+  `isBidPayWindowOpen` (expiresAt) can disagree. Cosmetic; reconcile later.
+- **N5** — `/admin/hold-config` UI still says "Default 15.", empty-input
+  fallback `|| 15`, and the override card shows the raw stored value rather
+  than the clamped effective 30. Cosmetic.
+- **N6** — Railway accept creates a CONFIRMED booking pre-payment; FE accept
+  does not. Pre-existing divergence.
+
