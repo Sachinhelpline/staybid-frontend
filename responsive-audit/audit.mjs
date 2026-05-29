@@ -34,9 +34,31 @@ const BASE = getArg("base", "http://localhost:3000");
 const SURFACE = getArg("surface", "customer");
 const ONLY = getArg("only", "").split(",").filter(Boolean);
 const SHOTS = !args.includes("--no-shots");
+const AUTH = args.includes("--auth");
 const DEVICE_FILTER = getArg("devices", "").split(",").filter(Boolean);
 
 const TOL = 2; // px tolerance for sub-pixel rounding
+
+// A well-formed dummy customer session so auth-gated routes render their real
+// authenticated layout instead of bouncing to /auth. The token is a syntactically
+// valid (unsigned) JWT whose payload carries the id getClientUserId() reads;
+// backend calls will still 401, but the page chrome/skeletons render — which is
+// exactly what a layout audit needs.
+const AUDIT_USER = { id: "audit-user", phone: "9990000000", name: "Audit User", email: "audit@staybid.test", role: "user" };
+function makeFakeJwt() {
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  const payload = { id: AUDIT_USER.id, user_id: AUDIT_USER.id, sub: AUDIT_USER.id, exp: Math.floor(Date.now() / 1000) + 86400 * 365 };
+  return `${b64({ alg: "none", typ: "JWT" })}.${b64(payload)}.audit`;
+}
+function sessionInitScript() {
+  const token = makeFakeJwt();
+  const user = JSON.stringify(AUDIT_USER);
+  return `try{
+    localStorage.setItem('sb_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_user', ${JSON.stringify(user)});
+    localStorage.setItem('sb_token_type', 'backend');
+  }catch(e){}`;
+}
 
 // In-page detector. Returns a plain-serialisable findings object.
 function detectorSource() {
@@ -146,6 +168,7 @@ async function run() {
       hasTouch: device.hasTouch,
       userAgent: device.ua,
     });
+    if (AUTH) await context.addInitScript(sessionInitScript());
     const page = await context.newPage();
     const consoleErrors = [];
     page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 200)); });
