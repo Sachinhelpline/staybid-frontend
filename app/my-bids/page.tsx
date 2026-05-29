@@ -7,6 +7,11 @@ import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/paid-amount";
+// v241.20 — Shared customer-view freshness window. Imported (not
+// redeclared inline) so /my-bids + hotel page + any future customer
+// surface stay in lockstep. Bumping this constant in lib/bid-expiry
+// updates every consumer at once.
+import { USER_VIEW_FRESH_GRACE_MS } from "@/lib/bid-expiry";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
@@ -709,17 +714,12 @@ function MyBidsPageInner() {
   // 23:55 IST + lands the user on /my-bids at 00:01 IST will ALWAYS show
   // the new card, even if some other timestamp got skewed. Stops the
   // "Place Bid empty after launch" feedback cycle from recurring.
-  // v241.19 — FRESH_GRACE relaxed 30 min → 24 hours so EVERY bid the
-  // customer placed today stays visible regardless of the per-status
-  // stale window. Previous 30-min grace was too short: a 35-min-old
-  // auto-accepted bid disappeared from view (because expiresAt =
-  // createTime + 15min is past 15 min from creation), confusing the
-  // customer who expected to see it AND triggering re-launch attempts
-  // that 409'd against the same bid still considered active server-side
-  // for the first hour. 24h grace matches the calendar-day mental model
-  // ("my bids from today") and is safe — stale bids still get the
-  // correct visual treatment in their cards.
-  const FRESH_GRACE_MS = 24 * 60 * 60 * 1000;
+  // v241.20 — FRESH_GRACE imported from lib/bid-expiry so this surface
+  // and the hotel page consume the SAME constant (single source of
+  // truth). Was: inline `24 * 60 * 60 * 1000` declared here and a
+  // separate inline 30-min window on hotel page → drift. Now both use
+  // USER_VIEW_FRESH_GRACE_MS; any future change is one-line.
+  const FRESH_GRACE_MS = USER_VIEW_FRESH_GRACE_MS;
   const MIN = 60_000;
   const HOUR = 60 * MIN;
   const liveBids = useMemo(() => bids.filter((b) => {

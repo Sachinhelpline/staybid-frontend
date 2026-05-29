@@ -143,7 +143,42 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
   return false;
 }
 
-// Convenience: filter helper used by customer / partner / admin views.
+// Convenience: filter helper used by partner / admin "operator" views
+// (Bid Inbox, admin ledger). Strict — drops bids the moment they exit
+// their per-status payment / response window.
 export function filterActiveBids<T extends BidLike>(bids: T[], nowMs: number = Date.now()): T[] {
   return bids.filter((b) => !isBidExpired(b, nowMs));
+}
+
+// v241.20 — Customer-view filter. Same per-status windows PLUS a 24-hour
+// FRESH_GRACE that keeps EVERY bid the customer placed today visible
+// regardless of expiresAt math. Pre-v241.20 the customer-facing surfaces
+// were split between /my-bids (had a 30-min inline FRESH_GRACE, then
+// 24h in v241.19) and /hotels/[id] + /bookings (used strict
+// filterActiveBids → bids vanished from the hotel page after 15-min
+// ACCEPTED-unpaid window, hiding the lock/upgrade CTAs the customer
+// still wanted to see).
+//
+// Single source of truth from v241.20: every CUSTOMER-FACING surface
+// calls this; every OPERATOR-FACING surface (partner inbox, admin
+// ledger) keeps filterActiveBids so stale bids drop off their to-do
+// list correctly. Per-card UI (Pay Now CTA, lock chip, upgrade chip)
+// is still responsible for gracefully degrading when the bid is past
+// its acutal payment window — visibility ≠ actionability.
+// v241.20 — Exported so /my-bids and any other customer-view surface
+// can derive the SAME freshness window without redeclaring the
+// constant. Single source of truth eliminates the drift that produced
+// the v241.19 / v241.20 mismatch (/my-bids had 24h, hotel page had
+// 15min). Bumping this value here updates every customer surface.
+export const USER_VIEW_FRESH_GRACE_MS = 24 * 60 * 60 * 1000;
+export function filterUserVisibleBids<T extends BidLike>(bids: T[], nowMs: number = Date.now()): T[] {
+  return bids.filter((b) => {
+    // Fresh: created in the last 24h → ALWAYS visible.
+    if (b?.createdAt) {
+      const created = new Date(b.createdAt).getTime();
+      if (!Number.isNaN(created) && nowMs - created < USER_VIEW_FRESH_GRACE_MS) return true;
+    }
+    // Otherwise, fall back to the strict per-status window.
+    return !isBidExpired(b, nowMs);
+  });
 }
