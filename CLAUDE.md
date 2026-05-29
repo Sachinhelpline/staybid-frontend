@@ -8157,3 +8157,270 @@ copy-paste command sequence to run next session.
   - Customer notification on bid-conflict push (v228, blocked by
     mobile OTP DLT approval).
   - 9-hour bid expiry countdown stale-state validation (v240 era).
+
+---
+
+## Multi-Room Bid + Acceptance Window Hardening Era (v241.17 → v241.24, 2026-05-28 → 2026-05-29)
+
+Same-day continuation of the v241.10-v241.16 era. Customer-reported
+bugs across `/my-bids` + `/hotels/[id]` + `/bid` review sheet drove a
+deep-research refactor culminating in a single source of truth for bid
+visibility, payment-window, and acceptance-window logic. Per Sachin's
+explicit "sare aspects check karke change karo" directive, every PR in
+this era ships with an audit table identifying every consumer surface
+and what does/doesn't change.
+
+### v241.17 — bid `expiresAt` single source of truth (#169)
+
+Root cause of the recurring "Place Bid (0) but conflict fires" desync:
+the `bids` table has NO `acceptedAt`/`updatedAt` columns. Three
+surfaces computed "is ACCEPTED-unpaid bid still active" differently:
+  - Server `isBidStale` (`/api/bids/place`) → `expiresAt`
+  - Client `/my-bids` `liveBids` → `createdAt + 15min`
+  - `lib/bid-expiry` `isBidExpired` → `createdAt + 15min` + IST cutoff
+
+Accept routes flipped status → ACCEPTED but NEVER updated `expiresAt`.
+Result: partner-accepted place bid (accepted later than created) was
+hidden client-side while server still considered it active → conflict
+fired but bid was invisible.
+
+**Fix — converge all 3 on `expiresAt`:**
+  - 4 accept routes (accept, counter-accept, trigger-accept,
+    partner/bids) stamp `expiresAt = now + 15min` on flip to ACCEPTED.
+  - `/my-bids` `liveBids` reads `expiresAt` first.
+  - `isBidExpired` reads `expiresAt` first + IST cutoff removed.
+
+Also BidGameZone `LiveBidCard` (Step 6 review sheet "Pay Now & Grab")
+now takes `numRooms` + `nights` props and displays the chargeable
+total (₹8,600), not the per-room rate (₹4,300).
+
+### v241.18 — ensureUser no-clobber + diagnostics (#170)
+
+Customer still reported `/my-bids` "Place Bid (0)" with active-bid
+conflict. v241.18 surfaced diagnostic strip on the empty state which
+revealed: `API returned 219 bids · filtered to 0 in this tab` →
+identity-bridge was working server-side, drop was entirely client-side.
+
+But also found the deeper structural bug: `ensureUser` (`lib/sb-server`)
+ran an unconditional upsert with `phone: phone || unknown_<id>`. Every
+Firebase Google sign-in (no phone claim in JWT) OVERWROTE the user's
+real phone with `unknown_<id>` → broke cross-identity resolution
+permanently.
+
+**Fix — two-step no-clobber:**
+  1. INSERT with placeholder, but ONLY if row missing
+     (`Prefer: resolution=ignore-duplicates`).
+  2. PATCH the row with REAL phone/name ONLY when JWT carries them.
+
+Also added `_debug` block to `/api/bids/my` response + diagnostic
+`<details>` collapsible on empty `/my-bids` state showing
+`{primaryId, resolvedIds, rawBidCount, jwtPhone, jwtEmail}`.
+
+### v241.19 — FRESH_GRACE 24h + "Show all" rescue (#171)
+
+Diagnostic from v241.18 showed 219 bids returned but ALL stale-filtered
+by `/my-bids` `liveBids` (30-min FRESH_GRACE too short for the
+customer's calendar-day mental model).
+
+**Fixes:**
+  - FRESH_GRACE 30 min → 24 hours. Every bid the customer placed today
+    stays visible regardless of per-status windows.
+  - "Show all N bids (incl. stale)" rescue button on section-empty
+    state — bypasses BOTH stale window AND `HIDE_TERMINAL` gate.
+  - Diagnostic strip extended with funnel breakdown: raw flow split,
+    after-stale count, per-status counts.
+
+### v241.20 — customer-view bid filter convergence (#172)
+
+After v241.19 relaxed `/my-bids` to 24h, `/hotels/[id]` STAYED on
+strict `filterActiveBids` → a 35-min-old accepted bid was visible on
+`/my-bids` but **invisible** on the hotel page (no "Your offers"
+section, no lock chip, no upgrade chip).
+
+**Fix — single source of truth in `lib/bid-expiry.ts`:**
+  - `filterActiveBids` — STRICT (existing, kept for operator surfaces).
+  - `filterUserVisibleBids` — NEW 24h FRESH_GRACE wrapper (for customer
+    surfaces).
+  - `USER_VIEW_FRESH_GRACE_MS` — exported shared constant.
+
+`/hotels/[id]` swapped THREE callsites to `filterUserVisibleBids`
+(`pageActiveBids`, `activeOffers`, `activeMyBids`). `/my-bids` imports
+the shared constant instead of redeclaring 24h inline. Operator
+surfaces (`/admin/bookings`, `/partner/dashboard`) explicitly kept on
+strict `filterActiveBids`.
+
+### v241.21 — children-are-passengers rooms rule (#173)
+
+Customer ss: 4 adults + 3 children auto-bumped rooms to 4 (should be
+2). Pre-v241.21 `minRoomsForGuests(totalGuests, ...)` summed adults +
+children before dividing by capacity.
+
+**New rule (lib/catalog.ts, signature changed):**
+```
+minRooms = max( ceil(adults / cap), ceil(children / cap) )
+```
+bounded by `≤ adults` (every room needs ≥ 1 adult). Children up to
+`cap` per room ride free; only overflow demands extra rooms.
+
+Worked: 4A·3C → max(2,2)=2 ✓ (was 4) · 5A·0C → 3 · 5A·6C → 3 ·
+2A·5C → clamp at 2 (overflow flagged via server `capacityMismatch`).
+
+### v241.22 — 30-min ACCEPTED-unpaid window + real-time timer + Pay CTA gating + expired-state visibility (#174)
+
+Three customer-reported issues:
+  1. BidGameZone (`/bid` Step 6) timer reset on every refresh.
+  2. "Acceptance window expired" text invisible (white-on-cream).
+  3. Pay Now CTA still rendered on expired bids.
+
+Plus Sachin's recommendation: bump 15 → 30 min default payment window.
+
+**Fixes:**
+  - `app/bid/page.tsx` persists `launchTs` in sessionStorage alongside
+    `success`; lazy-init from snap; effect only stamps on launch
+    (`cur || Date.now()`).
+  - `AcceptedBidTimer` expired state switched from `text-white/...` to
+    theme-aware amber/cocoa palette.
+  - New shared helper `isBidPayWindowOpen` in `lib/bid-expiry.ts`;
+    gates Pay button on `/hotels/[id]` + `/my-bids`.
+  - Centralised `ACCEPTED_UNPAID_WINDOW_MIN/MS = 30` in
+    `lib/bid-expiry.ts`; consumers updated in lockstep across 4 accept
+    routes + place auto-accept + budget update + `lib/auto-cancel`
+    `ACCEPTANCE_WINDOW_MIN`.
+
+### v241.23 — hold-config default 30 + session TTL 24h (#175)
+
+v241.22 missed two spots; v241.23 caught:
+  - `/api/hotel-hold-config` API default `?? 15` → `?? 30`.
+  - `/admin/hold-config` form default `?? 15` → `?? 30`.
+  - `app/bid/page.tsx` `SB_BID_SESSION_TTL_MS` 30 min → 24 hours.
+    Customer browsing rooms for > 30 min on `/hotels/[id]` lost the
+    BidGameZone review sheet on back-nav. 24h matches
+    `USER_VIEW_FRESH_GRACE_MS`.
+
+### v241.24 — flash-drop cron timeout hardened (#176)
+
+cron-job.org email: `/api/cron/flash-drop` Timeout. UNRELATED to bids
+(bid expiry is read-time `expiresAt` computation, no cron).
+
+**Three hardenings:**
+  1. `processFlashDeals` sequential `for` → parallel `Promise.all`
+     batches of 5 (mirrors room-recalc pattern).
+  2. `maxDuration` 30 → 60 sec.
+  3. `TIME_BUDGET_MS = 50_000` graceful abort guard — returns 200
+     with `skippedDueToBudget` count if workload exceeds 50 sec.
+
+### Branch lineage
+
+  - v241.16 → docs + dep maintenance
+  - **v241.17** → bid-expiresAt-single-source-of-truth (#169)
+  - **v241.18** → ensureuser-no-clobber-and-diagnostics (#170)
+  - **v241.19** → fresh-grace-24h-and-show-all-rescue (#171)
+  - **v241.20** → customer-view-bid-filter-converge (#172)
+  - **v241.21** → children-are-passengers-rooms-rule (#173)
+  - **v241.22** → 30min-window-realtime-timer-pay-gating (#174)
+  - **v241.23** → hold-config-default-30-plus-session-ttl-24h (#175)
+  - **v241.24** → flash-drop-cron-timeout-hardened (#176)
+
+### Things to Avoid (v241.17 → v241.24 Era)
+
+- **Never** add a new ACCEPTED-unpaid window constant inline. Always
+  import `ACCEPTED_UNPAID_WINDOW_MS` (or `_MIN`) from
+  `@/lib/bid-expiry`. Inline duplicates silently drift the moment
+  one consumer updates and others don't — exactly what v241.22
+  consolidated away.
+- **Never** add a new customer-facing bid filter inline. Use
+  `filterUserVisibleBids` from `@/lib/bid-expiry`. Operator surfaces
+  still use `filterActiveBids` (strict).
+- **Never** make `ensureUser` upsert phone/name unconditionally. The
+  v241.18 contract is "INSERT with placeholder + PATCH only real
+  values". Any new upsert path must respect that order or the
+  cross-identity bridge silently dies.
+- **Never** read AcceptedBidTimer `effectiveWindow` defaults inline.
+  Default cascade is `windowMin prop → hotelWindow (per-hotel admin
+  override) → ACCEPTANCE_WINDOW_MIN (lib/auto-cancel)`.
+- **Never** sum adults + children before dividing by capacity for
+  room-count math. Use the v241.21 rule:
+  `max(ceil(adults/cap), ceil(children/cap))` bounded by `≤ adults`.
+- **Never** persist `launchTs` only in React state. The v241.22
+  contract is "persist in sessionStorage alongside success" or the
+  countdown restarts on refresh.
+- **Never** add a Pay button without gating with
+  `isBidPayWindowOpen(b)`. Server's `/api/bids/pay` will 400 on
+  expired bids; the customer should never see a button that's
+  guaranteed to fail.
+- **Never** use sequential `for` loop with N×K DB roundtrips inside a
+  Vercel cron. Batch with `Promise.all` (v241.24 pattern) and add a
+  `TIME_BUDGET_MS` guard that returns 200 with `skippedDueToBudget`.
+
+### What this era did NOT do (intentionally)
+
+- **Database migration to add `acceptedAt` column.** Would let the
+  server stamp acceptance time directly. Skipped — `expiresAt` covers
+  the same need with less schema churn; v241.17 single-source-of-truth
+  works fine as-is.
+- **Backfill `acceptance_window_min` rows to 30.** The DB still has
+  per-hotel rows with explicit 15. Code default is 30 (v241.23); hotels
+  with no explicit override inherit 30. A separate admin pass can flip
+  legacy rows if needed.
+- **Move 15-min "auto_accept_at + grace" to use the shared constant.**
+  That's a SEPARATE grace (for missed crons on PENDING auto-accept),
+  semantically distinct from the ACCEPTED-unpaid pay window. Keeping
+  them independent is correct.
+- **Audit Hotel Partner Panel (Autopilot / Hybrid / Manual modes).**
+  Sachin flagged this for a follow-up session — see
+  `docs/PARTNER-PANEL-AUDIT-NEXT-SESSION.md` for the runbook.
+
+---
+
+## Updated production state (v241.24, 2026-05-29)
+
+- **Current version:** v241.24 · branch
+  `claude/claude-md-v240-2-verify-bxtxa`
+- **Bid pipeline single-source-of-truth.** Every customer surface
+  reads from `lib/bid-expiry`:
+  - `filterUserVisibleBids` (24h FRESH_GRACE) — `/my-bids` +
+    `/hotels/[id]`.
+  - `filterActiveBids` (strict) — `/admin/bookings` +
+    `/partner/dashboard`.
+  - `isBidPayWindowOpen` — every Pay CTA on customer surfaces.
+  - `ACCEPTED_UNPAID_WINDOW_MIN/MS = 30` — every accept route + server
+    `isBidStale` + client liveBids + AcceptedBidTimer.
+- **Diagnostic strip on `/my-bids` empty state.** Customer can SEE
+  raw API state + funnel breakdown when something looks off.
+  Includes `_debug` block from `/api/bids/my`.
+- **`ensureUser` no-clobber.** Real phone never overwritten by phone-
+  less Firebase JWT. Cross-identity bridge stays intact across mixed-
+  auth sessions.
+- **BidGameZone state survives 24h.** Session TTL bumped 30 min → 24h.
+  `launchTs` persisted so the Step 6 countdown is real-time.
+- **AcceptedBidTimer expired state readable** on both light cream and
+  dark cocoa themes (amber/cocoa palette).
+- **Flash-drop cron hardened.** Parallel batches of 5, 60-sec
+  maxDuration, 50-sec budget guard with graceful partial completion.
+- **Children-are-passengers room math.** `/bid` Step 4 auto-fit no
+  longer inflates room count per child. Adults drive room count;
+  children up to `cap` per room ride free.
+- **NOT TOUCHED this era:** scoring engine, attribution chain,
+  commission engine, tier system, partner panel (Autopilot/Hybrid/
+  Manual modes — flagged for follow-up), admin panel (apart from the
+  hold-config default bump), reel-app surfaces, animation layer,
+  service billing, cross-identity resolver (only `resolveUserIds`'s
+  `ensureUser` upstream), reel-dedup v131.8 chain, multi-room data
+  layer, pending-intent layer.
+- **Service-worker** stable URL `/sw.js`, stable static + HTML caches
+  per v93 — no SW logic changed across the entire v241.17-v241.24 run.
+- **Carry-forward pending items:**
+  - **Hotel Partner Panel audit** (Autopilot / Hybrid / Manual modes
+    — Sachin flagged for next session, see
+    `docs/PARTNER-PANEL-AUDIT-NEXT-SESSION.md`).
+  - Backfill `hotel_hold_config.acceptance_window_min` legacy 15 rows
+    to 30 via admin pass (optional).
+  - 1 bid per city rule + budget edit rule end-to-end verification
+    after 30-min window expires (Sachin's note from v241.22).
+  - Next 16 / React 19 / TS 6 major bump
+    (`docs/NEXT-MAJOR-UPGRADE.md`).
+  - Re-approach mobile gesture-nav + camera-notch chrome with
+    on-device testing (v241.10–v241.13 reverted).
+  - Customer notification on bid-conflict push (v228, blocked by
+    mobile OTP DLT approval).
+
