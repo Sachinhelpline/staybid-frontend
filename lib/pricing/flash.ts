@@ -26,58 +26,70 @@ export async function processFlashDeals(): Promise<{ scanned: number; updated: n
   const details: any[] = [];
   let updated = 0;
 
-  for (const deal of deals) {
-    const dropInterval = Number(deal.drop_interval_mins) || 30;
-    const dropAmount   = Number(deal.drop_amount) || 50;
-    const riseTrigger  = Number(deal.rise_trigger_pct) || 60;
-    const startPrice   = Number(deal.start_price) || Number(deal.aiPrice);
-    const lastDropAt   = deal.last_drop_at || deal.createdAt;
-    const minutesSinceDrop = (Date.now() - new Date(lastDropAt).getTime()) / 60_000;
+  // v241.24 — process deals in PARALLEL batches of 5 (matches the
+  // /api/cron/flash-drop route's batching for room recalc). Previously
+  // a sequential `for` loop made N × 4 DB roundtrips serially, which
+  // was the silent killer on Vercel's 30-sec timeout when Supabase was
+  // slow or when there were 50+ active flash deals. Each deal's writes
+  // are id-scoped (no cross-deal race), so parallel is safe.
+  const BATCH = 5;
+  for (let i = 0; i < deals.length; i += BATCH) {
+    const slice = deals.slice(i, i + BATCH);
+    await Promise.all(
+      slice.map(async (deal: any) => {
+        const dropInterval = Number(deal.drop_interval_mins) || 30;
+        const dropAmount   = Number(deal.drop_amount) || 50;
+        const riseTrigger  = Number(deal.rise_trigger_pct) || 60;
+        const startPrice   = Number(deal.start_price) || Number(deal.aiPrice);
+        const lastDropAt   = deal.last_drop_at || deal.createdAt;
+        const minutesSinceDrop = (Date.now() - new Date(lastDropAt).getTime()) / 60_000;
 
-    const bookingsSince = await bookingsSinceForRoom(deal.roomId, lastDropAt);
-    const vacancy = await getVacancyRate(deal.hotelId);
+        const bookingsSince = await bookingsSinceForRoom(deal.roomId, lastDropAt);
+        const vacancy = await getVacancyRate(deal.hotelId);
 
-    let newPrice: number | null = null;
-    let reason = "";
+        let newPrice: number | null = null;
+        let reason = "";
 
-    // Rule: no bookings + interval elapsed → drop
-    if (bookingsSince === 0 && minutesSinceDrop >= dropInterval) {
-      const candidate = Math.max(Number(deal.aiPrice) - dropAmount, Number(deal.floorPrice));
-      if (candidate < Number(deal.aiPrice)) {
-        newPrice = candidate;
-        reason = "no_booking_drop";
-      }
-    }
-    // Rule: filling fast → raise (capped at start_price)
-    else if (vacancy < riseTrigger && Number(deal.aiPrice) < startPrice) {
-      const candidate = Math.min(Number(deal.aiPrice) * 1.08, startPrice);
-      if (candidate > Number(deal.aiPrice)) {
-        newPrice = Math.round(candidate);
-        reason = "demand_rise";
-      }
-    }
+        // Rule: no bookings + interval elapsed → drop
+        if (bookingsSince === 0 && minutesSinceDrop >= dropInterval) {
+          const candidate = Math.max(Number(deal.aiPrice) - dropAmount, Number(deal.floorPrice));
+          if (candidate < Number(deal.aiPrice)) {
+            newPrice = candidate;
+            reason = "no_booking_drop";
+          }
+        }
+        // Rule: filling fast → raise (capped at start_price)
+        else if (vacancy < riseTrigger && Number(deal.aiPrice) < startPrice) {
+          const candidate = Math.min(Number(deal.aiPrice) * 1.08, startPrice);
+          if (candidate > Number(deal.aiPrice)) {
+            newPrice = Math.round(candidate);
+            reason = "demand_rise";
+          }
+        }
 
-    if (newPrice && newPrice !== Number(deal.aiPrice)) {
-      try {
-        await sbUpdate("flash_deals", `id=eq.${deal.id}`, {
-          aiPrice: newPrice,
-          last_drop_at: new Date().toISOString(),
-        });
-        await sbInsert("price_history", {
-          flash_deal_id: deal.id,
-          hotel_id: deal.hotelId,
-          room_id: deal.roomId,
-          old_price: Number(deal.aiPrice),
-          new_price: newPrice,
-          reason,
-          triggered_by: "ai",
-        });
-        updated++;
-        details.push({ dealId: deal.id, oldPrice: Number(deal.aiPrice), newPrice, reason });
-      } catch (e: any) {
-        details.push({ dealId: deal.id, error: e?.message });
-      }
-    }
+        if (newPrice && newPrice !== Number(deal.aiPrice)) {
+          try {
+            await sbUpdate("flash_deals", `id=eq.${deal.id}`, {
+              aiPrice: newPrice,
+              last_drop_at: new Date().toISOString(),
+            });
+            await sbInsert("price_history", {
+              flash_deal_id: deal.id,
+              hotel_id: deal.hotelId,
+              room_id: deal.roomId,
+              old_price: Number(deal.aiPrice),
+              new_price: newPrice,
+              reason,
+              triggered_by: "ai",
+            });
+            updated++;
+            details.push({ dealId: deal.id, oldPrice: Number(deal.aiPrice), newPrice, reason });
+          } catch (e: any) {
+            details.push({ dealId: deal.id, error: e?.message });
+          }
+        }
+      })
+    );
   }
 
   return { scanned: deals.length, updated, details };
