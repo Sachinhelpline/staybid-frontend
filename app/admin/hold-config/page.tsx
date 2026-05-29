@@ -69,7 +69,9 @@ export default function AdminHoldConfig() {
       hold_enabled: globalCfg?.hold_enabled ?? true,
       pay_at_hotel_enabled: globalCfg?.pay_at_hotel_enabled ?? true,
       tier_overrides: globalCfg?.tier_overrides ? JSON.parse(JSON.stringify(globalCfg.tier_overrides)) : null,
-      acceptance_window_min: globalCfg?.acceptance_window_min ?? 15,
+      // v241.23 — default bumped 15 → 30 in lockstep with
+      // lib/bid-expiry ACCEPTED_UNPAID_WINDOW_MIN.
+      acceptance_window_min: globalCfg?.acceptance_window_min ?? 30,
       updated_at: new Date().toISOString(),
       hotel: { id: hotel.id, name: hotel.name, city: hotel.city },
     });
