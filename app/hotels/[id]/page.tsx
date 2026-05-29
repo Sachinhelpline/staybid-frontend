@@ -48,7 +48,7 @@ import {
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
-import { filterActiveBids, isBidPaid } from "@/lib/bid-expiry";
+import { filterActiveBids, filterUserVisibleBids, isBidPaid } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
 // v199 — Update Budget slider for PENDING/COUNTER cards in the
 // "Your offers" section. Same control as /my-bids — extracted to a
@@ -754,7 +754,12 @@ export default function HotelDetail() {
   // v182 — Phase 1: hoist the locked-bid + countered context to the
   // component scope so BOTH the sticky sidebar (A1) and the per-room
   // cards (A3 inside the IIFE further down) read the same values.
-  const pageActiveBids = filterActiveBids(myBids as any[]);
+  // v241.20 — Use the customer-view filter (24h FRESH_GRACE) so a bid
+  // placed earlier today stays visible on the hotel page even after its
+  // strict 15-min pay window — same source of truth as /my-bids.
+  // Eliminates the "visible on /my-bids but invisible on hotel page"
+  // drift. Lock + upgrade CTAs still gate actionability per-card.
+  const pageActiveBids = filterUserVisibleBids(myBids as any[]);
   const pageLockedBid  = pageActiveBids.find((b: any) => b.status === "ACCEPTED") || null;
   const pageCounteredBid = pageActiveBids.find((b: any) => b.status === "COUNTER") || null;
   const pageLockedAmount = pageLockedBid
@@ -2739,7 +2744,12 @@ export default function HotelDetail() {
           // "Place Bid (0)" on one screen and "2 accepted bids" on the
           // other. Now both surfaces consume filterActiveBids from
           // lib/bid-expiry so the state agrees.
-          const activeOffers = filterActiveBids(myBids as any[]).filter((b: any) =>
+          // v241.20 — Use customer-view filter (24h fresh grace) so
+          // every bid the customer placed today stays visible here, in
+          // sync with /my-bids. Strict pay window still enforced inside
+          // the card UI (Pay CTA degrades to "Expired — re-bid" past
+          // the 15-min ACCEPTED-unpaid window).
+          const activeOffers = filterUserVisibleBids(myBids as any[]).filter((b: any) =>
             b.status === "PENDING" || b.status === "ACCEPTED" || b.status === "COUNTER"
           );
           if (activeOffers.length === 0) return null;
@@ -3128,7 +3138,13 @@ export default function HotelDetail() {
           // room in the same hotel shows a flash-deal-style upgrade chip
           // priced against the locked amount. All filtering uses the same
           // expiry rule as /my-bids / partner Bid Inbox / admin ledger.
-          const activeMyBids   = filterActiveBids(myBids as any[]);
+          // v241.20 — Customer-view filter (24h fresh grace) so the
+          // lock chip + upgrade CTA still surface for today's bids past
+          // the strict 15-min ACCEPTED-unpaid window. Same source of
+          // truth as /my-bids + activeOffers above. The per-room
+          // lock/upgrade UI is responsible for gracefully degrading
+          // when the bid's pay window has actually expired.
+          const activeMyBids   = filterUserVisibleBids(myBids as any[]);
           const lockedBid      = activeMyBids.find((b: any) => b.status === "ACCEPTED") || null;
           const pendingByRoom  = new Map<string, any>();
           const counteredByRoom = new Map<string, any>();
