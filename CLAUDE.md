@@ -8648,3 +8648,41 @@ ship — it's the only user-visible deploy signal.)
   - Stale ACCEPTED rows created BEFORE the v241.26 deploy may still carry a
     1-3h `expiresAt`; they age out naturally — no migration needed.
 
+---
+
+## v241.26/.27 verify close-out + global-default backfill (v241.28, 2026-05-29)
+
+Verify-only session against the v241.26/.27 ship. All six shipped items
+re-confirmed to hold; no regressions found. Nothing read "expired" wrongly,
+every acceptance window resolves to exactly 30 min, no Autopilot-mode mismatch.
+
+### What was verified (and how)
+- **DB trigger `trg_stamp_accepted_expiry` — live-proven.** Definition still
+  correct (ACCEPTED-only, idempotent skip-if-already-ACCEPTED,
+  `GREATEST(30, per-hotel → _global_defaults → 30)`, stamps
+  `NOW() AT TIME ZONE 'UTC'`). A rolled-back live test (EXPIRED→ACCEPTED flip)
+  restamped `expiresAt` to **exactly now+30.000 min**, then aborted — nothing
+  committed. The other three `bids` triggers untouched.
+- **`parseDbTime()`** wired into all six client reads (`isBidExpired`,
+  `isBidPayWindowOpen`, `filterUserVisibleBids`→`filterActiveBids`, `my-bids`
+  `liveBids`+`PendingBidCountdown`, `AcceptedBidTimer`, `ActiveBidConflictSheet`).
+- **`/bid` Autopilot mode**, **upgrade pay-window guard (3 gates)**, **Railway
+  per-hotel conflict lock**, **flash-drop budgets (24s/17s/10/4s)** — all
+  present as shipped. Railway accept routes still set status only, correctly
+  relying on the trigger.
+- **Could NOT close from the container:** an authenticated `/api/cron/flash-drop`
+  run (the Vercel deployment URL is behind deployment-protection → 401; the
+  canonical domain is network-blocked). No error/timeout runtime logs in 24h.
+  Still needs a real "Run now" on cron-job.org to confirm 200 in <24s.
+
+### Change shipped this session
+- **Global-default backfill (closes the carry-forward item).**
+  `hotel_hold_config._global_defaults.acceptance_window_min` was still stored as
+  `15` (the only row < 30). Floored to 30 everywhere already, but the stored
+  value now matches intent so nothing depends on the trigger/resolver clamp
+  alone. Migration `2026-05-29-v241.28-backfill-global-acceptance-window-30.sql`,
+  applied live; verified `rows_below_30 = 0`. No behavior change.
+- **NOT done (by design):** sweeping the 2 stale pre-trigger ACCEPTED-unpaid
+  rows (May 17–18) to EXPIRED — they already read as expired and are filtered
+  out everywhere, so a production status mutation isn't warranted.
+
