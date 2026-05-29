@@ -34,13 +34,25 @@ export async function GET(req: NextRequest) {
       // rows with explicit acceptance_window_min still win (admin
       // override). New hotels + hotels without an explicit override
       // now inherit 30 from this fallback.
-      acceptance_window_min: config?.acceptance_window_min ?? defaults?.acceptance_window_min ?? 30,
+      // v241.25 — Clamp to MINIMUM 30. The previous default of 15 was
+      // stored on many existing hotel rows BEFORE this bump. Treating
+      // those rows as legacy and clamping to 30 retroactively gives
+      // every hotel the new floor without an admin backfill pass.
+      // Admins can still EXPLICITLY override to anything ≥ 30 (e.g.
+      // 60-min window for luxury hotels). Values < 30 are silently
+      // upgraded — by design, since 15 was the platform default not a
+      // hotel-specific choice.
+      acceptance_window_min: Math.max(30, Number(config?.acceptance_window_min ?? defaults?.acceptance_window_min ?? 30)),
     };
     return new NextResponse(JSON.stringify({ resolved }), {
       headers: {
         "Content-Type": "application/json",
         // Cache for 2 minutes — tier changes are rare
-        "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
+        // v241.25 — max-age tightened 120 → 30 so the v241.23/.25 default
+        // bump propagates within ~30 sec instead of 2 min. swr lets
+        // stale-but-acceptable values keep serving while a fresh fetch
+        // runs in the background.
+        "Cache-Control": "public, max-age=30, stale-while-revalidate=120",
       },
     });
   } catch (e: any) {
