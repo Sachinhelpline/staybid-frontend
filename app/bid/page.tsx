@@ -545,7 +545,13 @@ function DateAutoOpener({ shouldOpen, onOpen }: { shouldOpen: boolean; onOpen: (
 // left off — including the Review Bid sheet auto-opening over the form.
 // Cleared on Pay handoff (router.replace to /my-bids) or after 30 min.
 const SB_BID_SESSION_KEY = "sb_bid_session_v1";
-const SB_BID_SESSION_TTL_MS = 30 * 60 * 1000;
+// v241.23 — TTL bumped 30 min → 24h to match the customer-view bid
+// freshness window (lib/bid-expiry USER_VIEW_FRESH_GRACE_MS). Pre-fix
+// a customer who spent >30 min on /hotels/[id] (e.g. browsing other
+// rooms before returning to pay) lost the BidGameZone Step 7 review
+// sheet — back from hotel landed on /bid Step 1. Now session survives
+// the entire day, so back nav restores the review sheet reliably.
+const SB_BID_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 type BidSessionSnapshot = {
   step: number;

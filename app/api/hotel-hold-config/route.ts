@@ -29,7 +29,12 @@ export async function GET(req: NextRequest) {
       hold_enabled:          config?.hold_enabled          ?? defaults?.hold_enabled          ?? true,
       pay_at_hotel_enabled:  config?.pay_at_hotel_enabled  ?? defaults?.pay_at_hotel_enabled  ?? true,
       tier_overrides:        config?.tier_overrides        ?? defaults?.tier_overrides        ?? null,
-      acceptance_window_min: config?.acceptance_window_min ?? defaults?.acceptance_window_min ?? 15,
+      // v241.23 — default bumped 15 → 30 to match the codebase-wide
+      // ACCEPTED_UNPAID_WINDOW_MIN (lib/bid-expiry). Existing hotel
+      // rows with explicit acceptance_window_min still win (admin
+      // override). New hotels + hotels without an explicit override
+      // now inherit 30 from this fallback.
+      acceptance_window_min: config?.acceptance_window_min ?? defaults?.acceptance_window_min ?? 30,
     };
     return new NextResponse(JSON.stringify({ resolved }), {
       headers: {
