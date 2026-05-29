@@ -113,6 +113,14 @@ function MyBidsPageInner() {
   // `fetchError` holds any error from getMyBids (replaces silent .catch).
   const [apiDebug, setApiDebug] = useState<any>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // v241.19 — "Show all bids" toggle. When server returns N bids but
+  // client filter (liveBids stale-window + _isPlaceBid classification)
+  // drops them all, the customer sees Place Bid (0) with no recourse.
+  // Toggling this bypasses BOTH the stale filter AND the flow
+  // classification — every bid the API returned is shown with a stale
+  // badge if it's past its expiresAt window. Customer can then SEE
+  // their bid history + dismiss / pay as needed.
+  const [showAll, setShowAll] = useState(false);
   // v194 — guard so the `?payNow=<id>` deep-link from /bid success screen
   // only fires the BookingReview modal once per landing (re-renders /
   // polling refresh must not re-open it).
@@ -701,7 +709,17 @@ function MyBidsPageInner() {
   // 23:55 IST + lands the user on /my-bids at 00:01 IST will ALWAYS show
   // the new card, even if some other timestamp got skewed. Stops the
   // "Place Bid empty after launch" feedback cycle from recurring.
-  const FRESH_GRACE_MS = 30 * 60 * 1000;
+  // v241.19 — FRESH_GRACE relaxed 30 min → 24 hours so EVERY bid the
+  // customer placed today stays visible regardless of the per-status
+  // stale window. Previous 30-min grace was too short: a 35-min-old
+  // auto-accepted bid disappeared from view (because expiresAt =
+  // createTime + 15min is past 15 min from creation), confusing the
+  // customer who expected to see it AND triggering re-launch attempts
+  // that 409'd against the same bid still considered active server-side
+  // for the first hour. 24h grace matches the calendar-day mental model
+  // ("my bids from today") and is safe — stale bids still get the
+  // correct visual treatment in their cards.
+  const FRESH_GRACE_MS = 24 * 60 * 60 * 1000;
   const MIN = 60_000;
   const HOUR = 60 * MIN;
   const liveBids = useMemo(() => bids.filter((b) => {
@@ -782,14 +800,37 @@ function MyBidsPageInner() {
   // rendered row count, which was confusing.
   const placeBidCount  = useMemo(() => liveBids.filter((b) =>  b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [liveBids]);
   const negotiateCount = useMemo(() => liveBids.filter((b) => !b._isPlaceBid && !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())).length, [liveBids]);
+  // v241.19 — when `showAll` is ON, bypass BOTH the stale window
+  // (liveBids) AND the HIDE_TERMINAL filter. The flow split still
+  // applies so the customer sees their place-bids and negotiate-bids
+  // separately. Stale rows still render their per-card visual treatment.
+  const sourceBids = showAll ? bids : liveBids;
   const sectionBids = useMemo(
-    () => liveBids.filter((b) => (
+    () => sourceBids.filter((b) => (
       (section === "PLACE" ? b._isPlaceBid : !b._isPlaceBid) &&
-      !HIDE_TERMINAL.has(String(b.status || "").toUpperCase())
+      (showAll || !HIDE_TERMINAL.has(String(b.status || "").toUpperCase()))
     )),
-    [liveBids, section]
+    [sourceBids, section, showAll]
   );
   const filtered = filter === "ALL" ? sectionBids : sectionBids.filter((b) => b.status === filter);
+  // v241.19 — per-status + per-flow breakdown for the diagnostic strip.
+  // Lets the customer SEE exactly how the 219 → 0 drop happened: which
+  // bids are stale, which are misclassified, where the funnel breaks.
+  const diagBreakdown = useMemo(() => {
+    if (!bids.length) return null;
+    const byStatus: Record<string, number> = {};
+    let placeRaw = 0, negRaw = 0, liveCount = 0, livePlace = 0, liveNeg = 0;
+    for (const b of bids) {
+      const s = String(b.status || "UNKNOWN").toUpperCase();
+      byStatus[s] = (byStatus[s] || 0) + 1;
+      if (b._isPlaceBid) placeRaw++; else negRaw++;
+    }
+    for (const b of liveBids) {
+      liveCount++;
+      if (b._isPlaceBid) livePlace++; else liveNeg++;
+    }
+    return { byStatus, placeRaw, negRaw, liveCount, livePlace, liveNeg };
+  }, [bids, liveBids]);
 
   const pendingCount  = useMemo(() => sectionBids.filter((b) => b.status === "PENDING").length,  [sectionBids]);
   const counterCount  = useMemo(() => sectionBids.filter((b) => b.status === "COUNTER").length,  [sectionBids]);
@@ -1035,16 +1076,40 @@ function MyBidsPageInner() {
             <p className="text-base font-semibold mb-1" style={{ color: "var(--text-base)" }}>{sectionEmpty.title}</p>
             <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{sectionEmpty.sub}</p>
             <Link href={sectionEmpty.href} className="gold-btn px-5 py-2.5 rounded-2xl text-sm inline-block">{sectionEmpty.cta}</Link>
-            {/* v241.18 — diagnostic for section-empty case (one tab has
-                bids, the other doesn't). Helps spot _isPlaceBid
-                misclassification: if raw count > 0 but neither tab
-                shows bids, the flow detector is broken. */}
-            {apiDebug && (
+            {/* v241.19 — "Show all" rescue button. When the section is
+                empty despite N bids returned by the server, the customer
+                can flip a switch and SEE every bid the API gave back
+                (incl. stale + terminal), classified into their flow. */}
+            {bids.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="mt-5 px-4 py-2 rounded-full text-xs font-semibold"
+                style={{ background: showAll ? "var(--cozy-champagne, #C9A66B)" : "var(--bg-pill)", color: showAll ? "#1a1205" : "var(--text-soft)", border: "1px solid var(--border-soft)" }}
+              >
+                {showAll ? `Hide stale (showing all ${bids.length})` : `Show all ${bids.length} bids (incl. stale)`}
+              </button>
+            )}
+            {/* v241.18 + v241.19 — funnel breakdown so the customer sees
+                exactly how raw → live → tab dropped. Place vs Negotiate
+                misclassification + per-status stale counts. */}
+            {(apiDebug || diagBreakdown) && (
               <details className="mt-6 mx-auto max-w-md text-left" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                 <summary style={{ cursor: "pointer", opacity: 0.6 }}>diagnostics</summary>
                 <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(31,26,15,0.06)", border: "1px solid var(--border-soft)" }}>
-                  <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · filtered to <strong>{sectionBids.length}</strong> in this tab</p>
-                  <p style={{ wordBreak: "break-all" }}>resolved IDs: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
+                  {apiDebug && (
+                    <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · filtered to <strong>{sectionBids.length}</strong> in this tab</p>
+                  )}
+                  {diagBreakdown && (
+                    <>
+                      <p className="mt-2">flow split (raw): <strong>{diagBreakdown.placeRaw}</strong> place · <strong>{diagBreakdown.negRaw}</strong> negotiate</p>
+                      <p>after stale filter: <strong>{diagBreakdown.liveCount}</strong> live · <strong>{diagBreakdown.livePlace}</strong> place · <strong>{diagBreakdown.liveNeg}</strong> negotiate</p>
+                      <p className="mt-2">by status: {Object.entries(diagBreakdown.byStatus).map(([k, v]) => `${k}=${v}`).join(", ")}</p>
+                    </>
+                  )}
+                  {apiDebug && (
+                    <p className="mt-2" style={{ wordBreak: "break-all" }}>resolved IDs: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
+                  )}
                 </div>
               </details>
             )}
