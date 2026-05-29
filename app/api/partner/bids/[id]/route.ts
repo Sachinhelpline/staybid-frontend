@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 const RAILWAY = "https://staybid-live-production.up.railway.app";
 
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   // is the single source of truth shared by the conflict check +
   // /my-bids + lib/bid-expiry. (Railway primary path should do the same;
   // this covers the Supabase cold-start fallback.)
-  if (action === "accept") updateData.expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
+  if (action === "accept") updateData.expiresAt = new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString();
 
   const res = await fetch(`${SB_URL}/rest/v1/bids?id=eq.${bidId}`, {
     method: "PATCH", headers: SB_H, body: JSON.stringify(updateData),

@@ -129,12 +129,24 @@ export default function AcceptedBidTimer({ bidId, hotelId, acceptedAt, windowMin
   const warning = ms <= WARNING_THRESHOLD_MIN * 60_000 && !expired;
 
   if (expired || w.cancelledAt) {
+    // v241.22 — theme-aware amber/cocoa palette. Pre-fix used
+    // text-white/80 + text-white/50 + text-white/60 which was invisible
+    // on every light-theme customer surface (/hotels/[id], /my-bids).
+    // Now uses warm amber tones that contrast on both light cream and
+    // dark cocoa backgrounds.
     return (
-      <div className="mt-3 p-3 rounded-2xl border" style={{ background: "rgba(75,85,99,0.12)", borderColor: "rgba(209,213,219,0.25)" }}>
-        <p className="text-xs font-bold text-white/80">⏰ Acceptance window expired</p>
-        <p className="text-[0.65rem] text-white/50 mt-0.5">This bid auto-cancelled after {effectiveWindow} minutes without payment.</p>
+      <div className="mt-3 p-3 rounded-2xl border" style={{
+        background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(217,119,6,0.06))",
+        borderColor: "rgba(180,83,9,0.35)"
+      }}>
+        <p className="text-xs font-bold" style={{ color: "#7c2d12" }}>⏰ Acceptance window expired</p>
+        <p className="text-[0.65rem] mt-0.5" style={{ color: "#9a3412" }}>
+          This bid auto-cancelled after {effectiveWindow} minutes without payment.
+        </p>
         <button onClick={() => { clearWindow(bidId); onExpired?.(); }}
-          className="text-[0.65rem] font-semibold underline text-white/60 mt-1.5">Dismiss</button>
+          className="text-[0.65rem] font-semibold underline mt-1.5" style={{ color: "#7c2d12" }}>
+          Dismiss
+        </button>
       </div>
     );
   }

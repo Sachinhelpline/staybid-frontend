@@ -45,6 +45,21 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const IST_OFFSET_MS = (5 * 60 + 30) * MIN;
 
+// v241.22 — Single source of truth for the ACCEPTED-unpaid payment
+// window. Bumped 15 → 30 min per Sachin's call (more humane on slow
+// networks / multi-app payment flows). Used by:
+//   • Server isBidStale (/api/bids/place conflict check)
+//   • Accept routes' expiresAt stamp (accept, counter-accept,
+//     trigger-accept, partner accept fallback)
+//   • Client isBidExpired (this file, ACCEPTED branch)
+//   • /my-bids liveBids ACCEPTED fallback
+//   • AcceptedBidTimer component default windowMin
+//   • New isBidPayWindowOpen helper (Pay CTA gating)
+// Per-hotel override via admin /admin/hold-config still works — these
+// are just the default constants when no override is configured.
+export const ACCEPTED_UNPAID_WINDOW_MIN = 30;
+export const ACCEPTED_UNPAID_WINDOW_MS  = ACCEPTED_UNPAID_WINDOW_MIN * MIN;
+
 // Bid was paid (Razorpay token written to the message field by all booking
 // flows). Paid ACCEPTED rows are real bookings — never expire them here.
 export function isBidPaid(b: BidLike): boolean {
@@ -113,7 +128,7 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
     const accepted = b.acceptedAt ? new Date(b.acceptedAt).getTime()
                    : b.updatedAt  ? new Date(b.updatedAt).getTime()
                    : created.getTime();
-    return nowMs > accepted + 15 * MIN;
+    return nowMs > accepted + ACCEPTED_UNPAID_WINDOW_MS;
   }
   if (b.status === "COUNTER") {
     const countered = b.updatedAt ? new Date(b.updatedAt).getTime() : created.getTime();
@@ -181,4 +196,33 @@ export function filterUserVisibleBids<T extends BidLike>(bids: T[], nowMs: numbe
     // Otherwise, fall back to the strict per-status window.
     return !isBidExpired(b, nowMs);
   });
+}
+
+// v241.22 — "Can the customer still pay this bid?" — used to gate
+// every Pay Now CTA on customer surfaces. Distinct from "visible":
+// /hotels/[id] + /my-bids show today's bids (filterUserVisibleBids)
+// but the Pay button should only render when the pay window is
+// actually open server-side. Mirrors the server's payment-route
+// rejection so the customer never taps a button that would 400.
+//
+// Returns true ONLY for ACCEPTED-unpaid bids within their expiresAt
+// window (expiresAt is stamped at acceptance time per v241.17).
+// Returns false for paid bids, PENDING (no pay-now CTA), expired
+// bids, or anything else.
+export function isBidPayWindowOpen(b: BidLike | null | undefined, nowMs: number = Date.now()): boolean {
+  if (!b) return false;
+  if (b.status !== "ACCEPTED") return false;
+  if (isBidPaid(b)) return false;
+  // expiresAt is the canonical "window closes at" (v241.17 single
+  // source of truth, written by every accept route).
+  if (b.expiresAt) {
+    const exp = new Date(b.expiresAt).getTime();
+    if (!Number.isNaN(exp)) return nowMs <= exp;
+  }
+  // Fallback for legacy rows without expiresAt: acceptedAt + window.
+  const acc = b.acceptedAt ? new Date(b.acceptedAt).getTime()
+            : b.updatedAt  ? new Date(b.updatedAt).getTime()
+            : b.createdAt  ? new Date(b.createdAt).getTime()
+            : 0;
+  return acc > 0 && nowMs <= acc + ACCEPTED_UNPAID_WINDOW_MS;
 }

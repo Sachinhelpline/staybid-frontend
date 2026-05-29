@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_READ, userFromReq } from "@/lib/sb";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     // desync).
     const r = await fetch(
       `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&status=eq.PENDING&select=*`,
-      { method: "PATCH", headers: SB_H, body: JSON.stringify({ status: "ACCEPTED", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() }) }
+      { method: "PATCH", headers: SB_H, body: JSON.stringify({ status: "ACCEPTED", expiresAt: new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString() }) }
     );
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));

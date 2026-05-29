@@ -48,7 +48,7 @@ import {
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
 // v178 — Rule B: per-room bid status badges on the hotel detail page.
 // Filter stale bids the same way customer / partner / admin views do.
-import { filterActiveBids, filterUserVisibleBids, isBidPaid } from "@/lib/bid-expiry";
+import { filterActiveBids, filterUserVisibleBids, isBidPaid, isBidPayWindowOpen } from "@/lib/bid-expiry";
 import { extractCustomerBidFromMessage, resolveBidDisplayAmount } from "@/lib/paid-amount";
 // v199 — Update Budget slider for PENDING/COUNTER cards in the
 // "Your offers" section. Same control as /my-bids — extracted to a
@@ -2891,16 +2891,24 @@ export default function HotelDetail() {
                             acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
                             onPayNow={() => router.push(`/my-bids#bid-${b.id}`)}
                           />
-                          <button
-                            onClick={() => router.push(`/my-bids?payNow=${b.id}#bid-${b.id}`)}
-                            className="w-full mt-2.5 py-3 rounded-xl font-bold text-sm"
-                            style={{ background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
-                          >
-                            {/* v241.14 — surface total amount on CTA so
-                                customer knows EXACTLY what they'll pay,
-                                not just per-room rate */}
-                            💰 Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
-                          </button>
+                          {/* v241.22 — Pay CTA only renders while the
+                              server-side pay window is actually open
+                              (mirrors AcceptedBidTimer's expired state).
+                              Pre-fix the button still showed under
+                              "Acceptance window expired" → tapping
+                              500'd server-side. */}
+                          {isBidPayWindowOpen(b) && (
+                            <button
+                              onClick={() => router.push(`/my-bids?payNow=${b.id}#bid-${b.id}`)}
+                              className="w-full mt-2.5 py-3 rounded-xl font-bold text-sm"
+                              style={{ background: "linear-gradient(135deg,#6f8159 0%,#8aa06f 50%,#6f8159 100%)", color: "#fff" }}
+                            >
+                              {/* v241.14 — surface total amount on CTA so
+                                  customer knows EXACTLY what they'll pay,
+                                  not just per-room rate */}
+                              💰 Pay Now & Confirm Booking — ₹{(acceptedAmt * offerNumRooms * offerNights).toLocaleString("en-IN")} →
+                            </button>
+                          )}
                         </div>
                       );
                     })()}

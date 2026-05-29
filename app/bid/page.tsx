@@ -551,6 +551,12 @@ type BidSessionSnapshot = {
   step: number;
   success: any;
   form: any;
+  // v241.22 — `launchTs` persists so the BidGameZone LiveBidCard
+  // countdown (hold timer) survives a page refresh. Pre-v241.22 the
+  // useEffect[success] handler called `setLaunchTs(Date.now())` on
+  // every success-restore, restarting the 15-min hold from scratch
+  // → "5-7 min beet gye, refresh hua, fir se 15:00 dikha".
+  launchTs: number;
   savedAt: number;
 };
 
@@ -640,7 +646,13 @@ export default function BidPage() {
   const [conflictSheetOpen, setConflictSheetOpen] = useState(false);
   // v163 — live auction state shown on the success screen itself.
   const [liveBids, setLiveBids] = useState<any[]>([]);
-  const [launchTs, setLaunchTs] = useState(0);
+  // v241.22 — Hydrate launchTs from sessionStorage so the BidGameZone
+  // countdown is real-time (mirrors server clock-time) instead of
+  // restarting on every refresh.
+  const [launchTs, setLaunchTs] = useState<number>(() => {
+    const snap = readBidSession();
+    return (snap?.launchTs && typeof snap.launchTs === "number") ? snap.launchTs : 0;
+  });
   const [nowTs, setNowTs] = useState(() => Date.now());
   // v164 — hotel-class the auction targets. Set when the customer taps a
   // Budget / Smart / Premium preset; "" → derived from budget vs city avg.
@@ -730,8 +742,9 @@ export default function BidPage() {
   // built-in batching. Persistence is cleared on Pay handoff
   // (router.replace to /my-bids) so the next launch starts fresh.
   useEffect(() => {
-    writeBidSession({ step, success, form });
-  }, [step, success, form]);
+    // v241.22 — launchTs included so the countdown survives refresh.
+    writeBidSession({ step, success, form, launchTs });
+  }, [step, success, form, launchTs]);
 
   // v170 — toggle a value in/out of one of the array fields.
   const toggleArr = (key: "propertyTypes" | "roomTypes" | "addons", val: string) =>
@@ -983,7 +996,13 @@ export default function BidPage() {
   // updates by polling /api/bids/my — no jump to a different page.
   useEffect(() => {
     if (!success?.bids?.length) return;
-    setLaunchTs(Date.now());
+    // v241.22 — only stamp launchTs ONCE per success snapshot. On
+    // page refresh `success` is restored from sessionStorage and
+    // launchTs was already lazy-initialised from the same snapshot —
+    // do NOT overwrite, or the hold countdown restarts. Setting only
+    // when `cur === 0` covers (a) fresh launch with no persisted
+    // session AND (b) a fresh launch after clearBidSession() ran.
+    setLaunchTs((cur) => cur || Date.now());
     setNowTs(Date.now());
     setLiveBids(success.bids.map((b: any) => ({ ...b, status: "PENDING" })));
   }, [success]);
@@ -1393,6 +1412,11 @@ export default function BidPage() {
         throw new Error(firstErr?.reason?.message || "Could not submit your bid. Please try again.");
       }
 
+      // v241.22 — reset launchTs BEFORE the new success snapshot lands
+      // so the useEffect[success] gate (cur || Date.now()) stamps a
+      // fresh timestamp for THIS launch, not the leftover one from a
+      // prior in-session launch.
+      setLaunchTs(0);
       setSuccess({
         city: form.city,
         checkIn: form.checkIn,
