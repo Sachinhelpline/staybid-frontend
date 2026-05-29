@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
+import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 
 // Per-flow timers — must match /api/bids/place
 const NEGOTIATE_MS = 3 * 3600_000;
 const PLACE_MS     = 1 * 3600_000;
-const ACCEPTED_PAY_MS = 15 * 60_000;
+// v241.22 — Use shared ACCEPTED_UNPAID_WINDOW_MS so the budget-update
+// auto-accept stamp stays in lockstep with /api/bids/place and the 4
+// other accept routes. Pre-v241.22 this declared its own
+// `ACCEPTED_PAY_MS = 15 * 60_000` constant → silent drift when
+// bumping the window in lib/bid-expiry. Now any future change is
+// one line in lib/bid-expiry.
 const expiresAtFor = (flow?: string) =>
   new Date(Date.now() + (flow === "place" ? PLACE_MS : NEGOTIATE_MS)).toISOString();
-const acceptedExpiry = () => new Date(Date.now() + ACCEPTED_PAY_MS).toISOString();
+const acceptedExpiry = () => new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString();
 const snap100 = (n: number) => Math.max(100, Math.round(n / 100) * 100);
 
 // PATCH /api/bids/:id/budget — update the per-night amount on an active bid.
