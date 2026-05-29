@@ -215,8 +215,16 @@ the Razorpay id on `bids.message`; it does not create a booking. The booking
 record originates solely from Railway's accept-time creation, so the pre-pay
 CONFIRMED booking is load-bearing, not a bug.
 
-**Awaiting Sachin's product call:** Note 1 (Manual-mode vs `/bid` server
-auto-accept) and Note 3 (per-city vs per-hotel lock alignment).
+**Note 1 / N1 — DONE (v241.26).** `/bid` server auto-accept
+(`app/api/bids/place`) now respects Autopilot mode: `auto` instant (unchanged),
+`manual` stays PENDING, `hybrid` only PREMIUM/STRONG (tier computed server-side
+via the shared `computeBidderScore`). Closes the only path that bypassed mode.
+
+**Note 3 / N3 — DONE (v241.26).** Railway `/api/bids/place` conflict lock
+aligned per-CITY → per-HOTEL (`findActiveBidOnHotel`), matching the v200 rule +
+the FE route (`staybid-Live`).
+
+**All audit items now resolved or consciously left (N6 by design).**
 
 ---
 

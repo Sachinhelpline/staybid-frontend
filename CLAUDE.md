@@ -8500,14 +8500,21 @@ this DB, so one trigger fixes all paths — current and future. Migration:
   `bids.message` (it does NOT create a booking). So the accept-time booking
   is load-bearing — the booking record's sole origin. Left as-is.
 
-### Still open — awaiting Sachin's product call (NOT fixed)
+### N1 + N3 — DONE (v241.26, Sachin: "best/future-proof")
 
-- **N1 / Note 1** — `/bid` reverse-auction server auto-accept (v196) ignores
-  the hotel's autopilot mode, so a Manual-mode hotel still auto-accepts
-  above-floor `/bid` bids instantly. Pre-existing (pre-v241), product
-  decision — needs Sachin's intended behaviour before changing.
-- **N3** — Railway `place` conflict lock is per-CITY
-  (`findActiveBidInCity`) while FE `place` is per-HOTEL (the canonical v200
-  rule). FE is authoritative for the customer flow (Supabase-direct, never
-  calls Railway `place`), so impact is near-zero — alignment only.
+- **N1 — DONE.** `/bid` server auto-accept (`app/api/bids/place`) now respects
+  the hotel's Autopilot mode (the only path that bypassed it; the hotel-page
+  Negotiate/Book-Now flow already respects mode via `resolveAutoAcceptMs` +
+  `/schedule-accept`). `auto` → instant accept (unchanged default); `manual` →
+  stays PENDING for partner; `hybrid` → only PREMIUM/STRONG auto-accept, with
+  the tier computed **server-side** via the shared `computeBidderScore`
+  (lib/bidder-score) over the customer's last 10 bids — can't be spoofed,
+  matches the customer confidence chip, NEW bidders wait (parity with
+  hotel-page hybrid). Railway `/api/bids/place` does NOT auto-accept, so no
+  change needed there.
+- **N3 — DONE.** Railway `/api/bids/place` conflict lock changed per-CITY →
+  per-HOTEL (`findActiveBidInCity` → `findActiveBidOnHotel`), matching the
+  canonical v200 rule + the FE route. (`staybid-Live` `apps/api/src/index.ts`.)
+  FE is authoritative for the customer flow, so this is a consistency
+  alignment for any direct API caller.
 
