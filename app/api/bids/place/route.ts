@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
+import { computeBidderScore } from "@/lib/bidder-score";
+
+// v241.26 — Server-side tier gate for Hybrid-mode /bid auto-accept. Reuses the
+// canonical computeBidderScore (lib/bidder-score) on the customer's last 10
+// bids so the tier matches the customer-facing confidence chip EXACTLY and the
+// client cannot spoof it. NEW bidders (no history) → false → they wait for the
+// partner, mirroring resolveAutoAcceptMs(hybrid, NEW) = Infinity on the
+// hotel-page flow. Any failure falls back to false (partner reviews — the safe
+// default for hybrid). Note: PostgREST needs camelCase order columns quoted →
+// order=%22createdAt%22.desc.
+async function isPremiumOrStrong(customerId: string): Promise<boolean> {
+  try {
+    const hist = await sbSelect(
+      `bids?customerId=eq.${customerId}&select=amount,message,roomId&order=%22createdAt%22.desc&limit=10`
+    );
+    if (!hist.length) return false;
+    const roomIds = Array.from(new Set(hist.map((b: any) => b.roomId).filter(Boolean)));
+    const rooms = roomIds.length
+      ? await sbSelect(`rooms?id=in.(${roomIds.join(",")})&select=id,floorPrice`)
+      : [];
+    const floorById = new Map(rooms.map((r: any) => [r.id, Number(r.floorPrice || 0)]));
+    const items = hist.map((b: any) => ({
+      amount: Number(b.amount),
+      message: b.message,
+      floorPrice: floorById.get(b.roomId),
+    }));
+    const tier = computeBidderScore(items).tier;
+    return tier === "PREMIUM" || tier === "STRONG";
+  } catch {
+    return false;
+  }
+}
 
 // v200 — One active bid per (customer × HOTEL). Per-flow timers:
 //   • Negotiate (1:1 single hotel)    → 3h
@@ -269,7 +301,33 @@ export async function POST(req: NextRequest) {
     if (flow === "place" && !dealId) {
       const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
       const floor = Number(rooms[0]?.floorPrice || 0);
-      autoAccept = floor > 0 && Number(amount) >= floor;
+      const aboveFloor = floor > 0 && Number(amount) >= floor;
+      if (aboveFloor) {
+        // v241.26 — respect the hotel's Autopilot mode on the /bid instant-
+        // accept path. Pre-v241 (v196) auto-accepted EVERY above-floor /bid
+        // bid regardless of mode, so a Manual hotel still auto-confirmed and a
+        // Hybrid hotel auto-confirmed low-tier bidders — both violating the
+        // mode spec (the hotel-page Negotiate/Book-Now flow already respects
+        // mode via lib/autopilot.resolveAutoAcceptMs + /schedule-accept; only
+        // this /bid path bypassed it). Now:
+        //   • auto   → instant accept (unchanged — the default for most hotels)
+        //   • manual → never auto-accept; bid stays PENDING for partner review
+        //   • hybrid → only PREMIUM/STRONG auto-accept (server-computed tier)
+        let mode = "auto";
+        try {
+          const hRows = await sbSelect(`hotels?id=eq.${hotelId}&select=autopilot_mode&limit=1`);
+          const m = String(hRows[0]?.autopilot_mode || "auto");
+          if (m === "auto" || m === "hybrid" || m === "manual") mode = m;
+        } catch { /* column missing / unreachable → 'auto' (lib/autopilot parity) */ }
+
+        if (mode === "manual") {
+          autoAccept = false;
+        } else if (mode === "hybrid") {
+          autoAccept = await isPremiumOrStrong(customerId);
+        } else {
+          autoAccept = true; // 'auto'
+        }
+      }
     }
 
     const bid = await sbInsert("bids", {

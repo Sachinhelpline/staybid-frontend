@@ -11,7 +11,7 @@ import { resolveBidDisplayAmount, extractCustomerBidFromMessage } from "@/lib/pa
 // redeclared inline) so /my-bids + hotel page + any future customer
 // surface stay in lockstep. Bumping this constant in lib/bid-expiry
 // updates every consumer at once.
-import { USER_VIEW_FRESH_GRACE_MS, ACCEPTED_UNPAID_WINDOW_MS, isBidPayWindowOpen } from "@/lib/bid-expiry";
+import { USER_VIEW_FRESH_GRACE_MS, ACCEPTED_UNPAID_WINDOW_MS, isBidPayWindowOpen, parseDbTime } from "@/lib/bid-expiry";
 import BookingReview, { type BookingReviewProps } from "@/components/BookingReview";
 import { saveHoldState, holdExpiresAt } from "@/lib/hold-amount";
 import AcceptedBidTimer from "@/components/AcceptedBidTimer";
@@ -72,7 +72,7 @@ function PendingBidCountdown({ expiresAt, flow }: { expiresAt?: string; flow: "p
     return () => clearInterval(t);
   }, [expiresAt]);
   if (!expiresAt) return null;
-  const ms = new Date(expiresAt).getTime() - now;
+  const ms = parseDbTime(expiresAt) - now;
   const expired = ms <= 0;
   const total = Math.max(0, ms);
   const h = Math.floor(total / 3600_000);
@@ -736,12 +736,15 @@ function MyBidsPageInner() {
     // Guards against clock skew and the v232 "fresh place bid disappears
     // after IST midnight" regression by NOT depending on a wall-clock
     // calendar cutoff.
-    const created = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+    // v241.26 — parseDbTime: createdAt/expiresAt are tz-less Postgres
+    // timestamps; new Date() would read them as local (5.5h off on IST) and
+    // wrongly expire fresh ACCEPTED bids → "Pay now" hidden, timer expired.
+    const created = b?.createdAt ? parseDbTime(b.createdAt) : 0;
     if (created && now - created < FRESH_GRACE_MS) return true;
 
     // Per-status windows.
     if (status === "REJECTED") {
-      const decided = b?.updatedAt ? new Date(b.updatedAt).getTime() : created;
+      const decided = b?.updatedAt ? parseDbTime(b.updatedAt) : created;
       return now <= decided + 30 * MIN;
     }
     if (status === "ACCEPTED" && !paid) {
@@ -754,11 +757,11 @@ function MyBidsPageInner() {
       // the recurring "Place Bid (0) but active-bid conflict" desync.
       // Accept routes now stamp expiresAt = acceptTime + 15min (v241.17).
       if (b?.expiresAt) {
-        const exp = new Date(b.expiresAt).getTime();
+        const exp = parseDbTime(b.expiresAt);
         if (!Number.isNaN(exp)) return now <= exp;
       }
-      const acc = b?.acceptedAt ? new Date(b.acceptedAt).getTime()
-                : b?.updatedAt  ? new Date(b.updatedAt).getTime()
+      const acc = b?.acceptedAt ? parseDbTime(b.acceptedAt)
+                : b?.updatedAt  ? parseDbTime(b.updatedAt)
                 : created;
       // v241.22 — fallback uses shared ACCEPTED_UNPAID_WINDOW_MS (30
       // min default). expiresAt above is the canonical path; this is
@@ -766,19 +769,19 @@ function MyBidsPageInner() {
       return now <= acc + ACCEPTED_UNPAID_WINDOW_MS;
     }
     if (status === "COUNTER") {
-      const countered = b?.updatedAt ? new Date(b.updatedAt).getTime() : created;
+      const countered = b?.updatedAt ? parseDbTime(b.updatedAt) : created;
       return now <= countered + 60 * MIN;
     }
     if (status === "PENDING") {
       // Above-floor scheduled (Phase 6 auto-accept lifecycle): 15-min
       // grace past the scheduled accept moment.
       if (b?.auto_accept_at) {
-        const t = new Date(b.auto_accept_at).getTime();
+        const t = parseDbTime(b.auto_accept_at);
         if (!Number.isNaN(t)) return now <= t + 15 * MIN;
       }
       // Backend-stamped expiry (server is authoritative).
       if (b?.expiresAt) {
-        const t = new Date(b.expiresAt).getTime();
+        const t = parseDbTime(b.expiresAt);
         if (!Number.isNaN(t)) return now <= t;
       }
       // Legacy rows w/o expiresAt — derive per-flow window from the
@@ -1317,6 +1320,7 @@ function MyBidsPageInner() {
                       bidId={b.id}
                       hotelId={b.hotelId || b.hotel?.id}
                       acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                      expiresAt={b.expiresAt}
                       onPayNow={() => handlePayNow(b)}
                       onExpired={() => { clearAcceptWindow(b.id); fetchBids(true); }}
                     />

@@ -8424,3 +8424,139 @@ cron-job.org email: `/api/cron/flash-drop` Timeout. UNRELATED to bids
   - Customer notification on bid-conflict push (v228, blocked by
     mobile OTP DLT approval).
 
+---
+
+## Hotel Partner Panel Audit + Acceptance-Window Trigger Era (v241.26, 2026-05-29)
+
+Ran the deferred Hotel Partner Panel audit (Autopilot / Hybrid / Manual
+modes) flagged at the end of the v241.17–v241.25 era. Full report:
+`docs/PARTNER-PANEL-AUDIT-v241.17-v241.25.md`.
+
+### Regression found
+
+v241.17 made `bids.expiresAt` the single source of truth for the
+ACCEPTED-unpaid window, and stamped `expiresAt = now + 30min` on the six
+Next.js / FE accept paths. But the **two server paths that accept most
+partner-panel bids never adopted the contract**:
+  - `mark_expired_holds()` Supabase RPC (cron) — the **Autopilot + Hybrid**
+    auto-accept flip — did `UPDATE bids SET status='ACCEPTED'` with **no
+    `expiresAt`**.
+  - Railway `POST /api/bids/:id/accept` (+ `/counter-accept`, agent assist)
+    — the **Manual + all-mode partner override** accept — set status only.
+
+Result: bids accepted by the cron or by the partner kept their PENDING-era
+`expiresAt` (`createdAt + 1h` for `/bid`-flow, `+ 3h` for Negotiate/Book-Now),
+so the intended 30-min window silently became **1–3h** on every surface that
+reads `expiresAt`: the customer Pay CTA + `/hotels/[id]` lock chip
+(`isBidPayWindowOpen`), the partner Bid Inbox visibility / "Confirmed" count /
+"Est. Revenue" (`filterActiveBids`), and the one-bid-per-hotel conflict lock
+(`isBidStale`). Pre-v241.17 the client used `createdAt + 15min` and ignored
+`expiresAt`, so this only became a regression once v241.17 shifted the read.
+
+### Fix — v241.26 central DB trigger (`trg_stamp_accepted_expiry`)
+
+Per Sachin: future-proof, no app alteration, covers **every** entry point
+(place / negotiate / Book-Now / flash / future). A single `BEFORE INSERT OR
+UPDATE OF status` trigger on `public.bids` stamps
+`expiresAt = (now() AT TIME ZONE 'UTC') + per-hotel acceptance_window_min
+(GREATEST 30 floor, admin override ≥30 wins)` on every transition INTO
+ACCEPTED. Railway (Prisma), the cron RPC, and the Next.js routes all write to
+this DB, so one trigger fixes all paths — current and future. Migration:
+`migrations/2026-05-29-v241.26-accepted-expiry-trigger.sql` (applied live via
+`apply_migration` `v241_26_accepted_expiry_trigger`).
+
+  - Idempotent: fires only on a REAL transition into ACCEPTED; an
+    already-ACCEPTED re-write (the payment write) is skipped → paid windows
+    are never disturbed and the 30-min clock never restarts.
+  - Additive: brand-new BEFORE trigger; does not touch `trg_on_bid_accepted`
+    (AFTER, commissions/points), `trg_log_bid_status`, or
+    `trg_sync_bids_city_lower`.
+  - Verified live: a status-only flip rewrote a stale 3h `expiresAt` to
+    exactly now+30min (test rolled back, nothing committed).
+
+### Things to Avoid (v241.26 Era)
+
+- **Never** rely on application code to stamp the ACCEPTED-unpaid `expiresAt`
+  again. The DB trigger `trg_stamp_accepted_expiry` is now the single
+  authority for the window on flip-to-ACCEPTED. The inline `now + 30min`
+  stamps still present in the FE accept routes are harmless (the trigger
+  overrides with the per-hotel value) but are no longer load-bearing.
+- **Never** drop `trg_stamp_accepted_expiry` without first re-adding the
+  window stamp to BOTH the cron RPC `mark_expired_holds()` AND the Railway
+  accept routes, or the v241.17→.25 regression returns.
+
+### Phase 2 follow-ups
+
+- **N4 — DONE (v241.26).** `AcceptedBidTimer` now takes an optional
+  `expiresAt` prop and prefers it (the canonical window-close stamped by
+  the trigger), so the countdown is in lockstep with `isBidPayWindowOpen` /
+  `isBidExpired`. Callers (`/my-bids`, `/hotels/[id]` ×2) pass `b.expiresAt`.
+- **N5 — DONE (v241.26).** `/admin/hold-config`: hint now "Default 30,
+  minimum 30", input `min=30` + empty fallback `|| 30`, save clamp
+  `Math.max(30, …)`, and the override card + editor seed show the clamped
+  effective value.
+- **N6 — by design, NOT a bug.** Railway accept creates the CONFIRMED
+  booking; the FE `/api/bids/:id/pay` route only stamps the Razorpay id on
+  `bids.message` (it does NOT create a booking). So the accept-time booking
+  is load-bearing — the booking record's sole origin. Left as-is.
+
+### N1 + N3 — DONE (v241.26, Sachin: "best/future-proof")
+
+- **N1 — DONE.** `/bid` server auto-accept (`app/api/bids/place`) now respects
+  the hotel's Autopilot mode (the only path that bypassed it; the hotel-page
+  Negotiate/Book-Now flow already respects mode via `resolveAutoAcceptMs` +
+  `/schedule-accept`). `auto` → instant accept (unchanged default); `manual` →
+  stays PENDING for partner; `hybrid` → only PREMIUM/STRONG auto-accept, with
+  the tier computed **server-side** via the shared `computeBidderScore`
+  (lib/bidder-score) over the customer's last 10 bids — can't be spoofed,
+  matches the customer confidence chip, NEW bidders wait (parity with
+  hotel-page hybrid). Railway `/api/bids/place` does NOT auto-accept, so no
+  change needed there.
+- **N3 — DONE.** Railway `/api/bids/place` conflict lock changed per-CITY →
+  per-HOTEL (`findActiveBidInCity` → `findActiveBidOnHotel`), matching the
+  canonical v200 rule + the FE route. (`staybid-Live` `apps/api/src/index.ts`.)
+  FE is authoritative for the customer flow, so this is a consistency
+  alignment for any direct API caller.
+
+### CRITICAL — timezone parse bug: ACCEPTED bids read "expired" instantly (v241.26)
+
+Customer SS (pre-session): a freshly launched/accepted bid showed
+"Acceptance window expired" the instant it landed; `/my-bids` Place Bid had
+no "Pay Now & Grab"; the hotel-page lock chip read expired; the room-upgrade
+sheet still let the customer pay only the ₹2,200 delta on a (wrongly) expired
+₹3,200 anchor.
+
+**Root cause (deeper than the v241.26 trigger):** `bids.createdAt` and
+`bids.expiresAt` are `timestamp without time zone` columns. PostgREST returns
+them WITHOUT a tz marker (e.g. `"2026-05-29T16:30:00.149"`), while `now()`
+(timestamptz) comes back as `"…+00:00"`. On an **IST browser**,
+`new Date("2026-05-29T16:30:00")` is parsed as **local IST = 5.5h behind** the
+real UTC instant. For a 30-min window the bid is ALWAYS "expired" on the
+client the moment it's placed. The **server (Vercel, UTC) parsed it
+correctly**, so client and server silently disagreed — the deepest layer of
+the recurring "expired immediately / Place Bid (0) but conflict" class. The
+v241.26 trigger fixed the stored *value*; this fixes the client *read*.
+(Proven under `TZ=Asia/Kolkata`: old parse → expired, −300 min; new parse →
++30 min remaining.)
+
+**Fix — shared `parseDbTime(v)` in `lib/bid-expiry.ts`:** treats a tz-less
+string as UTC (appends `Z`); passes tz-aware strings (`+00:00`, `Z`,
+`auto_accept_at`) through untouched. Wired into every CLIENT expiry read:
+  - `lib/bid-expiry.ts` — `isBidExpired`, `isBidPayWindowOpen`,
+    `filterUserVisibleBids` (→ also fixes `filterActiveBids`, so the partner
+    Bid Inbox + admin ledger on IST devices stop hiding live ACCEPTED rows).
+  - `app/my-bids/page.tsx` — `liveBids` window logic + `PendingBidCountdown`.
+  - `components/AcceptedBidTimer.tsx` — countdown source.
+  - `components/ActiveBidConflictSheet.tsx` — conflict countdown.
+  Server routes (`/api/bids/place` `isBidStale`, `trigger-accept`) were
+  already correct (UTC runtime) and are left as-is; `auto_accept_at` is
+  `timestamptz` so it never needed it.
+
+**Room-upgrade money-guard (SS3):** the upgrade charges the delta now and
+leaves the accepted amount "due at My Bids", so it must NEVER run on a bid
+whose pay window has closed. Gated in three places: the hotel-page upgrade CTA
+(won't open the sheet), `executeUpgrade` (re-checks right before Razorpay),
+and the server `/api/bids/[id]/upgrade-room` route (400 if
+`!isBidPayWindowOpen`). After the tz fix a fresh anchor reads as open, so this
+only blocks genuinely-expired anchors.
+

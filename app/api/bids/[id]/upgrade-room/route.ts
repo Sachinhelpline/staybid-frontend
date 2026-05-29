@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, sbSelect, sbUpdate } from "@/lib/sb-server";
+import { isBidPayWindowOpen } from "@/lib/bid-expiry";
 
 // v198 — Swap an ACCEPTED bid's roomId to a different room in the SAME
 // hotel after the customer pays the delta. Customer is funnelled here
@@ -54,6 +55,17 @@ export async function POST(
   if (bid.status !== "ACCEPTED") {
     return NextResponse.json(
       { error: `Cannot upgrade a ${String(bid.status).toLowerCase()} bid` },
+      { status: 400 }
+    );
+  }
+  // v241.26 — defense-in-depth: never upgrade an ACCEPTED bid whose pay window
+  // has closed. The upgrade only charges the delta and leaves the accepted
+  // amount "due at My Bids"; if the window is shut that anchor can't be paid,
+  // so the upgrade would strand the customer's delta payment. The client gates
+  // this too (before Razorpay), so a 400 here only catches stale/ direct calls.
+  if (!isBidPayWindowOpen(bid)) {
+    return NextResponse.json(
+      { error: "This bid's payment window has closed. Place a new bid to reserve the room." },
       { status: 400 }
     );
   }

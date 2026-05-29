@@ -411,6 +411,7 @@ export default function HotelDetail() {
     acceptedAmount: number;
     deltaPerNight: number;
     nights: number;
+    anchorBid?: any;   // v241.26 — the accepted bid, for the pre-Razorpay pay-window re-check
   }>(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   // 409 — one-active-bid-per-city sheet. Negotiate path only (Book Now / Flash
@@ -2135,6 +2136,15 @@ export default function HotelDetail() {
   // hotel page polling) picks up the new room+price automatically.
   const executeUpgrade = async () => {
     if (!upgradeModal || !hotel) return;
+    // v241.26 — re-check the pay window right before charging Razorpay, in
+    // case it lapsed while the modal was open. Never charge the upgrade delta
+    // for an anchor that can no longer be paid (would orphan the payment).
+    if (upgradeModal.anchorBid && !isBidPayWindowOpen(upgradeModal.anchorBid)) {
+      setUpgradeModal(null);
+      alert("This accepted bid's payment window has closed. Please place a new bid to reserve the room.");
+      router.push(`/my-bids#bid-${upgradeModal.bidId}`);
+      return;
+    }
     setUpgradeLoading(true);
     try {
       const totalDelta = Math.max(0, upgradeModal.deltaPerNight * upgradeModal.nights);
@@ -2889,6 +2899,7 @@ export default function HotelDetail() {
                             bidId={String(b.id)}
                             hotelId={String(b.hotelId || hotel?.id || "")}
                             acceptedAt={b.acceptedAt || b.updatedAt || b.createdAt}
+                            expiresAt={b.expiresAt}
                             onPayNow={() => router.push(`/my-bids#bid-${b.id}`)}
                           />
                           {/* v241.22 — Pay CTA only renders while the
@@ -3321,7 +3332,16 @@ export default function HotelDetail() {
                       // / COUNTER anchors the customer hasn't paid the
                       // base amount yet — route them to /my-bids to take
                       // the next lifecycle action there.
-                      if (lockedBid && lockedBidId) {
+                      // v241.26 — only allow the upgrade while the accepted
+                      // bid's pay window is still open. Upgrading charges the
+                      // delta now but leaves the ₹{accepted} anchor "due at My
+                      // Bids"; if the window has closed the anchor can no
+                      // longer be paid, so the customer would pay the delta for
+                      // a booking they can never confirm. Route them to /my-bids
+                      // (place a fresh bid) instead. (After the tz-parse fix a
+                      // freshly accepted bid reads as open, so this only blocks
+                      // genuinely-expired anchors.)
+                      if (lockedBid && lockedBidId && isBidPayWindowOpen(lockedBid as any)) {
                         const upgradeNights = globalNights || 1;
                         setUpgradeModal({
                           bidId: String(lockedBidId),
@@ -3330,6 +3350,7 @@ export default function HotelDetail() {
                           acceptedAmount: lockedAmount,
                           deltaPerNight: lockUpgradeDelta,
                           nights: upgradeNights,
+                          anchorBid: lockedBid,
                         });
                       } else if (lockedBidId) {
                         router.push(`/my-bids#bid-${lockedBidId}`);
@@ -3598,6 +3619,7 @@ export default function HotelDetail() {
                         bidId={String(lockedBid.id)}
                         hotelId={String(lockedBid.hotelId || hotel?.id || "")}
                         acceptedAt={lockedBid.acceptedAt || lockedBid.updatedAt || lockedBid.createdAt}
+                        expiresAt={lockedBid.expiresAt}
                         onPayNow={() => router.push(`/my-bids#bid-${lockedBid.id}`)}
                       />
                     </div>

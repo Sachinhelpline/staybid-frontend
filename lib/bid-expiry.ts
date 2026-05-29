@@ -45,6 +45,28 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const IST_OFFSET_MS = (5 * 60 + 30) * MIN;
 
+// v241.26 — Parse a Postgres timestamp as UTC.
+// `bids.createdAt` / `bids.expiresAt` are `timestamp without time zone`
+// columns; PostgREST returns them WITHOUT a timezone marker, e.g.
+// "2026-05-29T10:30:00.149". `new Date()` then parses that as LOCAL time —
+// on an IST device (+5:30) that's 5.5h behind the real UTC instant, so a
+// freshly-ACCEPTED bid reads as expired the moment it's placed and every Pay
+// CTA / countdown / lock chip shows "expired". The server (Vercel, UTC)
+// parsed the same string correctly, so client and server silently disagreed
+// — the deepest layer of the recurring "expired immediately" bug. Normalise:
+// a tz-less string is UTC wall-clock → append 'Z'. Strings that already carry
+// a tz (auto_accept_at is `timestamptz` → "...+00:00"; any JS toISOString
+// value → "...Z") pass through untouched.
+export function parseDbTime(v: string | Date | null | undefined): number {
+  if (v == null) return NaN;
+  if (v instanceof Date) return v.getTime();
+  let s = String(v).trim();
+  if (!s) return NaN;
+  const hasTz = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(s);
+  if (!hasTz) s = s.replace(" ", "T") + "Z";
+  return new Date(s).getTime();
+}
+
 // v241.22 — Single source of truth for the ACCEPTED-unpaid payment
 // window. Bumped 15 → 30 min per Sachin's call (more humane on slow
 // networks / multi-app payment flows). Used by:
@@ -92,8 +114,8 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
   if (b.status === "CONFIRMED" && paid) return false;
   if (b.status === "CHECKED_IN" || b.status === "CHECKED_OUT") return false;
 
-  const created = b.createdAt ? new Date(b.createdAt) : null;
-  if (!created || Number.isNaN(created.getTime())) return false;
+  const createdMs = parseDbTime(b.createdAt);
+  if (Number.isNaN(createdMs)) return false;
 
   // v241.17 — IST-midnight cutoff REMOVED. It had NO counterpart in the
   // server's conflict check (`isBidStale` in /api/bids/place/route.ts),
@@ -108,7 +130,7 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
 
   // Per-status short windows.
   if (b.status === "REJECTED") {
-    const decided = b.updatedAt ? new Date(b.updatedAt).getTime() : created.getTime();
+    const decided = b.updatedAt ? parseDbTime(b.updatedAt) : createdMs;
     return nowMs > decided + 30 * MIN;
   }
   if (b.status === "ACCEPTED" && !paid) {
@@ -122,20 +144,20 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
     // AND consistent with the conflict check. Legacy rows without
     // expiresAt fall back to the createdAt chain.
     if (b.expiresAt) {
-      const exp = new Date(b.expiresAt).getTime();
+      const exp = parseDbTime(b.expiresAt);
       if (!Number.isNaN(exp)) return nowMs > exp;
     }
-    const accepted = b.acceptedAt ? new Date(b.acceptedAt).getTime()
-                   : b.updatedAt  ? new Date(b.updatedAt).getTime()
-                   : created.getTime();
+    const accepted = b.acceptedAt ? parseDbTime(b.acceptedAt)
+                   : b.updatedAt  ? parseDbTime(b.updatedAt)
+                   : createdMs;
     return nowMs > accepted + ACCEPTED_UNPAID_WINDOW_MS;
   }
   if (b.status === "COUNTER") {
-    const countered = b.updatedAt ? new Date(b.updatedAt).getTime() : created.getTime();
+    const countered = b.updatedAt ? parseDbTime(b.updatedAt) : createdMs;
     return nowMs > countered + 60 * MIN;
   }
   if (b.status === "PENDING" && b.auto_accept_at) {
-    const acc = new Date(b.auto_accept_at).getTime();
+    const acc = parseDbTime(b.auto_accept_at);
     if (!Number.isNaN(acc)) return nowMs > acc + 15 * MIN;
   }
   if (b.status === "PENDING") {
@@ -146,12 +168,12 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
     // expiresAt is missing (legacy rows), then a 6h hard cap. Hotels that
     // haven't acted by the window are unlikely to.
     if (b.expiresAt) {
-      const exp = new Date(b.expiresAt).getTime();
+      const exp = parseDbTime(b.expiresAt);
       if (!Number.isNaN(exp)) return nowMs > exp;
     }
     const msg = String(b.message || "");
     const isPlaceFlow = /\bGuest bid\b/i.test(msg) || /max ₹/i.test(msg);
-    const ageMs = nowMs - created.getTime();
+    const ageMs = nowMs - createdMs;
     return ageMs > (isPlaceFlow ? 1 * HOUR : 3 * HOUR);
   }
 
@@ -190,7 +212,7 @@ export function filterUserVisibleBids<T extends BidLike>(bids: T[], nowMs: numbe
   return bids.filter((b) => {
     // Fresh: created in the last 24h → ALWAYS visible.
     if (b?.createdAt) {
-      const created = new Date(b.createdAt).getTime();
+      const created = parseDbTime(b.createdAt);
       if (!Number.isNaN(created) && nowMs - created < USER_VIEW_FRESH_GRACE_MS) return true;
     }
     // Otherwise, fall back to the strict per-status window.
@@ -216,13 +238,13 @@ export function isBidPayWindowOpen(b: BidLike | null | undefined, nowMs: number 
   // expiresAt is the canonical "window closes at" (v241.17 single
   // source of truth, written by every accept route).
   if (b.expiresAt) {
-    const exp = new Date(b.expiresAt).getTime();
+    const exp = parseDbTime(b.expiresAt);
     if (!Number.isNaN(exp)) return nowMs <= exp;
   }
   // Fallback for legacy rows without expiresAt: acceptedAt + window.
-  const acc = b.acceptedAt ? new Date(b.acceptedAt).getTime()
-            : b.updatedAt  ? new Date(b.updatedAt).getTime()
-            : b.createdAt  ? new Date(b.createdAt).getTime()
+  const acc = b.acceptedAt ? parseDbTime(b.acceptedAt)
+            : b.updatedAt  ? parseDbTime(b.updatedAt)
+            : b.createdAt  ? parseDbTime(b.createdAt)
             : 0;
-  return acc > 0 && nowMs <= acc + ACCEPTED_UNPAID_WINDOW_MS;
+  return acc > 0 && !Number.isNaN(acc) && nowMs <= acc + ACCEPTED_UNPAID_WINDOW_MS;
 }
