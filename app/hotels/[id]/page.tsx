@@ -3555,21 +3555,39 @@ export default function HotelDetail() {
 
                   {/* v178 — Rule B status banner. Surfaces what the
                       customer's active bid means for this specific room.
-                      Hidden when isFlashRoom (flash chrome takes over). */}
-                  {!isFlashRoom && isLockedRoom && lockedBid && (
+                      Hidden when isFlashRoom (flash chrome takes over).
+                      v241.25 — branch text/colour by pay window state.
+                      Pre-fix: chip showed "Confirm payment before the
+                      hold window expires" even AFTER expiry because
+                      isLockedRoom uses the 24h customer-view filter
+                      (v241.20) while pay validity uses the 30-min
+                      ACCEPTED-unpaid window. Surface that gap visually
+                      so customer reads consistent state. */}
+                  {!isFlashRoom && isLockedRoom && lockedBid && (() => {
+                    const lockedPayOpen = isBidPayWindowOpen(lockedBid as any);
+                    const chipBg = lockedPayOpen ? "rgba(127,146,105,0.16)" : "rgba(180,83,9,0.10)";
+                    const chipBorder = lockedPayOpen ? "rgba(127,146,105,0.42)" : "rgba(180,83,9,0.32)";
+                    const chipTitle = lockedPayOpen ? "#5a6e44" : "#7c2d12";
+                    const chipIcon = lockedPayOpen ? "🔒" : "⏰";
+                    const chipSubtitle = lockedPayOpen
+                      ? "Confirm payment before the hold window expires."
+                      : "Hold window expired — place a new bid to reserve this room.";
+                    return (
                     <div style={{
                       marginBottom: 14, padding: "12px 14px", borderRadius: 12,
-                      background: "rgba(127,146,105,0.16)",
-                      border: "1px solid rgba(127,146,105,0.42)",
+                      background: chipBg,
+                      border: `1px solid ${chipBorder}`,
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: "1.05rem" }}>🔒</span>
+                        <span style={{ fontSize: "1.05rem" }}>{chipIcon}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#5a6e44", margin: 0 }}>
-                            Your bid was accepted at ₹{lockedAmount.toLocaleString("en-IN")}/night
+                          <p style={{ fontSize: "0.82rem", fontWeight: 700, color: chipTitle, margin: 0 }}>
+                            {lockedPayOpen
+                              ? `Your bid was accepted at ₹${lockedAmount.toLocaleString("en-IN")}/night`
+                              : `Your bid was accepted at ₹${lockedAmount.toLocaleString("en-IN")}/night (expired)`}
                           </p>
                           <p style={{ fontSize: "0.68rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
-                            Confirm payment before the hold window expires.
+                            {chipSubtitle}
                           </p>
                         </div>
                       </div>
@@ -3583,7 +3601,8 @@ export default function HotelDetail() {
                         onPayNow={() => router.push(`/my-bids#bid-${lockedBid.id}`)}
                       />
                     </div>
-                  )}
+                    );
+                  })()}
                   {!isFlashRoom && !isLockedRoom && myRoomCountered && (
                     <div style={{
                       marginBottom: 14, padding: "10px 12px", borderRadius: 12,
