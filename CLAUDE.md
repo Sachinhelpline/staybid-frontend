@@ -9033,3 +9033,38 @@ immersive on the reel only (accepts the hidden-gesture-nav tradeoff).
   **never** leave a path that re-primes the sentinel unconditionally — that
   traps the user. Always keep a deliberate exit (here: the 2s double-back)
   and a class/route check so the handler can't fire off the intended page.
+
+---
+
+## v247.3 — back-guard didn't hold: preserve Next.js's history.state
+
+The v247.2 double-back guard **shipped but didn't work** on-device — a single
+back-swipe still exited the reel instantly (Sachin: "abhi bhi same problem,
+bahut jaldi back ja raha hai, kaam hi nahi kar pa rahe").
+
+**Root cause:** the sentinel did `history.pushState({reelGuard:true}, "")`,
+which **overwrites the entire `history.state`** — wiping the keys Next.js App
+Router stores there (`tree`, `__NA`, `key`). With its state gone, Next's own
+popstate handler mis-reconstructs the route and navigates away regardless of
+our sentinel, so the buffer never held.
+
+**Fix:** `primeSentinel()` now **spreads** the existing state and only adds the
+marker, pushing with the explicit current URL:
+```js
+window.history.pushState(
+  { ...(window.history.state as Record<string, unknown> | null), reelGuard: true },
+  "", window.location.href,
+);
+```
+Prime exactly **one** sentinel (two would make the double-back land on the
+leftover sentinel instead of leaving the reel). `SB_BUILD v247.2→v247.3`,
+`HTML_CACHE v33→v34`.
+
+⚠️ Still on-device-QA-gated. If THIS attempt also fails to hold the back
+gesture, the framework is winning and the agreed fallback is immersive on the
+reel only (back absorbed for sure, gesture nav hidden like IG/TikTok reels).
+
+### Things to Avoid (v247.3)
+- **Never** pass a fresh object as the first arg of `history.pushState` on a
+  Next.js App Router page — it clobbers Next's router state (`tree`/`__NA`)
+  and breaks back/forward navigation. Always spread `window.history.state`.
