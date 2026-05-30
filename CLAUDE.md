@@ -8788,7 +8788,58 @@ the code fix alone resolves it — no row mutation, no cron change.
 - **Carry-forward pending items:**
   - End-to-end VERIFY on Sachin's IST device after hard-refresh to v246: dead
     bid gone from /my-bids + Book Now/Negotiate unblocked on Dhanaulti.
-  - Next 16 / React 19 / TS 6 major bump (`docs/NEXT-MAJOR-UPGRADE.md`).
+  - ~~Next 16 / React 19 / TS 6 major bump~~ **— DONE, already shipped v242
+    (#185); see the v242 era note below. Removed from carry-forward.**
   - Re-approach mobile gesture-nav + camera-notch chrome with on-device
     testing (v241.10–v241.13 reverted).
   - Customer notification on bid-conflict push (blocked by mobile OTP DLT).
+
+---
+
+## Doc correction: Next 16 / React 19 / TS 6 was ALREADY done (v242, #185) — recorded v246-closeout, 2026-05-30
+
+A verify-closeout session picked up "Next 16 / React 19 / TS 6 major bump"
+off the v246 carry-forward — then discovered it had **already shipped** and
+the carry-forward + runbook were stale. No upgrade work was needed; this
+note + the runbook banner correct the record so a future session doesn't
+re-attempt a completed migration.
+
+### What actually happened (the missing v242 era)
+
+- **Commit `40f041d` — "v242 — Next 16 + React 19 + TypeScript 6 major
+  upgrade (#185)"** landed the full bump and merged to `main` *before* v243.
+  v243/v244/v245/v246 were all built and shipped on top of it. The changelog
+  above jumps v241.28 → v245 because the v242 upgrade era was never written
+  up here — this note backfills it.
+- **Versions bumped (`package.json` + `package-lock.json`):**
+  `next 15.5.18 → 16.2.6`, `react`/`react-dom 18.3 → 19.2.6`,
+  `react-is → 19.2.6`, `typescript → 6.0.3`, `nodemailer 6.10.1 → 8.0.10`,
+  plus the `overrides.postcss ^8.5.10` pin that clears the transitive
+  postcss XSS / ws advisories.
+
+### Re-verified green on the v246 HEAD (not just the old v242 commit)
+
+On `claude/verify-v246-closeout-fjLJm` (= a325521, current prod v246):
+- `npm ci --legacy-peer-deps` → clean, **0 vulnerabilities**.
+- `npx tsc --noEmit --skipLibCheck` → **exit 0**.
+- `npm run build` → **exit 0**, all routes compile (static + dynamic split
+  intact).
+- Installed tree confirmed: `next 16.2.6 / react 19.2.6 / typescript 6.0.3`.
+
+So the major-bump milestone is solid end-to-end on current prod — no
+regression crept in across v243–v246. The `docs/NEXT-MAJOR-UPGRADE.md`
+runbook now carries a ✅ COMPLETED banner pointing at #185.
+
+### Things to Avoid (v246-closeout doc-correction)
+
+- **Never** trust a "pending" carry-forward without checking `git log
+  --oneline -- package.json` (or the relevant file) first. Here the bump
+  was visibly done (`v242 … (#185)`) yet still listed as TODO across two
+  docs — picking it up nearly meant redoing a shipped migration. Verify
+  state before acting on a stale note.
+- **Never** leave a major-version bump out of the CLAUDE.md changelog. The
+  v242 era was shipped but undocumented, which is exactly why the
+  carry-forward looked unfinished. Every version that bumps `SB_BUILD` gets
+  an era note here.
+- This was a **docs-only** change: no `SB_BUILD` / badge / `HTML_CACHE`
+  bump (that rule is for UI ships), no code, no DB, no flow touched.
