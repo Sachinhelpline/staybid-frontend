@@ -277,7 +277,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // the picker auto-suggests rooms from the guest mix, and real per-unit
 // inventory blocking (N rooms block N units, date-aware oversell guard) lands.
 // All client-rendered, so drop the stale v30 HTML on next visit.
-const HTML_CACHE = 'staybid-html-v31';
+// v247.1 — one-time bump (v31 → v32). Reel/discover no longer call the
+// Fullscreen API (it was hiding Android's gesture-nav bar); status bar now
+// blends to #000 on reels. Client-rendered, so drop stale v31 HTML.
+const HTML_CACHE = 'staybid-html-v32';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
