@@ -127,7 +127,12 @@
   /* Desktop reel-page page-level backdrop — soft luxe gradient behind
      the centered phone frame so it feels intentional, not floating in a
      blank void. */
-  body.is-reel-page::before {
+  /* v243 — keyed on the reel frame's presence, not body.is-reel-page (which
+     useReelFullscreen only sets on mobile, so on desktop the backdrop never
+     showed → the centered frame floated on a plain page bg, reading as
+     "not set up for desktop"). :has(.reel-page-root) shows it on every desktop
+     reel surface (/, /discover, /reels). */
+  body:has(.reel-page-root)::before {
     content: "";
     position: fixed;
     inset: 0;
@@ -138,7 +143,7 @@
       var(--bg-page, #FAF5EB);
     pointer-events: none;
   }
-  [data-theme="dark"] body.is-reel-page::before {
+  [data-theme="dark"] body:has(.reel-page-root)::before {
     background:
       radial-gradient(ellipse 80% 60% at 20% 30%, rgba(217, 190, 130, 0.12), transparent 60%),
       radial-gradient(ellipse 80% 60% at 80% 70%, rgba(74, 56, 32, 0.30), transparent 60%),

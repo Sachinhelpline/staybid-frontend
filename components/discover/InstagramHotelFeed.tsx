@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useNetworkTier } from "@/lib/use-network-tier";
 import { useSoundStore } from "@/lib/sound-store";
 import { useFollow } from "@/lib/follow-store";
@@ -1605,6 +1605,12 @@ const HotelCard = memo(function HotelCard({
   const videoSrc = videoForHotel(h);
   const creator = creatorFor(h);
   const hotelEntity = entityFromHotel(h);
+  // v243 — on home `/` the brand lives in the Flash Deals rail (no over-video
+  // wordmark), so the profile chip can sit tight to the top; on /discover the
+  // `.reel-brand-chrome` wordmark IS over the video, so the chip keeps its 38px
+  // clearance. (Fixes the big gap between the flash rail and the @handle.)
+  const isHome = usePathname() === "/";
+  const chipTop = `calc(env(safe-area-inset-top, 0px) + ${isHome ? 12 : 38}px)`;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -2037,7 +2043,7 @@ const HotelCard = memo(function HotelCard({
           the brand wordmark on the same surface. */}
       <div
         className="absolute left-3 right-3 z-30 flex items-start gap-2.5"
-        style={{ top: "calc(env(safe-area-inset-top, 0px) + 38px)" }}
+        style={{ top: chipTop }}
       >
         <button
           type="button"
