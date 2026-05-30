@@ -50,6 +50,14 @@ function makeFakeJwt() {
   const payload = { id: AUDIT_USER.id, user_id: AUDIT_USER.id, sub: AUDIT_USER.id, exp: Math.floor(Date.now() / 1000) + 86400 * 365 };
   return `${b64({ alg: "none", typ: "JWT" })}.${b64(payload)}.audit`;
 }
+// Operator (admin / partner) sessions. The admin layout gates on a
+// sb_admin_user with role admin|super_admin; the partner dashboard gates on
+// sb_partner_token + sb_partner_user. We inject all three session families so
+// --auth renders the real operator chrome (sidebar, dense tables, dashboard
+// tabs) instead of bouncing to /admin/login or /partner. Backend calls still
+// 401 — fine, we're auditing layout geometry, not data.
+const AUDIT_ADMIN = { id: "audit-admin", phone: "9990000001", name: "Audit Admin", email: "admin@staybid.test", role: "super_admin" };
+const AUDIT_PARTNER = { id: "audit-partner", phone: "9990000002", name: "Audit Partner", email: "partner@staybid.test", role: "partner", hotelId: "STB-2026-01019", hotel: { id: "STB-2026-01019", name: "Audit Hotel" } };
 function sessionInitScript() {
   const token = makeFakeJwt();
   const user = JSON.stringify(AUDIT_USER);
@@ -57,6 +65,10 @@ function sessionInitScript() {
     localStorage.setItem('sb_token', ${JSON.stringify(token)});
     localStorage.setItem('sb_user', ${JSON.stringify(user)});
     localStorage.setItem('sb_token_type', 'backend');
+    localStorage.setItem('sb_admin_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_admin_user', ${JSON.stringify(JSON.stringify(AUDIT_ADMIN))});
+    localStorage.setItem('sb_partner_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_partner_user', ${JSON.stringify(JSON.stringify(AUDIT_PARTNER))});
   }catch(e){}`;
 }
 

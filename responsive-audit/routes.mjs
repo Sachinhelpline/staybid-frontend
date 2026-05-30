@@ -50,8 +50,36 @@ export const PARTNER_ROUTES = [
 ];
 
 export const ADMIN_ROUTES = [
-  { path: "/admin/login", name: "admin-login", auth: false },
-  // full admin tree enumerated when its phase begins
+  { path: "/admin/login",            name: "admin-login",        auth: false },
+  { path: "/admin",                  name: "admin-dashboard",    auth: true },
+  { path: "/admin/users",            name: "admin-users",        auth: true },
+  { path: "/admin/hotels",           name: "admin-hotels",       auth: true },
+  { path: "/admin/bookings",         name: "admin-bookings",     auth: true },
+  { path: "/admin/creators",         name: "admin-creators",     auth: true },
+  { path: "/admin/content",          name: "admin-content",      auth: true },
+  { path: "/admin/verification",     name: "admin-verification", auth: true },
+  { path: "/admin/complaints",       name: "admin-complaints",   auth: true },
+  { path: "/admin/feedback",         name: "admin-feedback",     auth: true },
+  { path: "/admin/pricing",          name: "admin-pricing",      auth: true },
+  { path: "/admin/fraud",            name: "admin-fraud",        auth: true },
+  { path: "/admin/finance",          name: "admin-finance",      auth: true },
+  { path: "/admin/revenue",          name: "admin-revenue",      auth: true },
+  { path: "/admin/holds",            name: "admin-holds",        auth: true },
+  { path: "/admin/hold-config",      name: "admin-hold-config",  auth: true },
+  { path: "/admin/analytics",        name: "admin-analytics",    auth: true },
+  { path: "/admin/messages",         name: "admin-messages",     auth: true },
+  { path: "/admin/commission-rules", name: "admin-commission",   auth: true },
+  { path: "/admin/hotel-commission-rules", name: "admin-hotel-commission", auth: true },
+  { path: "/admin/services",         name: "admin-services",     auth: true },
+  { path: "/admin/redemption-rules", name: "admin-redeem-rules", auth: true },
+  { path: "/admin/redemption-codes", name: "admin-redeem-codes", auth: true },
+  { path: "/admin/reports",          name: "admin-reports",      auth: true },
+  { path: "/admin/notifications",    name: "admin-notifications",auth: true },
+  { path: "/admin/support",          name: "admin-support",      auth: true },
+  { path: "/admin/support/metrics",  name: "admin-support-metrics", auth: true },
+  { path: "/admin/videos",           name: "admin-videos",       auth: true },
+  { path: "/admin/settings",         name: "admin-settings",     auth: true },
+  { path: "/admin/rls",              name: "admin-rls",          auth: true },
 ];
 
 export const SURFACES = {
