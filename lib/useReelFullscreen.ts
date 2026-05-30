@@ -32,6 +32,15 @@
    5. v247.1 — blend the status bar into the black reel by setting
       `theme-color` to #000 for the reel's lifetime (restored on leave) so
       there's no separate colored band at the top.
+   6. v247.2 — "double-back to exit" guard. Dropping the immersive request
+      (point 4) also removed the only thing that was absorbing Android's
+      edge back-gesture, so a single back-swipe began exiting the reel
+      instantly (Sachin: "bahut jaldi back chala jata hai"). We restore that
+      buffer WITHOUT immersive via a history sentinel: the first back is
+      swallowed (toast shown), only a deliberate second back within 2s
+      actually leaves. Fail-safe — a real double-back always exits, the arm
+      auto-clears, and the handler no-ops off a reel page so it can never
+      hijack back elsewhere.
 
    Call this once from /discover and /reels page components.
    ────────────────────────────────────────────────────────────────────── */
@@ -93,6 +102,67 @@ export function useReelFullscreen() {
     window.addEventListener("touchstart", collapseUrlBar, { passive: true, once: true });
     window.addEventListener("click",      collapseUrlBar, { passive: true, once: true });
 
+    // ── Back-gesture guard — "double-back to exit" (v247.2) ─────────
+    // Re-adds the back-swipe buffer the immersive Fullscreen API used to
+    // provide, but without hiding the gesture nav. A sentinel history entry
+    // catches the first back; only a deliberate second back (within 2s)
+    // leaves. Fail-safe by design:
+    //   • a real double-back ALWAYS exits — the user is never trapped,
+    //   • `armed` auto-clears after 2s,
+    //   • the handler no-ops the instant we're off a reel page (class check),
+    //     so a listener that loses the unmount race (see hotels/[id] v227)
+    //     can't hijack the back button on a non-reel route.
+    let armed = false;
+    let armTimer: ReturnType<typeof setTimeout> | undefined;
+    let leaving = false;
+    let toastEl: HTMLDivElement | null = null;
+
+    const clearToast = () => { toastEl?.remove(); toastEl = null; };
+    const showToast = () => {
+      clearToast();
+      const el = document.createElement("div");
+      el.textContent = "Press back again to exit";
+      el.setAttribute("role", "status");
+      el.style.cssText =
+        "position:fixed;left:50%;bottom:96px;transform:translateX(-50%);" +
+        "z-index:2147483647;background:rgba(0,0,0,0.82);color:#fff;" +
+        "padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:500;" +
+        "pointer-events:none;backdrop-filter:blur(8px);text-align:center;" +
+        "max-width:80vw;box-shadow:0 4px 18px rgba(0,0,0,0.45);" +
+        "opacity:0;transition:opacity .18s ease";
+      body.appendChild(el);
+      toastEl = el;
+      requestAnimationFrame(() => { if (toastEl === el) el.style.opacity = "1"; });
+      setTimeout(() => {
+        if (toastEl === el) { el.style.opacity = "0"; setTimeout(clearToast, 220); }
+      }, 1500);
+    };
+
+    const onPopState = () => {
+      // Off the reel (e.g. lost the unmount race) → never guard back.
+      if (!body.classList.contains("is-reel-page")) return;
+      if (leaving) return;
+      if (armed) {
+        // deliberate 2nd back inside the window → let them out for real
+        armed = false;
+        if (armTimer) clearTimeout(armTimer);
+        clearToast();
+        leaving = true;
+        window.history.back();
+        return;
+      }
+      // first back → swallow: re-prime the sentinel + toast + 2s window
+      armed = true;
+      window.history.pushState({ reelGuard: true }, "");
+      showToast();
+      if (armTimer) clearTimeout(armTimer);
+      armTimer = setTimeout(() => { armed = false; }, 2000);
+    };
+
+    // prime one sentinel so the very first back has something to pop
+    window.history.pushState({ reelGuard: true }, "");
+    window.addEventListener("popstate", onPopState);
+
     return () => {
       html.classList.remove("is-reel-page");
       body.classList.remove("is-reel-page");
@@ -107,6 +177,18 @@ export function useReelFullscreen() {
       document.removeEventListener("fullscreenchange", updateVh);
       window.removeEventListener("touchstart", collapseUrlBar);
       window.removeEventListener("click", collapseUrlBar);
+      // ── tear down the back-gesture guard ──
+      window.removeEventListener("popstate", onPopState);
+      if (armTimer) clearTimeout(armTimer);
+      clearToast();
+      // If our sentinel is still the active entry (component unmounted while
+      // sitting on it, not via a forward nav), pop it so we don't leave a
+      // stray history step behind. For normal forward nav the top state is
+      // the new page's, so history is left untouched.
+      if (!leaving && window.history.state?.reelGuard) {
+        leaving = true;
+        window.history.back();
+      }
       cancelAnimationFrame(raf);
     };
   }, []);
