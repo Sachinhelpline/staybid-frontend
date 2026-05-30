@@ -2042,7 +2042,7 @@ const HotelCard = memo(function HotelCard({
           safe-area-inset-top (v87) the chip clears every device's notch +
           the brand wordmark on the same surface. */}
       <div
-        className="absolute left-3 right-3 z-30 flex items-start gap-2.5"
+        className="ig-profile-chip absolute left-3 right-3 z-30 flex items-center gap-2.5"
         style={{ top: chipTop }}
       >
         <button
@@ -3817,6 +3817,23 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           -webkit-backdrop-filter: blur(12px);
           animation: igPauseFade 0.4s ease-out forwards;
           box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+        }
+
+        /* v243 — premium profile chip: a glassy champagne-tinted floating pill
+           behind avatar + handle + Follow (all devices). The avatar ring +
+           follow button were already premium; this gives the row a cohesive
+           floating-bar backing instead of bare text on the video. */
+        .ig-profile-chip {
+          padding: 5px 8px 5px 5px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, rgba(31,26,15,0.44), rgba(31,26,15,0.22));
+          backdrop-filter: blur(14px) saturate(1.3);
+          -webkit-backdrop-filter: blur(14px) saturate(1.3);
+          border: 1px solid rgba(217,190,130,0.24);
+          box-shadow: 0 4px 16px rgba(15,12,8,0.30), inset 0 1px 0 rgba(255,255,255,0.10);
+          width: -moz-max-content;
+          width: max-content;
+          max-width: calc(100% - 6px);
         }
 
         /* v89 — Avatar ring: cozy champagne conic instead of rainbow magenta/purple */
