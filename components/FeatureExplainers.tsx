@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, ReactNode, ReactElement } from "react";
 import Link from "next/link";
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -479,7 +479,7 @@ type Feature = {
   accent: string;
   steps: Step[];
   cta: { href: string; en: string; hi: string };
-  Scenes: (p: { step: number }) => JSX.Element;
+  Scenes: (p: { step: number }) => ReactElement;
 };
 
 const FEATURES: Feature[] = [

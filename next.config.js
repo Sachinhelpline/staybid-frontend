@@ -26,11 +26,11 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
   experimental: {
-    // Force single-process build — Phase 8 grew hotel page + partner
-    // dashboard past Next.js's default worker-pool memory budget. Without
-    // workerThreads:false the child workers get stuck at ~2GB and crash
-    // with "Zone Allocation failed" even when the main process has 8GB.
-    workerThreads: false,
+    // Single-process build — the hotel page + partner dashboard grew past
+    // Next's default worker-pool memory budget; capping to one CPU keeps the
+    // build inside the 8GB NODE_OPTIONS budget. (The old `workerThreads:false`
+    // companion flag was removed in Next 16 — moot now that Turbopack is the
+    // default builder and manages its own worker memory.)
     cpus: 1,
     // v107 — tree-shake aggressively on the few packages that imported
     // namespaces tend to bring along a lot of dead code. `firebase` and
