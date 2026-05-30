@@ -379,11 +379,13 @@ export default function LuxuryCalendar({
                 {!past && !pData && floorAnchor === 0 && pricingMode === "hotel" && (
                   <span className="lux-cal-daydot" />
                 )}
-                {/* v243 — the today cell is marked by the champagne ring (.is-today
-                    in CSS). Only render the "Today" text when there's no price in
-                    the cell, otherwise the absolute-positioned label overlapped
-                    the price (e.g. "TODAY" on top of "₹4.9k"). */}
-                {isToday && !(pData && pricingMode === "hotel") && (
+                {/* v243.1 — the today cell is marked by the champagne ring
+                    (.is-today in CSS). Suppress the "Today" text whenever the
+                    cell already shows content — a price (hotel mode) OR a
+                    demand label (Low/Med/High) — otherwise the bottom-anchored
+                    "TODAY" overlapped it (e.g. "TODAY" on "HIGH" / "₹4.9k").
+                    Today is still unmistakable from the ring + dot. */}
+                {isToday && !(pData && (pricingMode === "hotel" || pricingMode === "demand")) && (
                   <span className="lux-cal-todaymark">Today</span>
                 )}
               </button>
