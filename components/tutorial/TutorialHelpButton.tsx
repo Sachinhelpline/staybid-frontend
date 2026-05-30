@@ -82,9 +82,10 @@ export function TutorialHelpButton() {
       {/* FAB — bottom-right above BottomDock.
           v144: pure "?" character only — no background, no border, no
           shadow. Color uses var(--text-base) which auto-flips between
-          dark cocoa (light mode) and cream (dark mode). Default 18px
-          hit area, 14px in mature mode. Hover restores visibility +
-          subtle scale for the discoverability. */}
+          dark cocoa (light mode) and cream (dark mode). The visible
+          glyph stays small (14–18px) but the tap area is a transparent
+          44×44 box (WCAG 2.5.5 min target) — the "?" is flex-centered
+          inside it. Hover restores visibility + subtle scale. */}
       <button
         type="button"
         aria-label={isMature ? "Help (compact)" : "Open app tour & help"}
@@ -96,8 +97,9 @@ export function TutorialHelpButton() {
           // BottomDock height is ~64px + safe-area. We sit just above it.
           bottom: "calc(78px + env(safe-area-inset-bottom, 0px))",
           zIndex: 9500,
-          width: isMature ? 14 : 18,
-          height: isMature ? 14 : 18,
+          // 44×44 transparent hit area (a11y min); glyph size set by fontSize.
+          width: 44,
+          height: 44,
           borderRadius: "50%",
           border: "none",
           background: "transparent",

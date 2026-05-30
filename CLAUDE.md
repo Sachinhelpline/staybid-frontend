@@ -8685,4 +8685,3 @@ every acceptance window resolves to exactly 30 min, no Autopilot-mode mismatch.
 - **NOT done (by design):** sweeping the 2 stale pre-trigger ACCEPTED-unpaid
   rows (May 17–18) to EXPIRED — they already read as expired and are filtered
   out everywhere, so a production status mutation isn't warranted.
-

@@ -114,6 +114,13 @@ export function BottomDock() {
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
           border-top: 1px solid rgba(217, 190, 130, 0.12);
           box-shadow: 0 -6px 22px rgba(31, 26, 15, 0.45);
+          /* The dock is exactly viewport-width (left:0;right:0). On the
+             280px Galaxy Fold cover screen the 6 emoji glyphs' intrinsic
+             width is the shrink floor, so the rightmost item can spill a
+             few px past the edge → a transient document-level horizontal
+             scrollbar. Clip it here (can't hide anything real since the
+             dock already spans the full viewport). */
+          overflow-x: clip;
         }
         [data-theme="light"] .ig-bottom-dock {
           background: rgba(255, 252, 246, 0.94);
@@ -136,6 +143,7 @@ export function BottomDock() {
           justify-content: center;
           gap: 2px;
           padding: 6px 2px;
+          overflow: hidden;
           /* v88 — cream-tinted instead of harsh white */
           color: rgba(250, 245, 235, 0.62);
           text-decoration: none;
