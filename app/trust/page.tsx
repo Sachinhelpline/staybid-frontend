@@ -11,18 +11,28 @@ import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 export default function TrustReviewsPage() {
   const [hotels, setHotels] = useState<any[]>([]);
+  const [scores, setScores] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
   useEffect(() => {
     api.getHotels({ limit: "60" })
-      .then((res: any) => {
+      .then(async (res: any) => {
         const list = (res.hotels || []).slice();
         // Best-reviewed first. starRating is the stable proxy we always have on
-        // the list payload; each row's HotelScoreBadge self-fetches the live
-        // Stay Score + city rank.
+        // the list payload; the Stay Score + city rank come from the batch below.
         list.sort((a: any, b: any) => (b.starRating || 0) - (a.starRating || 0));
         setHotels(list);
+        // One batch call for every hotel's scorecard (instead of N per-badge
+        // fetches). Pass each card to its badge as `initial` so it never fetches.
+        const ids = list.map((h: any) => h.id).filter(Boolean);
+        if (ids.length) {
+          try {
+            const r = await fetch(`/api/hotels/scorecards?ids=${ids.map(encodeURIComponent).join(",")}`);
+            const j = await r.json();
+            setScores(j?.scorecards || {});
+          } catch { /* badges fall back to self-fetch */ }
+        }
       })
       .catch((e: any) => setErr(e?.message || "Could not load stays right now."))
       .finally(() => setLoading(false));
@@ -82,7 +92,7 @@ export default function TrustReviewsPage() {
                   <span className="text-xs font-semibold mt-1 inline-block" style={{ color: "var(--accent)" }}>Read guest reviews →</span>
                 </div>
                 <div className="shrink-0">
-                  <HotelScoreBadge hotelId={h.id} hotelName={h.name} variant="compact" />
+                  <HotelScoreBadge hotelId={h.id} hotelName={h.name} variant="compact" initial={scores[h.id]} />
                 </div>
               </Link>
             ))}

@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { getHotelArea } from "@/lib/areas";
-import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import HotelScoreBadge, { seedScorecardCache } from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD } from "@/lib/sb-image";
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
@@ -217,14 +217,26 @@ function HotelList() {
           (dealsByHotel[d.hotelId] ||= []).push(d);
         }
         const list = hotelsRes.hotels || [];
-        const compMins = await Promise.all(
-          list.map((h: any) =>
-            fetch(`/api/pricing/competitor/${h.id}`)
-              .then((r) => r.json())
-              .then((j) => j?.competitor_min ?? null)
-              .catch(() => null)
-          )
-        );
+        const ids = list.map((h: any) => h.id).filter(Boolean);
+        // Fetch competitor mins + ALL hotel scorecards in parallel (one batch
+        // call for scores instead of one-per-badge). Seeding the badge cache
+        // before setHotels means the badges read from cache and never self-fetch.
+        const [compMins] = await Promise.all([
+          Promise.all(
+            list.map((h: any) =>
+              fetch(`/api/pricing/competitor/${h.id}`)
+                .then((r) => r.json())
+                .then((j) => j?.competitor_min ?? null)
+                .catch(() => null)
+            )
+          ),
+          ids.length
+            ? fetch(`/api/hotels/scorecards?ids=${ids.map(encodeURIComponent).join(",")}`)
+                .then((r) => r.json())
+                .then((j) => seedScorecardCache(j?.scorecards))
+                .catch(() => {})
+            : Promise.resolve(),
+        ]);
         const enriched = list.map((h: any, i: number) => ({
           ...h,
           flashDeals: dealsByHotel[h.id] || [],

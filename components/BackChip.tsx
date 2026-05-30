@@ -66,11 +66,13 @@ export function BackChip() {
            Champagne border stays the brand mark across both modes. */
         .sb-back-chip {
           position: fixed;
-          top: calc(env(safe-area-inset-top, 0px) + 6px);
-          left: 8px;
+          /* Sit tight in the very corner so the chip stays clear of left-
+             aligned page titles/eyebrows (the wallet/complaints overlap). */
+          top: calc(env(safe-area-inset-top, 0px) + 4px);
+          left: 6px;
           z-index: 62;
-          width: 30px;
-          height: 30px;
+          width: 28px;
+          height: 28px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -117,7 +119,11 @@ export function BackChip() {
            only ships on customer non-reel pages — BackChip returns null
            (and so does this <style>) on reel routes + operator panels. */
         @media (max-width: 1023px) {
-          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+          /* Guarantee the first content row clears the back chip (bottom edge
+             ~safe+32px) with a comfortable gap, regardless of the device's
+             safe-area inset — this is the wallet/complaints title-overlap fix.
+             Reel pages opt out below. */
+          body main { padding-top: calc(env(safe-area-inset-top, 0px) + 16px); }
           body.is-reel-page main { padding-top: 0; }
         }
       `}</style>

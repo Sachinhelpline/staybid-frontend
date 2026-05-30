@@ -37,6 +37,20 @@ export type Scorecard = {
 const CACHE: Record<string, { data: Scorecard | null; at: number }> = {};
 const TTL = 60_000;
 
+/**
+ * Seed the per-hotel scorecard cache from a batch fetch
+ * (GET /api/hotels/scorecards?ids=…). List pages call this so the badges that
+ * mount afterward read from cache instead of each firing its own request.
+ * Safe to call repeatedly; freshest wins.
+ */
+export function seedScorecardCache(scorecards: Record<string, Scorecard | null> | null | undefined) {
+  if (!scorecards) return;
+  const at = Date.now();
+  for (const id of Object.keys(scorecards)) {
+    CACHE[id] = { data: scorecards[id] ?? null, at };
+  }
+}
+
 async function fetchScorecard(
   hotelId: string,
   opts?: { force?: boolean },
