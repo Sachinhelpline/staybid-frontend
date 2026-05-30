@@ -192,7 +192,7 @@
      desktop so they hug the right rim of the reel frame, not the
      monitor edge. The Tailwind utility `.fixed` already applies — we
      just need to swap to absolute and reference the new container. */
-  .reel-page-root > div.fixed.right-1\\.5,
+  .reel-page-root > div.fixed.right-1\.5,
   .reel-page-root .fixed[class*="right-1"] {
     position: absolute !important;
   }
