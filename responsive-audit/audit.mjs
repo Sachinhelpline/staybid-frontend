@@ -50,6 +50,14 @@ function makeFakeJwt() {
   const payload = { id: AUDIT_USER.id, user_id: AUDIT_USER.id, sub: AUDIT_USER.id, exp: Math.floor(Date.now() / 1000) + 86400 * 365 };
   return `${b64({ alg: "none", typ: "JWT" })}.${b64(payload)}.audit`;
 }
+// Operator (admin / partner) sessions. The admin layout gates on a
+// sb_admin_user with role admin|super_admin; the partner dashboard gates on
+// sb_partner_token + sb_partner_user. We inject all three session families so
+// --auth renders the real operator chrome (sidebar, dense tables, dashboard
+// tabs) instead of bouncing to /admin/login or /partner. Backend calls still
+// 401 — fine, we're auditing layout geometry, not data.
+const AUDIT_ADMIN = { id: "audit-admin", phone: "9990000001", name: "Audit Admin", email: "admin@staybid.test", role: "super_admin" };
+const AUDIT_PARTNER = { id: "audit-partner", phone: "9990000002", name: "Audit Partner", email: "partner@staybid.test", role: "partner", hotelId: "STB-2026-01019", hotel: { id: "STB-2026-01019", name: "Audit Hotel" } };
 function sessionInitScript() {
   const token = makeFakeJwt();
   const user = JSON.stringify(AUDIT_USER);
@@ -57,7 +65,30 @@ function sessionInitScript() {
     localStorage.setItem('sb_token', ${JSON.stringify(token)});
     localStorage.setItem('sb_user', ${JSON.stringify(user)});
     localStorage.setItem('sb_token_type', 'backend');
+    localStorage.setItem('sb_admin_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_admin_user', ${JSON.stringify(JSON.stringify(AUDIT_ADMIN))});
+    localStorage.setItem('sb_partner_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_partner_user', ${JSON.stringify(JSON.stringify(AUDIT_PARTNER))});
+    localStorage.setItem('sb_onboard_token', ${JSON.stringify(token)});
+    localStorage.setItem('sb_onboard_user', ${JSON.stringify(JSON.stringify(AUDIT_PARTNER))});
   }catch(e){}`;
+}
+
+// Layout-gating API stubs. A few operator/creator layouts block rendering on a
+// single backend call (the creator hub bounces to /upgrade unless
+// /api/influencer/me says registered). Against the unreachable Railway API that
+// call fails, so under --auth we fulfil just the gating endpoints with benign
+// success stubs — enough to render the authenticated chrome we're auditing.
+// Everything else still hits the (failing) network, which is fine: skeletons
+// render and we audit geometry, not data.
+async function installApiStubs(context) {
+  await context.route("**/api/influencer/me", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ registered: true, status: "active", influencer: { id: "audit-creator", status: "active", display_name: "Audit Creator" } }),
+    })
+  );
 }
 
 // In-page detector. Returns a plain-serialisable findings object.
@@ -174,7 +205,7 @@ async function run() {
       localStorage.setItem('sb_tutorial_disabled','1');
       localStorage.setItem('sb_tutorial_welcome_seen','1');
     }catch(e){}`);
-    if (AUTH) await context.addInitScript(sessionInitScript());
+    if (AUTH) { await context.addInitScript(sessionInitScript()); await installApiStubs(context); }
     const page = await context.newPage();
     const consoleErrors = [];
     page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 200)); });
@@ -202,6 +233,22 @@ async function run() {
             finalUrl = page.url();
             findings = await page.evaluate(detectorSource);
           } else throw e1;
+        }
+        // Settled-overflow guard. Entrance animations (v136 .sb-stagger /
+        // .sb-fade-in) and late hydration can momentarily transform wide
+        // elements (e.g. an overflow-x-auto tab strip before its containment
+        // applies), producing a one-frame horizontal-overflow false positive.
+        // Re-sample scrollWidth after a short settle and keep the LOWER value —
+        // a *persistent* overflow survives both reads; only transients drop.
+        if (findings && findings.horizontalOverflow) {
+          await page.waitForTimeout(700);
+          const settled = await page.evaluate(() => {
+            const TOL = 2;
+            const o = document.documentElement.scrollWidth - window.innerWidth;
+            return o > TOL ? o : 0;
+          }).catch(() => findings.horizontalOverflow);
+          findings.horizontalOverflowRaw = findings.horizontalOverflow;
+          findings.horizontalOverflow = Math.min(findings.horizontalOverflow, settled);
         }
         if (SHOTS) {
           const dir = path.join("responsive-audit/artifacts", SURFACE, device.id);

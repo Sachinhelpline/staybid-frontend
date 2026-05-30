@@ -187,6 +187,12 @@ const prefixStyle: React.CSSProperties = {
 };
 const inputStyle: React.CSSProperties = {
   flex: 1,
+  // minWidth:0 lets this flex child shrink below its intrinsic input width,
+  // and border-box keeps the 28px h-padding inside the allotted width. Without
+  // both, the phone input spilled ~21px past the 280px Galaxy Fold viewport
+  // (the +91 prefix is flexShrink:0, so all the squeeze lands on this input).
+  minWidth: 0,
+  boxSizing: "border-box",
   background: "#151820",
   border: "1px solid rgba(255,255,255,0.07)",
   borderRadius: 10,

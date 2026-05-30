@@ -36,11 +36,11 @@ export default function OnboardLanding() {
         <div className="relative">
           <div className="aspect-4/5 rounded-3xl overflow-hidden shadow-2xl border border-luxury-100 bg-cover bg-center"
                style={{ backgroundImage: "url(https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200)" }} />
-          <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl border border-luxury-100 p-4 max-w-[260px]">
+          <div className="absolute bottom-2 left-2 xl:-bottom-6 xl:-left-6 bg-white rounded-2xl shadow-xl border border-luxury-100 p-4 max-w-[260px]">
             <div className="text-xs uppercase tracking-wider text-gold-700 font-semibold">AI Auto-fill</div>
             <div className="text-sm text-luxury-800 mt-1">Photos, amenities, room types & rates fetched from your existing online listings.</div>
           </div>
-          <div className="absolute -top-6 -right-6 bg-white rounded-2xl shadow-xl border border-luxury-100 p-4 max-w-[240px]">
+          <div className="absolute top-2 right-2 xl:-top-6 xl:-right-6 bg-white rounded-2xl shadow-xl border border-luxury-100 p-4 max-w-[240px]">
             <div className="text-xs uppercase tracking-wider text-gold-700 font-semibold">Owner Consent</div>
             <div className="text-sm text-luxury-800 mt-1">One-click verification. Your listing only goes live after you say yes.</div>
           </div>
