@@ -2332,6 +2332,13 @@ layer(utilities);
      ("upar header se jo front camera... wahan se complete cut ho rakhi
      hai screen" — Sachin v222). */
   padding-top: env(safe-area-inset-top, 0px);
+  /* Belt-and-braces: clip transient decorative spill (BidGameZone boot-CTA
+     glow + climber SVG render wider than the viewport on the 280px Galaxy
+     Fold cover screen during the boot animation). `clip` (not `hidden`)
+     clips without creating a scroll container, so position:sticky/fixed
+     descendants are unaffected. Kills the ~29px transient horizontal
+     scrollbar on ultra-narrow devices. */
+  overflow-x: clip;
 }
 
 /* ─── Toolbar (back chip + breadcrumb) ──────────────────────────── */
