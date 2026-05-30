@@ -268,27 +268,31 @@ export function CreateSheet({
 
   if (!open) return null;
   const cards: { kind: ContentKind; emoji: string; title: string; sub: string; gradient: string }[] = [
-    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · with audio, tags & emojis",  gradient: "linear-gradient(135deg,#ff458d,#b964ff)" },
-    { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel · emojis",     gradient: "linear-gradient(135deg,#ffd76b,#f0b429)" },
-    { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",        gradient: "linear-gradient(135deg,#3ea0ff,#1a78d6)" },
+    { kind: "reel",  emoji: "🎬", title: "Reel",  sub: "Up to 60s vertical video · audio, tags & emojis", gradient: "linear-gradient(135deg,#E7CFA0,#C9A66B 55%,#8B6914)" },
+    { kind: "photo", emoji: "📷", title: "Photo", sub: "Single image post · caption · tag a hotel",        gradient: "linear-gradient(135deg,#F0E0BE,#D9BE82 55%,#A6852F)" },
+    { kind: "story", emoji: "📖", title: "Story", sub: "24h disappearing photo or video · audio overlay",  gradient: "linear-gradient(135deg,#D9C19A,#B89B63 55%,#6E5430)" },
   ];
   return (
-    <div className="fixed inset-0 z-90 flex items-end" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }} />
+    <div className="fixed inset-0 z-90 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(15,12,8,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
-        className="relative w-full ig-drawer-up"
+        className="relative w-full sm:max-w-md ig-drawer-up"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
+          background: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)",
+          borderTopLeftRadius: 26, borderTopRightRadius: 26,
+          borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
+          borderTop: "1px solid rgba(217,190,130,0.22)",
+          boxShadow: "0 -24px 70px rgba(15,12,8,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
-        <div className="flex items-center justify-between px-5 pb-2">
-          <p className="text-white font-semibold text-[0.92rem]">Create</p>
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(217,190,130,0.4)" }} /></div>
+        <div className="flex items-center justify-between px-5 pb-1">
+          <div>
+            <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#C9A66B" }}>Share your stay</p>
+            <p className="font-semibold text-[1.15rem]" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: "italic", color: "#FAF5EB" }}>Create</p>
+          </div>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -297,9 +301,9 @@ export function CreateSheet({
               position: "relative", zIndex: 5,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               width: 36, height: 36, borderRadius: 9999,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.85)", fontSize: "1.15rem",
+              background: "rgba(217,190,130,0.10)",
+              border: "1px solid rgba(217,190,130,0.22)",
+              color: "rgba(250,245,235,0.85)", fontSize: "1.15rem",
               pointerEvents: "auto",
             }}
             aria-label="Close"
@@ -310,26 +314,34 @@ export function CreateSheet({
             <button
               key={c.kind}
               onClick={() => onPick(c.kind)}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.10)",
-              }}
+              className="cf-create-card w-full flex items-center gap-3.5 p-3.5 rounded-2xl text-left"
             >
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-                style={{ background: c.gradient, boxShadow: "0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.35)" }}
+                style={{ background: c.gradient, boxShadow: "0 4px 14px rgba(15,12,8,0.45), inset 0 1px 0 rgba(255,255,255,0.4)" }}
               >
                 {c.emoji}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-[0.92rem]">{c.title}</p>
-                <p className="text-white/55 text-[0.66rem] mt-0.5">{c.sub}</p>
+                <p className="font-semibold text-[0.96rem]" style={{ color: "#FAF5EB" }}>{c.title}</p>
+                <p className="text-[0.68rem] mt-0.5" style={{ color: "rgba(231,207,160,0.62)" }}>{c.sub}</p>
               </div>
-              <span className="text-white/45 text-xl">›</span>
+              <span className="text-xl" style={{ color: "rgba(217,190,130,0.55)" }}>›</span>
             </button>
           ))}
         </div>
+        <style jsx>{`
+          .cf-create-card {
+            background: linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03));
+            border: 1px solid rgba(217,190,130,0.16);
+            transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), border-color 0.18s ease, background 0.18s ease;
+          }
+          .cf-create-card:hover {
+            border-color: rgba(217,190,130,0.42);
+            background: linear-gradient(135deg, rgba(217,190,130,0.16), rgba(217,190,130,0.06));
+          }
+          .cf-create-card:active { transform: scale(0.98); }
+        `}</style>
       </div>
     </div>
   );
