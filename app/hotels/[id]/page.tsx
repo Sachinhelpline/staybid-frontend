@@ -26,7 +26,7 @@ import BackToTopButton from "@/components/BackToTopButton";
 // directional value-roll). Used on this page in the global availability
 // picker (adults / children / kids). The flash-deal modal still uses its
 // row-layout chrome until a `layout="row"` variant ships.
-import PremiumGuestPicker from "@/components/PremiumGuestPicker";
+import GuestsRoomsPicker from "@/components/GuestsRoomsPicker";
 // v139 — per-page tutorial spotlight tour (5 steps: photos → picker →
 // score badge → Book Now → Negotiate). Hook handles skip logic + waits
 // until the first selector (.hx-room-media) renders.
@@ -3052,54 +3052,20 @@ export default function HotelDetail() {
             </button>
           </div>
 
-          {/* Guests row — v201 PremiumGuestPicker.
-              The .picker-tile / .picker-step CSS classes stayed live for
-              third-party use, but the global availability picker now
-              renders the shared component so /bid + /hotels/[id] read the
-              same animated, theme-aware UI on every counter. */}
-          {/* v241.1 — 2x2 grid: Adults / Children / Kids / Rooms.
-              Rooms picker drives every booking-creation CTA on this
-              page (Book Now / Negotiate / Hold / Pay Now / Flash). */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 relative z-2">
-            <PremiumGuestPicker
-              kind="adults"
-              label="Adults"
-              sublabel="12+ yrs"
-              value={globalAdults}
-              onChange={setGlobalAdults}
-              min={1}
-              max={8}
-            />
-            <PremiumGuestPicker
-              kind="children"
-              label="Children"
-              sublabel="5-12 · +₹200"
-              sublabelTone="amber"
-              value={globalChildren}
-              onChange={setGlobalChildren}
-              min={0}
-              max={6}
-            />
-            <PremiumGuestPicker
-              kind="kids"
-              label="Kids"
-              sublabel="<5 yrs · FREE"
-              sublabelTone="emerald"
-              value={globalKids}
-              onChange={setGlobalKids}
-              min={0}
-              max={6}
-            />
-            <PremiumGuestPicker
-              kind="rooms"
-              label="Rooms"
-              sublabel="1 per family"
-              value={globalNumRooms}
-              onChange={setGlobalNumRooms}
-              min={1}
-              max={10}
-            />
-          </div>
+          {/* v243 — GuestsRoomsPicker: Adults/Children/Kids combined into ONE
+              "Guests" card (slim rows) + a compact "Rooms" card beside it,
+              replacing the bulky 2×2 grid of four separate tiles (ss1 ask).
+              Rooms still drives every booking-creation CTA on this page. */}
+          <GuestsRoomsPicker
+            adults={globalAdults}
+            children={globalChildren}
+            kids={globalKids}
+            rooms={globalNumRooms}
+            onAdults={setGlobalAdults}
+            onChildren={setGlobalChildren}
+            onKids={setGlobalKids}
+            onRooms={setGlobalNumRooms}
+          />
 
           {/* Availability warning when dates overlap blocks */}
           {datesSelected && dateRangeBlocked(globalCheckIn, globalCheckOut) && (
