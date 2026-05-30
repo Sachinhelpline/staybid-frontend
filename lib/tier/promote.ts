@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import type { ContentTier } from "@/lib/tier/types";
+import { queueNotification } from "@/lib/notify-server";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -83,23 +84,9 @@ export async function queueTierPromotionNudge(
   userId: string,
   newTier: ContentTier
 ): Promise<void> {
-  try {
-    await fetch(`${SB_URL}/rest/v1/notification_queue`, {
-      method: "POST",
-      headers: HEADERS,
-      body: JSON.stringify([
-        {
-          user_id: userId,
-          channel: "in_app",
-          template: "tier_promoted",
-          payload: { tier: newTier },
-          status: "pending",
-        },
-      ]),
-    });
-  } catch (e) {
-    console.error("[tier/promote] notif queue failed", e);
-  }
+  // Fans out to every enabled channel (in_app today; +sms/+whatsapp the moment
+  // the paid plan flag flips on — no change needed here). See lib/notify-server.
+  await queueNotification({ userId, template: "tier_promoted", payload: { tier: newTier } });
 }
 
 // ─── Phase 7 — Creator promotion ──────────────────────────────────────
