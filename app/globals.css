@@ -4589,6 +4589,14 @@ layer(utilities);
   border-radius: 999px;
   margin: -28px -28px 20px -28px; /* extend to card edges */
 }
+/* The rail's negative margins bleed past the card edges, which on the
+   narrowest onboarding cards (page gutter < the 28px bleed) pushed ~4px past
+   the viewport → a document-level horizontal scrollbar on phones. Clip the
+   bleed at the rounded card it lives in. Scoped via :has() so it only touches
+   cards that actually carry a step-rail — every other .card-luxury is
+   untouched. The ribbon still spans the card's top edge, just clipped to the
+   card's bounds (which is the intended "edge to edge" look). */
+.card-luxury:has(> .sb-step-rail) { overflow: hidden; }
 .sb-step-rail::after {
   content: "";
   position: absolute;
