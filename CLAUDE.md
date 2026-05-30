@@ -8788,7 +8788,168 @@ the code fix alone resolves it — no row mutation, no cron change.
 - **Carry-forward pending items:**
   - End-to-end VERIFY on Sachin's IST device after hard-refresh to v246: dead
     bid gone from /my-bids + Book Now/Negotiate unblocked on Dhanaulti.
-  - Next 16 / React 19 / TS 6 major bump (`docs/NEXT-MAJOR-UPGRADE.md`).
+  - ~~Next 16 / React 19 / TS 6 major bump~~ **— DONE, already shipped v242
+    (#185); see the v242 era note below. Removed from carry-forward.**
   - Re-approach mobile gesture-nav + camera-notch chrome with on-device
     testing (v241.10–v241.13 reverted).
   - Customer notification on bid-conflict push (blocked by mobile OTP DLT).
+
+---
+
+## Doc correction: Next 16 / React 19 / TS 6 was ALREADY done (v242, #185) — recorded v246-closeout, 2026-05-30
+
+A verify-closeout session picked up "Next 16 / React 19 / TS 6 major bump"
+off the v246 carry-forward — then discovered it had **already shipped** and
+the carry-forward + runbook were stale. No upgrade work was needed; this
+note + the runbook banner correct the record so a future session doesn't
+re-attempt a completed migration.
+
+### What actually happened (the missing v242 era)
+
+- **Commit `40f041d` — "v242 — Next 16 + React 19 + TypeScript 6 major
+  upgrade (#185)"** landed the full bump and merged to `main` *before* v243.
+  v243/v244/v245/v246 were all built and shipped on top of it. The changelog
+  above jumps v241.28 → v245 because the v242 upgrade era was never written
+  up here — this note backfills it.
+- **Versions bumped (`package.json` + `package-lock.json`):**
+  `next 15.5.18 → 16.2.6`, `react`/`react-dom 18.3 → 19.2.6`,
+  `react-is → 19.2.6`, `typescript → 6.0.3`, `nodemailer 6.10.1 → 8.0.10`,
+  plus the `overrides.postcss ^8.5.10` pin that clears the transitive
+  postcss XSS / ws advisories.
+
+### Re-verified green on the v246 HEAD (not just the old v242 commit)
+
+On `claude/verify-v246-closeout-fjLJm` (= a325521, current prod v246):
+- `npm ci --legacy-peer-deps` → clean, **0 vulnerabilities**.
+- `npx tsc --noEmit --skipLibCheck` → **exit 0**.
+- `npm run build` → **exit 0**, all routes compile (static + dynamic split
+  intact).
+- Installed tree confirmed: `next 16.2.6 / react 19.2.6 / typescript 6.0.3`.
+
+So the major-bump milestone is solid end-to-end on current prod — no
+regression crept in across v243–v246. The `docs/NEXT-MAJOR-UPGRADE.md`
+runbook now carries a ✅ COMPLETED banner pointing at #185.
+
+### Things to Avoid (v246-closeout doc-correction)
+
+- **Never** trust a "pending" carry-forward without checking `git log
+  --oneline -- package.json` (or the relevant file) first. Here the bump
+  was visibly done (`v242 … (#185)`) yet still listed as TODO across two
+  docs — picking it up nearly meant redoing a shipped migration. Verify
+  state before acting on a stale note.
+- **Never** leave a major-version bump out of the CLAUDE.md changelog. The
+  v242 era was shipped but undocumented, which is exactly why the
+  carry-forward looked unfinished. Every version that bumps `SB_BUILD` gets
+  an era note here.
+- This was a **docs-only** change: no `SB_BUILD` / badge / `HTML_CACHE`
+  bump (that rule is for UI ships), no code, no DB, no flow touched.
+
+---
+
+## Multi-room totals + auto room-upgrade + real per-unit blocking (v247, 2026-05-30)
+
+Sachin's 3-screenshot report: (ss1) hotel availability picker showed 2 rooms,
+(ss2) the Book Now "Instant Booking" sheet's rate breakdown still priced **1
+room** ("members add hue par room 1 hi"), (ss3) the Negotiate arena showed a
+single-room total and no room count. Plus his most-important ask: **"jitne
+rooms add karke bid/book karte hain, utne hi rooms block hote hain ya sirf 1?"**
+
+### Deep research first (live Supabase `uxxhbdqedazpmvbvaosh`) — the blocking answer
+- **Customer book/bid blocked ZERO units, not N, not 1.** `room_blocks` (the
+  inventory table) had only 2 rows, NO `bidId`/`bookingId` link, and is written
+  ONLY by partner flows (`partner/walk-in` `source='walk_in'`, `ota-feeds/sync`,
+  `room-units/assign`, `flash-deals/upgrade`). No customer path ever wrote it.
+- `bids.numRooms` / `bookings.numRooms` exist live (Prisma schema is stale) but
+  were used **for price math only**. `bids.numRooms>1` → 71 rows; `bookings`
+  table is **empty** (0 rows) — confirmed stays live as **bids** with status
+  CONFIRMED/CHECKED_IN, not in `bookings`.
+- Real capacity = `rooms.quantity` (sum 202 across 64 categories, **0 nulls**).
+  `hotel_room_units` (the per-unit grid the availability route keyed off) is
+  populated for **only 1 of 32 hotels** (4 units). The exact 1-unit bug:
+  `app/api/availability/units/route.ts` consumed **1** unit per unassigned
+  occupation regardless of `numRooms`, and `getOccupations` counted each bid as
+  1 unit.
+
+### What shipped (additive, NO DB migration)
+**Price/display consistency (ss1/ss2/ss3):**
+1. **Book Now modal** (`hotels/[id]/page.tsx` ~4548) preview now multiplies the
+   base by `globalNumRooms` (`baseTot = floorPrice×nights×nr`) + shows "× N
+   rooms" — matches `handleBookNow`'s `BookingReview` (which already
+   multiplied). Per-guest add-ons stay party-wide (not ×rooms). Guest line
+   gains a rooms chip.
+2. **Negotiate arena** (~4635): `totalBid = negAmt × nights × nrNeg` (was
+   nights-only); guest line + "for Nn × N rooms" + a "₹X total" on the Submit
+   button for multi-room/night. The SUBMIT path already sent `numRooms` and
+   multiplied — only the DISPLAY was single-room.
+3. **Partner dashboard** (3 totals: bid card, bookings list, booking-detail
+   modal) now `× nights × numRooms` with a "(N rooms × Mn)" caption — "partner
+   ko bhi ushi according show ho".
+4. **Auto room-upgrade** (`GuestsRoomsPicker` + `hotels/[id]`): rooms auto-bump
+   to `ceil(adults/2)` while the stepper is still at its default 1 (same `===1`
+   guard as the v241.14 bid prefill, so it never fights a manual choice), and a
+   one-tap "✨ Suggested: N" chip lets the customer adopt/re-adopt — "auto
+   upgrade room aur manual both".
+
+**Real per-unit inventory blocking (Sachin chose: strict `hotel_room_units`,
+block only on ACCEPTED/CONFIRMED):**
+5. `lib/availability.ts`: `Occupation.numRooms`; `getOccupations` carries each
+   bid's `numRooms` and now treats CONFIRMED/CHECKED_IN as hard blocks too
+   (PENDING still NOT a block — reverse auction keeps inventory free until
+   accept). New `unitsFreeForRange()` helper: capacity from `hotel_room_units`
+   (active) **else `rooms.quantity` as virtual units** (covers all 32 hotels);
+   occupied = per-night peak of Σ `numRooms`; returns free units.
+6. `app/api/availability/units/route.ts`: seeds `rooms.quantity` virtual units
+   when a category has no `hotel_room_units`, and consumes `numRooms` (not 1)
+   per unassigned occupation.
+7. `app/api/bids/place/route.ts`: **date-aware oversell guard** — 409 if
+   `unitsFreeForRange < numRooms` for the requested nights (alongside the
+   pre-existing static `numRooms > quantity` check). **Fails OPEN** on any gap
+   (no requestId / dates / capacity / error) so a legit booking is never
+   blocked by an availability hiccup.
+
+8. `SB_BUILD v246→v247`, badge v246→v247, `HTML_CACHE v30→v31`.
+
+### Verified
+- `tsc --noEmit` exit 0 + `npm run build` exit 0 (Next 16 / React 19 / TS 6).
+- DB sanity: only **1 CHECKED_IN bid (numRooms=1)** is a hard block in the whole
+  DB (rest EXPIRED, uncounted); **0 rooms with null quantity** → guard always
+  has a basis yet blocks nothing legit. Could NOT do on-device QA from the
+  container.
+
+### Things to Avoid (v247 Era)
+- **Never** price/display a room rate without `× numRooms` when a multi-room
+  surface exists. The base rate scales by `nights × rooms`; per-guest add-ons
+  (extra adults, children) are billed once for the whole party (PAX is shared
+  across rooms), NOT × rooms. Four surfaces had drifted to nights-only totals
+  (book-now preview, arena display, 3 partner totals) while the submit/charge
+  paths already multiplied — always keep preview == charge.
+- **Never** assume `numRooms` blocks inventory. Until v247 it was a price
+  multiplier only; `room_blocks` is **partner/OTA/walk-in** managed (no
+  customer write, no bid link). Customer "blocking" is the ACCEPTED/CONFIRMED/
+  CHECKED_IN **bid** being counted as `numRooms` units in availability.
+- **Never** key customer availability off `hotel_room_units` alone — it's
+  populated for 1/32 hotels. Fall back to `rooms.quantity` as virtual units, or
+  31 hotels read as 0-capacity.
+- **Always** make an inventory/oversell guard **fail open** — a false 409 on
+  the core Book Now / bid path is worse than a rare oversell. Block only when
+  you can positively prove `free < numRooms` for the dates.
+- PENDING bids do NOT consume inventory (reverse-auction rule); only
+  ACCEPTED/COUNTER/CONFIRMED/CHECKED_IN are blocks.
+
+### Auto-provision migration — APPLIED live (v247, future-proof)
+`migrations/2026-05-30-v247-auto-provision-room-units.sql` (applied to
+`uxxhbdqedazpmvbvaosh`, verified): backfilled the per-unit grid for all 32
+hotels (4 → **202 active `hotel_room_units` = exactly sum(`rooms.quantity`)**,
+0 mismatched, 0 dup numbers) and installed `trg_rooms_provision_units` on
+`rooms` (AFTER INSERT OR UPDATE OF quantity → `provision_room_units()`), so
+**new-hotel onboarding and quantity bumps auto-create units** with no manual
+setup. Additive/idempotent, never deletes (quantity decrease is a no-op).
+Trigger proven live (insert → 3 units, bump → +2) then test data removed.
+- **GOTCHA (cost a failed first apply):** `hotel_room_units` room numbers are
+  unique **per HOTEL** (`room_units_hotel_num_idx` on `("hotelId","roomNumber")`),
+  NOT per room category. Number new units from the hotel-wide max numeric
+  roomNumber and `ON CONFLICT ("hotelId","roomNumber")` — a per-`roomId`
+  conflict target lets two categories both pick "101" and the insert 23505s.
+  After v247 the grid is REAL for every hotel, so the units route uses real
+  rows (not the `rooms.quantity` virtual fallback) — capacity is identical
+  either way, so availability numbers are unchanged.

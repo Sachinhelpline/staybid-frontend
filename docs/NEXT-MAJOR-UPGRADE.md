@@ -1,5 +1,26 @@
 # Next 16 / React 19 / TypeScript 6 — Major Upgrade Runbook ("D" task)
 
+> ## ✅ COMPLETED — shipped v242 (PR #185), 2026-05 era
+>
+> This upgrade is **done and merged to `main`**. It shipped in commit
+> `40f041d` — *"v242 — Next 16 + React 19 + TypeScript 6 major upgrade
+> (#185)"* — and v243–v246 all build on top of it. `main`/prod is **no
+> longer on Next 15 / React 18**; the "Rollback" note below is historical.
+>
+> **Live resolved versions:** `next 16.2.6` · `react`/`react-dom 19.2.6` ·
+> `react-is 19.2.6` · `typescript 6.0.3` · `nodemailer 8.0.10` (with the
+> `postcss ^8.5.10` override).
+>
+> **Re-verified green on the v246 HEAD (2026-05-30):** `npm ci
+> --legacy-peer-deps` clean → `npx tsc --noEmit --skipLibCheck` exit 0 →
+> `npm run build` exit 0 → `npm audit` **0 vulnerabilities** (the postcss
+> XSS + ws advisories this runbook targeted are gone, as predicted).
+>
+> The runbook below is retained as the historical record of how it was
+> done. **Nothing here is pending** — do not re-run it.
+
+---
+
 > Deferred from the v241.16 dependency-maintenance pass. High blast
 > radius — run this in a **dedicated session**, not bundled with feature
 > work. Clears the 3 remaining `npm audit` advisories (postcss XSS + ws)

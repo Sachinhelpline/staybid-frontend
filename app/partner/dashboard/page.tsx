@@ -1420,6 +1420,9 @@ export default function PartnerDashboard() {
                   const nights = b.checkIn && b.checkOut
                     ? Math.max(1, Math.ceil((new Date(b.checkOut).getTime()-new Date(b.checkIn).getTime())/86400000))
                     : 1;
+                  // v247 — total must scale by rooms too (was nights-only), so
+                  // the partner sees the real ₹ a multi-room bid represents.
+                  const nr = Math.max(1, Number(b.numRooms || 1));
                   return (
                     <div key={b.id} className="card-p">
                       <div className="flex items-start justify-between gap-4 mb-3">
@@ -1501,7 +1504,7 @@ export default function PartnerDashboard() {
                             return (
                               <>
                                 <p className="font-bold text-luxury-900 text-lg">{fmtCur(guestBid)}<span className="text-xs text-luxury-400 font-normal">/night</span></p>
-                                {nights > 1 && <p className="text-xs text-emerald-600 font-semibold">{fmtCur(guestBid * nights)} total</p>}
+                                {(nights > 1 || nr > 1) && <p className="text-xs text-emerald-600 font-semibold">{fmtCur(guestBid * nights * nr)} total{nr > 1 ? ` (${nr} rooms × ${nights}n)` : ""}</p>}
                                 {isBelowFloor && (
                                   <p className="text-[0.6rem] text-amber-600 mt-0.5 font-semibold" title="System floor — Railway stored the bid at floor; the guest's real wish is the price above.">
                                     Floor: {fmtCur(floor)}
@@ -1908,7 +1911,9 @@ export default function PartnerDashboard() {
                   const nights = b.checkIn && b.checkOut
                     ? Math.max(1, Math.ceil((new Date(b.checkOut).getTime()-new Date(b.checkIn).getTime())/86400000))
                     : 1;
-                  const total = (b.counterAmount || b.amount || 0) * nights;
+                  // v247 — multi-room bookings: total = rate × nights × rooms.
+                  const nr = Math.max(1, Number(b.numRooms || 1));
+                  const total = (b.counterAmount || b.amount || 0) * nights * nr;
                   return (
                     <button key={b.id} onClick={() => setSelectedBooking(b)}
                       className="card-p flex items-start justify-between gap-4 w-full text-left hover:shadow-lg hover:border-gold-300 transition-all cursor-pointer">
@@ -3118,7 +3123,9 @@ export default function PartnerDashboard() {
           ? Math.max(1, Math.ceil((new Date(b.checkOut).getTime()-new Date(b.checkIn).getTime())/86400000))
           : 1;
         const pricePerNight = b.counterAmount || b.amount || 0;
-        const total = pricePerNight * nights;
+        // v247 — booking detail total scales by rooms × nights.
+        const nr = Math.max(1, Number(b.numRooms || 1));
+        const total = pricePerNight * nights * nr;
         const guestInitials = (b.guestName || b.user?.name || "G").slice(0,2).toUpperCase();
         const todayISO = new Date().toISOString().slice(0,10);
         const ciISO = b.checkIn ? new Date(b.checkIn).toISOString().slice(0,10) : "";
@@ -3254,7 +3261,7 @@ export default function PartnerDashboard() {
                     <span className="font-semibold text-luxury-900">{fmtCur(pricePerNight)}</span>
                   </div>
                   <div className="flex justify-between text-sm py-1">
-                    <span className="text-luxury-600">× {nights} night{nights>1?"s":""}</span>
+                    <span className="text-luxury-600">× {nights} night{nights>1?"s":""}{nr > 1 ? ` × ${nr} rooms` : ""}</span>
                     <span className="font-semibold text-luxury-900">{fmtCur(total)}</span>
                   </div>
                   <div className="h-px bg-gold-300 my-2" />
