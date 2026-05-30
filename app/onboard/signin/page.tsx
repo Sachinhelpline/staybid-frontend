@@ -1,5 +1,8 @@
 "use client";
-import { useState, Suspense } from "react";
+// v243 — React 19 form: useActionState drives the submit (built-in pending +
+// returned-error state) instead of hand-rolled busy/err useState. Inputs are
+// uncontrolled (name + defaultValue), read from FormData in the action.
+import { useActionState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { saveOnboardSession } from "@/lib/onboard/client";
@@ -7,26 +10,28 @@ import { saveOnboardSession } from "@/lib/onboard/client";
 function SigninInner() {
   const router = useRouter();
   const sp = useSearchParams();
-  const [identifier, setIdentifier] = useState(sp.get("id") || "");
-  const [password, setPassword]     = useState("");
-  const [busy, setBusy]             = useState(false);
-  const [err, setErr]               = useState<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null); setBusy(true);
-    try {
-      const r = await fetch("/api/onboard/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
-      });
-      const j = await r.json();
-      if (!r.ok) { setErr(j.error || "Login failed"); setBusy(false); return; }
-      saveOnboardSession(j.token, j.user);
-      router.push("/onboard/wizard");
-    } catch (e: any) { setErr(e?.message || "Login failed"); setBusy(false); }
-  };
+  const [err, formAction, pending] = useActionState<string | null, FormData>(
+    async (_prev, formData) => {
+      const identifier = String(formData.get("identifier") || "").trim();
+      const password = String(formData.get("password") || "");
+      try {
+        const r = await fetch("/api/onboard/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier, password }),
+        });
+        const j = await r.json();
+        if (!r.ok) return j.error || "Login failed";
+        saveOnboardSession(j.token, j.user);
+        router.push("/onboard/wizard");
+        return null;
+      } catch (e: any) {
+        return e?.message || "Login failed";
+      }
+    },
+    null,
+  );
 
   return (
     <div className="max-w-md mx-auto px-6 py-16">
@@ -35,21 +40,21 @@ function SigninInner() {
         <p className="text-luxury-500 mt-2">Sign in to your StayBid Partner account</p>
       </div>
 
-      <form onSubmit={submit} className="card-luxury sb-card-lift sb-fade-in p-7 space-y-4" style={{ animationDelay: "0.1s" }}>
+      <form action={formAction} className="card-luxury sb-card-lift sb-fade-in p-7 space-y-4" style={{ animationDelay: "0.1s" }}>
         <div className="sb-step-rail" aria-hidden />
         <Field label="Email or mobile">
-          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@hotel.com or +91…"
+          <input name="identifier" defaultValue={sp.get("id") || ""} placeholder="you@hotel.com or +91…"
                  className="input-luxury sb-focus-glow" required />
         </Field>
         <Field label="Password">
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+          <input name="password" type="password" placeholder="••••••••"
                  className="input-luxury sb-focus-glow" required />
         </Field>
 
         {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
 
-        <button disabled={busy} className="btn-luxury sb-shimmer w-full disabled:opacity-50 relative">
-          <span className="relative" style={{ zIndex: 2 }}>{busy ? "Signing in…" : "Sign in →"}</span>
+        <button disabled={pending} className="btn-luxury sb-shimmer w-full disabled:opacity-50 relative">
+          <span className="relative" style={{ zIndex: 2 }}>{pending ? "Signing in…" : "Sign in →"}</span>
         </button>
 
         <div className="flex items-center justify-between text-sm text-luxury-500 pt-1">
