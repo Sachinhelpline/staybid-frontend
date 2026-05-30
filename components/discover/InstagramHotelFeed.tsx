@@ -610,26 +610,36 @@ function MoreMenu({
         { icon: "🚫",  label: "Not interested" },
       ];
   return (
-    <div className="fixed inset-0 z-80 flex items-end" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+    <div className="fixed inset-0 z-80 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: "rgba(15,12,8,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
-        className="relative w-full ig-drawer-up"
+        className="relative w-full sm:max-w-md ig-drawer-up"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
-          borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+          background: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)",
+          borderTopLeftRadius: 26, borderTopRightRadius: 26,
+          borderTop: "1px solid rgba(217,190,130,0.22)",
+          boxShadow: "0 -24px 70px rgba(15,12,8,0.7)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
-        <div className="px-2 pb-1">
+        <div className="flex justify-center pt-2.5 pb-1"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(217,190,130,0.4)" }} /></div>
+        <div className="px-5 pb-1">
+          <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#C9A66B" }}>Options</p>
+        </div>
+        <div className="px-3 pb-1 pt-1 space-y-1.5">
           {items.map((it: any, i) => {
             const inner = (
-              <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-white/8 transition-colors">
-                <span className="text-xl">{it.icon}</span>
-                <span className={`text-[0.88rem] ${it.danger ? "text-red-400" : "text-white"} font-medium`}>{it.label}</span>
+              <div
+                className="ig-more-row flex items-center gap-3.5 px-3.5 py-3 rounded-2xl"
+                style={{ border: it.danger ? "1px solid rgba(224,107,90,0.28)" : "1px solid rgba(217,190,130,0.16)" }}
+              >
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                  style={{ background: it.danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#E7CFA0,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.4), inset 0 1px 0 rgba(255,255,255,0.35)" }}
+                >{it.icon}</span>
+                <span className="text-[0.92rem] font-semibold" style={{ color: it.danger ? "#E8A89C" : "#FAF5EB" }}>{it.label}</span>
+                <span className="ml-auto text-lg" style={{ color: "rgba(217,190,130,0.45)" }}>›</span>
               </div>
             );
             if (it.href) {
@@ -640,8 +650,6 @@ function MoreMenu({
                 key={i}
                 onClick={() => {
                   it.onClick?.();
-                  // Volume booster stays open so the user can tap multiple
-                  // times to climb the gain cycle.
                   if (!(it as any).keepOpen) onClose();
                 }}
                 className="w-full text-left"
@@ -651,6 +659,14 @@ function MoreMenu({
             );
           })}
         </div>
+        <style jsx global>{`
+          .ig-more-row {
+            background: linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03));
+            transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), background 0.18s ease, border-color 0.18s ease;
+          }
+          .ig-more-row:active { transform: scale(0.98); }
+          .ig-more-row:hover { background: linear-gradient(135deg, rgba(217,190,130,0.16), rgba(217,190,130,0.06)); }
+        `}</style>
       </div>
     </div>
   );
@@ -3972,27 +3988,44 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
            Icons sit directly on the video — no pills, no borders, no
            background. Just a soft drop-shadow-sm under each glyph for
            legibility. Compact like Instagram Reels. */
+        /* v245 — premium glass action rail. Each icon sits in a frosted
+           champagne-tinted disc with depth + a subtle border, instead of a
+           bare emoji on the video (the "old feel"). Modern IG/TikTok look,
+           cozy palette. The label below is small + clean. */
         .ig-rail-btn {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 0;
+          gap: 4px;
           color: #fff;
           font-size: 0.52rem; font-weight: 700;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.85);
-          transition: transform 0.12s ease;
+          transition: transform 0.14s cubic-bezier(.32,1.2,.36,1);
           background: transparent;
           border: 0;
-          padding: 2px;
-          border-radius: 0;
-          min-width: 34px;
+          padding: 0;
+          min-width: 44px;
           box-shadow: none;
         }
         .ig-rail-btn:active { transform: scale(0.86); }
         .ig-icon {
-          font-size: 1.22rem; line-height: 1;
-          filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+          font-size: 1.18rem; line-height: 1;
+          width: 42px; height: 42px;
+          display: inline-flex; align-items: center; justify-content: center;
+          border-radius: 9999px;
+          background: linear-gradient(135deg, rgba(31,26,15,0.46), rgba(31,26,15,0.24));
+          border: 1px solid rgba(217,190,130,0.28);
+          backdrop-filter: blur(12px) saturate(1.3);
+          -webkit-backdrop-filter: blur(12px) saturate(1.3);
+          box-shadow: 0 4px 14px rgba(15,12,8,0.32), inset 0 1px 0 rgba(255,255,255,0.14);
+          transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .ig-rail-btn:hover .ig-icon {
+          border-color: rgba(217,190,130,0.5);
+          box-shadow: 0 5px 18px rgba(15,12,8,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
         }
         .ig-liked { animation: igLikePop 0.4s ease-out; }
-        .ig-rail-count { font-size: 0.54rem; font-weight: 700; letter-spacing: 0.02em; }
+        .ig-rail-count {
+          font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+        }
 
         .ig-disc {
           width: 36px; height: 36px; border-radius: 9999px;
