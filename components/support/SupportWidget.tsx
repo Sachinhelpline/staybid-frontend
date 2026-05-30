@@ -526,8 +526,10 @@ export default function SupportWidget() {
           right: max(14px, env(safe-area-inset-right, 0px));
           bottom: calc(96px + env(safe-area-inset-bottom, 0px));
           z-index: 9998;
-          width: 36px;
-          height: 36px;
+          /* a11y: bumped 36 → 40px toward the 44px min tap target while
+             staying a proportionate chat bubble. */
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
           border: none;
           /* 3D base: radial highlight + linear undercoat */

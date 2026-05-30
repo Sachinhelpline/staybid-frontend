@@ -1442,7 +1442,9 @@ function FdStyles() {
       }
       .fd-cta {
         flex: 0 0 auto;
-        padding: 9px 16px;
+        /* a11y: 9 → 12px vertical padding lifts the primary "Grab Now"
+           CTA to a ~44px tap target without disrupting the card layout. */
+        padding: 12px 16px;
         background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
         color: #0a0814; font-size: 0.74rem; font-weight: 800;
         border: none; border-radius: 11px;
