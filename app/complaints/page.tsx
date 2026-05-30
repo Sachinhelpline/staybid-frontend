@@ -10,7 +10,7 @@
 // (b) a "New complaint" composer with type/priority + optional booking
 // context, and (c) a status timeline per item.
 
-import { useCallback, useEffect, useState, Suspense } from "react";
+import { useActionState, useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
@@ -257,10 +257,37 @@ function Composer({
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [bookingId, setBookingId] = useState(prefilledBookingId || "");
-  const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+
+  // v243 — React 19 form action. `err` is the returned error string, `submitting`
+  // is the built-in pending flag. The action closes over the controlled fields
+  // (inputs stay controlled), so the JSX below is unchanged.
+  const [err, formAction, submitting] = useActionState<string | null, FormData>(
+    async () => {
+      if (!description.trim()) return "Please describe the issue.";
+      try {
+        const selected = bookings.find((b) => b.id === bookingId);
+        // When the user landed here from /bookings the booking may not be in
+        // the loaded list yet — pass the id through anyway.
+        const kind = selected?.kind ?? (bookingId ? "booking" : null);
+        await api.submitComplaint({
+          type,
+          priority,
+          subject: subject.trim() || undefined,
+          description: description.trim(),
+          bookingId: kind === "booking" ? bookingId || undefined : undefined,
+          bidId:     kind === "bid"     ? bookingId || undefined : undefined,
+          hotelId:   prefilledHotelId || undefined,
+        });
+        onCreated();
+        return null;
+      } catch (e: any) {
+        return e?.message || "Failed to submit";
+      }
+    },
+    null,
+  );
 
   // Auto-load user's bookings so they can attach context without typing an ID
   useEffect(() => {
@@ -290,32 +317,6 @@ function Composer({
       setBookings(merged.slice(0, 20));
     }).finally(() => setLoadingBookings(false));
   }, []);
-
-  async function submit() {
-    setErr(null);
-    if (!description.trim()) { setErr("Please describe the issue."); return; }
-    setSubmitting(true);
-    try {
-      const selected = bookings.find((b) => b.id === bookingId);
-      // When the user landed here from /bookings the booking may not be
-      // in the loaded list yet — pass the id through anyway.
-      const kind = selected?.kind ?? (bookingId ? "booking" : null);
-      await api.submitComplaint({
-        type,
-        priority,
-        subject: subject.trim() || undefined,
-        description: description.trim(),
-        bookingId: kind === "booking" ? bookingId || undefined : undefined,
-        bidId:     kind === "bid"     ? bookingId || undefined : undefined,
-        hotelId:   prefilledHotelId || undefined,
-      });
-      onCreated();
-    } catch (e: any) {
-      setErr(e?.message || "Failed to submit");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   return (
     <div
@@ -452,7 +453,8 @@ function Composer({
             Cancel
           </button>
           <button
-            onClick={submit}
+            type="button"
+            onClick={() => formAction(new FormData())}
             disabled={submitting || !description.trim()}
             className="flex-2 btn-luxury text-sm py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
           >
