@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 import { computeBidderScore } from "@/lib/bidder-score";
+import { unitsFreeForRange, toISODate } from "@/lib/availability";
 
 // v241.26 — Server-side tier gate for Hybrid-mode /bid auto-accept. Reuses the
 // canonical computeBidderScore (lib/bidder-score) on the customer's last 10
@@ -266,6 +267,38 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // v247 — DATE-AWARE oversell guard. The static quantity check above only
+    // asks "does the hotel own this many of the category?" — it ignores other
+    // stays on the SAME dates. unitsFreeForRange counts units actually FREE
+    // across the requested nights (capacity = hotel_room_units, else
+    // rooms.quantity; occupied = Σ numRooms of accepted/confirmed/checked-in
+    // bids + room_blocks). Reject if fewer than numRooms are free. The date
+    // range lives on the linked bid_request (the hotel-page Book Now /
+    // Negotiate flows always create one first). FAIL OPEN on any gap — no
+    // requestId, missing dates, no capacity signal, or any error — so a
+    // legit booking is NEVER blocked by an availability hiccup.
+    if (requestId) {
+      try {
+        const reqRows = await sbSelect(`bid_requests?id=eq.${requestId}&select=checkIn,checkOut`);
+        const ci = reqRows[0]?.checkIn ? toISODate(reqRows[0].checkIn) : null;
+        const co = reqRows[0]?.checkOut ? toISODate(reqRows[0].checkOut) : null;
+        if (ci && co && ci < co) {
+          const avail = await unitsFreeForRange({ hotelId, roomId, from: ci, to: co });
+          if (avail && avail.free < numRoomsClamped) {
+            return NextResponse.json(
+              {
+                error: avail.free <= 0
+                  ? `${roomLabel} is fully booked for these dates. Try different dates or another room.`
+                  : `Only ${avail.free} ${roomLabel} room${avail.free === 1 ? "" : "s"} left for these dates. Reduce your room count.`,
+                maxAvailable: avail.free,
+              },
+              { status: 409 }
+            );
+          }
+        }
+      } catch { /* fail open — never block on an availability error */ }
     }
 
     capacityMismatch = guestsClamped > roomCapacity * numRoomsClamped;

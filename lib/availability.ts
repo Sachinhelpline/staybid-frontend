@@ -39,6 +39,11 @@ type Occupation = {
   refId?:   string;      // bid id or block id
   assignedUnitId?: string;
   assignedUnitNumber?: string;
+  // v247 — how many physical units this occupation consumes. A multi-room
+  // bid/booking (bids.numRooms = N) blocks N units, not 1. room_blocks /
+  // walk-ins / OTA holds are always a single unit. Defaults to 1 everywhere
+  // it is read so legacy single-room data is unaffected.
+  numRooms?: number;
 };
 
 /** Parse a bid's checkIn/checkOut from related bid_request or fallback msg. */
@@ -72,10 +77,13 @@ export async function getOccupations(params: {
   // ─── 1. Accepted bids (they are always blocks while not rejected/expired) ───
   try {
     const roomFilter = roomId ? `&roomId=eq.${roomId}` : "";
-    // Include ACCEPTED + COUNTER (tentative block); RELEASE when REJECTED
+    // Include ACCEPTED + COUNTER (tentative block); RELEASE when REJECTED.
+    // v247 — also pull CONFIRMED / CHECKED_IN (a paid stay is the hardest
+    // block of all) and the per-bid numRooms so a multi-room bid consumes
+    // the right number of units below.
     const bidsUrl =
       `${SB_URL}/rest/v1/bids?hotelId=eq.${hotelId}${roomFilter}` +
-      `&status=in.(ACCEPTED,COUNTER,PENDING)&select=id,roomId,hotelId,status,amount,message,customerId`;
+      `&status=in.(ACCEPTED,COUNTER,PENDING,CONFIRMED,CHECKED_IN)&select=id,roomId,hotelId,status,amount,message,customerId,requestId,%22numRooms%22`;
     const r = await fetch(bidsUrl, { headers: SB_H });
     const bids = await r.json();
     if (Array.isArray(bids)) {
@@ -111,17 +119,25 @@ export async function getOccupations(params: {
         const co = req.checkOut ? toISODate(req.checkOut) : undefined;
         if (!ci || !co) continue;
         if (!rangesOverlap(ci, co, from, to)) continue;
-        // Only ACCEPTED is a HARD block. COUNTER/PENDING are "soft" — still show for partner, but treat as soft
-        if (b.status === "ACCEPTED" || b.status === "COUNTER") {
+        // HARD blocks: ACCEPTED + CONFIRMED + CHECKED_IN (a held/paid stay).
+        // COUNTER stays a soft block (shown to the partner, counted as held
+        // while the counter is pending). PENDING is NOT a block — per the
+        // v247 decision the reverse auction keeps inventory free until a bid
+        // is accepted, so multiple PENDING bids can compete on the same room.
+        if (b.status === "ACCEPTED" || b.status === "COUNTER" || b.status === "CONFIRMED" || b.status === "CHECKED_IN") {
           const u = unitMap[b.id];
           out.push({
             fromDate: ci, toDate: co,
             source: "bid", roomId: b.roomId, hotelId: b.hotelId,
             amount: Number(b.amount) || 0,
-            note: b.status === "COUNTER" ? "Counter pending" : "Bid booked",
+            note: b.status === "COUNTER" ? "Counter pending"
+                : b.status === "CHECKED_IN" ? "Checked in"
+                : b.status === "CONFIRMED" ? "Booked"
+                : "Bid booked",
             refId: b.id,
             assignedUnitId: u?.unitId,
             assignedUnitNumber: u?.unitNumber,
+            numRooms: Math.max(1, Number(b.numRooms) || 1),
           });
         }
       }
@@ -150,6 +166,7 @@ export async function getOccupations(params: {
           refId:    b.id,
           assignedUnitId: b.assignedUnitId,
           assignedUnitNumber: b.assignedUnitNumber,
+          numRooms: 1, // a manual/walk-in/OTA block is always one unit
         });
       }
     }
@@ -170,6 +187,74 @@ export function occupationsToDateSet(occs: Occupation[], roomId?: string): Set<s
     enumerateDates(o.fromDate, o.toDate).forEach(d => s.add(d));
   }
   return s;
+}
+
+/**
+ * v247 — Date-aware unit availability for a single room category over a range.
+ *
+ * Returns the number of units that are FREE on the TIGHTEST (most-occupied)
+ * day in [from, to). This is the figure an oversell guard compares the
+ * requested numRooms against.
+ *
+ * Capacity basis (per Sachin's confirmed rule): strict per-unit from
+ * `hotel_room_units` (status=active) when that room has units configured;
+ * otherwise fall back to `rooms.quantity` as virtual units so the 31/32 hotels
+ * that have not populated hotel_room_units yet still get correct availability
+ * (and are never wrongly blocked). If neither is known, returns null = "no
+ * capacity signal" → the caller should fail OPEN (allow), never block.
+ *
+ * Occupied = the max, across every night in the range, of the summed
+ * `numRooms` of all HARD occupations (accepted/confirmed/checked-in bids +
+ * room_blocks) covering that night. Multi-room bids consume their full
+ * numRooms; manual blocks consume 1.
+ */
+export async function unitsFreeForRange(params: {
+  hotelId: string;
+  roomId:  string;
+  from:    string;   // YYYY-MM-DD inclusive (check-in)
+  to:      string;   // YYYY-MM-DD exclusive (check-out)
+}): Promise<{ capacity: number; occupied: number; free: number } | null> {
+  const { hotelId, roomId, from, to } = params;
+  if (!hotelId || !roomId || !from || !to || from >= to) return null;
+
+  // 1) Capacity — active units first, else rooms.quantity virtual units.
+  let capacity = 0;
+  try {
+    const ur = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${hotelId}&roomId=eq.${roomId}&status=eq.active&select=id`,
+      { headers: SB_H }
+    );
+    const units = await ur.json();
+    if (Array.isArray(units)) capacity = units.length;
+  } catch { /* fall through to quantity */ }
+  if (capacity === 0) {
+    try {
+      const rr = await fetch(
+        `${SB_URL}/rest/v1/rooms?id=eq.${roomId}&select=quantity`,
+        { headers: SB_H }
+      );
+      const rows = await rr.json();
+      const q = Array.isArray(rows) && rows[0] ? rows[0].quantity : null;
+      if (q != null) capacity = Math.max(0, Number(q) || 0);
+      else return null; // no capacity signal at all → caller fails open
+    } catch { return null; }
+  }
+  if (capacity <= 0) return null;
+
+  // 2) Per-night occupied = Σ numRooms of overlapping hard occupations.
+  const occs = await getOccupations({ hotelId, roomId, from, to });
+  let peakOccupied = 0;
+  for (const night of enumerateDates(from, to)) {
+    let dayOcc = 0;
+    for (const o of occs) {
+      if (o.roomId !== roomId) continue;
+      // occupation covers [fromDate, toDate); night is occupied if it lies inside
+      if (o.fromDate <= night && night < o.toDate) dayOcc += Math.max(1, o.numRooms || 1);
+    }
+    if (dayOcc > peakOccupied) peakOccupied = dayOcc;
+  }
+
+  return { capacity, occupied: peakOccupied, free: Math.max(0, capacity - peakOccupied) };
 }
 
 /** ═══ Minimal iCal parser (handles Booking.com/Airbnb/GoIbibo format) ═══ */

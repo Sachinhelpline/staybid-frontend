@@ -272,7 +272,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // kept surfacing the one-bid-per-hotel conflict sheet + /my-bids kept showing a
 // dead bid. The fix is client-side, so returning visitors on the SWR HTML cache
 // must drop the stale v29 HTML to pick up the corrected bundle on next visit.
-const HTML_CACHE = 'staybid-html-v30';
+// v247 — one-time bump (v30 → v31). Multi-room consistency: Book Now preview +
+// Negotiate arena now multiply the total by rooms (were showing 1-room totals),
+// the picker auto-suggests rooms from the guest mix, and real per-unit
+// inventory blocking (N rooms block N units, date-aware oversell guard) lands.
+// All client-rendered, so drop the stale v30 HTML on next visit.
+const HTML_CACHE = 'staybid-html-v31';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

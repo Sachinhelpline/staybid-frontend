@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1) Rooms (categories) for this hotel — optionally filtered to one roomId
-    const roomsUrl = `${SB_URL}/rest/v1/rooms?hotelId=eq.${hotelId}${roomId ? `&id=eq.${roomId}` : ""}&select=id,name,type,capacity,floorPrice,images`;
+    const roomsUrl = `${SB_URL}/rest/v1/rooms?hotelId=eq.${hotelId}${roomId ? `&id=eq.${roomId}` : ""}&select=id,name,type,capacity,floorPrice,images,quantity`;
     const [roomsRes, unitsRes] = await Promise.all([
       fetch(roomsUrl, { headers: SB_H }).then(r => r.json()).catch(() => []),
       fetch(`${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${hotelId}&status=eq.active&select=id,roomId,roomNumber,status`, { headers: SB_H }).then(r => r.json()).catch(() => []),
@@ -65,10 +65,15 @@ export async function GET(req: NextRequest) {
         capacity: r.capacity,
         floorPrice: r.floorPrice,
         image: Array.isArray(r.images) ? r.images[0] : null,
+        // v247 — rooms.quantity is the partner-configured total units of this
+        // category. Used as the virtual-unit count when hotel_room_units has
+        // not been populated for this hotel (31/32 hotels today).
+        quantity: r.quantity == null ? null : Math.max(0, Number(r.quantity) || 0),
         unitsTotal: 0,
         unitsFree: 0,
         unitsOccupied: 0,
         unitsUnassigned: 0,
+        virtual: false,
         units: [] as any[],
         unassignedOccs: [] as any[],
       };
@@ -98,11 +103,27 @@ export async function GET(req: NextRequest) {
       else room.unitsFree++;
     }
 
-    // 5) Unassigned occupations (bids / manual blocks without a unit yet)
+    // 4.5) v247 — Virtual units from rooms.quantity for any category that has
+    // NO active hotel_room_units rows. Without this, a hotel that never set up
+    // the per-unit grid (31/32 today) would report unitsTotal=0 → either look
+    // sold out or skip oversell math entirely. We synthesize `quantity`
+    // anonymous vacant units so the per-date availability below is correct.
+    for (const room of Object.values(perRoom) as any[]) {
+      if (room.unitsTotal === 0 && room.quantity && room.quantity > 0) {
+        room.virtual = true;
+        room.unitsTotal = room.quantity;
+        room.unitsFree = room.quantity;
+      }
+    }
+
+    // 5) Unassigned occupations (bids / manual blocks without a unit yet).
+    // v247 — a multi-room bid (numRooms = N) consumes N units, not 1. This is
+    // the fix for "N rooms book/bid karne par sirf 1 room block hota tha".
     for (const o of occs) {
       if (o.assignedUnitId) continue;
       const room = perRoom[o.roomId];
       if (!room) continue;
+      const need = Math.max(1, Number(o.numRooms) || 1);
       room.unassignedOccs.push({
         source: o.source,
         refId: o.refId,
@@ -110,11 +131,14 @@ export async function GET(req: NextRequest) {
         fromDate: o.fromDate,
         toDate: o.toDate,
         note: o.note || null,
+        numRooms: need,
       });
-      room.unitsUnassigned++;
-      // Mathematically, an unassigned occupation still consumes 1 unit of the
-      // inventory. Pull it from the "free" pool so customer UIs don't oversell.
-      if (room.unitsFree > 0) { room.unitsFree--; room.unitsOccupied++; }
+      room.unitsUnassigned += need;
+      // Each unassigned occupation consumes `need` units from the free pool so
+      // customer UIs don't oversell. Clamp at 0 (never negative).
+      const take = Math.min(need, room.unitsFree);
+      room.unitsFree -= take;
+      room.unitsOccupied += take;
     }
 
     // Sort units by roomNumber for a predictable grid

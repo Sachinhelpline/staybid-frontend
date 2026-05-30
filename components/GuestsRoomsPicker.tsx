@@ -54,9 +54,16 @@ function GuestRow({ icon, label, sub, subTone = "default", value, onChange, min,
 export default function GuestsRoomsPicker({
   adults, children, kids, rooms,
   onAdults, onChildren, onKids, onRooms,
+  suggested,
 }: {
   adults: number; children: number; kids: number; rooms: number;
   onAdults: (n: number) => void; onChildren: (n: number) => void; onKids: (n: number) => void; onRooms: (n: number) => void;
+  // v247 — auto room-upgrade hint. Parent derives a suggested room count
+  // from the guest mix (≈2 adults/room, the "1 per family" rule). When it
+  // differs from the current manual value we surface a one-tap "Suggested: N"
+  // chip; tapping it adopts the suggestion. Purely additive — omit to keep
+  // the static "1 per family" caption (every existing caller).
+  suggested?: number;
 }) {
   const roomsPrev = useRef(rooms);
   const [roomsDir, setRoomsDir] = useState<"up" | "down" | "">("");
@@ -91,7 +98,18 @@ export default function GuestsRoomsPicker({
           <span className="grp-rooms-val" key={rooms} data-dir={roomsDir} aria-live="polite">{rooms}</span>
           <button type="button" className="grp-btn grp-btn--lg" disabled={rooms >= 10} onClick={() => rooms < 10 && onRooms(rooms + 1)} aria-label="Increase rooms">+</button>
         </div>
-        <span className="grp-rooms-sub">1 per family</span>
+        {suggested && suggested > 0 && suggested !== rooms ? (
+          <button
+            type="button"
+            className="grp-rooms-suggest"
+            onClick={() => onRooms(Math.max(1, Math.min(10, suggested)))}
+            aria-label={`Use suggested ${suggested} rooms`}
+          >
+            ✨ Suggested: {suggested}
+          </button>
+        ) : (
+          <span className="grp-rooms-sub">1 per family</span>
+        )}
       </div>
 
       <style jsx global>{`
@@ -166,6 +184,18 @@ export default function GuestsRoomsPicker({
           color: var(--text-base, #1f1a0f); min-width: 22px; text-align: center; display: inline-block;
         }
         .grp-rooms-sub { font-size: 0.56rem; font-weight: 600; color: var(--text-muted); margin-top: 6px; letter-spacing: 0.02em; }
+        .grp-rooms-suggest {
+          font-size: 0.56rem; font-weight: 800; letter-spacing: 0.02em;
+          margin-top: 6px; padding: 3px 9px; border-radius: 999px;
+          color: #7a5a12;
+          background: rgba(201,166,107,0.16);
+          border: 1px solid rgba(201,166,107,0.36);
+          cursor: pointer; line-height: 1.1;
+          transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .grp-rooms-suggest:hover { background: rgba(201,166,107,0.28); box-shadow: 0 0 0 3px rgba(201,166,107,0.12); }
+        .grp-rooms-suggest:active { transform: scale(0.94); }
         .grp-val[data-dir="up"], .grp-rooms-val[data-dir="up"] { animation: grpUp 0.26s ease both; }
         .grp-val[data-dir="down"], .grp-rooms-val[data-dir="down"] { animation: grpDown 0.26s ease both; }
         @keyframes grpUp { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

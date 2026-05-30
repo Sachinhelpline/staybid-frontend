@@ -734,6 +734,20 @@ export default function HotelDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myBids]);
 
+  // v247 — Auto room-upgrade from the guest mix. ≈2 adults per room (the
+  // "1 per family" rule the Rooms card already advertises), capped 1–10.
+  // Mirrors the v241.14 active-bid prefill guard EXACTLY (`globalNumRooms
+  // === 1`) so it only bumps the untouched default and never fights a
+  // manual choice, the bid prefill, or a pending-intent restore. The
+  // picker also surfaces a one-tap "Suggested: N" chip whenever the
+  // suggestion and the current value diverge, so manual override + auto
+  // both work (Sachin ss1: "auto upgrade room aur manual both").
+  const suggestedRooms = Math.max(1, Math.min(10, Math.ceil(globalAdults / 2)));
+  useEffect(() => {
+    if (globalNumRooms === 1 && suggestedRooms > 1) setGlobalNumRooms(suggestedRooms);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestedRooms]);
+
   // v185 — Phase 4A fix: poll myBids every 30s + refetch when the tab
   // becomes visible again. Previously fetchMyBids ran only once on
   // mount → if a bid got auto-accepted while the customer was on the
@@ -3075,6 +3089,7 @@ export default function HotelDetail() {
             onChildren={setGlobalChildren}
             onKids={setGlobalKids}
             onRooms={setGlobalNumRooms}
+            suggested={suggestedRooms}
           />
 
           {/* Availability warning when dates overlap blocks */}
@@ -4536,6 +4551,7 @@ export default function HotelDetail() {
                   <p className="text-sm font-semibold text-luxury-900">
                     {globalAdults} adult{globalAdults>1?"s":""}
                     {globalChildren>0?` · ${globalChildren} child${globalChildren>1?"ren":""}`:""}{globalKids>0?` · ${globalKids} kid${globalKids>1?"s":""} (free)`:""}
+                    {globalNumRooms>1?` · ${globalNumRooms} rooms`:""}
                   </p>
                 </div>
                 <span className="text-[0.6rem] text-luxury-400 bg-white border border-luxury-200 px-2.5 py-1 rounded-full">from Availability</span>
@@ -4544,13 +4560,22 @@ export default function HotelDetail() {
               {/* Rate breakdown */}
               {(() => {
                 const nights = Math.max(1, Math.ceil((new Date(bnOut).getTime()-new Date(bnIn).getTime())/86400000));
+                const nr = Math.max(1, globalNumRooms);
                 const extra = Math.max(0, bnAdults-(bnRoom.capacity||2));
-                const total = bnRoom.floorPrice*nights + extra*500*nights + bnChildren*200*nights;
+                // v247 — base room rate scales by nights × rooms (matching
+                // handleBookNow's BookingReview, line ~1650). Per-guest add-ons
+                // (extra adults, children) are billed on the WHOLE party once —
+                // PAX is shared across rooms, so they are NOT × nr. Previously
+                // this preview ignored rooms entirely (always 1 room) while the
+                // next BookingReview screen multiplied → the ss2 "members added
+                // but room still 1" mismatch.
+                const baseTot = bnRoom.floorPrice*nights*nr;
+                const total = baseTot + extra*500*nights + bnChildren*200*nights;
                 return (
                   <div className="bg-gold-50 border border-gold-200 rounded-2xl p-4">
                     <p className="text-xs font-bold text-gold-600 uppercase tracking-widest mb-3">Rate Breakdown</p>
                     <div className="space-y-1.5 text-sm">
-                      <div className="flex justify-between text-luxury-700"><span>₹{bnRoom.floorPrice.toLocaleString()} × {nights} night{nights>1?"s":""}</span><span className="font-semibold">₹{(bnRoom.floorPrice*nights).toLocaleString()}</span></div>
+                      <div className="flex justify-between text-luxury-700"><span>₹{bnRoom.floorPrice.toLocaleString()} × {nights} night{nights>1?"s":""}{nr>1?` × ${nr} rooms`:""}</span><span className="font-semibold">₹{baseTot.toLocaleString()}</span></div>
                       {extra > 0 && <div className="flex justify-between text-luxury-700"><span>{extra} extra adult{extra>1?"s":""} × ₹500 × {nights}n</span><span className="font-semibold">₹{(extra*500*nights).toLocaleString()}</span></div>}
                       {bnChildren > 0 && <div className="flex justify-between text-luxury-700"><span>{bnChildren} child{bnChildren>1?"ren":""} × ₹200 × {nights}n</span><span className="font-semibold">₹{(bnChildren*200*nights).toLocaleString()}</span></div>}
                       {globalKids > 0 && <div className="flex justify-between text-luxury-700"><span>{globalKids} kid{globalKids>1?"s":""} (under 5)</span><span className="font-semibold text-emerald-600">FREE</span></div>}
@@ -4607,7 +4632,13 @@ export default function HotelDetail() {
         const nights  = (negIn && negOut && negIn < negOut)
           ? Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000))
           : 1;
-        const totalBid = negAmt * nights;
+        // v247 — total scales by nights × rooms, matching the submit path
+        // (handleNegotiate: total = negAmt × nights × nrNeg, line ~1795).
+        // Previously the arena showed only negAmt × nights → a 2-room bid
+        // displayed a single-room total while the bid actually submitted
+        // (and the partner saw) the multi-room figure (ss3).
+        const nrNeg    = Math.max(1, globalNumRooms);
+        const totalBid = negAmt * nights * nrNeg;
         const isBelow  = negAmt < floor;
         const isInstant = negAmt >= floor;
         const stayPoints = Math.floor(totalBid / 100) * 5;
@@ -4713,6 +4744,7 @@ export default function HotelDetail() {
                     👥 {globalAdults} adult{globalAdults>1?"s":""}
                     {globalChildren>0?` · ${globalChildren} child`:""}
                     {globalKids>0?` · ${globalKids} kid`:""}
+                    {nrNeg>1?` · ${nrNeg} rooms`:""}
                     {` · ${nights} night${nights>1?"s":""}`}
                   </p>
                   <span className="text-[0.55rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-gold-400/90 border border-gold-400/25">Locked</span>
@@ -4772,7 +4804,7 @@ export default function HotelDetail() {
                         ₹{negAmt.toLocaleString()}
                       </p>
                       <p className="text-xs text-white/50 mt-1">
-                        ₹<span className="font-semibold text-white/80">{totalBid.toLocaleString()}</span> for {nights}n
+                        ₹<span className="font-semibold text-white/80">{totalBid.toLocaleString()}</span> for {nights}n{nrNeg>1?` × ${nrNeg} rooms`:""}
                       </p>
                       <p className="mt-2 text-[0.62rem] font-bold tracking-wider uppercase" style={{ color: prob.track }}>
                         {prob.label}
@@ -4883,7 +4915,9 @@ export default function HotelDetail() {
                     ? "⏳ Submitting your bid…"
                     : isInstant
                       ? `⚡ Instant Confirm · ₹${totalBid.toLocaleString()}`
-                      : `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
+                      : (nrNeg > 1 || nights > 1)
+                        ? `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night · ₹${totalBid.toLocaleString()} total`
+                        : `🤝 Submit Negotiation · ₹${negAmt.toLocaleString()}/night`}
                 </button>
                 <p className="text-[0.6rem] text-center text-white/30 -mt-1">
                   {isInstant ? "Paid via Razorpay · 100% refundable if hotel rejects" : "No payment now · Hotel will counter or accept"}
