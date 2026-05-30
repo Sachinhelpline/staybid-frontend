@@ -262,7 +262,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // ?return query param + a new lib/auth-intent.ts module gates every
 // sign-in-then-resume flow. Stale v25 HTML would still router.push("/")
 // after sign-in, defeating the whole point of v241.3.
-const HTML_CACHE = 'staybid-html-v26';
+// v243 — one-time bump (v26 → v27). The SB_BUILD badge sat stuck on "v242"
+// across PRs #186-#195 (it was never bumped), and returning visitors on the
+// SWR HTML cache kept seeing the old build label + occasionally stale markup
+// even though all those PRs had shipped to main. Bumping HTML_CACHE drops the
+// stale HTML on next visit so everyone lands on the current build immediately.
+const HTML_CACHE = 'staybid-html-v27';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
