@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authPayload, sbSelect, resolveUserIds } from "@/lib/sb-server";
+import { authPayload, sbSelect, resolveUserIds, SB_URL, SB_H } from "@/lib/sb-server";
+
+// v244 — lazy orphan-bid sweep. The cron-job.org schedule that flips stale
+// ACCEPTED-unpaid bids → EXPIRED isn't guaranteed to be running (bids were
+// found sitting expired for 11+ days, still blocking new bids + showing
+// "Pay Now"/"Cancel"). Run the same RPC opportunistically every time a user
+// opens My Bids, so the data self-heals regardless of the external cron.
+// Fire-and-forget: a sweep failure must never break the bids fetch.
+async function lazySweepOrphanedBids(): Promise<void> {
+  try {
+    await fetch(`${SB_URL}/rest/v1/rpc/mark_orphaned_accepted_bids`, {
+      method: "POST",
+      headers: { ...SB_H, "Content-Type": "application/json" },
+      body: "{}",
+    });
+  } catch { /* swallow — never break the read path */ }
+}
 
 export async function GET(req: NextRequest) {
   const payload = authPayload(req);
   const primaryId = payload?.id || payload?.user_id || payload?.sub;
   if (!primaryId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Self-heal stale ACCEPTED-unpaid bids before reading (awaited so the
+  // response already reflects the sweep — no stale "Pay Now" flash).
+  await lazySweepOrphanedBids();
 
   // v240 — Union ALL user IDs sharing the same human (phone variants +
   // email). Pre-v240 this matched only on phone, so a customer who placed

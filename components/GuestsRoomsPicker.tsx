@@ -94,7 +94,7 @@ export default function GuestsRoomsPicker({
         <span className="grp-rooms-sub">1 per family</span>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .grp-wrap {
           display: grid;
           grid-template-columns: 1fr auto;
