@@ -168,6 +168,12 @@ async function run() {
       hasTouch: device.hasTouch,
       userAgent: device.ua,
     });
+    // Always suppress the first-run "Welcome to StayBid" intro carousel so
+    // screenshots capture real page content, not the onboarding splash.
+    await context.addInitScript(`try{
+      localStorage.setItem('sb_tutorial_disabled','1');
+      localStorage.setItem('sb_tutorial_welcome_seen','1');
+    }catch(e){}`);
     if (AUTH) await context.addInitScript(sessionInitScript());
     const page = await context.newPage();
     const consoleErrors = [];
