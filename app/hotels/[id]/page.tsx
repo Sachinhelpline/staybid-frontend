@@ -1468,8 +1468,18 @@ export default function HotelDetail() {
   // is the fallback for any stale CTA that wasn't hidden. Per Sachin's
   // 1-bid-per-hotel rule (2026-05-24).
   const interceptIfActiveBidHere = (): boolean => {
-    if (pageActiveBids.length === 0) return false;
-    const bid = pageLockedBid || pageCounteredBid || pageActiveBids[0];
+    // v246 — Defense-in-depth: ONLY a genuinely-live bid (PENDING / COUNTER /
+    // ACCEPTED) may block Book Now / Negotiate. EXPIRED / CANCELLED / REJECTED
+    // must never trip the one-bid-per-hotel guard. lib/bid-expiry (v246) now
+    // filters terminal bids out of pageActiveBids, but this status gate is the
+    // second line of defence so a future filter regression can't re-surface the
+    // "expired bid blocks booking" report (Sachin, 21×).
+    const ACTIVE_STATUSES = new Set(["PENDING", "COUNTER", "ACCEPTED"]);
+    const liveBids = pageActiveBids.filter((b: any) =>
+      ACTIVE_STATUSES.has(String(b?.status || "").toUpperCase())
+    );
+    if (liveBids.length === 0) return false;
+    const bid = pageLockedBid || pageCounteredBid || liveBids[0];
     if (!bid) return false;
     // v243 — premium in-app conflict sheet (Cancel / Update / View) instead of
     // a raw browser alert() + blind redirect. The sheet's "Cancel" releases the

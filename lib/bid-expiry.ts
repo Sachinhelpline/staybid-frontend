@@ -114,6 +114,20 @@ export function isBidExpired(b: BidLike | null | undefined, nowMs: number = Date
   if (b.status === "CONFIRMED" && paid) return false;
   if (b.status === "CHECKED_IN" || b.status === "CHECKED_OUT") return false;
 
+  // v246 — Terminal dead states are NEVER active. The server (cron
+  // mark_stale_pending_bids / mark_orphaned_accepted_bids, or a partner
+  // decline) already moved these to a final state. Before v246, isBidExpired
+  // had NO branch for them and fell through to `return false` at the bottom →
+  // a status="EXPIRED" / "CANCELLED" bid was treated as NOT-expired (i.e.
+  // active) on every surface: /my-bids liveBids, the hotel-page
+  // one-bid-per-hotel conflict guard (interceptIfActiveBidHere), partner inbox,
+  // admin ledger. That is the EXACT root of the "expired bid still shows AND
+  // blocks Book Now / Negotiate" report (Sachin, 21×): the user had 267 EXPIRED
+  // bids + 0 active, yet the hotel page kept surfacing the conflict sheet.
+  // EXPIRED / CANCELLED / DECLINED → always hidden from active views, forever.
+  const st = String(b.status || "").toUpperCase();
+  if (st === "EXPIRED" || st === "CANCELLED" || st === "DECLINED") return true;
+
   const createdMs = parseDbTime(b.createdAt);
   if (Number.isNaN(createdMs)) return false;
 
@@ -210,8 +224,16 @@ export function filterActiveBids<T extends BidLike>(bids: T[], nowMs: number = D
 export const USER_VIEW_FRESH_GRACE_MS = 24 * 60 * 60 * 1000;
 export function filterUserVisibleBids<T extends BidLike>(bids: T[], nowMs: number = Date.now()): T[] {
   return bids.filter((b) => {
-    // Fresh: created in the last 24h → ALWAYS visible.
-    if (b?.createdAt) {
+    // v246 — Terminal dead states (EXPIRED / CANCELLED / DECLINED) NEVER get
+    // the 24h fresh-grace lifeline. A bid the server expired 5 minutes ago is
+    // still dead — it must not count as an "active bid" on the hotel-page
+    // conflict guard or anywhere else. Only LIVE bids (PENDING / COUNTER /
+    // ACCEPTED) get the grace, so the customer always sees what they placed
+    // today while a just-expired auto-accept bid drops off immediately.
+    const st = String(b?.status || "").toUpperCase();
+    const terminal = st === "EXPIRED" || st === "CANCELLED" || st === "DECLINED";
+    // Fresh: live bid created in the last 24h → ALWAYS visible.
+    if (!terminal && b?.createdAt) {
       const created = parseDbTime(b.createdAt);
       if (!Number.isNaN(created) && nowMs - created < USER_VIEW_FRESH_GRACE_MS) return true;
     }

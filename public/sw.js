@@ -267,7 +267,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // SWR HTML cache kept seeing the old build label + occasionally stale markup
 // even though all those PRs had shipped to main. Bumping HTML_CACHE drops the
 // stale HTML on next visit so everyone lands on the current build immediately.
-const HTML_CACHE = 'staybid-html-v29';
+// v246 — one-time bump (v29 → v30). EXPIRED/CANCELLED bids were being treated
+// as "active" by lib/bid-expiry (no terminal-status branch), so the hotel page
+// kept surfacing the one-bid-per-hotel conflict sheet + /my-bids kept showing a
+// dead bid. The fix is client-side, so returning visitors on the SWR HTML cache
+// must drop the stale v29 HTML to pick up the corrected bundle on next visit.
+const HTML_CACHE = 'staybid-html-v30';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
