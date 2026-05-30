@@ -8988,3 +8988,48 @@ Sachin's phone: reel full-screen, gesture nav usable, no top colour band.
   gesture bar (immersive mode), trapping the user. Use the visualViewport
   `--reel-vh` lock + `fixed inset-0` for a full-bleed look that leaves the
   system bars alone.
+
+---
+
+## Reel "double-back to exit" guard (v247.2, 2026-05-30)
+
+**Regression after v247.1:** dropping the immersive `requestFullscreen()`
+(v247.1) fixed the gesture-nav-hidden complaint, but the immersive call was
+*also* the only thing absorbing Android's edge back-gesture. With it gone, a
+single back-swipe started exiting the reel instantly (Sachin: "navigation
+gesture button ab fir se pehle ki tarah force roll back... bahut jaldi back
+chale jate hai"). Git history confirms there was **never** a separate back
+guard — immersive was doing double duty.
+
+**The trilemma:** full-screen + gesture-nav-visible + no-accidental-back
+can't all be had via CSS. Immersive gives 1+3 (not 2); plain v247.1 gives
+1+2 (not 3). To get all three we need a **non-immersive back guard**.
+
+**Fix (in `useReelFullscreen`, so it covers `/reels` + `/discover`):** a
+history-sentinel "double-back to exit":
+- On mount, `pushState` a `{reelGuard:true}` sentinel.
+- `popstate` (first back) → swallow it: re-prime the sentinel, show a
+  "Press back again to exit" toast, arm a 2s window.
+- Second back within 2s → `history.back()` for real → user leaves.
+
+**Fail-safes (this is the fragile gesture/back area — v241.10–.13 territory):**
+- A deliberate double-back **always** exits — the user is never trapped.
+- `armed` auto-clears after 2s.
+- `onPopState` **no-ops unless `body.is-reel-page` is present**, so a listener
+  that loses the unmount race (cf. the hotels/[id] v227 defensive cleanup)
+  can never hijack the back button on a non-reel route.
+- Cleanup pops the sentinel only if it's still the active entry (`!leaving &&
+  history.state?.reelGuard`); forward in-app nav leaves history untouched.
+
+`SB_BUILD v247.1→v247.2`, badge v247.2, `HTML_CACHE v32→v33`. tsc + build
+green. ⚠️ On-device Android QA still required — verify: reel full-screen,
+gesture nav visible AND usable, single back-swipe stays in reel + shows
+toast, quick second back exits, and back from a hotel/other page still works
+normally. If anything navigates weirdly, the stable fallback is to re-add
+immersive on the reel only (accepts the hidden-gesture-nav tradeoff).
+
+### Things to Avoid (v247.2)
+- When intercepting the back button with `history.pushState`/`popstate`,
+  **never** leave a path that re-primes the sentinel unconditionally — that
+  traps the user. Always keep a deliberate exit (here: the 2s double-back)
+  and a class/route check so the handler can't fire off the intended page.
