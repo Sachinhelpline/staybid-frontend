@@ -952,6 +952,11 @@ export default function PartnerDashboard() {
         .card-p { background:#fff; border-radius:15px; border:1px solid #efe7d7; box-shadow:0 1px 2px rgba(61,44,20,0.04),0 4px 16px rgba(160,130,80,0.045); padding:15px; }
         .card-tight { padding:12px !important; border-radius:13px !important; }
         .inp-p { border:1px solid #e6ddc8; border-radius:9px; padding:8px 11px; font-size:0.8rem; width:100%; outline:none; transition:all 0.18s; color:#3d2c14; background:#fff; }
+        /* Currency-prefixed inputs: the rupee glyph sits at left:0.75rem, so
+           the value needs 1.75rem of left padding to clear it. The .inp-p
+           padding shorthand was overriding the pl-7 utility (rupee overlapped
+           the number); the compound selector wins on specificity. */
+        .inp-p.pl-7 { padding-left:1.75rem !important; }
         .inp-p:focus { border-color:#c9911a; box-shadow:0 0 0 3px rgba(201,145,26,0.13); }
         .btn-gold { background:linear-gradient(135deg,#c9911a,#f0b429); color:#fff; border:none; border-radius:9px; padding:8px 15px; font-weight:700; cursor:pointer; font-size:0.8rem; transition:all 0.18s; box-shadow:0 2px 8px rgba(201,145,26,0.22); }
         .btn-gold:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px rgba(201,145,26,0.34); }

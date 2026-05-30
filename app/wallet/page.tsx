@@ -173,14 +173,15 @@ export default function WalletPage() {
             spendable balance from their StayPoints. */}
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           <Link href="/points/redeem"
-            className="rounded-2xl p-3 text-white text-center font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer"
-            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)" }}>
-            <span className="text-base block mb-0.5 relative" style={{ zIndex: 2 }}>✨</span>
+            className="rounded-2xl py-2.5 px-3 text-white font-bold text-xs relative overflow-hidden sb-card-lift sb-shimmer flex items-center justify-center gap-1.5"
+            style={{ background: "linear-gradient(135deg,#b8871a,#f0b429,#c9911a)", boxShadow: "0 4px 14px -4px rgba(201,145,26,0.5), inset 0 1px 0 rgba(255,255,255,0.25)" }}>
+            <span className="text-sm relative" style={{ zIndex: 2 }}>✨</span>
             <span className="relative" style={{ zIndex: 2 }}>Redeem Points</span>
           </Link>
           <Link href="/my-codes"
-            className="rounded-2xl p-3 text-luxury-900 text-center font-bold text-xs border-2 border-luxury-200 bg-white hover:border-gold-300 transition sb-card-lift">
-            <span className="text-base block mb-0.5">🎟️</span>
+            className="rounded-2xl py-2.5 px-3 text-luxury-900 font-bold text-xs border border-gold-200 hover:border-gold-400 transition sb-card-lift flex items-center justify-center gap-1.5"
+            style={{ background: "linear-gradient(135deg,#fffdf8,#fbf3e2)", boxShadow: "0 3px 10px -4px rgba(31,26,15,0.18), inset 0 1px 0 rgba(255,255,255,0.7)" }}>
+            <span className="text-sm">🎟️</span>
             My Codes
           </Link>
         </div>
@@ -188,13 +189,13 @@ export default function WalletPage() {
         {wallet && (
           <>
             {/* ── Balance card ── */}
-            <div className="fu sb-balance-halo rounded-3xl p-7 mb-5 text-white relative overflow-hidden"
+            <div className="fu sb-balance-halo rounded-3xl p-5 mb-4 text-white relative overflow-hidden"
               style={{ background:"linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}>
               <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none opacity-[0.08]"
                 style={{ background:"radial-gradient(circle,#f0b429 0%,transparent 70%)",transform:"translate(30%,-30%)" }} />
 
               {/* Level badge */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-white/40 text-[0.6rem] tracking-[0.2em] uppercase font-semibold">Available Balance</span>
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold text-white badge-anim"
                   style={{ background: level.gradient }}>
@@ -202,12 +203,12 @@ export default function WalletPage() {
                 </div>
               </div>
 
-              <p className="font-display font-light text-white mb-1" style={{ fontSize:"clamp(2.4rem,6vw,3.5rem)" }}>
+              <p className="font-display font-light text-white mb-1" style={{ fontSize:"clamp(2rem,5.5vw,2.9rem)" }}>
                 ₹<CountUp value={wallet.balance ?? 0} duration={1100} />
               </p>
               <p className="text-white/40 text-xs tracking-wide">{user?.phone || user?.email}</p>
 
-              <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-white/10">
+              <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/10">
                 <div>
                   <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Credited</p>
                   <p className="text-emerald-400 font-semibold text-sm">₹<CountUp value={wallet.totalCredit ?? 0} duration={900} /></p>
