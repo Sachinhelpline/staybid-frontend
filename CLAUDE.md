@@ -8685,3 +8685,110 @@ every acceptance window resolves to exactly 30 min, no Autopilot-mode mismatch.
 - **NOT done (by design):** sweeping the 2 stale pre-trigger ACCEPTED-unpaid
   rows (May 17–18) to EXPIRED — they already read as expired and are filtered
   out everywhere, so a production status mutation isn't warranted.
+
+---
+
+## Premium Glass Rail + EXPIRED-Bid Ghost-Conflict Permanent Fix Era (v245 → v246, 2026-05-30)
+
+Two ships in one session. v245 was the carried-over premium-cozy reel-chrome
+redesign; v246 is the permanent root-cause fix for the bug Sachin reported
+**21 times**: an expired bid still showing in `/my-bids` AND blocking Book Now /
+Negotiate on the hotel page with the one-bid-per-hotel conflict sheet.
+
+### v245 — premium glass action rail + redesigned More sheet (PR #197)
+- Right-rail action buttons (mute / like / comment / share / save) →
+  premium frosted champagne-tinted glass discs (42px, blur + border + depth +
+  hover). Killed the "old feel".
+- "More" sheet → premium-cozy redesign (warm walnut `#2A2417`→`#1F1A0F` bg,
+  champagne glass `.ig-more-row` rows with gradient icon tiles + chevrons +
+  "Options" eyebrow, danger rows cozy rose, centers as a modal on sm+).
+- SB_BUILD v244 → v245, HTML_CACHE v28 → v29.
+
+### v246 — EXPIRED/CANCELLED bids never count as "active" (PR #198)
+
+**The 21× bug.** Sachin: expired bid still in `/my-bids` (ss2) AND tapping
+Book Now / Negotiate on the hotel page fired "You already have an active bid in
+Dhanaulti" (ss1) even though the bid was expired.
+
+**Deep research (production Supabase, all 4 of Sachin's identities):**
+`267 EXPIRED + 1 CHECKED_IN, and 0 PENDING / 0 COUNTER / 0 ACCEPTED`. There was
+**no genuinely-active bid anywhere** — the DB was clean. The most recent ₹2,400
+bid (`bid_mps72lpy9zhp8p`) was created today 10:15 and auto-expired 10:45.
+
+**Root cause — 100% client view-layer, not the DB, not the server.** The server
+conflict-check (`findActiveBidOnHotel` in `/api/bids/place`) filters
+`status=in.(PENDING,COUNTER,ACCEPTED)` and correctly returned nothing. But:
+- `lib/bid-expiry.ts isBidExpired()` had **NO branch for terminal statuses** —
+  a `status="EXPIRED"`/`"CANCELLED"` bid fell through to the bottom
+  `return false` → treated as **not-expired = ACTIVE** on every surface
+  (`/my-bids` liveBids, hotel-page `interceptIfActiveBidHere`, partner inbox,
+  admin ledger).
+- `filterUserVisibleBids`'s 24h `FRESH_GRACE` returned `true` (visible) for ANY
+  bid created in the last 24h **regardless of status** → today's just-expired
+  auto-accept bid was resurrected.
+- `/api/bids/my` does `select=*` (no status filter) → ships EXPIRED rows to the
+  client, where the two bugs above made them look active.
+- `interceptIfActiveBidHere` blocked Book Now / Negotiate whenever
+  `pageActiveBids.length > 0` (= `filterUserVisibleBids(myBids)`), so the dead
+  bid blocked booking.
+
+**Fix (additive, NO DB change — nothing was stuck to delete):**
+1. `isBidExpired()` — `EXPIRED` / `CANCELLED` / `DECLINED` → always `return
+   true` (hidden from active views forever). Added right after the
+   paid/CONFIRMED/CHECKED_IN early-returns.
+2. `filterUserVisibleBids()` — 24h grace gated on non-terminal status; terminal
+   bids fall straight to `!isBidExpired` → excluded.
+3. `interceptIfActiveBidHere()` (hotel page) — defense-in-depth: only
+   `PENDING` / `COUNTER` / `ACCEPTED` may block Book Now / Negotiate.
+4. SB_BUILD v245 → v246 + badge + HTML_CACHE v29 → v30.
+
+`tsc --noEmit` clean. Verified via SQL that the user has zero active bids, so
+the code fix alone resolves it — no row mutation, no cron change.
+
+### Service-worker version map (continued)
+- v240.2 → mobile-bgz-shell-edge-to-edge
+- ... (v241.x bid-hardening era) ...
+- **v245** → premium-action-rail-more-sheet (HTML_CACHE v29)
+- **v246** → expired-bid-never-active-conflict-fix (HTML_CACHE v30, current)
+
+### Things to Avoid (v245 → v246 Era)
+- **Never** add a new bid status without giving `isBidExpired()` an explicit
+  branch. The function's bottom `return false` means "treat as active" — any
+  status it doesn't recognise becomes a phantom active bid. Terminal states
+  MUST `return true` (hidden); live states get their per-status window.
+- **Never** let `filterUserVisibleBids`'s 24h FRESH_GRACE apply to a terminal
+  status. The grace exists to keep TODAY'S LIVE bids visible — resurrecting a
+  just-expired bid was the v246 regression. Always gate the grace on
+  `!terminal`.
+- **Never** treat `pageActiveBids.length > 0` as "has an active bid" without a
+  status check. `pageActiveBids` is a visibility filter, not an
+  actionability/active filter. The conflict guard must check
+  PENDING/COUNTER/ACCEPTED explicitly (v246 defense-in-depth).
+- **Never** assume a "stuck bid" report means stuck DB rows. Query the DB FIRST
+  (`status, COUNT(*)` across all of the user's `resolveUserIds` identities). In
+  v246 the DB was clean (0 active); the bug was entirely the client treating
+  EXPIRED as active. Saved a needless destructive cleanup.
+- **Never** narrow `/api/bids/my` to a status filter to "fix" this. Operator +
+  customer surfaces legitimately need EXPIRED/terminal rows for history; the
+  fix is making the FILTERS classify them correctly, not starving the client
+  of the rows.
+
+### Updated production state (v246, 2026-05-30)
+- **Current version:** v246 · commit `8884254` on `main` · branch
+  `claude/staybid-v241-verify-closeout-tTeJy`.
+- **Two PRs merged this session:** #197 (v245 premium glass rail + More sheet),
+  #198 (v246 expired-bid permanent fix).
+- **EXPIRED/CANCELLED/DECLINED bids are now permanently hidden** from every
+  active view (my-bids, hotel page, partner inbox, admin) and can NEVER block
+  Book Now / Negotiate. Verified the user has 0 active bids in DB.
+- **NOT TOUCHED this era:** scoring engine, attribution chain, commission
+  engine, tier system, partner pricing, admin shell, reel-dedup v131.8 chain,
+  multi-room data layer, pending-intent layer, v241.26 acceptance-window
+  trigger, `parseDbTime` tz fix. No DB migration, no cron change.
+- **Carry-forward pending items:**
+  - End-to-end VERIFY on Sachin's IST device after hard-refresh to v246: dead
+    bid gone from /my-bids + Book Now/Negotiate unblocked on Dhanaulti.
+  - Next 16 / React 19 / TS 6 major bump (`docs/NEXT-MAJOR-UPGRADE.md`).
+  - Re-approach mobile gesture-nav + camera-notch chrome with on-device
+    testing (v241.10–v241.13 reverted).
+  - Customer notification on bid-conflict push (blocked by mobile OTP DLT).
