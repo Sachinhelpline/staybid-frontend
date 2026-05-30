@@ -35,10 +35,11 @@ export const USER_LINKS_BASE: UserLink[] = [
   { href: "/my-bids",      label: "My Bids",            sub: "Your active offers",            icon: "📋" },
   { href: "/bookings",     label: "Bookings",           sub: "Past + upcoming stays",         icon: "🎫" },
   { href: "/saved",        label: "Saved",              sub: "Wishlist hotels & reels",       icon: "🔖" },
-  // v128.3 — Trust & Reviews entry routes to the hotels list where the
-  // performance scorecard medals + city ranks are visible. Customer can
-  // tap any medal → drill into Customer Reviews / Guest Feedback pages.
-  { href: "/hotels",       label: "Trust & Reviews",    sub: "Scorecards · ranks · guest reviews", icon: "⭐" },
+  // Trust & Reviews → dedicated reviews-first landing (/trust). Lists every
+  // stay scored on real guest experience, each row linking straight into that
+  // hotel's guest-review page. (Previously dropped users on /hotels, which
+  // read as "it just opens a hotel page".)
+  { href: "/trust",        label: "Trust & Reviews",    sub: "Scorecards · ranks · guest reviews", icon: "⭐" },
   // Wallet is the unified entry: it shows balance + StayPoints. The /points
   // page is still reachable from inside the wallet (the StayPoints column
   // is a tappable link). DO NOT add a separate /points top-level entry —

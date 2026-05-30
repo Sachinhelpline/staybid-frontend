@@ -1048,29 +1048,6 @@ function MyBidsPageInner() {
             <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bids placed yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Browse hotels and place your first bid.</p>
             <Link href="/hotels" className="gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
-            {/* v241.18 — diagnostic strip. Shows the exact server-side
-                state when the empty view is unexpected (re-launch fires
-                a 409 active-bid conflict but this page is empty). Helps
-                catch identity-drift bugs without server log access. */}
-            {(fetchError || apiDebug) && (
-              <details className="mt-8 mx-auto max-w-md text-left" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                <summary style={{ cursor: "pointer", opacity: 0.6 }}>diagnostics</summary>
-                <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(31,26,15,0.06)", border: "1px solid var(--border-soft)" }}>
-                  {fetchError && (
-                    <p style={{ color: "#b91c1c", marginBottom: 8 }}>⚠ fetch error: {fetchError}</p>
-                  )}
-                  {apiDebug && (
-                    <>
-                      <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · {new Date(apiDebug.timestamp).toLocaleTimeString()}</p>
-                      <p style={{ wordBreak: "break-all" }}>primary: <code>{apiDebug.primaryId}</code></p>
-                      <p style={{ wordBreak: "break-all" }}>resolved: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
-                      <p>jwt phone: <code>{apiDebug.jwtPhone || "(none)"}</code></p>
-                      <p>jwt email: <code>{apiDebug.jwtEmail || "(none)"}</code></p>
-                    </>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
         )}
 
@@ -1082,43 +1059,6 @@ function MyBidsPageInner() {
             <p className="text-base font-semibold mb-1" style={{ color: "var(--text-base)" }}>{sectionEmpty.title}</p>
             <p className="text-sm mb-5" style={{ color: "var(--text-muted)" }}>{sectionEmpty.sub}</p>
             <Link href={sectionEmpty.href} className="gold-btn px-5 py-2.5 rounded-2xl text-sm inline-block">{sectionEmpty.cta}</Link>
-            {/* v241.19 — "Show all" rescue button. When the section is
-                empty despite N bids returned by the server, the customer
-                can flip a switch and SEE every bid the API gave back
-                (incl. stale + terminal), classified into their flow. */}
-            {bids.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                className="mt-5 px-4 py-2 rounded-full text-xs font-semibold"
-                style={{ background: showAll ? "var(--cozy-champagne, #C9A66B)" : "var(--bg-pill)", color: showAll ? "#1a1205" : "var(--text-soft)", border: "1px solid var(--border-soft)" }}
-              >
-                {showAll ? `Hide stale (showing all ${bids.length})` : `Show all ${bids.length} bids (incl. stale)`}
-              </button>
-            )}
-            {/* v241.18 + v241.19 — funnel breakdown so the customer sees
-                exactly how raw → live → tab dropped. Place vs Negotiate
-                misclassification + per-status stale counts. */}
-            {(apiDebug || diagBreakdown) && (
-              <details className="mt-6 mx-auto max-w-md text-left" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                <summary style={{ cursor: "pointer", opacity: 0.6 }}>diagnostics</summary>
-                <div className="mt-2 p-3 rounded-lg" style={{ background: "rgba(31,26,15,0.06)", border: "1px solid var(--border-soft)" }}>
-                  {apiDebug && (
-                    <p>API returned <strong>{apiDebug.rawBidCount}</strong> bids · filtered to <strong>{sectionBids.length}</strong> in this tab</p>
-                  )}
-                  {diagBreakdown && (
-                    <>
-                      <p className="mt-2">flow split (raw): <strong>{diagBreakdown.placeRaw}</strong> place · <strong>{diagBreakdown.negRaw}</strong> negotiate</p>
-                      <p>after stale filter: <strong>{diagBreakdown.liveCount}</strong> live · <strong>{diagBreakdown.livePlace}</strong> place · <strong>{diagBreakdown.liveNeg}</strong> negotiate</p>
-                      <p className="mt-2">by status: {Object.entries(diagBreakdown.byStatus).map(([k, v]) => `${k}=${v}`).join(", ")}</p>
-                    </>
-                  )}
-                  {apiDebug && (
-                    <p className="mt-2" style={{ wordBreak: "break-all" }}>resolved IDs: <code>{(apiDebug.resolvedIds || []).join(", ")}</code></p>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
         )}
 

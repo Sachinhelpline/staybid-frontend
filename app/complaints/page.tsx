@@ -124,17 +124,17 @@ function ComplaintsInner() {
     <div className="min-h-screen bg-luxury-50 pb-24">
       <div className="max-w-3xl mx-auto px-5 py-8 sm:py-12">
         <header className="flex items-start justify-between gap-3 mb-6 sb-fade-in">
-          <div>
-            <h1 className="font-display text-3xl sm:text-4xl text-luxury-900">Complaints & Help</h1>
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl sm:text-4xl text-luxury-900">Complaints & Help</h1>
             <p className="text-sm text-luxury-500 mt-1">
               Raise a concern about a booking, payment, or hotel service. Our team responds within 24 hrs.
             </p>
           </div>
           <button
             onClick={() => setComposerOpen(true)}
-            className="btn-luxury sb-shimmer whitespace-nowrap text-sm px-4 py-2.5 relative"
+            className="btn-luxury sb-shimmer shrink-0 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 py-2.5 relative"
           >
-            <span className="relative" style={{ zIndex: 2 }}>+ New complaint</span>
+            <span className="relative" style={{ zIndex: 2 }}>+ New<span className="hidden sm:inline"> complaint</span></span>
           </button>
         </header>
 
