@@ -49,12 +49,16 @@ export default function AdminNotifications() {
   const [kindFilter, setKindFilter] = useState("all");
   const [selected, setSelected] = useState<Notif | null>(null);
   const [busy, setBusy] = useState(false);
+  const [channels, setChannels] = useState<Record<string, boolean> | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
     fetch(`/api/admin/notifications?status=${status}`)
       .then((r) => r.json())
-      .then((d) => setList(Array.isArray(d.notifications) ? d.notifications : []))
+      .then((d) => {
+        setList(Array.isArray(d.notifications) ? d.notifications : []);
+        if (d.channels) setChannels(d.channels);
+      })
       .finally(() => setLoading(false));
   }, [status]);
 
@@ -167,6 +171,30 @@ export default function AdminNotifications() {
           Export CSV
         </button>
       </div>
+
+      {/* Channel status — which delivery channels are live. sms/whatsapp/email
+          stay OFF until the paid-plan env flags flip (docs/NOTIFICATIONS-ACTIVATION.md). */}
+      {channels && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: C.textDim, fontWeight: 600 }}>Delivery channels:</span>
+          {(["in_app", "sms", "whatsapp", "email"] as const).map((ch) => {
+            const on = !!channels[ch];
+            return (
+              <span key={ch} style={{
+                fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+                border: `1px solid ${on ? C.green : "rgba(255,255,255,0.12)"}`,
+                background: on ? "rgba(46,204,113,0.12)" : "rgba(255,255,255,0.03)",
+                color: on ? C.green : C.textDim,
+              }}>
+                {on ? "● " : "○ "}{ch === "in_app" ? "In-app" : ch.charAt(0).toUpperCase() + ch.slice(1)}
+              </span>
+            );
+          })}
+          {!channels.sms && !channels.whatsapp && !channels.email && (
+            <span style={{ fontSize: 11, color: C.textDim }}>· only in-app is live (paid plan not yet activated)</span>
+          )}
+        </div>
+      )}
 
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>

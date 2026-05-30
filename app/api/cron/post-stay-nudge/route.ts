@@ -15,6 +15,7 @@
 // AFTER the user has actually posted and the post has earned views.
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { queueNotification } from "@/lib/notify-server";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -183,22 +184,12 @@ async function sweep(): Promise<{
       // Queue the user-facing notification (in_app + Phase 6 paste will
       // add whatsapp/sms once template is registered on Railway).
       const hotel = hotelById.get(row.hotelId);
-      await fetch(`${SB_URL}/rest/v1/notification_queue`, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify([
-          {
-            user_id: row.customerId,
-            channel: "in_app",
-            template: "post_stay_nudge",
-            payload: {
-              booking_id: row.id,
-              hotel_id: row.hotelId,
-              hotel_name: hotel?.name || null,
-            },
-            status: "pending",
-          },
-        ]),
+      // Fans out to enabled channels (in_app today; +sms/+whatsapp once the
+      // paid-plan flag is on — "share your trip" reminder is a prime SMS use).
+      await queueNotification({
+        userId: row.customerId,
+        template: "post_stay_nudge",
+        payload: { booking_id: row.id, hotel_id: row.hotelId, hotel_name: hotel?.name || null },
       });
       nudged += 1;
     } catch (e: any) {

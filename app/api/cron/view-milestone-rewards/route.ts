@@ -22,6 +22,7 @@
 // are skipped — existing creator commission system pays those.
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { queueNotification } from "@/lib/notify-server";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -217,23 +218,12 @@ async function sweep(): Promise<{
           ]),
         });
 
-        // Queue user-facing notification
-        await fetch(`${SB_URL}/rest/v1/notification_queue`, {
-          method: "POST",
-          headers: HEADERS,
-          body: JSON.stringify([
-            {
-              user_id: userId,
-              channel: "in_app",
-              template: "view_milestone_reward",
-              payload: {
-                post_id: post.id,
-                threshold: m.threshold,
-                reward_inr: m.reward_inr,
-              },
-              status: "pending",
-            },
-          ]),
+        // Queue user-facing notification — fans out to enabled channels
+        // (in_app now; +sms/+whatsapp when the paid-plan flag flips).
+        await queueNotification({
+          userId,
+          template: "view_milestone_reward",
+          payload: { post_id: post.id, threshold: m.threshold, reward_inr: m.reward_inr },
         });
 
         rewardsCredited += 1;

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { queueNotification } from "@/lib/notify-server";
 
 const HEADERS = {
   apikey: SB_KEY,
@@ -132,22 +133,12 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     );
     const auth = ((await apr.json().catch(() => [])) as any[])[0];
     if (auth?.user_id) {
-      void fetch(`${SB_URL}/rest/v1/notification_queue`, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify([
-          {
-            user_id: auth.user_id,
-            channel: "in_app",
-            template,
-            payload: {
-              post_id: post.id,
-              reason: body.reason || null,
-              by: "admin",
-            },
-            status: "pending",
-          },
-        ]),
+      // Fans out to enabled channels (in_app now; +sms/+whatsapp when the
+      // paid-plan flag flips — no change here). See lib/notify-server.
+      void queueNotification({
+        userId: auth.user_id,
+        template,
+        payload: { post_id: post.id, reason: body.reason || null, by: "admin" },
       });
     }
   } catch {}
