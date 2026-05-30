@@ -194,9 +194,14 @@ export function normalizeFlashDeal(d: any): FlashDealStory | null {
 export function FlashDealStoryRail({
   deals,
   onOpen,
+  filterChip,
 }: {
   deals: FlashDealStory[];
   onOpen: (idx: number) => void;
+  /** v244 — rendered at the right edge of the rail header so the reel-filter
+      control lives INSIDE the rail instead of floating over it as a
+      position:fixed element (which overlapped + visibly flipped on home). */
+  filterChip?: React.ReactNode;
 }) {
   if (!deals.length) return null;
   return (
@@ -207,7 +212,7 @@ export function FlashDealStoryRail({
             (justify-between), but the filter chip (fixed top-right) covered
             the brand on the right. Now they're a single Cormorant pair that
             never sits under any fixed top-right chrome. */}
-        <div className="fdeal-rail-header">
+        <div className={`fdeal-rail-header${filterChip ? " fdeal-rail-header--haschip" : ""}`}>
           <span className="fdeal-rail-brandwrap" aria-label="StayBid">
             <span className="fdeal-rail-brand">
               stay<span className="fdeal-rail-brand-dot">·</span>bid
@@ -215,6 +220,7 @@ export function FlashDealStoryRail({
             <span className="fdeal-rail-brand-sep">·</span>
             <span className="fdeal-rail-title">Flash Deals</span>
           </span>
+          {filterChip ? <span className="fdeal-rail-chipslot">{filterChip}</span> : null}
         </div>
         <div className="fdeal-rail-scroll" role="list">
           {deals.map((d, i) => (
@@ -272,6 +278,17 @@ export function FlashDealStoryRail({
           justify-content: flex-start;
           padding: 0 4px 8px;
           padding-right: 110px;  /* clear the filter chip top-right */
+        }
+        /* v244 — when the filter chip lives INSIDE the rail header, no need to
+           reserve space for a floating chip; lay them out brand-left/chip-right. */
+        .fdeal-rail-header--haschip {
+          justify-content: space-between;
+          align-items: center;
+          padding-right: 4px;
+        }
+        .fdeal-rail-chipslot {
+          flex-shrink: 0;
+          align-self: center;
         }
         .fdeal-rail-brandwrap {
           display: inline-flex;

@@ -3439,6 +3439,27 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     catch { showToast("Copy failed"); }
   }, [showToast]);
 
+  // v244 — the reel-filter chip as a reusable node. On home (showFlashDealRail)
+  // it's rendered INSIDE the Flash Deals rail header (no overlap/flip); on
+  // /discover + /reels it floats top-right as before.
+  const filterChipNode = (
+    <button
+      onClick={() => setFilterOpen(true)}
+      className={`ig-filter-chip${showFlashDealRail ? " ig-filter-chip--rail" : ""}`}
+      aria-label="Open reel filters"
+    >
+      <span style={{ fontSize: "0.78rem", lineHeight: 1 }}>{SOURCE_ICON[filterSource]}</span>
+      <span style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.02em" }}>
+        {filterSource === "all" ? "All" : SOURCE_LABEL[filterSource]}
+      </span>
+      <span style={{ opacity: 0.5 }}>·</span>
+      <span style={{ fontSize: "0.58rem", fontWeight: 600, maxWidth: "70px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        📍{filterCity === "all" ? "India" : filterCity}
+      </span>
+      <span style={{ opacity: 0.6, fontSize: "0.55rem" }}>▾</span>
+    </button>
+  );
+
   return (
     <>
       <style jsx global>{`
@@ -3595,15 +3616,16 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
         .ig-filter-chip > * { font-size: 0.58rem !important; }
         .ig-filter-chip:active { transform: scale(0.94); }
-        /* v243 — on the home route the Flash Deals rail occupies the top band,
-           and the chip was overlapping the rail header. Seat it lower (into the
-           rail's reserved right slot) + give it a stronger opaque glass so it
-           reads as a deliberate control on the cream rail, not floating debris
-           on top of it. */
+        /* v244 — on the home route the chip is now rendered INSIDE the Flash
+           Deals rail header (not floating over it). Make it a normal in-flow
+           element so it sits cleanly at the rail's right edge — no position:
+           fixed, no overlap, no load-flip. Opaque cream-on-cocoa glass reads as
+           a deliberate control on the warm rail. */
         .ig-filter-chip--rail {
-          top: calc(env(safe-area-inset-top, 0px) + 12px);
-          right: 12px;
+          position: static;
+          top: auto; right: auto; left: auto;
           padding: 5px 10px;
+          max-width: 52vw;
           background: linear-gradient(135deg, rgba(74,56,32,0.92), rgba(31,26,15,0.86));
           border: 1px solid rgba(217,190,130,0.4);
           box-shadow: 0 4px 14px rgba(31,26,15,0.4), inset 0 1px 0 rgba(217,190,130,0.22);
@@ -4124,24 +4146,11 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         .ig-toast { animation: igToastIn 2.2s ease forwards; }
       `}</style>
 
-      {/* ── Filter chip — slim, top-LEFT. Shows current filter; tap to open
-          the source/location sheet. Compact text so it doesn't bleed
-          into the centered brand label. ── */}
-      <button
-        onClick={() => setFilterOpen(true)}
-        className={`ig-filter-chip${showFlashDealRail ? " ig-filter-chip--rail" : ""}`}
-        aria-label="Open reel filters"
-      >
-        <span style={{ fontSize: "0.78rem", lineHeight: 1 }}>{SOURCE_ICON[filterSource]}</span>
-        <span style={{ fontSize: "0.58rem", fontWeight: 700, letterSpacing: "0.02em" }}>
-          {filterSource === "all" ? "All" : SOURCE_LABEL[filterSource]}
-        </span>
-        <span style={{ opacity: 0.5 }}>·</span>
-        <span style={{ fontSize: "0.58rem", fontWeight: 600, maxWidth: "70px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          📍{filterCity === "all" ? "India" : filterCity}
-        </span>
-        <span style={{ opacity: 0.6, fontSize: "0.55rem" }}>▾</span>
-      </button>
+      {/* ── Filter chip — on /discover + /reels it floats top-right. On home
+          it's rendered inside the Flash Deals rail header instead (see the
+          rail's filterChip prop below), so here we only render the floating
+          version when the rail is NOT shown. ── */}
+      {!showFlashDealRail && filterChipNode}
 
       {/* Active entity/highlight badge with clear (×). Sits beneath the
           filter chip when a profile-driven filter is in effect. */}
@@ -4182,6 +4191,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         {showFlashDealRail && (
           <FlashDealStoryRail
             deals={flashDeals}
+            filterChip={filterChipNode}
             onOpen={(i) => {
               setFlashStoryIdx(i);
               onTrackEvent?.("flash_rail_tap", { idx: i, hotelId: flashDeals[i]?.hotelId });
