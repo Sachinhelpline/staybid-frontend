@@ -181,8 +181,11 @@ async function run() {
       try {
         const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
         status = resp ? resp.status() : 0;
-        await page.waitForTimeout(1800); // let client hydrate / redirect / animations settle
-        await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+        await page.waitForTimeout(1200); // let client hydrate / redirect / animations settle
+        // Authed pages fire backend fetches that never settle against an
+        // unreachable API, so networkidle would always burn its full timeout.
+        // 2.5s is enough for layout to paint; we're auditing geometry, not data.
+        await page.waitForLoadState("networkidle", { timeout: 2500 }).catch(() => {});
         finalUrl = page.url();
         // evaluate can race a late client-side redirect; retry once after re-settling
         try {
