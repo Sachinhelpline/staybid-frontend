@@ -8953,3 +8953,38 @@ Trigger proven live (insert → 3 units, bump → +2) then test data removed.
   After v247 the grid is REAL for every hotel, so the units route uses real
   rows (not the `rooms.quantity` virtual fallback) — capacity is identical
   either way, so availability numbers are unchanged.
+
+---
+
+## Reel gesture-nav fix — drop Fullscreen API immersive (v247.1, 2026-05-30)
+
+Sachin: the full-screen reel was **forcefully hiding Android's system
+navigation gesture bar** — he wants the reel full-screen but the gesture nav
+to stay usable, and no separate colored band at the top.
+
+**Root cause:** `lib/useReelFullscreen.ts` called
+`document.documentElement.requestFullscreen()` on the first touch/click. On
+Android that triggers the **immersive Fullscreen API**, which hides BOTH the
+status bar AND the navigation gesture bar. (iOS Safari no-ops it, so it was an
+Android-only bug.) The reel's full-screen LOOK never depended on it — that
+comes from the visualViewport `--reel-vh` lock + `fixed inset-0`.
+
+**Fix (both /reels + /discover via the shared hook):**
+1. **Removed the `requestFullscreen()` block.** Kept only the harmless
+   `scrollTo(0,1)` URL-bar-collapse nudge (does not touch system bars). Reel
+   stays full-bleed; the gesture nav bar is never hidden.
+2. **Status-bar blend:** the hook now sets `theme-color` to `#000` for the
+   reel's lifetime (restoring the prior value on unmount), so the status bar
+   matches the black reel — no separate colored "matching" band at the top.
+3. `SB_BUILD v247→v247.1`, badge v247.1, `HTML_CACHE v31→v32`.
+
+`tsc` + `build` green. ⚠️ On-device Android QA still required (this is the
+gesture-nav/notch area that v241.10–.13 were reverted for) — verify on
+Sachin's phone: reel full-screen, gesture nav usable, no top colour band.
+
+### Things to Avoid (v247.1)
+- **Never** call the Fullscreen API (`requestFullscreen`) to "force"
+  full-screen on a content page — on Android it hides the system navigation
+  gesture bar (immersive mode), trapping the user. Use the visualViewport
+  `--reel-vh` lock + `fixed inset-0` for a full-bleed look that leaves the
+  system bars alone.

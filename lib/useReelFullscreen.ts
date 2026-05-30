@@ -21,9 +21,17 @@
       so the lock survives URL-bar appear/disappear.
    3. Pin html+body via `is-reel-page` class with overscroll-behavior
       kill so swipe-down doesn't trigger pull-to-refresh.
-   4. Best-effort `requestFullscreen()` on first user gesture (Android
-      Chrome / Firefox honour this; iOS Safari silently no-ops which is
-      fine — the visualViewport-driven lock alone is enough there).
+   4. v247.1 — DROPPED the Fullscreen-API immersive request. On Android it
+      forcefully hid the system navigation gesture bar (Sachin: reel
+      "forcefully gesture button band kar deta hai"). The full-screen look
+      comes entirely from the visualViewport `--reel-vh` lock + `fixed
+      inset-0`, NOT from `requestFullscreen()`, so dropping the immersive
+      call keeps the reel full-bleed while leaving the gesture nav visible.
+      We keep only the harmless URL-bar-collapse scroll nudge (it does not
+      touch the system bars).
+   5. v247.1 — blend the status bar into the black reel by setting
+      `theme-color` to #000 for the reel's lifetime (restored on leave) so
+      there's no separate colored band at the top.
 
    Call this once from /discover and /reels page components.
    ────────────────────────────────────────────────────────────────────── */
@@ -38,6 +46,13 @@ export function useReelFullscreen() {
     const body = document.body;
     html.classList.add("is-reel-page");
     body.classList.add("is-reel-page");
+
+    // ── Blend the status bar into the black reel (no separate colored
+    //    band at the top). Save the current theme-color, force #000 for
+    //    the reel, restore on unmount. ───────────────────────────────
+    const themeMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    const prevThemeColor = themeMeta?.getAttribute("content") ?? null;
+    if (themeMeta) themeMeta.setAttribute("content", "#000000");
 
     // ── Update --reel-vh on every viewport change ──────────────────
     let raf = 0;
@@ -61,41 +76,37 @@ export function useReelFullscreen() {
     window.addEventListener("orientationchange", updateVh);
     document.addEventListener("fullscreenchange", updateVh);
 
-    // ── Best-effort fullscreen on first user gesture (Android only) ──
-    const tryFullscreen = () => {
+    // ── URL-bar collapse on first user gesture (no system-bar touch) ──
+    // v247.1 — was tryFullscreen(); the requestFullscreen() immersive call
+    // was REMOVED because on Android it hid the navigation gesture bar.
+    // Only the scroll nudge remains: it asks Chrome/Firefox to commit to the
+    // dynamic-viewport height so the URL bar collapses — it does NOT hide the
+    // status or navigation bars.
+    const collapseUrlBar = () => {
       if (askedRef.current) return;
       askedRef.current = true;
       try {
-        const el: any = document.documentElement;
-        const req =
-          el.requestFullscreen ||
-          el.webkitRequestFullscreen ||
-          el.mozRequestFullScreen ||
-          el.msRequestFullscreen;
-        if (req && !document.fullscreenElement) {
-          req.call(el).catch(() => {});
-        }
-        // Scroll trick: forces Chrome/Firefox to commit to dynamic-viewport
-        // height immediately so URL bar collapses.
         window.scrollTo(0, 1);
         setTimeout(() => window.scrollTo(0, 0), 50);
       } catch {}
     };
-    window.addEventListener("touchstart", tryFullscreen, { passive: true, once: true });
-    window.addEventListener("click",      tryFullscreen, { passive: true, once: true });
+    window.addEventListener("touchstart", collapseUrlBar, { passive: true, once: true });
+    window.addEventListener("click",      collapseUrlBar, { passive: true, once: true });
 
     return () => {
       html.classList.remove("is-reel-page");
       body.classList.remove("is-reel-page");
       html.style.removeProperty("--reel-vh");
       body.style.height = "";
+      // restore the pre-reel status-bar colour
+      if (themeMeta && prevThemeColor != null) themeMeta.setAttribute("content", prevThemeColor);
       window.visualViewport?.removeEventListener("resize", updateVh);
       window.visualViewport?.removeEventListener("scroll", updateVh);
       window.removeEventListener("resize", updateVh);
       window.removeEventListener("orientationchange", updateVh);
       document.removeEventListener("fullscreenchange", updateVh);
-      window.removeEventListener("touchstart", tryFullscreen);
-      window.removeEventListener("click", tryFullscreen);
+      window.removeEventListener("touchstart", collapseUrlBar);
+      window.removeEventListener("click", collapseUrlBar);
       cancelAnimationFrame(raf);
     };
   }, []);
