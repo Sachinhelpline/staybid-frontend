@@ -3043,7 +3043,7 @@ export default function HotelDetail() {
           {/* v241.1 — 2x2 grid: Adults / Children / Kids / Rooms.
               Rooms picker drives every booking-creation CTA on this
               page (Book Now / Negotiate / Hold / Pay Now / Flash). */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 relative z-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 relative z-2">
             <PremiumGuestPicker
               kind="adults"
               label="Adults"
