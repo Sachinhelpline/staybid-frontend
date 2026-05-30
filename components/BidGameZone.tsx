@@ -331,7 +331,6 @@ export default function BidGameZone({ cards, onAllComplete, finalCtaLabel, class
               <span className="bgz-boot-cta-glow" aria-hidden="true" />
               <span className="bgz-boot-cta-label">▶ PRESS START</span>
             </button>
-            <p className="bgz-boot-tip">Sound on · Tap anywhere on the cards to react</p>
           </div>
         </div>
       )}
