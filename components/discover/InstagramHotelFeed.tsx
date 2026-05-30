@@ -2517,8 +2517,8 @@ const HotelCard = memo(function HotelCard({
               }}
               className="ig-cta-3d ig-cta-bid"
             >
-              <span className="ig-cta-icon">💬</span>
-              <span className="ig-cta-text">Bid</span>
+              <span className="ig-cta-icon">🏷️</span>
+              <span className="ig-cta-text">Make Offer</span>
             </button>
           </div>
         ) : null}
@@ -3595,6 +3595,19 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         }
         .ig-filter-chip > * { font-size: 0.58rem !important; }
         .ig-filter-chip:active { transform: scale(0.94); }
+        /* v243 — on the home route the Flash Deals rail occupies the top band,
+           and the chip was overlapping the rail header. Seat it lower (into the
+           rail's reserved right slot) + give it a stronger opaque glass so it
+           reads as a deliberate control on the cream rail, not floating debris
+           on top of it. */
+        .ig-filter-chip--rail {
+          top: calc(env(safe-area-inset-top, 0px) + 12px);
+          right: 12px;
+          padding: 5px 10px;
+          background: linear-gradient(135deg, rgba(74,56,32,0.92), rgba(31,26,15,0.86));
+          border: 1px solid rgba(217,190,130,0.4);
+          box-shadow: 0 4px 14px rgba(31,26,15,0.4), inset 0 1px 0 rgba(217,190,130,0.22);
+        }
 
         /* Avatar tap-popover (Instagram-style) */
         @keyframes igMenuIn {
@@ -4116,7 +4129,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           into the centered brand label. ── */}
       <button
         onClick={() => setFilterOpen(true)}
-        className="ig-filter-chip"
+        className={`ig-filter-chip${showFlashDealRail ? " ig-filter-chip--rail" : ""}`}
         aria-label="Open reel filters"
       >
         <span style={{ fontSize: "0.78rem", lineHeight: 1 }}>{SOURCE_ICON[filterSource]}</span>
