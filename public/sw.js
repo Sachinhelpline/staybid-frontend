@@ -277,11 +277,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // the picker auto-suggests rooms from the guest mix, and real per-unit
 // inventory blocking (N rooms block N units, date-aware oversell guard) lands.
 // All client-rendered, so drop the stale v30 HTML on next visit.
-// v247.3 — one-time bump (v33 → v34). Fixes the v247.2 double-back guard
-// that wasn't holding: the history sentinel now preserves Next.js's router
-// state instead of wiping it, so the App Router no longer navigates away on
-// the first back-swipe. Client-rendered, so drop stale v33 HTML.
-const HTML_CACHE = 'staybid-html-v34';
+// v247.4 — one-time bump (v34 → v35). The v247.2/v247.3 software back-guard
+// couldn't beat Next.js's router, so the reel restored the immersive
+// Fullscreen request (the only reliable way to absorb Android's edge
+// back-gesture). Client-rendered, so drop stale v34 HTML.
+const HTML_CACHE = 'staybid-html-v35';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

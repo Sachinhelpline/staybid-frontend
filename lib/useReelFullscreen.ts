@@ -21,28 +21,31 @@
       so the lock survives URL-bar appear/disappear.
    3. Pin html+body via `is-reel-page` class with overscroll-behavior
       kill so swipe-down doesn't trigger pull-to-refresh.
-   4. v247.1 — DROPPED the Fullscreen-API immersive request. On Android it
-      forcefully hid the system navigation gesture bar (Sachin: reel
-      "forcefully gesture button band kar deta hai"). The full-screen look
-      comes entirely from the visualViewport `--reel-vh` lock + `fixed
-      inset-0`, NOT from `requestFullscreen()`, so dropping the immersive
-      call keeps the reel full-bleed while leaving the gesture nav visible.
-      We keep only the harmless URL-bar-collapse scroll nudge (it does not
-      touch the system bars).
+   4. Best-effort `requestFullscreen()` on first user gesture (Android
+      Chrome / Firefox honour this; iOS Safari silently no-ops which is
+      fine — the visualViewport-driven lock alone is enough there).
    5. v247.1 — blend the status bar into the black reel by setting
       `theme-color` to #000 for the reel's lifetime (restored on leave) so
       there's no separate colored band at the top.
-   6. v247.2 / v247.3 — "double-back to exit" guard. Dropping the immersive
-      request (point 4) also removed the only thing that was absorbing
-      Android's edge back-gesture, so a single back-swipe began exiting the
-      reel instantly (Sachin: "bahut jaldi back chala jata hai"). We restore
-      that buffer WITHOUT immersive via a history sentinel: the first back is
-      swallowed (toast shown), only a deliberate second back within 2s
-      actually leaves. Fail-safe — a real double-back always exits, the arm
-      auto-clears, and the handler no-ops off a reel page so it can never
-      hijack back elsewhere. v247.3 fixed the guard not holding: the sentinel
-      must SPREAD Next.js's history.state (not overwrite it) or the App Router
-      loses its `tree`/`__NA` state and navigates away anyway.
+
+   Back-gesture history (v247.1 → v247.4) — READ BEFORE TOUCHING #4:
+   -----------------------------------------------------------------
+   v247.1 dropped the `requestFullscreen()` immersive request to stop Android
+   hiding the navigation gesture pill (Sachin: reel "forcefully gesture button
+   band kar deta hai"). But that immersive call was ALSO the only thing
+   absorbing Android's edge back-gesture — without it a single back-swipe
+   exited the reel instantly ("bahut jaldi back ja raha hai, kaam hi nahi kar
+   pa rahe"). v247.2 + v247.3 tried to restore the buffer in software (a
+   history-sentinel "double-back to exit" guard, then a Next.js-state-
+   preserving variant) — BOTH failed on-device: Next.js App Router owns
+   back-navigation and tore through the sentinel regardless. There is no web
+   API to suppress ONLY the system back-gesture while keeping the nav pill
+   visible. So v247.4 RESTORED the immersive request (#4): it is the only
+   reliable back-gesture absorber. The reel is immersive like Instagram /
+   TikTok / YT Shorts (system nav pill hidden during viewing); the user
+   navigates via the app's own bottom nav bar, which stays visible, so they
+   are never trapped. ⚠️ Do NOT remove #4 again without a replacement that
+   actually holds the back gesture in this Next.js app.
 
    Call this once from /discover and /reels page components.
    ────────────────────────────────────────────────────────────────────── */
@@ -87,107 +90,42 @@ export function useReelFullscreen() {
     window.addEventListener("orientationchange", updateVh);
     document.addEventListener("fullscreenchange", updateVh);
 
-    // ── URL-bar collapse on first user gesture (no system-bar touch) ──
-    // v247.1 — was tryFullscreen(); the requestFullscreen() immersive call
-    // was REMOVED because on Android it hid the navigation gesture bar.
-    // Only the scroll nudge remains: it asks Chrome/Firefox to commit to the
-    // dynamic-viewport height so the URL bar collapses — it does NOT hide the
-    // status or navigation bars.
-    const collapseUrlBar = () => {
+    // ── Immersive fullscreen on first user gesture (Android) ─────────
+    // v247.4 — RESTORED (was removed in v247.1). This is the only reliable
+    // way to stop Android's edge back-gesture from instantly exiting the
+    // reel: in fullscreen the first edge-swipe exits fullscreen instead of
+    // navigating back. iOS Safari no-ops requestFullscreen, which is fine.
+    // The system nav pill is hidden during the reel (like IG/TikTok) — the
+    // app's own bottom nav bar stays visible for navigation. See the header
+    // note before changing this.
+    const tryFullscreen = () => {
       if (askedRef.current) return;
       askedRef.current = true;
       try {
+        const el = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void>;
+          mozRequestFullScreen?: () => Promise<void>;
+          msRequestFullscreen?: () => Promise<void>;
+        };
+        const req =
+          el.requestFullscreen ||
+          el.webkitRequestFullscreen ||
+          el.mozRequestFullScreen ||
+          el.msRequestFullscreen;
+        if (req && !document.fullscreenElement) {
+          const r = req.call(el);
+          if (r && typeof (r as Promise<void>).catch === "function") {
+            (r as Promise<void>).catch(() => {});
+          }
+        }
+        // Scroll trick: forces Chrome/Firefox to commit to dynamic-viewport
+        // height immediately so the URL bar collapses.
         window.scrollTo(0, 1);
         setTimeout(() => window.scrollTo(0, 0), 50);
       } catch {}
     };
-    window.addEventListener("touchstart", collapseUrlBar, { passive: true, once: true });
-    window.addEventListener("click",      collapseUrlBar, { passive: true, once: true });
-
-    // ── Back-gesture guard — "double-back to exit" (v247.3) ─────────
-    // Re-adds the back-swipe buffer the immersive Fullscreen API used to
-    // provide, but without hiding the gesture nav. A sentinel history entry
-    // catches the first back; only a deliberate second back (within 2s)
-    // leaves. Fail-safe by design:
-    //   • a real double-back ALWAYS exits — the user is never trapped,
-    //   • `armed` auto-clears after 2s,
-    //   • the handler no-ops the instant we're off a reel page (class check),
-    //     so a listener that loses the unmount race (see hotels/[id] v227)
-    //     can't hijack the back button on a non-reel route.
-    //
-    // v247.3 — CRITICAL FIX: the v247.2 sentinel wrote `{reelGuard:true}` as
-    // the whole history.state, which WIPED Next.js App Router's own state
-    // (the `tree` / `__NA` / `key` keys it stores there). With its state gone,
-    // the App Router mis-handled the resulting popstate and navigated away —
-    // so the guard never actually held ("bahut jaldi back ja raha hai"). We
-    // now SPREAD Next's existing state and only add our marker, and push with
-    // the explicit current URL, so Next's router stays intact and treats the
-    // sentinel as a normal same-route entry.
-    let armed = false;
-    let armTimer: ReturnType<typeof setTimeout> | undefined;
-    let leaving = false;
-    let toastEl: HTMLDivElement | null = null;
-
-    // Prime/re-prime our sentinel without clobbering Next's router state.
-    const primeSentinel = () => {
-      try {
-        window.history.pushState(
-          { ...(window.history.state as Record<string, unknown> | null), reelGuard: true },
-          "",
-          window.location.href,
-        );
-      } catch {}
-    };
-
-    const clearToast = () => { toastEl?.remove(); toastEl = null; };
-    const showToast = () => {
-      clearToast();
-      const el = document.createElement("div");
-      el.textContent = "Press back again to exit";
-      el.setAttribute("role", "status");
-      el.style.cssText =
-        "position:fixed;left:50%;bottom:96px;transform:translateX(-50%);" +
-        "z-index:2147483647;background:rgba(0,0,0,0.82);color:#fff;" +
-        "padding:10px 18px;border-radius:9999px;font-size:13px;font-weight:500;" +
-        "pointer-events:none;backdrop-filter:blur(8px);text-align:center;" +
-        "max-width:80vw;box-shadow:0 4px 18px rgba(0,0,0,0.45);" +
-        "opacity:0;transition:opacity .18s ease";
-      body.appendChild(el);
-      toastEl = el;
-      requestAnimationFrame(() => { if (toastEl === el) el.style.opacity = "1"; });
-      setTimeout(() => {
-        if (toastEl === el) { el.style.opacity = "0"; setTimeout(clearToast, 220); }
-      }, 1500);
-    };
-
-    const onPopState = () => {
-      // Off the reel (e.g. lost the unmount race) → never guard back.
-      if (!body.classList.contains("is-reel-page")) return;
-      if (leaving) return;
-      if (armed) {
-        // deliberate 2nd back inside the window → let them out for real
-        armed = false;
-        if (armTimer) clearTimeout(armTimer);
-        clearToast();
-        leaving = true;
-        window.history.back();
-        return;
-      }
-      // first back → swallow: re-prime the sentinel + toast + 2s window
-      armed = true;
-      primeSentinel();
-      showToast();
-      if (armTimer) clearTimeout(armTimer);
-      armTimer = setTimeout(() => { armed = false; }, 2000);
-    };
-
-    // prime exactly ONE sentinel so the first back has something to pop.
-    // (Just one: Next's route-settle uses replaceState — it rewrites the
-    // current entry's state but never removes our entry, so a single sentinel
-    // survives. Priming two would make the double-back land on the leftover
-    // sentinel instead of actually leaving the reel.)
-    primeSentinel();
-    window.addEventListener("popstate", onPopState);
+    window.addEventListener("touchstart", tryFullscreen, { passive: true, once: true });
+    window.addEventListener("click",      tryFullscreen, { passive: true, once: true });
 
     return () => {
       html.classList.remove("is-reel-page");
@@ -201,20 +139,14 @@ export function useReelFullscreen() {
       window.removeEventListener("resize", updateVh);
       window.removeEventListener("orientationchange", updateVh);
       document.removeEventListener("fullscreenchange", updateVh);
-      window.removeEventListener("touchstart", collapseUrlBar);
-      window.removeEventListener("click", collapseUrlBar);
-      // ── tear down the back-gesture guard ──
-      window.removeEventListener("popstate", onPopState);
-      if (armTimer) clearTimeout(armTimer);
-      clearToast();
-      // If our sentinel is still the active entry (component unmounted while
-      // sitting on it, not via a forward nav), pop it so we don't leave a
-      // stray history step behind. For normal forward nav the top state is
-      // the new page's, so history is left untouched.
-      if (!leaving && window.history.state?.reelGuard) {
-        leaving = true;
-        window.history.back();
-      }
+      window.removeEventListener("touchstart", tryFullscreen);
+      window.removeEventListener("click", tryFullscreen);
+      // leave fullscreen when the user navigates away from the reel
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch {}
       cancelAnimationFrame(raf);
     };
   }, []);

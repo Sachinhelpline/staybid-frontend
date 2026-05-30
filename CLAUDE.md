@@ -9068,3 +9068,36 @@ reel only (back absorbed for sure, gesture nav hidden like IG/TikTok reels).
 - **Never** pass a fresh object as the first arg of `history.pushState` on a
   Next.js App Router page — it clobbers Next's router state (`tree`/`__NA`)
   and breaks back/forward navigation. Always spread `window.history.state`.
+
+---
+
+## v247.4 — software back-guard abandoned, immersive Fullscreen RESTORED
+
+Both software back-guards (v247.2 plain sentinel, v247.3 Next-state-preserving
+sentinel) **shipped and both failed on-device** — a single back-swipe kept
+exiting the reel ("same problem abhi bhi"). Conclusion: **Next.js App Router
+owns back-navigation and tears through any `history.pushState` sentinel**, and
+there is **no web API to suppress only the system back-gesture while keeping
+the nav pill visible**. The trilemma (full-screen + nav-pill-visible +
+no-accidental-back) cannot be satisfied via the web platform.
+
+**Resolution (with Sachin's pre-agreement):** restore the immersive
+`requestFullscreen()` on first gesture in `useReelFullscreen` — it is the only
+reliable absorber (in fullscreen the first edge-swipe exits fullscreen instead
+of navigating back). The reel is now immersive **like Instagram / TikTok / YT
+Shorts**: the system nav pill is hidden *during reel viewing*, but the app's
+**own bottom nav bar stays visible**, so the user is never trapped — they
+navigate via HOME/HOTELS/etc. The v247.2/v247.3 sentinel guard + toast were
+**removed entirely** (dead weight + could fight the Fullscreen API). Kept: the
+v247.1 status-bar `#000` blend + the URL-bar scroll nudge. Cleanup now also
+calls `document.exitFullscreen()` on leave.
+
+This effectively returns the reel to its pre-v247.1 back behavior, but now
+documented as a deliberate, proven choice (usable reel > visible nav pill).
+`SB_BUILD v247.3→v247.4`, `HTML_CACHE v34→v35`. tsc + build green.
+
+### Things to Avoid (v247.4)
+- **Do NOT remove the `requestFullscreen()` call (#4) again** to "show the
+  gesture nav pill" without a replacement that *actually holds* the Android
+  back-gesture in this Next.js app. We tried history sentinels twice; they do
+  not work here. Removing it re-introduces the instant-back-exit regression.
