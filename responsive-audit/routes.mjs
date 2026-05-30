@@ -82,8 +82,34 @@ export const ADMIN_ROUTES = [
   { path: "/admin/rls",              name: "admin-rls",          auth: true },
 ];
 
+// Creator/influencer hub. The hub layout gates on /api/influencer/me; the
+// auditor mocks that endpoint to {registered:true} under --auth so the real
+// hub chrome renders instead of bouncing to /upgrade. The public profile skips
+// the gate entirely.
+export const CREATOR_ROUTES = [
+  { path: "/influencer/dashboard", name: "creator-dashboard", auth: true },
+  { path: "/influencer/earnings",  name: "creator-earnings",  auth: true },
+  { path: "/influencer/referrals", name: "creator-referrals", auth: true },
+  { path: "/influencer/bookings",  name: "creator-bookings",  auth: true },
+  { path: "/influencer/upload",    name: "creator-upload",    auth: true },
+  { path: "/influencer/profile",   name: "creator-profile",   auth: true },
+  { path: "/influencer/public/sample", name: "creator-public", auth: false, dynamic: true },
+];
+
+// Hotel-owner self-onboarding funnel. signin/signup/verify render without a
+// backend; the wizard gates on an sb_onboard_token (injected under --auth).
+export const ONBOARD_ROUTES = [
+  { path: "/onboard",         name: "onboard-landing", auth: false },
+  { path: "/onboard/signin",  name: "onboard-signin",  auth: false },
+  { path: "/onboard/signup",  name: "onboard-signup",  auth: false },
+  { path: "/onboard/verify",  name: "onboard-verify",  auth: false },
+  { path: "/onboard/wizard",  name: "onboard-wizard",  auth: true },
+];
+
 export const SURFACES = {
   customer: CUSTOMER_ROUTES,
   partner: PARTNER_ROUTES,
   admin: ADMIN_ROUTES,
+  creator: CREATOR_ROUTES,
+  onboard: ONBOARD_ROUTES,
 };
