@@ -2042,7 +2042,7 @@ const HotelCard = memo(function HotelCard({
           safe-area-inset-top (v87) the chip clears every device's notch +
           the brand wordmark on the same surface. */}
       <div
-        className="absolute left-3 right-3 z-30 flex items-start gap-2.5"
+        className="ig-profile-chip absolute left-3 right-3 z-30 flex items-center gap-2.5"
         style={{ top: chipTop }}
       >
         <button
