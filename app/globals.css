@@ -7432,7 +7432,9 @@
 .bgz-boot-content {
   position: relative;
   z-index: 2;
-  padding: 14px 18px 24px 18px;
+  /* v243 — tightened so the whole intro (header + tracker + 5-step journey +
+     PRESS START) fits on one screen without scrolling on common phones. */
+  padding: 10px 16px 14px 16px;
   max-width: 440px;
   width: 100%;
   margin: 0 auto;
@@ -7565,7 +7567,7 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   animation: bgzFadeIn 0.7s 0.25s ease both;
 }
 .bgz-boot-track-item {
@@ -7615,12 +7617,19 @@
 
 .bgz-boot-journey {
   list-style: none;
-  margin: 0 0 22px 0;
+  margin: 0 0 14px 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 9px;
   animation: bgzFadeIn 0.7s 0.4s ease both;
+}
+/* v243 — short viewports (most phones in portrait with browser chrome):
+   shave the journey + tracker further so PRESS START stays above the fold. */
+@media (max-height: 760px) {
+  .bgz-boot-journey { gap: 6px; margin-bottom: 10px; }
+  .bgz-boot-tracker { margin-bottom: 10px; }
+  .bgz-boot-step-card { padding-top: 7px; padding-bottom: 7px; }
 }
 .bgz-boot-step {
   display: grid;
