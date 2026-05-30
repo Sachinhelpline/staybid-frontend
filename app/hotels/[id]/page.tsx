@@ -2163,13 +2163,21 @@ export default function HotelDetail() {
     }
     setUpgradeLoading(true);
     try {
+      // v243 — the accepted amount was NEVER paid (the bid is ACCEPTED-unpaid,
+      // pay window still open). So upgrading charges the FULL new rate
+      // (accepted + room difference) × nights — not just the difference. After
+      // a successful charge the bid is stamped paid, so there's no "settle the
+      // balance later" step. (Old model charged only the delta and implied the
+      // accepted amount was already paid — it wasn't.)
+      const newRate = upgradeModal.acceptedAmount + upgradeModal.deltaPerNight;
+      const totalToPay = Math.max(0, newRate * upgradeModal.nights);
       const totalDelta = Math.max(0, upgradeModal.deltaPerNight * upgradeModal.nights);
       let payResult: any = { razorpay_payment_id: "wallet_only" };
-      if (totalDelta > 0) {
+      if (totalToPay > 0) {
         payResult = await openRazorpayCheckout({
-          amount: totalDelta,
+          amount: totalToPay,
           hotelName: hotel.name,
-          description: `Room upgrade: ${upgradeModal.fromRoomName} → ${upgradeModal.toRoom.name || upgradeModal.toRoom.type} · ₹${upgradeModal.deltaPerNight}/n × ${upgradeModal.nights}n`,
+          description: `Upgrade + book: ${upgradeModal.toRoom.name || upgradeModal.toRoom.type} · ₹${newRate}/n × ${upgradeModal.nights}n`,
           userName: user!.name || user!.phone || "",
           userPhone: user!.phone,
           userEmail: user!.email,
@@ -2181,15 +2189,24 @@ export default function HotelDetail() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           newRoomId: upgradeModal.toRoom.id,
-          newAmount: upgradeModal.acceptedAmount + upgradeModal.deltaPerNight,
+          newAmount: newRate,
           paymentId: payResult.razorpay_payment_id,
           deltaPaid: totalDelta,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Upgrade failed");
+      // Stamp the bid paid (same as a normal Pay Now) so it moves to confirmed
+      // and the "Pay Now" window disappears — the full total is now settled.
+      if (payResult.razorpay_payment_id && payResult.razorpay_payment_id !== "wallet_only") {
+        await fetch(`/api/bids/${upgradeModal.bidId}/pay`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ razorpay_payment_id: payResult.razorpay_payment_id }),
+        }).catch(() => {});
+      }
       setUpgradeModal(null);
-      alert(`✓ Upgraded to ${upgradeModal.toRoom.name || upgradeModal.toRoom.type}! Pay the balance from My Bids to confirm.`);
+      alert(`✓ Booked ${upgradeModal.toRoom.name || upgradeModal.toRoom.type} at ₹${newRate.toLocaleString("en-IN")}/night. Your stay is confirmed!`);
       fetchMyBids();
     } catch (e: any) {
       if (e?.message === "__CANCELLED__") { return; }
@@ -3692,10 +3709,10 @@ export default function HotelDetail() {
                       <span style={{ fontSize: "1.05rem" }}>💎</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a5e10", margin: 0 }}>
-                          Upgrade for +₹{lockUpgradeDelta.toLocaleString("en-IN")}/night
+                          Upgrade to ₹{(lockedAmount + lockUpgradeDelta).toLocaleString("en-IN")}/night
                         </p>
                         <p style={{ fontSize: "0.66rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
-                          Pay the difference over your accepted ₹{lockedAmount.toLocaleString("en-IN")} to upgrade.
+                          Your accepted ₹{lockedAmount.toLocaleString("en-IN")} + ₹{lockUpgradeDelta.toLocaleString("en-IN")} room difference. Pay the full new total to book.
                         </p>
                       </div>
                     </div>
@@ -5156,16 +5173,13 @@ export default function HotelDetail() {
                   <span style={{ fontWeight: 600 }}>× {upgradeModal.nights}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Extra you pay now</span>
-                  <span style={{ fontWeight: 700, color: "#b8871a" }}>₹{(upgradeModal.deltaPerNight * upgradeModal.nights).toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between text-[0.65rem] opacity-75 italic">
-                  <span>Anchor (accepted): ₹{(upgradeModal.acceptedAmount * upgradeModal.nights).toLocaleString("en-IN")} due at My Bids</span>
+                  <span>Total to pay now</span>
+                  <span style={{ fontWeight: 800, color: "#b8871a" }}>₹{((upgradeModal.acceptedAmount + upgradeModal.deltaPerNight) * upgradeModal.nights).toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
               <div className="rounded-xl p-2.5 text-[0.7rem]" style={{ background: "rgba(127,146,105,0.10)", border: "1px solid rgba(127,146,105,0.25)", color: "#4a5c3a" }}>
-                ✓ Pay only the upgrade extra now. Your accepted ₹{upgradeModal.acceptedAmount.toLocaleString("en-IN")}/night stays locked. After upgrade, settle the balance from My Bids to confirm.
+                ✓ Upgrading books the {upgradeModal.toRoom.name || upgradeModal.toRoom.type} at ₹{(upgradeModal.acceptedAmount + upgradeModal.deltaPerNight).toLocaleString("en-IN")}/night — that's your accepted ₹{upgradeModal.acceptedAmount.toLocaleString("en-IN")} plus the ₹{upgradeModal.deltaPerNight.toLocaleString("en-IN")} room difference. You pay the full new total now; nothing was charged before this.
               </div>
             </div>
 
@@ -5177,7 +5191,7 @@ export default function HotelDetail() {
                 className="hx-cta hx-cta-primary"
                 style={{ width: "100%", background: "linear-gradient(135deg,#b8871a 0%,#c9911a 50%,#b8871a 100%)", color: "#1a1205", opacity: upgradeLoading ? 0.7 : 1 }}
               >
-                {upgradeLoading ? "Processing…" : `💎 Confirm upgrade · Pay ₹${(upgradeModal.deltaPerNight * upgradeModal.nights).toLocaleString("en-IN")}`}
+                {upgradeLoading ? "Processing…" : `💎 Upgrade & Pay ₹${((upgradeModal.acceptedAmount + upgradeModal.deltaPerNight) * upgradeModal.nights).toLocaleString("en-IN")}`}
               </button>
               <button
                 onClick={() => !upgradeLoading && setUpgradeModal(null)}
