@@ -18,11 +18,14 @@
 --     (we only ever top up to `quantity` active units); a partner can
 --     deactivate surplus units by hand. This protects units that already
 --     carry bid_unit_assignments / room_blocks.
---   • New unit numbers continue from the highest existing numeric roomNumber
---     (base 100 if none), so auto units coexist with partner-set "101..104"
---     style numbers without collision. Tagged note='auto-provisioned (v247)'
---     so partners can spot + rename them.
---   • A unique index on ("roomId","roomNumber") guarantees idempotency.
+--   • Unit numbers are unique PER HOTEL (existing constraint
+--     room_units_hotel_num_idx on ("hotelId","roomNumber")). New numbers
+--     continue from the highest existing numeric roomNumber ACROSS THE WHOLE
+--     HOTEL (base 100 if none), so every category's auto units stay unique
+--     hotel-wide and coexist with partner-set "101.." numbers. Tagged
+--     note='auto-provisioned (v247)' so partners can spot + rename them.
+--   • ON CONFLICT ("hotelId","roomNumber") DO NOTHING guarantees idempotency
+--     against that existing unique index.
 --   • Capacity is UNCHANGED vs the pre-migration quantity-fallback
 --     (unitsTotal == quantity either way), so availability math does not
 --     shift — this only swaps virtual units for real, renameable rows.
@@ -32,11 +35,10 @@
 -- can insert regardless of which role inserts the room.
 -- ─────────────────────────────────────────────────────────────────────────
 
--- 1) Idempotency / integrity: one unit number per category.
-CREATE UNIQUE INDEX IF NOT EXISTS hotel_room_units_room_number_uniq
-  ON public.hotel_room_units ("roomId", "roomNumber");
+-- (Room numbers are already unique per hotel via room_units_hotel_num_idx —
+--  no extra index needed; we conflict-target that one below.)
 
--- 2) Top up a single room to `quantity` active units. Additive only.
+-- Top up a single room to `quantity` active units. Additive only.
 CREATE OR REPLACE FUNCTION public.provision_room_units(p_room_id text)
 RETURNS void
 LANGUAGE plpgsql
@@ -69,21 +71,22 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Continue numbering after the highest existing numeric unit number for
-  -- this category; base 100 when the category has no numeric units yet.
+  -- Continue numbering after the highest existing numeric unit number ACROSS
+  -- THE WHOLE HOTEL (numbers are unique per hotel); base 100 if the hotel has
+  -- no numeric units yet.
   SELECT COALESCE(
            MAX(NULLIF(regexp_replace("roomNumber", '\D', '', 'g'), '')::int),
            100
          )
     INTO v_base
     FROM public.hotel_room_units
-   WHERE "roomId" = p_room_id;
+   WHERE "hotelId" = v_hotel;
 
   WHILE v_active + i < v_qty LOOP
     i := i + 1;
     INSERT INTO public.hotel_room_units ("hotelId", "roomId", "roomNumber", status, note)
     VALUES (v_hotel, p_room_id, (v_base + i)::text, 'active', 'auto-provisioned (v247)')
-    ON CONFLICT ("roomId", "roomNumber") DO NOTHING;
+    ON CONFLICT ("hotelId", "roomNumber") DO NOTHING;
   END LOOP;
 END $$;
 

@@ -8935,3 +8935,21 @@ block only on ACCEPTED/CONFIRMED):**
   you can positively prove `free < numRooms` for the dates.
 - PENDING bids do NOT consume inventory (reverse-auction rule); only
   ACCEPTED/COUNTER/CONFIRMED/CHECKED_IN are blocks.
+
+### Auto-provision migration — APPLIED live (v247, future-proof)
+`migrations/2026-05-30-v247-auto-provision-room-units.sql` (applied to
+`uxxhbdqedazpmvbvaosh`, verified): backfilled the per-unit grid for all 32
+hotels (4 → **202 active `hotel_room_units` = exactly sum(`rooms.quantity`)**,
+0 mismatched, 0 dup numbers) and installed `trg_rooms_provision_units` on
+`rooms` (AFTER INSERT OR UPDATE OF quantity → `provision_room_units()`), so
+**new-hotel onboarding and quantity bumps auto-create units** with no manual
+setup. Additive/idempotent, never deletes (quantity decrease is a no-op).
+Trigger proven live (insert → 3 units, bump → +2) then test data removed.
+- **GOTCHA (cost a failed first apply):** `hotel_room_units` room numbers are
+  unique **per HOTEL** (`room_units_hotel_num_idx` on `("hotelId","roomNumber")`),
+  NOT per room category. Number new units from the hotel-wide max numeric
+  roomNumber and `ON CONFLICT ("hotelId","roomNumber")` — a per-`roomId`
+  conflict target lets two categories both pick "101" and the insert 23505s.
+  After v247 the grid is REAL for every hotel, so the units route uses real
+  rows (not the `rooms.quantity` virtual fallback) — capacity is identical
+  either way, so availability numbers are unchanged.
