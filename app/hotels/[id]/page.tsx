@@ -1471,8 +1471,24 @@ export default function HotelDetail() {
     if (pageActiveBids.length === 0) return false;
     const bid = pageLockedBid || pageCounteredBid || pageActiveBids[0];
     if (!bid) return false;
-    alert("You already have an active bid on this hotel. Please pay or update its budget from My Bids before placing a new one.");
-    router.push(`/my-bids#bid-${bid.id}`);
+    // v243 — premium in-app conflict sheet (Cancel / Update / View) instead of
+    // a raw browser alert() + blind redirect. The sheet's "Cancel" releases the
+    // one-bid-per-hotel lock so the customer can immediately re-bid.
+    setBidConflict({
+      conflict: {
+        bidId: bid.id,
+        hotelId: hotel?.id || id,
+        hotelName: hotel?.name || "this hotel",
+        city: hotel?.city || "",
+        status: bid.status,
+        amount: Number(bid.amount) || 0,
+        counterAmount: bid.counterAmount,
+        expiresAt: bid.expiresAt,
+      },
+      desiredAmount: Number(bid.amount) || 0,
+      floorPrice: undefined,
+      maxBudget: Math.max((Number(bid.amount) || 1000) * 2, 2000),
+    });
     return true;
   };
 
