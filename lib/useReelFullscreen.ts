@@ -32,15 +32,17 @@
    5. v247.1 — blend the status bar into the black reel by setting
       `theme-color` to #000 for the reel's lifetime (restored on leave) so
       there's no separate colored band at the top.
-   6. v247.2 — "double-back to exit" guard. Dropping the immersive request
-      (point 4) also removed the only thing that was absorbing Android's
-      edge back-gesture, so a single back-swipe began exiting the reel
-      instantly (Sachin: "bahut jaldi back chala jata hai"). We restore that
-      buffer WITHOUT immersive via a history sentinel: the first back is
+   6. v247.2 / v247.3 — "double-back to exit" guard. Dropping the immersive
+      request (point 4) also removed the only thing that was absorbing
+      Android's edge back-gesture, so a single back-swipe began exiting the
+      reel instantly (Sachin: "bahut jaldi back chala jata hai"). We restore
+      that buffer WITHOUT immersive via a history sentinel: the first back is
       swallowed (toast shown), only a deliberate second back within 2s
       actually leaves. Fail-safe — a real double-back always exits, the arm
       auto-clears, and the handler no-ops off a reel page so it can never
-      hijack back elsewhere.
+      hijack back elsewhere. v247.3 fixed the guard not holding: the sentinel
+      must SPREAD Next.js's history.state (not overwrite it) or the App Router
+      loses its `tree`/`__NA` state and navigates away anyway.
 
    Call this once from /discover and /reels page components.
    ────────────────────────────────────────────────────────────────────── */
@@ -102,7 +104,7 @@ export function useReelFullscreen() {
     window.addEventListener("touchstart", collapseUrlBar, { passive: true, once: true });
     window.addEventListener("click",      collapseUrlBar, { passive: true, once: true });
 
-    // ── Back-gesture guard — "double-back to exit" (v247.2) ─────────
+    // ── Back-gesture guard — "double-back to exit" (v247.3) ─────────
     // Re-adds the back-swipe buffer the immersive Fullscreen API used to
     // provide, but without hiding the gesture nav. A sentinel history entry
     // catches the first back; only a deliberate second back (within 2s)
@@ -112,10 +114,30 @@ export function useReelFullscreen() {
     //   • the handler no-ops the instant we're off a reel page (class check),
     //     so a listener that loses the unmount race (see hotels/[id] v227)
     //     can't hijack the back button on a non-reel route.
+    //
+    // v247.3 — CRITICAL FIX: the v247.2 sentinel wrote `{reelGuard:true}` as
+    // the whole history.state, which WIPED Next.js App Router's own state
+    // (the `tree` / `__NA` / `key` keys it stores there). With its state gone,
+    // the App Router mis-handled the resulting popstate and navigated away —
+    // so the guard never actually held ("bahut jaldi back ja raha hai"). We
+    // now SPREAD Next's existing state and only add our marker, and push with
+    // the explicit current URL, so Next's router stays intact and treats the
+    // sentinel as a normal same-route entry.
     let armed = false;
     let armTimer: ReturnType<typeof setTimeout> | undefined;
     let leaving = false;
     let toastEl: HTMLDivElement | null = null;
+
+    // Prime/re-prime our sentinel without clobbering Next's router state.
+    const primeSentinel = () => {
+      try {
+        window.history.pushState(
+          { ...(window.history.state as Record<string, unknown> | null), reelGuard: true },
+          "",
+          window.location.href,
+        );
+      } catch {}
+    };
 
     const clearToast = () => { toastEl?.remove(); toastEl = null; };
     const showToast = () => {
@@ -153,14 +175,18 @@ export function useReelFullscreen() {
       }
       // first back → swallow: re-prime the sentinel + toast + 2s window
       armed = true;
-      window.history.pushState({ reelGuard: true }, "");
+      primeSentinel();
       showToast();
       if (armTimer) clearTimeout(armTimer);
       armTimer = setTimeout(() => { armed = false; }, 2000);
     };
 
-    // prime one sentinel so the very first back has something to pop
-    window.history.pushState({ reelGuard: true }, "");
+    // prime exactly ONE sentinel so the first back has something to pop.
+    // (Just one: Next's route-settle uses replaceState — it rewrites the
+    // current entry's state but never removes our entry, so a single sentinel
+    // survives. Priming two would make the double-back land on the leftover
+    // sentinel instead of actually leaving the reel.)
+    primeSentinel();
     window.addEventListener("popstate", onPopState);
 
     return () => {
