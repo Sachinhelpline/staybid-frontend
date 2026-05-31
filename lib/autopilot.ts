@@ -81,6 +81,38 @@ export const AUTO_COUNTER_BAND_MIN = 0.85;
 /** COUNTER countdown window (matches the /my-bids COUNTER card UX). */
 export const AUTO_COUNTER_WINDOW_MS = 60 * 60 * 1000;
 
+// ─────────────────────────────────────────────────────────────────────────
+// v249 Layer 2 — Occupancy modulation.
+//
+// The auto-counter band widens or shuts based on the pricing-spine's
+// `vacancyRatio` for the bid's check-in date (0 = sold out … 1 = empty):
+//   • EMPTY  (vacancy > 60%) → band 0.78 — chase deeper below-floor offers to
+//                              FILL the room. Counter still lands AT floor, so
+//                              margin is never breached; we just say "yes,
+//                              let's talk" to bids we'd normally ignore.
+//   • NORMAL (15-60%)        → band 0.85 — the default near-floor window.
+//   • TIGHT  (vacancy < 15%) → band 1.00 — NO auto-counter. The room is nearly
+//                              gone ("bik hi raha hai, discount kyun") so
+//                              below-floor offers stay manual. Accept stays
+//                              strict (ratio ≥ 1) regardless — only the counter
+//                              window closes, never the accept path.
+// The counter amount is ALWAYS the dynamic floor (Layer 1) — occupancy tunes
+// WHO gets a counter, never the price, so the spine guarantee holds.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Vacancy-tuned auto-counter band. Falls back to the static band when
+ *  vacancyRatio is unknown (spine unreachable). vacancyRatio: 0=full…1=empty. */
+export function counterBandForVacancy(
+  vacancyRatio: number | null | undefined,
+): number {
+  if (typeof vacancyRatio !== "number" || !Number.isFinite(vacancyRatio)) {
+    return AUTO_COUNTER_BAND_MIN; // unknown occupancy → default behaviour.
+  }
+  if (vacancyRatio > 0.60) return 0.78; // empty → widen, fill the room.
+  if (vacancyRatio < 0.15) return 1.0;  // nearly full → no auto-counter.
+  return AUTO_COUNTER_BAND_MIN;         // normal demand → default band.
+}
+
 export type AutoAction =
   | { kind: "accept"; autoAcceptMs: number }
   | { kind: "counter"; counterAmount: number; windowMs: number }
@@ -99,14 +131,19 @@ export function resolveAutoAction(opts: {
   tier: BidderTier;
   baseMs: number;
   mode: AutopilotMode;
+  /** v249 Layer 2 — vacancy-tuned counter band (default AUTO_COUNTER_BAND_MIN).
+   *  band 1.0 shuts the auto-counter window entirely (nearly-full date). */
+  counterBandMin?: number;
 }): AutoAction {
   const { intent, floor, tier, baseMs, mode } = opts;
+  const counterBandMin = opts.counterBandMin ?? AUTO_COUNTER_BAND_MIN;
   if (mode === "manual") return { kind: "manual" };
   if (!(floor > 0) || !(intent > 0)) return { kind: "manual" };
 
   const ratio = intent / floor;
 
-  // At/above floor → auto-accept (mode + tier gated, existing rule).
+  // At/above floor → auto-accept (mode + tier gated, existing rule). Occupancy
+  // never relaxes the accept threshold — a tight date stays strict (ratio ≥ 1).
   if (ratio >= 1) {
     const ms = resolveAutoAcceptMs(tier, baseMs, mode);
     return Number.isFinite(ms)
@@ -117,7 +154,9 @@ export function resolveAutoAction(opts: {
   // Near-floor below-floor → auto-counter AT FLOOR. Reuse resolveAutoAcceptMs
   // purely as the eligibility gate (finite = this mode+tier would automate),
   // so LOWBALL history + hybrid-low-tier correctly fall through to manual.
-  if (ratio >= AUTO_COUNTER_BAND_MIN) {
+  // v249 Layer 2: the band is occupancy-tuned (empty → 0.78 wider, tight →
+  // 1.0 which closes this window since a below-floor ratio is always < 1).
+  if (ratio >= counterBandMin) {
     const eligible = Number.isFinite(resolveAutoAcceptMs(tier, baseMs, mode));
     return eligible
       ? { kind: "counter", counterAmount: floor, windowMs: AUTO_COUNTER_WINDOW_MS }
