@@ -4,6 +4,7 @@ import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 import { resolveAutoAction, extractPreferredPrice, AUTO_COUNTER_WINDOW_MS, type AutoAction } from "@/lib/autopilot";
 import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
+import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 
 // v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
 // side + tamper-proof: tier comes from loadServerScore (canonical
@@ -323,7 +324,27 @@ export async function POST(req: NextRequest) {
     let counterAmount: number | null = null;
     if (!dealId) {
       const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
-      const floor = Number(rooms[0]?.floorPrice || 0);
+      // v248 Layer 1 — the autopilot accept/counter threshold is the DYNAMIC
+      // pricing-spine bid-floor for the bid's check-in date (demand + occupancy
+      // yield + competitor-undercut already baked in), NOT the static
+      // rooms.floorPrice. So accept + counter become demand-aware: peak dates
+      // lift the floor (margin protected), soft/empty dates drop it (rooms fill).
+      // The counter amount is this same floor → still margin-safe (never below
+      // the spine minimum). Falls back to the static floor if the spine is
+      // unreachable, so a bid is NEVER blocked by a pricing hiccup.
+      const staticFloor = Number(rooms[0]?.floorPrice || 0);
+      let floor = staticFloor;
+      try {
+        let ciDay: string | null = null;
+        if (requestId) {
+          const rq = await sbSelect(`bid_requests?id=eq.${requestId}&select=checkIn`);
+          ciDay = rq[0]?.checkIn ? toISODate(rq[0].checkIn) : null;
+        }
+        const day = ciDay || new Date().toISOString().slice(0, 10);
+        const spine = await resolveSpinePrices([roomId], day);
+        const bf = Number(spine[roomId]?.bidFloor || 0);
+        if (bf > 0) floor = Math.round(bf);
+      } catch { /* spine unreachable → static floor (never block a bid) */ }
       // Real intent: below-floor Negotiate bids stash the true price in the
       // message; every other flow's intent IS the submitted amount.
       const intent = extractPreferredPrice(message) ?? Number(amount);
