@@ -57,6 +57,84 @@ export function resolveAutoAcceptMs(
   return baseMs;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// v248 — Auto-counter (Hybrid Autopilot extension).
+//
+// A below-floor Negotiate bid clamps amount→floor and stashes the guest's
+// REAL desired price in the message token ("Guest's preferred price: ₹X").
+// Pre-v248 these sat in PENDING until a partner manually acted. Autopilot
+// now auto-COUNTERS near-floor below-floor bids at the floor price (v248):
+//   • margin-safe — counter is ALWAYS the floor (the minimum acceptable
+//     price); never below it, so the pricing-spine guarantee holds. No new
+//     schema / "second floor" needed.
+//   • mode + tier gated EXACTLY like auto-accept (auto: yes · hybrid:
+//     PREMIUM/STRONG only · manual: never · LOWBALL history: never).
+//   • band-gated — only "close" misses counter; deep lowballs stay manual so
+//     the partner keeps control over genuinely low offers.
+//
+// The customer responds via the SAME existing COUNTER surface (/my-bids
+// 60-min countdown + counter-accept / counter-reject) — zero new client UI.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** intent/floor at or above this still counters; below it → manual review. */
+export const AUTO_COUNTER_BAND_MIN = 0.85;
+/** COUNTER countdown window (matches the /my-bids COUNTER card UX). */
+export const AUTO_COUNTER_WINDOW_MS = 60 * 60 * 1000;
+
+export type AutoAction =
+  | { kind: "accept"; autoAcceptMs: number }
+  | { kind: "counter"; counterAmount: number; windowMs: number }
+  | { kind: "manual" };
+
+/**
+ * Unified, mode-aware decision for a freshly placed bid.
+ *  - `intent` is the guest's REAL desired per-night price (below floor for a
+ *    counter candidate; equals the bid amount otherwise).
+ *  - `floor`  is the room bid_floor — both the auto-accept threshold AND the
+ *    margin-safe counter price.
+ */
+export function resolveAutoAction(opts: {
+  intent: number;
+  floor: number;
+  tier: BidderTier;
+  baseMs: number;
+  mode: AutopilotMode;
+}): AutoAction {
+  const { intent, floor, tier, baseMs, mode } = opts;
+  if (mode === "manual") return { kind: "manual" };
+  if (!(floor > 0) || !(intent > 0)) return { kind: "manual" };
+
+  const ratio = intent / floor;
+
+  // At/above floor → auto-accept (mode + tier gated, existing rule).
+  if (ratio >= 1) {
+    const ms = resolveAutoAcceptMs(tier, baseMs, mode);
+    return Number.isFinite(ms)
+      ? { kind: "accept", autoAcceptMs: ms }
+      : { kind: "manual" };
+  }
+
+  // Near-floor below-floor → auto-counter AT FLOOR. Reuse resolveAutoAcceptMs
+  // purely as the eligibility gate (finite = this mode+tier would automate),
+  // so LOWBALL history + hybrid-low-tier correctly fall through to manual.
+  if (ratio >= AUTO_COUNTER_BAND_MIN) {
+    const eligible = Number.isFinite(resolveAutoAcceptMs(tier, baseMs, mode));
+    return eligible
+      ? { kind: "counter", counterAmount: floor, windowMs: AUTO_COUNTER_WINDOW_MS }
+      : { kind: "manual" };
+  }
+
+  // Lowball — leave it for the partner.
+  return { kind: "manual" };
+}
+
+/** Parse the guest's real desired price out of a below-floor bid message. */
+export function extractPreferredPrice(message?: string | null): number | null {
+  if (!message) return null;
+  const m = String(message).match(/preferred price[:\s]*₹?\s*(\d+(?:\.\d+)?)/i);
+  return m ? parseFloat(m[1]) : null;
+}
+
 /** Browser-safe lookup. Caches the mode for 60s per hotel to keep the
  *  bid-submit hot path snappy. Falls back to 'auto' on any failure. */
 const memo = new Map<string, { mode: AutopilotMode; at: number }>();

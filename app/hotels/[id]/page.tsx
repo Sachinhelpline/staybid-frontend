@@ -512,6 +512,12 @@ export default function HotelDetail() {
 
   // AI live pricing state — keyed by roomId, recalculates every 60s
   const [roomPrices, setRoomPrices] = useState<Record<string, DynamicPriceResult>>({});
+  // v248 Layer 1 — per-room DYNAMIC bid-floor from the pricing spine (same
+  // value the server uses for the autopilot accept/counter threshold). The
+  // Negotiate probability bands + slider read this so "jo customer dekhe wahi
+  // server kare". Empty until the spine effect resolves → falls back to the
+  // static rooms.floorPrice everywhere it's read.
+  const [roomSpineFloors, setRoomSpineFloors] = useState<Record<string, number>>({});
   const [priceFlash, setPriceFlash] = useState<Record<string, boolean>>({});
 
   // Global availability selector (above room cards — single source of truth)
@@ -1015,12 +1021,17 @@ export default function HotelDetail() {
           body: JSON.stringify({ roomIds, date: checkInForCalc }),
         }).then((r) => r.json());
         const prices = sp?.prices || {};
+        const floors: Record<string, number> = {};
         for (const r of hotel.rooms) {
           const p = prices[r.id];
           if (p && Number(p.livePrice) > 0) {
             next[r.id] = { ...next[r.id], price: Number(p.livePrice) };
           }
+          // v248 Layer 1 — capture the dynamic bid-floor so the Negotiate
+          // probability UI matches the server's accept/counter threshold.
+          if (p && Number(p.bidFloor) > 0) floors[r.id] = Math.round(Number(p.bidFloor));
         }
+        if (Object.keys(floors).length > 0) setRoomSpineFloors(floors);
       } catch { /* spine unreachable — local price stands */ }
       setRoomPrices((prev) => {
         // Flash animation on price change
@@ -1797,7 +1808,12 @@ export default function HotelDetail() {
     }
     if (checkRebidCooldown()) return; // v179 Rule C
     if (!negIn || !negOut) return alert("Select dates");
-    const isAboveFloor = negAmt >= negRoom.floorPrice;
+    // v248 Layer 1 — compare against the DYNAMIC spine floor (same threshold
+    // the server's autopilot uses), not the static rooms.floorPrice, so the
+    // instant-confirm vs below-floor split the customer sees == what the hotel
+    // actually does. Falls back to the static floor until the spine resolves.
+    const negFloorEff = roomSpineFloors[negRoom.id] || negRoom.floorPrice;
+    const isAboveFloor = negAmt >= negFloorEff;
     const nights = Math.max(1, Math.ceil((new Date(negOut).getTime()-new Date(negIn).getTime())/86400000));
     // v241.1 — multi-room total for Negotiate above-floor.
     const nrNeg = Math.max(1, globalNumRooms);
@@ -1834,7 +1850,10 @@ export default function HotelDetail() {
     // Below-floor: no payment yet, bid is forwarded to hotel for counter/accept.
     setNegLoading(true);
     try {
-      const submitAmt = negRoom.floorPrice;
+      // v248 Layer 1 — clamp the submitted amount to the DYNAMIC floor (same
+      // value the server auto-counters at), so the below-floor bid the customer
+      // sends == the floor the autopilot will counter with. Margin-safe.
+      const submitAmt = negFloorEff;
       const message = `Guest's preferred price: ₹${negAmt}/night. Please counter if possible.`;
       // v240 — Negotiate modal submit (above-floor path) → 'negotiate'.
       // v241.1 — pass globalNumRooms + guests to server for multi-room
@@ -4621,7 +4640,11 @@ export default function HotelDetail() {
           demand sparkline. All inline CSS, zero external deps.
       ══════════════════════════════════════════ */}
       {negRoom && !negSuccess && (() => {
-        const floor   = negRoom.floorPrice;
+        // v248 Layer 1 — the whole arena (probability bands, instant-confirm
+        // threshold, slider min/max, Save Big / Smart / Instant chips) reads the
+        // DYNAMIC spine floor so what the customer sees matches what the server
+        // does. Falls back to the static rooms.floorPrice until the spine loads.
+        const floor   = roomSpineFloors[negRoom.id] || negRoom.floorPrice;
         // v129 — slider bounds + bid amount are always ₹100 multiples so every
         // step on the drag bar lands on the same indivisible billing unit the
         // platform uses end-to-end (Save Big chip, Smart chip, Instant chip,
