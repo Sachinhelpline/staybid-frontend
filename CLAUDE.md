@@ -9185,3 +9185,136 @@ compile). `SB_BUILD v249.4→v250`, badge `v250`, `HTML_CACHE v35→v36`.
 - **Never** touch `/verification/record` MediaRecorder logic for cosmetics —
   it's the camera-capture + direct-Supabase-upload path that bypasses Vercel's
   4.5 MB body limit; a render-tree change there risks the whole proof pipeline.
+
+---
+
+## Real Claude-Vision Verification + Rule Enforcement Era (v251, 2026-05-31)
+
+Follow-up to the v250 premium UI overhaul (merged via PR #213). v250 was
+presentation-only; v251 makes the **AI verification tool genuinely watch the
+video** and **enforces the declared rules** that were previously decorative.
+
+### The gap v251 closes
+- `lib/verify/ai.ts` defaulted to `analyzeMock` (scored from step-count +
+  duration + code format — it never looked at a single frame). The
+  google/aws/openai branches were stubs that just called mock. No real
+  provider was wired.
+- `ROOM_TYPE_REQUIREMENTS` (Standard/Deluxe/Suite/Premium → required objects)
+  and the **Platinum geo rule** were declared in `lib/verify/tiers.ts` but
+  never enforced by the (mock) analyzer.
+
+### What shipped (additive, graceful fallback)
+- **`lib/verify/ai.ts`** — new `claude` provider (`analyzeClaude`) using the
+  Anthropic Messages API (`x-api-key`, version `2023-06-01`, model
+  `ANTHROPIC_VERIFY_MODEL || ANTHROPIC_MODEL || claude-3-5-sonnet-20241022`).
+  Sends up to 8 per-step keyframes as `image`/`source.type:"url"` blocks +
+  a strict-JSON system prompt → real object detection, room/booking OCR,
+  scene quality, lighting + cleanliness, "looks like a real hotel room".
+  Computes `trust_score` from object coverage + OCR + scene + duration + code.
+  `PROVIDER` auto-selects `claude` when `ANTHROPIC_API_KEY` is set.
+  **Falls back to `analyzeMock` on no key, no frames, or any error** (provider
+  string records which: `mock-no-key` / `mock-no-frames` / `mock-fallback`).
+  `AnalyzeInput` extended with `frames`, `expectedObjects`, `recordedGeo`,
+  `hotelGeo`, `expectedRoomType`. New exported `computeGeoOk()` (haversine vs
+  hotel coords, 800m radius) — enforced in BOTH mock and claude so the geo
+  rule holds regardless of provider.
+- **`app/verification/record/page.tsx`** — captures ONE JPEG keyframe per step
+  from the live `<video>` preview via canvas (`captureFrameInto`, q0.72,
+  ≤960px), uploads it to the `verification-videos` bucket next to the segment,
+  and includes `frameUrl` in the finalize `segments` payload. Fully
+  try/catch-guarded at every layer — **cannot break the recording / upload
+  flow**; absent frames just degrade analysis to metadata scoring.
+- **`app/api/verify/analyze/route.ts`** — builds `frames` from
+  `vp_videos.segments[].frameUrl`, fetches hotel `lat/lng`, best-effort
+  resolves room type via `bid → roomId → rooms.type`, derives
+  `expectedObjects` from `ROOM_TYPE_REQUIREMENTS` (base set fallback), and
+  passes everything into `analyze()`. No schema change — `frameUrl` rides
+  through the existing `vp_videos.segments` JSONB (finalize stores it verbatim).
+
+### Not done / honest limitations
+- **Spoken-code verification stays metadata-based.** Vision on stills can't
+  hear the spoken `SB-XXXX`; `code_ok` / `audio_ok` remain the well-formed +
+  match check. A real speech-to-text provider is the future upgrade.
+- No DB migration: keyframes live inside the existing `segments` JSONB.
+- `lib/hotel-score.ts` scoring engine/weights untouched (locked rules).
+
+Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
+`npm run build` exit 0. `SB_BUILD v250→v251`, badge `v251`, `HTML_CACHE v36→v37`.
+
+### Things to Avoid (v251 Era)
+- **Never** remove the mock fallback from `analyzeClaude` — production has no
+  guarantee `ANTHROPIC_API_KEY` is set or that frames exist for legacy rows.
+  A throwing analyzer would leave `vp_requests` stuck without a report.
+- **Never** make the recorder's `captureFrameInto` / frame-upload throw — it's
+  wrapped in try/catch at every layer on purpose. The verification VIDEO is
+  the legal proof; a keyframe is a best-effort analysis aid. Frame capture
+  must never block the segment recording or the direct-Supabase upload.
+- **Never** send more than ~8 frames to Claude — token/cost control. The
+  recorder produces ≤5 segments so this is comfortable headroom.
+- **Never** drop `computeGeoOk` enforcement from `analyzeMock` — the Platinum
+  geo rule must hold even when running without an AI key.
+- **Never** assume `claude-sonnet-4-6` is enabled on the key. Default to the
+  project's proven `claude-3-5-sonnet-20241022`; override only via
+  `ANTHROPIC_VERIFY_MODEL` once a newer model is confirmed available.
+
+---
+
+## Gemini-Free Vision Primary + Anthropic Backup Era (v251.1, 2026-05-31)
+
+Sachin: "Google Gemini kardo fir Anthropic as a backup future ke liye." After
+confirming via web search that **Anthropic has no free tier** (pay-as-you-go,
+Haiku 4.5 ≈ $1/$5 per 1M) while **Google Gemini's free tier is genuinely free,
+no credit card, multimodal** (≈15 RPM / ~1000 req/day) — wired Gemini as the
+FREE primary vision provider with Anthropic kept fully intact as the paid
+backup for a future one-env-var switch.
+
+### What shipped (additive, in `lib/verify/ai.ts`)
+- **Provider auto-select reordered:** `GEMINI_API_KEY → "gemini"` (free
+  primary) → `ANTHROPIC_API_KEY → "claude"` (paid backup) → google/aws/openai
+  → mock. `AI_VERIFY_PROVIDER` still force-overrides any of them.
+- **`analyzeGemini`** — Google AI Studio `generateContent`
+  (`v1beta/models/${GEMINI_MODEL}:generateContent?key=`). Gemini needs
+  **inline base64** image parts (not arbitrary URLs like Anthropic), so
+  `fetchAsInlineImage()` fetches each signed keyframe, skips empty/oversized
+  (>4.5 MB) frames, and inlines them as `inline_data`. `responseMimeType:
+  "application/json"` + `temperature: 0` for stable strict-JSON. Model =
+  `GEMINI_VERIFY_MODEL || GEMINI_MODEL || "gemini-2.5-flash"`.
+- **Shared vision core extracted** so Claude + Gemini score IDENTICALLY:
+  `expectedObjectsFor()`, `visionPrompts()` (same system+user prompt), and
+  `buildVisionResult()` (object-coverage + OCR + scene + duration + code +
+  geo scoring → AnalyzeResult). Claude refactored onto these — no behaviour
+  change to Claude, just deduped.
+- **Same graceful fallback contract** for both: no key / no frames / any
+  error → `analyzeMock` (provider string records `mock-no-key` /
+  `mock-no-frames` / `mock-fallback`). Platinum geo rule + room-type object
+  rule enforced regardless of provider.
+
+### Activation (zero cost)
+1. Get a free key (no card) at https://aistudio.google.com → "Get API key".
+2. Vercel env (staybid-customer-frontend): `GEMINI_API_KEY=<key>` → redeploy.
+   Optionally `GEMINI_VERIFY_MODEL=gemini-2.5-flash`.
+3. Done — `PROVIDER` auto-selects `gemini`. Without the key it stays on mock
+   (exactly as before, zero risk).
+
+### Future switch to Anthropic (already wired)
+- Add `ANTHROPIC_API_KEY` AND set `AI_VERIFY_PROVIDER=claude` (so it wins over
+  Gemini), or remove the Gemini key. The `analyzeClaude` path is unchanged and
+  battle-ready — no code change needed to switch, just env vars.
+
+Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
+`npm run build` exit 0. `SB_BUILD v251→v251.1`, badge `v251.1`,
+`HTML_CACHE v37→v38`.
+
+### Things to Avoid (v251.1 Era)
+- **Never** send Gemini arbitrary image URLs — its `generateContent` ignores
+  them; it needs `inline_data` base64. `fetchAsInlineImage` is mandatory.
+- **Never** drop the >4.5 MB / empty-frame skip in `fetchAsInlineImage` — a
+  giant or 0-byte frame would blow the request body or 400 the call.
+- **Never** diverge Claude's and Gemini's scoring — both MUST go through
+  `buildVisionResult` so a hotel's trust score doesn't change just because the
+  env var flipped providers.
+- **Never** assume Gemini free-tier RPM is unlimited — it's ~15 RPM / ~1000/day.
+  Verification is low-volume (1 analyze per submitted video, ≤8 frames) so this
+  is comfortable, but a bulk-reanalyze job MUST throttle.
+- **Never** hardcode the Gemini model — pin via `GEMINI_VERIFY_MODEL` so a
+  model rename (Google deprecates fast) is an env change, not a redeploy.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sbInsert, sbSelect, sbUpdate } from "@/lib/onboard/supabase-admin";
 import { analyze } from "@/lib/verify/ai";
+import { ROOM_TYPE_REQUIREMENTS } from "@/lib/verify/tiers";
 
 // POST /api/verify/analyze  { requestId }
 // Pulls request + linked videos, runs the pluggable AI provider,
@@ -19,14 +20,48 @@ export async function POST(req: Request) {
       r.customer_video_id ? sbSelect<any>("vp_videos", `id=eq.${r.customer_video_id}&limit=1`) : Promise.resolve([]),
     ]);
 
+    // ── v251 — real-vision inputs: per-step keyframes + hotel geo + room-type rule ──
+    const hv = hVids[0];
+    const frames: string[] = Array.isArray(hv?.segments)
+      ? hv.segments.map((s: any) => s?.frameUrl).filter(Boolean)
+      : [];
+
+    // Hotel coordinates → platinum geo rule (haversine in the analyzer).
+    let hotelGeo: { lat: number; lng: number } | null = null;
+    try {
+      const hotels = await sbSelect<any>("hotels", `id=eq.${encodeURIComponent(r.hotel_id)}&select=lat,lng&limit=1`);
+      if (hotels[0]?.lat != null && hotels[0]?.lng != null) hotelGeo = { lat: Number(hotels[0].lat), lng: Number(hotels[0].lng) };
+    } catch {}
+
+    // Best-effort room type → ROOM_TYPE_REQUIREMENTS object rule.
+    let expectedRoomType: string | null = null;
+    try {
+      if (r.bid_id) {
+        const bids = await sbSelect<any>("bids", `id=eq.${encodeURIComponent(r.bid_id)}&select=roomId,room_id&limit=1`);
+        const roomId = bids[0]?.roomId || bids[0]?.room_id;
+        if (roomId) {
+          const rooms = await sbSelect<any>("rooms", `id=eq.${encodeURIComponent(roomId)}&select=type&limit=1`);
+          expectedRoomType = rooms[0]?.type || null;
+        }
+      }
+    } catch {}
+    const expectedObjects = expectedRoomType && ROOM_TYPE_REQUIREMENTS[expectedRoomType]
+      ? ROOM_TYPE_REQUIREMENTS[expectedRoomType]
+      : ["bed", "ac", "tv", "washbasin", "window"];
+
     const result = await analyze({
       requestId,
       tier: r.tier,
-      hotelVideo: hVids[0] && {
-        url: hVids[0].url, storagePath: hVids[0].storage_path,
-        durationSecs: hVids[0].actual_secs || 0,
-        stepsCompleted: hVids[0].steps_completed || [],
-        verificationCode: hVids[0].verification_code,
+      frames,
+      expectedObjects,
+      expectedRoomType,
+      recordedGeo: hv?.geo || null,
+      hotelGeo,
+      hotelVideo: hv && {
+        url: hv.url, storagePath: hv.storage_path,
+        durationSecs: hv.actual_secs || 0,
+        stepsCompleted: hv.steps_completed || [],
+        verificationCode: hv.verification_code,
       },
       customerVideo: cVids[0] && {
         url: cVids[0].url, storagePath: cVids[0].storage_path,

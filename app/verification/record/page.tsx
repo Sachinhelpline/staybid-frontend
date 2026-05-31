@@ -16,7 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 type Step = { id: string; title: string; title_hi: string; prompt: string; prompt_hi: string;
               minSecs: number; required: boolean; optional?: boolean; ai_checks: string[]; min_pass_score: number };
 type Cfg = { tier: "silver"|"gold"|"platinum"; durationSecs: number; slaHours: number; steps: Step[] };
-type Segment = { stepId: string; blob: Blob; durationSecs: number; url?: string; storagePath?: string; uploaded?: boolean };
+type Segment = { stepId: string; blob: Blob; durationSecs: number; url?: string; storagePath?: string; uploaded?: boolean; frameBlob?: Blob | null; frameUrl?: string };
 
 const SUPABASE_URL = "https://uxxhbdqedazpmvbvaosh.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
@@ -115,6 +115,27 @@ function RecordInner() {
     return stream;
   };
 
+  // v251 — capture a single keyframe (JPEG) from the live preview for the
+  // step that just finished. Fully guarded: if anything fails the recording
+  // is unaffected — analysis simply falls back to metadata scoring.
+  const captureFrameInto = (stepId: string) => {
+    try {
+      const v = videoEl.current;
+      if (!v || !v.videoWidth) return;
+      const w = Math.min(960, v.videoWidth);
+      const h = Math.round((v.videoHeight / v.videoWidth) * w) || 540;
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(v, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        setSegments((prev) => prev.map((s) => (s.stepId === stepId ? { ...s, frameBlob: blob } : s)));
+      }, "image/jpeg", 0.72);
+    } catch {}
+  };
+
   const stopAndSave = (autoTriggered: boolean) => {
     if (!recorderRef.current || !cfg) return;
     if (autoStopTimerRef.current) { clearTimeout(autoStopTimerRef.current); autoStopTimerRef.current = null; }
@@ -128,6 +149,8 @@ function RecordInner() {
         const without = prev.filter((s) => s.stepId !== stepId);
         return [...without, { stepId, blob, durationSecs: dur }];
       });
+      // Grab a keyframe for AI vision (best-effort, after the segment is set).
+      captureFrameInto(stepId);
       setPhase("step-done");
       if (autoTriggered) setInfo("✅ Step recorded. Tap continue or retry.");
     };
@@ -220,7 +243,31 @@ function RecordInner() {
         const sj = await sr.json().catch(() => ({}));
         const signed = sj.signedURL || sj.signedUrl;
         const playbackUrl = signed ? `${SUPABASE_URL}/storage/v1${signed}` : url;
-        updated.push({ ...seg, url: playbackUrl, storagePath: path, uploaded: true });
+
+        // v251 — upload the step keyframe (best-effort; never fails the submit).
+        let frameUrl: string | undefined;
+        if (seg.frameBlob) {
+          try {
+            const fpath = `${prefix}/${type}/${seg.stepId}-frame-${Date.now()}.jpg`;
+            const fr = await fetch(`${SUPABASE_URL}/storage/v1/object/verification-videos/${fpath}`, {
+              method: "POST",
+              headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, "Content-Type": "image/jpeg", "x-upsert": "true" },
+              body: seg.frameBlob,
+            });
+            if (fr.ok) {
+              const fsr = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/verification-videos/${fpath}`, {
+                method: "POST",
+                headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ expiresIn: 60 * 60 * 24 * 30 }),
+              });
+              const fsj = await fsr.json().catch(() => ({}));
+              const fsigned = fsj.signedURL || fsj.signedUrl;
+              if (fsigned) frameUrl = `${SUPABASE_URL}/storage/v1${fsigned}`;
+            }
+          } catch {}
+        }
+
+        updated.push({ ...seg, url: playbackUrl, storagePath: path, uploaded: true, frameUrl });
       } catch (e: any) {
         setErr(e?.message || `Failed uploading step ${seg.stepId}`);
         return null;
@@ -276,7 +323,7 @@ function RecordInner() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           requestId, type,
-          segments: uploaded.map((s) => ({ stepId: s.stepId, url: s.url, storagePath: s.storagePath, durationSecs: s.durationSecs })),
+          segments: uploaded.map((s) => ({ stepId: s.stepId, url: s.url, storagePath: s.storagePath, durationSecs: s.durationSecs, frameUrl: s.frameUrl })),
           totalSecs, verificationCode: code, geo,
         }),
       });
