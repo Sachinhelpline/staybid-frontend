@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { optimizePrice, optimizerEnabled, OPT_MAX_DELTA } from "@/lib/pricing/optimizer";
 import { loadAcceptStats, observedForRatio } from "@/lib/pricing/outcomes";
+import { loadLearnedStatsWithFallback, learnedModelEnabled } from "@/lib/pricing/model-store";
 import { baselineAcceptProbability, blendAcceptProbability } from "@/lib/pricing/accept-model";
 
 export const dynamic = "force-dynamic";
@@ -58,14 +59,24 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ── Data-blended accept estimator (Phase 2). Falls back to the
-    //    cold-start baseline curve when there's no observed data yet. ──
+    // ── Data-blended accept estimator. Phase 4: when the learned model is
+    //    enabled (PRICING_MODEL_LEARNED=1), prefer the nightly-trained
+    //    pricing_model_params (room→hotel→city→global fallback). Otherwise
+    //    Phase 2's live per-request scan. Both fall back to the cold-start
+    //    baseline curve when there's no observed data yet. ──
     let stats = await loadAcceptStats({ roomId });
     let statsScope = "room";
-    if (stats.totalN === 0 && hotelId) {
+    if (learnedModelEnabled()) {
+      const learned = await loadLearnedStatsWithFallback({ roomId, hotelId: hotelId || null });
+      if (learned.stats.totalN > 0) {
+        stats = learned.stats;
+        statsScope = `learned:${learned.usedScope}`;
+      }
+    }
+    if (statsScope === "room" && stats.totalN === 0 && hotelId) {
       stats = await loadAcceptStats({ hotelId });
       statsScope = stats.totalN > 0 ? "hotel" : "none";
-    } else if (stats.totalN === 0) {
+    } else if (statsScope === "room" && stats.totalN === 0) {
       statsScope = "none";
     }
 

@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { loadAcceptStats, observedForRatio } from "@/lib/pricing/outcomes";
+import { loadLearnedStatsWithFallback, learnedModelEnabled } from "@/lib/pricing/model-store";
 import { baselineAcceptProbability, blendAcceptProbability } from "@/lib/pricing/accept-model";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,24 @@ export async function GET(req: NextRequest) {
       // Cheap hotel lookup only if needed for the fallback.
       hotelId = "";
     }
+    // Phase 4: when the learned model is on (PRICING_MODEL_LEARNED=1), prefer
+    // the nightly-trained pricing_model_params (room→hotel→city→global) over
+    // the Phase-2 live scan. Default OFF → live scan, byte-identical.
+    if (learnedModelEnabled()) {
+      const learned = await loadLearnedStatsWithFallback({ roomId, hotelId: hotelId || null });
+      const lo = observedForRatio(learned.stats, ratio);
+      if (lo.sampleCount > 0) {
+        const baselineL = baselineAcceptProbability(ratio, vacancy);
+        const estL = blendAcceptProbability(baselineL, lo.rate, lo.sampleCount);
+        return NextResponse.json({
+          roomId, date, floor, livePrice: live, price,
+          ratio: Number(ratio.toFixed(4)), vacancyRatio: vacancy, spineSource: source,
+          statsScope: `learned:${learned.usedScope}`,
+          estimate: estL,
+        });
+      }
+    }
+
     const roomStats = await loadAcceptStats({ roomId });
     let observed = observedForRatio(roomStats, ratio);
     let statsScope = "room";
