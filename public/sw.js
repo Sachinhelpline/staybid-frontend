@@ -281,7 +281,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // couldn't beat Next.js's router, so the reel restored the immersive
 // Fullscreen request (the only reliable way to absorb Android's edge
 // back-gesture). Client-rendered, so drop stale v34 HTML.
-const HTML_CACHE = 'staybid-html-v35';
+// v250 — premium verification-video overhaul (customer + partner + admin):
+// new TrustRing / VerifChecklist / VerifStatusFlow surfaces. Drop stale v35.
+const HTML_CACHE = 'staybid-html-v36';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

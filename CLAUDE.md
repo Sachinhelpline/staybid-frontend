@@ -9101,3 +9101,87 @@ documented as a deliberate, proven choice (usable reel > visible nav pill).
   gesture nav pill" without a replacement that *actually holds* the Android
   back-gesture in this Next.js app. We tried history sentinels twice; they do
   not work here. Removing it re-introduces the instant-back-exit regression.
+
+---
+
+## Premium Verification-Video Overhaul Era (v250, 2026-05-30)
+
+> Note: the live build had advanced to **v249.4** (AI-pricing phase-4 nightly
+> online-learning) while this changelog last documented v247.4. The v248/v249
+> eras shipped but were not written up here; this v250 note resumes the log.
+
+Sachin's ask: deeply study the hotel-partner **Verification Video** section,
+map its architecture + downstream, and make the UI/UX of **all three panels**
+(customer / partner / admin) + every integration point premium, easy to
+understand, ultra-modern, future-proof — without breaking anything.
+
+### The system (mapped, unchanged)
+- **Data:** `vp_requests` → `vp_videos` (adaptive 360/480/720 `urls` JSONB +
+  multi-segment `segments`) → `vp_ai_reports` (`trust_score` + `checks`
+  {code_ok, ocr_room, ocr_booking, scene_match, geo_ok, audio_ok,
+  duration_ok}) → `vp_complaints` (AI dispute `ai_verdict` / `ai_confidence` /
+  `discrepancies` / `recommended_resolution` / `auto_approvable`). Plus the
+  separate `complaints` table for the stay-feedback smiley flow.
+- **Engine:** `lib/verify/{tiers,ai,adaptive,codes,cleanup}.ts` — 4 mandatory +
+  1 optional guided steps, pluggable AI provider (google/aws/openai/mock),
+  tier-driven duration (60/120/180s) + SLA (24/12/4h).
+- **Surfaces:** customer `/verification`, partner `/partner/verification`,
+  admin `/admin/verification`, shared guided recorder `/verification/record`,
+  `AdaptiveVideoPlayer`, and the `verifVideo` checkpoint (10 pts) in
+  `lib/hotel-score.ts` feeding the hotel scorecard.
+
+### What shipped (presentation-only, additive, zero data/engine change)
+- **3 new shared components** under `components/verify/` — one premium visual
+  language reused across all three panels (tone-aware: `light` cozy-cream vs
+  `dark` admin canvas):
+  - `TrustRing.tsx` — animated SVG trust-score dial (band-colored sage/
+    champagne/rose, `CountUp` number, reduced-motion safe).
+  - `VerifChecklist.tsx` — the `vp_ai_reports.checks` object as premium
+    pass/fail chips (defensive: renders "pending" when no checks).
+  - `VerifStatusFlow.tsx` — 4-stage rail (Requested → Hotel records → AI
+    review → Verified/Flagged) with `activeStageIndex(status, hasReport)`.
+- **Customer `/verification`** — premium dark hero with `CountUp` stat strip
+  (verified / in-progress / awaiting / avg trust), per-booking `VerifStatusFlow`
+  rail, AI report panel with `TrustRing` + `VerifChecklist`, premium tier
+  explainer. ALL data hooks (`loadAll`, backfill, visibility refresh,
+  `requestVideo`, `StayFeedbackCard`, `usePageTour`) preserved byte-for-byte.
+  Kept the `.card-luxury.sb-card-lift` + `.btn-luxury` DOM hooks the `verify`
+  page-tour targets.
+- **Partner `/partner/verification`** — premium dark header + `CountUp` stat
+  strip, urgency-aware Pending cards (hours-left chip), Submitted rows with
+  `TrustRing` + `VerifStatusFlow` + `VerifChecklist`, framed side-by-side
+  complaint video compare + AI verdict card. All loaders / backfill / dispute /
+  resolve handlers unchanged.
+- **Admin `/admin/verification`** — dark-luxury KPI strip (`CountUp`) + premium
+  review modal with `TrustRing` banner + `VerifChecklist`. Defensive
+  `aiReportObj()` / `trustOf()` helpers tolerate object|string|absent AI report
+  shapes. DataTable + verdict flow untouched.
+- **Recorder `/verification/record`** — deliberately NOT touched (fragile
+  MediaRecorder + direct-to-Supabase upload flow; already premium).
+- **Scorecard** — NOT touched. The `verifVideo` checkpoint already surfaces in
+  `HotelScorecardModal`; the scoring engine/weights are locked per the
+  long-standing "never touch `lib/hotel-score.ts` rules" discipline.
+
+Verify: `tsc --noEmit` clean (only the pre-existing `_home-luxury-backup.tsx`
+non-route file errors), `npm run build` exit 0 (all 3 panels + recorder
+compile). `SB_BUILD v249.4→v250`, badge `v250`, `HTML_CACHE v35→v36`.
+
+### Things to Avoid (v250 Era)
+- **Never** thread real data/engine changes through this overhaul — it is
+  presentation-only. `vp_*` tables, `lib/verify/*`, and the scorecard engine
+  are untouched and must stay that way for any follow-up skin work.
+- **Never** drop the `.card-luxury.sb-card-lift` (booking card) or `.btn-luxury`
+  (request button) classes from `/verification` — the `verify` page-tour
+  (`lib/tutorial/tutorial-content.ts` VERIFY_STEPS) targets those exact
+  selectors. Removing them silently breaks the guided tour.
+- **Never** give `TrustRing` / `VerifChecklist` / `VerifStatusFlow` a hardcoded
+  light palette — they're shared with the admin dark canvas via the `tone`
+  prop. New consumers must pass `tone="dark"` on admin surfaces or chips/text
+  go invisible (the same class of bug as the v90 theme-token discipline).
+- **Never** assume the admin verification row carries the AI report in one
+  fixed shape — use `aiReportObj()` / `trustOf()` (object | JSON-string |
+  absent all handled). A naive `selected.aiReport.checks` will throw on string
+  rows.
+- **Never** touch `/verification/record` MediaRecorder logic for cosmetics —
+  it's the camera-capture + direct-Supabase-upload path that bypasses Vercel's
+  4.5 MB body limit; a render-tree change there risks the whole proof pipeline.

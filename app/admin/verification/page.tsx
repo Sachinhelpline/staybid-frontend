@@ -4,6 +4,23 @@ import DataTable from "@/components/admin/data-table";
 import Modal, { Field } from "@/components/admin/modal";
 import { adminColors as C, btnGold, btnGhost, h1Style, inputStyle, pageStyle, pill } from "@/lib/admin/styles";
 import { exportRows } from "@/lib/admin/export";
+import TrustRing from "@/components/verify/TrustRing";
+import VerifChecklist from "@/components/verify/VerifChecklist";
+import { CountUp } from "@/components/CountUp";
+
+// Defensive extraction — admin rows may carry the AI report as an object,
+// a JSON string, or not at all. Never throw.
+function aiReportObj(sel: any): any | null {
+  const raw = sel?.aiReport ?? sel?.ai_report ?? sel?.report ?? null;
+  if (!raw) return null;
+  if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return null; } }
+  return raw;
+}
+function trustOf(sel: any): number | null {
+  const rep = aiReportObj(sel);
+  const v = rep?.trust_score ?? sel?.trustScore ?? sel?.trust_score;
+  return typeof v === "number" ? v : null;
+}
 
 type Tab = "pending" | "submitted" | "complaints";
 
@@ -65,7 +82,7 @@ export default function AdminVerification() {
 
   return (
     <div style={pageStyle}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
         <h1 className="admin-h1" style={{ ...h1Style, margin: 0 }}>Video Verification</h1>
         <button
           onClick={() => exportRows(`verification-${tab}`, rows, columns.filter((c: any) => c.key !== "actions" && c.key !== "url"))}
@@ -73,6 +90,25 @@ export default function AdminVerification() {
         >
           Export CSV
         </button>
+      </div>
+
+      {/* ── KPI strip ─────────────────────────────────────────────── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+        {[
+          { label: "Pending review", value: pending.length, c: C.amber, hint: "Awaiting verdict" },
+          { label: "Submitted videos", value: submitted.length, c: C.green, hint: "Recorded proofs" },
+          { label: "Complaints", value: complaints.length, c: C.purple, hint: "Disputes raised" },
+        ].map((k) => (
+          <div key={k.label}
+               style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", right: -12, top: -12, width: 56, height: 56, borderRadius: 999, background: `${k.c}1a` }} />
+            <div style={{ fontSize: 26, fontWeight: 800, color: k.c, fontVariantNumeric: "tabular-nums", position: "relative" }}>
+              <CountUp value={k.value} duration={850} />
+            </div>
+            <div style={{ fontSize: 12, color: C.text, fontWeight: 600, marginTop: 2 }}>{k.label}</div>
+            <div style={{ fontSize: 10.5, color: C.textDim, marginTop: 1 }}>{k.hint}</div>
+          </div>
+        ))}
       </div>
 
       <div className="admin-tabs" style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${C.border}` }}>
@@ -102,6 +138,22 @@ export default function AdminVerification() {
       {selected && (
         <Modal onClose={() => setSelected(null)} width={720}>
           <h2 style={{ fontFamily: "Syne, sans-serif", margin: "0 0 16px" }}>Verification Review</h2>
+
+          {trustOf(selected) != null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18, padding: 14, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}` }}>
+              <TrustRing score={trustOf(selected) as number} size={88} tone="dark" />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: C.textDim, fontWeight: 700 }}>AI Trust Score</div>
+                <div style={{ fontFamily: "Syne, sans-serif", fontSize: 17, color: C.text, marginTop: 2 }}>
+                  {(trustOf(selected) as number) >= 80 ? "Room matches the promise" : (trustOf(selected) as number) >= 50 ? "Partial match — review" : "Low confidence — inspect"}
+                </div>
+                {Array.isArray(aiReportObj(selected)?.issues_detected) && aiReportObj(selected).issues_detected.length > 0 && (
+                  <div style={{ fontSize: 12, color: C.textDim, marginTop: 4 }}>{aiReportObj(selected).issues_detected[0]}</div>
+                )}
+              </div>
+            </div>
+          )}
+
           <Field label="Request ID" value={selected.id?.slice(0, 12)} />
           <Field label="Hotel" value={selected.hotelName || selected.hotelId || "—"} />
           <Field label="Customer" value={selected.customerPhone || selected.customerId || "—"} />
@@ -119,6 +171,11 @@ export default function AdminVerification() {
           {selected.aiReport && (
             <div style={{ marginTop: 16, background: "rgba(61,156,245,0.06)", border: `1px solid rgba(61,156,245,0.2)`, padding: 14, borderRadius: 10 }}>
               <div style={{ color: C.blue, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>AI ANALYSIS</div>
+              {aiReportObj(selected)?.checks && (
+                <div style={{ marginBottom: 10 }}>
+                  <VerifChecklist checks={aiReportObj(selected).checks} tone="dark" columns={2} />
+                </div>
+              )}
               <div style={{ color: C.text, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                 {typeof selected.aiReport === "string" ? selected.aiReport : JSON.stringify(selected.aiReport, null, 2)}
               </div>

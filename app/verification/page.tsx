@@ -1,12 +1,16 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
 import StayFeedbackCard, { isPostCheckout } from "@/components/StayFeedbackCard";
+import TrustRing from "@/components/verify/TrustRing";
+import VerifChecklist from "@/components/verify/VerifChecklist";
+import VerifStatusFlow from "@/components/verify/VerifStatusFlow";
+import { CountUp } from "@/components/CountUp";
 // v142 — Phase-6 verification tour. 2 steps: bookings list → request video.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 
@@ -122,6 +126,20 @@ export default function VerificationPage() {
     };
   }, [user, token, loadAll]);
 
+  // Summary counts for the premium hero strip.
+  const summary = useMemo(() => {
+    let verified = 0, pending = 0, awaiting = 0, avgScore = 0, scored = 0;
+    for (const b of bookings) {
+      const s = statusByBooking[b.id];
+      const r = s?.request;
+      if (!r) { awaiting++; continue; }
+      if (r.status === "verified") { verified++; }
+      else if (r.status === "pending" || r.status === "uploaded") { pending++; }
+      if (s?.report?.trust_score != null) { avgScore += s.report.trust_score; scored++; }
+    }
+    return { verified, pending, awaiting, avg: scored ? Math.round(avgScore / scored) : 0, scored };
+  }, [bookings, statusByBooking]);
+
   if (authLoading || loading) {
     return <div className="max-w-4xl mx-auto p-12 text-center text-luxury-500">Loading…</div>;
   }
@@ -129,23 +147,62 @@ export default function VerificationPage() {
   return (
     <div className="bg-luxury-50 min-h-screen">
       <div className="max-w-4xl mx-auto px-5 py-10">
-        <div className="flex items-center justify-between mb-6 sb-fade-in">
-          <div>
-            <h1 className="font-display text-3xl text-luxury-900">Requests, Complaints & Verification</h1>
-            <p className="text-sm text-luxury-500 mt-1">Hotel-recorded room proofs · raise complaints with video evidence</p>
-          </div>
-          <div className="flex items-center gap-2">
+        {/* ── Premium hero ─────────────────────────────────────────── */}
+        <div className="sb-fade-in relative overflow-hidden rounded-3xl p-6 mb-6"
+             style={{
+               background: "linear-gradient(135deg, var(--cozy-warm-dark,#1F1A0F) 0%, #2A2417 60%, #3a2f18 100%)",
+               boxShadow: "0 18px 40px -18px rgba(31,26,15,0.55)",
+             }}>
+          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full opacity-30"
+               style={{ background: "radial-gradient(circle, rgba(201,166,107,0.55), transparent 70%)" }} />
+          <div className="relative flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
+                   style={{ background: "rgba(201,166,107,0.16)", border: "1px solid rgba(201,166,107,0.3)" }}>
+                <span className="sb-pulse-dot" style={{ background: "#C9A66B" }} />
+                <span className="text-[0.62rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#E7CFA0" }}>Stay Verification</span>
+              </div>
+              <h1 className="font-display text-[1.7rem] sm:text-3xl leading-tight" style={{ color: "#FAF5EB" }}>
+                Room proofs &amp; complaints
+              </h1>
+              <p className="text-sm mt-1" style={{ color: "rgba(250,245,235,0.62)" }}>
+                Hotels record what they promised. AI scores it. You stay protected.
+              </p>
+            </div>
             <button
               onClick={() => loadAll(true)}
               disabled={refreshing}
-              className="text-xs px-3 py-1.5 rounded-full bg-luxury-100 text-luxury-700 hover:bg-luxury-200 disabled:opacity-50 sb-card-lift"
+              className="shrink-0 text-xs px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
+              style={{ background: "rgba(255,255,255,0.08)", color: "#E7CFA0", border: "1px solid rgba(201,166,107,0.28)" }}
               aria-label="Refresh">
               {refreshing ? "Refreshing…" : "↻ Refresh"}
             </button>
+          </div>
+
+          {/* stat strip */}
+          <div className="relative grid grid-cols-4 gap-2 mt-5">
+            {[
+              { label: "Verified", value: summary.verified, c: "#9DB07F" },
+              { label: "In progress", value: summary.pending, c: "#E7CFA0" },
+              { label: "Awaiting", value: summary.awaiting, c: "#D9C7A0" },
+              { label: "Avg trust", value: summary.avg, suffix: summary.scored ? "" : "", c: "#C9A66B", isScore: true },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center"
+                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="text-xl font-bold" style={{ color: s.c, fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp value={s.value} duration={900} />{s.isScore && summary.scored ? <span className="text-[0.65rem] opacity-70">/100</span> : null}
+                </div>
+                <div className="text-[0.6rem] uppercase tracking-wider mt-0.5" style={{ color: "rgba(250,245,235,0.5)" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative mt-4 flex items-center justify-between">
             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${TIER_BADGE[tier]}`}>
               <span className="sb-pulse-dot is-warn" style={{ background: tier === "platinum" ? "#A855F7" : tier === "gold" ? "#c9911a" : "#94a3b8" }} />
               {tier} member
             </span>
+            <Link href="/trust" className="text-[0.68rem]" style={{ color: "rgba(231,207,160,0.8)" }}>How it works →</Link>
           </div>
         </div>
 
@@ -183,6 +240,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
   const r = status?.request;
   const report = status?.report;
   const hotelVideo = status?.hotelVideo;
+  const flagged = r?.status === "rejected";
 
   const requestVideo = async () => {
     setBusy(true); setErr(null);
@@ -202,8 +260,8 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
   return (
     <div className="card-luxury sb-card-lift p-5">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="font-semibold text-luxury-900">{booking.hotelName || "Hotel"}</div>
+        <div className="min-w-0">
+          <div className="font-semibold text-luxury-900 truncate">{booking.hotelName || "Hotel"}</div>
           <div className="text-xs text-luxury-500 mt-1">
             {booking.checkIn && new Date(booking.checkIn).toLocaleDateString("en-IN", { day:"numeric", month:"short" })}
             {booking.checkOut && ` → ${new Date(booking.checkOut).toLocaleDateString("en-IN",{ day:"numeric", month:"short" })}`}
@@ -212,6 +270,13 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
         </div>
         <StatusBadge r={r} report={report} />
       </div>
+
+      {/* premium progress rail (only once a request exists) */}
+      {r && (
+        <div className="mt-4 px-1">
+          <VerifStatusFlow status={r.status} hasReport={!!report} flagged={flagged} tone="light" />
+        </div>
+      )}
 
       {!r && (
         <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-luxury-50 border border-luxury-100">
@@ -241,9 +306,7 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
         />
       )}
 
-      {/* v127 — Post-checkout smiley feedback. Renders for every booking
-          where status === "CHECKED_OUT" OR the checkOut date is in the
-          past. Shows alongside (not in place of) the verification block. */}
+      {/* v127 — Post-checkout smiley feedback. */}
       {isPostCheckout({ status: booking.status, checkOut: booking.checkOut }) && (
         <StayFeedbackCard
           bidId={booking.bidId || booking.id}
@@ -260,54 +323,46 @@ function BookingCard({ booking, status, tier, onRefresh }: { booking: Booking; s
 }
 
 function StatusBadge({ r, report }: { r: any; report: any }) {
-  if (!r) return <span className="text-xs px-2.5 py-1 rounded-full bg-luxury-100 text-luxury-600">Not requested</span>;
+  if (!r) return <span className="text-xs px-2.5 py-1 rounded-full bg-luxury-100 text-luxury-600 shrink-0">Not requested</span>;
   if (r.status === "verified") {
     const score = report?.trust_score ?? 0;
-    return <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${score >= 80 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>Verified · {score}/100</span>;
+    return <span className={`text-xs px-2.5 py-1 rounded-full font-bold shrink-0 ${score >= 80 ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>Verified · {score}/100</span>;
   }
-  if (r.status === "rejected") return <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-bold">Flagged</span>;
-  if (r.status === "uploaded") return <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">Uploaded</span>;
-  return <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">Pending</span>;
+  if (r.status === "rejected") return <span className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-800 font-bold shrink-0">Flagged</span>;
+  if (r.status === "uploaded") return <span className="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 shrink-0">Uploaded</span>;
+  return <span className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 shrink-0">Pending</span>;
 }
 
 function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, postCheckout }: any) {
-  const checks = report?.checks || {};
-  const checklist = [
-    { key: "code_ok",     label: "Verification code spoken" },
-    { key: "ocr_room",    label: "Room number visible" },
-    { key: "ocr_booking", label: "Booking ID confirmed" },
-    { key: "scene_match", label: "Scene matches expected room", custom: () => (checks.scene_match ?? 0) >= 0.7 },
-    { key: "duration_ok", label: "Tier duration met" },
-    { key: "geo_ok",      label: "Geo-tag valid" },
-  ];
   return (
     <div className="mt-4 space-y-3">
-      <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
+      <div className="rounded-2xl overflow-hidden border border-luxury-100 bg-black/5">
+        <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
+      </div>
       {report ? (
-        <div className="card-luxury p-3 text-xs">
-          <div className="font-display text-base text-gold-700 mb-2">AI Trust Score: {report.trust_score}/100</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1">
-            {checklist.map((c) => {
-              const ok = c.custom ? c.custom() : checks[c.key];
-              if (ok === undefined) return null;
-              return (
-                <div key={c.key} className="flex items-center gap-2">
-                  <span className={ok ? "text-emerald-600" : "text-red-500"}>{ok ? "✓" : "✗"}</span>
-                  <span className="text-luxury-700">{c.label}</span>
-                </div>
-              );
-            })}
+        <div className="rounded-2xl p-4 border border-luxury-100"
+             style={{ background: "linear-gradient(135deg, var(--cozy-cream-50,#FFFCF6), var(--cozy-cream-200,#F2EAD8))" }}>
+          <div className="flex items-center gap-4">
+            <TrustRing score={report.trust_score ?? 0} size={92} tone="light" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[0.62rem] font-bold tracking-widest uppercase text-gold-700">AI Trust Report</div>
+              <div className="font-display text-lg text-luxury-900 leading-tight mt-0.5">
+                {report.trust_score >= 80 ? "Room matches the promise" : report.trust_score >= 50 ? "Mostly verified" : "Needs a closer look"}
+              </div>
+              {Array.isArray(report.issues_detected) && report.issues_detected.length > 0 && (
+                <div className="text-xs text-luxury-500 mt-1">{report.issues_detected[0]}</div>
+              )}
+            </div>
+          </div>
+          <div className="mt-3">
+            <VerifChecklist checks={report.checks} tone="light" columns={2} />
           </div>
         </div>
       ) : (
         <div className="card-luxury p-3 text-xs text-luxury-500">AI report pending…</div>
       )}
 
-      {/* v127.2 — Mid-stay complaint composer. Only renders BEFORE
-          checkout so it doesn't double-show alongside the post-checkout
-          "Rate your stay" card. Same backend + same 48h lifecycle as the
-          post-checkout flow — videos delete on resolve, only smileys
-          persist long-term. */}
+      {/* v127.2 — Mid-stay complaint composer (only before checkout). */}
       {!postCheckout && (
         <StayFeedbackCard
           mode="mid_stay"
@@ -323,15 +378,16 @@ function VideoPanel({ video, report, bookingId, hotelId, requestId, hotelName, p
 
 function TierExplainer({ tier }: { tier: string }) {
   return (
-    <div className="mt-10 card-luxury p-5 bg-linear-to-br from-luxury-50 to-gold-50/40">
-      <div className="font-display text-lg text-luxury-900 mb-2">Your tier benefits</div>
+    <div className="mt-10 card-luxury sb-fade-in p-5 bg-linear-to-br from-luxury-50 to-gold-50/40">
+      <div className="font-display text-lg text-luxury-900 mb-3">Your tier benefits</div>
       <div className="grid grid-cols-3 gap-2 text-xs">
         {[
-          { t: "silver", d: 60,  hrs: 24 },
-          { t: "gold",   d: 120, hrs: 12 },
-          { t: "platinum", d: 180, hrs: 4 },
+          { t: "silver", d: 60,  hrs: 24, emoji: "🥈" },
+          { t: "gold",   d: 120, hrs: 12, emoji: "🥇" },
+          { t: "platinum", d: 180, hrs: 4, emoji: "💎" },
         ].map((row) => (
-          <div key={row.t} className={`p-3 rounded-xl border ${tier === row.t ? "border-gold-400 bg-gold-50" : "border-luxury-100 bg-white"}`}>
+          <div key={row.t} className={`p-3 rounded-xl border sb-card-lift transition-all ${tier === row.t ? "border-gold-400 bg-gold-50 shadow-sm" : "border-luxury-100 bg-white"}`}>
+            <div className="text-base mb-0.5">{row.emoji}</div>
             <div className="font-bold uppercase tracking-wider text-luxury-700">{row.t}</div>
             <div className="text-luxury-500 mt-1">{row.d}s video · {row.hrs}h SLA</div>
           </div>

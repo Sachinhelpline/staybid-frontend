@@ -10,6 +10,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AdaptiveVideoPlayer from "@/components/AdaptiveVideoPlayer";
+import TrustRing from "@/components/verify/TrustRing";
+import VerifChecklist from "@/components/verify/VerifChecklist";
+import VerifStatusFlow from "@/components/verify/VerifStatusFlow";
+import { CountUp } from "@/components/CountUp";
 
 type Tab = "pending" | "submitted" | "complaints";
 
@@ -67,6 +71,7 @@ export default function PartnerVerification() {
 
   const pending   = useMemo(() => requests.filter((r) => r.status === "pending"), [requests]);
   const submitted = useMemo(() => requests.filter((r) => r.status === "uploaded" || r.status === "verified" || r.status === "rejected"), [requests]);
+  const openComplaints = useMemo(() => complaints.filter((c) => c.status === "open").length, [complaints]);
 
   if (loading) return <div className="p-12 text-center text-luxury-500">Loading…</div>;
   if (!partner?.hotel) return <div className="p-12 text-center text-luxury-500">No hotel found.</div>;
@@ -100,9 +105,37 @@ export default function PartnerVerification() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-5 py-6">
-        <div className="mb-4">
-          <h1 className="font-display text-xl text-luxury-900" style={{ fontWeight: 500 }}>Verification &amp; Complaints</h1>
-          <p className="text-[0.78rem] text-luxury-500 mt-0.5">{partner.hotel.name} · {partner.hotel.id}</p>
+        {/* ── Premium header ─────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-3xl p-5 mb-5"
+             style={{ background: "linear-gradient(135deg,#1c140a 0%,#241a0c 55%,#33260f 100%)", boxShadow: "0 16px 36px -18px rgba(0,0,0,0.6)" }}>
+          <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full opacity-30"
+               style={{ background: "radial-gradient(circle, rgba(240,180,41,0.5), transparent 70%)" }} />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-2"
+                   style={{ background: "rgba(240,180,41,0.14)", border: "1px solid rgba(240,180,41,0.3)" }}>
+                <span className="sb-pulse-dot" style={{ background: "#f0b429" }} />
+                <span className="text-[0.6rem] font-bold tracking-[0.18em] uppercase text-amber-200">Verification &amp; Complaints</span>
+              </div>
+              <h1 className="font-display text-2xl text-white leading-tight truncate">{partner.hotel.name}</h1>
+              <p className="text-[0.78rem] text-white/50 mt-0.5">{partner.hotel.id}</p>
+            </div>
+          </div>
+          <div className="relative grid grid-cols-3 gap-2 mt-4">
+            {[
+              { label: "Pending", value: pending.length, c: "#f0d060" },
+              { label: "Submitted", value: submitted.length, c: "#9DB07F" },
+              { label: "Open complaints", value: openComplaints, c: openComplaints ? "#e6a0a0" : "#b8b29c" },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl px-3 py-2.5 text-center"
+                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="text-xl font-bold" style={{ color: s.c, fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp value={s.value} duration={850} />
+                </div>
+                <div className="text-[0.58rem] uppercase tracking-wider mt-0.5 text-white/45">{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-1.5 mb-4 overflow-x-auto">
@@ -128,38 +161,52 @@ export default function PartnerVerification() {
 function TabBtn({ active, children, onClick }: any) {
   return (
     <button onClick={onClick}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-[0.78rem] font-semibold transition-all ${
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-[0.78rem] font-semibold transition-all ${
               active ? "text-white" : "text-luxury-500 hover:text-luxury-900 hover:bg-luxury-100"
             }`}
-            style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 2px 8px rgba(201,145,26,0.3)" } : undefined}>
+            style={active ? { background: "linear-gradient(135deg,#c9911a,#f0b429)", boxShadow: "0 4px 12px rgba(201,145,26,0.32)" } : undefined}>
       {children}
     </button>
   );
 }
 
 function PendingList({ items }: { items: any[] }) {
-  if (!items.length) return <Empty t="No pending verification requests." />;
+  if (!items.length) return <Empty t="No pending verification requests." emoji="📭" />;
   return (
-    <div className="space-y-3">
-      {items.map((r) => (
-        <div key={r.id} className="card-luxury p-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-gold-700 font-bold">{r.tier} · {r.required_secs}s</div>
-            <div className="font-semibold text-luxury-900 mt-0.5">Booking {String(r.booking_id).slice(0, 14)}…</div>
-            <div className="text-xs text-luxury-500">Code: <span className="font-mono font-bold">{r.verification_code}</span> · Due {new Date(r.due_by).toLocaleString("en-IN")}</div>
+    <div className="space-y-3 sb-stagger">
+      {items.map((r) => {
+        const hrsLeft = r.due_by ? Math.max(0, Math.round((new Date(r.due_by).getTime() - Date.now()) / 3600000)) : null;
+        const urgent = hrsLeft != null && hrsLeft <= 6;
+        return (
+          <div key={r.id} className="card-luxury sb-card-lift p-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.6rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier} · {r.required_secs}s</span>
+                  {hrsLeft != null && (
+                    <span className={`text-[0.6rem] font-bold px-2 py-0.5 rounded-full ${urgent ? "bg-red-100 text-red-700" : "bg-amber-50 text-amber-700"}`}>
+                      ⏳ {hrsLeft}h left
+                    </span>
+                  )}
+                </div>
+                <div className="font-semibold text-luxury-900 mt-1.5">Booking {String(r.booking_id).slice(0, 14)}…</div>
+                <div className="text-xs text-luxury-500 mt-0.5">Speak this code on camera: <span className="font-mono font-bold text-luxury-800 bg-luxury-100 px-1.5 py-0.5 rounded">{r.verification_code}</span></div>
+              </div>
+              <Link href={`/verification/record?type=hotel&requestId=${r.id}`}
+                    className="btn-luxury text-sm whitespace-nowrap sb-card-lift">● Start Recording</Link>
+            </div>
+            <div className="mt-3 px-1"><VerifStatusFlow status="pending" tone="light" /></div>
           </div>
-          <Link href={`/verification/record?type=hotel&requestId=${r.id}`}
-                className="btn-luxury text-sm whitespace-nowrap">Start Recording →</Link>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function SubmittedList({ items }: { items: any[] }) {
-  if (!items.length) return <Empty t="No submitted videos yet." />;
+  if (!items.length) return <Empty t="No submitted videos yet." emoji="🎬" />;
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 sb-stagger">
       {items.map((r) => <SubmittedRow key={r.id} r={r} />)}
     </div>
   );
@@ -170,34 +217,37 @@ function SubmittedRow({ r }: { r: any }) {
   useEffect(() => {
     fetch(`/api/verify/status/${r.booking_id}`).then((x) => x.json()).then(setData).catch(() => {});
   }, [r.booking_id]);
+  const report = data?.report;
+  const flagged = r.status === "rejected";
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-gold-700 font-bold">{r.tier}</div>
-          <div className="font-semibold text-luxury-900">Booking {String(r.booking_id).slice(0, 14)}…</div>
-          <div className="text-xs text-luxury-500">Status: {r.status}</div>
+        <div className="min-w-0">
+          <span className="text-[0.6rem] uppercase tracking-widest text-gold-700 font-bold px-2 py-0.5 rounded-full bg-gold-50 border border-gold-200">{r.tier}</span>
+          <div className="font-semibold text-luxury-900 mt-1.5">Booking {String(r.booking_id).slice(0, 14)}…</div>
+          <div className="text-xs text-luxury-500 mt-0.5">Status: {r.status}</div>
         </div>
-        {data?.report && (
-          <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-            data.report.trust_score >= 80 ? "bg-emerald-100 text-emerald-800" :
-            data.report.trust_score >= 50 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
-          }`}>
-            Trust {data.report.trust_score}/100
-          </div>
-        )}
+        {report?.trust_score != null && <TrustRing score={report.trust_score} size={76} tone="light" />}
       </div>
+
+      <div className="mt-3 px-1"><VerifStatusFlow status={r.status} hasReport={!!report} flagged={flagged} tone="light" /></div>
+
       {data?.hotelVideo && (
-        <div className="mt-3"><AdaptiveVideoPlayer src={data.hotelVideo.url} urls={data.hotelVideo.urls} className="w-full aspect-video" /></div>
+        <div className="mt-3 rounded-2xl overflow-hidden border border-luxury-100 bg-black/5">
+          <AdaptiveVideoPlayer src={data.hotelVideo.url} urls={data.hotelVideo.urls} className="w-full aspect-video" />
+        </div>
+      )}
+      {report?.checks && (
+        <div className="mt-3"><VerifChecklist checks={report.checks} tone="light" columns={2} /></div>
       )}
     </div>
   );
 }
 
 function ComplaintList({ items, requests }: { items: any[]; requests: any[] }) {
-  if (!items.length) return <Empty t="No complaints raised." />;
+  if (!items.length) return <Empty t="No complaints raised." emoji="🛟" />;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sb-stagger">
       {items.map((c) => <ComplaintCard key={c.id} c={c} requests={requests} />)}
     </div>
   );
@@ -247,14 +297,14 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
     c.ai_verdict === "inconclusive"     ? "bg-amber-50 border-amber-200 text-amber-900" : "";
 
   return (
-    <div className="card-luxury p-4">
+    <div className="card-luxury sb-card-lift p-4">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-red-700 font-bold">{c.category || "complaint"} · {c.status}</div>
+        <div className="min-w-0">
+          <div className="text-[0.6rem] uppercase tracking-widest text-red-700 font-bold">{c.category || "complaint"} · {c.status}</div>
           <div className="font-semibold text-luxury-900 mt-0.5">Booking {String(c.booking_id).slice(0, 14)}…</div>
           <div className="text-xs text-luxury-500 mt-1 max-w-xl">{c.description}</div>
         </div>
-        {c.resolution && <span className="px-2 py-0.5 text-xs bg-luxury-100 rounded-full text-luxury-700">→ {c.resolution}</span>}
+        {c.resolution && <span className="px-2 py-0.5 text-xs bg-luxury-100 rounded-full text-luxury-700 shrink-0">→ {c.resolution}</span>}
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         <SideVideo title="Hotel proof" video={hotelVid} />
@@ -264,9 +314,9 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
       {/* AI Verdict block (only visible after /api/verify/dispute runs) */}
       {c.ai_verdict ? (
         <div className={`mt-3 p-3 rounded-2xl border ${verdictColor}`}>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="font-semibold">
-              AI Verdict: {c.ai_verdict.replace("_", " ")} · confidence {c.ai_confidence}%
+              🤖 AI Verdict: {c.ai_verdict.replace("_", " ")} · confidence {c.ai_confidence}%
             </div>
             {c.auto_approvable && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">Auto-approvable</span>}
           </div>
@@ -280,9 +330,9 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
           )}
         </div>
       ) : c.status === "open" && (
-        <div className="mt-3 flex items-center justify-between gap-2 p-3 rounded-2xl bg-luxury-50 border border-luxury-200">
+        <div className="mt-3 flex items-center justify-between gap-2 p-3 rounded-2xl bg-luxury-50 border border-luxury-200 flex-wrap">
           <div className="text-xs text-luxury-700">Run AI dispute analysis to compare both videos.</div>
-          <button onClick={runAi} disabled={busy} className="text-xs px-3 py-1.5 rounded-full bg-linear-to-r from-gold-500 to-gold-600 text-white font-bold disabled:opacity-50">
+          <button onClick={runAi} disabled={busy} className="text-xs px-3 py-1.5 rounded-full bg-linear-to-r from-gold-500 to-gold-600 text-white font-bold disabled:opacity-50 sb-card-lift">
             {busy ? "Analysing…" : "🧠 Run AI Analysis"}
           </button>
         </div>
@@ -290,10 +340,10 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
 
       {c.status === "open" && (
         <div className="mt-3 flex flex-wrap gap-2 justify-end">
-          <button onClick={() => resolve("refund")}        disabled={busy} className="px-4 py-2 text-xs rounded-full bg-red-600 text-white">Full Refund</button>
-          <button onClick={() => resolve("partial_refund")} disabled={busy} className="px-4 py-2 text-xs rounded-full bg-amber-500 text-white">Partial Refund</button>
-          <button onClick={() => resolve("replacement")}    disabled={busy} className="px-4 py-2 text-xs rounded-full bg-blue-600 text-white">Replacement</button>
-          <button onClick={() => resolve("denied")}         disabled={busy} className="px-4 py-2 text-xs rounded-full bg-luxury-200 text-luxury-800">Deny</button>
+          <button onClick={() => resolve("refund")}        disabled={busy} className="px-4 py-2 text-xs rounded-full bg-red-600 text-white sb-card-lift">Full Refund</button>
+          <button onClick={() => resolve("partial_refund")} disabled={busy} className="px-4 py-2 text-xs rounded-full bg-amber-500 text-white sb-card-lift">Partial Refund</button>
+          <button onClick={() => resolve("replacement")}    disabled={busy} className="px-4 py-2 text-xs rounded-full bg-blue-600 text-white sb-card-lift">Replacement</button>
+          <button onClick={() => resolve("denied")}         disabled={busy} className="px-4 py-2 text-xs rounded-full bg-luxury-200 text-luxury-800 sb-card-lift">Deny</button>
         </div>
       )}
     </div>
@@ -303,16 +353,23 @@ function ComplaintCard({ c, requests }: { c: any; requests: any[] }) {
 function SideVideo({ title, video }: { title: string; video: any }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-widest text-luxury-500 mb-1">{title}</div>
+      <div className="text-[0.6rem] uppercase tracking-widest text-luxury-500 mb-1.5 font-bold">{title}</div>
       {video ? (
-        <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
+        <div className="rounded-xl overflow-hidden border border-luxury-100 bg-black/5">
+          <AdaptiveVideoPlayer src={video.url} urls={video.urls} className="w-full aspect-video" />
+        </div>
       ) : (
-        <div className="rounded-xl bg-luxury-100 aspect-video flex items-center justify-center text-luxury-400 text-xs">No video</div>
+        <div className="rounded-xl bg-luxury-100 aspect-video flex items-center justify-center text-luxury-400 text-xs border border-luxury-100">No video</div>
       )}
     </div>
   );
 }
 
-function Empty({ t }: { t: string }) {
-  return <div className="card-luxury p-8 text-center text-luxury-500">{t}</div>;
+function Empty({ t, emoji = "✨" }: { t: string; emoji?: string }) {
+  return (
+    <div className="card-luxury sb-fade-in p-10 text-center text-luxury-500">
+      <div className="text-4xl mb-2">{emoji}</div>
+      {t}
+    </div>
+  );
 }
