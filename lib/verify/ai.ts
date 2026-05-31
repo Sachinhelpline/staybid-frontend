@@ -34,6 +34,20 @@ export type AnalyzeInput = {
   recordedGeo?: Geo | null;    // geo captured by the recorder
   hotelGeo?: Geo | null;       // hotel's stored lat/lng (for platinum geo rule)
   expectedRoomType?: string | null;
+  // ── v251.3 — spoken-code verification (Gemini audio). The "code" step's
+  //    short clip is fed to Gemini to TRANSCRIBE the spoken words and check
+  //    the dynamic code / room number / booking id were actually said aloud.
+  //    Optional — absent → falls back to the metadata code check. ──
+  codeClipUrl?: string | null; // signed URL of the spoken "code" step clip
+  expectedCode?: string | null;
+};
+
+// Result of the spoken-audio pass (Gemini transcribes the code step).
+type SpokenResult = {
+  spoken_code_ok: boolean;
+  spoken_room_ok: boolean;
+  spoken_booking_ok: boolean;
+  transcript: string;
 };
 
 export type AnalyzeResult = {
@@ -191,7 +205,9 @@ function visionPrompts(input: AnalyzeInput) {
 
 // Shared scoring — turns a vision provider's parsed JSON into an AnalyzeResult.
 // Used by BOTH Claude and Gemini so the score is identical across providers.
-function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string): AnalyzeResult {
+// `spoken` (optional, v251.3) carries the Gemini audio-transcription result
+// for the spoken "code" step.
+function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string, spoken?: SpokenResult | null): AnalyzeResult {
   const expected = expectedObjectsFor(input);
   const detected: string[] = Array.isArray(v.objects_detected) ? v.objects_detected.map((s: any) => String(s).toLowerCase()) : [];
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
@@ -200,25 +216,33 @@ function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string): 
 
   const meta = input.hotelVideo;
   const durOk  = !!meta && meta.durationSecs >= tierDuration(input.tier) * 0.9;
-  const codeOk = !!meta?.verificationCode && /^SB-[A-Z0-9]{4}$/.test(meta.verificationCode);
+  const codeWellFormed = !!meta?.verificationCode && /^SB-[A-Z0-9]{4}$/.test(meta.verificationCode);
+  // v251.3 — if we have a spoken-audio result, the code is "ok" only when it
+  // was ACTUALLY SPOKEN ALOUD correctly. Without audio, fall back to the
+  // well-formed metadata check (previous behaviour).
+  const codeOk = spoken ? spoken.spoken_code_ok : codeWellFormed;
   const geoOk  = computeGeoOk(input.tier, input.recordedGeo, input.hotelGeo);
   const sceneQ = Math.max(0, Math.min(1, Number(v.scene_quality) || 0));
+  // audio_ok reflects whether the spoken-code step's audio genuinely carried
+  // the code; without an audio pass it mirrors the metadata code check.
+  const audioOk = spoken ? spoken.spoken_code_ok : codeWellFormed;
 
   const checks: AnalyzeResult["checks"] = {
     code_ok: codeOk,
-    ocr_room: !!v.ocr_room_number,
-    ocr_booking: !!v.ocr_booking_id,
+    // OCR can be confirmed by EITHER the visible frame OR the spoken word.
+    ocr_room: !!v.ocr_room_number || !!spoken?.spoken_room_ok,
+    ocr_booking: !!v.ocr_booking_id || !!spoken?.spoken_booking_ok,
     objects: detected,
     scene_match: +(0.5 * coverage + 0.5 * sceneQ).toFixed(2),
     geo_ok: geoOk,
-    audio_ok: codeOk,
+    audio_ok: audioOk,
     duration_ok: durOk,
   };
 
   let score =
     coverage * 35 +
-    (v.ocr_room_number ? 15 : 0) +
-    (v.ocr_booking_id ? 10 : 0) +
+    (checks.ocr_room ? 15 : 0) +
+    (checks.ocr_booking ? 10 : 0) +
     sceneQ * 15 +
     (durOk ? 10 : 0) +
     (codeOk ? 10 : 0) +
@@ -229,6 +253,8 @@ function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string): 
   if (missing.length) issues.push(`Not clearly shown: ${missing.join(", ")}`);
   if (!v.looks_like_real_hotel_room) { issues.push("Frames may not be a genuine hotel room"); score = Math.max(0, score - 25); }
   if (!geoOk) { issues.push("Platinum geo-tag missing or far from hotel"); score = Math.max(0, score - 15); }
+  // v251.3 — anti-fraud: code step exists but the code was NOT spoken aloud.
+  if (spoken && !spoken.spoken_code_ok) { issues.push("Verification code was not spoken aloud correctly"); score = Math.max(0, score - 15); }
   if (!v.cleanliness_ok) issues.push("Cleanliness concerns visible");
   if (v.notes) issues.push(String(v.notes).slice(0, 160));
 
@@ -250,7 +276,7 @@ function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string): 
     fraud_flag: fraud,
     checks,
     provider: providerLabel,
-    raw: v,
+    raw: spoken ? { ...v, spoken_transcript: spoken.transcript, spoken } : v,
   };
 }
 
@@ -307,6 +333,81 @@ async function fetchAsInlineImage(url: string): Promise<{ mime: string; data: st
   } catch { return null; }
 }
 
+// v251.3 — fetch the short spoken "code" clip as inline base64 for Gemini.
+// The clip is a webm/mp4 video with audio; Gemini reads the audio track too.
+async function fetchAsInlineMedia(url: string): Promise<{ mime: string; data: string } | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const mime = (r.headers.get("content-type") || "video/webm").split(";")[0].trim();
+    const buf = Buffer.from(await r.arrayBuffer());
+    // The code step is ~5-10s; cap at ~18 MB to stay well within inline limits.
+    if (buf.length === 0 || buf.length > 18_000_000) return null;
+    return { mime, data: buf.toString("base64") };
+  } catch { return null; }
+}
+
+// v251.3 — Gemini audio pass: transcribe the spoken code step + check the
+// dynamic code / room number / booking id were actually SAID ALOUD. Returns
+// null on any failure so the caller falls back to the metadata code check.
+async function geminiTranscribeCode(input: AnalyzeInput): Promise<SpokenResult | null> {
+  const key = process.env.GEMINI_API_KEY;
+  const clipUrl = input.codeClipUrl;
+  const expectedCode = (input.expectedCode || input.hotelVideo?.verificationCode || "").trim();
+  if (!key || !clipUrl) return null;
+
+  const media = await fetchAsInlineMedia(clipUrl);
+  if (!media) return null;
+
+  const sys =
+    "You transcribe a short hotel-staff verification clip and verify what was spoken. " +
+    "Return STRICT JSON only: " +
+    '{"transcript":string,"spoken_code_ok":boolean,"spoken_room_ok":boolean,"spoken_booking_ok":boolean}';
+  const userText =
+    `Listen to the audio. The staff was asked to speak aloud: a room number, a booking id, and the ` +
+    `verification code "${expectedCode || "SB-XXXX"}". Transcribe what you hear into "transcript". ` +
+    `Set spoken_code_ok=true ONLY if the verification code "${expectedCode}" (letters/digits, ignore spaces, ` +
+    `case-insensitive, "SB" may be said as "S B" / "es bee") is clearly spoken. ` +
+    `Set spoken_room_ok=true if a room number is spoken, spoken_booking_ok=true if a booking id / confirmation number is spoken.`;
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role: "user", parts: [{ text: userText }, { inline_data: { mime_type: media.mime, data: media.data } }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 400, responseMimeType: "application/json" },
+      }),
+    });
+    if (!res.ok) throw new Error(`gemini-audio ${res.status}`);
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p?.text || "").join("\n");
+    const v = extractJson(text);
+    if (!v) return null;
+
+    // Defensive double-check: confirm the expected code really appears in the
+    // transcript (normalised) — don't blindly trust the model's boolean.
+    const transcript = String(v.transcript || "");
+    let codeOk = !!v.spoken_code_ok;
+    if (expectedCode) {
+      const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+      codeOk = codeOk && norm(transcript).includes(norm(expectedCode));
+    }
+    return {
+      spoken_code_ok: codeOk,
+      spoken_room_ok: !!v.spoken_room_ok,
+      spoken_booking_ok: !!v.spoken_booking_ok,
+      transcript: transcript.slice(0, 400),
+    };
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[verify-ai] gemini audio error (non-fatal):", e);
+    return null;
+  }
+}
+
 async function analyzeGemini(input: AnalyzeInput): Promise<AnalyzeResult> {
   const key = process.env.GEMINI_API_KEY;
   const frameUrls = (input.frames || []).filter(Boolean).slice(0, 8);
@@ -323,21 +424,26 @@ async function analyzeGemini(input: AnalyzeInput): Promise<AnalyzeResult> {
 
   try {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sys }] },
-        contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0, maxOutputTokens: 700, responseMimeType: "application/json" },
+    // v251.3 — run vision + spoken-audio transcription in parallel. The audio
+    // pass is fully optional: null result → metadata code check (no regression).
+    const [res, spoken] = await Promise.all([
+      fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sys }] },
+          contents: [{ role: "user", parts }],
+          generationConfig: { temperature: 0, maxOutputTokens: 700, responseMimeType: "application/json" },
+        }),
       }),
-    });
+      geminiTranscribeCode(input).catch(() => null),
+    ]);
     if (!res.ok) throw new Error(`gemini ${res.status}`);
     const data = await res.json();
     const text = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p?.text || "").join("\n");
     const v = extractJson(text);
     if (!v) throw new Error("no json");
-    return buildVisionResult(input, v, `gemini:${GEMINI_MODEL}`);
+    return buildVisionResult(input, v, `gemini:${GEMINI_MODEL}`, spoken);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[verify-ai] gemini error, falling back to mock:", e);

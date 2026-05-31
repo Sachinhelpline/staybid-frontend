@@ -49,6 +49,13 @@ export async function POST(req: Request) {
       ? ROOM_TYPE_REQUIREMENTS[expectedRoomType]
       : ["bed", "ac", "tv", "washbasin", "window"];
 
+    // ── v251.3 — spoken-code audio pass: feed the "code" step clip to Gemini
+    //    so it can transcribe + verify the code was actually said aloud. ──
+    const codeSeg = Array.isArray(hv?.segments)
+      ? hv.segments.find((s: any) => s?.stepId === "code")
+      : null;
+    const codeClipUrl: string | null = codeSeg?.url || null;
+
     const result = await analyze({
       requestId,
       tier: r.tier,
@@ -57,6 +64,8 @@ export async function POST(req: Request) {
       expectedRoomType,
       recordedGeo: hv?.geo || null,
       hotelGeo,
+      codeClipUrl,
+      expectedCode: hv?.verification_code || r.verification_code || null,
       hotelVideo: hv && {
         url: hv.url, storagePath: hv.storage_path,
         durationSecs: hv.actual_secs || 0,
