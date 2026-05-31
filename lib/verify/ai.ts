@@ -56,9 +56,13 @@ export type AnalyzeResult = {
   raw?: any;
 };
 
+// Provider auto-select order (v251.1): Gemini is the FREE primary, Anthropic
+// is the paid backup kept fully wired for the future. To force one explicitly,
+// set AI_VERIFY_PROVIDER=gemini|claude|google|aws|openai|mock.
 const PROVIDER =
   process.env.AI_VERIFY_PROVIDER ||
-  (process.env.ANTHROPIC_API_KEY   ? "claude" :
+  (process.env.GEMINI_API_KEY      ? "gemini" :   // ← FREE primary (Google AI Studio)
+   process.env.ANTHROPIC_API_KEY   ? "claude" :   // ← paid backup (future switch)
    process.env.GOOGLE_VIDEO_API_KEY ? "google" :
    process.env.AWS_REKOG_KEY        ? "aws"    :
    process.env.OPENAI_API_KEY       ? "openai" : "mock");
@@ -159,15 +163,16 @@ function extractJson(text: string): any | null {
   try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
 }
 
-async function analyzeClaude(input: AnalyzeInput): Promise<AnalyzeResult> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  const frames = (input.frames || []).filter(Boolean).slice(0, 8);
-  if (!key || frames.length === 0) return { ...analyzeMock(input), provider: frames.length ? "mock-no-key" : "mock-no-frames" };
-
-  const expected = (input.expectedObjects && input.expectedObjects.length)
+// Default object set every room must show when no room-type rule applies.
+function expectedObjectsFor(input: AnalyzeInput): string[] {
+  return input.expectedObjects && input.expectedObjects.length
     ? input.expectedObjects
     : ["bed", "ac", "tv", "washbasin", "window"];
+}
 
+// Shared system + user prompt for any vision provider (Claude / Gemini / …).
+function visionPrompts(input: AnalyzeInput) {
+  const expected = expectedObjectsFor(input);
   const sys =
     "You are StayBid's hotel-room verification vision model. You are shown keyframes captured " +
     "from a hotel's verification video of a guest room. Judge ONLY what is visible. " +
@@ -175,14 +180,86 @@ async function analyzeClaude(input: AnalyzeInput): Promise<AnalyzeResult> {
     '{"objects_detected":string[],"ocr_room_number":boolean,"ocr_booking_id":boolean,' +
     '"scene_quality":number(0..1),"lighting_ok":boolean,"cleanliness_ok":boolean,' +
     '"looks_like_real_hotel_room":boolean,"notes":string}';
-
   const userText =
     `Tier: ${input.tier}. Expected room type: ${input.expectedRoomType || "unspecified"}. ` +
     `Required objects that SHOULD be visible across the frames: ${expected.join(", ")}. ` +
     (input.expectedRoomNumber ? `Expected room number near "${input.expectedRoomNumber}". ` : "") +
     `Detect which required objects actually appear. Set ocr_room_number true only if a room number is legibly visible, ` +
     `ocr_booking_id true only if a booking id / confirmation is legibly visible. scene_quality reflects how clearly the room is shown.`;
+  return { sys, userText, expected };
+}
 
+// Shared scoring — turns a vision provider's parsed JSON into an AnalyzeResult.
+// Used by BOTH Claude and Gemini so the score is identical across providers.
+function buildVisionResult(input: AnalyzeInput, v: any, providerLabel: string): AnalyzeResult {
+  const expected = expectedObjectsFor(input);
+  const detected: string[] = Array.isArray(v.objects_detected) ? v.objects_detected.map((s: any) => String(s).toLowerCase()) : [];
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+  const coverHits = expected.filter((e) => detected.some((d) => norm(d).includes(norm(e)) || norm(e).includes(norm(d))));
+  const coverage = expected.length ? coverHits.length / expected.length : 1;
+
+  const meta = input.hotelVideo;
+  const durOk  = !!meta && meta.durationSecs >= tierDuration(input.tier) * 0.9;
+  const codeOk = !!meta?.verificationCode && /^SB-[A-Z0-9]{4}$/.test(meta.verificationCode);
+  const geoOk  = computeGeoOk(input.tier, input.recordedGeo, input.hotelGeo);
+  const sceneQ = Math.max(0, Math.min(1, Number(v.scene_quality) || 0));
+
+  const checks: AnalyzeResult["checks"] = {
+    code_ok: codeOk,
+    ocr_room: !!v.ocr_room_number,
+    ocr_booking: !!v.ocr_booking_id,
+    objects: detected,
+    scene_match: +(0.5 * coverage + 0.5 * sceneQ).toFixed(2),
+    geo_ok: geoOk,
+    audio_ok: codeOk,
+    duration_ok: durOk,
+  };
+
+  let score =
+    coverage * 35 +
+    (v.ocr_room_number ? 15 : 0) +
+    (v.ocr_booking_id ? 10 : 0) +
+    sceneQ * 15 +
+    (durOk ? 10 : 0) +
+    (codeOk ? 10 : 0) +
+    ((v.lighting_ok ? 2.5 : 0) + (v.cleanliness_ok ? 2.5 : 0));
+
+  const issues: string[] = [];
+  const missing = expected.filter((e) => !coverHits.includes(e));
+  if (missing.length) issues.push(`Not clearly shown: ${missing.join(", ")}`);
+  if (!v.looks_like_real_hotel_room) { issues.push("Frames may not be a genuine hotel room"); score = Math.max(0, score - 25); }
+  if (!geoOk) { issues.push("Platinum geo-tag missing or far from hotel"); score = Math.max(0, score - 15); }
+  if (!v.cleanliness_ok) issues.push("Cleanliness concerns visible");
+  if (v.notes) issues.push(String(v.notes).slice(0, 160));
+
+  score = Math.min(100, Math.max(0, Math.round(score)));
+  const validity: AnalyzeResult["hotel_validity"] = score >= 80 ? "high" : score >= 50 ? "partial" : "low";
+
+  let cust: AnalyzeResult["customer_claim_validity"] = null;
+  if (input.customerVideo) {
+    const cs = input.customerVideo.stepsCompleted.length;
+    cust = cs >= 3 ? "high" : cs >= 2 ? "medium" : "low";
+  }
+  const fraud = !v.looks_like_real_hotel_room || score < 40;
+
+  return {
+    trust_score: score,
+    hotel_validity: validity,
+    customer_claim_validity: cust,
+    issues_detected: issues,
+    fraud_flag: fraud,
+    checks,
+    provider: providerLabel,
+    raw: v,
+  };
+}
+
+async function analyzeClaude(input: AnalyzeInput): Promise<AnalyzeResult> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  const frames = (input.frames || []).filter(Boolean).slice(0, 8);
+  if (!key || frames.length === 0) return { ...analyzeMock(input), provider: frames.length ? "mock-no-key" : "mock-no-frames" };
+
+  const { sys, userText } = visionPrompts(input);
   const content: any[] = [{ type: "text", text: userText }];
   for (const url of frames) content.push({ type: "image", source: { type: "url", url } });
 
@@ -202,70 +279,68 @@ async function analyzeClaude(input: AnalyzeInput): Promise<AnalyzeResult> {
     const text = (data?.content || []).map((b: any) => b?.text || "").join("\n");
     const v = extractJson(text);
     if (!v) throw new Error("no json");
-
-    const detected: string[] = Array.isArray(v.objects_detected) ? v.objects_detected.map((s: any) => String(s).toLowerCase()) : [];
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
-    const coverHits = expected.filter((e) => detected.some((d) => norm(d).includes(norm(e)) || norm(e).includes(norm(d))));
-    const coverage = expected.length ? coverHits.length / expected.length : 1;
-
-    // Metadata rules (still enforced alongside vision).
-    const meta = input.hotelVideo;
-    const durOk  = !!meta && meta.durationSecs >= tierDuration(input.tier) * 0.9;
-    const codeOk = !!meta?.verificationCode && /^SB-[A-Z0-9]{4}$/.test(meta.verificationCode);
-    const geoOk  = computeGeoOk(input.tier, input.recordedGeo, input.hotelGeo);
-    const sceneQ = Math.max(0, Math.min(1, Number(v.scene_quality) || 0));
-
-    const checks: AnalyzeResult["checks"] = {
-      code_ok: codeOk,
-      ocr_room: !!v.ocr_room_number,
-      ocr_booking: !!v.ocr_booking_id,
-      objects: detected,
-      scene_match: +(0.5 * coverage + 0.5 * sceneQ).toFixed(2),
-      geo_ok: geoOk,
-      audio_ok: codeOk,
-      duration_ok: durOk,
-    };
-
-    let score =
-      coverage * 35 +
-      (v.ocr_room_number ? 15 : 0) +
-      (v.ocr_booking_id ? 10 : 0) +
-      sceneQ * 15 +
-      (durOk ? 10 : 0) +
-      (codeOk ? 10 : 0) +
-      ((v.lighting_ok ? 2.5 : 0) + (v.cleanliness_ok ? 2.5 : 0));
-
-    const issues: string[] = [];
-    const missing = expected.filter((e) => !coverHits.includes(e));
-    if (missing.length) issues.push(`Not clearly shown: ${missing.join(", ")}`);
-    if (!v.looks_like_real_hotel_room) { issues.push("Frames may not be a genuine hotel room"); score = Math.max(0, score - 25); }
-    if (!geoOk) { issues.push("Platinum geo-tag missing or far from hotel"); score = Math.max(0, score - 15); }
-    if (!v.cleanliness_ok) issues.push("Cleanliness concerns visible");
-    if (v.notes) issues.push(String(v.notes).slice(0, 160));
-
-    score = Math.min(100, Math.max(0, Math.round(score)));
-    const validity: AnalyzeResult["hotel_validity"] = score >= 80 ? "high" : score >= 50 ? "partial" : "low";
-
-    let cust: AnalyzeResult["customer_claim_validity"] = null;
-    if (input.customerVideo) {
-      const cs = input.customerVideo.stepsCompleted.length;
-      cust = cs >= 3 ? "high" : cs >= 2 ? "medium" : "low";
-    }
-    const fraud = !v.looks_like_real_hotel_room || score < 40;
-
-    return {
-      trust_score: score,
-      hotel_validity: validity,
-      customer_claim_validity: cust,
-      issues_detected: issues,
-      fraud_flag: fraud,
-      checks,
-      provider: `claude:${ANTHROPIC_MODEL}`,
-      raw: v,
-    };
+    return buildVisionResult(input, v, `claude:${ANTHROPIC_MODEL}`);
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[verify-ai] claude error, falling back to mock:", e);
+    return { ...analyzeMock(input), provider: "mock-fallback" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Gemini — FREE multimodal vision (Google AI Studio). v251.1 primary provider.
+// Gemini's generateContent takes inline base64 image parts (not arbitrary
+// URLs), so we fetch each signed keyframe and inline it. Falls back to mock
+// when no key, no frames, or any error — identical contract to Claude.
+// Get a free key (no card) at: https://aistudio.google.com → "Get API key".
+// ---------------------------------------------------------------------------
+const GEMINI_MODEL = process.env.GEMINI_VERIFY_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+async function fetchAsInlineImage(url: string): Promise<{ mime: string; data: string } | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const mime = r.headers.get("content-type") || "image/jpeg";
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length === 0 || buf.length > 4_500_000) return null; // skip empty / oversized
+    return { mime: mime.split(";")[0].trim(), data: buf.toString("base64") };
+  } catch { return null; }
+}
+
+async function analyzeGemini(input: AnalyzeInput): Promise<AnalyzeResult> {
+  const key = process.env.GEMINI_API_KEY;
+  const frameUrls = (input.frames || []).filter(Boolean).slice(0, 8);
+  if (!key || frameUrls.length === 0) return { ...analyzeMock(input), provider: frameUrls.length ? "mock-no-key" : "mock-no-frames" };
+
+  const { sys, userText } = visionPrompts(input);
+
+  // Inline the frames (Gemini needs base64, not URLs). Drop any that fail.
+  const inlined = (await Promise.all(frameUrls.map(fetchAsInlineImage))).filter(Boolean) as { mime: string; data: string }[];
+  if (inlined.length === 0) return { ...analyzeMock(input), provider: "mock-no-frames" };
+
+  const parts: any[] = [{ text: userText }];
+  for (const img of inlined) parts.push({ inline_data: { mime_type: img.mime, data: img.data } });
+
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sys }] },
+        contents: [{ role: "user", parts }],
+        generationConfig: { temperature: 0, maxOutputTokens: 700, responseMimeType: "application/json" },
+      }),
+    });
+    if (!res.ok) throw new Error(`gemini ${res.status}`);
+    const data = await res.json();
+    const text = (data?.candidates?.[0]?.content?.parts || []).map((p: any) => p?.text || "").join("\n");
+    const v = extractJson(text);
+    if (!v) throw new Error("no json");
+    return buildVisionResult(input, v, `gemini:${GEMINI_MODEL}`);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[verify-ai] gemini error, falling back to mock:", e);
     return { ...analyzeMock(input), provider: "mock-fallback" };
   }
 }
@@ -284,6 +359,7 @@ async function analyzeOpenAi(input: AnalyzeInput): Promise<AnalyzeResult> {
 export async function analyze(input: AnalyzeInput): Promise<AnalyzeResult> {
   try {
     switch (PROVIDER) {
+      case "gemini": return await analyzeGemini(input);
       case "claude": return await analyzeClaude(input);
       case "google": return await analyzeGoogle(input);
       case "aws":    return await analyzeAws(input);

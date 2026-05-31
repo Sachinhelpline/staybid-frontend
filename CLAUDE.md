@@ -9256,3 +9256,65 @@ Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
 - **Never** assume `claude-sonnet-4-6` is enabled on the key. Default to the
   project's proven `claude-3-5-sonnet-20241022`; override only via
   `ANTHROPIC_VERIFY_MODEL` once a newer model is confirmed available.
+
+---
+
+## Gemini-Free Vision Primary + Anthropic Backup Era (v251.1, 2026-05-31)
+
+Sachin: "Google Gemini kardo fir Anthropic as a backup future ke liye." After
+confirming via web search that **Anthropic has no free tier** (pay-as-you-go,
+Haiku 4.5 ≈ $1/$5 per 1M) while **Google Gemini's free tier is genuinely free,
+no credit card, multimodal** (≈15 RPM / ~1000 req/day) — wired Gemini as the
+FREE primary vision provider with Anthropic kept fully intact as the paid
+backup for a future one-env-var switch.
+
+### What shipped (additive, in `lib/verify/ai.ts`)
+- **Provider auto-select reordered:** `GEMINI_API_KEY → "gemini"` (free
+  primary) → `ANTHROPIC_API_KEY → "claude"` (paid backup) → google/aws/openai
+  → mock. `AI_VERIFY_PROVIDER` still force-overrides any of them.
+- **`analyzeGemini`** — Google AI Studio `generateContent`
+  (`v1beta/models/${GEMINI_MODEL}:generateContent?key=`). Gemini needs
+  **inline base64** image parts (not arbitrary URLs like Anthropic), so
+  `fetchAsInlineImage()` fetches each signed keyframe, skips empty/oversized
+  (>4.5 MB) frames, and inlines them as `inline_data`. `responseMimeType:
+  "application/json"` + `temperature: 0` for stable strict-JSON. Model =
+  `GEMINI_VERIFY_MODEL || GEMINI_MODEL || "gemini-2.5-flash"`.
+- **Shared vision core extracted** so Claude + Gemini score IDENTICALLY:
+  `expectedObjectsFor()`, `visionPrompts()` (same system+user prompt), and
+  `buildVisionResult()` (object-coverage + OCR + scene + duration + code +
+  geo scoring → AnalyzeResult). Claude refactored onto these — no behaviour
+  change to Claude, just deduped.
+- **Same graceful fallback contract** for both: no key / no frames / any
+  error → `analyzeMock` (provider string records `mock-no-key` /
+  `mock-no-frames` / `mock-fallback`). Platinum geo rule + room-type object
+  rule enforced regardless of provider.
+
+### Activation (zero cost)
+1. Get a free key (no card) at https://aistudio.google.com → "Get API key".
+2. Vercel env (staybid-customer-frontend): `GEMINI_API_KEY=<key>` → redeploy.
+   Optionally `GEMINI_VERIFY_MODEL=gemini-2.5-flash`.
+3. Done — `PROVIDER` auto-selects `gemini`. Without the key it stays on mock
+   (exactly as before, zero risk).
+
+### Future switch to Anthropic (already wired)
+- Add `ANTHROPIC_API_KEY` AND set `AI_VERIFY_PROVIDER=claude` (so it wins over
+  Gemini), or remove the Gemini key. The `analyzeClaude` path is unchanged and
+  battle-ready — no code change needed to switch, just env vars.
+
+Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
+`npm run build` exit 0. `SB_BUILD v251→v251.1`, badge `v251.1`,
+`HTML_CACHE v37→v38`.
+
+### Things to Avoid (v251.1 Era)
+- **Never** send Gemini arbitrary image URLs — its `generateContent` ignores
+  them; it needs `inline_data` base64. `fetchAsInlineImage` is mandatory.
+- **Never** drop the >4.5 MB / empty-frame skip in `fetchAsInlineImage` — a
+  giant or 0-byte frame would blow the request body or 400 the call.
+- **Never** diverge Claude's and Gemini's scoring — both MUST go through
+  `buildVisionResult` so a hotel's trust score doesn't change just because the
+  env var flipped providers.
+- **Never** assume Gemini free-tier RPM is unlimited — it's ~15 RPM / ~1000/day.
+  Verification is low-volume (1 analyze per submitted video, ≤8 frames) so this
+  is comfortable, but a bulk-reanalyze job MUST throttle.
+- **Never** hardcode the Gemini model — pin via `GEMINI_VERIFY_MODEL` so a
+  model rename (Google deprecates fast) is an env change, not a redeploy.
