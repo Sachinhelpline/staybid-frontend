@@ -1,39 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
-import { computeBidderScore } from "@/lib/bidder-score";
+import { resolveAutoAction, extractPreferredPrice, AUTO_COUNTER_WINDOW_MS, type AutoAction } from "@/lib/autopilot";
+import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 
-// v241.26 — Server-side tier gate for Hybrid-mode /bid auto-accept. Reuses the
-// canonical computeBidderScore (lib/bidder-score) on the customer's last 10
-// bids so the tier matches the customer-facing confidence chip EXACTLY and the
-// client cannot spoof it. NEW bidders (no history) → false → they wait for the
-// partner, mirroring resolveAutoAcceptMs(hybrid, NEW) = Infinity on the
-// hotel-page flow. Any failure falls back to false (partner reviews — the safe
-// default for hybrid). Note: PostgREST needs camelCase order columns quoted →
-// order=%22createdAt%22.desc.
-async function isPremiumOrStrong(customerId: string): Promise<boolean> {
-  try {
-    const hist = await sbSelect(
-      `bids?customerId=eq.${customerId}&select=amount,message,roomId&order=%22createdAt%22.desc&limit=10`
-    );
-    if (!hist.length) return false;
-    const roomIds = Array.from(new Set(hist.map((b: any) => b.roomId).filter(Boolean)));
-    const rooms = roomIds.length
-      ? await sbSelect(`rooms?id=in.(${roomIds.join(",")})&select=id,floorPrice`)
-      : [];
-    const floorById = new Map(rooms.map((r: any) => [r.id, Number(r.floorPrice || 0)]));
-    const items = hist.map((b: any) => ({
-      amount: Number(b.amount),
-      message: b.message,
-      floorPrice: floorById.get(b.roomId),
-    }));
-    const tier = computeBidderScore(items).tier;
-    return tier === "PREMIUM" || tier === "STRONG";
-  } catch {
-    return false;
-  }
-}
+// v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
+// side + tamper-proof: tier comes from loadServerScore (canonical
+// computeBidderScore on the customer's last 10 bids — matches the customer
+// confidence chip, can't be spoofed), mode from loadAutopilotMode (hotels.
+// autopilot_mode), and resolveAutoAction (lib/autopilot) maps them to
+// accept / counter / manual. NEW bidders + LOWBALL history + hybrid-low-tier
+// all fall through to manual partner review — never a client-trusted flip.
 
 // v200 — One active bid per (customer × HOTEL). Per-flow timers:
 //   • Negotiate (1:1 single hotel)    → 3h
@@ -330,36 +308,54 @@ export async function POST(req: NextRequest) {
     // its existing schedule-accept lifecycle via /api/bids/[id]/schedule-accept.
     // We re-read the floor here (not from the earlier check) so dealId-bypass
     // bids never auto-accept (their floor check was skipped).
-    let autoAccept = false;
-    if (flow === "place" && !dealId) {
+    // v196 / v241.26 / v248 — unified, mode-aware auto-action. Decides
+    // accept / counter / manual server-side for every non-flash bid:
+    //   • /bid (flow="place") at/above floor → instant ACCEPT per mode
+    //     (auto=yes · hybrid=PREMIUM/STRONG · manual=no · LOWBALL=no). v196
+    //     instant-confirm behaviour preserved, now mode-respecting (v241.26).
+    //   • Negotiate below-floor (amount clamped to floor, real intent in the
+    //     "preferred price" message token) near the floor → auto-COUNTER at
+    //     floor (v248). Deep lowballs + manual mode + low tier → stays PENDING
+    //     for the partner. The hotel-page above-floor Negotiate path keeps its
+    //     deferred schedule-accept lifecycle and is NOT instant-accepted here.
+    // We re-read the floor here so dealId-bypass (flash) bids never auto-act.
+    let status = "PENDING";
+    let counterAmount: number | null = null;
+    if (!dealId) {
       const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
       const floor = Number(rooms[0]?.floorPrice || 0);
-      const aboveFloor = floor > 0 && Number(amount) >= floor;
-      if (aboveFloor) {
-        // v241.26 — respect the hotel's Autopilot mode on the /bid instant-
-        // accept path. Pre-v241 (v196) auto-accepted EVERY above-floor /bid
-        // bid regardless of mode, so a Manual hotel still auto-confirmed and a
-        // Hybrid hotel auto-confirmed low-tier bidders — both violating the
-        // mode spec (the hotel-page Negotiate/Book-Now flow already respects
-        // mode via lib/autopilot.resolveAutoAcceptMs + /schedule-accept; only
-        // this /bid path bypassed it). Now:
-        //   • auto   → instant accept (unchanged — the default for most hotels)
-        //   • manual → never auto-accept; bid stays PENDING for partner review
-        //   • hybrid → only PREMIUM/STRONG auto-accept (server-computed tier)
-        let mode = "auto";
-        try {
-          const hRows = await sbSelect(`hotels?id=eq.${hotelId}&select=autopilot_mode&limit=1`);
-          const m = String(hRows[0]?.autopilot_mode || "auto");
-          if (m === "auto" || m === "hybrid" || m === "manual") mode = m;
-        } catch { /* column missing / unreachable → 'auto' (lib/autopilot parity) */ }
+      // Real intent: below-floor Negotiate bids stash the true price in the
+      // message; every other flow's intent IS the submitted amount.
+      const intent = extractPreferredPrice(message) ?? Number(amount);
 
-        if (mode === "manual") {
-          autoAccept = false;
-        } else if (mode === "hybrid") {
-          autoAccept = await isPremiumOrStrong(customerId);
-        } else {
-          autoAccept = true; // 'auto'
-        }
+      // Only two cases can auto-act: /bid (flow="place") at/above floor →
+      // instant accept, OR any below-floor-intent bid → auto-counter. Skip
+      // the tier/mode lookups otherwise (Book Now / above-floor Negotiate stay
+      // PENDING here — Book Now accepts via its own path, Negotiate schedules).
+      const eligibleForAuto =
+        floor > 0 && ((flow === "place" && intent >= floor) || intent < floor);
+      let action: AutoAction = { kind: "manual" };
+      if (eligibleForAuto) {
+        const score = await loadServerScore(customerId);
+        const mode = await loadAutopilotMode(hotelId);
+        action = resolveAutoAction({
+          intent,
+          floor,
+          tier: score.tier,
+          baseMs: score.autoAcceptMs,
+          mode,
+        });
+      }
+
+      if (intent < floor && action.kind === "counter") {
+        // Below-floor near-floor → auto-counter at floor (any flow). The
+        // customer responds via the existing /my-bids COUNTER card.
+        status = "COUNTER";
+        counterAmount = action.counterAmount;
+      } else if (flow === "place" && intent >= floor && action.kind === "accept") {
+        // /bid instant accept (v196 rule, now mode-aware). Negotiate/Book-Now
+        // above-floor stay PENDING here → their schedule-accept lifecycle runs.
+        status = "ACCEPTED";
       }
     }
 
@@ -370,20 +366,29 @@ export async function POST(req: NextRequest) {
       roomId,
       amount: Number(amount),
       requestId: requestId || null,
-      status: autoAccept ? "ACCEPTED" : "PENDING",
+      status,
       message: message || null,
-      // Auto-accepted bids open the 15-min pay-window timer (same window the
-      // hotel-accept path uses). Pending bids keep their per-flow timer.
-      expiresAt: autoAccept
-        ? new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString()
-        : expiresAtFor(flow),
+      // ACCEPTED/COUNTER both open a pay/response window (the DB trigger
+      // re-stamps ACCEPTED to the per-hotel window). COUNTER → 60-min UX
+      // window. PENDING keeps its per-flow timer.
+      ...(counterAmount != null ? { counterAmount } : {}),
+      expiresAt:
+        status === "ACCEPTED"
+          ? new Date(Date.now() + ACCEPTED_UNPAID_WINDOW_MS).toISOString()
+          : status === "COUNTER"
+            ? new Date(Date.now() + AUTO_COUNTER_WINDOW_MS).toISOString()
+            : expiresAtFor(flow),
       isBestDeal: false,
       // v241 — multi-room support. Denormalized so /api/bids/my doesn't
       // need a join + /my-bids charge math reads it directly.
       numRooms: numRoomsClamped,
       capacityMismatch,
     });
-    return NextResponse.json({ bid, autoAccepted: autoAccept });
+    return NextResponse.json({
+      bid,
+      autoAccepted: status === "ACCEPTED",
+      autoCountered: status === "COUNTER",
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Bid failed" }, { status: 500 });
   }
