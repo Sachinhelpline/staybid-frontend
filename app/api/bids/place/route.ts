@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
-import { resolveAutoAction, extractPreferredPrice, AUTO_COUNTER_WINDOW_MS, type AutoAction } from "@/lib/autopilot";
+import { resolveAutoAction, extractPreferredPrice, counterBandForVacancy, AUTO_COUNTER_WINDOW_MS, type AutoAction } from "@/lib/autopilot";
 import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
@@ -334,6 +334,10 @@ export async function POST(req: NextRequest) {
       // unreachable, so a bid is NEVER blocked by a pricing hiccup.
       const staticFloor = Number(rooms[0]?.floorPrice || 0);
       let floor = staticFloor;
+      // v249 Layer 2 — occupancy of the bid's check-in date. Tunes WHO gets an
+      // auto-counter (empty date → wider band, fills the room; tight date →
+      // no auto-counter). null when the spine is unreachable → default band.
+      let vacancyRatio: number | null = null;
       try {
         let ciDay: string | null = null;
         if (requestId) {
@@ -344,7 +348,9 @@ export async function POST(req: NextRequest) {
         const spine = await resolveSpinePrices([roomId], day);
         const bf = Number(spine[roomId]?.bidFloor || 0);
         if (bf > 0) floor = Math.round(bf);
-      } catch { /* spine unreachable → static floor (never block a bid) */ }
+        const vr = spine[roomId]?.vacancyRatio;
+        if (typeof vr === "number" && Number.isFinite(vr)) vacancyRatio = vr;
+      } catch { /* spine unreachable → static floor + default band (never block a bid) */ }
       // Real intent: below-floor Negotiate bids stash the true price in the
       // message; every other flow's intent IS the submitted amount.
       const intent = extractPreferredPrice(message) ?? Number(amount);
@@ -365,6 +371,9 @@ export async function POST(req: NextRequest) {
           tier: score.tier,
           baseMs: score.autoAcceptMs,
           mode,
+          // v249 Layer 2 — empty date widens the counter band (0.78), nearly
+          // full closes it (1.0). Counter amount stays = floor (margin-safe).
+          counterBandMin: counterBandForVacancy(vacancyRatio),
         });
       }
 
