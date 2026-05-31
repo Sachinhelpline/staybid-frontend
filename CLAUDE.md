@@ -9101,3 +9101,131 @@ documented as a deliberate, proven choice (usable reel > visible nav pill).
   gesture nav pill" without a replacement that *actually holds* the Android
   back-gesture in this Next.js app. We tried history sentinels twice; they do
   not work here. Removing it re-introduces the instant-back-exit regression.
+
+---
+
+## Real AI Pricing Engine — 4-Phase Additive Build (v249.1 → v249.4, 2026-05-31)
+
+A flag-gated, default-OFF machine-learning pricing layer built ON TOP of the
+v165-v168 pricing spine. Every phase is additive — live pricing stays
+**byte-identical to v249.2** until two env flags are flipped. The learning
+signal comes ONLY from bid accept/reject outcomes (the only place the platform
+gets a real yes/no on a price). Phases 1+2 merged in a prior session; this
+session completed Phase 3, Phase 4, and the operator runbook.
+
+### The 4 phases (all layered on the `room_date_price` spine)
+
+- **Phase 1 (v249.1) — bid-context logging.** `pricing_decisions` table.
+  `logPricingDecision()` fires in `app/api/bids/place/route.ts` — snapshots the
+  bid context (offered price, floor, competitor min, vacancy, ratio band) at
+  bid time. Pure observability; nothing reads it for pricing.
+- **Phase 2 (v249.2) — accept-probability model.** `lib/pricing/accept-model.ts`
+  (`baselineAcceptProbability` + `blendAcceptProbability`) +
+  `lib/pricing/outcomes.ts` (`loadAcceptStats`, `observedForRatio`,
+  `ratioBandFor`, `AcceptStats`/`BandStat`/`RatioBand` types). Bayesian
+  shrinkage `K=20` — thin samples can't swing the estimate.
+- **Phase 3 (v249.3) — expected-revenue optimizer.** `lib/pricing/optimizer.ts`
+  (`optimizePrice`, `optimizerEnabled`, `OPT_MAX_DELTA = ±12%`). Sweeps ₹100
+  candidates, picks argmax of `price × P(accept)`, guard-bounded (≥ floor +
+  competitor-undercut cap + ±12% rule-anchor + snap100). Wired into
+  `lib/pricing/spine.ts computeRoomDatePrice` AFTER the rule `live` is set,
+  BEFORE flash — only overrides `live` when `optimizerEnabled()`. Read-only
+  shadow-compare API at `app/api/pricing/optimize/route.ts`.
+  **Flag: `PRICING_OPTIMIZER_ENABLED` (default OFF).**
+- **Phase 4 (v249.4) — nightly online learning.** `pricing_model_params`
+  (learned accept-rate per scope × ratio_band) + `pricing_model_runs` (audit
+  trail). `lib/pricing/model-store.ts` (`learnedModelEnabled`,
+  `loadLearnedStats`, `loadLearnedStatsWithFallback` room→hotel→city→global,
+  `upsertModelParams`). Nightly trainer at
+  `app/api/cron/pricing-model-train/route.ts` — pages `pricing_decisions`
+  joined with `bids` outcomes, aggregates per (scope, scopeId, band), bulk-
+  upserts. `accept-estimate` + `optimize` routes prefer learned stats when
+  flag is on. **Flag: `PRICING_MODEL_LEARNED` (default OFF).**
+
+### Scope clarification (confirmed via code grep + DB query)
+The spine drives the **complete platform price** — hotel page `livePrice` +
+`/bid` `bidFloor` + flash `flashPrice` all read `resolveSpinePrices()`. When
+the optimizer is ON it modulates the platform-wide `livePrice` (flash derives
+from it). The LEARNING signal is bid-only because accept/reject is the sole
+yes/no-on-price the platform observes.
+
+### Why default-OFF (data-gated, not code-gated)
+`pricing_decisions` has 0 rows at merge time (Phase 1 logging only fires on
+NEW bids through `/api/bids/place` since the merge). There's nothing to learn
+from yet — so both flags stay OFF until weeks of real bid outcomes accumulate.
+Flipping early is harmless (Bayesian K=20 means baseline dominates thin
+samples) but not yet impactful.
+
+### Cron architecture (verified this session)
+- **Vercel cron (Hobby 2-cap, full):** `/api/cron/pricing` (daily 4:00) +
+  `/api/cron/lifecycle` (daily 4:05).
+- **cron-job.org (everything else):** `price-spine` (hourly, room_date_price
+  fresh — verified 5,440 rows), `expire-holds`, `flash-drop`,
+  `feedback-lifecycle`, `support-auto-resolve`, `auto-approve-content`,
+  `post-stay-nudge`, `view-milestone-rewards`, `creator-upgrade-eval`, and now
+  **`pricing-model-train`** (needs adding — weekly).
+- All cron routes auth via `?token=<CRON_SECRET || "staybid-cron-dev">`.
+
+### Operator runbook (PR #212, draft) — `docs/AI-PRICING-CRONS-AND-ACTIVATION.md`
+The single operator reference for the two manual steps that live OUTSIDE the
+codebase:
+1. **Schedule the trainer** on cron-job.org:
+   `https://www.staybids.in/api/cron/pricing-model-train?token=<CRON_SECRET>`,
+   GET, weekly (`0 22 * * 0` UTC = Sun 3:30 AM IST), 60s timeout. Daily is also
+   safe (upsert idempotent). `&days=180` optional look-back override.
+   Verify via `SELECT * FROM pricing_model_runs ORDER BY created_at DESC LIMIT 3;`
+   (`ok=true`, `params_written` non-zero once bid data exists).
+2. **Activate LATER** (2-step): wait for `pricing_decisions` to fill →
+   shadow-compare via `GET /api/pricing/optimize?roomId&date&hotelId`
+   (check `revenueLiftPct` within ±12%) → flip BOTH
+   `PRICING_OPTIMIZER_ENABLED=1` + `PRICING_MODEL_LEARNED=1` in Vercel +
+   redeploy. **Instant rollback:** delete/zero the two env vars + redeploy →
+   reverts to rule-engine spine, byte-identical. No data lost; trainer keeps
+   filling the table.
+
+Docs-only — NO `SB_BUILD` / badge / `HTML_CACHE` bump (v93 discipline: no SW
+fetch-handler logic touched, no code at all in the runbook commit).
+
+### Things to Avoid (AI Pricing Engine Era)
+- **Never** flip `PRICING_MODEL_LEARNED=1` without `PRICING_OPTIMIZER_ENABLED=1`
+  — the learned table feeds the optimizer; alone it does nothing visible.
+- **Never** schedule `pricing-model-train` on Vercel cron — the 2-slot Hobby
+  cap is full (`pricing` + `lifecycle`). It belongs on cron-job.org.
+- **Never** raise `OPT_MAX_DELTA` past ±12% without re-checking the
+  competitor-undercut cap interaction — the optimizer must never price above
+  the cheapest competitor (the spine's hard rule) nor swing >12% off the
+  rule-anchor.
+- **Never** lower the Bayesian `K=20` shrinkage — it's the guard that keeps
+  thin samples from swinging the accept estimate. Below ~10, a handful of
+  lucky accepts would dominate the curve.
+- **Never** make the optimizer / learned-model read path throw. Every level
+  falls back to the Phase-2 baseline curve on no-data; the spine itself falls
+  back to on-the-fly compute if `room_date_price` is stale.
+- **Never** unschedule `price-spine` — it keeps `room_date_price` fresh; if it
+  stops, surfaces fall back to on-the-fly compute (correct, just not cached).
+- **Never** return a `scope` outside the `AcceptStats["scope"]` union
+  (`"room"|"hotel"|"none"`) from `model-store.ts` — the empty-rows branch must
+  return `{ scope: "none", totalN: 0, bands: {} }` (a `"city"`/`"global"` scope
+  string is a TS2345 build error; the v249.4 fix maps non-room→"hotel").
+- **Never** assume the engine is "live" after merge — it's DATA-gated. Zero
+  rows in `pricing_decisions` = nothing to learn. Don't flip flags until real
+  bid outcomes accumulate (~20+ observed bids per ratio-band you care about).
+
+### Updated production state (v249.4, 2026-05-31)
+- **Current version:** v249.4 · `app/layout.tsx` `SB_BUILD =
+  "v249.4-ai-pricing-phase4-nightly-online-learning"`, badge v249.4.
+- **Migrations applied live** to Supabase `uxxhbdqedazpmvbvaosh`:
+  `pricing_decisions` (Phase 1), `pricing_model_params` + `pricing_model_runs`
+  (Phase 4, RLS + permissive anon policies). Verified column counts.
+- **Both AI flags OFF** → live pricing byte-identical to v249.2. Spine drives
+  the complete platform price unchanged.
+- **PR #212 (draft)** — runbook doc, awaiting CI + merge.
+- **Carry-forward / manual ops:**
+  - Schedule `pricing-model-train` weekly on cron-job.org (runbook Step B.1).
+  - Once `pricing_decisions` fills with real bid outcomes, run the 2-step
+    activation (runbook Step C) to flip the two flags.
+- **NOT TOUCHED this era:** scoring engine, attribution chain, commission
+  engine, tier system, partner panel, admin shell, reel-app surfaces,
+  animation layer, service billing, reel-dedup v131.8 chain, multi-room data
+  layer, pending-intent layer, acceptance-window trigger (v241.26), the
+  pricing spine itself (v165-v168 — the AI layer reads it, never replaces it).
