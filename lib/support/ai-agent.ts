@@ -15,24 +15,27 @@
 import type { AIResponse, SupportMessage } from "./types";
 import { SUPPORT_KB } from "./knowledge";
 import { isGroqEnabled, respondViaGroq } from "./groq-agent";
+import { isGeminiSupportEnabled, respondViaGemini } from "./gemini-agent";
 import { detectMessageLang, langInstructionForAI } from "./lang-detect";
 
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
 
-// v152 — AI is enabled when EITHER provider is configured. Router below
-// picks the right one: Groq (free tier) is preferred if set; Anthropic
-// (paid, premium quality) takes over only when Groq is OFF.
+// v152 — AI is enabled when ANY provider is configured. Router below
+// picks the right one by preference order.
+// v153 (Option A) — Gemini (free, own project quota) is the DEFAULT primary,
+// then Groq (free), then Anthropic (paid). All three are tried in order; the
+// first that's configured AND succeeds wins. If all fail, the caller falls
+// back to the intent bot.
 //
-// To switch preference: set SUPPORT_AI_PREFER=anthropic to force
-// Anthropic-first when both keys are set. Default = Groq-first because
-// most users set Groq (free) and may have Anthropic as a backup.
+// Override the order with SUPPORT_AI_PREFER = gemini | groq | anthropic
+// (the named provider is tried first, the rest follow in default order).
 export function isAnthropicEnabled(): boolean {
   return !!(process.env.ANTHROPIC_API_KEY || "").trim();
 }
 
 export function isAIEnabled(): boolean {
-  return isGroqEnabled() || isAnthropicEnabled();
+  return isGeminiSupportEnabled() || isGroqEnabled() || isAnthropicEnabled();
 }
 
 type UserContext = {
@@ -56,24 +59,26 @@ export async function respondToMessage(opts: {
   userContext: UserContext;
 }): Promise<AIResponse> {
   const prefer = (process.env.SUPPORT_AI_PREFER || "").toLowerCase();
-  const groqOn = isGroqEnabled();
-  const anthropicOn = isAnthropicEnabled();
+  const enabled: Record<Provider, boolean> = {
+    gemini: isGeminiSupportEnabled(),
+    groq: isGroqEnabled(),
+    anthropic: isAnthropicEnabled(),
+  };
 
-  // Default: Groq-first (free tier). User can force Anthropic-first by
-  // setting SUPPORT_AI_PREFER=anthropic.
-  const preferAnthropic = prefer === "anthropic";
-  const order: Array<"groq" | "anthropic"> = preferAnthropic
-    ? ["anthropic", "groq"]
-    : ["groq", "anthropic"];
+  // Default order: Gemini (free, own quota) → Groq (free) → Anthropic (paid).
+  // SUPPORT_AI_PREFER moves the named provider to the front; the rest keep
+  // their default relative order.
+  const DEFAULT_ORDER: Provider[] = ["gemini", "groq", "anthropic"];
+  const order: Provider[] = (prefer === "gemini" || prefer === "groq" || prefer === "anthropic")
+    ? [prefer as Provider, ...DEFAULT_ORDER.filter((p) => p !== prefer)]
+    : DEFAULT_ORDER;
 
   let lastErr: any = null;
   for (const provider of order) {
-    if (provider === "groq" && !groqOn) continue;
-    if (provider === "anthropic" && !anthropicOn) continue;
+    if (!enabled[provider]) continue;
     try {
-      if (provider === "groq") {
-        return await respondViaGroq(opts);
-      }
+      if (provider === "gemini") return await respondViaGemini(opts);
+      if (provider === "groq") return await respondViaGroq(opts);
       return await respondViaAnthropic(opts);
     } catch (e) {
       lastErr = e;
@@ -81,6 +86,8 @@ export async function respondToMessage(opts: {
   }
   throw lastErr || new Error("No AI provider configured");
 }
+
+type Provider = "gemini" | "groq" | "anthropic";
 
 async function respondViaAnthropic(opts: {
   conversation: { id: string; status: string };
