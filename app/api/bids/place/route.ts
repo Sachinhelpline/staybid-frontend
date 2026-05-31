@@ -5,6 +5,7 @@ import { resolveAutoAction, extractPreferredPrice, counterBandForVacancy, AUTO_C
 import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
+import { logPricingDecision } from "@/lib/pricing/decision-log";
 
 // v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
 // side + tamper-proof: tier comes from loadServerScore (canonical
@@ -322,6 +323,12 @@ export async function POST(req: NextRequest) {
     // We re-read the floor here so dealId-bypass (flash) bids never auto-act.
     let status = "PENDING";
     let counterAmount: number | null = null;
+    // v249.1 — AI pricing data foundation. We capture the EPHEMERAL spine
+    // snapshot + decision context here (it's recomputed daily by the cron, so
+    // unreconstructable later), then log it fire-and-forget AFTER the bid
+    // insert. The outcome (accepted/paid) is NOT copied — Phase-2 training
+    // joins this row to bids on bid_id. Nothing here can block/break a bid.
+    const pd: Record<string, any> = {};
     if (!dealId) {
       const rooms = await sbSelect(`rooms?id=eq.${roomId}&select=floorPrice`);
       // v248 Layer 1 — the autopilot accept/counter threshold is the DYNAMIC
@@ -333,6 +340,7 @@ export async function POST(req: NextRequest) {
       // the spine minimum). Falls back to the static floor if the spine is
       // unreachable, so a bid is NEVER blocked by a pricing hiccup.
       const staticFloor = Number(rooms[0]?.floorPrice || 0);
+      pd.staticFloor = staticFloor || null;
       let floor = staticFloor;
       // v249 Layer 2 — occupancy of the bid's check-in date. Tunes WHO gets an
       // auto-counter (empty date → wider band, fills the room; tight date →
@@ -345,15 +353,30 @@ export async function POST(req: NextRequest) {
           ciDay = rq[0]?.checkIn ? toISODate(rq[0].checkIn) : null;
         }
         const day = ciDay || new Date().toISOString().slice(0, 10);
+        pd.checkIn = ciDay;
         const spine = await resolveSpinePrices([roomId], day);
-        const bf = Number(spine[roomId]?.bidFloor || 0);
+        const sp = spine[roomId];
+        const bf = Number(sp?.bidFloor || 0);
         if (bf > 0) floor = Math.round(bf);
-        const vr = spine[roomId]?.vacancyRatio;
+        const vr = sp?.vacancyRatio;
         if (typeof vr === "number" && Number.isFinite(vr)) vacancyRatio = vr;
+        if (sp) {
+          // v249.1 — full spine snapshot for the pricing data foundation.
+          pd.spineFloor = Number(sp.bidFloor) || null;
+          pd.spineLive = Number(sp.livePrice) || null;
+          pd.spineFlash = Number(sp.flashPrice) || null;
+          pd.spineBase = Number(sp.baseRate) || null;
+          pd.competitorMin = sp.competitorMin ?? null;
+          pd.demandScore = Number(sp.demandScore) || null;
+          pd.spineSource = sp.source || null;
+          pd.factors = Array.isArray(sp.factors) ? sp.factors : null;
+        }
       } catch { /* spine unreachable → static floor + default band (never block a bid) */ }
+      pd.vacancyRatio = vacancyRatio;
       // Real intent: below-floor Negotiate bids stash the true price in the
       // message; every other flow's intent IS the submitted amount.
       const intent = extractPreferredPrice(message) ?? Number(amount);
+      pd.intent = Number.isFinite(intent) ? intent : null;
 
       // Only two cases can auto-act: /bid (flow="place") at/above floor →
       // instant accept, OR any below-floor-intent bid → auto-counter. Skip
@@ -365,6 +388,10 @@ export async function POST(req: NextRequest) {
       if (eligibleForAuto) {
         const score = await loadServerScore(customerId);
         const mode = await loadAutopilotMode(hotelId);
+        const band = counterBandForVacancy(vacancyRatio);
+        pd.tier = score.tier;
+        pd.mode = mode;
+        pd.band = band;
         action = resolveAutoAction({
           intent,
           floor,
@@ -373,9 +400,10 @@ export async function POST(req: NextRequest) {
           mode,
           // v249 Layer 2 — empty date widens the counter band (0.78), nearly
           // full closes it (1.0). Counter amount stays = floor (margin-safe).
-          counterBandMin: counterBandForVacancy(vacancyRatio),
+          counterBandMin: band,
         });
       }
+      pd.action = action.kind;
 
       if (intent < floor && action.kind === "counter") {
         // Below-floor near-floor → auto-counter at floor (any flow). The
@@ -413,6 +441,38 @@ export async function POST(req: NextRequest) {
       // need a join + /my-bids charge math reads it directly.
       numRooms: numRoomsClamped,
       capacityMismatch,
+    });
+    // v249.1 — AI pricing data foundation. Fire-and-forget; never awaited into
+    // the response, never throws. Captures the decision context for Phase-2
+    // model training. Outcome is read live from `bids` via bid_id, not copied.
+    void logPricingDecision({
+      bidId: bid?.id,
+      requestId: requestId || null,
+      hotelId,
+      roomId,
+      customerId,
+      flow: flow || null,
+      checkIn: pd.checkIn ?? null,
+      numRooms: numRoomsClamped,
+      bidAmount: Number(amount),
+      intentAmount: pd.intent ?? null,
+      staticFloor: pd.staticFloor ?? null,
+      spineFloor: pd.spineFloor ?? null,
+      spineLive: pd.spineLive ?? null,
+      spineFlash: pd.spineFlash ?? null,
+      spineBase: pd.spineBase ?? null,
+      competitorMin: pd.competitorMin ?? null,
+      vacancyRatio: pd.vacancyRatio ?? null,
+      demandScore: pd.demandScore ?? null,
+      spineSource: pd.spineSource ?? (dealId ? "none" : null),
+      bidderTier: pd.tier ?? null,
+      autopilotMode: pd.mode ?? null,
+      counterBand: pd.band ?? null,
+      decidedAction: pd.action ?? (dealId ? "flash" : "manual"),
+      decidedStatus: status,
+      counterAmount: counterAmount ?? null,
+      factors: pd.factors ?? null,
+      meta: dealId ? { dealId } : null,
     });
     return NextResponse.json({
       bid,
