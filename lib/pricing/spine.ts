@@ -25,6 +25,7 @@
 
 import { calculateDynamicPrice } from "@/lib/ai-pricing";
 import { snap100 } from "@/lib/price-snap";
+import { optimizePrice, optimizerEnabled } from "@/lib/pricing/optimizer";
 
 export interface SpineInput {
   /** rooms.floorPrice — hotel's negotiation floor (won't sell below). */
@@ -53,6 +54,16 @@ export interface SpinePrice {
   vacancyRatio: number | null;
   demandScore: number;       // 0..100
   factors: string[];         // human-readable "why" list
+  // ── v249.3 Phase 3 — AI yield optimizer (observability + flag-gated apply).
+  //   optimizedLive  → expected-revenue-maximizing price within the guard
+  //                    band. ALWAYS computed (so the shadow API + admin can
+  //                    compare rule-vs-optimized without flipping live).
+  //   optimizerApplied → true ONLY when PRICING_OPTIMIZER_ENABLED=1, in which
+  //                    case livePrice === optimizedLive. Default OFF → these
+  //                    are observability-only and livePrice stays the rule
+  //                    price (byte-identical to v249.2).
+  optimizedLive?: number;
+  optimizerApplied?: boolean;
 }
 
 // Live price is forced at least this far below the cheapest competitor.
@@ -95,6 +106,24 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
   // Never below the negotiation floor — hard lower bound.
   live = snap100(Math.max(live, floor));
 
+  // ── v249.3 Phase 3 — YIELD OPTIMIZER. Compute the expected-revenue-
+  //    maximizing price within a guarded band (floor + competitor cap +
+  //    ±12% rule-anchor + snap100). ALWAYS computed for observability.
+  //    Applied to `live` ONLY when PRICING_OPTIMIZER_ENABLED=1 — default
+  //    OFF keeps livePrice byte-identical to v249.2. Computed BEFORE the
+  //    flash price so flash derives from the (possibly optimized) live.
+  const opt = optimizePrice({
+    floor,
+    ruleLive: live,
+    competitorMin: comp,
+    vacancyRatio: vac ?? null,
+  });
+  const optimizerApplied = optimizerEnabled();
+  if (optimizerApplied) {
+    live = opt.optimizedLive;
+    factors.push("AI yield optimized");
+  }
+
   // ── Flash price — a clear discount under the live price, never below
   //    the flash floor. ────────────────────────────────────────────────
   const flashFloor = snap100(Math.max(floor, Number(inp.flashFloorPrice) || floor));
@@ -112,5 +141,7 @@ export function computeRoomDatePrice(inp: SpineInput): SpinePrice {
     vacancyRatio: vac ?? null,
     demandScore: dyn.demandScore,
     factors,
+    optimizedLive: opt.optimizedLive,
+    optimizerApplied,
   };
 }
