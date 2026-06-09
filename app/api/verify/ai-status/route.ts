@@ -25,5 +25,13 @@ export async function GET() {
         : AI_PROVIDER === "claude"
         ? "✅ Anthropic vision is LIVE."
         : "⚠️ Running on mock (metadata-only). Set GEMINI_API_KEY in Vercel + redeploy to activate real vision.",
+    // v153 — support-chat brain status (separate concern from verification).
+    support_chat: {
+      gemini: present(process.env.GEMINI_CHAT_API_KEY) || present(process.env.GEMINI_API_KEY),
+      gemini_dedicated_key: present(process.env.GEMINI_CHAT_API_KEY),
+      groq: present(process.env.GROQ_API_KEY),
+      anthropic: present(process.env.ANTHROPIC_API_KEY),
+      prefer: process.env.SUPPORT_AI_PREFER || "gemini (default)",
+    },
   });
 }
