@@ -9318,3 +9318,113 @@ Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
   is comfortable, but a bulk-reanalyze job MUST throttle.
 - **Never** hardcode the Gemini model — pin via `GEMINI_VERIFY_MODEL` so a
   model rename (Google deprecates fast) is an env change, not a redeploy.
+
+---
+
+## Spoken-Code Audio + Status Endpoint + Gemini Support-Chat Era (v251.2 → v251.7, 2026-05-31 / 2026-06-09)
+
+Six follow-ups after the v251/v251.1 real-vision verification ship: a key-free
+status endpoint, real spoken-code audio verification, and moving customer
+**support chat** onto Gemini (free) — plus three hardening passes on the voice
+support flow.
+
+### v251.2 — `/api/verify/ai-status` (key-free health check)
+`GET /api/verify/ai-status` returns the resolved verification provider +
+booleans (key present?) WITHOUT ever exposing a key value. Used to confirm a
+Vercel env-var redeploy worked by visiting one URL instead of guessing. In
+v251.4 it was extended with a `support_chat` block (gemini/groq/anthropic
+availability + `gemini_dedicated_key` + prefer).
+
+### v251.3 — Spoken-code verification via Gemini audio
+v251 left `code_ok`/`audio_ok` as METADATA-only (well-formed + DB match)
+because vision-on-stills can't hear audio. Gemini IS audio-capable, so:
+- The recorder's `code` step clip (already in `vp_videos.segments`) is fed to
+  Gemini via `fetchAsInlineMedia` (base64, caps ~18 MB).
+- `geminiTranscribeCode()` → strict-JSON `{transcript, spoken_code_ok,
+  spoken_room_ok, spoken_booking_ok}`. **Anti-spoof:** the model boolean is NOT
+  trusted alone — we also confirm the normalised expected `SB-XXXX` literally
+  appears in the transcript.
+- Vision + audio run **in parallel** in `analyzeGemini`. `buildVisionResult`
+  takes an optional `spoken` result: `code_ok`/`audio_ok` reflect the real
+  spoken check; `ocr_room`/`ocr_booking` satisfied by frame OR speech; −15
+  score + fraud issue when the code step exists but wasn't spoken correctly.
+- Fully optional — no clip / no key / any audio error → `spoken=null` →
+  exact previous metadata behaviour (no regression). Anthropic path stays
+  vision-only (no audio). The analyze route picks the `code` segment URL +
+  `expectedCode` from `vp_videos` and passes them through — no schema change.
+
+### v251.4 — Gemini-first support chat (Option A)
+Customer **support chat** now uses Gemini as the primary brain, via a SEPARATE
+key so its free quota is independent of verification:
+- `lib/support/gemini-agent.ts` (NEW) — `respondViaGemini` + `isGeminiSupportEnabled`.
+  `generateContent` with `responseMimeType:"application/json"` (guaranteed JSON,
+  same contract as the Groq agent). Reuses `SUPPORT_KB` + `lang-detect` +
+  user-context block. Falls back to `GEMINI_API_KEY` if the dedicated chat key
+  isn't set (shared-quota mode).
+- `lib/support/ai-agent.ts` — router is now 3-provider: default order
+  **Gemini → Groq → Anthropic**. `SUPPORT_AI_PREFER=gemini|groq|anthropic`
+  moves the named one first. First configured + successful wins; all-fail →
+  existing intent fallback bot. `isAIEnabled()` true when only Gemini set.
+- **Why a separate key:** Gemini free quota is **per-PROJECT, not per-key**.
+  The support key (`GEMINI_CHAT_API_KEY`) lives in its own AI Studio project so
+  support chat gets its own ~1000/day quota and won't eat verification's.
+
+### v251.5 → v251.7 — Voice support-chat hardening (3 passes)
+User hit three bugs on the voice + Gemini chat. Took three passes; the third
+fixed the root causes after auditing every aspect of the push-to-talk flow.
+
+- **v251.5** — (1) Raw JSON leaked as the reply (`{"reply":"…","confidence":0.9`
+  with no closing brace). ROOT CAUSE: `gemini-2.5-flash` spends output tokens on
+  internal reasoning, so `maxOutputTokens:800` TRUNCATED the JSON → parse failed
+  → raw shown. Fix: bump to 2048 + `parseJsonReply` regex-extracts just the
+  `reply` string on parse failure (never shows braces/keys), escalates to human
+  if even that fails. Same hardening in `groq-agent`. (2) Voice transcript
+  repeated — `onresult` concatenated every interim; now only the last interim.
+  (3) `sendingRef` synchronous double-send guard.
+- **v251.6** — content+time dedupe in `send()` (same text within 5s dropped) —
+  but the two voice sends are SEQUENTIAL (first completes + resets guard before
+  the second), and an invisible-whitespace diff slipped past exact-match.
+- **v251.7 (ROOT CAUSE)** — (1) Transcript duplication ("मेरा मेरा रिफंड मेरा
+  रिफंड कब…") is Android Chrome emitting CUMULATIVE final results. New
+  `mergeTranscript(accum, seg)` folds each final with prefix/suffix/overlap
+  dedup → clean on Android (cumulative) AND desktop (separate segments). Interim
+  shown for feedback only, never committed. (2) Double-send — THREE layers:
+  `pttSentRef` (exactly one auto-send per hold — Android fires `onend` twice;
+  cancel sets it too), `sendingRef` (overlapping), and `send()` dedupe now
+  WHITESPACE-NORMALISED + lowercased, 6s window (closes the v251.6 gap). With a
+  clean transcript the AI also stops spuriously escalating on garbled input.
+
+### Activation env vars (all Vercel, all optional → graceful fallback)
+| Env | Purpose | Without it |
+|---|---|---|
+| `GEMINI_API_KEY` | Verification vision + audio (own project) | mock metadata-only |
+| `GEMINI_CHAT_API_KEY` | Support chat (separate project → own quota) | falls back to GEMINI_API_KEY, then Groq, then fallback bot |
+| `ANTHROPIC_API_KEY` | Paid backup for BOTH (set `AI_VERIFY_PROVIDER=claude` / `SUPPORT_AI_PREFER=anthropic` to force) | unused |
+| `GROQ_API_KEY` | Support chat free fallback (existing) | skipped |
+
+Live state (verified via `/api/verify/ai-status`): verification `provider: gemini`,
+support chat `gemini_dedicated_key: true`. All shipped via PRs #214–#220.
+
+### Things to Avoid (v251.2 → v251.7 Era)
+- **Never** show a support-chat reply without going through `parseJsonReply`'s
+  truncation-salvage path. `gemini-2.5-flash` is a thinking model — a tight
+  `maxOutputTokens` truncates the JSON and the raw `{"reply"…,"confidence"…`
+  leaks to the user. Keep `maxOutputTokens >= 2048` for chat + the regex
+  fallback.
+- **Never** trust a vision/audio model's boolean alone for the spoken code —
+  `geminiTranscribeCode` ALSO checks the normalised `SB-XXXX` literally appears
+  in the transcript (anti-spoof).
+- **Never** dedupe support sends with an EXACT `===` string compare — voice
+  produces invisible-whitespace variants. Compare whitespace-normalised +
+  lowercased within a few-second window.
+- **Never** concatenate raw SpeechRecognition finals — Android Chrome emits
+  cumulative results and they repeat. Use `mergeTranscript` (prefix/suffix/
+  overlap dedup).
+- **Never** rely on a single double-send guard for voice. Android fires `onend`
+  twice; the sends are sequential, not overlapping. Need `pttSentRef`
+  (per-hold) PLUS the content dedupe.
+- **Never** give support chat the SAME Gemini key/project as verification if
+  quota isolation matters — Gemini free quota is per-project. Use a separate
+  AI Studio project for `GEMINI_CHAT_API_KEY`.
+- **Never** route audio to the Anthropic verification path — it's vision-only;
+  spoken-code only runs on the Gemini provider.
