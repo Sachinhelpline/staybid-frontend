@@ -20,6 +20,28 @@ import { w as wstr } from "@/lib/support/widget-strings";
 type SupportSender = "user" | "ai" | "agent" | "system";
 type SupportStatus = "ai_active" | "escalated" | "agent_active" | "resolved" | "closed";
 
+// v251.7 — fold a new speech-recognition final segment into the running
+// transcript with prefix / suffix / overlap dedup. Fixes Android Chrome's
+// cumulative-final duplication ("मेरा मेरा रिफंड मेरा रिफंड कब…") while still
+// handling desktop Chrome's separate-segment finals correctly.
+function mergeTranscript(accum: string, seg: string): string {
+  const a = (accum || "").replace(/\s+/g, " ").trim();
+  const s = (seg || "").replace(/\s+/g, " ").trim();
+  if (!s) return a;
+  if (!a) return s;
+  // Cumulative re-finalisation (Android): new segment extends the old → use it.
+  if (s.startsWith(a)) return s;
+  // Exact duplicate of the whole accum, or accum already ends with it → skip.
+  if (a === s || a.endsWith(s)) return a;
+  // Overlap: longest suffix of accum that is a prefix of seg → stitch once.
+  const maxOv = Math.min(a.length, s.length);
+  for (let k = maxOv; k > 0; k -= 1) {
+    if (a.slice(-k) === s.slice(0, k)) return (a + s.slice(k)).trim();
+  }
+  // Disjoint → append.
+  return `${a} ${s}`;
+}
+
 type Message = {
   id: string;
   conversation_id: string;
@@ -1328,6 +1350,10 @@ function ChatView({
   // even if React hasn't flushed the latest setInput yet.
   const pttFinalTextRef = useRef<string>("");
   const pttActiveRef = useRef<boolean>(false);
+  // One auto-send per hold. Reset on each startPushToTalk; set true the moment
+  // we fire send() from onend, so a second onend (Android fires it on its own
+  // silence timeout + again on release) can never send twice.
+  const pttSentRef = useRef<boolean>(false);
 
   function startPushToTalk() {
     if (typeof window === "undefined") return;
@@ -1339,6 +1365,7 @@ function ChatView({
     // Clear previous state
     pttFinalTextRef.current = "";
     pttActiveRef.current = true;
+    pttSentRef.current = false;
     setInput("");
 
     try {
@@ -1350,20 +1377,22 @@ function ChatView({
       r.interimResults = true;
       r.maxAlternatives = 1;
       r.onresult = (e: any) => {
-        // Build from the full results list each time. Only ONE interim
-        // (the last non-final) is appended — concatenating every interim
-        // piece is what produced the "मैं बुकिंग … मैं बुकिंग …" repetition,
-        // because Chrome keeps re-emitting growing interim hypotheses.
-        let final = "";
+        // ROOT-CAUSE FIX (v251.7): Android Chrome emits CUMULATIVE final
+        // results ("मेरा" → "मेरा रिफंड" → "मेरा रिफंड कब"…), and naive
+        // concatenation repeated them ("मेरा मेरा रिफंड मेरा रिफंड कब…").
+        // mergeTranscript() folds each new final into the running text with
+        // prefix / suffix / overlap dedup, so cumulative OR separate-segment
+        // browsers both produce a clean transcript.
+        let finalText = "";
         let lastInterim = "";
         for (let i = 0; i < e.results.length; i += 1) {
           const piece = e.results[i][0].transcript;
-          if (e.results[i].isFinal) final += piece + " ";
+          if (e.results[i].isFinal) finalText = mergeTranscript(finalText, piece);
           else lastInterim = piece;
         }
-        const composed = (final + lastInterim).replace(/\s+/g, " ").trim();
-        pttFinalTextRef.current = composed;
-        setInput(composed);
+        pttFinalTextRef.current = finalText.trim();
+        // Interim shown only for live feedback — never committed/sent.
+        setInput(mergeTranscript(finalText, lastInterim).trim());
       };
       r.onerror = () => {
         pttActiveRef.current = false;
@@ -1371,11 +1400,12 @@ function ChatView({
       };
       r.onend = () => {
         setListening(false);
-        // Auto-send if we got text from this PTT session
-        if (pttActiveRef.current && pttFinalTextRef.current.trim().length > 0) {
+        // Auto-send EXACTLY ONCE per hold. pttSentRef guards against Android
+        // firing onend twice (silence-timeout + release).
+        if (!pttSentRef.current && pttActiveRef.current && pttFinalTextRef.current.trim().length > 0) {
+          pttSentRef.current = true;
           pttActiveRef.current = false;
           const finalText = pttFinalTextRef.current.trim();
-          // Slight delay so input state visibly clears + UI updates
           setTimeout(() => send(finalText), 80);
         } else {
           pttActiveRef.current = false;
@@ -1391,7 +1421,8 @@ function ChatView({
   }
 
   function endPushToTalk() {
-    // r.onend will fire and auto-send (if any text was captured)
+    // r.onend will fire and auto-send (if any text was captured). Idempotent —
+    // stop() on an already-stopped recognizer is a harmless no-op.
     try {
       recognitionRef.current?.stop();
     } catch {}
@@ -1400,6 +1431,7 @@ function ChatView({
   function cancelPushToTalk() {
     // User dragged away → abort without sending
     pttActiveRef.current = false;
+    pttSentRef.current = true; // block any pending onend auto-send
     pttFinalTextRef.current = "";
     try {
       recognitionRef.current?.abort();
@@ -1486,10 +1518,12 @@ function ChatView({
     // don't race with React state). Falls back to input state.
     const text = (overrideText ?? input).trim();
     if (!text || sending || sendingRef.current) return;
-    // Drop an identical message resent within 5s (double-fire from voice /
-    // pointer events). Typing the same thing again after 5s still works.
+    // Drop an identical message resent within 6s (double-fire from voice /
+    // pointer events). Compare WHITESPACE-NORMALISED so an invisible spacing
+    // difference can't slip a duplicate through. Re-typing after 6s still works.
+    const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
     const nowTs = Date.now();
-    if (text === lastSendRef.current.text && nowTs - lastSendRef.current.at < 5000) {
+    if (norm(text) === norm(lastSendRef.current.text) && nowTs - lastSendRef.current.at < 6000) {
       setInput("");
       return;
     }
