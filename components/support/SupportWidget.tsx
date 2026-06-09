@@ -1252,6 +1252,10 @@ function ChatView({
   // simultaneous calls (e.g. SpeechRecognition firing onend twice) could both
   // pass the `sending` check before React flushes. This ref blocks instantly.
   const sendingRef = useRef(false);
+  // Content+time dedupe — kills SEQUENTIAL double-sends (pointerUp + pointerLeave
+  // both ending PTT, or Android Chrome firing onend twice with a gap). If the
+  // exact same text was just sent, drop the duplicate.
+  const lastSendRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
   const [aiTyping, setAiTyping] = useState(false);
   // v157 — voice recognition (speech-to-text). Uses browser-native
   // Web Speech API — free, no API key. Chrome/Safari/Edge supported.
@@ -1482,6 +1486,14 @@ function ChatView({
     // don't race with React state). Falls back to input state.
     const text = (overrideText ?? input).trim();
     if (!text || sending || sendingRef.current) return;
+    // Drop an identical message resent within 5s (double-fire from voice /
+    // pointer events). Typing the same thing again after 5s still works.
+    const nowTs = Date.now();
+    if (text === lastSendRef.current.text && nowTs - lastSendRef.current.at < 5000) {
+      setInput("");
+      return;
+    }
+    lastSendRef.current = { text, at: nowTs };
     sendingRef.current = true;
     setSending(true);
     setInput("");
