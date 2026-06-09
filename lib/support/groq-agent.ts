@@ -135,8 +135,23 @@ function parseJsonReply(text: string): {
       escalationReason: parsed.escalationReason || null,
     };
   } catch {
+    // Truncated / malformed JSON — never leak raw braces to the user; pull
+    // just the "reply" string out of the partial JSON.
+    const m = (text || "").match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (m && m[1]) {
+      const reply = m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\\\/g, "\\").trim();
+      if (reply) {
+        const conf = text.match(/"confidence"\s*:\s*([0-9.]+)/);
+        return {
+          reply,
+          confidence: conf ? clamp01(Number(conf[1])) : 0.5,
+          shouldEscalate: /"shouldEscalate"\s*:\s*true/.test(text),
+          escalationReason: null,
+        };
+      }
+    }
     return {
-      reply: text || "Sorry, kuch problem ho gayi.",
+      reply: "Sorry, kuch problem ho gayi. Main aapko team se connect kar raha hoon.",
       confidence: 0.3,
       shouldEscalate: true,
       escalationReason: "low_confidence",

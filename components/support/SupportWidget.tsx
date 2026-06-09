@@ -1248,6 +1248,10 @@ function ChatView({
   > | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // Synchronous double-send guard. setSending(true) is async, so two near-
+  // simultaneous calls (e.g. SpeechRecognition firing onend twice) could both
+  // pass the `sending` check before React flushes. This ref blocks instantly.
+  const sendingRef = useRef(false);
   const [aiTyping, setAiTyping] = useState(false);
   // v157 — voice recognition (speech-to-text). Uses browser-native
   // Web Speech API — free, no API key. Chrome/Safari/Edge supported.
@@ -1342,14 +1346,18 @@ function ChatView({
       r.interimResults = true;
       r.maxAlternatives = 1;
       r.onresult = (e: any) => {
+        // Build from the full results list each time. Only ONE interim
+        // (the last non-final) is appended — concatenating every interim
+        // piece is what produced the "मैं बुकिंग … मैं बुकिंग …" repetition,
+        // because Chrome keeps re-emitting growing interim hypotheses.
         let final = "";
-        let interim = "";
+        let lastInterim = "";
         for (let i = 0; i < e.results.length; i += 1) {
           const piece = e.results[i][0].transcript;
           if (e.results[i].isFinal) final += piece + " ";
-          else interim += piece;
+          else lastInterim = piece;
         }
-        const composed = (final + interim).trim();
+        const composed = (final + lastInterim).replace(/\s+/g, " ").trim();
         pttFinalTextRef.current = composed;
         setInput(composed);
       };
@@ -1473,7 +1481,8 @@ function ChatView({
     // v158 — accept explicit text (used by push-to-talk auto-send so we
     // don't race with React state). Falls back to input state.
     const text = (overrideText ?? input).trim();
-    if (!text || sending) return;
+    if (!text || sending || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
     setInput("");
 
@@ -1535,6 +1544,7 @@ function ChatView({
     } finally {
       setAiTyping(false);
       setSending(false);
+      sendingRef.current = false;
     }
   }
 

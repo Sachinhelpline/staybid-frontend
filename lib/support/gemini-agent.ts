@@ -87,7 +87,10 @@ export async function respondViaGemini(opts: {
       contents,
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 800,
+        // Bigger budget: gemini-2.5-flash spends tokens on internal
+        // reasoning, so a tight cap truncates the JSON (no closing brace)
+        // and the reply leaks as raw text. 2048 leaves ample room.
+        maxOutputTokens: 2048,
         responseMimeType: "application/json",
       },
     }),
@@ -132,9 +135,9 @@ function parseJsonReply(text: string): {
   shouldEscalate: boolean;
   escalationReason: string | null;
 } {
+  // Gemini honours responseMimeType:json, but strip any stray fences just in case.
+  const cleaned = text.replace(/```json/gi, "```").replace(/```/g, "").trim();
   try {
-    // Gemini honours responseMimeType:json, but strip any stray fences just in case.
-    const cleaned = text.replace(/```json/gi, "```").replace(/```/g, "").trim();
     const parsed = JSON.parse(cleaned);
     return {
       reply: String(parsed.reply || "").trim() || "Sorry, kuch problem ho gayi. Phir try kijiye.",
@@ -143,8 +146,24 @@ function parseJsonReply(text: string): {
       escalationReason: parsed.escalationReason || null,
     };
   } catch {
+    // Truncated / malformed JSON (e.g. token-cut mid-object). NEVER leak the
+    // raw braces/keys to the user — pull just the "reply" string out.
+    const m = cleaned.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (m && m[1]) {
+      const reply = m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\\\/g, "\\").trim();
+      if (reply) {
+        const conf = cleaned.match(/"confidence"\s*:\s*([0-9.]+)/);
+        return {
+          reply,
+          confidence: conf ? clamp01(Number(conf[1])) : 0.5,
+          shouldEscalate: /"shouldEscalate"\s*:\s*true/.test(cleaned),
+          escalationReason: null,
+        };
+      }
+    }
+    // Couldn't even find a reply — escalate to a human rather than show JSON.
     return {
-      reply: text || "Sorry, kuch problem ho gayi.",
+      reply: "Sorry, kuch problem ho gayi. Main aapko team se connect kar raha hoon.",
       confidence: 0.3,
       shouldEscalate: true,
       escalationReason: "low_confidence",
