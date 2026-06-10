@@ -145,7 +145,12 @@ export function shapeKioskDeal(
   const floor = Number(d.floorPrice) || Number(room.floorPrice) || 0;
   const mrp = Number(room.mrp) || Math.round((floor || ai) * 1.45);
   const discount = Number(d.discount) || (mrp > 0 && ai > 0 ? Math.round(((mrp - ai) / mrp) * 100) : 0);
-  const { pct, trend } = priceDelta(hotelId, discount, bucket);
+  // Real per-hotel dynamic discount drives the displayed % (NOT a clamped
+  // synthetic delta). A flash deal is always a price DROP, so trend is down.
+  // `priceDelta` is kept for any ticker that still wants the jittered band,
+  // but the card-facing number must reflect the live spine discount.
+  const deltaPct = Math.max(0, Math.round(discount));
+  const trend: "up" | "down" = "down";
 
   const hotelImgs = (Array.isArray(hotel.images) ? hotel.images : []).filter(Boolean);
   const roomImgs = (Array.isArray(room.images) ? room.images : []).filter(Boolean);
@@ -178,7 +183,7 @@ export function shapeKioskDeal(
     floorPrice: floor,
     mrp,
     discount,
-    deltaPct: pct,
+    deltaPct,
     trend,
     unitsFree: Number(d.unitsFree) || 0,
     distanceKm,

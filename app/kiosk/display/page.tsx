@@ -160,9 +160,11 @@ function DisplayInner() {
               <div className="kd-price-block">
                 {current.mrp > current.aiPrice ? <div className="kd-mrp">{formatINR(current.mrp)}</div> : null}
                 <div className="kd-price">{formatINR(current.aiPrice)}<span>/night</span></div>
-                <div className={`kd-delta ${current.trend === "down" ? "down" : "up"}`}>
-                  {current.trend === "down" ? "▼" : "▲"} {Math.abs(current.deltaPct)}% today
-                </div>
+                {current.mrp > current.aiPrice ? (
+                  <div className="kd-delta down">💰 Save {formatINR(current.mrp - current.aiPrice)}</div>
+                ) : current.deltaPct > 0 ? (
+                  <div className="kd-delta down">⚡ {current.deltaPct}% off</div>
+                ) : null}
               </div>
 
               {current.amenities.length > 0 && (
@@ -293,6 +295,44 @@ function DisplayInner() {
 
         /* very small / narrow screens — trim secondary chrome */
         @media (max-width:520px) { .kd-tagline,.kd-loc{ display:none; } }
+
+        /* ── MOBILE / SMALL PHONES — explicit vw-based sizing so nothing
+           ever over-sizes, cuts, or shrinks. On phones the stage stacks
+           (portrait), hero shrinks, fonts read from vw not vmin. ───────── */
+        @media (max-width:640px) {
+          .kd-header { gap:2.5vw; padding:2.5vw 3.5vw; }
+          .kd-name { font-size:6.2vw; }
+          .kd-clock { font-size:5vw; }
+          .kd-live { font-size:3vw; }
+          .kd-ticker-track { gap:6vw; padding:2vw 0; animation-duration:30s; }
+          .kd-tick { font-size:3.4vw; gap:2vw; }
+          /* hero must NOT eat the whole screen on a phone — cap its share */
+          .kd-stage { gap:3.5vw; padding:3.5vw 4vw; }
+          .kd-hero { flex:0 0 38vh; }
+          .kd-hero-name { font-size:8vw; }
+          .kd-hero-meta { font-size:3.6vw; gap:2.5vw; }
+          .kd-hero-disc { font-size:4vw; padding:1.4vw 3vw; top:3vw; left:3vw; }
+          .kd-hero-units { font-size:3vw; padding:1.2vw 2.6vw; top:3vw; right:3vw; }
+          .kd-info { gap:3vw; }
+          .kd-info-room { font-size:3.6vw; }
+          .kd-price { font-size:13vw; }
+          .kd-mrp { font-size:4vw; }
+          .kd-delta { font-size:3.4vw; padding:1vw 3vw; }
+          .kd-amen-chip { font-size:3vw; padding:1.2vw 3vw; }
+          .kd-qr { gap:3.5vw; padding:3.5vw; }
+          .kd-qr-img { width:26vw; height:26vw; }
+          .kd-qr-h { font-size:4.4vw; }
+          .kd-qr-s { font-size:3vw; }
+          .kd-footer { gap:2.5vw; padding:2.5vw 4vw; }
+          .kd-fstats { gap:4vw; font-size:3.2vw; }
+          .kd-cta { font-size:4vw; padding:2vw 5vw; }
+        }
+        /* very narrow phones (iPhone SE etc.) — drop the live ticker entirely
+           so the hero + QR always fit above the fold */
+        @media (max-width:380px) {
+          .kd-ticker { display:none; }
+          .kd-hero { flex:0 0 34vh; }
+        }
       `}</style>
     </div>
   );
