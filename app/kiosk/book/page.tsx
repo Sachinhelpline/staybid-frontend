@@ -395,15 +395,17 @@ function BookInner() {
       {/* Premium cozy theme — self-contained, cream + champagne (matches customer frontend) */}
       <style jsx global>{`
         html, body { margin:0; padding:0; background:#FAF5EB; overflow:hidden; }
+        * { box-sizing:border-box; }
         .kb-root {
           position:fixed; inset:0; z-index:999999; display:flex; flex-direction:column;
+          height:100dvh; width:100vw;
           color:#1F1A0F; font-family:'Inter',system-ui,sans-serif;
           background:
             radial-gradient(1100px 560px at 18% -5%, rgba(201,166,107,.14), transparent 60%),
             radial-gradient(900px 500px at 92% 25%, rgba(217,190,130,.12), transparent 55%),
             linear-gradient(180deg,#FFFCF6 0%,#F5EFE0 55%,#FAF5EB 100%);
         }
-        .kb-top { display:flex; align-items:center; gap:16px; padding:14px 26px; background:rgba(255,252,246,.85); backdrop-filter:blur(8px); border-bottom:1px solid #E8DCC8; }
+        .kb-top { flex:0 0 auto; display:flex; align-items:center; gap:16px; padding:14px 26px; background:rgba(255,252,246,.85); backdrop-filter:blur(8px); border-bottom:1px solid #E8DCC8; overflow:hidden; }
         .kb-brand { display:flex; align-items:center; gap:9px; }
         .kb-brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:linear-gradient(135deg,#D9BE82,#C9A66B); color:#1F1A0F; font-size:18px; box-shadow:0 4px 12px rgba(201,166,107,.4); }
         .kb-brand-name { font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:700; letter-spacing:.3px; }
@@ -533,7 +535,23 @@ function BookInner() {
         .kb-donerow b { color:#1F1A0F; }
         .kb-smsbox { margin-top:12px; background:#EAF2E2; border:1px solid #CFE0BD; color:#5C7048; font-size:12px; padding:9px; border-radius:8px; text-align:center; }
 
-        .kb-footstrip { display:flex; align-items:center; justify-content:center; gap:10px; padding:9px; background:rgba(255,252,246,.7); border-top:1px solid #E8DCC8; font-size:11px; color:#9C8E72; }
+        .kb-footstrip { flex:0 0 auto; display:flex; align-items:center; justify-content:center; gap:10px; padding:9px; background:rgba(255,252,246,.7); border-top:1px solid #E8DCC8; font-size:11px; color:#9C8E72; white-space:nowrap; overflow:hidden; }
+
+        /* Device-native: on phones the centred nav + location push the header
+           off-screen. They're decorative (the flow has back buttons +
+           headings), so hide them and let the brand breathe. */
+        @media (max-width:760px){
+          .kb-nav { display:none; }
+          .kb-brand-tag { display:none; }
+          .kb-loc { display:none; }
+          .kb-pane { padding:18px 16px; }
+          .kb-h1 { font-size:34px; }
+          .kb-tour { grid-template-columns:1fr; }
+        }
+        @media (max-width:380px){
+          .kb-brand-name { font-size:22px; }
+          .kb-h2 { font-size:25px; }
+        }
       `}</style>
     </div>
   );
