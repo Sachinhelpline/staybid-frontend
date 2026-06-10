@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/videos", label: "Hotel Videos", icon: "🎬" },
   { href: "/admin/complaints", label: "Complaints", icon: "🚨" },
   { href: "/admin/pricing", label: "Pricing & Deals", icon: "💰" },
+  { href: "/kiosk", label: "Offline Kiosk", icon: "🖥️", external: true },
   { href: "/admin/hold-config", label: "Hold Config", icon: "🔒" },
   { href: "/admin/holds", label: "Active Holds", icon: "⏱" },
   { href: "/admin/analytics", label: "Bid Analytics", icon: "📊" },
@@ -135,11 +136,18 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
           style={{ flex: 1, padding: "6px 0", overflowY: "auto", overflowX: "hidden", minHeight: 0 }}
         >
           {NAV.map((item) => {
-            const active = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+            const external = (item as any).external === true;
+            const active = external
+              ? false
+              : item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                // Kiosk is a chrome-less fullscreen surface — open in a new tab
+                // so the admin never gets trapped without the sidebar.
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener noreferrer" : undefined}
                 onClick={isMobile ? onMobileClose : undefined}
                 title={effectiveCollapsed ? item.label : undefined}
                 style={{

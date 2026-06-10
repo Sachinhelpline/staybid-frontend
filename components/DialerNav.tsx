@@ -338,6 +338,7 @@ export function DialerNav() {
       pathname.startsWith("/agent") ||
       pathname.startsWith("/onboard") ||
       pathname.startsWith("/order") ||
+      pathname.startsWith("/kiosk") ||
       pathname.startsWith("/bid") ||
       pathname === "/" ||
       pathname.startsWith("/discover") ||
