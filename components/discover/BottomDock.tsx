@@ -54,6 +54,7 @@ export function BottomDock() {
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/order") ||     // public QR food-ordering page
+    pathname.startsWith("/kiosk") ||     // offline kiosk = its own fullscreen surface
     pathname.startsWith("/auth");        // auth screens should be chrome-free
   if (hidden) return null;
 
