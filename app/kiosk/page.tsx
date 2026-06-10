@@ -1,6 +1,6 @@
 "use client";
 //
-// StayBid Offline Kiosk — HUB / launcher
+// StayBid Offline Kiosk — HUB / launcher (premium cozy)
 //
 // Entry point for setting up or demoing a kiosk unit. Pick a physical
 // location, then open either the BIG DISPLAY board or the TOUCHSCREEN
@@ -16,7 +16,7 @@ export default function KioskHubPage() {
 
   return (
     <div className="kh-screen">
-      <div className="kh-tag">STAYBID × OFFLINE KIOSK</div>
+      <div className="kh-tag">StayBid · Offline Kiosk</div>
       <h1 className="kh-title">Offline Kiosk <span>Control</span></h1>
       <p className="kh-sub">Same-day flash deals · live from hotels &amp; admin · zero staff</p>
 
@@ -31,18 +31,18 @@ export default function KioskHubPage() {
         <div className="kh-actions">
           <Link className="kh-btn kh-display" href={`/kiosk/display?loc=${loc}`}>
             <div className="kh-bicon">📊</div>
-            <div className="kh-btxt"><b>Big Display Board</b><span>Stock-market style · auto-refresh</span></div>
+            <div className="kh-btxt"><b>Big Display Board</b><span>Live price ticker · auto-refresh</span></div>
           </Link>
           <Link className="kh-btn kh-book" href={`/kiosk/book?loc=${loc}`}>
-            <div className="kh-bicon">🖥️</div>
-            <div className="kh-btxt"><b>Touchscreen Booking</b><span>3-step same-day flash booking</span></div>
+            <div className="kh-bicon">🏨</div>
+            <div className="kh-btxt"><b>Touchscreen Booking</b><span>Browse · tour · upgrade · pay</span></div>
           </Link>
         </div>
       </div>
 
       <div className="kh-note">
         Each physical unit runs <code>/kiosk/display</code> (the screen) + <code>/kiosk/book</code> (the kiosk),
-        each with its own <code>?loc=</code>. Deals, prices and availability are 100% live from the same
+        each with its own <code>?loc=</code>. Deals, prices, rooms &amp; availability are 100% live from the same
         StayBid backend that powers the customer, hotel and admin panels.
       </div>
 
@@ -61,33 +61,33 @@ export default function KioskHubPage() {
       <style jsx global>{`
         html, body { margin:0; padding:0; }
         .kh-screen {
-          min-height:100vh; box-sizing:border-box; padding:48px 24px 60px;
-          background:radial-gradient(120% 120% at 80% 0%,#14000f 0%,#0a0a0f 55%,#050008 100%);
-          color:#f0f0f8; font-family:'Barlow Condensed','Rajdhani',system-ui,sans-serif;
-          max-width:900px; margin:0 auto;
+          min-height:100vh; box-sizing:border-box; padding:52px 24px 64px;
+          background:
+            radial-gradient(1100px 560px at 80% -5%, rgba(201,166,107,.14), transparent 60%),
+            linear-gradient(180deg,#FFFCF6 0%,#F5EFE0 55%,#FAF5EB 100%);
+          color:#1F1A0F; font-family:'Inter',system-ui,sans-serif; max-width:920px; margin:0 auto;
         }
-        .kh-tag { display:inline-block; background:#FF6B00; color:#000; font-family:monospace; font-size:11px; font-weight:700; letter-spacing:3px; padding:5px 14px; }
-        .kh-title { font-family:'Rajdhani',sans-serif; font-size:48px; font-weight:700; margin:18px 0 4px; line-height:1; }
-        .kh-title span { color:#FF6B00; }
-        .kh-sub { font-family:monospace; font-size:13px; color:#888899; letter-spacing:1px; margin:0 0 28px; }
-        .kh-card { background:#12121a; border:1px solid rgba(255,107,0,.25); border-radius:12px; padding:24px; }
-        .kh-label { display:block; font-family:monospace; font-size:11px; letter-spacing:2px; color:#FF6B00; margin-bottom:8px; }
-        .kh-select { width:100%; background:#0a0a0f; border:1px solid rgba(255,107,0,.3); color:#fff; border-radius:8px; padding:13px 14px; font-size:17px; }
+        .kh-tag { display:inline-block; background:#F2EAD8; color:#9C7E33; font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; padding:6px 14px; border-radius:999px; }
+        .kh-title { font-family:'Cormorant Garamond',Georgia,serif; font-size:52px; font-weight:700; margin:18px 0 4px; line-height:1; }
+        .kh-title span { color:#9C7E33; font-style:italic; }
+        .kh-sub { font-size:15px; color:#6E5430; margin:0 0 30px; }
+        .kh-card { background:#FFFCF6; border:1px solid #E8DCC8; border-radius:20px; padding:26px; box-shadow:0 10px 30px rgba(31,26,15,.07); }
+        .kh-label { display:block; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#9C7E33; margin-bottom:8px; }
+        .kh-select { width:100%; background:#FAF5EB; border:1px solid #E0D2B4; color:#1F1A0F; border-radius:12px; padding:14px; font-size:17px; }
         .kh-actions { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px; }
         @media (max-width:620px){ .kh-actions{ grid-template-columns:1fr; } }
-        .kh-btn { display:flex; align-items:center; gap:14px; text-decoration:none; color:#fff; border-radius:10px; padding:18px; border:1px solid rgba(255,255,255,.1); }
-        .kh-display { background:linear-gradient(135deg,#1a0a00,#0e0e16); }
-        .kh-book { background:linear-gradient(135deg,#001a0a,#0e0e16); }
-        .kh-bicon { font-size:34px; }
-        .kh-btxt b { display:block; font-family:'Rajdhani',sans-serif; font-size:19px; }
-        .kh-btxt span { font-family:monospace; font-size:11px; color:#888899; }
-        .kh-note { margin-top:22px; font-size:14px; color:#bbbbcc; line-height:1.7; background:rgba(255,107,0,.06); border:1px solid rgba(255,107,0,.2); border-left:3px solid #FF6B00; padding:14px 18px; }
-        .kh-note code { font-family:monospace; color:#FFB300; }
+        .kh-btn { display:flex; align-items:center; gap:14px; text-decoration:none; color:#1F1A0F; border-radius:14px; padding:20px; border:1px solid #E8DCC8; background:#FAF5EB; transition:transform .12s,box-shadow .12s; }
+        .kh-btn:active { transform:scale(.98); box-shadow:0 10px 26px rgba(201,166,107,.22); }
+        .kh-bicon { width:52px; height:52px; display:grid; place-items:center; border-radius:13px; background:linear-gradient(135deg,#D9BE82,#C9A66B); font-size:26px; }
+        .kh-btxt b { display:block; font-family:'Cormorant Garamond',serif; font-size:21px; }
+        .kh-btxt span { font-size:12px; color:#6E5430; }
+        .kh-note { margin-top:22px; font-size:14px; color:#4A3820; line-height:1.7; background:#FBF6EC; border:1px solid #EADFC9; border-left:3px solid #C9A66B; padding:14px 18px; border-radius:10px; }
+        .kh-note code { color:#9C7E33; background:#F2EAD8; padding:1px 6px; border-radius:5px; }
         .kh-locs { margin-top:24px; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
-        .kh-loc { background:#12121a; border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:12px 14px; }
-        .kh-loc-name { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; }
+        .kh-loc { background:#FFFCF6; border:1px solid #E8DCC8; border-radius:12px; padding:13px 15px; }
+        .kh-loc-name { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:16px; }
         .kh-loc-links { display:flex; gap:14px; margin-top:6px; }
-        .kh-loc-links a { font-family:monospace; font-size:12px; color:#FF6B00; text-decoration:none; }
+        .kh-loc-links a { font-size:13px; color:#9C7E33; text-decoration:none; font-weight:600; }
       `}</style>
     </div>
   );

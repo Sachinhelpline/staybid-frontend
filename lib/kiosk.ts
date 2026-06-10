@@ -109,7 +109,10 @@ export type KioskDeal = {
   city: string;
   area: string;
   stars: number;
+  avgRating: number;
   image: string;
+  images: string[];
+  amenities: string[];
   aiPrice: number;
   floorPrice: number;
   mrp: number;
@@ -144,8 +147,17 @@ export function shapeKioskDeal(
   const discount = Number(d.discount) || (mrp > 0 && ai > 0 ? Math.round(((mrp - ai) / mrp) * 100) : 0);
   const { pct, trend } = priceDelta(hotelId, discount, bucket);
 
-  const imgs = Array.isArray(hotel.images) ? hotel.images : Array.isArray(room.images) ? room.images : [];
-  const image = (imgs && imgs[0]) || PLACEHOLDER_IMG;
+  const hotelImgs = (Array.isArray(hotel.images) ? hotel.images : []).filter(Boolean);
+  const roomImgs = (Array.isArray(room.images) ? room.images : []).filter(Boolean);
+  const images = Array.from(new Set([...hotelImgs, ...roomImgs])).filter(Boolean);
+  const gallery = images.length ? images : [PLACEHOLDER_IMG];
+  const image = gallery[0];
+  const amenities = Array.from(
+    new Set([
+      ...(Array.isArray(hotel.amenities) ? hotel.amenities : []),
+      ...(Array.isArray(room.amenities) ? room.amenities : []),
+    ]),
+  ).filter(Boolean).slice(0, 12);
 
   const distanceKm =
     origin && hotel.lat && hotel.lng ? haversineKm(origin.lat, origin.lng, Number(hotel.lat), Number(hotel.lng)) : 0;
@@ -158,7 +170,10 @@ export function shapeKioskDeal(
     city: String(d.city || hotel.city || ""),
     area: String(hotel.area || ""),
     stars: Number(hotel.starRating || hotel.stars || 3),
+    avgRating: Number(hotel.avgRating) || 0,
     image,
+    images: gallery,
+    amenities,
     aiPrice: ai,
     floorPrice: floor,
     mrp,
