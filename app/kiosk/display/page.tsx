@@ -306,23 +306,24 @@ function DisplayInner() {
           .kd-live { font-size:3vw; }
           .kd-ticker-track { gap:6vw; padding:2vw 0; animation-duration:30s; }
           .kd-tick { font-size:3.4vw; gap:2vw; }
-          /* hero must NOT eat the whole screen on a phone — cap its share */
-          .kd-stage { gap:3.5vw; padding:3.5vw 4vw; }
-          .kd-hero { flex:0 0 38vh; }
-          .kd-hero-name { font-size:8vw; }
-          .kd-hero-meta { font-size:3.6vw; gap:2.5vw; }
-          .kd-hero-disc { font-size:4vw; padding:1.4vw 3vw; top:3vw; left:3vw; }
-          .kd-hero-units { font-size:3vw; padding:1.2vw 2.6vw; top:3vw; right:3vw; }
-          .kd-info { gap:3vw; }
-          .kd-info-room { font-size:3.6vw; }
-          .kd-price { font-size:13vw; }
+          /* hero capped so the price + QR + footer always sit above the fold;
+             stage packs from the TOP (not centered) + can scroll as a safety */
+          .kd-stage { gap:3vw; padding:3vw 4vw; overflow-y:auto; }
+          .kd-hero { flex:0 0 30vh; min-height:30vh; }
+          .kd-hero-name { font-size:7vw; }
+          .kd-hero-meta { font-size:3.4vw; gap:2.5vw; }
+          .kd-hero-disc { font-size:3.6vw; padding:1.4vw 3vw; top:3vw; left:3vw; }
+          .kd-hero-units { font-size:2.8vw; padding:1.2vw 2.6vw; top:3vw; right:3vw; }
+          .kd-info { gap:2.4vw; justify-content:flex-start; }
+          /* secondary rows hidden on phones so the QR never clips behind footer */
+          .kd-info-room, .kd-amen, .kd-dots { display:none; }
+          .kd-price { font-size:12vw; }
           .kd-mrp { font-size:4vw; }
           .kd-delta { font-size:3.4vw; padding:1vw 3vw; }
-          .kd-amen-chip { font-size:3vw; padding:1.2vw 3vw; }
-          .kd-qr { gap:3.5vw; padding:3.5vw; }
-          .kd-qr-img { width:26vw; height:26vw; }
-          .kd-qr-h { font-size:4.4vw; }
-          .kd-qr-s { font-size:3vw; }
+          .kd-qr { gap:3.5vw; padding:3vw; }
+          .kd-qr-img { width:24vw; height:24vw; }
+          .kd-qr-h { font-size:4.2vw; }
+          .kd-qr-s { font-size:2.8vw; }
           .kd-footer { gap:2.5vw; padding:2.5vw 4vw; }
           .kd-fstats { gap:4vw; font-size:3.2vw; }
           .kd-cta { font-size:4vw; padding:2vw 5vw; }
@@ -331,7 +332,9 @@ function DisplayInner() {
            so the hero + QR always fit above the fold */
         @media (max-width:380px) {
           .kd-ticker { display:none; }
-          .kd-hero { flex:0 0 34vh; }
+          .kd-hero { flex:0 0 28vh; min-height:28vh; }
+          .kd-price { font-size:11vw; }
+          .kd-qr-img { width:22vw; height:22vw; }
         }
       `}</style>
     </div>

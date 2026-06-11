@@ -283,7 +283,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // back-gesture). Client-rendered, so drop stale v34 HTML.
 // v250 — premium verification-video overhaul (customer + partner + admin):
 // new TrustRing / VerifChecklist / VerifStatusFlow surfaces. Drop stale v35.
-const HTML_CACHE = 'staybid-html-v48';
+// v256 — kiosk mobile sizing: display QR no longer clips behind footer;
+// book-flow horizontal overflow (left-cut) fixed. Drop stale v48.
+const HTML_CACHE = 'staybid-html-v49';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
