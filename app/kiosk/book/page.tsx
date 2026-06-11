@@ -46,6 +46,8 @@ function BookInner() {
 
   const [guests, setGuests] = useState(2);
   const [nights, setNights] = useState(1);
+  const [rooms, setRooms] = useState(1);
+  const [roomsTouched, setRoomsTouched] = useState(false);
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -80,6 +82,7 @@ function BookInner() {
     setPickedRoomId(d.roomId);
     setGalleryIdx(0);
     setGuests(Math.min(d.capacity || 2, 2));
+    setRooms(1); setRoomsTouched(false);
     setStep("tour");
     setErr("");
   }
@@ -95,6 +98,14 @@ function BookInner() {
     return { roomId: picked.roomId, type: picked.roomType, price: picked.aiPrice, floor: picked.floorPrice, capacity: picked.capacity };
   }, [picked, pickedRoomId]);
 
+  // StayBid rule: number of rooms auto-fits the guest count (hybrid — auto
+  // until the customer manually overrides). One room per `capacity` guests.
+  const cap = selected?.capacity || 2;
+  const minRooms = Math.max(1, Math.ceil(guests / cap));
+  useEffect(() => {
+    if (!roomsTouched && rooms < minRooms) setRooms(Math.min(10, minRooms));
+  }, [minRooms, roomsTouched, rooms]);
+
   function goPay() {
     setStep("pay");
     setOtpSent(false); setOtp(""); setPhone(""); setErr("");
@@ -102,6 +113,7 @@ function BookInner() {
 
   function reset() {
     setStep("city"); setCity(""); setDeals([]); setPicked(null); setPickedRoomId("");
+    setNights(1); setGuests(2); setRooms(1); setRoomsTouched(false);
     setPhone(""); setOtp(""); setOtpSent(false); setErr(""); setResult(null); setBusy(false);
   }
 
@@ -133,7 +145,7 @@ function BookInner() {
         body: JSON.stringify({
           phone: phone.replace(/\s/g, ""), otp: otp.trim(),
           hotelId: picked.hotelId, roomId: selected.roomId, dealId: picked.id,
-          amount: selected.price, guests, nights,
+          amount: selected.price, guests, nights, rooms,
         }),
       });
       const j = await r.json();
@@ -145,7 +157,10 @@ function BookInner() {
   }
 
   const price = selected?.price || 0;
-  const total = price * nights;
+  const total = price * nights * rooms;
+  const checkInDate = new Date();
+  const checkOutDate = new Date(); checkOutDate.setDate(checkOutDate.getDate() + Math.max(1, nights));
+  const fmtD = (d: Date) => d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
   const activeNav: Step = step === "browse" ? "city" : step === "done" ? "pay" : step;
 
   return (
@@ -189,9 +204,11 @@ function BookInner() {
         {step === "browse" && (
           <div className="kb-pane">
             <div className="kb-rowtop">
-              <button className="kb-back" onClick={() => setStep("city")}>‹ City</button>
-              <div className="kb-h2">Tonight in {city}</div>
-              <div className="kb-count">{deals.length} hotels live</div>
+              <button className="kb-back" onClick={() => setStep("city")} aria-label="Back to cities">‹</button>
+              <div className="kb-head">
+                <div className="kb-eyebrow"><span className="kb-livedot" />Live now · {deals.length} hotel{deals.length !== 1 ? "s" : ""}</div>
+                <h2 className="kb-h2">Tonight in <span>{city}</span></h2>
+              </div>
             </div>
             {loadingDeals ? (
               <div className="kb-skeleton">{[1,2,3,4].map(i => <div key={i} className="kb-skel-card" />)}</div>
@@ -227,9 +244,11 @@ function BookInner() {
         {step === "tour" && picked && (
           <div className="kb-pane">
             <div className="kb-rowtop">
-              <button className="kb-back" onClick={() => setStep("browse")}>‹ Hotels</button>
-              <div className="kb-h2">{picked.hotelName}</div>
-              <div className="kb-count">{picked.city}{picked.area ? ` · ${picked.area}` : ""}</div>
+              <button className="kb-back" onClick={() => setStep("browse")} aria-label="Back to hotels">‹</button>
+              <div className="kb-head">
+                <div className="kb-eyebrow">📍 {picked.city}{picked.area ? ` · ${picked.area}` : ""}</div>
+                <h2 className="kb-h2">{picked.hotelName}</h2>
+              </div>
             </div>
 
             <div className="kb-tour">
@@ -326,9 +345,11 @@ function BookInner() {
         {step === "pay" && picked && selected && (
           <div className="kb-pane">
             <div className="kb-rowtop">
-              <button className="kb-back" onClick={() => setStep("tour")}>‹ Back</button>
-              <div className="kb-h2">Confirm &amp; Pay</div>
-              <div />
+              <button className="kb-back" onClick={() => setStep("tour")} aria-label="Back">‹</button>
+              <div className="kb-head">
+                <div className="kb-eyebrow">⚡ Almost there</div>
+                <h2 className="kb-h2">Confirm &amp; Pay</h2>
+              </div>
             </div>
             <div className="kb-pay">
               <div className="kb-pay-summary">
@@ -338,16 +359,27 @@ function BookInner() {
                   <div className="kb-ps-room">{selected.type} · {picked.city}</div>
                 </div>
               </div>
+              <div className="kb-datestrip">
+                <div className="kb-date"><span>Check-in</span><b>{fmtD(checkInDate)}</b></div>
+                <div className="kb-datearrow">→</div>
+                <div className="kb-date"><span>Check-out</span><b>{fmtD(checkOutDate)}</b></div>
+                <div className="kb-datenights">{nights} night{nights > 1 ? "s" : ""}</div>
+              </div>
               <div className="kb-tiles">
-                <div className="kb-tile"><span>Check-in</span><b>Today</b></div>
                 <div className="kb-tile"><span>Nights</span>
                   <div className="kb-step2"><button onClick={() => setNights(n => Math.max(1, n - 1))}>−</button><b>{nights}</b><button onClick={() => setNights(n => Math.min(10, n + 1))}>+</button></div>
                 </div>
                 <div className="kb-tile"><span>Guests</span>
-                  <div className="kb-step2"><button onClick={() => setGuests(g => Math.max(1, g - 1))}>−</button><b>{guests}</b><button onClick={() => setGuests(g => Math.min(8, g + 1))}>+</button></div>
+                  <div className="kb-step2"><button onClick={() => setGuests(g => Math.max(1, g - 1))}>−</button><b>{guests}</b><button onClick={() => setGuests(g => Math.min(20, g + 1))}>+</button></div>
+                </div>
+                <div className="kb-tile"><span>Rooms{!roomsTouched && rooms === minRooms && minRooms > 1 ? " ✨" : ""}</span>
+                  <div className="kb-step2"><button onClick={() => { setRoomsTouched(true); setRooms(r => Math.max(1, r - 1)); }}>−</button><b>{rooms}</b><button onClick={() => { setRoomsTouched(true); setRooms(r => Math.min(10, r + 1)); }}>+</button></div>
                 </div>
               </div>
-              <div className="kb-rate"><span>{formatINR(price)} × {nights} night{nights > 1 ? "s" : ""}</span><b>{formatINR(total)}</b></div>
+              {guests > cap * rooms ? (
+                <div className="kb-caphint">ℹ️ {guests} guests in {rooms} room{rooms > 1 ? "s" : ""} — the hotel may add extra bedding on arrival.</div>
+              ) : null}
+              <div className="kb-rate"><span>{formatINR(price)} × {nights} night{nights > 1 ? "s" : ""}{rooms > 1 ? ` × ${rooms} rooms` : ""}</span><b>{formatINR(total)}</b></div>
 
               <label className="kb-label">📱 Mobile Number</label>
               <div className="kb-phonerow">
@@ -380,9 +412,10 @@ function BookInner() {
               <div className="kb-dc-img" style={{ backgroundImage: `url(${picked?.image})` }} />
               <div className="kb-dc-name">{picked?.hotelName}</div>
               <div className="kb-dc-room">{selected?.type} · {city}</div>
-              <div className="kb-donerow"><span>Check-in</span><b>Today · 2:00 PM</b></div>
-              <div className="kb-donerow"><span>Nights</span><b>{result.nights}</b></div>
-              <div className="kb-donerow"><span>Amount paid</span><b>{formatINR((result.amount || 0) * (result.nights || 1))}</b></div>
+              <div className="kb-donerow"><span>Check-in</span><b>{fmtD(checkInDate)} · 2:00 PM</b></div>
+              <div className="kb-donerow"><span>Check-out</span><b>{fmtD(checkOutDate)} · 11:00 AM</b></div>
+              <div className="kb-donerow"><span>Nights</span><b>{result.nights}{rooms > 1 ? ` · ${rooms} rooms` : ""}</b></div>
+              <div className="kb-donerow"><span>Amount paid</span><b>{formatINR((result.amount || price) * (result.nights || nights) * rooms)}</b></div>
               <div className="kb-smsbox">✅ SMS confirmation sent to {result.phoneMasked}</div>
             </div>
             <button className="kb-primary kb-wide" onClick={reset} style={{ maxWidth: 380 }}>Book Another Stay</button>
@@ -429,10 +462,22 @@ function BookInner() {
         .kb-city-name { font-family:'Cormorant Garamond',serif; font-size:24px; font-weight:700; }
         .kb-city-sub { font-size:12px; color:#9C8E72; margin-top:4px; }
 
-        .kb-rowtop { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; }
-        .kb-back { background:#FFFCF6; color:#6E5430; border:1px solid #E0D2B4; border-radius:999px; padding:8px 18px; font-size:15px; font-weight:700; cursor:pointer; }
-        .kb-h2 { font-family:'Cormorant Garamond',serif; font-size:30px; font-weight:700; text-align:center; flex:1; }
-        .kb-count { font-size:13px; color:#9C8E72; min-width:90px; text-align:right; }
+        .kb-rowtop { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+        .kb-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; background:#FFFCF6; color:#9C7E33; border:1px solid #E0D2B4; border-radius:14px; font-size:25px; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 4px 14px rgba(201,166,107,.16); transition:transform .12s, box-shadow .12s, border-color .12s; }
+        .kb-back:active { transform:scale(.93); border-color:#C9A66B; box-shadow:0 2px 8px rgba(201,166,107,.28); }
+        .kb-head { flex:1; min-width:0; }
+        .kb-eyebrow { display:inline-flex; align-items:center; gap:7px; max-width:100%; font-size:11px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:#9C7E33; background:linear-gradient(135deg,rgba(217,190,130,.2),rgba(201,166,107,.1)); border:1px solid rgba(201,166,107,.28); padding:5px 12px; border-radius:999px; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .kb-livedot { flex:0 0 auto; width:7px; height:7px; border-radius:999px; background:#6E8C57; animation:kbpulse 1.8s infinite; }
+        @keyframes kbpulse { 0%{box-shadow:0 0 0 0 rgba(110,140,87,.5)} 70%{box-shadow:0 0 0 7px rgba(110,140,87,0)} 100%{box-shadow:0 0 0 0 rgba(110,140,87,0)} }
+        .kb-h2 { font-family:'Cormorant Garamond',serif; font-size:30px; font-weight:700; line-height:1.06; margin:0; color:#1F1A0F; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .kb-h2 span { color:#9C7E33; font-style:italic; }
+        .kb-datestrip { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFFCF6,#F7F0E2); border:1px solid #E8DCC8; border-radius:14px; padding:12px 16px; margin-bottom:14px; box-shadow:0 4px 14px rgba(31,26,15,.05); }
+        .kb-date { display:flex; flex-direction:column; gap:2px; min-width:0; }
+        .kb-date span { font-size:10px; letter-spacing:.6px; text-transform:uppercase; color:#9C8E72; }
+        .kb-date b { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:700; color:#1F1A0F; white-space:nowrap; }
+        .kb-datearrow { color:#C9A66B; font-size:18px; font-weight:700; flex:0 0 auto; }
+        .kb-datenights { margin-left:auto; flex:0 0 auto; font-size:12px; font-weight:700; color:#9C7E33; background:#F2EAD8; padding:5px 11px; border-radius:999px; white-space:nowrap; }
+        .kb-caphint { margin:-4px 0 12px; font-size:12px; color:#9C7E33; background:rgba(201,166,107,.1); border:1px solid rgba(201,166,107,.22); border-radius:10px; padding:8px 11px; line-height:1.35; }
 
         .kb-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; }
         .kb-card { text-align:left; cursor:pointer; background:#FFFCF6; border:1px solid #E8DCC8; border-radius:18px; overflow:hidden; color:#1F1A0F; box-shadow:0 6px 22px rgba(31,26,15,.07); transition:transform .12s,box-shadow .12s; padding:0; }
@@ -498,13 +543,14 @@ function BookInner() {
         .kb-ps-img { width:76px; height:60px; border-radius:10px; background-size:cover; background-position:center; flex-shrink:0; }
         .kb-ps-name { font-family:'Cormorant Garamond',serif; font-size:21px; font-weight:700; }
         .kb-ps-room { font-size:13px; color:#6E5430; }
-        .kb-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-        .kb-tile { background:#FFFCF6; border:1px solid #E8DCC8; border-radius:12px; padding:12px; text-align:center; }
-        .kb-tile span { display:block; font-size:11px; color:#9C8E72; }
+        .kb-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(104px,1fr)); gap:10px; }
+        .kb-tile { background:#FFFCF6; border:1px solid #E8DCC8; border-radius:12px; padding:12px 8px; text-align:center; }
+        .kb-tile span { display:block; font-size:11px; color:#9C8E72; white-space:nowrap; }
         .kb-tile b { font-size:18px; }
-        .kb-step2 { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:3px; }
-        .kb-step2 button { width:32px; height:32px; border-radius:8px; border:1px solid #E0D2B4; background:#FAF5EB; color:#9C7E33; font-size:18px; font-weight:700; cursor:pointer; }
-        .kb-step2 b { min-width:22px; font-size:18px; }
+        .kb-step2 { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:5px; }
+        .kb-step2 button { width:30px; height:30px; border-radius:8px; border:1px solid #E0D2B4; background:#FAF5EB; color:#9C7E33; font-size:18px; font-weight:700; cursor:pointer; line-height:1; }
+        .kb-step2 button:active { transform:scale(.92); }
+        .kb-step2 b { min-width:18px; font-size:18px; }
         .kb-rate { display:flex; align-items:center; justify-content:space-between; margin:16px 0; padding:12px 14px; background:#F7F0E2; border-radius:12px; }
         .kb-rate span { font-size:14px; color:#4A3820; }
         .kb-rate b { font-family:'Cormorant Garamond',serif; font-size:24px; }
@@ -546,6 +592,8 @@ function BookInner() {
           .kb-loc { display:none; }
           .kb-pane { padding:18px 16px; }
           .kb-h1 { font-size:34px; }
+          .kb-h2 { font-size:27px; }
+          .kb-back { width:40px; height:40px; font-size:23px; }
           .kb-tour { grid-template-columns:1fr; }
           /* sticky bar bleeds to the pane edges — its negative horizontal
              margin MUST match the pane's 16px padding or it overflows left */
@@ -553,7 +601,11 @@ function BookInner() {
         }
         @media (max-width:380px){
           .kb-brand-name { font-size:22px; }
-          .kb-h2 { font-size:25px; }
+          .kb-h2 { font-size:23px; }
+          .kb-back { width:38px; height:38px; font-size:21px; }
+          .kb-eyebrow { font-size:10px; letter-spacing:1px; padding:4px 10px; }
+          .kb-date b { font-size:16px; }
+          .kb-step2 button { width:28px; height:28px; }
         }
       `}</style>
     </div>
