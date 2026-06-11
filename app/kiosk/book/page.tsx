@@ -416,7 +416,7 @@ function BookInner() {
         .kb-nav-item.on { color:#1F1A0F; background:#FFFCF6; border-color:#E0D2B4; box-shadow:0 2px 10px rgba(201,166,107,.25); }
         .kb-loc { font-size:13px; color:#6E5430; font-weight:600; }
 
-        .kb-scroll { flex:1; overflow-y:auto; }
+        .kb-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
         .kb-pane { padding:26px; max-width:1100px; margin:0 auto; }
         .kb-h1 { font-family:'Cormorant Garamond',Georgia,serif; font-size:42px; font-weight:700; line-height:1.05; }
         .kb-h1 span { color:#9C7E33; font-style:italic; }
@@ -454,7 +454,7 @@ function BookInner() {
         @media (max-width:820px){ .kb-tour{ grid-template-columns:1fr; } }
         .kb-gallery-main { height:280px; border-radius:18px; background-size:cover; background-position:center; position:relative; box-shadow:0 10px 30px rgba(31,26,15,.14); }
         .kb-gallery-badge { position:absolute; top:14px; left:14px; background:rgba(255,252,246,.92); color:#9C7E33; font-weight:700; font-size:13px; padding:6px 12px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.15); }
-        .kb-thumbs { display:flex; gap:10px; margin-top:12px; }
+        .kb-thumbs { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
         .kb-thumb { width:72px; height:54px; border-radius:10px; background-size:cover; background-position:center; border:2px solid transparent; cursor:pointer; opacity:.7; }
         .kb-thumb.on { border-color:#C9A66B; opacity:1; }
         .kb-hotel-line { display:flex; align-items:center; gap:14px; margin-top:14px; font-size:15px; color:#4A3820; }
@@ -547,6 +547,9 @@ function BookInner() {
           .kb-pane { padding:18px 16px; }
           .kb-h1 { font-size:34px; }
           .kb-tour { grid-template-columns:1fr; }
+          /* sticky bar bleeds to the pane edges — its negative horizontal
+             margin MUST match the pane's 16px padding or it overflows left */
+          .kb-stickycta { margin:22px -16px -18px; padding-left:16px; padding-right:16px; }
         }
         @media (max-width:380px){
           .kb-brand-name { font-size:22px; }
