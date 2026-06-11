@@ -285,7 +285,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // new TrustRing / VerifChecklist / VerifStatusFlow surfaces. Drop stale v35.
 // v256 — kiosk mobile sizing: display QR no longer clips behind footer;
 // book-flow horizontal overflow (left-cut) fixed. Drop stale v48.
-const HTML_CACHE = 'staybid-html-v49';
+// v257 — kiosk book: premium compact header, rooms picker + hybrid auto-fit,
+// check-in/check-out date summary with nights. Drop stale v49.
+const HTML_CACHE = 'staybid-html-v50';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

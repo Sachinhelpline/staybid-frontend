@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   const amount = Math.round(Number(body?.amount) || 0);
   const guests = Math.max(1, Math.min(20, Math.floor(Number(body?.guests) || 2)));
   const nights = Math.max(1, Math.min(30, Math.floor(Number(body?.nights) || 1)));
+  const rooms = Math.max(1, Math.min(10, Math.floor(Number(body?.rooms) || 1)));
 
   if (!phone || !otp) return NextResponse.json({ error: "Phone and OTP required" }, { status: 400 });
   if (!hotelId || !roomId || !amount) return NextResponse.json({ error: "Missing booking details" }, { status: 400 });
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
       headers: authHeaders,
       body: JSON.stringify({
         hotelId, roomId, amount, checkIn, checkOut, guests,
-        source: "flash", numRooms: 1,
+        source: "flash", numRooms: rooms,
       }),
     });
     const j = await r.json().catch(() => ({}));
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
       headers: authHeaders,
       body: JSON.stringify({
         hotelId, roomId, amount, requestId, dealId,
-        flow: "flash", guests, numRooms: 1,
+        flow: "flash", guests, numRooms: rooms,
         message: "StayBid Kiosk · same-day flash booking",
       }),
     });
@@ -124,6 +125,8 @@ export async function POST(req: NextRequest) {
     requestId,
     amount,
     nights,
+    rooms,
+    total: amount * nights * rooms,
     checkIn,
     checkOut,
     phoneMasked: masked,
