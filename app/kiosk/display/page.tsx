@@ -43,6 +43,99 @@ function dealUrl(d: KioskDeal) {
   return `${base}/hotels/${encodeURIComponent(d.hotelId)}?${q.toString()}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Hotel performance scorecard — KIOSK-NATIVE (no customer-panel import).
+// Fetches the SAME `/api/hotels/[id]/scorecard` the customer site uses, but
+// renders a self-themed, vmin-scaled, tappable chip so the kiosk stays a
+// self-contained leaf module. Per-hotel in-memory cache keeps the rotating
+// board from re-fetching the same hotel every loop.
+// ─────────────────────────────────────────────────────────────────────────
+type ScoreData = {
+  overall: number;
+  rank: number | null;
+  total: number | null;
+  emoji: string;
+  label: string;
+  city: string;
+  checkpoints: { label: string; emoji: string; earned: number; weight: number; pct: number; status: string }[];
+  bookings: number;
+  feedback: number;
+};
+
+const SCORE_CACHE = new Map<string, ScoreData | null>();
+
+function useHotelScore(hotelId: string | undefined) {
+  const [data, setData] = useState<ScoreData | null>(() => (hotelId ? SCORE_CACHE.get(hotelId) ?? null : null));
+  useEffect(() => {
+    if (!hotelId) { setData(null); return; }
+    if (SCORE_CACHE.has(hotelId)) { setData(SCORE_CACHE.get(hotelId) || null); return; }
+    let alive = true;
+    setData(null);
+    fetch(`/api/hotels/${encodeURIComponent(hotelId)}/scorecard`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!alive) return;
+        const overall = j?.overall;
+        if (overall == null) { SCORE_CACHE.set(hotelId, null); setData(null); return; }
+        const sd: ScoreData = {
+          overall: Math.round(Number(overall)),
+          rank: j.rank_in_city ?? j.rank?.rank ?? null,
+          total: j.total_in_city ?? j.rank?.total ?? null,
+          emoji: j.badge_emoji || j.badge?.emoji || "⭐",
+          label: j.badge_label || j.badge?.label || "Rated",
+          city: j.city || "",
+          checkpoints: Array.isArray(j.checkpoints) ? j.checkpoints : [],
+          bookings: Number(j.total_bookings) || 0,
+          feedback: Number(j.total_stay_feedback) || 0,
+        };
+        SCORE_CACHE.set(hotelId, sd);
+        setData(sd);
+      })
+      .catch(() => { if (alive) setData(null); });
+    return () => { alive = false; };
+  }, [hotelId]);
+  return data;
+}
+
+function KdScorecard({ hotelId, expanded, onToggle }: { hotelId: string; expanded: boolean; onToggle: () => void }) {
+  const score = useHotelScore(hotelId);
+  if (!score) return null;
+  const rankTxt =
+    score.rank && score.total
+      ? `Rank #${score.rank} of ${score.total}${score.city ? " · " + score.city : ""}`
+      : score.city ? `Top stay in ${score.city}` : "Verified performance";
+  const top = score.checkpoints
+    .filter((c) => c.earned > 0)
+    .sort((a, b) => (b.pct || 0) - (a.pct || 0))
+    .slice(0, 4);
+  return (
+    <button type="button" className={`kd-score ${expanded ? "open" : ""}`} onClick={onToggle} aria-expanded={expanded}>
+      <div className="kd-score-head">
+        <span className="kd-score-medal">{score.emoji}</span>
+        <div className="kd-score-main">
+          <div className="kd-score-num"><b>{score.overall}</b><span>/100</span> <em>StayBid Score</em></div>
+          <div className="kd-score-rank">{score.label} · {rankTxt}</div>
+        </div>
+        <span className="kd-score-caret">{expanded ? "Hide ▴" : "Details ▾"}</span>
+      </div>
+      {expanded && top.length > 0 && (
+        <div className="kd-score-detail">
+          {top.map((c, i) => (
+            <div className="kd-score-row" key={i}>
+              <span className="kd-score-emoji">{c.emoji}</span>
+              <span className="kd-score-label">{c.label}</span>
+              <span className="kd-score-bar"><i style={{ width: `${Math.max(6, Math.round(c.pct || 0))}%` }} /></span>
+            </div>
+          ))}
+          <div className="kd-score-foot">
+            Verified from {score.bookings || "real"} bookings{score.feedback ? ` · ${score.feedback} guest reviews` : ""}
+          </div>
+        </div>
+      )}
+    </button>
+  );
+}
+
 function DisplayInner() {
   const params = useSearchParams();
   const loc = params.get("loc") || "mussoorie-mall";
@@ -52,6 +145,7 @@ function DisplayInner() {
   const [clock, setClock] = useState("");
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
+  const [scoreOpen, setScoreOpen] = useState(false);
   const dataTimer = useRef<any>(null);
   const slideTimer = useRef<any>(null);
 
@@ -83,6 +177,9 @@ function DisplayInner() {
     slideTimer.current = setInterval(() => setIdx((i) => (i + 1) % deals.length), SLIDE_MS);
     return () => clearInterval(slideTimer.current);
   }, [deals.length]);
+
+  // Collapse the scorecard detail whenever the slide changes.
+  useEffect(() => { setScoreOpen(false); }, [idx]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -142,7 +239,7 @@ function DisplayInner() {
                 onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }} />
               <div className="kd-hero-shade" />
               {current.discount >= 8 ? <div className="kd-hero-disc">⚡ −{current.discount}%</div> : null}
-              <div className="kd-hero-units">{current.unitsFree} room{current.unitsFree !== 1 ? "s" : ""} left tonight</div>
+              <div className="kd-hero-units"><span className="kd-units-dot" />{current.unitsFree} room{current.unitsFree !== 1 ? "s" : ""} left tonight</div>
               <div className="kd-hero-cap">
                 <div className="kd-hero-name">{current.hotelName}</div>
                 <div className="kd-hero-meta">
@@ -156,28 +253,43 @@ function DisplayInner() {
 
             {/* Info + QR */}
             <div className="kd-info">
-              <div className="kd-info-room">{current.roomType} · sleeps {current.capacity}</div>
-              <div className="kd-price-block">
-                {current.mrp > current.aiPrice ? <div className="kd-mrp">{formatINR(current.mrp)}</div> : null}
-                <div className="kd-price">{formatINR(current.aiPrice)}<span>/night</span></div>
-                {current.mrp > current.aiPrice ? (
-                  <div className="kd-delta down">💰 Save {formatINR(current.mrp - current.aiPrice)}</div>
-                ) : current.deltaPct > 0 ? (
-                  <div className="kd-delta down">⚡ {current.deltaPct}% off</div>
-                ) : null}
+              <div className="kd-info-top">
+                <div className="kd-info-room">{current.roomType} · sleeps {current.capacity}</div>
+                <div className="kd-price-block">
+                  {current.mrp > current.aiPrice ? <div className="kd-mrp">{formatINR(current.mrp)}</div> : null}
+                  <div className="kd-price">{formatINR(current.aiPrice)}<span>/night</span></div>
+                  {current.mrp > current.aiPrice ? (
+                    <div className="kd-delta down">💰 Save {formatINR(current.mrp - current.aiPrice)}</div>
+                  ) : current.deltaPct > 0 ? (
+                    <div className="kd-delta down">⚡ {current.deltaPct}% off</div>
+                  ) : null}
+                </div>
+
+                {/* Active, tappable hotel scorecard */}
+                <KdScorecard hotelId={current.hotelId} expanded={scoreOpen} onToggle={() => setScoreOpen((v) => !v)} />
+
+                {current.amenities.length > 0 && (
+                  <div className="kd-amen">
+                    {current.amenities.slice(0, 5).map((a, i) => <span key={i} className="kd-amen-chip">{a}</span>)}
+                  </div>
+                )}
               </div>
 
-              {current.amenities.length > 0 && (
-                <div className="kd-amen">
-                  {current.amenities.slice(0, 5).map((a, i) => <span key={i} className="kd-amen-chip">{a}</span>)}
+              {/* Scan-to-book block — the QR + a clear animated call to action */}
+              <div className="kd-book">
+                <div className="kd-qr">
+                  <div className="kd-qr-imgwrap">
+                    {qrSrc ? <img src={qrSrc} alt="Scan to book" className="kd-qr-img" /> : null}
+                    <span className="kd-qr-scan" aria-hidden />
+                  </div>
+                  <div className="kd-qr-txt">
+                    <div className="kd-qr-h">📱 Scan to book on your phone</div>
+                    <div className="kd-qr-s">Instant confirmation · pay later option</div>
+                  </div>
                 </div>
-              )}
-
-              <div className="kd-qr">
-                {qrSrc ? <img src={qrSrc} alt="Scan to book" className="kd-qr-img" /> : null}
-                <div className="kd-qr-txt">
-                  <div className="kd-qr-h">📱 Scan to book on your phone</div>
-                  <div className="kd-qr-s">Or touch the kiosk beside the screen</div>
+                <div className="kd-scan-band">
+                  <span className="kd-scan-arrow">👆</span>
+                  <span className="kd-scan-txt">Point your camera here — book in <b>30 seconds</b>, no app needed</span>
                 </div>
               </div>
 
@@ -204,7 +316,8 @@ function DisplayInner() {
           <span>Under ₹1000 <b>{stats?.under1000 ?? 0}</b></span>
         </div>
         <a className="kd-cta" href={`/kiosk/book?loc=${encodeURIComponent(loc)}`}>
-          👉 Book Smart · Stay Best
+          <span className="kd-cta-glow" aria-hidden />
+          <span className="kd-cta-txt">📲 Scan the code · or tap here to book →</span>
         </a>
       </div>
 
@@ -254,20 +367,24 @@ function DisplayInner() {
         .kd-hero-img { width:100%; height:100%; object-fit:cover; animation:kdken 16s ease-in-out infinite alternate; }
         @keyframes kdken { from{transform:scale(1) translate(0,0)} to{transform:scale(1.08) translate(-1%,-1%)} }
         .kd-hero-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(11,9,6,.85) 100%); }
-        .kd-hero-disc { position:absolute; top:2vmin; left:2vmin; background:linear-gradient(135deg,#E0A07B,#C24E4E); color:#fff; font-weight:800; font-size:clamp(13px,2.4vmin,26px); padding:.7vmin 1.6vmin; border-radius:99px; box-shadow:0 .6vmin 1.6vmin rgba(194,78,78,.5); }
-        .kd-hero-units { position:absolute; top:2vmin; right:2vmin; background:rgba(11,9,6,.7); border:1px solid rgba(157,176,127,.6); color:#A9BE88; font-size:clamp(10px,1.7vmin,18px); padding:.6vmin 1.4vmin; border-radius:99px; }
+        .kd-hero-disc { position:absolute; top:2vmin; left:2vmin; background:linear-gradient(135deg,#E0A07B,#C24E4E); color:#fff; font-weight:800; font-size:clamp(13px,2.4vmin,26px); padding:.7vmin 1.6vmin; border-radius:99px; box-shadow:0 .6vmin 1.6vmin rgba(194,78,78,.5); animation:kdstamp 2.4s ease-in-out infinite; }
+        @keyframes kdstamp { 0%,100%{transform:rotate(-4deg) scale(1)} 50%{transform:rotate(-4deg) scale(1.06)} }
+        .kd-hero-units { position:absolute; top:2vmin; right:2vmin; display:flex; align-items:center; gap:.8vmin; background:rgba(11,9,6,.7); border:1px solid rgba(157,176,127,.6); color:#A9BE88; font-size:clamp(10px,1.7vmin,18px); padding:.6vmin 1.4vmin; border-radius:99px; }
+        .kd-units-dot { width:1vmin; height:1vmin; min-width:6px; min-height:6px; border-radius:50%; background:#A9BE88; box-shadow:0 0 1.2vmin #A9BE88; animation:kdblink 1.6s infinite; }
         .kd-hero-cap { position:absolute; left:2.4vmin; right:2.4vmin; bottom:2.2vmin; }
         .kd-hero-name { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:clamp(26px,6vmin,76px); line-height:1.02; color:#FFFDF7; text-shadow:0 .4vmin 2vmin rgba(0,0,0,.6); }
         .kd-hero-meta { display:flex; flex-wrap:wrap; align-items:center; gap:1.2vmin; margin-top:.8vmin; font-size:clamp(12px,2.1vmin,22px); color:#E8DDC4; }
         .kd-stars { color:#E3C98A; letter-spacing:1px; }
         .kd-hero-rating { background:rgba(227,201,138,.2); color:#F0DDAE; font-weight:700; padding:.2vmin 1.2vmin; border-radius:99px; }
 
-        .kd-info { flex:1 1 0; min-width:0; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:2vmin; }
-        @media (orientation:portrait) { .kd-info { flex:0 0 auto; gap:1.6vmin; } }
+        .kd-info { flex:1 1 0; min-width:0; min-height:0; display:flex; flex-direction:column; justify-content:space-between; gap:1.6vmin; }
+        @media (orientation:portrait) { .kd-info { flex:0 0 auto; gap:1.4vmin; } }
+        .kd-info-top { display:flex; flex-direction:column; gap:1.4vmin; }
         .kd-info-room { font-size:clamp(12px,2.1vmin,22px); color:#B9AC90; }
         .kd-price-block { display:flex; align-items:baseline; flex-wrap:wrap; gap:1.4vmin; }
         .kd-mrp { font-size:clamp(13px,2.2vmin,24px); color:#8A7C60; text-decoration:line-through; }
-        .kd-price { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:clamp(34px,8vmin,96px); line-height:.95; color:#E3C98A; }
+        .kd-price { font-family:'Cormorant Garamond',serif; font-weight:700; font-size:clamp(34px,8vmin,96px); line-height:.95; color:#E3C98A; text-shadow:0 0 2.4vmin rgba(227,201,138,.28); animation:kdpriceglow 3.4s ease-in-out infinite; }
+        @keyframes kdpriceglow { 0%,100%{text-shadow:0 0 1.6vmin rgba(227,201,138,.18)} 50%{text-shadow:0 0 3.2vmin rgba(227,201,138,.45)} }
         .kd-price span { font-size:.32em; color:#B9AC90; font-family:'Inter',sans-serif; }
         .kd-delta { font-size:clamp(11px,1.9vmin,20px); font-weight:700; padding:.4vmin 1.4vmin; border-radius:99px; }
         .kd-delta.up { background:rgba(224,138,123,.16); color:#E8A293; }
@@ -275,12 +392,43 @@ function DisplayInner() {
         .kd-amen { display:flex; flex-wrap:wrap; gap:1vmin; }
         .kd-amen-chip { background:rgba(36,30,20,.7); border:1px solid rgba(217,190,130,.18); color:#D6C9AE; font-size:clamp(10px,1.6vmin,17px); padding:.5vmin 1.4vmin; border-radius:99px; }
 
+        /* SCORECARD — kiosk-native, tappable */
+        .kd-score { display:block; width:100%; text-align:left; border:1px solid rgba(217,190,130,.32); background:linear-gradient(135deg,rgba(45,37,23,.92),rgba(28,22,14,.92)); border-radius:1.8vmin; padding:1.2vmin 1.6vmin; cursor:pointer; color:inherit; font:inherit; box-shadow:0 .8vmin 2.4vmin rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03); transition:transform .18s ease, box-shadow .18s ease; }
+        .kd-score:hover, .kd-score:active { transform:translateY(-2px); box-shadow:0 1.2vmin 3vmin rgba(201,166,107,.3); }
+        .kd-score-head { display:flex; align-items:center; gap:1.4vmin; }
+        .kd-score-medal { flex:0 0 auto; width:clamp(34px,5.4vmin,64px); height:clamp(34px,5.4vmin,64px); display:grid; place-items:center; font-size:clamp(17px,3vmin,34px); border-radius:50%; background:radial-gradient(circle at 32% 28%, #FFE7A3, #D9BE82 55%, #8B6914); color:#3a2c08; box-shadow:0 .4vmin 1.4vmin rgba(201,166,107,.5), inset 0 .2vmin .4vmin rgba(255,255,255,.5), inset 0 -.3vmin .5vmin rgba(80,55,10,.4); animation:kdmedal 2.6s ease-in-out infinite; }
+        @keyframes kdmedal { 0%,100%{box-shadow:0 .4vmin 1.4vmin rgba(201,166,107,.4), inset 0 .2vmin .4vmin rgba(255,255,255,.5), inset 0 -.3vmin .5vmin rgba(80,55,10,.4)} 50%{box-shadow:0 .4vmin 2.4vmin rgba(227,201,138,.75), inset 0 .2vmin .4vmin rgba(255,255,255,.6), inset 0 -.3vmin .5vmin rgba(80,55,10,.4)} }
+        .kd-score-main { flex:1 1 auto; min-width:0; }
+        .kd-score-num { font-family:'Cormorant Garamond',serif; font-size:clamp(16px,2.8vmin,30px); color:#F0DDAE; line-height:1.05; }
+        .kd-score-num b { font-weight:700; font-size:1.25em; color:#FFE9B8; }
+        .kd-score-num span { color:#9C8E72; font-size:.7em; }
+        .kd-score-num em { font-style:normal; font-family:'Inter',sans-serif; font-size:.46em; letter-spacing:.18vmin; text-transform:uppercase; color:#C9A66B; margin-left:.6vmin; }
+        .kd-score-rank { font-size:clamp(10px,1.7vmin,17px); color:#D6C9AE; margin-top:.2vmin; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .kd-score-caret { flex:0 0 auto; font-size:clamp(9px,1.5vmin,14px); letter-spacing:.1vmin; text-transform:uppercase; color:#C9A66B; background:rgba(201,166,107,.14); border:1px solid rgba(201,166,107,.3); padding:.4vmin 1vmin; border-radius:99px; }
+        .kd-score-detail { margin-top:1.2vmin; padding-top:1.2vmin; border-top:1px dashed rgba(217,190,130,.22); display:flex; flex-direction:column; gap:.8vmin; animation:kdpop .22s ease; }
+        @keyframes kdpop { from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:translateY(0)} }
+        .kd-score-row { display:flex; align-items:center; gap:1vmin; font-size:clamp(10px,1.7vmin,17px); }
+        .kd-score-emoji { flex:0 0 auto; }
+        .kd-score-label { flex:0 0 auto; min-width:11vmin; color:#D6C9AE; }
+        .kd-score-bar { flex:1 1 auto; height:1vmin; min-height:6px; border-radius:99px; background:rgba(217,190,130,.14); overflow:hidden; }
+        .kd-score-bar i { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#C9A66B,#F0D060); box-shadow:0 0 1vmin rgba(227,201,138,.4); }
+        .kd-score-foot { font-size:clamp(9px,1.5vmin,14px); color:#9C8E72; margin-top:.4vmin; }
+
+        /* BOOK BLOCK — QR + scan band (kills the dead space; clearest CTA) */
+        .kd-book { display:flex; flex-direction:column; gap:1.2vmin; }
         .kd-qr { display:flex; align-items:center; gap:2vmin; background:#FFFCF6; border-radius:2vmin; padding:1.8vmin; box-shadow:0 1vmin 3vmin rgba(0,0,0,.4); align-self:flex-start; max-width:100%; }
+        .kd-qr-imgwrap { position:relative; flex:0 0 auto; border-radius:1vmin; overflow:hidden; line-height:0; }
         .kd-qr-img { width:clamp(96px,16vmin,200px); height:clamp(96px,16vmin,200px); display:block; }
+        .kd-qr-scan { position:absolute; left:0; right:0; top:0; height:18%; background:linear-gradient(180deg,rgba(201,166,107,0),rgba(201,166,107,.55)); box-shadow:0 0 1.4vmin rgba(201,166,107,.6); animation:kdscan 2.4s ease-in-out infinite; }
+        @keyframes kdscan { 0%{top:-20%; opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{top:100%; opacity:0} }
         .kd-qr-h { font-family:'Cormorant Garamond',serif; font-weight:700; color:#1F1A0F; font-size:clamp(16px,2.6vmin,28px); line-height:1.1; }
         .kd-qr-s { color:#6E5430; font-size:clamp(11px,1.7vmin,18px); margin-top:.6vmin; }
+        .kd-scan-band { display:flex; align-items:center; gap:1.2vmin; align-self:flex-start; max-width:100%; background:linear-gradient(90deg,rgba(201,166,107,.16),rgba(201,166,107,.04)); border:1px solid rgba(217,190,130,.28); border-radius:99px; padding:.7vmin 1.6vmin; font-size:clamp(11px,1.8vmin,19px); color:#E8DDC4; }
+        .kd-scan-band b { color:#F0DDAE; }
+        .kd-scan-arrow { display:inline-block; font-size:1.3em; animation:kdfloat 1.4s ease-in-out infinite; }
+        @keyframes kdfloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-.7vmin)} }
 
-        .kd-dots { display:flex; align-items:center; flex-wrap:wrap; gap:1vmin; margin-top:.6vmin; }
+        .kd-dots { display:flex; align-items:center; flex-wrap:wrap; gap:1vmin; }
         .kd-dot2 { width:1.4vmin; height:1.4vmin; min-width:8px; min-height:8px; border-radius:99px; background:rgba(217,190,130,.28); transition:all .3s; }
         .kd-dot2.on { background:#E3C98A; width:4vmin; min-width:22px; }
         .kd-counter { margin-left:1vmin; font-size:clamp(10px,1.6vmin,16px); color:#9C8E72; }
@@ -289,9 +437,12 @@ function DisplayInner() {
         .kd-footer { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:2vmin; flex-wrap:wrap; padding:1.4vmin 3vmin; border-top:1px solid rgba(217,190,130,.2); background:linear-gradient(90deg,#1A1610,#0F0C08,#1A1610); }
         .kd-fstats { display:flex; gap:3vmin; flex-wrap:wrap; font-size:clamp(11px,1.8vmin,18px); color:#B9AC90; }
         .kd-fstats b { color:#E3C98A; margin-left:.4vmin; }
-        .kd-cta { text-decoration:none; font-family:'Cormorant Garamond',serif; font-style:italic; font-size:clamp(14px,2.4vmin,26px); color:#1F1A0F; background:linear-gradient(135deg,#E3C98A,#C9A66B); padding:1vmin 2.6vmin; border-radius:99px; font-weight:700; box-shadow:0 .6vmin 2vmin rgba(201,166,107,.45); white-space:nowrap; animation:kdpulse 2.6s infinite; }
+        .kd-cta { position:relative; overflow:hidden; text-decoration:none; display:inline-flex; align-items:center; border-radius:99px; background:linear-gradient(135deg,#F0D060,#E3C98A 45%,#C9A66B); padding:1.1vmin 2.8vmin; box-shadow:0 .6vmin 2.4vmin rgba(201,166,107,.5); white-space:nowrap; animation:kdpulse 2.4s infinite; }
+        .kd-cta-txt { position:relative; z-index:1; font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:700; font-size:clamp(15px,2.6vmin,28px); color:#1F1A0F; }
+        .kd-cta-glow { position:absolute; inset:0; background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.7) 50%,transparent 80%); transform:translateX(-120%); animation:kdshine 2.8s ease-in-out infinite; }
+        @keyframes kdshine { 0%{transform:translateX(-120%)} 60%,100%{transform:translateX(120%)} }
         .kd-cta:active { transform:scale(.97); }
-        @keyframes kdpulse { 0%,100%{box-shadow:0 .6vmin 2vmin rgba(201,166,107,.45)} 50%{box-shadow:0 .6vmin 3.4vmin rgba(227,201,138,.75)} }
+        @keyframes kdpulse { 0%,100%{box-shadow:0 .6vmin 2vmin rgba(201,166,107,.45)} 50%{box-shadow:0 .6vmin 3.6vmin rgba(240,208,96,.85)} }
 
         /* very small / narrow screens — trim secondary chrome */
         @media (max-width:520px) { .kd-tagline,.kd-loc{ display:none; } }
@@ -306,35 +457,52 @@ function DisplayInner() {
           .kd-live { font-size:3vw; }
           .kd-ticker-track { gap:6vw; padding:2vw 0; animation-duration:30s; }
           .kd-tick { font-size:3.4vw; gap:2vw; }
-          /* hero capped so the price + QR + footer always sit above the fold;
-             stage packs from the TOP (not centered) + can scroll as a safety */
+          /* hero capped so the price + score + QR + footer always sit above
+             the fold; stage packs from the TOP + can scroll as a safety */
           .kd-stage { gap:3vw; padding:3vw 4vw; overflow-y:auto; }
-          .kd-hero { flex:0 0 30vh; min-height:30vh; }
+          .kd-hero { flex:0 0 26vh; min-height:26vh; }
           .kd-hero-name { font-size:7vw; }
           .kd-hero-meta { font-size:3.4vw; gap:2.5vw; }
           .kd-hero-disc { font-size:3.6vw; padding:1.4vw 3vw; top:3vw; left:3vw; }
           .kd-hero-units { font-size:2.8vw; padding:1.2vw 2.6vw; top:3vw; right:3vw; }
-          .kd-info { gap:2.4vw; justify-content:flex-start; }
-          /* secondary rows hidden on phones so the QR never clips behind footer */
+          .kd-info { gap:3vw; justify-content:flex-start; }
+          .kd-info-top { gap:2.6vw; }
+          /* keep scorecard + scan band visible on phones; trim only the
+             least-essential rows so the QR never clips behind the footer */
           .kd-info-room, .kd-amen, .kd-dots { display:none; }
-          .kd-price { font-size:12vw; }
+          .kd-price { font-size:11vw; }
           .kd-mrp { font-size:4vw; }
           .kd-delta { font-size:3.4vw; padding:1vw 3vw; }
+          .kd-score { padding:2.6vw 3vw; border-radius:3.5vw; }
+          .kd-score-num { font-size:5vw; }
+          .kd-score-rank { font-size:3.2vw; }
+          .kd-score-caret { font-size:2.8vw; }
+          .kd-score-row { font-size:3.2vw; }
+          .kd-score-label { min-width:24vw; }
+          .kd-book { gap:2.6vw; }
           .kd-qr { gap:3.5vw; padding:3vw; }
           .kd-qr-img { width:24vw; height:24vw; }
           .kd-qr-h { font-size:4.2vw; }
           .kd-qr-s { font-size:2.8vw; }
+          .kd-scan-band { font-size:3.2vw; padding:1.6vw 3.5vw; }
           .kd-footer { gap:2.5vw; padding:2.5vw 4vw; }
           .kd-fstats { gap:4vw; font-size:3.2vw; }
-          .kd-cta { font-size:4vw; padding:2vw 5vw; }
+          .kd-cta-txt { font-size:4.2vw; }
+          .kd-cta { padding:2.2vw 5vw; }
         }
         /* very narrow phones (iPhone SE etc.) — drop the live ticker entirely
-           so the hero + QR always fit above the fold */
+           so the hero + score + QR always fit above the fold */
         @media (max-width:380px) {
           .kd-ticker { display:none; }
-          .kd-hero { flex:0 0 28vh; min-height:28vh; }
-          .kd-price { font-size:11vw; }
+          .kd-hero { flex:0 0 24vh; min-height:24vh; }
+          .kd-price { font-size:10vw; }
           .kd-qr-img { width:22vw; height:22vw; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .kd-hero-img, .kd-hero-disc, .kd-price, .kd-score-medal, .kd-qr-scan,
+          .kd-scan-arrow, .kd-cta, .kd-cta-glow, .kd-dot, .kd-units-dot,
+          .kd-ticker-track { animation:none !important; }
+          .kd-cta-glow { display:none; }
         }
       `}</style>
     </div>

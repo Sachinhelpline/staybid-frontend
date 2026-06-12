@@ -287,7 +287,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // book-flow horizontal overflow (left-cut) fixed. Drop stale v48.
 // v257 — kiosk book: premium compact header, rooms picker + hybrid auto-fit,
 // check-in/check-out date summary with nights. Drop stale v49.
-const HTML_CACHE = 'staybid-html-v50';
+// v258 — kiosk display: kills the QR↔CTA blank space (flex space-between +
+// scan band), active/clickable kiosk-native hotel scorecard, animated QR
+// scan-line + shimmering Scan-to-book CTA. Bump so warm SWR clients pick up
+// the new markup on next visit.
+const HTML_CACHE = 'staybid-html-v51';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
