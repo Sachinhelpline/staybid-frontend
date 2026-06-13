@@ -144,6 +144,26 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
   const [msg, setMsg] = useState<string | null>(null);
   const debRef = useRef<any>(null);
 
+  // ── Express AI footprint (the 30-second engine) ──────────────────────────
+  const [xName, setXName] = useState("");
+  const [xCity, setXCity] = useState("");
+  const [xBusy, setXBusy] = useState(false);
+  const [xMsg, setXMsg] = useState<string | null>(null);
+  const runExpress = async () => {
+    if (!xName.trim()) { setXMsg("Type your hotel name first."); return; }
+    setXBusy(true); setXMsg("🔎 Pulling your hotel's digital footprint…");
+    try {
+      const j = await onbFetch<any>("/api/onboard/express", {
+        method: "POST",
+        body: JSON.stringify({ query: xName.trim(), city: xCity.trim() }),
+      });
+      const c = j.counts || {};
+      setXMsg(`✨ Built "${j.draft?.name || xName}" — ${c.photos || 0} photos, ${c.rooms || 0} rooms drafted. Review & edit everything below.`);
+      onChange(); // reload listing → seeded hotel + rooms + images flow in
+    } catch (e: any) { setXMsg(e?.message || "Express onboarding failed — try the manual search below."); }
+    finally { setXBusy(false); }
+  };
+
   useEffect(() => {
     if (listing?.hotel) setHotel(listing.hotel);
   }, [listing?.hotel?.id]);
@@ -191,6 +211,29 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
   return (
     <div className="space-y-6">
       <SectionHead title="Property basics" subtitle="Search your hotel on Google to auto-fill location & contact, then refine." />
+
+      {/* ✨ Express AI onboard — type name + city → full draft in ~30s */}
+      <div className="rounded-2xl p-5 bg-gradient-to-br from-gold-50 to-gold-100/40 border border-gold-200">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">✨</span>
+          <div className="font-display text-lg text-luxury-900">Express AI onboard — 30 seconds</div>
+        </div>
+        <div className="text-xs text-luxury-600 mt-1">Type your hotel name + city. We pull your complete digital footprint (photos, rooms, contact, amenities) and build a ready-to-review draft. Edit anything after.</div>
+        <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 mt-3">
+          <input className="input-luxury" placeholder="Hotel name — e.g. The Mountain Grand" value={xName} onChange={(e) => setXName(e.target.value)} disabled={xBusy} />
+          <input className="input-luxury" placeholder="City (optional)" value={xCity} onChange={(e) => setXCity(e.target.value)} disabled={xBusy} />
+          <button type="button" onClick={runExpress} disabled={xBusy || !xName.trim()} className="btn-luxury disabled:opacity-50 whitespace-nowrap">
+            {xBusy ? "Building…" : "✨ Build my panel"}
+          </button>
+        </div>
+        {xMsg && <div className="mt-3 text-sm text-luxury-700 bg-white/70 border border-gold-200 rounded-lg px-3 py-2">{xMsg}</div>}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-luxury-100" />
+        <div className="text-xs text-luxury-400 uppercase tracking-widest">or refine manually</div>
+        <div className="flex-1 h-px bg-luxury-100" />
+      </div>
 
       <div className="relative">
         <Field label="Search your property on Google">
@@ -449,10 +492,27 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
   });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [mode, setMode] = useState<"digital" | "manual">("digital");
+  const [vstate, setVstate] = useState<Record<string, { ok: boolean; busy: boolean; note?: string }>>({});
 
   useEffect(() => { if (listing?.kyc) setData(listing.kyc); }, [listing?.kyc]);
 
   if (!hotelId) return <NotReady prompt="Save property basics first." />;
+
+  const verify = async (field: "pan" | "gstin" | "aadhaar", value: string, flag: string) => {
+    if (!value) return;
+    setVstate((s) => ({ ...s, [field]: { ok: false, busy: true } }));
+    try {
+      const j = await onbFetch<any>("/api/onboard/kyc/verify", {
+        method: "POST",
+        body: JSON.stringify({ field, value, name: data.owner_full_name, hotel_id: hotelId }),
+      });
+      setVstate((s) => ({ ...s, [field]: { ok: j.ok, busy: false, note: j.detail } }));
+      if (j.ok) setData((d: any) => ({ ...d, [flag]: true, kyc_mode: "digital" }));
+    } catch (e: any) {
+      setVstate((s) => ({ ...s, [field]: { ok: false, busy: false, note: e?.message || "Verify failed" } }));
+    }
+  };
 
   const upload = async (field: string, file: File) => {
     const fd = new FormData();
@@ -467,7 +527,7 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
   const submit = async () => {
     setSaving(true); setMsg(null);
     try {
-      await onbFetch("/api/onboard/kyc", { method: "POST", body: JSON.stringify({ ...data, hotel_id: hotelId }) });
+      await onbFetch("/api/onboard/kyc", { method: "POST", body: JSON.stringify({ ...data, kyc_mode: data.kyc_mode || mode, hotel_id: hotelId }) });
       setMsg("✓ KYC saved");
       onChange();
     } catch (e: any) { setMsg(e?.message || "Save failed"); }
@@ -480,11 +540,31 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
     <div className="space-y-6">
       <SectionHead title="KYC verification" subtitle="Required by law. We never share your documents externally." />
 
+      <div className="flex gap-2 p-1 rounded-xl bg-luxury-100 w-fit">
+        {(["digital", "manual"] as const).map((m) => (
+          <button key={m} onClick={() => setMode(m)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${mode === m ? "bg-white shadow-sm text-gold-700" : "text-luxury-600"}`}>
+            {m === "digital" ? "⚡ Fast digital KYC (recommended)" : "📄 Manual upload"}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-luxury-500">
+        {mode === "digital"
+          ? "Verify PAN / GSTIN / Aadhaar instantly against government registries. No document upload needed for verified fields."
+          : "Upload scanned documents — our team reviews them within 24–48 hours."}
+      </p>
+
       <Group title="Owner details">
         <div className="grid md:grid-cols-2 gap-3">
           <Field label="Full name *"><input className="input-luxury" value={data.owner_full_name || ""} onChange={(e) => setData({ ...data, owner_full_name: e.target.value })} /></Field>
           <Field label="Date of birth"><input type="date" className="input-luxury" value={data.owner_dob || ""} onChange={(e) => setData({ ...data, owner_dob: e.target.value })} /></Field>
-          <Field label="PAN number"><input className="input-luxury" value={data.owner_pan || ""} onChange={(e) => setData({ ...data, owner_pan: e.target.value.toUpperCase() })} /></Field>
+          <Field label="PAN number">
+            <div className="flex gap-2">
+              <input className="input-luxury flex-1" value={data.owner_pan || ""} onChange={(e) => setData({ ...data, owner_pan: e.target.value.toUpperCase(), pan_verified: false })} />
+              {mode === "digital" && <VerifyBtn s={vstate.pan} onClick={() => verify("pan", data.owner_pan, "pan_verified")} />}
+            </div>
+            {vstate.pan?.note && <div className={`text-xs mt-1 ${vstate.pan.ok ? "text-emerald-700" : "text-amber-700"}`}>{vstate.pan.ok ? "✓ " : "⚠ "}{vstate.pan.note}</div>}
+          </Field>
           <Field label="Aadhaar (last 4 digits)"><input maxLength={4} className="input-luxury" value={data.owner_aadhaar_last4 || ""} onChange={(e) => setData({ ...data, owner_aadhaar_last4: e.target.value.replace(/\D/g, "").slice(0, 4) })} /></Field>
           <Field label="Owner address" full><textarea rows={2} className="input-luxury" value={data.owner_address || ""} onChange={(e) => setData({ ...data, owner_address: e.target.value })} /></Field>
         </div>
@@ -503,7 +583,13 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
               <option value="trust">Trust</option>
             </select>
           </Field>
-          <Field label="GSTIN"><input className="input-luxury" value={data.business_gstin || ""} onChange={(e) => setData({ ...data, business_gstin: e.target.value.toUpperCase() })} /></Field>
+          <Field label="GSTIN">
+            <div className="flex gap-2">
+              <input className="input-luxury flex-1" value={data.business_gstin || ""} onChange={(e) => setData({ ...data, business_gstin: e.target.value.toUpperCase(), gstin_verified: false })} />
+              {mode === "digital" && <VerifyBtn s={vstate.gstin} onClick={() => verify("gstin", data.business_gstin, "gstin_verified")} />}
+            </div>
+            {vstate.gstin?.note && <div className={`text-xs mt-1 ${vstate.gstin.ok ? "text-emerald-700" : "text-amber-700"}`}>{vstate.gstin.ok ? "✓ " : "⚠ "}{vstate.gstin.note}</div>}
+          </Field>
           <Field label="Business PAN"><input className="input-luxury" value={data.business_pan || ""} onChange={(e) => setData({ ...data, business_pan: e.target.value.toUpperCase() })} /></Field>
           <Field label="Business address" full><textarea rows={2} className="input-luxury" value={data.business_address || ""} onChange={(e) => setData({ ...data, business_address: e.target.value })} /></Field>
           <Field label="State"><input className="input-luxury" value={data.business_state || ""} onChange={(e) => setData({ ...data, business_state: e.target.value })} /></Field>
@@ -539,7 +625,17 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
   );
 }
 
-function Consent({ v, on, text }: { v: boolean; on: (b: boolean) => void; text: string }) {
+function VerifyBtn({ s, onClick }: { s?: { ok: boolean; busy: boolean }; onClick: () => void }) {
+  if (s?.ok) return <span className="px-3 py-2 rounded-lg bg-emerald-100 text-emerald-700 text-sm font-medium whitespace-nowrap">✓ Verified</span>;
+  return (
+    <button type="button" onClick={onClick} disabled={s?.busy}
+      className="px-3 py-2 rounded-lg bg-gold-600 text-white text-sm font-medium whitespace-nowrap hover:bg-gold-700 disabled:opacity-50">
+      {s?.busy ? "Verifying…" : "Verify"}
+    </button>
+  );
+}
+
+function Consent({ v, on, text }: { v: boolean; on: (b: boolean) => void; text: React.ReactNode }) {
   return (
     <label className="flex items-start gap-3 p-3 rounded-xl bg-luxury-50 hover:bg-gold-50 cursor-pointer border border-luxury-100">
       <input type="checkbox" checked={!!v} onChange={(e) => on(e.target.checked)} className="mt-0.5 w-5 h-5 accent-gold-600" />
@@ -583,8 +679,33 @@ function BankSection({ listing, onChange }: { listing: Listing | null; onChange:
   const [data, setData] = useState<any>({ account_type: "savings" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [ifscState, setIfscState] = useState<{ busy: boolean; ok?: boolean; note?: string }>({ busy: false });
+  const [pdState, setPdState] = useState<{ busy: boolean; ok?: boolean; note?: string }>({ busy: false });
 
   if (!hotelId) return <NotReady prompt="Save property basics first." />;
+
+  const lookupIfsc = async () => {
+    if (!data.ifsc) return;
+    setIfscState({ busy: true });
+    try {
+      const j = await onbFetch<any>("/api/onboard/bank/verify", { method: "POST", body: JSON.stringify({ mode: "ifsc", ifsc: data.ifsc }) });
+      setIfscState({ busy: false, ok: j.ok, note: j.detail });
+      if (j.ok && j.data) setData((d: any) => ({ ...d, bank_name: j.data.bank || d.bank_name, branch: j.data.branch || d.branch, bank_branch_address: j.data.address }));
+    } catch (e: any) { setIfscState({ busy: false, ok: false, note: e?.message || "Lookup failed" }); }
+  };
+
+  const pennyDrop = async () => {
+    if (!data.account_number || !data.ifsc || !data.account_holder) { setMsg("Enter account holder, number and IFSC first."); return; }
+    setPdState({ busy: true });
+    try {
+      const j = await onbFetch<any>("/api/onboard/bank/verify", {
+        method: "POST",
+        body: JSON.stringify({ mode: "penny_drop", account_number: data.account_number, ifsc: data.ifsc, account_holder: data.account_holder, hotel_id: hotelId }),
+      });
+      setPdState({ busy: false, ok: j.ok, note: j.detail });
+      if (j.ok) setData((d: any) => ({ ...d, verify_mode: "digital", penny_drop_status: "verified", name_match_score: j.data?.nameMatchScore ?? null }));
+    } catch (e: any) { setPdState({ busy: false, ok: false, note: e?.message || "Verification failed" }); }
+  };
 
   const submit = async () => {
     setSaving(true); setMsg(null);
@@ -618,10 +739,37 @@ function BankSection({ listing, onChange }: { listing: Listing | null; onChange:
           </select>
         </Field>
         <Field label="Account number *"><input className="input-luxury" value={data.account_number || ""} onChange={(e) => setData({ ...data, account_number: e.target.value })} /></Field>
-        <Field label="IFSC *"><input className="input-luxury" value={data.ifsc || ""} onChange={(e) => setData({ ...data, ifsc: e.target.value.toUpperCase() })} /></Field>
+        <Field label="IFSC *">
+          <div className="flex gap-2">
+            <input className="input-luxury flex-1" value={data.ifsc || ""} onChange={(e) => setData({ ...data, ifsc: e.target.value.toUpperCase() })} />
+            <button type="button" onClick={lookupIfsc} disabled={ifscState.busy || !data.ifsc}
+              className="shrink-0 px-3 rounded-lg border border-gold-300 text-gold-700 text-sm font-semibold hover:bg-gold-50 disabled:opacity-40">
+              {ifscState.busy ? "…" : "Lookup"}
+            </button>
+          </div>
+          {ifscState.note && <div className={`mt-1 text-xs ${ifscState.ok ? "text-emerald-700" : "text-luxury-500"}`}>{ifscState.ok ? "✓ " : ""}{ifscState.note}</div>}
+        </Field>
         <Field label="Bank name"><input className="input-luxury" value={data.bank_name || ""} onChange={(e) => setData({ ...data, bank_name: e.target.value })} /></Field>
         <Field label="Branch"><input className="input-luxury" value={data.branch || ""} onChange={(e) => setData({ ...data, branch: e.target.value })} /></Field>
+        {data.bank_branch_address && <Field label="Branch address" full><div className="text-sm text-luxury-600 px-1">{data.bank_branch_address}</div></Field>}
         <Field label="UPI VPA (optional)" full><input className="input-luxury" placeholder="hotel@upi" value={data.upi_vpa || ""} onChange={(e) => setData({ ...data, upi_vpa: e.target.value })} /></Field>
+      </div>
+
+      {/* Digital penny-drop verification (optional — recommended) */}
+      <div className="card-luxury p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-luxury-900">⚡ Instant bank verification</div>
+          <div className="text-xs text-luxury-500">Confirms the account holder name matches via a ₹1 penny-drop. Optional but speeds up payouts.</div>
+          {pdState.note && <div className={`mt-1 text-xs ${pdState.ok ? "text-emerald-700" : "text-luxury-500"}`}>{pdState.ok ? "✓ " : ""}{pdState.note}{pdState.ok && data.name_match_score != null ? ` · name match ${Math.round((data.name_match_score || 0) * 100)}%` : ""}</div>}
+        </div>
+        {data.penny_drop_status === "verified" ? (
+          <span className="px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">✓ Verified</span>
+        ) : (
+          <button type="button" onClick={pennyDrop} disabled={pdState.busy}
+            className="px-4 py-1.5 rounded-lg border border-gold-300 text-gold-700 text-sm font-semibold hover:bg-gold-50 disabled:opacity-40">
+            {pdState.busy ? "Verifying…" : "Verify account"}
+          </button>
+        )}
       </div>
 
       {msg && <div className="text-sm text-luxury-700 bg-gold-50 border border-gold-200 rounded-lg px-3 py-2">{msg}</div>}
@@ -641,59 +789,127 @@ function LegalSection({ listing, onChange }: { listing: Listing | null; onChange
   const [signed, setSigned] = useState<any>(listing?.agreement || null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState(false);
+  const [commission, setCommission] = useState<number>(12);
+  const [sigName, setSigName] = useState("");
+  const [consents, setConsents] = useState<Record<string, boolean>>({});
+  const [showFull, setShowFull] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/onboard/agreement").then((r) => r.json()).then(setAgr);
-  }, []);
+  const loadAgr = (pct: number) =>
+    fetch(`/api/onboard/agreement?commission=${pct}`).then((r) => r.json()).then((j) => {
+      setAgr(j);
+      setCommission(j.commissionPercent);
+    });
+
+  useEffect(() => { loadAgr(12); }, []);
 
   if (!hotelId) return <NotReady prompt="Save property basics first." />;
+  if (!agr) return <div className="text-luxury-500">Loading agreement…</div>;
+
+  const items: { key: string; label: string; detail: string }[] = agr.consentItems || DEFAULT_CONSENTS;
+  const allConsented = items.every((c) => consents[c.key]);
+  const c = agr.clauses || {};
 
   const sign = async () => {
     setBusy(true); setMsg(null);
     try {
-      const j = await onbFetch<any>("/api/onboard/agreement", { method: "POST", body: JSON.stringify({ hotel_id: hotelId }) });
+      // 1. record granular consents
+      await onbFetch("/api/onboard/consents", {
+        method: "POST",
+        body: JSON.stringify({ hotel_id: hotelId, consents }),
+      }).catch(() => {});
+      // 2. sign the agreement with the negotiated commission + typed name
+      const j = await onbFetch<any>("/api/onboard/agreement", {
+        method: "POST",
+        body: JSON.stringify({ hotel_id: hotelId, commission_percent: commission, signature_name: sigName.trim() }),
+      });
       setSigned(j.agreement);
-      setMsg("✓ Agreement signed");
+      setMsg("✓ Agreement signed & commission locked at " + commission + "%");
       onChange();
     } catch (e: any) { setMsg(e?.message || "Failed to sign"); }
     finally { setBusy(false); }
   };
 
-  if (!agr) return <div className="text-luxury-500">Loading agreement…</div>;
-
   return (
     <div className="space-y-5">
-      <SectionHead title="Host agreement" subtitle={`Version ${agr.version} · ${agr.commissionPercent}% commission`} />
+      <SectionHead title="Host agreement & consents" subtitle={`StayBid Host Agreement ${agr.version} · India-compliant e-contract`} />
 
       {signed && (
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800">
-          ✓ Signed on {new Date(signed.signed_at).toLocaleString("en-IN")} (version {signed.version})
+          ✓ Signed on {new Date(signed.signed_at).toLocaleString("en-IN")} by <strong>{signed.signature_name || "—"}</strong> · commission {signed.commission_percent}% · version {signed.version}
         </div>
       )}
 
-      <Block title="1. Commission">
-        <p>StayBid charges a flat commission of <strong>{agr.commissionPercent}%</strong> on the gross booking value (net of taxes) for every confirmed booking sourced through the platform. Commission is deducted automatically before payout.</p>
-      </Block>
-      <Block title="2. Cancellation policy"><pre className="whitespace-pre-wrap font-sans">{agr.cancellation}</pre></Block>
-      <Block title="3. Liability"><pre className="whitespace-pre-wrap font-sans">{agr.liability}</pre></Block>
-      <Block title="4. Dispute handling"><pre className="whitespace-pre-wrap font-sans">{agr.dispute}</pre></Block>
+      {!signed && (
+        <Group title={`Commission rate — agreed ${commission}%`}>
+          <div className="space-y-3">
+            <input type="range" min={agr.commissionMin} max={agr.commissionMax} step={0.5} value={commission}
+              onChange={(e) => loadAgr(+e.target.value)}
+              className="w-full accent-gold-600" />
+            <div className="flex justify-between text-xs text-luxury-500">
+              <span>{agr.commissionMin}% (min)</span>
+              <span className="text-gold-700 font-bold text-base">{commission}%</span>
+              <span>{agr.commissionMax}% (max)</span>
+            </div>
+            <p className="text-xs text-luxury-500">Flexible {agr.commissionMin}%–{agr.commissionMax}% of gross booking value (excl. GST). StayBid may only reduce this rate for promotions; any increase requires 30 days' notice.</p>
+          </div>
+        </Group>
+      )}
+
+      <Block title="1. Commission & settlement"><pre className="whitespace-pre-wrap font-sans text-xs">{c.commissionRules}{"\n\n"}{c.settlement}</pre></Block>
+      <Block title="2. Cancellation policy"><pre className="whitespace-pre-wrap font-sans text-xs">{c.cancellation}</pre></Block>
+      <Block title="3. Statutory compliance"><pre className="whitespace-pre-wrap font-sans text-xs">{c.compliance}</pre></Block>
+      <Block title="4. Data, privacy & platform intelligence"><pre className="whitespace-pre-wrap font-sans text-xs">{c.data}</pre></Block>
+      <Block title="5. Liability & indemnity"><pre className="whitespace-pre-wrap font-sans text-xs">{c.liability}</pre></Block>
+      <Block title="6. Term & termination"><pre className="whitespace-pre-wrap font-sans text-xs">{c.termination}</pre></Block>
+      <Block title="7. Dispute resolution & governing law"><pre className="whitespace-pre-wrap font-sans text-xs">{c.dispute}</pre></Block>
+      <Block title="8. Electronic execution"><pre className="whitespace-pre-wrap font-sans text-xs">{c.esign}</pre></Block>
+
+      <button onClick={() => setShowFull((s) => !s)} className="text-sm text-gold-700 underline">
+        {showFull ? "Hide" : "View"} full agreement text
+      </button>
+      {showFull && <pre className="whitespace-pre-wrap font-sans text-[11px] bg-luxury-50 border border-luxury-100 rounded-xl p-4 max-h-72 overflow-auto text-luxury-700">{agr.fullText}</pre>}
 
       {!signed && (
         <>
-          <label className="flex items-start gap-3 p-3 rounded-xl bg-gold-50 border border-gold-200 cursor-pointer">
-            <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 w-5 h-5 accent-gold-600" />
-            <div className="text-sm text-luxury-800">I have read and accept the terms of the StayBid Host Agreement in full.</div>
-          </label>
-          {msg && <div className="text-sm text-luxury-700">{msg}</div>}
+          <Group title="Consents (all required)">
+            <div className="space-y-2.5">
+              {items.map((it) => (
+                <Consent key={it.key} v={!!consents[it.key]} on={(b) => setConsents((p) => ({ ...p, [it.key]: b }))}
+                  text={<><strong>{it.label}.</strong> {it.detail}</>} />
+              ))}
+            </div>
+          </Group>
+
+          <Group title="Electronic signature">
+            <Field label="Type your full legal name to e-sign *">
+              <input className="input-luxury" placeholder="e.g. Sachin Tomer" value={sigName} onChange={(e) => setSigName(e.target.value)} />
+            </Field>
+            <p className="text-xs text-luxury-500 mt-1">Your typed name + checkbox consents + authenticated session + IP + timestamp form a binding e-contract under §10A, IT Act 2000.</p>
+          </Group>
+
+          {msg && <div className="text-sm text-luxury-700 bg-gold-50 border border-gold-200 rounded-lg px-3 py-2">{msg}</div>}
           <div className="flex justify-end">
-            <button onClick={sign} disabled={busy || !accepted} className="btn-luxury disabled:opacity-50">{busy ? "Signing…" : "Sign agreement"}</button>
+            <button onClick={sign} disabled={busy || !allConsented || sigName.trim().length < 3} className="btn-luxury disabled:opacity-50">
+              {busy ? "Signing…" : `Sign & lock ${commission}% commission`}
+            </button>
           </div>
         </>
       )}
     </div>
   );
 }
+
+// Fallback consent list if the API hasn't surfaced consentItems (defensive).
+const DEFAULT_CONSENTS = [
+  { key: "consent_listing", label: "Authority to list", detail: "I am the owner / authorised signatory and may list this property." },
+  { key: "consent_data_sourcing", label: "Public data sourcing", detail: "StayBid may collect my property's public digital footprint to build my listing." },
+  { key: "consent_ota_rates", label: "OTA rate intelligence", detail: "StayBid may monitor my public OTA rates for dynamic pricing." },
+  { key: "consent_price_compare", label: "Price comparison", detail: "StayBid may show my rates beside competitor OTAs." },
+  { key: "consent_image_rights", label: "Image licence", detail: "I hold rights to my images and grant StayBid a display licence." },
+  { key: "consent_dpdp_privacy", label: "Data processing (DPDP 2023)", detail: "I consent to processing of my personal/KYC/bank data per the DPDP Act." },
+  { key: "consent_commission", label: "Commission terms", detail: "I accept the agreed commission and settlement terms." },
+  { key: "consent_legal", label: "Full agreement", detail: "I accept the StayBid Host Agreement in full." },
+];
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
