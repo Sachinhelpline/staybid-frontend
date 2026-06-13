@@ -14,15 +14,18 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://staybid-live-production.
 // `auth/billing-not-enabled` and the customer is left staring at an error
 // they can't act on.
 //
-// Toggle: NEXT_PUBLIC_ENABLE_PHONE_OTP=1 in Vercel env vars.
-// Default: OFF — Mobile OTP button + screens hidden. WhatsApp OTP +
-// Google + Facebook + (future) any other social provider stays live, so
-// users always have at least 3 ways to sign in.
+// Sachin (2026-06): "abhi hmara mobile otp kaam nhi kar raha hai — abhi ke
+// liye gmail verification ko hi login ke liye access dedo, future ke liye
+// mobile otp ko rakhlo." So Mobile OTP is HARD-DISABLED in code right now
+// (Google/Gmail is the primary path; WhatsApp OTP + Facebook remain as
+// alternatives). The entire Firebase phone-auth flow below — sendFirebaseOtp
+// + verify screens + reCAPTCHA setup — is preserved verbatim.
 //
-// When enabling later: set the env var to "1" in Vercel and redeploy.
-// All the code paths (sendFirebaseOtp + verify screens + reCAPTCHA setup)
-// are preserved verbatim — no refactor needed, just the gate.
-const PHONE_OTP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PHONE_OTP === "1";
+// TO RE-ENABLE IN THE FUTURE: change the line below back to
+//   const PHONE_OTP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_PHONE_OTP === "1";
+// and set NEXT_PUBLIC_ENABLE_PHONE_OTP=1 in Vercel, once Firebase phone
+// billing is active. No other refactor needed.
+const PHONE_OTP_ENABLED = false;
 
 type Screen = "options" | "phone" | "phone-otp" | "whatsapp" | "whatsapp-otp";
 
@@ -294,23 +297,29 @@ function AuthPage() {
             <Brand subtitle="Sign in to your account" />
             <div className="bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-3">
 
+              {/* Primary login — Google (Gmail). Mobile OTP is temporarily
+                  unavailable, so Google is the fastest, recommended way in.
+                  Rendered as the gold hero CTA so it reads as THE path. */}
               <button onClick={signInWithGoogle} disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-luxury-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50">
+                className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl bg-white border-2 border-gold-300 shadow-gold hover:bg-gold-50 transition-all duration-200 text-sm font-semibold text-luxury-900 disabled:opacity-50">
                 <GoogleIcon />
-                <span className="flex-1 text-left">Continue with Google</span>
+                <span>Continue with Google</span>
               </button>
-
-              <button onClick={signInWithFacebook} disabled={loading}
-                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-blue-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50">
-                <FacebookIcon />
-                <span className="flex-1 text-left">Continue with Facebook</span>
-              </button>
+              <p className="text-center text-[11px] text-luxury-400 -mt-1">
+                Fastest & recommended — sign in with your Gmail
+              </p>
 
               <div className="flex items-center gap-3 py-1">
                 <div className="flex-1 h-px bg-luxury-100" />
                 <span className="text-xs text-luxury-300 tracking-wider">OR</span>
                 <div className="flex-1 h-px bg-luxury-100" />
               </div>
+
+              <button onClick={signInWithFacebook} disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-3.5 border border-luxury-200 rounded-2xl hover:bg-blue-50 transition-all duration-200 text-sm font-medium text-luxury-800 disabled:opacity-50">
+                <FacebookIcon />
+                <span className="flex-1 text-left">Continue with Facebook</span>
+              </button>
 
               <button onClick={() => { setError(""); setPhone(""); setScreen("whatsapp"); }} disabled={loading}
                 className="w-full flex items-center gap-3 px-4 py-3.5 border border-green-200 bg-green-50 rounded-2xl hover:bg-green-100 transition-all duration-200 text-sm font-medium text-green-800 disabled:opacity-50">
