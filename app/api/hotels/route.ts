@@ -23,6 +23,12 @@ export async function GET(req: NextRequest) {
   // Build hotel filter — no camelCase ordering (PostgREST requires quoted identifiers)
   // Narrowed select (was *). Drops description/address fields not used by cards.
   const qs = new URLSearchParams({ select: HOTEL_CARD_COLS, limit: "100" });
+  // v262 — admin-approval gate: only APPROVED hotels are discoverable. Newly
+  // onboarded/published hotels default to approval_status='pending' and stay
+  // hidden until an admin verifies + approves them. (The owner can still
+  // preview their own hotel via the direct /hotels/[id] link — that detail
+  // route is intentionally NOT gated.)
+  qs.set("approval_status", "eq.approved");
   if (city) qs.set("city", `ilike.${city}`);
   if (q)    qs.set("name", `ilike.*${q}*`);
 

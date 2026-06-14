@@ -291,7 +291,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // scan band), active/clickable kiosk-native hotel scorecard, animated QR
 // scan-line + shimmering Scan-to-book CTA. Bump so warm SWR clients pick up
 // the new markup on next visit.
-const HTML_CACHE = 'staybid-html-v53';
+// v263 — admin-approval-before-live gate (discovery surfaces filter on
+// approval_status='approved') + sole-proprietor KYC copy + admin review
+// queue + express real-query scraper fix. Bump so warm SWR clients pick up
+// the new admin/wizard markup on next visit.
+const HTML_CACHE = 'staybid-html-v54';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

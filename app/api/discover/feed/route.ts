@@ -90,8 +90,11 @@ export async function POST(req: NextRequest) {
   // skip Supabase for the TTL window. Per-user reads (userBookings) still
   // hit the network because they vary per request.
   const [hotelsRes, roomsRes, bidsRes, bookingsRes, userBookingsRes] = await Promise.all([
+    // v262 — admin-approval gate: only APPROVED hotels surface in the reel feed.
+    // Newly onboarded/published hotels stay approval_status='pending' until an
+    // admin verifies them. (Direct /hotels/[id] preview stays ungated for owners.)
     sbCached("discover:hotels", () =>
-      fetch(`${SB_URL}/rest/v1/hotels?select=id,name,city,state,lat,lng,amenities,images,avgRating,starRating,createdAt,trustBadge,ownerId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),
+      fetch(`${SB_URL}/rest/v1/hotels?approval_status=eq.approved&select=id,name,city,state,lat,lng,amenities,images,avgRating,starRating,createdAt,trustBadge,ownerId`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),
       TTL_CATALOG),
     sbCached("discover:rooms", () =>
       fetch(`${SB_URL}/rest/v1/rooms?select=id,hotelId,type,capacity,floorPrice,images,amenities`, { headers: SB_H, cache: "no-store" }).then(r => r.json()).catch(() => []),

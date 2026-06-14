@@ -37,12 +37,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Cannot publish — missing requirements", missing, checklist }, { status: 400 });
     }
 
-    const upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(hotel_id)}`, {
-      status: "published",
-      published_at: new Date().toISOString(),
-    });
+    // v262 — admin-approval-before-live: publishing no longer goes instantly
+    // live. The hotel is marked submitted-for-review (approval_status='pending')
+    // and a review request lands in the admin queue. The admin verifies every
+    // detail and only then sets approval_status='approved' + status='active',
+    // which is the gate every discovery surface now filters on.
+    let upd;
+    try {
+      upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(hotel_id)}`, {
+        status: "pending_review",
+        approval_status: "pending",
+        submitted_for_review_at: new Date().toISOString(),
+      });
+    } catch {
+      // Minimal-schema fallback (older DBs without submitted_for_review_at)
+      upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(hotel_id)}`, {
+        status: "pending_review",
+        approval_status: "pending",
+      });
+    }
 
-    return NextResponse.json({ ok: true, hotel: Array.isArray(upd) ? upd[0] : upd });
+    return NextResponse.json({
+      ok: true,
+      submitted: true,
+      message: "Aapki listing review ke liye bhej di gayi hai. Admin verify karne ke baad live ho jayegi.",
+      hotel: Array.isArray(upd) ? upd[0] : upd,
+    });
   } catch (e: any) {
     if (e?.message === "UNAUTHORIZED") return NextResponse.json({ error: "auth required" }, { status: 401 });
     return NextResponse.json({ error: e?.message || "publish failed" }, { status: 500 });

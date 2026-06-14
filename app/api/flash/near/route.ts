@@ -58,8 +58,10 @@ export async function GET(req: NextRequest) {
   // hotels + rooms are shared across every caller and rarely change → long TTL.
   // Narrowed selects (was select=*). Drops description/address/internal
   // columns from every hotel + room row. ~75–85% payload reduction.
+  // v262 — admin-approval gate: only APPROVED hotels surface flash deals.
+  // Pending/draft hotels stay hidden until an admin verifies them.
   const [hotels, rooms] = await Promise.all([
-    sbCachedFetch(`hotels?select=${HOTEL_CARD_COLS}`, TTL_CATALOG),
+    sbCachedFetch(`hotels?approval_status=eq.approved&select=${HOTEL_CARD_COLS}`, TTL_CATALOG),
     sbCachedFetch(`rooms?select=${ROOM_CARD_COLS}`, TTL_CATALOG),
   ]);
 

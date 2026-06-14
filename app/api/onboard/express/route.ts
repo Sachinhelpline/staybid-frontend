@@ -41,7 +41,13 @@ export async function POST(req: Request) {
     if (!hit) {
       const out = await searchHotels(query, city);
       searchProvider = out.provider;
-      hit = out.results[0] || {
+      // v262 — REAL-DATA fix: when no live search key is configured, the mock
+      // provider fabricates a name ("The {query} Grand") that doesn't exist —
+      // so the Gemini scraper then pulls garbage for a hotel that isn't real.
+      // In that case we build the hit from the user's EXACT typed name + city
+      // so the scraper grounds on the property they actually own.
+      const isReal = out.provider === "serpapi" || out.provider === "tavily";
+      hit = (isReal && out.results[0]) || {
         source: "manual",
         sourceRef: `manual-${Date.now()}`,
         name: query,
