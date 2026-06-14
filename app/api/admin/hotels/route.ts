@@ -19,9 +19,13 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
 
   try {
-    let query = "hotels?select=id,name,city,state,ownerId,status,images,starRating,createdAt&order=createdAt.desc&limit=200";
+    // v262 — surface approval_status + submitted_for_review_at so the admin
+    // can run the verify-before-live review queue.
+    const approval = searchParams.get("approval");
+    let query = "hotels?select=id,name,city,state,ownerId,status,approval_status,isVerified,submitted_for_review_at,published_at,images,starRating,createdAt&order=createdAt.desc&limit=200";
     if (city && city !== "all") query += `&city=eq.${city}`;
     if (status && status !== "all") query += `&status=eq.${status}`;
+    if (approval && approval !== "all") query += `&approval_status=eq.${approval}`;
 
     let hotels = (await sb(query)) as any[];
 
@@ -64,18 +68,40 @@ export async function PATCH(req: NextRequest) {
     let update: Record<string, unknown> = {};
     if (action === "status") update = { status: value };
     else if (action === "commission") update = { commission: value };
+    // v262 — admin verify-before-live actions. Approve makes the hotel
+    // discoverable across every customer surface (the gate filters on
+    // approval_status='approved'); reject keeps it hidden with a reason.
+    else if (action === "approve")
+      update = {
+        approval_status: "approved",
+        status: "active",
+        isVerified: true,
+        published_at: new Date().toISOString(),
+      };
+    else if (action === "reject")
+      update = { approval_status: "rejected", rejection_reason: value ?? null };
     else return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 
-    const res = await fetch(`${SB_URL}/rest/v1/hotels?id=eq.${hotelId}`, {
-      method: "PATCH",
-      headers: {
-        apikey: SB_KEY,
-        Authorization: `Bearer ${SB_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(update),
-    });
+    // The reject path may reference a column the DB doesn't have yet; strip it
+    // and retry so the core status flip always lands.
+    const doPatch = async (body: Record<string, unknown>) =>
+      fetch(`${SB_URL}/rest/v1/hotels?id=eq.${hotelId}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SB_KEY,
+          Authorization: `Bearer ${SB_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(body),
+      });
+
+    let res = await doPatch(update);
+    if (!res.ok && action === "reject" && "rejection_reason" in update) {
+      // DB without rejection_reason column → retry with just the status flip.
+      const { rejection_reason, ...rest } = update as any;
+      res = await doPatch(rest);
+    }
     const data = await res.json();
 
     // v98 — audit

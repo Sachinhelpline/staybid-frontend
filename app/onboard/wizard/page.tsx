@@ -576,21 +576,31 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
           <Field label="Business type">
             <select className="input-luxury" value={data.business_type || ""} onChange={(e) => setData({ ...data, business_type: e.target.value })}>
               <option value="">Select…</option>
-              <option value="proprietorship">Proprietorship</option>
+              <option value="proprietorship">Proprietorship (sole proprietor)</option>
               <option value="partnership">Partnership</option>
               <option value="llp">LLP</option>
               <option value="pvt-ltd">Private Limited</option>
               <option value="trust">Trust</option>
             </select>
           </Field>
-          <Field label="GSTIN">
+
+          {/* v262 — sole-proprietor rule: PAN card alone is enough business proof,
+              GST is optional. Surfaces only when proprietorship is selected. */}
+          {data.business_type === "proprietorship" && (
+            <div className="md:col-span-2 text-sm text-luxury-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+              ✓ <b>Sole proprietor?</b> Aapka <b>PAN card</b> hi business proof ke liye kaafi hai.
+              GST <b>optional</b> hai — agar registered nahi hain toh khaali chhod dein.
+            </div>
+          )}
+
+          <Field label={data.business_type === "proprietorship" ? "GSTIN (optional)" : "GSTIN"}>
             <div className="flex gap-2">
               <input className="input-luxury flex-1" value={data.business_gstin || ""} onChange={(e) => setData({ ...data, business_gstin: e.target.value.toUpperCase(), gstin_verified: false })} />
               {mode === "digital" && <VerifyBtn s={vstate.gstin} onClick={() => verify("gstin", data.business_gstin, "gstin_verified")} />}
             </div>
             {vstate.gstin?.note && <div className={`text-xs mt-1 ${vstate.gstin.ok ? "text-emerald-700" : "text-amber-700"}`}>{vstate.gstin.ok ? "✓ " : "⚠ "}{vstate.gstin.note}</div>}
           </Field>
-          <Field label="Business PAN"><input className="input-luxury" value={data.business_pan || ""} onChange={(e) => setData({ ...data, business_pan: e.target.value.toUpperCase() })} /></Field>
+          <Field label={data.business_type === "proprietorship" ? "PAN (owner PAN works)" : "Business PAN"}><input className="input-luxury" value={data.business_pan || ""} onChange={(e) => setData({ ...data, business_pan: e.target.value.toUpperCase() })} /></Field>
           <Field label="Business address" full><textarea rows={2} className="input-luxury" value={data.business_address || ""} onChange={(e) => setData({ ...data, business_address: e.target.value })} /></Field>
           <Field label="State"><input className="input-luxury" value={data.business_state || ""} onChange={(e) => setData({ ...data, business_state: e.target.value })} /></Field>
           <Field label="Pincode"><input className="input-luxury" value={data.business_pincode || ""} onChange={(e) => setData({ ...data, business_pincode: e.target.value })} /></Field>
@@ -601,8 +611,8 @@ function KycSection({ listing, onChange }: { listing: Listing | null; onChange: 
         <div className="grid md:grid-cols-2 gap-3">
           <DocUpload label="Owner ID proof (Aadhaar/Passport/DL)" url={data.doc_owner_id_url} onUpload={(f) => upload("doc_owner_id_url", f)} />
           <DocUpload label="Property ownership proof" url={data.doc_property_proof_url} onUpload={(f) => upload("doc_property_proof_url", f)} />
-          <DocUpload label="Business PAN card" url={data.doc_business_pan_url} onUpload={(f) => upload("doc_business_pan_url", f)} />
-          <DocUpload label="GST certificate (if applicable)" url={data.doc_gst_url} onUpload={(f) => upload("doc_gst_url", f)} />
+          <DocUpload label={data.business_type === "proprietorship" ? "PAN card (owner PAN is fine)" : "Business PAN card"} url={data.doc_business_pan_url} onUpload={(f) => upload("doc_business_pan_url", f)} />
+          <DocUpload label={data.business_type === "proprietorship" ? "GST certificate (optional)" : "GST certificate (if applicable)"} url={data.doc_gst_url} onUpload={(f) => upload("doc_gst_url", f)} />
         </div>
       </Group>
 
