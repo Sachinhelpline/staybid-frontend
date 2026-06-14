@@ -40,7 +40,9 @@ export type HotelDraftPayload = {
 
 const PROVIDER =
   process.env.HOTEL_DETAILS_PROVIDER ||
-  (process.env.GEMINI_API_KEY ? "gemini" :  // ← FREE real-AI scraper (web-grounded)
+  // GEMINI_API_KEY (onboarding-dedicated) OR GEMINI_CHAT_API_KEY (shared with
+  // customer-support chat) → FREE real-AI scraper (web-grounded).
+  ((process.env.GEMINI_API_KEY || process.env.GEMINI_CHAT_API_KEY) ? "gemini" :
    process.env.SERPAPI_KEY ? "serpapi" : "mock");
 
 // ----------------------------------------------------------------------------
