@@ -66,7 +66,9 @@ export async function geminiScrapeHotel(
   name: string,
   city: string,
 ): Promise<{ provider: string; hotel: ScrapedHotel } | null> {
-  const key = process.env.GEMINI_API_KEY;
+  // Prefer the onboarding-dedicated key, fall back to the customer-support
+  // chat key (GEMINI_CHAT_API_KEY) so a single Gemini key powers both flows.
+  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_CHAT_API_KEY;
   if (!key || !name.trim()) return null;
 
   const prompt = `You are a hotel data researcher. Use Google Search to find the real, currently-operating property named "${name}" in ${city || "India"}, India.
