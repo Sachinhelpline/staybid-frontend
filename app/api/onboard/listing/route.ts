@@ -116,8 +116,21 @@ export async function POST(req: Request) {
 
     let hotel;
     if (id) {
-      const upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(id)}`, patch);
-      hotel = Array.isArray(upd) ? upd[0] : upd;
+      try {
+        const upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(id)}`, patch);
+        hotel = Array.isArray(upd) ? upd[0] : upd;
+      } catch {
+        // Schema rejection fallback — if any column in the patch isn't in the
+        // hotels schema cache (e.g. a newly-added field not yet migrated),
+        // retry with the safe core set so "Save & continue" never hard-fails.
+        const safe: any = {};
+        for (const k of [
+          "name", "description", "city", "state", "country", "starRating",
+          "lat", "lng", "amenities", "ownerId", "source",
+        ]) if (patch[k] !== undefined) safe[k] = patch[k];
+        const upd = await sbUpdate("hotels", `id=eq.${encodeURIComponent(id)}`, safe);
+        hotel = Array.isArray(upd) ? upd[0] : upd;
+      }
     } else {
       const newId = await generateHotelPublicId();
       try {

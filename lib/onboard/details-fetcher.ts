@@ -7,6 +7,7 @@
 // before going live, so the user always confirms photo usage rights.
 
 import type { HotelSearchResult } from "./search-provider";
+import { geminiScrapeHotel } from "./gemini-scraper";
 
 export type RoomDraft = {
   type: string;          // "Deluxe", "Suite", etc.
@@ -23,6 +24,8 @@ export type HotelDraftPayload = {
   state?: string;
   country: string;
   address: string;
+  lat?: number;
+  lng?: number;
   starRating: number;
   rating?: number;
   reviewCount?: number;
@@ -37,7 +40,8 @@ export type HotelDraftPayload = {
 
 const PROVIDER =
   process.env.HOTEL_DETAILS_PROVIDER ||
-  (process.env.SERPAPI_KEY ? "serpapi" : "mock");
+  (process.env.GEMINI_API_KEY ? "gemini" :  // ← FREE real-AI scraper (web-grounded)
+   process.env.SERPAPI_KEY ? "serpapi" : "mock");
 
 // ----------------------------------------------------------------------------
 // SerpAPI property details
@@ -132,11 +136,61 @@ function fetchMock(hit: HotelSearchResult): HotelDraftPayload {
   };
 }
 
+// Merge real Gemini-scraped fields over a mock base. The mock supplies photos
+// + room fallbacks (Gemini grounding returns text, not image URLs), and the
+// scraped data overwrites any field it could actually verify. Net result: a
+// draft with REAL name/description/address/lat-lng/amenities/contact when the
+// hotel is found online, never any blank gaps.
+function mergeGeminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").ScrapedHotel): HotelDraftPayload {
+  const base = fetchMock(hit);
+  return {
+    ...base,
+    name: s.name || base.name,
+    description: s.description || base.description,
+    city: s.city || base.city,
+    state: s.state ?? base.state,
+    country: s.country || base.country,
+    address: s.address || base.address,
+    lat: s.lat,
+    lng: s.lng,
+    starRating: s.starRating ?? base.starRating,
+    rating: s.rating ?? base.rating,
+    reviewCount: s.reviewCount ?? base.reviewCount,
+    amenities: s.amenities.length ? s.amenities : base.amenities,
+    rooms: s.rooms.length
+      ? s.rooms.map((r) => ({
+          type: r.type,
+          capacity: r.capacity,
+          basePrice: r.basePrice,
+          floorPrice: Math.round(r.basePrice * 0.78),
+          amenities: ["AC", "WiFi", "TV"],
+        }))
+      : base.rooms,
+    contact: {
+      website: s.contact.website || hit.link,
+      phone: s.contact.phone,
+      email: s.contact.email,
+    },
+    policies: { ...base.policies, ...s.policies },
+    source: s.contact.website ? "gemini+web" : "gemini",
+    sourceRef: hit.sourceRef,
+  };
+}
+
 export async function fetchHotelDetails(hit: HotelSearchResult): Promise<{
   provider: string;
   draft: HotelDraftPayload;
 }> {
   try {
+    if (PROVIDER === "gemini") {
+      const scraped = await geminiScrapeHotel(hit.name, hit.city).catch(() => null);
+      if (scraped) return { provider: scraped.provider, draft: mergeGeminiDraft(hit, scraped.hotel) };
+      // Gemini miss → try SerpAPI if available, else mock.
+      if (process.env.SERPAPI_KEY && hit.source === "serpapi") {
+        return { provider: "serpapi", draft: await fetchSerpApi(hit) };
+      }
+      return { provider: "mock-fallback", draft: fetchMock(hit) };
+    }
     if (PROVIDER === "serpapi" && hit.source === "serpapi") {
       return { provider: "serpapi", draft: await fetchSerpApi(hit) };
     }
