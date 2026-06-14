@@ -67,6 +67,9 @@ export async function POST(req: Request) {
       state: draft.state ?? null,
       country: draft.country ?? "India",
       starRating: draft.starRating ?? 4,
+      // lat/lng are NOT NULL (default 0) — only set when the scraper found them.
+      ...(typeof draft.lat === "number" ? { lat: draft.lat } : {}),
+      ...(typeof draft.lng === "number" ? { lng: draft.lng } : {}),
       formatted_address: draft.address ?? null,
       contact_phone: draft.contact?.phone ?? null,
       contact_email: draft.contact?.email ?? null,
