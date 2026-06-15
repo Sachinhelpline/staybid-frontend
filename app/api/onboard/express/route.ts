@@ -56,8 +56,11 @@ export async function POST(req: Request) {
       };
     }
 
-    // 2. Deep-fetch the digital footprint
-    const { provider: detailsProvider, draft } = await fetchHotelDetails(hit);
+    // 2. Deep-fetch the digital footprint. `verified` is TRUE only when a REAL
+    // source (Gemini found a genuine listing, or SerpAPI) supplied the data.
+    // When FALSE the draft is an HONEST blank (no fabricated NAP / photos /
+    // rooms) and the wizard asks the owner to fill in the details themselves.
+    const { provider: detailsProvider, draft, verified, matchEvidence } = await fetchHotelDetails(hit);
 
     // 3. Create or reuse a draft hotel for this owner
     let hotel: any = null;
@@ -150,7 +153,7 @@ export async function POST(req: Request) {
         user_id: claims.sub, hotel_id: hotelId,
         event: "express_footprint",
         payload: {
-          query, city, searchProvider, detailsProvider,
+          query, city, searchProvider, detailsProvider, verified,
           matchedName: draft.name, photos: imageCount, rooms: roomCount,
         },
         ip_address: ip, user_agent: ua,
@@ -163,6 +166,10 @@ export async function POST(req: Request) {
       searchProvider,
       detailsProvider,
       draft,
+      // Verification surface for the wizard's "Is this your hotel?" confirm card.
+      verified,
+      matchEvidence: matchEvidence || null,
+      matchedName: draft.name,
       counts: { photos: imageCount, rooms: roomCount },
       hotel: { id: hotelId, name: draft.name, city: draft.city, status: "draft" },
     });
