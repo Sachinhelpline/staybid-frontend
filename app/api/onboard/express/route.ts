@@ -27,9 +27,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const query = String(body.query || "").trim();
     const city = String(body.city || "").trim();
+    // v263.3 — the candidate the owner CONFIRMED in the phase-1 search picker.
+    // { name, address }. When present we ground the deep-scrape on the EXACT
+    // property they chose (far less hallucination than a bare name).
+    const candidate = body.candidate || null;
     let hit = body.hit || null;
+    const hintAddress: string | undefined =
+      (candidate?.address && String(candidate.address).trim()) || undefined;
 
-    if (!hit && !query) {
+    if (!hit && !candidate && !query) {
       return NextResponse.json({ error: "Hotel name (query) or a search result (hit) is required." }, { status: 400 });
     }
 
@@ -39,28 +45,42 @@ export async function POST(req: Request) {
     // 1. Find the property if no explicit hit
     let searchProvider = SEARCH_PROVIDER;
     if (!hit) {
-      const out = await searchHotels(query, city);
-      searchProvider = out.provider;
-      // v262 — REAL-DATA fix: when no live search key is configured, the mock
-      // provider fabricates a name ("The {query} Grand") that doesn't exist —
-      // so the Gemini scraper then pulls garbage for a hotel that isn't real.
-      // In that case we build the hit from the user's EXACT typed name + city
-      // so the scraper grounds on the property they actually own.
-      const isReal = out.provider === "serpapi" || out.provider === "tavily";
-      hit = (isReal && out.results[0]) || {
-        source: "manual",
-        sourceRef: `manual-${Date.now()}`,
-        name: query,
-        city: city || "India",
-        country: "India",
-      };
+      // v263.3 — if the owner picked a confirmed candidate, build the hit from
+      // its REAL name + city (and carry its address as the deep-scrape hint).
+      if (candidate?.name) {
+        searchProvider = "gemini-search";
+        hit = {
+          source: "gemini-search",
+          sourceRef: `gemini-${Date.now()}`,
+          name: String(candidate.name).trim(),
+          city: city || "India",
+          country: "India",
+          address: hintAddress,
+        };
+      } else {
+        const out = await searchHotels(query, city);
+        searchProvider = out.provider;
+        // v262 — REAL-DATA fix: when no live search key is configured, the mock
+        // provider fabricates a name ("The {query} Grand") that doesn't exist —
+        // so the Gemini scraper then pulls garbage for a hotel that isn't real.
+        // In that case we build the hit from the user's EXACT typed name + city
+        // so the scraper grounds on the property they actually own.
+        const isReal = out.provider === "serpapi" || out.provider === "tavily";
+        hit = (isReal && out.results[0]) || {
+          source: "manual",
+          sourceRef: `manual-${Date.now()}`,
+          name: query,
+          city: city || "India",
+          country: "India",
+        };
+      }
     }
 
     // 2. Deep-fetch the digital footprint. `verified` is TRUE only when a REAL
     // source (Gemini found a genuine listing, or SerpAPI) supplied the data.
     // When FALSE the draft is an HONEST blank (no fabricated NAP / photos /
     // rooms) and the wizard asks the owner to fill in the details themselves.
-    const { provider: detailsProvider, draft, verified, matchEvidence } = await fetchHotelDetails(hit);
+    const { provider: detailsProvider, draft, verified, matchEvidence } = await fetchHotelDetails(hit, hintAddress);
 
     // 3. Create or reuse a draft hotel for this owner
     let hotel: any = null;
