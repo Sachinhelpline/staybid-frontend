@@ -149,33 +149,61 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
   const [xCity, setXCity] = useState("");
   const [xBusy, setXBusy] = useState(false);
   const [xMsg, setXMsg] = useState<string | null>(null);
+  // Verification card after a run: { verified, matchedName, matchEvidence, address }.
+  const [xResult, setXResult] = useState<any>(null);
   const runExpress = async () => {
     if (!xName.trim()) { setXMsg("Type your hotel name first."); return; }
-    setXBusy(true); setXMsg("🔎 Pulling your hotel's digital footprint…");
+    setXBusy(true); setXMsg(null); setXResult(null);
+    setXMsg("🔎 Looking up your hotel online…");
     try {
       const j = await onbFetch<any>("/api/onboard/express", {
         method: "POST",
         body: JSON.stringify({ query: xName.trim(), city: xCity.trim() }),
       });
       const c = j.counts || {};
-      setXMsg(`✨ Built "${j.draft?.name || xName}" — ${c.photos || 0} photos, ${c.rooms || 0} rooms drafted. Review & edit everything below.`);
-      onChange(); // reload listing → seeded hotel + rooms + images flow in
-    } catch (e: any) { setXMsg(e?.message || "Express onboarding failed — try the manual search below."); }
+      setXMsg(null);
+      setXResult({
+        verified: !!j.verified,
+        matchedName: j.matchedName || j.draft?.name || xName,
+        matchEvidence: j.matchEvidence || null,
+        address: j.draft?.address || "",
+        photos: c.photos || 0,
+        rooms: c.rooms || 0,
+      });
+      onChange(); // reload listing → seeded hotel + rooms + images flow into the form
+    } catch (e: any) {
+      setXResult(null);
+      setXMsg(e?.message || "Lookup failed — please fill the details manually below.");
+    }
     finally { setXBusy(false); }
+  };
+
+  // "Not my hotel" → wipe everything the lookup auto-filled so the owner starts
+  // from a clean slate (keeps only their typed name + city). Never leaves wrong
+  // sourced data sitting in the form.
+  const rejectMatch = () => {
+    setHotel((h) => ({
+      name: h.name, city: h.city, country: h.country || "India",
+      starRating: h.starRating || 4, id: h.id,
+    }));
+    setXResult(null);
+    setMsg("Cleared the auto-filled details. Please enter your property's information below.");
   };
 
   useEffect(() => {
     if (listing?.hotel) setHotel(listing.hotel);
   }, [listing?.hotel?.id]);
 
+  const [placesUnavailable, setPlacesUnavailable] = useState(false);
   useEffect(() => {
     clearTimeout(debRef.current);
-    if (query.trim().length < 2) { setSuggestions([]); return; }
+    if (query.trim().length < 2) { setSuggestions([]); setPlacesUnavailable(false); return; }
     debRef.current = setTimeout(async () => {
       try {
         const j = await onbFetch<any>(`/api/onboard/places/search?q=${encodeURIComponent(query)}`);
         setSuggestions(j.results || []);
-      } catch {}
+        setPlacesUnavailable(!!j.unavailable);
+      } catch { setPlacesUnavailable(true); }
     }, 300);
     return () => clearTimeout(debRef.current);
   }, [query]);
@@ -185,6 +213,7 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
     try {
       const j = await onbFetch<any>("/api/onboard/places/details", { method: "POST", body: JSON.stringify({ placeId: s.placeId }) });
       const p = j.place;
+      if (!p) { setMsg("Google lookup is unavailable right now — please fill the fields manually."); return; }
       setHotel((h) => ({
         ...h,
         name: p.name, city: p.city, state: p.state, country: p.country || "India",
@@ -223,10 +252,34 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
           <input className="input-luxury" placeholder="Hotel name — e.g. The Mountain Grand" value={xName} onChange={(e) => setXName(e.target.value)} disabled={xBusy} />
           <input className="input-luxury" placeholder="City (optional)" value={xCity} onChange={(e) => setXCity(e.target.value)} disabled={xBusy} />
           <button type="button" onClick={runExpress} disabled={xBusy || !xName.trim()} className="btn-luxury disabled:opacity-50 whitespace-nowrap">
-            {xBusy ? "Building…" : "✨ Build my panel"}
+            {xBusy ? "Looking up…" : "✨ Find my hotel"}
           </button>
         </div>
         {xMsg && <div className="mt-3 text-sm text-luxury-700 bg-white/70 border border-gold-200 rounded-lg px-3 py-2">{xMsg}</div>}
+
+        {/* Verification card — confirm the match before trusting the auto-fill */}
+        {xResult && xResult.verified && (
+          <div className="mt-3 rounded-xl bg-white border border-emerald-200 p-4">
+            <div className="text-xs uppercase tracking-widest text-emerald-600 font-medium">Is this your hotel?</div>
+            <div className="font-display text-lg text-luxury-900 mt-1">{xResult.matchedName}</div>
+            {xResult.address
+              ? <div className="text-sm text-luxury-600">{xResult.address}</div>
+              : <div className="text-sm text-luxury-400 italic">Address not listed online — please add it below.</div>}
+            {xResult.matchEvidence && <div className="text-xs text-luxury-400 mt-1">Found via {xResult.matchEvidence}</div>}
+            <div className="text-xs text-luxury-500 mt-2">We auto-filled {xResult.photos} photo{xResult.photos === 1 ? "" : "s"} and {xResult.rooms} room{xResult.rooms === 1 ? "" : "s"} from this listing. Confirm it's yours, then review & edit everything below.</div>
+            <div className="flex gap-2 mt-3">
+              <button type="button" onClick={() => setXResult(null)} className="btn-luxury text-sm px-4 py-2">✓ Yes, that's my hotel</button>
+              <button type="button" onClick={rejectMatch} className="text-sm px-4 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-50">✗ Not mine — I'll fill it in</button>
+            </div>
+          </div>
+        )}
+        {xResult && !xResult.verified && (
+          <div className="mt-3 rounded-xl bg-white border border-amber-200 p-4">
+            <div className="text-sm text-luxury-800 font-medium">🔍 We couldn't find “{xResult.matchedName}” online.</div>
+            <div className="text-xs text-luxury-500 mt-1">Nothing was auto-filled — we never guess your details. Please enter your property's information in the fields below.</div>
+            <button type="button" onClick={() => setXResult(null)} className="mt-3 text-sm px-4 py-2 rounded-lg border border-luxury-200 text-luxury-600 hover:bg-luxury-50">Got it</button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -251,6 +304,9 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
           </div>
         )}
         {busy && <div className="text-sm text-luxury-500 mt-2">Loading from Google…</div>}
+        {placesUnavailable && !busy && (
+          <div className="text-xs text-luxury-500 mt-2">Google lookup is currently unavailable — just type your property's details into the fields below.</div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

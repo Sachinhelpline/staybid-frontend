@@ -32,6 +32,13 @@ export type ScrapedHotel = {
   rooms: ScrapedRoom[];
   contact: { phone?: string; email?: string; website?: string };
   policies: { checkIn?: string; checkOut?: string };
+  // TRUE only when Gemini positively located this exact property online with a
+  // verifiable public listing. FALSE → caller treats the scrape as a miss and
+  // NEVER auto-fills guessed data.
+  found: boolean;
+  // What Gemini grounded on ("Google Maps", "booking.com", …) — shown to the
+  // user as proof of the match in the confirmation step.
+  matchEvidence?: string;
 };
 
 const GEMINI_MODEL =
@@ -71,28 +78,35 @@ export async function geminiScrapeHotel(
   const key = process.env.GEMINI_API_KEY || process.env.GEMINI_CHAT_API_KEY;
   if (!key || !name.trim()) return null;
 
-  const prompt = `You are a hotel data researcher. Use Google Search to find the real, currently-operating property named "${name}" in ${city || "India"}, India.
+  const prompt = `You are a strict hotel-data verifier. Use Google Search to locate the REAL, currently-operating property named "${name}"${city ? ` in ${city}, India` : " in India"}.
 
-Return ONLY one JSON object (no prose, no markdown) with exactly these fields. Use null for anything you cannot verify — DO NOT invent values:
+CRITICAL RULES — follow exactly:
+- Set "found": true ONLY if you actually located THIS specific property online with a real, verifiable public listing (its Google Maps page, an OTA listing like booking.com / MakeMyTrip / Goibibo / Agoda, or its own official website). If you are guessing, extrapolating, or cannot confirm the hotel genuinely exists, set "found": false.
+- NEVER invent, guess, or fabricate any value. Use null for every field you cannot verify from a real source. A wrong real-looking value (fake address / fake phone / fake email) is far worse than null. Do NOT output placeholder values like "Heritage Lane", "+91 98XXXXXXXX", "stay@example.com", lat/lng 0, or template descriptions.
+- "match_evidence": short phrase naming WHERE you found it (e.g. "Google Maps listing", "booking.com page", "official website"). null if not found.
+
+Return ONLY one JSON object (no prose, no markdown):
 {
-  "name": string,
-  "description": string (2-3 factual sentences about this specific property),
-  "full_address": string,
-  "city": string,
-  "state": string,
-  "country": string,
-  "lat": number,
-  "lng": number,
-  "star_rating": integer 1-5,
-  "guest_rating": number 0-5,
-  "review_count": integer,
-  "amenities": string[] (real facilities this hotel offers),
-  "contact_phone": string,
-  "contact_email": string,
-  "website": string,
-  "room_types": [{ "type": string, "capacity": integer, "base_price_inr": integer }],
-  "check_in_time": string "HH:MM",
-  "check_out_time": string "HH:MM"
+  "found": boolean,
+  "match_evidence": string | null,
+  "name": string | null,
+  "description": string | null (2-3 factual sentences about THIS specific property, from its real listing),
+  "full_address": string | null,
+  "city": string | null,
+  "state": string | null,
+  "country": string | null,
+  "lat": number | null,
+  "lng": number | null,
+  "star_rating": integer 1-5 | null,
+  "guest_rating": number 0-5 | null,
+  "review_count": integer | null,
+  "amenities": string[] (real facilities only; [] if unknown),
+  "contact_phone": string | null,
+  "contact_email": string | null,
+  "website": string | null,
+  "room_types": [{ "type": string, "capacity": integer, "base_price_inr": integer }] (real rooms only; [] if unknown),
+  "check_in_time": string "HH:MM" | null,
+  "check_out_time": string "HH:MM" | null
 }`;
 
   try {
@@ -148,14 +162,21 @@ Return ONLY one JSON object (no prose, no markdown) with exactly these fields. U
         website: str(j.website),
       },
       policies: {
-        checkIn: str(j.check_in_time) || "14:00",
-        checkOut: str(j.check_out_time) || "11:00",
+        // checkIn/Out left undefined when unverified — no fabricated default.
+        checkIn: str(j.check_in_time),
+        checkOut: str(j.check_out_time),
       },
+      found: j.found === true,
+      matchEvidence: str(j.match_evidence),
     };
 
-    // Require at least a usable signal (description OR address OR coords),
-    // otherwise treat as a miss so the caller keeps the mock draft.
-    if (!hotel.description && !hotel.address && hotel.lat === undefined) return null;
+    // Hard-confirm rule: trust the scrape ONLY when Gemini self-reports found
+    // AND there is at least one VERIFIABLE anchor (real address, coords, or a
+    // website). A bare description is not enough — descriptions are the easiest
+    // thing for an LLM to hallucinate. Anything weaker is a miss → blank draft.
+    const hasAnchor =
+      !!hotel.address || hotel.lat !== undefined || !!hotel.contact.website;
+    if (!hotel.found || !hasAnchor) return null;
 
     return { provider: `gemini:${GEMINI_MODEL}`, hotel };
   } catch (e) {

@@ -74,7 +74,8 @@ async function fetchSerpApi(hit: HotelSearchResult): Promise<HotelDraftPayload> 
   }));
   return {
     name: hit.name,
-    description: j.description || `${hit.name} is a ${hit.starRating || 4}-star property in ${hit.city}.`,
+    // Real listing copy only — no fabricated template fallback.
+    description: j.description || "",
     city: hit.city,
     country: "India",
     address: hit.address || j.address || "",
@@ -83,124 +84,123 @@ async function fetchSerpApi(hit: HotelSearchResult): Promise<HotelDraftPayload> 
     reviewCount: hit.reviewCount || j.reviews,
     photos,
     amenities,
-    rooms: rooms.length ? rooms : mockRooms(hit.priceHint || 4999),
+    // Real featured-price rooms only; blank when SerpAPI returned none.
+    rooms,
     contact: { website: hit.link, phone: j.phone, email: j.email },
-    policies: { checkIn: j.check_in_time || "14:00", checkOut: j.check_out_time || "11:00" },
+    policies: { checkIn: j.check_in_time, checkOut: j.check_out_time },
     source: "serpapi",
     sourceRef: hit.sourceRef,
   };
 }
 
 // ----------------------------------------------------------------------------
-// Mock — pre-populated realistic hotel so wizard works end-to-end without keys
+// Blank draft — HONEST fallback when no real source can verify the property.
+// NEVER fabricates NAP (name/address/phone/email), description, ratings,
+// photos, or room prices. Carries ONLY what the user actually typed (name +
+// city + whatever a real search hit supplied). The onboarding owner fills the
+// rest in the wizard. (v263.2: replaced the old `fetchMock` that injected
+// "Heritage Lane" / "+91 98XXXXXXXX" / "stay@example.com" / template
+// descriptions / stock photos — Sachin: "khud se guess kar raha hai … 100
+// percent actual data nahi … bulletproof God level kardo".)
 // ----------------------------------------------------------------------------
-function mockRooms(base: number): RoomDraft[] {
-  return [
-    { type: "Deluxe Room", capacity: 2, basePrice: base, floorPrice: Math.round(base * 0.78), amenities: ["AC", "WiFi", "TV", "Mountain View"] },
-    { type: "Premium Suite", capacity: 3, basePrice: Math.round(base * 1.4), floorPrice: Math.round(base * 1.1), amenities: ["AC", "WiFi", "TV", "Balcony", "Mini Bar"] },
-    { type: "Family Suite", capacity: 4, basePrice: Math.round(base * 1.8), floorPrice: Math.round(base * 1.4), amenities: ["AC", "WiFi", "TV", "Living Room", "Kitchenette"] },
-  ];
-}
-
-function fetchMock(hit: HotelSearchResult): HotelDraftPayload {
-  const base = hit.priceHint || 4999;
-  const photos = [
-    "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600",
-    "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=1600",
-    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=1600",
-    "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=1600",
-    "https://images.unsplash.com/photo-1455587734955-081b22074882?w=1600",
-    "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=1600",
-    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1600",
-    "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=1600",
-  ];
+function blankDraft(hit: HotelSearchResult): HotelDraftPayload {
   return {
     name: hit.name,
-    description: `${hit.name} is a ${hit.starRating || 4}-star ${hit.city} retreat curated for discerning travellers — featuring panoramic views, contemporary luxury rooms, an in-house multi-cuisine restaurant, and concierge services. Perfectly placed for both leisure and business stays.`,
+    description: "",
     city: hit.city,
-    state: "Uttarakhand",
-    country: "India",
-    address: hit.address || `Heritage Lane, ${hit.city}, Uttarakhand 248179`,
+    state: undefined,
+    country: hit.country || "India",
+    address: hit.address || "",
     starRating: hit.starRating || 4,
-    rating: hit.rating || 4.5,
-    reviewCount: hit.reviewCount || 320,
-    photos,
-    amenities: [
-      "Free WiFi", "24/7 Room Service", "Multi-cuisine Restaurant", "Spa & Wellness",
-      "Swimming Pool", "Gym", "Free Parking", "Airport Shuttle", "Concierge",
-      "Laundry Service", "Pet Friendly", "Family Rooms",
-    ],
-    rooms: mockRooms(base),
-    contact: { website: hit.link, phone: "+91 98XXXXXXXX", email: "stay@example.com" },
-    policies: { checkIn: "14:00", checkOut: "11:00", cancellation: "Free cancellation up to 24 hours before check-in." },
-    source: "mock",
+    rating: hit.rating,
+    reviewCount: hit.reviewCount,
+    photos: [],
+    amenities: [],
+    rooms: [],
+    contact: { website: hit.link, phone: undefined, email: undefined },
+    policies: {},
+    source: "manual",
     sourceRef: hit.sourceRef,
   };
 }
 
-// Merge real Gemini-scraped fields over a mock base. The mock supplies photos
-// + room fallbacks (Gemini grounding returns text, not image URLs), and the
-// scraped data overwrites any field it could actually verify. Net result: a
-// draft with REAL name/description/address/lat-lng/amenities/contact when the
-// hotel is found online, never any blank gaps.
-function mergeGeminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").ScrapedHotel): HotelDraftPayload {
-  const base = fetchMock(hit);
+// Build the draft purely from VERIFIED Gemini-scraped fields. No mock base — a
+// field Gemini could not confirm stays blank (the owner fills it), so the draft
+// only ever contains real, sourced data. Gemini grounding returns text, not
+// images, so photos stay empty for the owner to upload their own.
+function geminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").ScrapedHotel): HotelDraftPayload {
   return {
-    ...base,
-    name: s.name || base.name,
-    description: s.description || base.description,
-    city: s.city || base.city,
-    state: s.state ?? base.state,
-    country: s.country || base.country,
-    address: s.address || base.address,
+    name: s.name || hit.name,
+    description: s.description || "",
+    city: s.city || hit.city,
+    state: s.state,
+    country: s.country || hit.country || "India",
+    address: s.address || hit.address || "",
     lat: s.lat,
     lng: s.lng,
-    starRating: s.starRating ?? base.starRating,
-    rating: s.rating ?? base.rating,
-    reviewCount: s.reviewCount ?? base.reviewCount,
-    amenities: s.amenities.length ? s.amenities : base.amenities,
-    rooms: s.rooms.length
-      ? s.rooms.map((r) => ({
-          type: r.type,
-          capacity: r.capacity,
-          basePrice: r.basePrice,
-          floorPrice: Math.round(r.basePrice * 0.78),
-          amenities: ["AC", "WiFi", "TV"],
-        }))
-      : base.rooms,
+    starRating: s.starRating ?? hit.starRating ?? 4,
+    rating: s.rating ?? hit.rating,
+    reviewCount: s.reviewCount ?? hit.reviewCount,
+    photos: [],
+    amenities: s.amenities || [],
+    rooms: (s.rooms || []).map((r) => ({
+      type: r.type,
+      capacity: r.capacity,
+      basePrice: r.basePrice,
+      floorPrice: Math.round(r.basePrice * 0.78),
+      amenities: [],
+    })),
     contact: {
       website: s.contact.website || hit.link,
       phone: s.contact.phone,
       email: s.contact.email,
     },
-    policies: { ...base.policies, ...s.policies },
+    policies: { checkIn: s.policies.checkIn, checkOut: s.policies.checkOut },
     source: s.contact.website ? "gemini+web" : "gemini",
     sourceRef: hit.sourceRef,
   };
 }
 
-export async function fetchHotelDetails(hit: HotelSearchResult): Promise<{
+export type FetchDetailsResult = {
   provider: string;
   draft: HotelDraftPayload;
-}> {
+  // TRUE only when the draft came from a REAL, verified source (Gemini found a
+  // genuine listing, or SerpAPI). FALSE → blank draft, nothing was auto-found;
+  // the wizard tells the owner to fill in details manually. Never present fake
+  // data as if it were verified.
+  verified: boolean;
+  // Where the match came from ("Google Maps listing", "booking.com", …) — shown
+  // to the owner so they can confirm "yes, that's my hotel" before relying on it.
+  matchEvidence?: string;
+};
+
+export async function fetchHotelDetails(hit: HotelSearchResult): Promise<FetchDetailsResult> {
   try {
     if (PROVIDER === "gemini") {
       const scraped = await geminiScrapeHotel(hit.name, hit.city).catch(() => null);
-      if (scraped) return { provider: scraped.provider, draft: mergeGeminiDraft(hit, scraped.hotel) };
-      // Gemini miss → try SerpAPI if available, else mock.
-      if (process.env.SERPAPI_KEY && hit.source === "serpapi") {
-        return { provider: "serpapi", draft: await fetchSerpApi(hit) };
+      if (scraped) {
+        return {
+          provider: scraped.provider,
+          draft: geminiDraft(hit, scraped.hotel),
+          verified: true,
+          matchEvidence: scraped.hotel.matchEvidence,
+        };
       }
-      return { provider: "mock-fallback", draft: fetchMock(hit) };
+      // Gemini miss → try SerpAPI if available (that IS a real source), else
+      // return an HONEST blank draft (no fabrication).
+      if (process.env.SERPAPI_KEY && hit.source === "serpapi") {
+        return { provider: "serpapi", draft: await fetchSerpApi(hit), verified: true };
+      }
+      return { provider: "unverified", draft: blankDraft(hit), verified: false };
     }
     if (PROVIDER === "serpapi" && hit.source === "serpapi") {
-      return { provider: "serpapi", draft: await fetchSerpApi(hit) };
+      return { provider: "serpapi", draft: await fetchSerpApi(hit), verified: true };
     }
-    return { provider: "mock", draft: fetchMock(hit) };
+    return { provider: "unverified", draft: blankDraft(hit), verified: false };
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error("[details-fetcher] error, falling back to mock:", e);
-    return { provider: "mock-fallback", draft: fetchMock(hit) };
+    console.error("[details-fetcher] error, returning blank draft:", e);
+    return { provider: "unverified", draft: blankDraft(hit), verified: false };
   }
 }
 
