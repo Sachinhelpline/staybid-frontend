@@ -108,21 +108,37 @@ export type HotelCandidate = {
   evidence?: string;   // where it was found
 };
 
+// A real geotag captured by the onboarding LocationPicker — used to tighten the
+// city-scoped search to the exact locality + coordinates so Gemini ranks the
+// nearest real matches first (and won't drift to a same-name hotel elsewhere).
+export type LocationHint = {
+  area?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+};
+
 // PHASE 1 — location-scoped SEARCH. Both name AND city are required. Gemini
 // first filters to the city, then lists up to 6 REAL matching properties so the
 // owner can confirm which one is theirs (instead of us guessing a single hit
 // and scraping garbage). Returns [] when nothing real is found — the UI then
-// asks the owner to fill details manually.
+// asks the owner to fill details manually. The optional `loc` geotag narrows the
+// search to the owner's exact locality + coordinates for precise ranking.
 export async function geminiSearchHotels(
   name: string,
   city: string,
+  loc?: LocationHint,
 ): Promise<{ provider: string; candidates: HotelCandidate[] } | null> {
   if (!geminiKey() || !name.trim() || !city.trim()) return null;
+
+  const near = loc && (loc.area || (loc.lat !== undefined && loc.lng !== undefined))
+    ? `\n- The owner's verified location is${loc.area ? ` near "${loc.area}"` : ""}${loc.state ? `, ${loc.state}` : ""}${loc.lat !== undefined && loc.lng !== undefined ? ` (approx ${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})` : ""}. Prefer the closest real matches to this location FIRST.`
+    : "";
 
   const prompt = `You are a strict hotel-directory search. Use Google Search to find REAL, currently-operating properties matching the name "${name}" located in ${city}, India.
 
 RULES:
-- FIRST narrow to ${city}, India only. Do NOT return properties in other cities.
+- FIRST narrow to ${city}, India only. Do NOT return properties in other cities.${near}
 - Return ONLY properties you can actually verify exist online (Google Maps, an OTA listing, or the property's own website).
 - NEVER invent names or addresses. If you find nothing real, return an empty array.
 - Return up to 6 best matches, closest name match first.

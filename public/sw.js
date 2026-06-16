@@ -300,7 +300,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // confirms which is theirs → deep-scrape ONLY the confirmed property (real
 // og:image photos + room categories without prices). Kills the fabricated
 // single-shot scrape. Drop stale v54 HTML so the new wizard markup loads.
-const HTML_CACHE = 'staybid-html-v55';
+// v263.4 — Onboard "City" free-text field replaced with a REAL geotag location
+// picker (device GPS reverse-geocode + Nominatim forward search). One pick
+// captures verified city/state/lat/lng → seeds the manual form AND tightens
+// the Express AI candidate search. Bump so warm SWR clients load the new
+// wizard markup.
+const HTML_CACHE = 'staybid-html-v56';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -22,7 +22,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const out = await geminiSearchHotels(query, city);
+    // Optional real geotag from the onboarding LocationPicker — tightens the
+    // city-scoped search to the owner's exact locality + coordinates.
+    const loc = body.location && typeof body.location === "object"
+      ? {
+          area: body.location.area ? String(body.location.area) : undefined,
+          state: body.location.state ? String(body.location.state) : undefined,
+          lat: Number.isFinite(body.location.lat) ? Number(body.location.lat) : undefined,
+          lng: Number.isFinite(body.location.lng) ? Number(body.location.lng) : undefined,
+        }
+      : undefined;
+
+    const out = await geminiSearchHotels(query, city, loc);
 
     // out === null → no Gemini key OR the model returned no parseable JSON.
     // Either way the UI shows "couldn't find — fill manually". `available`
