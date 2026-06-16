@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadOnboardSession, onbFetch, clearOnboardSession } from "@/lib/onboard/client";
+import LocationPicker, { type PickedLocation } from "@/components/onboard/LocationPicker";
 
 // ============================================================================
 // Types
@@ -151,6 +152,8 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
   // we never fabricate a property the owner didn't pick.
   const [xName, setXName] = useState("");
   const [xCity, setXCity] = useState("");
+  // Real geotag captured by the LocationPicker (replaces the plain city field).
+  const [xLoc, setXLoc] = useState<PickedLocation | null>(null);
   const [xBusy, setXBusy] = useState(false);
   const [xMsg, setXMsg] = useState<string | null>(null);
   // "idle" | "candidates" | "result"
@@ -160,10 +163,26 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
   // Verification card after a build: { matchedName, matchEvidence, address, photos, rooms }.
   const [xResult, setXResult] = useState<any>(null);
 
+  // Owner picked a real geotag — capture coords + seed the manual form so the
+  // owner never has to type city/state/lat/lng a second time ("2-2 task" gone).
+  const onPickLocation = (loc: PickedLocation) => {
+    setXLoc(loc);
+    const resolvedCity = loc.city || loc.area || loc.state || "";
+    setXCity(resolvedCity);
+    setHotel((h) => ({
+      ...h,
+      city: resolvedCity || h.city,
+      state: loc.state || h.state,
+      lat: Number.isFinite(loc.lat) ? loc.lat : h.lat,
+      lng: Number.isFinite(loc.lng) ? loc.lng : h.lng,
+      formatted_address: h.formatted_address || loc.label,
+    }));
+  };
+
   // Phase 1 — location-scoped search. Returns a candidate list to confirm.
   const runSearch = async () => {
     if (!xName.trim() || !xCity.trim()) {
-      setXMsg("Please enter BOTH your hotel name and city.");
+      setXMsg(xLoc ? "Please enter your hotel name." : "Please enter your hotel name and pick a location.");
       return;
     }
     setXBusy(true); setXMsg(null); setXResult(null); setXCandidates([]);
@@ -172,7 +191,13 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
     try {
       const j = await onbFetch<any>("/api/onboard/express/search", {
         method: "POST",
-        body: JSON.stringify({ query: xName.trim(), city: xCity.trim() }),
+        body: JSON.stringify({
+          query: xName.trim(),
+          city: xCity.trim(),
+          location: xLoc
+            ? { area: xLoc.area, state: xLoc.state, lat: xLoc.lat, lng: xLoc.lng }
+            : undefined,
+        }),
       });
       setXMsg(null);
       if (!j.available) {
@@ -295,11 +320,11 @@ function BasicsSection({ listing, onChange }: { listing: Listing | null; onChang
           <span className="text-xl">✨</span>
           <div className="font-display text-lg text-luxury-900">Express AI onboard — 30 seconds</div>
         </div>
-        <div className="text-xs text-luxury-600 mt-1">Enter your hotel name <b>and</b> city. We first find the real hotels by that name in your city, you confirm which is yours, then we pull its complete footprint (photos, rooms, contact, amenities). Edit anything after.</div>
-        <div className="grid sm:grid-cols-[1fr_180px_auto] gap-2 mt-3">
-          <input className="input-luxury" placeholder="Hotel name — e.g. The Mountain Grand" value={xName} onChange={(e) => setXName(e.target.value)} disabled={xBusy} />
-          <input className="input-luxury" placeholder="City — e.g. Mussoorie" value={xCity} onChange={(e) => setXCity(e.target.value)} disabled={xBusy} />
-          <button type="button" onClick={runSearch} disabled={xBusy || !xName.trim() || !xCity.trim()} className="btn-luxury disabled:opacity-50 whitespace-nowrap">
+        <div className="text-xs text-luxury-600 mt-1">Enter your hotel name <b>and</b> pin your real location (GPS or search). We confirm coordinates live, find the real hotels nearby, you pick yours, then we pull its complete footprint (photos, rooms, contact, amenities). Edit anything after.</div>
+        <div className="mt-3 space-y-2">
+          <input className="input-luxury w-full" placeholder="Hotel name — e.g. The Mountain Grand" value={xName} onChange={(e) => setXName(e.target.value)} disabled={xBusy} />
+          <LocationPicker value={xLoc} onPick={onPickLocation} onClear={() => { setXLoc(null); setXCity(""); }} disabled={xBusy} />
+          <button type="button" onClick={runSearch} disabled={xBusy || !xName.trim() || !xCity.trim()} className="btn-luxury w-full disabled:opacity-50 whitespace-nowrap">
             {xBusy ? "Searching…" : "🔎 Find my hotel"}
           </button>
         </div>
