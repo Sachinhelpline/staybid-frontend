@@ -127,8 +127,12 @@ function blankDraft(hit: HotelSearchResult): HotelDraftPayload {
 // Build the draft purely from VERIFIED Gemini-scraped fields. No mock base — a
 // field Gemini could not confirm stays blank (the owner fills it), so the draft
 // only ever contains real, sourced data. Gemini grounding returns text, not
-// images, so photos stay empty for the owner to upload their own.
-function geminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").ScrapedHotel): HotelDraftPayload {
+// images, so photos come from the website's og:image (fetched separately).
+function geminiDraft(
+  hit: HotelSearchResult,
+  s: import("./gemini-scraper").ScrapedHotel,
+  photos: string[] = [],
+): HotelDraftPayload {
   return {
     name: s.name || hit.name,
     description: s.description || "",
@@ -141,13 +145,15 @@ function geminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").Scrap
     starRating: s.starRating ?? hit.starRating ?? 4,
     rating: s.rating ?? hit.rating,
     reviewCount: s.reviewCount ?? hit.reviewCount,
-    photos: [],
+    photos,
     amenities: s.amenities || [],
     rooms: (s.rooms || []).map((r) => ({
       type: r.type,
       capacity: r.capacity,
+      // basePrice 0 means Gemini named the category but found no rate — keep
+      // the category (so it shows in the wizard) with a 0 price the owner sets.
       basePrice: r.basePrice,
-      floorPrice: Math.round(r.basePrice * 0.78),
+      floorPrice: r.basePrice > 0 ? Math.round(r.basePrice * 0.78) : 0,
       amenities: [],
     })),
     contact: {
@@ -159,6 +165,43 @@ function geminiDraft(hit: HotelSearchResult, s: import("./gemini-scraper").Scrap
     source: s.contact.website ? "gemini+web" : "gemini",
     sourceRef: hit.sourceRef,
   };
+}
+
+// Best-effort REAL photo: fetch the hotel's own website and pull its og:image /
+// twitter:image meta tag. This is the ONLY honest image source — Gemini text
+// grounding cannot return verifiable image URLs. Bulletproof: hard timeout,
+// try/catch, returns [] on any failure (never fabricates a stock photo).
+async function fetchOgImage(website?: string): Promise<string[]> {
+  if (!website) return [];
+  let url = website.trim();
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "user-agent": "Mozilla/5.0 (compatible; StayBidBot/1.0)" },
+    }).catch(() => null);
+    clearTimeout(t);
+    if (!res || !res.ok) return [];
+    const html = (await res.text().catch(() => "")).slice(0, 200_000);
+    const out: string[] = [];
+    const re = /<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) && out.length < 6) {
+      const content = m[0].match(/content=["']([^"']+)["']/i)?.[1];
+      if (!content) continue;
+      let img = content.trim();
+      if (img.startsWith("//")) img = `https:${img}`;
+      else if (img.startsWith("/")) {
+        try { img = new URL(img, url).href; } catch { continue; }
+      }
+      if (/^https?:\/\//i.test(img) && !out.includes(img)) out.push(img);
+    }
+    return out;
+  } catch {
+    return [];
+  }
 }
 
 export type FetchDetailsResult = {
@@ -174,14 +217,22 @@ export type FetchDetailsResult = {
   matchEvidence?: string;
 };
 
-export async function fetchHotelDetails(hit: HotelSearchResult): Promise<FetchDetailsResult> {
+export async function fetchHotelDetails(
+  hit: HotelSearchResult,
+  // The full address of the candidate the owner CONFIRMED in the phase-1 search
+  // (if any). Passing it grounds the deep-scrape on the exact property.
+  hintAddress?: string,
+): Promise<FetchDetailsResult> {
   try {
     if (PROVIDER === "gemini") {
-      const scraped = await geminiScrapeHotel(hit.name, hit.city).catch(() => null);
+      const scraped = await geminiScrapeHotel(hit.name, hit.city, hintAddress).catch(() => null);
       if (scraped) {
+        // Real photos come from the property's own website og:image — the only
+        // honest, verifiable image source (Gemini text grounding can't return them).
+        const photos = await fetchOgImage(scraped.hotel.contact.website).catch(() => []);
         return {
           provider: scraped.provider,
-          draft: geminiDraft(hit, scraped.hotel),
+          draft: geminiDraft(hit, scraped.hotel, photos),
           verified: true,
           matchEvidence: scraped.hotel.matchEvidence,
         };

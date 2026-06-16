@@ -295,7 +295,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // approval_status='approved') + sole-proprietor KYC copy + admin review
 // queue + express real-query scraper fix. Bump so warm SWR clients pick up
 // the new admin/wizard markup on next visit.
-const HTML_CACHE = 'staybid-html-v54';
+// v263.3 — Express AI onboard rebuilt as a TWO-PHASE flow: hotel name + city
+// BOTH mandatory → Gemini location-filters then lists real candidates → owner
+// confirms which is theirs → deep-scrape ONLY the confirmed property (real
+// og:image photos + room categories without prices). Kills the fabricated
+// single-shot scrape. Drop stale v54 HTML so the new wizard markup loads.
+const HTML_CACHE = 'staybid-html-v55';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

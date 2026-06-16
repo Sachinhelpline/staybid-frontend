@@ -69,20 +69,120 @@ function extractJson(text: string): any | null {
   }
 }
 
+const geminiKey = () =>
+  (process.env.GEMINI_API_KEY || process.env.GEMINI_CHAT_API_KEY || "").trim();
+
+// Low-level Gemini call with Google-Search grounding. Returns the joined text
+// of the first candidate, or null on no-key / non-2xx / error. Never throws.
+async function callGemini(prompt: string, maxTokens = 1400): Promise<string | null> {
+  const key = geminiKey();
+  if (!key) return null;
+  try {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+      }),
+    });
+    if (!res.ok) throw new Error(`gemini ${res.status}`);
+    const data = await res.json();
+    return (data?.candidates?.[0]?.content?.parts || [])
+      .map((p: any) => p?.text || "")
+      .join("\n");
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[gemini] call error:", e);
+    return null;
+  }
+}
+
+export type HotelCandidate = {
+  name: string;
+  area: string;        // locality / neighbourhood that distinguishes it
+  address: string;     // best-effort full address (for the detail step + display)
+  note: string;        // one-line distinguishing detail
+  evidence?: string;   // where it was found
+};
+
+// PHASE 1 — location-scoped SEARCH. Both name AND city are required. Gemini
+// first filters to the city, then lists up to 6 REAL matching properties so the
+// owner can confirm which one is theirs (instead of us guessing a single hit
+// and scraping garbage). Returns [] when nothing real is found — the UI then
+// asks the owner to fill details manually.
+export async function geminiSearchHotels(
+  name: string,
+  city: string,
+): Promise<{ provider: string; candidates: HotelCandidate[] } | null> {
+  if (!geminiKey() || !name.trim() || !city.trim()) return null;
+
+  const prompt = `You are a strict hotel-directory search. Use Google Search to find REAL, currently-operating properties matching the name "${name}" located in ${city}, India.
+
+RULES:
+- FIRST narrow to ${city}, India only. Do NOT return properties in other cities.
+- Return ONLY properties you can actually verify exist online (Google Maps, an OTA listing, or the property's own website).
+- NEVER invent names or addresses. If you find nothing real, return an empty array.
+- Return up to 6 best matches, closest name match first.
+
+Return ONLY one JSON object (no prose, no markdown):
+{
+  "candidates": [
+    {
+      "name": string,            // exact property name from its listing
+      "area": string,            // locality / neighbourhood, e.g. "Mall Road"
+      "full_address": string,    // best-effort full address ("" if unknown)
+      "note": string,            // one short distinguishing line (stars / type)
+      "evidence": string         // where found, e.g. "Google Maps"
+    }
+  ]
+}`;
+
+  const text = await callGemini(prompt, 1200);
+  const j = extractJson(text || "");
+  if (!j || !Array.isArray(j.candidates)) return null;
+
+  const candidates: HotelCandidate[] = j.candidates
+    .map((c: any) => ({
+      name: str(c?.name) || "",
+      area: str(c?.area) || "",
+      address: str(c?.full_address) || "",
+      note: str(c?.note) || "",
+      evidence: str(c?.evidence),
+    }))
+    .filter((c: HotelCandidate) => !!c.name)
+    .slice(0, 6);
+
+  return { provider: `gemini:${GEMINI_MODEL}`, candidates };
+}
+
+// PHASE 2 — DETAILS scrape on a CONFIRMED property. `hintAddress` is the
+// full address of the candidate the owner picked in phase 1; passing it
+// grounds Gemini on the exact property (far less hallucination than a bare
+// name). Both the name and hint are echoed into the prompt so the model
+// reads the right listing.
 export async function geminiScrapeHotel(
   name: string,
   city: string,
+  hintAddress?: string,
 ): Promise<{ provider: string; hotel: ScrapedHotel } | null> {
   // Prefer the onboarding-dedicated key, fall back to the customer-support
   // chat key (GEMINI_CHAT_API_KEY) so a single Gemini key powers both flows.
-  const key = process.env.GEMINI_API_KEY || process.env.GEMINI_CHAT_API_KEY;
+  const key = geminiKey();
   if (!key || !name.trim()) return null;
 
-  const prompt = `You are a strict hotel-data verifier. Use Google Search to locate the REAL, currently-operating property named "${name}"${city ? ` in ${city}, India` : " in India"}.
+  const anchor = hintAddress && hintAddress.trim()
+    ? `\nThe property the owner confirmed is at this address — use it to find the EXACT listing: "${hintAddress.trim()}".`
+    : "";
+
+  const prompt = `You are a strict hotel-data verifier. Use Google Search to locate the REAL, currently-operating property named "${name}"${city ? ` in ${city}, India` : " in India"}.${anchor}
 
 CRITICAL RULES — follow exactly:
 - Set "found": true ONLY if you actually located THIS specific property online with a real, verifiable public listing (its Google Maps page, an OTA listing like booking.com / MakeMyTrip / Goibibo / Agoda, or its own official website). If you are guessing, extrapolating, or cannot confirm the hotel genuinely exists, set "found": false.
 - NEVER invent, guess, or fabricate any value. Use null for every field you cannot verify from a real source. A wrong real-looking value (fake address / fake phone / fake email) is far worse than null. Do NOT output placeholder values like "Heritage Lane", "+91 98XXXXXXXX", "stay@example.com", lat/lng 0, or template descriptions.
+- For "room_types": list EVERY room category named on the property's real listing (e.g. "Deluxe Room", "Super Deluxe", "Suite", "Family Room"). Include a category EVEN IF you cannot find its price — set "base_price_inr": null in that case. Do NOT drop a real category just because the price is unknown. Only return [] if the listing genuinely names no room categories.
 - "match_evidence": short phrase naming WHERE you found it (e.g. "Google Maps listing", "booking.com page", "official website"). null if not found.
 
 Return ONLY one JSON object (no prose, no markdown):
@@ -104,40 +204,28 @@ Return ONLY one JSON object (no prose, no markdown):
   "contact_phone": string | null,
   "contact_email": string | null,
   "website": string | null,
-  "room_types": [{ "type": string, "capacity": integer, "base_price_inr": integer }] (real rooms only; [] if unknown),
+  "room_types": [{ "type": string, "capacity": integer | null, "base_price_inr": integer | null }] (real categories only; [] if none named),
   "check_in_time": string "HH:MM" | null,
   "check_out_time": string "HH:MM" | null
 }`;
 
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        // google_search grounding lets Gemini read the live web (free tier).
-        tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1200 },
-      }),
-    });
-    if (!res.ok) throw new Error(`gemini-onboard ${res.status}`);
-    const data = await res.json();
-    const text = (data?.candidates?.[0]?.content?.parts || [])
-      .map((p: any) => p?.text || "")
-      .join("\n");
-    const j = extractJson(text);
+    const text = await callGemini(prompt, 1400);
+    const j = extractJson(text || "");
     if (!j) throw new Error("no json");
 
+    // Keep EVERY real room category Gemini names, even when the price is
+    // unknown (basePrice 0). Dropping price-less categories was hiding rooms
+    // for properties whose listings don't publish rates publicly.
     const rooms: ScrapedRoom[] = Array.isArray(j.room_types)
       ? j.room_types
           .map((r: any) => ({
-            type: str(r?.type) || "Standard Room",
+            type: str(r?.type) || "",
             capacity: num(r?.capacity) || 2,
             basePrice: num(r?.base_price_inr) || 0,
           }))
-          .filter((r: ScrapedRoom) => r.basePrice > 0)
-          .slice(0, 6)
+          .filter((r: ScrapedRoom) => !!r.type)
+          .slice(0, 8)
       : [];
 
     const hotel: ScrapedHotel = {
