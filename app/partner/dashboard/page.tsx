@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
 // Phase 5 tier-system — Pending content reviews queue (auth: x-partner-token)
 import PartnerContentTab from "@/components/partner/PartnerContentTab";
+import PartnerPassportTab from "@/components/partner/PartnerPassportTab";
 // v170 — camera QR / barcode scanner for the Redeem Codes tab.
 import CodeScanner from "@/components/partner/CodeScanner";
 // v170 — create / fully edit a room category from the dashboard.
@@ -143,8 +144,8 @@ function SourceBadge({ source, creatorHandle }: { source?: string; creatorHandle
 // v170 — role-based tab visibility. The owner sees everything; staff
 // roles get a scoped subset. "staff" + "profile" stay owner-only.
 const STAFF_TAB_ALLOW: Record<string, Set<string>> = {
-  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","fnbqr","guests","reports","complaints","redeem","content","verification"]),
-  front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests"]),
+  manager:      new Set(["overview","bids","rooms","flash","bookings","reservations","availability","housekeeping","billing","menu","fnbqr","guests","passport","reports","complaints","redeem","content","verification"]),
+  front_desk:   new Set(["overview","bids","bookings","reservations","availability","redeem","guests","passport"]),
   housekeeping: new Set(["overview","housekeeping"]),
 };
 function tabAllowed(role: string, id: string): boolean {
@@ -162,7 +163,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -922,6 +923,8 @@ export default function PartnerDashboard() {
     { id:"fnbqr", icon:"📱", label:"F&B QR" },
     // v170 — guest CRM (profiles, stay history, repeat tags).
     { id:"guests", icon:"👥", label:"Guests" },
+    // v265 — Passport Guests (read-only Explorer Passport holders at this hotel).
+    { id:"passport", icon:"🛂", label:"Passport Guests" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
     { id:"reports", icon:"📈", label:"Reports" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
@@ -2582,6 +2585,10 @@ export default function PartnerDashboard() {
         {/* ══════════════ CONTENT REVIEWS (Phase 5 tier-system) ══════════════ */}
         {tab === "content" && hotel?.id && (
           <PartnerContentTab hotelId={hotel.id} />
+        )}
+
+        {tab === "passport" && hotel?.id && (
+          <PartnerPassportTab />
         )}
 
         {/* ══════════════ PROFILE ══════════════ */}
