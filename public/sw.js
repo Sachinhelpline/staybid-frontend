@@ -309,7 +309,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // /points/redeem, /my-codes routes now redirect into the unified tabbed hub
 // (Passport · Wallet · Rewards · Codes). Drop stale v56 HTML so warm SWR
 // clients load the redirect shells + new hub markup.
-const HTML_CACHE = 'staybid-html-v57';
+// v265 — Partner "Passport Guests" tab (read-only Explorer Passport holders
+// per hotel). Bump so warm SWR clients load the new partner dashboard markup.
+const HTML_CACHE = 'staybid-html-v58';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
