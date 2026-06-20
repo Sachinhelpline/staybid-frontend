@@ -313,7 +313,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // per hotel). Bump so warm SWR clients load the new partner dashboard markup.
 // v267 — Admin Passport (config/issue/adjust) at /admin/passport + bonus_xp
 // column. Bump so warm SWR clients load the new admin-route markup.
-const HTML_CACHE = 'staybid-html-v60';
+// v268 — Passport 3D medals: PassportMedal + PassportDetailSheet (tap-to-open
+// animated 3D badge/stamp/reward). Bump so warm SWR clients load new markup.
+const HTML_CACHE = 'staybid-html-v61';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

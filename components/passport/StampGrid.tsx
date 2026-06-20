@@ -1,8 +1,12 @@
 "use client";
-// StampGrid — the collected stamps, one per confirmed stay. Each stamp is a
-// region-tinted "ink stamp" with the hotel + city + date. Empty slots are
-// dashed placeholders so the page reads like a real passport with room to fill.
+// StampGrid — collected stamps, one per confirmed stay, as tappable 3D region
+// "wax seals" (white-highlight metallic disc tinted by region). Empty slots are
+// premium dashed placeholders. Tapping a stamp opens its detail (hotel · city ·
+// date · region). Empty slots explain how the next stamp lands.
+import { useState } from "react";
 import { REGION_STYLE, regionForCity, type StampRow, type Region } from "@/lib/passport/engine";
+import { PassportMedal, type MedalFace } from "./PassportMedal";
+import { PassportDetailSheet, type DetailItem } from "./PassportDetailSheet";
 
 function fmtDate(iso?: string | null) {
   if (!iso) return "";
@@ -11,7 +15,17 @@ function fmtDate(iso?: string | null) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "2-digit" });
 }
 
+function faceFor(ring: string): MedalFace {
+  return {
+    face: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.94) 0%, ${ring} 42%, ${ring} 100%)`,
+    rim: ring,
+    glow: ring,
+    ink: "#2C2410",
+  };
+}
+
 export function StampGrid({ stamps }: { stamps: StampRow[] }) {
+  const [open, setOpen] = useState<DetailItem | null>(null);
   const slots = Math.max(6, Math.ceil((stamps.length + 1) / 3) * 3);
   const empties = Math.max(0, slots - stamps.length);
 
@@ -40,49 +54,69 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5 sb-stagger">
+        <div className="grid grid-cols-3 gap-3 sb-stagger">
           {stamps.map((s, i) => {
             const region = ((s.region as Region) || regionForCity(s.city)) as Region;
             const rs = REGION_STYLE[region] || REGION_STYLE.city;
+            const m = faceFor(rs.ring);
+            const detail: DetailItem = {
+              glyph: rs.emoji,
+              title: s.hotel_name || "Stay",
+              blurb: `A ${rs.label.toLowerCase()} stamp earned from your stay${s.city ? ` in ${s.city}` : ""}.`,
+              m,
+              earned: true,
+              ribbon: rs.label,
+              status: { text: "Collected", tone: "good" },
+              meta: [
+                ...(s.city ? [{ label: "City", value: s.city }] : []),
+                { label: "Region", value: rs.label },
+                ...(fmtDate(s.stay_date || s.earned_at) ? [{ label: "Stamped", value: fmtDate(s.stay_date || s.earned_at) }] : []),
+                { label: "XP earned", value: "+150" },
+              ],
+            };
             return (
-              <div
+              <button
                 key={s.id || s.source_id || i}
-                className="rounded-2xl p-2.5 text-center sb-card-lift"
-                style={{ background: rs.tint, border: "1px solid rgba(201,166,107,0.28)" }}
-                title={`${s.hotel_name || "Stay"} · ${s.city || ""}`}
+                onClick={() => setOpen(detail)}
+                className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1.5 sb-card-lift"
+                style={{ background: rs.tint, border: "1px solid rgba(201,166,107,0.3)" }}
               >
-                <div
-                  className="w-11 h-11 rounded-full mx-auto flex items-center justify-center text-lg"
-                  style={{ background: rs.ring, color: "#fff", boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.35)" }}
-                >
-                  {rs.emoji}
-                </div>
-                <p className="text-[0.66rem] font-bold mt-1.5 leading-tight line-clamp-2" style={{ color: "#3A2D10" }}>
+                <PassportMedal glyph={rs.emoji} size={56} m={m} pulse ariaLabel={s.hotel_name || "Stay"} />
+                <p className="text-[0.64rem] font-bold leading-tight text-center line-clamp-2" style={{ color: "#3A2D10" }}>
                   {s.hotel_name || "Stay"}
                 </p>
-                <p className="text-[0.58rem] mt-0.5" style={{ color: "#6E5430" }}>
-                  {s.city || rs.label}
-                </p>
-                <p className="text-[0.55rem] mt-0.5 font-mono" style={{ color: "#8B6914" }}>
+                <p className="text-[0.55rem] font-mono" style={{ color: "#8B6914" }}>
                   {fmtDate(s.stay_date || s.earned_at)}
                 </p>
-              </div>
+              </button>
             );
           })}
 
           {Array.from({ length: empties }).map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="rounded-2xl p-2.5 flex items-center justify-center"
-              style={{ border: "1.5px dashed rgba(201,166,107,0.35)", minHeight: 96, opacity: 0.5 }}
+              className="rounded-2xl flex flex-col items-center justify-center gap-1 py-3"
+              style={{ border: "1.5px dashed rgba(201,166,107,0.35)", minHeight: 104, opacity: 0.6 }}
             >
-              <span className="text-xl" style={{ color: "rgba(201,166,107,0.6)" }}>
-                +
-              </span>
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{
+                  background: "var(--bg-page)",
+                  border: "1.5px dashed rgba(201,166,107,0.45)",
+                  boxShadow: "inset 0 2px 6px rgba(201,166,107,0.12)",
+                }}
+              >
+                <span className="text-lg" style={{ color: "rgba(201,166,107,0.7)" }}>+</span>
+              </div>
+              <p className="text-[0.5rem] font-semibold" style={{ color: "rgba(201,166,107,0.75)" }}>
+                Next stay
+              </p>
             </div>
           ))}
         </div>
       )}
+
+      <PassportDetailSheet item={open} onClose={() => setOpen(null)} />
     </div>
   );
 }
