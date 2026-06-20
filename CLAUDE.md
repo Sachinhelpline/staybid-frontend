@@ -9318,3 +9318,76 @@ Verify: `tsc --noEmit` clean (only pre-existing `_home-luxury-backup.tsx`),
   is comfortable, but a bulk-reanalyze job MUST throttle.
 - **Never** hardcode the Gemini model — pin via `GEMINI_VERIFY_MODEL` so a
   model rename (Google deprecates fast) is an env change, not a redeploy.
+
+---
+
+## Passport-cum-Wallet Era (v264 → v267, 2026-06-18 → 2026-06-20)
+
+Unified the wallet + an "Explorer Passport" into ONE `/passport` hub. Three
+locked architecture decisions: (1) one `/passport` hub — `/wallet`, `/points`,
+`/points/redeem`, `/my-codes` are now redirect shells into `/passport?tab=…`;
+(2) a virtual (animated digital, NO real banking) member card; (3) phased build.
+
+### The engine (deterministic, pure)
+`lib/passport/engine.ts` — NO fetch, NO Supabase. Imported by BOTH the server
+route (award/compute) AND the client UI (display) so rank/badges never drift.
+- **XP:** `XP_PER_STAMP=150` + `XP_NEW_CITY_BONUS=60` + `XP_PER_BADGE=80`.
+- **Ranks:** explorer 0 · adventurer 1000 · trailblazer 3000 · nomad 6000 ·
+  legend 10000 · founders_circle 20000. `rankForXp(xp)`.
+- **12 badges** (`evaluateBadges`), **4-rung reward ladder** (`STAMP_REWARDS`:
+  3→₹200 voucher · 7→breakfast · 11→upgrade · 20→free night).
+- **Stamps** are awarded from confirmed stays; re-running the engine is
+  idempotent (stamps → XP → rank all derive from the stamp set).
+
+### Phase 1 (v264) — personal passport
+`/api/passport` GET lazily + idempotently: resolves cross-identity ids →
+reads ACCEPTED+ bids + bookings → ensures `passport_profiles` row (Explorer ID
+`SB-EXP-######` + member-since) → awards a stamp per un-stamped stay
+(UNIQUE-guarded on `(source_type, source_id)`) → evaluates badges → recomputes
+XP+rank → caches denorm cols. `/api/passport/claim-reward` mints a
+redemption_code. Components: PassportBook (book-open animation), MemberCard,
+StampGrid, RewardLadder, BadgeGrid in `components/passport/`.
+
+### Phase 2a (v265) — partner Passport Guests tab
+`/api/partner/passport-guests` (Bearer `sb_partner_token` +
+`resolveOwnerIdsCrossPool`) groups `passport_stamps` by guest →
+`PartnerPassportTab`.
+
+### Phase 2b (v266) — Family Passport
+Tables `passport_families` + `passport_family_members` (UNIQUE member user_id =
+one family per person). Owner-managed; add-by-Explorer-ID (privacy: no phone
+guessing); members leave, owner disbands. `FamilyPassport.tsx` +
+`/api/passport/family` + `/api/passport/family/members`.
+
+### Phase 2c (v267) — admin config/issue/adjust
+- **Migration** `2026-06-20-v267-passport-bonus-xp.sql` (applied live):
+  `passport_profiles.bonus_xp INTEGER NOT NULL DEFAULT 0`.
+- **`/api/passport` GET** now adds `bonus_xp` ON TOP of computed XP
+  (`xp = baseXp + bonusXp`) so an admin XP adjustment survives every
+  deterministic recompute. The cached `xp` write includes the bonus.
+- **`/api/admin/passport`** (`adminFromReq` + `logAdminAction`): GET search
+  (explorer_id / display_name ilike + phone→users fallback, manual users
+  side-load — NO PostgREST FK embed) / single `?userId=` detail + stamps.
+  POST `grant_stamp` (insert `passport_stamps` `source_type='admin'` with a
+  unique `source_id` so the UNIQUE dedup never collides) / `remove_stamp` /
+  `set_bonus_xp`.
+- **`/admin/passport`** dark-luxury page: search → detail modal (stat strip,
+  bonus-XP editor, grant-stamp form, removable stamp list, read-only rank +
+  reward ladder reference). Sidebar entry "🛂 Passports" between Content
+  Reviews and Service Access.
+
+### Things to Avoid (Passport Era)
+- **Never** write a plain `xp` to `passport_profiles` expecting it to stick —
+  the engine recomputes from stamps every load. To durably change a passport,
+  add/remove a real `passport_stamps` row OR set additive `bonus_xp`.
+- **Never** insert an admin stamp without a UNIQUE `source_id`. The bulk-award
+  path uses `Prefer: resolution=ignore-duplicates` on `(source_type,source_id)`
+  — a reused id silently no-ops. `genStampSourceId()` makes a fresh one.
+- **Never** change `lib/passport/engine.ts` rank thresholds / XP weights / badge
+  goals casually — they're the shared source of truth for server + client +
+  the admin reference ladders; drift breaks all three at once.
+- **Never** add a PostgREST FK embed (`users:user_id(...)`) to join users onto
+  passport rows — no FK exists. Manual `users?id=in.(…)` side-load (the
+  `/api/admin/creators` + `attachUsers` pattern).
+- Old `/wallet` `/points` `/points/redeem` `/my-codes` are redirect shells into
+  `/passport?tab=…`; the wallet features live as tabs inside `/passport`.
