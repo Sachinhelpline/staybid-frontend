@@ -113,6 +113,12 @@ export const api = {
   // Wallet — Supabase-backed Next.js route (Railway cold-starts too often).
   // Derives totals from accepted bids + real bookings.
   getWallet:     () => direct("/api/wallet"),
+
+  // Explorer Passport (v264) — unified passport+wallet layer. Stamps from
+  // confirmed stays drive rank/XP/badges; stamp-rewards mint redemption codes.
+  getPassport:          () => direct("/api/passport"),
+  claimPassportReward:  (rewardKey: string) =>
+    direct("/api/passport/claim-reward", { method: "POST", body: JSON.stringify({ rewardKey }) }),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
 
   // Hotel owner — existing Next.js routes

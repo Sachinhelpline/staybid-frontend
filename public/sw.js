@@ -305,7 +305,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // captures verified city/state/lat/lng → seeds the manual form AND tightens
 // the Express AI candidate search. Bump so warm SWR clients load the new
 // wizard markup.
-const HTML_CACHE = 'staybid-html-v56';
+// v264 — Passport cum Wallet hub at /passport. The /wallet, /points,
+// /points/redeem, /my-codes routes now redirect into the unified tabbed hub
+// (Passport · Wallet · Rewards · Codes). Drop stale v56 HTML so warm SWR
+// clients load the redirect shells + new hub markup.
+const HTML_CACHE = 'staybid-html-v57';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

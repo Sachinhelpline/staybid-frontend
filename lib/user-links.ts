@@ -40,11 +40,13 @@ export const USER_LINKS_BASE: UserLink[] = [
   // hotel's guest-review page. (Previously dropped users on /hotels, which
   // read as "it just opens a hotel page".)
   { href: "/trust",        label: "Trust & Reviews",    sub: "Scorecards · ranks · guest reviews", icon: "⭐" },
-  // Wallet is the unified entry: it shows balance + StayPoints. The /points
-  // page is still reachable from inside the wallet (the StayPoints column
-  // is a tappable link). DO NOT add a separate /points top-level entry —
-  // every prior split caused user confusion.
-  { href: "/wallet",       label: "Wallet",             sub: "Balance + StayPoints",          icon: "💰" },
+  // v264 — Passport cum Wallet. The unified hub at /passport holds the
+  // Explorer Passport (stamps/rank/XP/badges/rewards) AND every wallet
+  // feature (balance, StayPoints, redeem, codes) as tabs. The old /wallet,
+  // /points, /points/redeem, /my-codes routes redirect into it. DO NOT add a
+  // separate /wallet or /points top-level entry — every prior split caused
+  // user confusion.
+  { href: "/passport",     label: "Passport & Wallet",  sub: "Stamps · rank · balance · points", icon: "🛂" },
   { href: "/complaints",   label: "Complaints & Help",  sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
   { href: "/verification", label: "Verify Stay",        sub: "Hotel verification",            icon: "✅" },
 ];
