@@ -119,6 +119,15 @@ export const api = {
   getPassport:          () => direct("/api/passport"),
   claimPassportReward:  (rewardKey: string) =>
     direct("/api/passport/claim-reward", { method: "POST", body: JSON.stringify({ rewardKey }) }),
+  // Family Passport (v266) — link members, shared collection view.
+  getPassportFamily:    () => direct("/api/passport/family"),
+  createPassportFamily: (name?: string) =>
+    direct("/api/passport/family", { method: "POST", body: JSON.stringify({ name }) }),
+  disbandPassportFamily: () => direct("/api/passport/family", { method: "DELETE" }),
+  addPassportFamilyMember: (explorerId: string) =>
+    direct("/api/passport/family/members", { method: "POST", body: JSON.stringify({ explorerId }) }),
+  removePassportFamilyMember: (userId: string) =>
+    direct(`/api/passport/family/members?userId=${encodeURIComponent(userId)}`, { method: "DELETE" }),
   updateProfile: (data: any) => request("/api/auth/profile", { method: "PUT", body: JSON.stringify(data) }),
 
   // Hotel owner — existing Next.js routes

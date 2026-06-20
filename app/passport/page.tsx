@@ -20,6 +20,7 @@ import { StampGrid } from "@/components/passport/StampGrid";
 import { BadgeGrid } from "@/components/passport/BadgeGrid";
 import { RewardLadder } from "@/components/passport/RewardLadder";
 import { MemberCard } from "@/components/passport/MemberCard";
+import { FamilyPassport } from "@/components/passport/FamilyPassport";
 import {
   tierForBalance,
   canUserRedeem,
@@ -191,6 +192,7 @@ function PassportHub() {
                   stampCount={passport.stats?.stampCount || 0}
                   onClaimed={load}
                 />
+                <FamilyPassport myExplorerId={passport.profile.explorer_id} />
                 <BadgeGrid badges={passport.badges || []} />
 
                 {/* How it works */}
