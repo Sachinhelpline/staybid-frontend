@@ -42,7 +42,7 @@ export const HOST_MODULES: HostModule[] = [
     href: "/host/studio",
     cta: "Design my space",
     accent: "#7c3aed",
-    live: false,
+    live: true,
   },
   {
     key: "store",
