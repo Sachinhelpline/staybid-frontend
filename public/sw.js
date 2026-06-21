@@ -315,7 +315,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // column. Bump so warm SWR clients load the new admin-route markup.
 // v268 — Passport 3D medals: PassportMedal + PassportDetailSheet (tap-to-open
 // animated 3D badge/stamp/reward). Bump so warm SWR clients load new markup.
-const HTML_CACHE = 'staybid-html-v61';
+// v269 — Reflective cast-metal medals (glare + specular + rivets), native
+// gold-gradient IDs, clickable HowItGrows, reflective Family Passport. Bump
+// so warm SWR clients load the new markup.
+const HTML_CACHE = 'staybid-html-v62';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
