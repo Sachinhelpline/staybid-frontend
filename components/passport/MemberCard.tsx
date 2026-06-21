@@ -30,6 +30,17 @@ export function MemberCard({
       <style>{`
         @keyframes mcFoil { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
         .mc-foil { background-size:220% 220%; animation: mcFoil 3.2s ease infinite; }
+        @keyframes mcIdSheen { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+        .mc-id {
+          font-family: ui-monospace, "SF Mono", Menlo, monospace;
+          font-weight: 800; font-size: 0.94rem; letter-spacing: 0.04em;
+          background: linear-gradient(110deg,#FCEFC6,#F0D060 45%,#C79A3A 70%,#FCEFC6);
+          background-size: 220% 220%;
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent; color: transparent;
+          animation: mcIdSheen 4s ease infinite;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+        }
       `}</style>
       {/* glow */}
       <div
@@ -47,9 +58,7 @@ export function MemberCard({
       </div>
 
       <p className="font-display text-2xl font-light mt-3 text-white">{displayName || "Traveller"}</p>
-      <p className="font-mono text-xs mt-1" style={{ color: "rgba(212,175,55,0.85)" }}>
-        {explorerId}
-      </p>
+      <p className="mc-id mt-1.5">{explorerId}</p>
 
       <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
         <div>

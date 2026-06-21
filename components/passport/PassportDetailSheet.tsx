@@ -17,6 +17,7 @@ export type DetailItem = {
   locked?: boolean;
   earned?: boolean;
   ribbon?: string;
+  variant?: "medal" | "stamp";
   /** progress 0..100, shown as a labelled bar */
   progress?: number | null;
   progressLabel?: string;
@@ -110,7 +111,7 @@ export function PassportDetailSheet({
 
         <div className="pds-medalrow">
           <div className="pds-medal-anim" style={{ perspective: 800 }}>
-            <PassportMedal glyph={item.glyph} size={132} m={item.m} locked={item.locked} ribbon={item.ribbon} pulse />
+            <PassportMedal glyph={item.glyph} size={138} m={item.m} locked={item.locked} ribbon={item.ribbon} variant={item.variant} pulse />
           </div>
         </div>
 

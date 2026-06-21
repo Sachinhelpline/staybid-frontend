@@ -1,59 +1,60 @@
 "use client";
-// PassportMedal — the shared "alive" 3D metallic disc used across the whole
-// passport (badges / stamps / rewards / rank). Pure CSS depth (no images):
-// radial highlight (top-left light source) + 6-layer box-shadow stack +
-// rotating conic sheen with mix-blend-mode:screen + embossed glyph. Tap-press
-// micro-interaction + optional SVG progress ring. Emulates HotelScoreBadge.
+// PassportMedal — a genuinely reflective cast-metal medal (the SS3 reference):
+// metallic conic bezel + 4 rivets + a colored center disc with sphere-depth
+// radial shading + raised glyph + a bright specular crescent + a moving glare
+// sweep. Two variants: "medal" (metallic coin) and "stamp" (printed wax seal).
+// Pure CSS, no images. Optional progress ring + lock chip + rank ribbon.
 import { useId } from "react";
 
 export type MedalFace = {
-  face: string; // radial-gradient css for the disc face
-  rim: string; // rim-ring color
+  metal: "gold" | "silver" | "bronze"; // bezel metal (ignored for stamp)
+  core: string; // center disc base color (hex) — or ring color for stamps
   glow: string; // halo / sheen tint
-  ink: string; // glyph + caption color on the face
 };
 
 // ── Presets ────────────────────────────────────────────────────────────────
-export const MEDAL_GOLD: MedalFace = {
-  face: "radial-gradient(circle at 32% 26%, #FFF3CF 0%, #EEDBA6 26%, #D9BE82 54%, #C9A66B 76%, #A07F44 100%)",
-  rim: "#8B6914",
-  glow: "#F0D060",
-  ink: "#3A2D10",
-};
-export const MEDAL_CHAMPAGNE: MedalFace = {
-  face: "radial-gradient(circle at 32% 26%, #FFFBF2 0%, #F4E7CB 30%, #E7CFA0 60%, #D9BE82 100%)",
-  rim: "#C9A66B",
-  glow: "#F0D060",
-  ink: "#4A3208",
-};
-export const MEDAL_LOCKED: MedalFace = {
-  face: "radial-gradient(circle at 32% 26%, #F6F2EA 0%, #E8DECF 42%, #D6C9B4 100%)",
-  rim: "#C3B59B",
-  glow: "#D9CBB0",
-  ink: "#9A8C72",
-};
+export const MEDAL_GOLD: MedalFace = { metal: "gold", core: "#E8C765", glow: "#F0D060" };
+export const MEDAL_CHAMPAGNE: MedalFace = { metal: "gold", core: "#EFDDA8", glow: "#F0D060" };
+export const MEDAL_LOCKED: MedalFace = { metal: "silver", core: "#D6CDBC", glow: "#CFC2AB" };
 
-// Region-tinted stamp face (mountain / beach / city). Builds a metallic disc
-// from a single base color so stamps still read 3D, not flat ink.
-export function regionFace(base: string, ring: string): MedalFace {
-  return {
-    face: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.92) 0%, ${base} 34%, ${ring} 78%, ${ring} 100%)`,
-    rim: ring,
-    glow: ring,
-    ink: "#2C2410",
-  };
+/** Gold-bezel medal with a tier-colored core — used for rank crests. */
+export function rankMedalFace(color: string): MedalFace {
+  return { metal: "gold", core: color, glow: color };
 }
+/** Printed-stamp seal tinted by a region color. */
+export function stampFace(ring: string): MedalFace {
+  return { metal: "gold", core: ring, glow: ring };
+}
+
+const METAL: Record<string, { ring: string; rivet: string; rim: string }> = {
+  gold: {
+    ring: "conic-gradient(from 125deg,#FCEFC6 0deg,#E6C775 38deg,#9C7424 88deg,#FBEAB0 140deg,#7E5E18 200deg,#E0BE6E 268deg,#FCEFC6 360deg)",
+    rivet: "#9C7424",
+    rim: "#7A581A",
+  },
+  silver: {
+    ring: "conic-gradient(from 125deg,#FFFFFF 0deg,#CCD2DB 38deg,#828B98 88deg,#EFF2F7 140deg,#717B89 200deg,#D6DBE3 268deg,#FFFFFF 360deg)",
+    rivet: "#828B98",
+    rim: "#6C7682",
+  },
+  bronze: {
+    ring: "conic-gradient(from 125deg,#F7DBB2 0deg,#CE9259 38deg,#6F421F 88deg,#ECC79E 140deg,#5E371A 200deg,#D8A36D 268deg,#F7DBB2 360deg)",
+    rivet: "#8C5C30",
+    rim: "#623A1C",
+  },
+};
 
 type Props = {
   glyph: string;
-  size?: number; // disc diameter in px (default 64)
-  m?: MedalFace; // face preset
-  locked?: boolean; // dim + lock chip
-  progress?: number | null; // 0..100 ring (null = no ring)
+  size?: number;
+  m?: MedalFace;
+  locked?: boolean;
+  progress?: number | null;
   onClick?: () => void;
   ariaLabel?: string;
-  pulse?: boolean; // earned items gently breathe + sheen spins
-  ribbon?: string; // optional tiny ribbon text above the disc (rank / tier)
+  pulse?: boolean;
+  ribbon?: string;
+  variant?: "medal" | "stamp";
 };
 
 export function PassportMedal({
@@ -66,97 +67,108 @@ export function PassportMedal({
   ariaLabel,
   pulse = false,
   ribbon,
+  variant = "medal",
 }: Props) {
   const uid = useId().replace(/[:]/g, "");
-  const face = locked ? MEDAL_LOCKED : m;
-  const glyphSize = Math.round(size * 0.42);
+  const metal = METAL[m.metal] || METAL.gold;
+  const glyphSize = Math.round(size * (variant === "stamp" ? 0.4 : 0.36));
+  const hasRing = progress != null;
+  const ribbonH = ribbon ? Math.round(size * 0.22) : 0;
+
   const ringR = 46;
   const ringC = 2 * Math.PI * ringR;
   const ringOff = ringC - (Math.max(0, Math.min(100, progress ?? 0)) / 100) * ringC;
 
   const Tag: any = onClick ? "button" : "div";
+  const px = (f: number) => `${Math.round(size * f)}px`;
 
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
       aria-label={ariaLabel}
-      className={`pm-root pm-${uid} ${onClick ? "pm-tappable" : ""} ${pulse && !locked ? "pm-breathe" : ""}`}
-      style={{ width: size, height: ribbon ? size + 18 : size }}
+      className={`pm-root pm-${uid} ${onClick ? "pm-tap" : ""} ${pulse && !locked ? "pm-br" : ""}`}
+      style={{ width: size, height: size + ribbonH }}
     >
       <style>{`
-        .pm-${uid} {
-          position: relative; display: inline-flex; flex-direction: column;
-          align-items: center; justify-content: flex-end; border: none;
-          background: transparent; padding: 0; line-height: 0;
-        }
-        .pm-${uid}.pm-tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-        .pm-${uid} .pm-ribbon {
-          position: relative; z-index: 4; margin-bottom: -6px;
-          font-size: ${Math.max(8, Math.round(size * 0.135))}px; font-weight: 800;
-          letter-spacing: 0.06em; text-transform: uppercase; color: #fff;
-          padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-          background: linear-gradient(180deg, ${face.glow}, ${face.rim});
-          box-shadow: 0 3px 7px -3px rgba(31,26,15,0.5), inset 0 1px 0 rgba(255,255,255,0.4);
-          text-shadow: 0 1px 1px rgba(0,0,0,0.25);
-        }
-        .pm-${uid} .pm-stage {
-          position: relative; width: ${size}px; height: ${size}px;
-        }
-        .pm-${uid} .pm-halo {
-          position: absolute; inset: -10%; border-radius: 50%; z-index: 0;
-          background: radial-gradient(circle, ${face.glow}66 0%, transparent 68%);
-          opacity: ${locked ? 0 : 0.55};
-          ${pulse && !locked ? `animation: pmHalo-${uid} 2.6s ease-in-out infinite;` : ""}
-        }
-        .pm-${uid} .pm-disc {
-          position: absolute; inset: ${progress != null ? "9%" : "0"};
-          border-radius: 50%; z-index: 2; overflow: hidden;
-          background: ${face.face};
+        .pm-${uid}{position:relative;display:inline-flex;flex-direction:column;align-items:center;
+          justify-content:flex-end;border:none;background:transparent;padding:0;line-height:0;}
+        .pm-${uid}.pm-tap{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+        .pm-${uid} .pm-ribbon{position:relative;z-index:6;margin-bottom:${px(-0.08)};
+          font-size:${Math.max(8, Math.round(size * 0.135))}px;font-weight:900;letter-spacing:.06em;
+          text-transform:uppercase;color:#fff7e2;padding:2px 9px;border-radius:999px;white-space:nowrap;
+          background:linear-gradient(180deg,#F3D784,#C79A3A 60%,#8A6A1E);
+          box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.55),
+            inset 0 -1px 1px rgba(0,0,0,.3);
+          text-shadow:0 1px 1px rgba(0,0,0,.35);}
+        .pm-${uid} .pm-stage{position:relative;width:${size}px;height:${size}px;
+          ${locked ? "filter:grayscale(.72) brightness(.94);" : ""}}
+        .pm-${uid} .pm-halo{position:absolute;inset:-12%;border-radius:50%;z-index:0;
+          background:radial-gradient(circle,${m.glow}77 0%,transparent 66%);
+          opacity:${locked ? 0 : 0.6};
+          ${pulse && !locked ? `animation:pmHalo-${uid} 2.6s ease-in-out infinite;` : ""}}
+
+        /* ── METAL bezel ── */
+        .pm-${uid} .pm-bezel{position:absolute;inset:${hasRing ? "10%" : "0"};border-radius:50%;z-index:2;
+          overflow:hidden;background:${variant === "stamp" ? "#F8F0DE" : metal.ring};
           box-shadow:
-            0 ${Math.round(size * 0.18)}px ${Math.round(size * 0.34)}px -${Math.round(size * 0.14)}px rgba(31,26,15,0.5),
-            0 ${Math.round(size * 0.06)}px ${Math.round(size * 0.12)}px -${Math.round(size * 0.04)}px rgba(31,26,15,0.4),
-            0 0 0 ${Math.max(1.5, size * 0.028)}px ${face.rim}88,
-            inset 0 ${Math.round(size * 0.045)}px ${Math.round(size * 0.07)}px rgba(255,255,255,0.6),
-            inset 0 -${Math.round(size * 0.06)}px ${Math.round(size * 0.1)}px rgba(31,26,15,0.28),
-            inset 0 0 0 1px rgba(255,255,255,0.28);
-          transition: transform .18s cubic-bezier(.34,1.4,.5,1), box-shadow .18s ease;
-        }
-        .pm-${uid} .pm-sheen {
-          position: absolute; inset: -30%; z-index: 3; pointer-events: none;
-          mix-blend-mode: screen; opacity: ${locked ? 0 : 0.9};
-          background: conic-gradient(from 0deg,
-            transparent 0deg, rgba(255,255,255,0.7) 24deg,
-            transparent 72deg, transparent 180deg,
-            rgba(255,255,255,0.35) 210deg, transparent 252deg, transparent 360deg);
-          ${pulse && !locked ? `animation: pmSpin-${uid} 7s linear infinite;` : ""}
-        }
-        .pm-${uid} .pm-glyph {
-          position: absolute; inset: 0; z-index: 4; display: flex;
-          align-items: center; justify-content: center;
-          font-size: ${glyphSize}px; line-height: 1;
-          filter: ${locked ? "grayscale(0.85) opacity(0.55)" : "saturate(1.05)"};
-          text-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 -1px 0 rgba(31,26,15,0.22),
-            0 2px 4px rgba(31,26,15,0.25);
-        }
-        .pm-${uid} .pm-ringwrap { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-        .pm-${uid} .pm-lock {
-          position: absolute; right: -2%; bottom: -2%; z-index: 6;
-          width: ${Math.round(size * 0.34)}px; height: ${Math.round(size * 0.34)}px;
-          border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          font-size: ${Math.round(size * 0.17)}px;
-          background: linear-gradient(180deg,#fff,#ece3d2);
-          box-shadow: 0 3px 8px -3px rgba(31,26,15,0.55), inset 0 0 0 1px rgba(201,166,107,0.5);
-        }
-        .pm-${uid}.pm-tappable:active .pm-disc { transform: scale(0.92); }
-        .pm-${uid}.pm-tappable:hover .pm-disc { transform: translateY(-2px) scale(1.03); }
-        .pm-${uid}.pm-tappable:hover .pm-halo { opacity: 0.8; }
-        @keyframes pmHalo-${uid} { 0%,100%{ opacity:.35; transform:scale(.96) } 50%{ opacity:.7; transform:scale(1.06) } }
-        @keyframes pmSpin-${uid} { to { transform: rotate(360deg) } }
-        .pm-${uid}.pm-breathe .pm-stage { animation: pmBreathe-${uid} 3s ease-in-out infinite; }
-        @keyframes pmBreathe-${uid} { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-2px) } }
-        @media (prefers-reduced-motion: reduce) {
-          .pm-${uid} .pm-sheen, .pm-${uid} .pm-halo, .pm-${uid}.pm-breathe .pm-stage { animation: none !important; }
+            0 ${px(0.16)} ${px(0.3)} -${px(0.1)} rgba(0,0,0,.5),
+            0 ${px(0.04)} ${px(0.08)} rgba(0,0,0,.32),
+            0 0 0 ${Math.max(1, size * 0.012)}px ${metal.rim}99,
+            inset 0 ${px(0.03)} ${px(0.05)} rgba(255,255,255,.7),
+            inset 0 -${px(0.05)} ${px(0.09)} rgba(0,0,0,.42);}
+        .pm-${uid} .pm-glare{position:absolute;top:-25%;bottom:-25%;width:36%;left:-45%;z-index:5;
+          background:linear-gradient(100deg,transparent,rgba(255,255,255,.62),transparent);
+          transform:skewX(-18deg);filter:blur(2px);pointer-events:none;
+          ${!locked ? `animation:pmGlare-${uid} 4.6s ease-in-out infinite;` : "opacity:0;"}}
+
+        /* ── colored core disc ── */
+        .pm-${uid} .pm-core{position:absolute;inset:${variant === "stamp" ? "16%" : "21%"};border-radius:50%;z-index:3;
+          background:
+            radial-gradient(circle at 36% 27%, rgba(255,255,255,.6) 0%, transparent 40%),
+            radial-gradient(circle at 62% 80%, rgba(0,0,0,.42) 0%, transparent 60%),
+            ${variant === "stamp" ? "#FBF4E4" : m.core};
+          box-shadow:
+            inset 0 0 0 ${Math.max(1.5, size * 0.02)}px ${variant === "stamp" ? `${m.core}` : "rgba(255,255,255,.22)"},
+            inset 0 ${px(0.04)} ${px(0.07)} rgba(0,0,0,.46),
+            inset 0 -${px(0.03)} ${px(0.05)} rgba(255,255,255,.16);}
+        ${variant === "stamp" ? `.pm-${uid} .pm-core{box-shadow:
+            inset 0 0 0 ${Math.max(2, size * 0.045)}px ${m.core},
+            inset 0 0 0 ${Math.max(3, size * 0.06)}px rgba(255,255,255,.85),
+            inset 0 2px 5px rgba(0,0,0,.18);}` : ""}
+
+        /* rivets (medal only) */
+        .pm-${uid} .pm-rivet{position:absolute;z-index:4;width:${px(0.085)};height:${px(0.085)};
+          border-radius:50%;background:radial-gradient(circle at 34% 32%,#fff,${metal.rivet} 72%);
+          box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.15);transform:translate(-50%,-50%);}
+        .pm-${uid} .pm-rivet.n{left:50%;top:9%} .pm-${uid} .pm-rivet.s{left:50%;top:91%}
+        .pm-${uid} .pm-rivet.w{left:9%;top:50%} .pm-${uid} .pm-rivet.e{left:91%;top:50%}
+
+        .pm-${uid} .pm-glyph{position:absolute;inset:0;z-index:5;display:flex;align-items:center;
+          justify-content:center;font-size:${glyphSize}px;line-height:1;
+          filter:${locked ? "grayscale(.85) opacity(.6)" : "saturate(1.06)"}
+            drop-shadow(0 1px 0 rgba(255,255,255,.55)) drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+        .pm-${uid} .pm-spec{position:absolute;inset:${hasRing ? "10%" : "0"};border-radius:50%;z-index:5;
+          pointer-events:none;mix-blend-mode:screen;opacity:${locked ? 0 : 0.95};
+          background:radial-gradient(120% 90% at 28% 18%, rgba(255,255,255,.92) 0%, rgba(255,255,255,.25) 16%, transparent 44%);}
+
+        .pm-${uid} .pm-ringwrap{position:absolute;inset:0;z-index:6;pointer-events:none;}
+        .pm-${uid} .pm-lock{position:absolute;right:-3%;bottom:-3%;z-index:7;
+          width:${px(0.36)};height:${px(0.36)};border-radius:50%;display:flex;align-items:center;
+          justify-content:center;font-size:${px(0.18)};
+          background:radial-gradient(circle at 34% 30%,#fff,#e7dcc6 75%);
+          box-shadow:0 3px 8px -3px rgba(0,0,0,.55),inset 0 0 0 1px rgba(201,166,107,.5);}
+
+        .pm-${uid}.pm-tap:active .pm-bezel{transform:scale(.92);}
+        .pm-${uid}.pm-tap:hover .pm-bezel{transform:translateY(-2px) scale(1.04);}
+        .pm-${uid}.pm-tap:hover .pm-halo{opacity:.85;}
+        .pm-${uid} .pm-bezel{transition:transform .18s cubic-bezier(.34,1.4,.5,1);}
+        @keyframes pmHalo-${uid}{0%,100%{opacity:.4;transform:scale(.96)}50%{opacity:.78;transform:scale(1.07)}}
+        @keyframes pmGlare-${uid}{0%{left:-48%}55%,100%{left:120%}}
+        .pm-${uid}.pm-br .pm-stage{animation:pmBr-${uid} 3.2s ease-in-out infinite;}
+        @keyframes pmBr-${uid}{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-2px) rotate(.6deg)}}
+        @media (prefers-reduced-motion:reduce){
+          .pm-${uid} .pm-glare,.pm-${uid} .pm-halo,.pm-${uid}.pm-br .pm-stage{animation:none!important;}
         }
       `}</style>
 
@@ -164,21 +176,31 @@ export function PassportMedal({
 
       <span className="pm-stage">
         <span className="pm-halo" />
-        <span className="pm-disc">
-          <span className="pm-sheen" />
+        <span className="pm-bezel">
+          <span className="pm-glare" />
         </span>
+        {variant === "medal" && (
+          <>
+            <span className="pm-rivet n" />
+            <span className="pm-rivet e" />
+            <span className="pm-rivet s" />
+            <span className="pm-rivet w" />
+          </>
+        )}
+        <span className="pm-core" />
         <span className="pm-glyph">{glyph}</span>
+        <span className="pm-spec" />
 
-        {progress != null && (
+        {hasRing && (
           <span className="pm-ringwrap">
             <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden>
-              <circle cx="50" cy="50" r={ringR} fill="none" stroke={`${face.rim}33`} strokeWidth="5" />
+              <circle cx="50" cy="50" r={ringR} fill="none" stroke={`${metal.rim}44`} strokeWidth="5" />
               <circle
                 cx="50"
                 cy="50"
                 r={ringR}
                 fill="none"
-                stroke={face.rim}
+                stroke="#D9B65A"
                 strokeWidth="5"
                 strokeLinecap="round"
                 strokeDasharray={ringC}

@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { CountUp } from "@/components/CountUp";
 import type { RankState, PassportStats } from "@/lib/passport/engine";
-import { PassportMedal, MEDAL_GOLD } from "./PassportMedal";
+import { PassportMedal, rankMedalFace } from "./PassportMedal";
 
 type Props = {
   explorerId: string;
@@ -90,12 +90,20 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         .pb-book.is-open .pb-cover { transform: rotateY(-152deg); box-shadow: 0 30px 70px -22px rgba(0,0,0,0.6); }
         .pb-spine { position:absolute; left:0; top:0; bottom:0; width:7px; border-radius:22px 0 0 22px;
           background:linear-gradient(180deg,#f0d060,#d4af37,#8b6914); opacity:.95; z-index:2; }
+        .pb-mtn { position:relative; z-index:2; width:78%; height:30px; margin:6px auto -2px; display:block; opacity:.9; }
         .pb-emboss {
           position:relative; z-index:2;
-          border:1.5px solid rgba(201,166,107,0.5); border-radius:16px; padding:16px 16px 18px;
+          border:1.5px solid rgba(201,166,107,0.5); border-radius:16px; padding:14px 16px 16px;
           margin-top:auto; text-align:center;
-          background: linear-gradient(180deg, rgba(201,166,107,0.08), rgba(255,255,255,0.015));
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+          background: linear-gradient(180deg, rgba(201,166,107,0.1), rgba(255,255,255,0.02));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+        }
+        .pb-id {
+          font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight:800;
+          font-size:1.05rem; letter-spacing:0.06em; margin-top:5px;
+          background:linear-gradient(180deg,#FCEFC6,#F0D060 55%,#C79A3A);
+          -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+          color:#F0D060; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35));
         }
         .pb-tap {
           position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
@@ -205,18 +213,24 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
             </p>
           </div>
 
-          {/* 3D embossed rank crest */}
-          <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "center", margin: "8px 0 4px", perspective: 700 }}>
-            <PassportMedal glyph={R.emoji} size={96} m={MEDAL_GOLD} pulse ribbon={R.label} />
+          {/* 3D reflective rank crest (tier-colored core) */}
+          <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "center", margin: "10px 0 6px", perspective: 760 }}>
+            <PassportMedal glyph={R.emoji} size={104} m={rankMedalFace(R.color)} pulse ribbon={R.label} ariaLabel={`${R.label} rank`} />
           </div>
 
+          <svg className="pb-mtn" viewBox="0 0 320 48" preserveAspectRatio="none" aria-hidden>
+            <path d="M0 48 L46 18 L70 30 L104 6 L138 32 L168 14 L196 34 L232 10 L262 30 L292 16 L320 38 L320 48 Z"
+              fill="none" stroke="rgba(240,208,96,0.32)" strokeWidth="1.4" />
+          </svg>
+
           <div className="pb-emboss">
-            <p className="font-display text-lg" style={{ color: "#f3e6c8" }}>
+            <p className="text-[0.52rem] tracking-[0.28em] uppercase font-bold mb-1" style={{ color: "rgba(240,208,96,0.7)" }}>
+              This passport belongs to
+            </p>
+            <p className="font-display text-xl font-semibold" style={{ color: "#fbf2d8" }}>
               {displayName || "Traveller"}
             </p>
-            <p className="font-mono text-[0.7rem] mt-1" style={{ color: "rgba(240,208,96,0.9)" }}>
-              {explorerId}
-            </p>
+            <p className="pb-id">{explorerId}</p>
           </div>
 
           <div className="pb-tap">Tap to open</div>

@@ -21,6 +21,7 @@ import { BadgeGrid } from "@/components/passport/BadgeGrid";
 import { RewardLadder } from "@/components/passport/RewardLadder";
 import { MemberCard } from "@/components/passport/MemberCard";
 import { FamilyPassport } from "@/components/passport/FamilyPassport";
+import { HowItGrows } from "@/components/passport/HowItGrows";
 import { PassportMedal, MEDAL_GOLD, MEDAL_LOCKED } from "@/components/passport/PassportMedal";
 import {
   tierForBalance,
@@ -196,37 +197,7 @@ function PassportHub() {
                 <FamilyPassport myExplorerId={passport.profile.explorer_id} />
                 <BadgeGrid badges={passport.badges || []} />
 
-                {/* How it works */}
-                <div
-                  className="rounded-3xl p-5"
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}
-                >
-                  <h3 className="font-display text-lg font-semibold mb-3" style={{ color: "var(--text-base)" }}>
-                    How your passport grows
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {[
-                      { e: "🛏️", t: "Stay", s: "Book & complete a stay" },
-                      { e: "🛂", t: "Collect", s: "A stamp lands automatically" },
-                      { e: "⛰️", t: "Climb", s: "Earn XP → rank up" },
-                      { e: "🎁", t: "Unlock", s: "Claim stamp rewards" },
-                    ].map((x) => (
-                      <div
-                        key={x.t}
-                        className="rounded-2xl p-3 sb-card-lift"
-                        style={{ background: "var(--bg-page)", border: "1px solid var(--border-soft)" }}
-                      >
-                        <p className="text-xl">{x.e}</p>
-                        <p className="font-bold text-sm mt-1" style={{ color: "var(--text-base)" }}>
-                          {x.t}
-                        </p>
-                        <p className="text-[0.66rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                          {x.s}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <HowItGrows />
               </>
             ) : (
               <div className="rounded-3xl p-8 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>

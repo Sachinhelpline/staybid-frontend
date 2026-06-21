@@ -6,6 +6,15 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { CountUp } from "@/components/CountUp";
+import { PassportMedal, MEDAL_CHAMPAGNE, type MedalFace } from "@/components/passport/PassportMedal";
+
+// Pull the first hex out of a member's rankGradient so each avatar medal is
+// tinted to that member's rank. Falls back to champagne.
+function faceFromGradient(grad: string): MedalFace {
+  const hex = grad.match(/#[0-9a-fA-F]{6}/)?.[0];
+  if (!hex) return MEDAL_CHAMPAGNE;
+  return { metal: "gold", core: hex, glow: hex };
+}
 
 type Member = {
   userId: string;
@@ -96,6 +105,33 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
 
   return (
     <div>
+      <style>{`
+        @keyframes fpIdSheen { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+        .fp-id-btn {
+          border-radius: 14px;
+          background: linear-gradient(135deg,#2A2417,#1F1A0F);
+          box-shadow: 0 6px 18px -8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(201,166,107,0.3);
+        }
+        .fp-id-val {
+          font-family: ui-monospace, "SF Mono", Menlo, monospace;
+          font-weight: 800; font-size: 0.92rem; letter-spacing: 0.04em;
+          background: linear-gradient(110deg,#FCEFC6,#F0D060 45%,#C79A3A 70%,#FCEFC6);
+          background-size: 220% 220%;
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent; color: transparent;
+          animation: fpIdSheen 4s ease infinite;
+        }
+        @keyframes fpCombShine { 0%{transform:translateX(-120%) skewX(-18deg)} 60%,100%{transform:translateX(260%) skewX(-18deg)} }
+        .fp-comb { position: relative; overflow: hidden; }
+        .fp-comb::after {
+          content:""; position:absolute; top:0; left:0; width:42%; height:100%;
+          background: linear-gradient(90deg, transparent, rgba(255,247,214,0.55), transparent);
+          animation: fpCombShine 6s ease-in-out infinite; pointer-events:none;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fp-id-val, .fp-comb::after { animation: none; }
+        }
+      `}</style>
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
           👨‍👩‍👧 Family Passport
@@ -137,13 +173,17 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
         <div className="space-y-3">
           {/* Combined card */}
           <div
-            className="rounded-3xl p-5 relative overflow-hidden"
-            style={{ background: "linear-gradient(160deg,#fffdf8,#fbf3e2)", border: "1px solid rgba(201,166,107,0.4)" }}
+            className="fp-comb rounded-3xl p-5"
+            style={{
+              background: "linear-gradient(160deg,#fffdf8,#fbf3e2)",
+              border: "1px solid rgba(201,166,107,0.4)",
+              boxShadow: "0 14px 34px -16px rgba(120,90,20,0.45), inset 0 1px 0 rgba(255,255,255,0.7)",
+            }}
           >
-            <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>
+            <p className="text-[0.6rem] uppercase tracking-widest font-bold relative z-10" style={{ color: "#8B6914" }}>
               {family.name}
             </p>
-            <div className="flex items-end gap-4 mt-1">
+            <div className="flex items-end gap-4 mt-1 relative z-10">
               <div>
                 <p className="font-display text-3xl font-bold leading-none" style={{ color: "#3A2D10" }}>
                   <CountUp value={combined.stamps} duration={1000} />
@@ -168,15 +208,20 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             {members.map((m) => (
               <div
                 key={m.userId}
-                className="rounded-2xl p-3 flex items-center gap-3"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}
+                className="sb-card-lift rounded-2xl p-3 flex items-center gap-3"
+                style={{
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-soft)",
+                  boxShadow: "0 6px 16px -10px rgba(0,0,0,0.3)",
+                }}
               >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0"
-                  style={{ background: m.rankGradient }}
-                >
-                  {m.name.charAt(0).toUpperCase()}
-                </div>
+                <PassportMedal
+                  glyph={m.name.charAt(0).toUpperCase()}
+                  size={42}
+                  m={faceFromGradient(m.rankGradient)}
+                  pulse={m.isYou}
+                />
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>
@@ -237,11 +282,9 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
 
           {/* Your Explorer ID — easy share so the owner can add you */}
           {myExplorerId && (
-            <button onClick={copyMyId}
-              className="w-full rounded-xl border-2 border-dashed py-2 flex items-center justify-center gap-2"
-              style={{ borderColor: "rgba(201,166,107,0.4)", background: "var(--bg-page)" }}>
+            <button onClick={copyMyId} className="fp-id-btn w-full py-2.5 px-3 flex items-center justify-center gap-2">
               <span className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>Your ID</span>
-              <span className="font-mono text-sm font-bold" style={{ color: "var(--text-base)" }}>{myExplorerId}</span>
+              <span className="fp-id-val">{myExplorerId}</span>
               <span className="text-[0.6rem]" style={{ color: copied ? "#4a6f4a" : "var(--text-muted)" }}>
                 {copied ? "✓ Copied" : "tap to copy"}
               </span>
