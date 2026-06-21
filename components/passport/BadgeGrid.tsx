@@ -1,6 +1,12 @@
 "use client";
-// BadgeGrid — every achievement. Earned badges glow gold; locked ones dim with
-// a progress hint ("2 / 3 cities"). Mirrors the API's badge catalog shape.
+// BadgeGrid — every achievement as a tappable 3D medal. Earned badges shine in
+// gold with a live sheen; locked ones dim with a lock chip + progress ring.
+// Tapping any badge opens the PassportDetailSheet (big 3D flip-in + blurb +
+// progress). Mirrors the API's badge catalog shape.
+import { useState } from "react";
+import { PassportMedal, MEDAL_GOLD, MEDAL_LOCKED } from "./PassportMedal";
+import { PassportDetailSheet, type DetailItem } from "./PassportDetailSheet";
+
 type BadgeView = {
   key: string;
   label: string;
@@ -14,6 +20,30 @@ type BadgeView = {
 
 export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
   const earned = badges.filter((b) => b.earned).length;
+  const [open, setOpen] = useState<DetailItem | null>(null);
+
+  const toDetail = (b: BadgeView): DetailItem => {
+    const pct = b.need > 1 ? Math.min(100, (b.have / b.need) * 100) : b.earned ? 100 : 0;
+    return {
+      glyph: b.emoji,
+      title: b.label,
+      blurb: b.earned ? b.blurb : b.hint,
+      m: b.earned ? MEDAL_GOLD : MEDAL_LOCKED,
+      locked: !b.earned,
+      earned: b.earned,
+      progress: b.earned ? null : b.need > 1 ? pct : null,
+      progressLabel: b.need > 1 ? `${b.have} / ${b.need}` : undefined,
+      status: b.earned
+        ? { text: "Unlocked", tone: "good" }
+        : { text: "Locked", tone: "lock" },
+      meta: b.earned
+        ? undefined
+        : b.need > 1
+          ? [{ label: "Progress", value: `${b.have} of ${b.need}` }]
+          : undefined,
+    };
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -25,56 +55,49 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5 sb-stagger">
-        {badges.map((b) => (
-          <div
-            key={b.key}
-            className="rounded-2xl p-3 text-center sb-card-lift"
-            style={{
-              background: b.earned ? "linear-gradient(160deg,#fffdf8,#fbf3e2)" : "var(--bg-card)",
-              border: b.earned ? "1px solid rgba(201,166,107,0.45)" : "1px solid var(--border-soft)",
-              opacity: b.earned ? 1 : 0.62,
-              boxShadow: b.earned ? "0 6px 18px -10px rgba(201,166,107,0.5)" : "none",
-            }}
-            title={b.earned ? b.blurb : b.hint}
-          >
-            <div
-              className="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl"
+      <div className="grid grid-cols-3 gap-3 sb-stagger">
+        {badges.map((b) => {
+          const pct = b.need > 1 ? Math.min(100, (b.have / b.need) * 100) : null;
+          return (
+            <button
+              key={b.key}
+              onClick={() => setOpen(toDetail(b))}
+              className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1.5 sb-card-lift"
               style={{
-                background: b.earned ? "linear-gradient(135deg,#E7CFA0,#C9A66B)" : "var(--bg-pill)",
-                filter: b.earned ? "none" : "grayscale(0.7)",
+                background: b.earned
+                  ? "linear-gradient(160deg,#fffdf8,#fbf3e2)"
+                  : "var(--bg-card)",
+                border: b.earned
+                  ? "1px solid rgba(201,166,107,0.4)"
+                  : "1px solid var(--border-soft)",
               }}
             >
-              {b.earned ? b.emoji : "🔒"}
-            </div>
-            <p className="text-[0.66rem] font-bold mt-1.5 leading-tight" style={{ color: "var(--text-base)" }}>
-              {b.label}
-            </p>
-            {b.earned ? (
-              <p className="text-[0.55rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                {b.blurb}
+              <PassportMedal
+                glyph={b.emoji}
+                size={58}
+                m={MEDAL_GOLD}
+                locked={!b.earned}
+                progress={!b.earned && pct != null ? pct : null}
+                pulse={b.earned}
+                ariaLabel={b.label}
+              />
+              <p
+                className="text-[0.64rem] font-bold leading-tight text-center"
+                style={{ color: "var(--text-base)" }}
+              >
+                {b.label}
               </p>
-            ) : (
-              <>
-                <p className="text-[0.55rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
-                  {b.hint}
+              {!b.earned && b.need > 1 && (
+                <p className="text-[0.55rem] font-semibold" style={{ color: "#8B6914" }}>
+                  {b.have}/{b.need}
                 </p>
-                {b.need > 1 && (
-                  <div className="mt-1 h-1.5 rounded-full overflow-hidden mx-2" style={{ background: "var(--bg-pill)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, (b.have / b.need) * 100)}%`,
-                        background: "linear-gradient(90deg,#C9A66B,#8B6914)",
-                      }}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ))}
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      <PassportDetailSheet item={open} onClose={() => setOpen(null)} />
     </div>
   );
 }

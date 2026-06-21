@@ -21,6 +21,7 @@ import { BadgeGrid } from "@/components/passport/BadgeGrid";
 import { RewardLadder } from "@/components/passport/RewardLadder";
 import { MemberCard } from "@/components/passport/MemberCard";
 import { FamilyPassport } from "@/components/passport/FamilyPassport";
+import { PassportMedal, MEDAL_GOLD, MEDAL_LOCKED } from "@/components/passport/PassportMedal";
 import {
   tierForBalance,
   canUserRedeem,
@@ -485,10 +486,14 @@ function RewardsTab({
               <div key={r.id}
                 className="rounded-2xl p-4 flex items-center gap-3 sb-card-lift"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0"
-                  style={{ background: "linear-gradient(135deg,#E7CFA0,#C9A66B)" }}>
-                  {r.icon || kindIcon(r.kind)}
-                </div>
+                <PassportMedal
+                  glyph={r.icon || kindIcon(r.kind)}
+                  size={50}
+                  m={v.ok ? MEDAL_GOLD : MEDAL_LOCKED}
+                  locked={!v.ok}
+                  pulse={v.ok}
+                  ariaLabel={r.title}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>{r.title}</p>
                   {r.description && (

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { CountUp } from "@/components/CountUp";
 import type { RankState, PassportStats } from "@/lib/passport/engine";
+import { PassportMedal, MEDAL_GOLD } from "./PassportMedal";
 
 type Props = {
   explorerId: string;
@@ -58,20 +59,43 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
           position:absolute; inset:0; border-radius: 22px;
           transform-origin: left center; transform: rotateY(0deg);
           transition: transform .9s cubic-bezier(.6,.02,.2,1), box-shadow .9s ease;
-          backface-visibility: hidden;
+          backface-visibility: hidden; overflow: hidden;
           background:
-            radial-gradient(130% 90% at 50% 0%, rgba(255,255,255,0.10), transparent 55%),
-            linear-gradient(160deg,#2a2417 0%,#1f1a0f 60%,#171206 100%);
-          box-shadow: 0 22px 60px -22px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(201,166,107,0.28);
+            radial-gradient(130% 90% at 50% 0%, rgba(255,255,255,0.12), transparent 55%),
+            linear-gradient(160deg,#2f2818 0%,#211b0f 58%,#151005 100%);
+          box-shadow: 0 22px 60px -22px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(201,166,107,0.3);
           color:#f3e6c8; padding: 26px 22px; display:flex; flex-direction:column;
           z-index: 3;
         }
+        /* faint gold guilloché foil texture on the cover */
+        .pb-cover::before {
+          content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+          background:
+            repeating-linear-gradient(45deg, rgba(201,166,107,0.05) 0 2px, transparent 2px 9px),
+            repeating-linear-gradient(-45deg, rgba(201,166,107,0.04) 0 2px, transparent 2px 9px);
+        }
+        /* slow gloss sweep */
+        .pb-cover::after {
+          content:""; position:absolute; top:0; bottom:0; width:38%; pointer-events:none;
+          background: linear-gradient(105deg, transparent, rgba(255,255,255,0.10), transparent);
+          transform: skewX(-18deg); animation: pbGloss 6s ease-in-out infinite;
+        }
+        @keyframes pbGloss { 0% { left:-45% } 55%,100% { left:130% } }
+        .pb-corner { position:absolute; width:26px; height:26px; z-index:2; pointer-events:none;
+          border-color: rgba(201,166,107,0.55); }
+        .pb-corner.tl { top:12px; left:12px; border-top:2px solid; border-left:2px solid; border-radius:7px 0 0 0; }
+        .pb-corner.tr { top:12px; right:12px; border-top:2px solid; border-right:2px solid; border-radius:0 7px 0 0; }
+        .pb-corner.bl { bottom:12px; left:12px; border-bottom:2px solid; border-left:2px solid; border-radius:0 0 0 7px; }
+        .pb-corner.br { bottom:12px; right:12px; border-bottom:2px solid; border-right:2px solid; border-radius:0 0 7px 0; }
         .pb-book.is-open .pb-cover { transform: rotateY(-152deg); box-shadow: 0 30px 70px -22px rgba(0,0,0,0.6); }
         .pb-spine { position:absolute; left:0; top:0; bottom:0; width:7px; border-radius:22px 0 0 22px;
-          background:linear-gradient(180deg,#d4af37,#8b6914); opacity:.85; }
+          background:linear-gradient(180deg,#f0d060,#d4af37,#8b6914); opacity:.95; z-index:2; }
         .pb-emboss {
-          border:1.5px solid rgba(201,166,107,0.5); border-radius:14px; padding:18px 16px;
-          margin-top:auto; text-align:center; background:rgba(255,255,255,0.02);
+          position:relative; z-index:2;
+          border:1.5px solid rgba(201,166,107,0.5); border-radius:16px; padding:16px 16px 18px;
+          margin-top:auto; text-align:center;
+          background: linear-gradient(180deg, rgba(201,166,107,0.08), rgba(255,255,255,0.015));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
         }
         .pb-tap {
           position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
@@ -167,19 +191,30 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
         {/* COVER */}
         <div className="pb-cover">
           <div className="pb-spine" />
-          <p className="text-[0.6rem] tracking-[0.3em] uppercase font-bold" style={{ color: "#d4af37" }}>
-            StayBid
-          </p>
-          <p className="font-display text-2xl font-light mt-1" style={{ color: "#f3e6c8" }}>
-            Explorer Passport
-          </p>
+          <span className="pb-corner tl" />
+          <span className="pb-corner tr" />
+          <span className="pb-corner bl" />
+          <span className="pb-corner br" />
+
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <p className="text-[0.6rem] tracking-[0.3em] uppercase font-bold" style={{ color: "#f0d060" }}>
+              StayBid
+            </p>
+            <p className="font-display text-2xl font-light mt-1" style={{ color: "#f3e6c8" }}>
+              Explorer Passport
+            </p>
+          </div>
+
+          {/* 3D embossed rank crest */}
+          <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "center", margin: "8px 0 4px", perspective: 700 }}>
+            <PassportMedal glyph={R.emoji} size={96} m={MEDAL_GOLD} pulse ribbon={R.label} />
+          </div>
 
           <div className="pb-emboss">
-            <p className="text-4xl mb-1">🛂</p>
             <p className="font-display text-lg" style={{ color: "#f3e6c8" }}>
               {displayName || "Traveller"}
             </p>
-            <p className="font-mono text-[0.7rem] mt-1" style={{ color: "rgba(212,175,55,0.85)" }}>
+            <p className="font-mono text-[0.7rem] mt-1" style={{ color: "rgba(240,208,96,0.9)" }}>
               {explorerId}
             </p>
           </div>

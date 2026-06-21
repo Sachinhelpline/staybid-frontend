@@ -215,7 +215,12 @@ export async function GET(req: NextRequest) {
     "passport_badges",
     earnedBadges.map((k) => ({ user_id: ownerId, badge_key: k })),
   );
-  const xp = computeXp(stats, earnedBadges);
+  // v267 — admin-granted bonus XP persists on the profile (passport_profiles
+  // .bonus_xp). The engine is deterministic, so a plain xp write would be
+  // overwritten on the next load; the additive bonus survives every recompute.
+  const baseXp = computeXp(stats, earnedBadges);
+  const bonusXp = Math.max(0, Math.floor(Number(profile.bonus_xp || 0)));
+  const xp = baseXp + bonusXp;
   const rank = rankForXp(xp);
 
   // Cache the denormalizations (best-effort; UI uses computed values anyway).
