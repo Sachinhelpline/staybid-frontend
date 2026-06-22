@@ -66,7 +66,7 @@ export const HOST_MODULES: HostModule[] = [
     href: "/host/properties",
     cta: "Discover properties",
     accent: "#2563eb",
-    live: false,
+    live: true,
   },
   {
     key: "workforce",
