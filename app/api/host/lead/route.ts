@@ -16,7 +16,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name and a valid phone are required." }, { status: 400 });
   }
 
-  const interest = INTERESTS.includes(body?.interest) ? body.interest : "general";
+  const rawInterest = String(body?.interest || "").trim().slice(0, 40);
+  const interest = INTERESTS.includes(rawInterest) ? rawInterest : "general";
+  const tier = String(body?.tier || "").trim().slice(0, 40) || null;
   const user = userFromReq(req);
 
   const row = {
@@ -28,7 +30,12 @@ export async function POST(req: Request) {
     interest,
     message: String(body?.message || "").trim().slice(0, 1000) || null,
     status: "new",
-    metadata: { source: "host_landing", ua: req.headers.get("user-agent")?.slice(0, 200) || null },
+    metadata: {
+      source: "host_landing",
+      raw_interest: rawInterest || null,   // e.g. "invest" (budget-tier application)
+      tier,                                // e.g. "Adventurer"
+      ua: req.headers.get("user-agent")?.slice(0, 200) || null,
+    },
   };
 
   try {
