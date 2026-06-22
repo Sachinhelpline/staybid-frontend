@@ -77,7 +77,7 @@ export const HOST_MODULES: HostModule[] = [
     href: "/host/workforce",
     cta: "Hire staff",
     accent: "#9a3412",
-    live: false,
+    live: true,
   },
   {
     key: "channels",
