@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
         ? sbGet(`workforce_workers?id=in.(${workerIds.map((x) => `"${x}"`).join(",")})&select=id,name,skill,city`)
         : Promise.resolve([]),
       propIds.length
-        ? sbGet(`host_properties?id=in.(${propIds.map((x) => `"${x}"`).join(",")})&select=id,title,city`).catch(() => [])
+        ? sbGet(`discovery_properties?id=in.(${propIds.map((x) => `"${x}"`).join(",")})&select=id,title,city`).catch(() => [])
         : Promise.resolve([]),
       orderIds.length
         ? sbGet(`store_order_items?order_id=in.(${orderIds.map((x) => `"${x}"`).join(",")})&select=order_id,name,mode,qty,line_total`)
