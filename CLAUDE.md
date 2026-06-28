@@ -9391,3 +9391,91 @@ guessing); members leave, owner disbands. `FamilyPassport.tsx` +
   `/api/admin/creators` + `attachUsers` pattern).
 - Old `/wallet` `/points` `/points/redeem` `/my-codes` are redirect shells into
   `/passport?tab=…`; the wallet features live as tabs inside `/passport`.
+
+---
+
+## StayBid for Hosts — Managed Portfolio Vertical (v270 → v277, 2026-06-21 → 2026-06-28)
+
+A full "Managed Hospitality Portfolio Platform" at `/host` — budget-tier
+managed-ownership (EXPLORER ₹20K / ADVENTURER ₹50K / TRAILBLAZER ₹1L /
+ELITE ₹2L+): StayBid finds + designs + lists + runs properties, the partner
+earns 8–20% p.a., the platform takes a cut. Shipped additively across 8
+phases; nothing in the existing customer/partner/admin flows was touched.
+
+### Phase map
+- **P1 (v270)** — landing + foundation: `/host` (budget tiers, traditional-vs-
+  StayBid, 6-step journey, 6 module cards, stats), `/api/host/lead` →
+  `host_leads`, `lib/host/modules.ts` (single source of truth for tiers +
+  module catalog), `/host` added to Navbar/DialerNav/ServerStatus/BottomDock
+  hide-gates. Migration `2026-06-21-host-os-phase1-foundation.sql`.
+- **P2 (v271)** — AI Design Studio `/host/studio` + `/api/host/studio` +
+  `lib/host/design-ai.ts` → `host_design_projects` + `host_design_options`
+  (AI-provider env-gated, deterministic mock fallback).
+- **P3 (v272)** — StayBid Store `/host/store` + `/api/host/store/{,, orders,
+  checkout, verify}` → `store_products` (17 seeded) / `store_orders` /
+  `store_order_items`. Buy/Rent/EMI; **server-validated** Razorpay amount
+  (client never sets price); HMAC verify.
+- **P4 (v273)** — Smart Property Discovery `/host/properties` +
+  `/api/host/properties/{,, inquiry}` → `discovery_properties` (15 seeded) +
+  `discovery_inquiries`.
+- **P5 (v274)** — Workforce on Demand `/host/workforce` +
+  `/api/host/workforce/{,, hire}` → `workforce_workers` (24 seeded) +
+  `workforce_jobs`. Worker `skill`+`rate` snapshotted onto each job.
+- **P6 (v275)** — Channel Manager `/host/channels` + `/api/host/channels/{,,
+  connect}` → `host_channels` (8 OTAs; connect = request → admin sets up).
+  Migration `2026-06-22-host-os-phase6-channels.sql`. Also the **cross-panel
+  nav**: `/host` entry added to `lib/user-links.ts` (`USER_LINKS_BASE`) so
+  both the desktop Navbar dropdown + mobile `/me` drawer surface it in
+  lock-step — previously `/host` was only reachable by typing the URL.
+- **P7 (v276)** — Admin Host Hub `/admin/host` + `/api/admin/host` (GET
+  parallel-fetches all 6 sources + manual user/worker/property side-loads, no
+  PostgREST FK embed; PATCH sets a row's status, audit-logged). Sidebar entry
+  "🏠 StayBid for Hosts" between Bookings & Bids and Verification. 6 KPI cards
+  (leads · inquiries · design projects · store orders+GMV · workforce
+  jobs+revenue · channel requests) + 6 tabbed sections with inline status
+  pickers. Dark-luxury inline styles, `adminFromReq` + `logAdminAction`.
+- **P8 (v277)** — soft-launch prep: `docs/HOST_OS_SMOKE_TESTS.md` +
+  `HOST_OS_ROLLBACK.md` + `HOST_OS_SOFT_LAUNCH.md`. Plus a one-line fix in
+  `/api/admin/host`: the property-name side-load pointed at `host_properties`
+  (does not exist) → corrected to `discovery_properties` so the admin
+  Inquiries tab shows property titles, not raw ids (was degrading gracefully
+  to empty via `.catch`, so never errored — just showed the id).
+
+### Host-vertical tables (all additive, isolated — no FK from existing tables)
+`host_leads` · `host_design_projects` · `host_design_options` ·
+`store_products` · `store_orders` · `store_order_items` ·
+`discovery_properties` · `discovery_inquiries` · `workforce_workers` ·
+`workforce_jobs` · `host_channels`. Catalogs seeded
+(discovery_properties 15, store_products 17, workforce_workers 24); inbound
+tables start empty.
+
+### Things to Avoid (Host vertical)
+- **Never** point a host admin side-load at `host_properties` — the
+  properties table is `discovery_properties` (the inquiry's `property_id`
+  FKs that). `host_properties` does not exist.
+- **Never** let the client set the Store checkout amount — `/api/host/store/
+  checkout` validates the amount server-side against `store_products`; verify
+  is HMAC. Same tamper-safe pattern as the service-subscription checkout.
+- **Never** remove `/host` from the Navbar/DialerNav/ServerStatus/BottomDock
+  hide-gates — the landing renders its own chrome; un-gating double-renders.
+- **Never** treat a Channel "Connect" or a Workforce "Hire" as automated —
+  both are **requests** landing in `host_channels` / `workforce_jobs`
+  (status `requested`) for ops to action via `/admin/host`. Real OTA sync /
+  live dispatch is future scope.
+- **Never** drop a host catalog table (`discovery_properties` /
+  `store_products` / `workforce_workers`) — they're curated seed data. Only
+  inbound tables are ever candidates for cleanup, and forward-only/export-first.
+- The `/host` customer-menu entry is ungated (any signed-in user). It's the
+  only discoverable way in from the customer app — keep it in
+  `lib/user-links.ts`, not duplicated per-menu.
+
+### Updated production state (v277, 2026-06-28)
+- **Current version:** v277 · all 8 phases live on `main` · the whole vertical
+  reachable via customer Menu → "StayBid for Hosts" + admin sidebar →
+  "🏠 StayBid for Hosts".
+- P1–P6 customer modules + P7 admin hub merged (PR #244 squash `5c06700`).
+- Soft-launch docs shipped; go/no-go gated on Razorpay-store + queue-owner
+  decisions (see `docs/HOST_OS_SOFT_LAUNCH.md`).
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — the host vertical is
+  fully isolated additive surface.
