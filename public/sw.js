@@ -318,7 +318,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // v269 — Reflective cast-metal medals (glare + specular + rivets), native
 // gold-gradient IDs, clickable HowItGrows, reflective Family Passport. Bump
 // so warm SWR clients load the new markup.
-const HTML_CACHE = 'staybid-html-v62';
+// v278 — Host "My activity" page (/host/me) + hero entry-point link. Bump so
+// warm SWR clients load the new /host markup.
+const HTML_CACHE = 'staybid-html-v63';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
