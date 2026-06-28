@@ -49,6 +49,11 @@ export const USER_LINKS_BASE: UserLink[] = [
   { href: "/passport",     label: "Passport & Wallet",  sub: "Stamps · rank · balance · points", icon: "🛂" },
   { href: "/complaints",   label: "Complaints & Help",  sub: "Raise an issue · ~24 hr reply", icon: "🚩" },
   { href: "/verification", label: "Verify Stay",        sub: "Hotel verification",            icon: "✅" },
+  // v275 — StayBid for Hosts (Managed Portfolio Platform). Ungated upsell
+  // entry: any signed-in user can explore investing in a managed BnB
+  // portfolio. The /host vertical hides its own chrome, so this menu row is
+  // the only discoverable way into it from the customer app.
+  { href: "/host",         label: "StayBid for Hosts",  sub: "Invest in a managed BnB portfolio", icon: "🏠" },
 ];
 
 export const CREATOR_LINK: UserLink = {

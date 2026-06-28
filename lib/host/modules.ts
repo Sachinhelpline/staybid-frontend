@@ -88,9 +88,39 @@ export const HOST_MODULES: HostModule[] = [
     href: "/host/channels",
     cta: "Connect channels",
     accent: "#1d4ed8",
-    live: false,
+    live: true,
   },
 ];
+
+// ── Channel Manager — supported OTAs (P6) ───────────────────────────────────
+// Shared by /host/channels (display) + /api/host/channels (validation).
+export interface HostChannel {
+  key: "booking" | "airbnb" | "mmt" | "goibibo" | "agoda" | "expedia" | "tripadvisor" | "other";
+  name: string;
+  icon: string;      // emoji
+  accent: string;    // brand-ish hex
+  blurb: string;
+}
+
+export const HOST_CHANNELS: HostChannel[] = [
+  { key: "booking",     name: "Booking.com",  icon: "🛏️", accent: "#1d4ed8", blurb: "World's largest OTA — huge global reach" },
+  { key: "airbnb",      name: "Airbnb",       icon: "🏠", accent: "#e11d48", blurb: "Top platform for homestays & unique stays" },
+  { key: "mmt",         name: "MakeMyTrip",   icon: "✈️", accent: "#dc2626", blurb: "India's #1 travel platform" },
+  { key: "goibibo",     name: "Goibibo",      icon: "🧳", accent: "#2563eb", blurb: "Big domestic demand, deal-hungry travellers" },
+  { key: "agoda",       name: "Agoda",        icon: "🌏", accent: "#7c3aed", blurb: "Strong across Asia-Pacific" },
+  { key: "expedia",     name: "Expedia",      icon: "🗺️", accent: "#f59e0b", blurb: "Global brand, package travellers" },
+  { key: "tripadvisor", name: "Tripadvisor",  icon: "🦉", accent: "#0d9488", blurb: "Reviews + bookings in one place" },
+  { key: "other",       name: "Other channel", icon: "🔗", accent: "#6b7280", blurb: "Any other OTA or direct channel" },
+];
+
+// Channel-connection lifecycle (mirrors host_channels.status CHECK).
+export const HOST_CHANNEL_STATUS: Record<string, { label: string; tone: string }> = {
+  requested: { label: "Requested",  tone: "#b45309" },
+  connected: { label: "Connected",  tone: "#15803d" },
+  syncing:   { label: "Syncing…",   tone: "#1d4ed8" },
+  error:     { label: "Needs attention", tone: "#b91c1c" },
+  paused:    { label: "Paused",     tone: "#6b7280" },
+};
 
 // ── Budget tiers — the heart of the managed-portfolio model ─────────────────
 export interface HostBudgetTier {
