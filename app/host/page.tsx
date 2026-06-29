@@ -41,6 +41,11 @@ export default function HostHome() {
                 style={{ border: "1px solid var(--border-strong)", color: "var(--text-base)" }}>
                 Talk to an expert
               </button>
+              <Link href="/host/me"
+                className="sb-card-lift px-6 py-3 rounded-full font-semibold"
+                style={{ border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
+                My activity
+              </Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: "var(--text-muted)" }}>
               <span>📈 8–20% p.a. returns</span>
