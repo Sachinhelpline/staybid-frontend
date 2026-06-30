@@ -179,11 +179,11 @@ export default function HostHome() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => setLead({ interest: "invest", tier: t.name })}
-                className="mt-4 w-full px-4 py-2.5 rounded-full font-semibold text-white text-sm"
+              <Link href={`/host/build?tier=${t.key}`}
+                className="mt-4 w-full block text-center px-4 py-2.5 rounded-full font-semibold text-white text-sm"
                 style={{ background: `linear-gradient(135deg,${t.accent},${t.accent}cc)` }}>
-                Invest in {t.name}
-              </button>
+                Build with {t.name} →
+              </Link>
             </div>
           ))}
         </div>
