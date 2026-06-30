@@ -9479,3 +9479,94 @@ tables start empty.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — the host vertical is
   fully isolated additive surface.
+
+---
+
+## Host My-Activity + Portfolio Configurator Wizard (v278 → v279, 2026-06-30)
+
+Two follow-ups on top of the v270–v277 Host vertical.
+
+### v278 — Host "My activity" page (PR #246, squash `f2d7b45`)
+`/host/me` — one place for a signed-in host to see everything they've
+submitted across the 6 modules (leads, design projects, store orders,
+property inquiries, workforce jobs, channel requests). New `/api/host/me`
+GET parallel-fetches the host's own rows by `user_id` (no PostgREST FK
+embed — manual side-loads, same pattern as the admin hub). `/host` landing
+hero gained a "My activity" entry-point link.
+
+### v279 — Portfolio Configurator Wizard (PR #247, squash `4e6a115`)
+Replaced the `/host` "Build with {tier}" lead-capture prototype with a real
+**6-step configurator** that bundles the package, then charges only on
+consent — Budget → Cities → Rooms → Design → Add-ons → Review & Pay.
+
+**The rules engine — `lib/host/wizard-rules.ts` (single source of truth):**
+- `computeBundle(config)` itemises one-time (setup + city activation + design
+  one-off + one-off add-ons) + recurring (mgmt + rental, period-discounted) +
+  EMI schedule (first instalment due now + remaining) + security
+  (`securityMonths × monthly recurring`) + `payNow`. Returns itemized `lines[]`.
+- `TIER_RULES`: explorer {1 room, 1 city, ₹20k setup/room, ₹2k mgmt/mo, 15%} ·
+  adventurer {2-3, 2, ₹18k, ₹1.9k, 12%} · trailblazer {4-6, 3, ₹16k, ₹1.8k,
+  9%} · elite {7+, unlimited, ₹14k, ₹1.6k, 5%}. `HOST_UNLIMITED = 999` sentinel,
+  `CITY_ACTIVATION_FEE = 5000`.
+- `PAYMENT_MODES`: monthly {1mo, 0% disc, 2mo security} · quarterly {3, 3%,
+  1.5} · half_yearly {6, 6%, 1} · yearly {12, 12%, 0.5}. Add-ons split
+  rental (monthly) / EMI (instalment schedule) / one-off via `ADDON_SERVICES`;
+  design via `DESIGN_PACKAGES`.
+- **⚠️ EVERY ₹ figure is a flagged sensible default** — pending Sachin's real
+  business numbers (per-tier pricing/limits, city availability, design/add-on
+  prices, payment-mode security + EMI/rental terms). The wizard is fully
+  functional today; only the figures are placeholders.
+
+**Tamper-safe payment:** `/api/host/portfolio/checkout` re-computes the ENTIRE
+bundle from `wizard-rules` server-side (client NEVER sets the amount) →
+Razorpay order (rupees, via the shared `/api/razorpay/order`) → persists
+`host_portfolio_configs` row `status='pending_payment'`. `/api/host/portfolio/
+verify` HMAC-verifies then flips the row to `active`, matched by BOTH
+`id` + `razorpay_order_id` so a tampered configId can't activate someone
+else's config. Same contract as the service-subscription + store checkouts.
+
+**UI:** `app/host/build/page.tsx` — 6-step wizard, `bundle = useMemo(
+computeBundle, [cfg])` recomputes live on every change, Razorpay only after
+explicit consent. Wrapped in `<Suspense>` (reads `?tier=`) so it prerenders
+static (the Next `useSearchParams` bailout). `/host/page.tsx` budget-tier CTAs
+now route to `/host/build?tier=`.
+
+**Migration:** `migrations/2026-06-30-v278-host-portfolio-configurator.sql` —
+`host_portfolio_configs` (id uuid PK, user_id, tier, cities jsonb, rooms,
+design, addons jsonb, payment_mode, breakdown jsonb, pay_now, recurring,
+security, status, contact jsonb, razorpay_order_id/payment_id, timestamps;
+3 indexes + permissive RLS). **Applied live.**
+
+### Things to Avoid (Host Wizard)
+- **Never** let the client set the configurator charge — `/api/host/portfolio/
+  checkout` re-runs `computeBundle()` from `wizard-rules` and charges
+  `bundle.payNow`. The client's posted config is `clampConfig()`'d first
+  (tier-bounded rooms/cities) so it can't request out-of-tier quantities.
+- **Never** flip a `host_portfolio_configs` row to `active` without matching
+  on `razorpay_order_id` AND `status='pending_payment'` — the verify route's
+  PATCH filter is the anti-tamper guard.
+- **Never** edit the ₹ figures in `lib/host/wizard-rules.ts` and assume the UI
+  + checkout diverge — both import the SAME `computeBundle`, so changing a
+  number updates the wizard, the review summary, and the server-validated
+  charge in lockstep. That's the whole point of the single source of truth.
+- **Never** drop the `<Suspense>` wrapper on `/host/build` — it reads
+  `?tier=` via `useSearchParams`; without Suspense the Next build static-
+  prerender bails (only `next build` catches it, not `tsc`).
+- The Netlify project `willowy-mooncake-a50d6f` is a **stray legacy
+  integration with no repo config** (`netlify.toml`/`_redirects` do not
+  exist) — it instant-fails its Pages/Header/Redirect checks on every PR.
+  It is NOT a deploy target; the canonical deploy is Vercel
+  `staybid-customer-frontend` → `staybids.in`. Ignore its red checks.
+
+### Updated production state (v279, 2026-06-30)
+- **Current version:** v279 · merged to `main` (squash `4e6a115`, PR #247) ·
+  deploying to `staybids.in` via Vercel.
+- Host Portfolio Configurator wizard live at `/host/build?tier=`; `/host/me`
+  activity page live (v278).
+- **Blocked on Sachin:** real business numbers to replace the flagged
+  defaults in `lib/host/wizard-rules.ts` (per-tier pricing/limits, city
+  availability, design/add-on prices, payment-mode security + EMI/rental
+  terms). Wizard is functional with placeholders until then.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — the host vertical
+  stays fully isolated additive surface.
