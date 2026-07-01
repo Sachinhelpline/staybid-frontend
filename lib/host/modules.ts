@@ -26,12 +26,12 @@ export interface HostModule {
 export const HOST_MODULES: HostModule[] = [
   {
     key: "list",
-    title: "List & Launch",
+    title: "List & Launch (run it yourself)",
     tagline: "Go live on every OTA",
-    desc: "AI-assisted listing, instant deployment to StayBid + all major OTAs.",
+    desc: "Run your OWN property live on StayBid + all major OTAs with AI-assisted listing. (Want StayBid to lease/rent it out for you instead? Use Smart Property Discovery.)",
     icon: "🚀",
     href: "/onboard",
-    cta: "List your property",
+    cta: "Go live yourself",
     accent: "#c9911a",
     live: true,
   },
