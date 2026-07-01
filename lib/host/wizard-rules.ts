@@ -117,6 +117,94 @@ export const PAYMENT_MODES: Record<PaymentModeKey, PaymentModeRule> = {
   yearly:      { key: "yearly",      name: "Yearly",       periodMonths: 12, recurringDiscount: 0.12, securityMonths: 0.5, blurb: "Best value · 12% off · lowest security" },
 };
 
+// ── Editable config bundle ──────────────────────────────────────────────────
+// v280: every number above is now ADMIN-EDITABLE. The constants stay as the
+// hard-coded DEFAULT (fallback if the DB row is missing/partial). The admin
+// panel edits a `host_wizard_config` row; `mergeWizardConfig()` overlays those
+// overrides on top of the defaults BY KEY (the set of tiers / designs / addons /
+// modes is fixed — only their numbers change). Both the client wizard and the
+// server `/checkout` compute from the SAME resolved config, so the charge can
+// never drift from what the partner saw.
+export interface WizardConfig {
+  tiers: Record<HostTierKey, TierRule>;
+  cityActivationFee: number;
+  designPackages: DesignPackage[];
+  addons: AddonService[];
+  paymentModes: Record<PaymentModeKey, PaymentModeRule>;
+}
+
+export const DEFAULT_WIZARD_CONFIG: WizardConfig = {
+  tiers: TIER_RULES,
+  cityActivationFee: CITY_ACTIVATION_FEE,
+  designPackages: DESIGN_PACKAGES,
+  addons: ADDON_SERVICES,
+  paymentModes: PAYMENT_MODES,
+};
+
+const num = (v: any, fallback: number): number =>
+  (v === null || v === undefined || v === "" || !Number.isFinite(Number(v))) ? fallback : Number(v);
+const nonNeg = (v: any, fallback: number): number => Math.max(0, num(v, fallback));
+const clampFrac = (v: any, fallback: number): number => Math.min(0.9, Math.max(0, num(v, fallback)));
+
+// Deep-merge a (possibly partial) stored config over the defaults, BY KEY.
+// Only numeric fields are pulled from the stored blob; keys/names/icons stay
+// from defaults so a bad payload can never add/rename/remove items. Every
+// number is range-clamped so a fat-finger in the admin panel can't produce a
+// negative or absurd charge.
+export function mergeWizardConfig(stored: any): WizardConfig {
+  const s = stored && typeof stored === "object" ? stored : {};
+
+  const tiers = {} as Record<HostTierKey, TierRule>;
+  (Object.keys(TIER_RULES) as HostTierKey[]).forEach((k) => {
+    const d = TIER_RULES[k];
+    const o = (s.tiers && typeof s.tiers === "object" && s.tiers[k]) || {};
+    tiers[k] = {
+      ...d,
+      minRooms: Math.max(1, Math.round(num(o.minRooms, d.minRooms))),
+      maxRooms: Math.max(1, Math.round(num(o.maxRooms, d.maxRooms))),
+      maxCities: Math.max(1, Math.round(num(o.maxCities, d.maxCities))),
+      setupPerRoom: nonNeg(o.setupPerRoom, d.setupPerRoom),
+      mgmtPerRoomMonthly: nonNeg(o.mgmtPerRoomMonthly, d.mgmtPerRoomMonthly),
+      commissionPct: Math.min(100, nonNeg(o.commissionPct, d.commissionPct)),
+    };
+  });
+
+  const dpByKey = new Map<string, any>(
+    Array.isArray(s.designPackages) ? s.designPackages.filter((x: any) => x && x.key).map((x: any) => [x.key, x]) : [],
+  );
+  const designPackages: DesignPackage[] = DESIGN_PACKAGES.map((d) => ({
+    ...d,
+    perRoom: nonNeg(dpByKey.get(d.key)?.perRoom, d.perRoom),
+  }));
+
+  const adByKey = new Map<string, any>(
+    Array.isArray(s.addons) ? s.addons.filter((x: any) => x && x.key).map((x: any) => [x.key, x]) : [],
+  );
+  const addons: AddonService[] = ADDON_SERVICES.map((a) => {
+    const o = adByKey.get(a.key) || {};
+    const out: AddonService = { ...a, amount: nonNeg(o.amount, a.amount) };
+    if (a.billing === "emi") {
+      out.emiTenureMonths = Math.max(1, Math.round(num(o.emiTenureMonths, a.emiTenureMonths || 6)));
+      out.emiDownPayment = nonNeg(o.emiDownPayment, a.emiDownPayment || 0);
+    }
+    return out;
+  });
+
+  const paymentModes = {} as Record<PaymentModeKey, PaymentModeRule>;
+  (Object.keys(PAYMENT_MODES) as PaymentModeKey[]).forEach((k) => {
+    const d = PAYMENT_MODES[k];
+    const o = (s.paymentModes && typeof s.paymentModes === "object" && s.paymentModes[k]) || {};
+    paymentModes[k] = {
+      ...d,
+      periodMonths: Math.max(1, Math.round(num(o.periodMonths, d.periodMonths))),
+      recurringDiscount: clampFrac(o.recurringDiscount, d.recurringDiscount),
+      securityMonths: nonNeg(o.securityMonths, d.securityMonths),
+    };
+  });
+
+  return { tiers, cityActivationFee: nonNeg(s.cityActivationFee, CITY_ACTIVATION_FEE), designPackages, addons, paymentModes };
+}
+
 // ── Config shape (what the wizard collects) ─────────────────────────────────
 export interface PortfolioConfig {
   tier: HostTierKey;
@@ -171,16 +259,16 @@ export interface BundleBreakdown {
 
 export function round2(n: number): number { return Math.round(n); }
 
-export function tierOf(key: string | undefined | null): TierRule | null {
+export function tierOf(key: string | undefined | null, wc: WizardConfig = DEFAULT_WIZARD_CONFIG): TierRule | null {
   if (!key) return null;
-  const t = TIER_RULES[key as HostTierKey];
+  const t = wc.tiers[key as HostTierKey];
   return t || null;
 }
 
-export function tierFromName(name: string | undefined | null): TierRule | null {
+export function tierFromName(name: string | undefined | null, wc: WizardConfig = DEFAULT_WIZARD_CONFIG): TierRule | null {
   if (!name) return null;
   const k = String(name).trim().toLowerCase() as HostTierKey;
-  return TIER_RULES[k] || Object.values(TIER_RULES).find(t => t.name.toLowerCase() === String(name).trim().toLowerCase()) || null;
+  return wc.tiers[k] || Object.values(wc.tiers).find(t => t.name.toLowerCase() === String(name).trim().toLowerCase()) || null;
 }
 
 export function maxCitiesLabel(t: TierRule): string {
@@ -193,27 +281,27 @@ export function roomsLabel(t: TierRule): string {
 
 // Clamp a config to its tier's structured limits (defensive — used by both
 // client and server so out-of-band values can never slip into a charge).
-export function clampConfig(cfg: PortfolioConfig): PortfolioConfig {
-  const t = TIER_RULES[cfg.tier] || TIER_RULES.explorer;
+export function clampConfig(cfg: PortfolioConfig, wc: WizardConfig = DEFAULT_WIZARD_CONFIG): PortfolioConfig {
+  const t = wc.tiers[cfg.tier] || wc.tiers.explorer;
   const maxRooms = t.maxRooms >= HOST_UNLIMITED ? 50 : t.maxRooms;
   const maxCities = t.maxCities >= HOST_UNLIMITED ? 50 : t.maxCities;
   const rooms = Math.max(t.minRooms, Math.min(maxRooms, Math.round(Number(cfg.rooms) || t.minRooms)));
   const cities = Array.from(new Set((cfg.cities || []).map(c => String(c).trim()).filter(Boolean))).slice(0, maxCities);
-  const design = DESIGN_PACKAGES.some(d => d.key === cfg.design) ? cfg.design : "essential";
-  const addons = Array.from(new Set((cfg.addons || []).filter(a => ADDON_SERVICES.some(s => s.key === a))));
-  const paymentMode = PAYMENT_MODES[cfg.paymentMode] ? cfg.paymentMode : "monthly";
+  const design = wc.designPackages.some(d => d.key === cfg.design) ? cfg.design : "essential";
+  const addons = Array.from(new Set((cfg.addons || []).filter(a => wc.addons.some(s => s.key === a))));
+  const paymentMode = wc.paymentModes[cfg.paymentMode] ? cfg.paymentMode : "monthly";
   return { tier: t.key, rooms, cities, design, addons, paymentMode };
 }
 
 // ── THE compute function — single source of truth for every total ───────────
-export function computeBundle(input: PortfolioConfig): BundleBreakdown {
-  const t = TIER_RULES[input.tier];
+export function computeBundle(input: PortfolioConfig, wc: WizardConfig = DEFAULT_WIZARD_CONFIG): BundleBreakdown {
+  const t = wc.tiers[input.tier];
   if (!t) {
     return errorBundle("Pick a valid budget tier.");
   }
-  const cfg = clampConfig(input);
-  const mode = PAYMENT_MODES[cfg.paymentMode];
-  const design = DESIGN_PACKAGES.find(d => d.key === cfg.design) || DESIGN_PACKAGES[0];
+  const cfg = clampConfig(input, wc);
+  const mode = wc.paymentModes[cfg.paymentMode];
+  const design = wc.designPackages.find(d => d.key === cfg.design) || wc.designPackages[0];
 
   // Validation
   if (cfg.cities.length < 1) return errorBundle("Pick at least one city.", t, mode);
@@ -224,10 +312,10 @@ export function computeBundle(input: PortfolioConfig): BundleBreakdown {
 
   // One-time
   const setup = round2(rooms * t.setupPerRoom);
-  const cityActivation = round2(cities * CITY_ACTIVATION_FEE);
+  const cityActivation = round2(cities * wc.cityActivationFee);
   const designOneOff = round2(rooms * design.perRoom);
 
-  const selectedAddons = ADDON_SERVICES.filter(s => cfg.addons.includes(s.key));
+  const selectedAddons = wc.addons.filter(s => cfg.addons.includes(s.key));
   const oneoffAddons = round2(selectedAddons.filter(s => s.billing === "oneoff").reduce((a, s) => a + s.amount, 0));
   const oneTimeTotal = setup + cityActivation + designOneOff + oneoffAddons;
 
@@ -264,7 +352,7 @@ export function computeBundle(input: PortfolioConfig): BundleBreakdown {
   // Itemised lines for the summary UI
   const lines: BundleBreakdown["lines"] = [];
   lines.push({ label: `Setup · ${rooms} room${rooms > 1 ? "s" : ""}`, amount: setup, note: `₹${t.setupPerRoom.toLocaleString("en-IN")}/room`, kind: "onetime" });
-  lines.push({ label: `City activation · ${cities}`, amount: cityActivation, note: `₹${CITY_ACTIVATION_FEE.toLocaleString("en-IN")}/city`, kind: "onetime" });
+  lines.push({ label: `City activation · ${cities}`, amount: cityActivation, note: `₹${wc.cityActivationFee.toLocaleString("en-IN")}/city`, kind: "onetime" });
   if (designOneOff > 0) lines.push({ label: `Design · ${design.name}`, amount: designOneOff, note: `₹${design.perRoom.toLocaleString("en-IN")}/room`, kind: "onetime" });
   selectedAddons.filter(s => s.billing === "oneoff").forEach(s => lines.push({ label: s.name, amount: s.amount, kind: "onetime" }));
   lines.push({ label: `Management (${mode.name})`, amount: periodCharge, note: mode.periodMonths > 1 ? `${mode.periodMonths} months${mode.recurringDiscount ? ` · ${Math.round(mode.recurringDiscount * 100)}% off` : ""}` : "per month", kind: "recurring" });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { computeBundle, clampConfig, type PortfolioConfig } from "@/lib/host/wizard-rules";
+import { resolveWizardConfig } from "@/lib/host/wizard-config-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ export async function POST(req: Request) {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
 
+  // Resolve the admin-edited pricing config (falls back to bundled defaults).
+  const wc = await resolveWizardConfig();
+
   const raw = body?.config && typeof body.config === "object" ? body.config : {};
   const cfg: PortfolioConfig = clampConfig({
     tier: raw.tier,
@@ -23,7 +27,7 @@ export async function POST(req: Request) {
     design: String(raw.design || "essential"),
     addons: Array.isArray(raw.addons) ? raw.addons : [],
     paymentMode: raw.paymentMode,
-  });
+  }, wc);
 
   const contact = body?.contact && typeof body.contact === "object" ? body.contact : {};
   const name = String(contact?.name || "").trim().slice(0, 120);
@@ -32,8 +36,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name and a valid phone are required." }, { status: 400 });
   }
 
-  // Server-authoritative compute.
-  const bundle = computeBundle(cfg);
+  // Server-authoritative compute (same resolved config the wizard previewed).
+  const bundle = computeBundle(cfg, wc);
   if (!bundle.ok) {
     return NextResponse.json({ error: bundle.error || "Invalid configuration." }, { status: 400 });
   }

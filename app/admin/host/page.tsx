@@ -105,7 +105,10 @@ export default function AdminHost() {
             Managed-portfolio vertical — leads, design, store, discovery, workforce & channels.
           </p>
         </div>
-        <button onClick={load} disabled={loading} style={btnPrimary}>↻ Refresh</button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <a href="/admin/host/pricing" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0" }}>🧮 Wizard Pricing</a>
+          <button onClick={load} disabled={loading} style={btnPrimary}>↻ Refresh</button>
+        </div>
       </div>
 
       {err && (
