@@ -1,13 +1,13 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { HOST_CITIES } from "@/lib/host/modules";
 import {
-  TIER_RULES, DESIGN_PACKAGES, ADDON_SERVICES, PAYMENT_MODES, HOST_UNLIMITED,
+  DEFAULT_WIZARD_CONFIG, HOST_UNLIMITED,
   computeBundle, clampConfig, roomsLabel, maxCitiesLabel, inr,
-  type HostTierKey, type PaymentModeKey, type PortfolioConfig,
+  type HostTierKey, type PaymentModeKey, type PortfolioConfig, type WizardConfig,
 } from "@/lib/host/wizard-rules";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 
@@ -25,25 +25,43 @@ function Wizard() {
   const sp = useSearchParams();
   const router = useRouter();
   const startTierRaw = String(sp.get("tier") || "").toLowerCase();
-  const startTier = (TIER_RULES[startTierRaw as HostTierKey] ? startTierRaw : "") as HostTierKey | "";
+  const startTier = (DEFAULT_WIZARD_CONFIG.tiers[startTierRaw as HostTierKey] ? startTierRaw : "") as HostTierKey | "";
+
+  // Live pricing config (admin-editable). Starts from bundled defaults so the
+  // first paint is correct, then swaps to the resolved config on mount.
+  const [wc, setWc] = useState<WizardConfig>(DEFAULT_WIZARD_CONFIG);
 
   const [step, setStep] = useState(startTier ? 1 : 0);
   const [cfg, setCfg] = useState<PortfolioConfig>(() => {
     const t = startTier || "explorer";
-    return { tier: t as HostTierKey, cities: [], rooms: TIER_RULES[t as HostTierKey].minRooms, design: "essential", addons: [], paymentMode: "monthly" };
+    return { tier: t as HostTierKey, cities: [], rooms: DEFAULT_WIZARD_CONFIG.tiers[t as HostTierKey].minRooms, design: "essential", addons: [], paymentMode: "monthly" };
   });
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [consent, setConsent] = useState(false);
   const [pay, setPay] = useState<"idle" | "working" | "done" | "error">("idle");
   const [payErr, setPayErr] = useState("");
 
-  const tier = TIER_RULES[cfg.tier];
-  const bundle = useMemo(() => computeBundle(cfg), [cfg]);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/host/portfolio/config")
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive && d?.ok && d.config) {
+          setWc(d.config as WizardConfig);
+          setCfg((c) => clampConfig(c, d.config)); // snap rooms/cities to live limits
+        }
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const tier = wc.tiers[cfg.tier];
+  const bundle = useMemo(() => computeBundle(cfg, wc), [cfg, wc]);
   const maxRooms = tier.maxRooms >= HOST_UNLIMITED ? 50 : tier.maxRooms;
   const maxCities = tier.maxCities >= HOST_UNLIMITED ? 50 : tier.maxCities;
 
   function setTier(t: HostTierKey) {
-    setCfg((c) => clampConfig({ ...c, tier: t, rooms: Math.max(TIER_RULES[t].minRooms, c.rooms) }));
+    setCfg((c) => clampConfig({ ...c, tier: t, rooms: Math.max(wc.tiers[t].minRooms, c.rooms) }, wc));
   }
   function toggleCity(name: string) {
     setCfg((c) => {
@@ -130,7 +148,7 @@ function Wizard() {
       {step === 0 && (
         <Panel title="Choose your budget" sub="This sets your investment & limits — no payment yet. You'll confirm everything at the end.">
           <div className="grid sm:grid-cols-2 gap-3">
-            {Object.values(TIER_RULES).map((t) => {
+            {Object.values(wc.tiers).map((t) => {
               const on = cfg.tier === t.key;
               return (
                 <button key={t.key} onClick={() => setTier(t.key)}
@@ -198,7 +216,7 @@ function Wizard() {
       {step === 3 && (
         <Panel title="Choose the design" sub="Our AI Design Studio + StayBid Store set up every room. Pick a finish level.">
           <div className="grid sm:grid-cols-3 gap-3">
-            {DESIGN_PACKAGES.map((d) => {
+            {wc.designPackages.map((d) => {
               const on = cfg.design === d.key;
               return (
                 <button key={d.key} onClick={() => setCfg((c) => ({ ...c, design: d.key }))}
@@ -219,7 +237,7 @@ function Wizard() {
       {step === 4 && (
         <Panel title="Add-on services" sub="Optional. Rental add-ons bill with your management cycle; EMI add-ons split over months; one-offs are charged once.">
           <div className="space-y-2.5">
-            {ADDON_SERVICES.map((a) => {
+            {wc.addons.map((a) => {
               const on = cfg.addons.includes(a.key);
               const priceLabel =
                 a.billing === "rental" ? `${inr(a.amount)}/mo` :
@@ -256,14 +274,14 @@ function Wizard() {
             <Recap k="Tier" v={tier.name} />
             <Recap k="Cities" v={cfg.cities.join(", ") || "—"} />
             <Recap k="Rooms" v={String(cfg.rooms)} />
-            <Recap k="Design" v={DESIGN_PACKAGES.find((d) => d.key === cfg.design)?.name || "Essential"} />
-            <Recap k="Add-ons" v={cfg.addons.length ? cfg.addons.map((k) => ADDON_SERVICES.find((a) => a.key === k)?.name).join(", ") : "None"} last />
+            <Recap k="Design" v={wc.designPackages.find((d) => d.key === cfg.design)?.name || "Essential"} />
+            <Recap k="Add-ons" v={cfg.addons.length ? cfg.addons.map((k) => wc.addons.find((a) => a.key === k)?.name).join(", ") : "None"} last />
           </div>
 
           {/* payment mode */}
           <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Payment cycle</div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            {Object.values(PAYMENT_MODES).map((m) => {
+            {Object.values(wc.paymentModes).map((m) => {
               const on = cfg.paymentMode === m.key;
               return (
                 <button key={m.key} onClick={() => setCfg((c) => ({ ...c, paymentMode: m.key as PaymentModeKey }))}
@@ -276,7 +294,7 @@ function Wizard() {
               );
             })}
           </div>
-          <p className="text-[11px] -mt-2 mb-4" style={{ color: "var(--text-muted)" }}>{PAYMENT_MODES[cfg.paymentMode].blurb}</p>
+          <p className="text-[11px] -mt-2 mb-4" style={{ color: "var(--text-muted)" }}>{wc.paymentModes[cfg.paymentMode].blurb}</p>
 
           {/* breakdown */}
           <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
@@ -294,7 +312,7 @@ function Wizard() {
               <span className="font-display text-2xl" style={{ color: tier.accent }}>{inr(bundle.payNow)}</span>
             </div>
             <div className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
-              Then {inr(bundle.recurringAfter)} / {PAYMENT_MODES[cfg.paymentMode].name.toLowerCase()}
+              Then {inr(bundle.recurringAfter)} / {wc.paymentModes[cfg.paymentMode].name.toLowerCase()}
               {bundle.security > 0 && ` · incl. ${inr(bundle.security)} refundable security`}
               {bundle.recurringSavings > 0 && ` · you save ${inr(bundle.recurringSavings)}`}
             </div>

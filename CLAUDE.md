@@ -9570,3 +9570,82 @@ security, status, contact jsonb, razorpay_order_id/payment_id, timestamps;
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — the host vertical
   stays fully isolated additive surface.
+
+---
+
+## Host Wizard Pricing — Admin-Editable (v280, 2026-06-30)
+
+Sachin: "in sab numbers ko modify ya editable bana do admin panel se … kabhi
+bhi update kiya ja sake." Every ₹ figure the v279 Portfolio Configurator
+charged was a hardcoded default in `lib/host/wizard-rules.ts`. v280 makes them
+all admin-editable at runtime — no redeploy — while keeping the "single source
+of truth" contract (wizard preview == server charge).
+
+### Architecture (defaults become the fallback, DB overrides win)
+- **`lib/host/wizard-rules.ts`** — the bundled constants (`TIER_RULES`,
+  `CITY_ACTIVATION_FEE`, `DESIGN_PACKAGES`, `ADDON_SERVICES`, `PAYMENT_MODES`)
+  are now the **DEFAULT** (`DEFAULT_WIZARD_CONFIG`). New `WizardConfig` type
+  bundles all five. `mergeWizardConfig(stored)` overlays a (possibly partial)
+  stored blob over the defaults **by key** — only NUMERIC fields are pulled,
+  every one range-clamped (non-negative; discount 0–0.9; rooms/cities ≥1;
+  commission ≤100). The key SET (which tiers/designs/addons/modes exist) is
+  FIXED — a bad payload can never add/rename/remove items or persist garbage.
+  `computeBundle`, `clampConfig`, `tierOf`, `tierFromName` all take an optional
+  `wc: WizardConfig = DEFAULT_WIZARD_CONFIG` (backward-compatible).
+- **`lib/host/wizard-config-store.ts`** (server-only) — `resolveWizardConfig()`
+  reads the `host_wizard_config` singleton (`SB_READ`), merges over defaults,
+  caches 60s per-Lambda. Falls back to `DEFAULT_WIZARD_CONFIG` if the table is
+  missing/unreachable. `invalidateWizardConfigCache()` after an admin write.
+- **`host_wizard_config`** table (migration `2026-06-30-v280-host-wizard-config.sql`,
+  applied live) — single row `id='default'`, full config in a `config` JSONB,
+  + `updated_at`/`updated_by`. Permissive RLS. Seeded empty (`{}` → defaults).
+
+### Read + write paths
+- **Client wizard** (`/host/build`) — fetches `GET /api/host/portfolio/config`
+  on mount (public, CDN-cached 60s), holds it in `wc` state (initialised to
+  `DEFAULT_WIZARD_CONFIG` so first paint is correct), and `computeBundle(cfg, wc)`.
+  Every `TIER_RULES`/`DESIGN_PACKAGES`/`ADDON_SERVICES`/`PAYMENT_MODES` reference
+  became `wc.tiers`/`wc.designPackages`/`wc.addons`/`wc.paymentModes`.
+- **Checkout** (`/api/host/portfolio/checkout`) — resolves the SAME config
+  server-side and `computeBundle(cfg, wc)`, so the Razorpay charge always
+  matches what the partner saw. Client still never sets the amount.
+- **Admin** (`/api/admin/host/pricing` GET/POST, page `/admin/host/pricing`) —
+  GET returns `{ config, defaults }`; POST re-runs `mergeWizardConfig` on the
+  posted config (clamp + lock key set) then upserts the singleton, invalidates
+  the cache, `logAdminAction`. Editor: number-input grid for tiers / city fee /
+  design per-room / add-on amounts+EMI / payment-mode period+discount+security,
+  "Reset to defaults", sticky Save. Sidebar entry "🧮 Host Wizard Pricing" +
+  a link on the `/admin/host` hub header.
+
+### Verified
+- `tsc` + `next build` clean; `/host/build` still static (Suspense intact).
+- Logic round-trip: default payNow ₹31,000 → override (setup 20k→33k, city
+  5k→9k) ₹48,000; bad values clamp (−500→0, "abc"→default 5,000).
+
+### Things to Avoid (v280)
+- **Never** read the raw stored `config` blob directly — always go through
+  `mergeWizardConfig` (server: `resolveWizardConfig`). It's the only thing that
+  clamps numbers + guarantees a complete, safe config from a partial row.
+- **Never** let `mergeWizardConfig` copy non-numeric fields (keys/names/icons/
+  billing) from the stored blob — the item set is fixed by design so the admin
+  can't rename a tier key the wizard/checkout switch on.
+- **Never** widen the admin editor to add/remove tiers/designs/addons/modes —
+  those keys are compiled into `HostTierKey`/`PaymentModeKey` + the DEFAULT
+  constants. Adding a new item needs a code change (new default entry), then it
+  becomes editable automatically.
+- **Never** raise `resolveWizardConfig` TTL far above 60s — admins expect a
+  price change to go live "kabhi bhi"; 60s per-Lambda is the freshness ceiling.
+- **Never** drop the checkout's `resolveWizardConfig()` + `computeBundle(cfg,
+  wc)` — if checkout ever computes with defaults while the wizard shows edited
+  numbers, the charge diverges from what the partner consented to.
+
+### Updated production state (v280, 2026-06-30)
+- **Current version:** v280 · Host wizard pricing fully admin-editable via
+  `/admin/host/pricing`; live within ~60s, no redeploy.
+- `host_wizard_config` migration applied live (singleton seeded empty →
+  resolver uses bundled defaults until an admin saves overrides).
+- The v279 "blocked on Sachin's business numbers" item is now **self-serve** —
+  Sachin can set every number from the admin panel any time.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — host vertical stays
+  fully isolated additive surface.
