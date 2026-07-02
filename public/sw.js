@@ -322,7 +322,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // warm SWR clients load the new /host markup.
 // v281 — Host property-listing separation (/host/list-property + admin
 // Property Listings tab). Bump so warm SWR clients load the new /host markup.
-const HTML_CACHE = 'staybid-html-v64';
+// v282 — Host catalog admin CRUD (/admin/host/catalog). Bump so warm SWR
+// clients load the new admin markup.
+const HTML_CACHE = 'staybid-html-v65';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
