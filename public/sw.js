@@ -324,7 +324,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // Property Listings tab). Bump so warm SWR clients load the new /host markup.
 // v282 — Host catalog admin CRUD (/admin/host/catalog). Bump so warm SWR
 // clients load the new admin markup.
-const HTML_CACHE = 'staybid-html-v65';
+// v283 — Workforce onboarding + worker panel (/worker, /host/workforce/join,
+// admin Workers tab). Bump so warm SWR clients load the new markup.
+const HTML_CACHE = 'staybid-html-v66';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

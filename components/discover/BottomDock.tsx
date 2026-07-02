@@ -51,6 +51,7 @@ export function BottomDock() {
   const hidden =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
+    pathname.startsWith("/worker") ||    // worker panel — own chrome
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/host") ||      // Hospitality Business OS — own chrome

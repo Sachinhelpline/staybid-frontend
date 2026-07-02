@@ -335,6 +335,7 @@ export function DialerNav() {
   // own X / Done buttons + the new desktop ← back chip cover nav.
   if (pathname.startsWith("/admin") ||
       pathname.startsWith("/partner") ||
+      pathname.startsWith("/worker") ||
       pathname.startsWith("/agent") ||
       pathname.startsWith("/onboard") ||
       pathname.startsWith("/host") ||

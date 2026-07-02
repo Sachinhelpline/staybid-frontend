@@ -10,7 +10,9 @@ export async function GET(req: Request) {
   const skill = url.searchParams.get("skill");
   const city = url.searchParams.get("city");
 
-  let q = `${SB_URL}/rest/v1/workforce_workers?active=eq.true&available=eq.true`
+  // v283: only approved workers surface in the public hire catalog — pending /
+  // rejected / suspended applications stay out until an admin approves them.
+  let q = `${SB_URL}/rest/v1/workforce_workers?active=eq.true&available=eq.true&status=eq.approved`
     + `&select=id,name,skill,city,locality,rate,rate_unit,rating,jobs_done,verified,background_checked,avatar_url,bio,languages`
     + `&order=verified.desc,rating.desc.nullslast,jobs_done.desc`;
   if (skill) q += `&skill=eq.${encodeURIComponent(skill)}`;
@@ -21,7 +23,7 @@ export async function GET(req: Request) {
     const workers = r.ok ? await r.json() : [];
     // Distinct cities + skills for the filter chips.
     const fr = await fetch(
-      `${SB_URL}/rest/v1/workforce_workers?active=eq.true&available=eq.true&select=city,skill`,
+      `${SB_URL}/rest/v1/workforce_workers?active=eq.true&available=eq.true&status=eq.approved&select=city,skill`,
       { headers: SB_READ, cache: "no-store" },
     );
     const rows = fr.ok ? await fr.json() : [];

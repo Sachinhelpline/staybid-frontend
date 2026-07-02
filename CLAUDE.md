@@ -9799,3 +9799,122 @@ listing. **No migration** — all columns already existed; pure API + UI.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host Workforce Onboarding + Worker Panel — Gap 3 (v283, 2026-07-02)
+
+Third and final of Sachin's three Host-vertical gaps. Before v283 the
+Workforce module was **hire-from-catalog only** — 24 seeded workers, no way
+for a real hospitality pro to join, no way for a worker to see the jobs a
+hotel assigned them, no admin approval loop. v283 adds the full worker
+lifecycle: **apply → admin approve → sign in → manage jobs**. Additive +
+isolated; no existing customer/partner/admin flow touched.
+
+### The worker lifecycle (four surfaces)
+1. **Apply** — `/host/workforce/join` (public form) → `POST /api/host/workforce/apply`
+   → inserts a `workforce_workers` row with `status='pending', available=false,
+   active=true, verified=false`. Soft-dedupe: 409 if the phone already
+   registered.
+2. **Admin approve/reject/suspend** — `/admin/host/catalog` **Workers tab** →
+   `/api/admin/host/workers` (full CRUD). Pending applications surface here;
+   approve flips `status='approved'` → the worker enters the public hire feed.
+3. **Sign in** — `/worker` (phone-OTP via Railway `/api/proxy/api/auth/{send,verify}-otp`)
+   → `/api/worker/login` matches the JWT phone to a `workforce_workers` row by
+   **last-10-digit** `phone=ilike.*<last10>`. Returns `{registered:false}` (404)
+   / `{approved:false, status}` (pending/rejected/suspended) / `{approved:true,
+   worker}`. Session stored as `sb_worker_token` + `sb_worker` (separate from
+   customer/partner/admin).
+4. **Manage jobs** — `/worker/dashboard` → `/api/worker/jobs` (GET jobs + KPI
+   strip) + `/api/worker/jobs/[id]` (PATCH accept/start/complete/decline via a
+   `TRANSITIONS` state machine) + `/api/worker/profile` (GET/PATCH self-editable
+   fields — availability, bio, city, rate, languages; NOT status/verified/
+   jobs_done). Availability toggle + ProfileEditor modal.
+
+### Schema (migration `2026-07-02-v283-workforce-onboarding.sql`, applied live)
+`ALTER TABLE workforce_workers ADD COLUMN IF NOT EXISTS`:
+- `phone TEXT`, `email TEXT`, `applied_note TEXT` (all nullable)
+- `status TEXT NOT NULL DEFAULT 'approved'` — ∈ pending|approved|rejected|
+  suspended (**no DB CHECK** — enforced in the API layer so a future status is
+  a code change, not a migration)
+- `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`
+- 2 indexes: `idx_wkr_status`, `idx_wkr_phone`
+- The 24 pre-seeded catalog workers flipped to `status='approved'` so they keep
+  surfacing in the public hire feed.
+
+### Files added
+```
+lib/worker/auth.ts                       # workerFromReq(req) — JWT phone → last-10 ilike match
+app/api/host/workforce/apply/route.ts    # POST onboarding (SKILLS whitelist, phone dedupe → 409)
+app/api/worker/login/route.ts            # POST resolve worker → registered/approved gates
+app/api/worker/profile/route.ts          # GET own row / PATCH self-editable fields (approved-only)
+app/api/worker/jobs/route.ts             # GET jobs + KPIs (total/active/completed/earnings)
+app/api/worker/jobs/[id]/route.ts        # PATCH accept|start|complete|decline (TRANSITIONS + ownership guard)
+app/api/admin/host/workers/route.ts      # admin CRUD (GET all / POST / PATCH incl. status / DELETE)
+app/host/workforce/join/page.tsx         # cozy onboarding form → apply
+app/worker/page.tsx                      # OTP sign-in (mirrors /partner)
+app/worker/dashboard/page.tsx            # jobs list + status actions + availability toggle + ProfileEditor
+migrations/2026-07-02-v283-workforce-onboarding.sql
+```
+
+### Files modified (additive)
+```
+app/api/host/workforce/route.ts          # public hire catalog gated to status='approved' (2 queries)
+app/admin/host/catalog/page.tsx          # +Workers tab (4th section) + WORKER_FIELDS + approve/reject/suspend row actions + setWorkerStatus
+app/host/workforce/page.tsx              # hero "Join as a worker →" + "Already registered? Sign in →" links
+components/{Navbar,DialerNav,ServerStatus,BackChip}.tsx  # +/worker hide gate (like /partner)
+components/discover/BottomDock.tsx        # +/worker hide gate
+app/layout.tsx                           # SB_BUILD + badge v282 → v283
+public/sw.js                             # HTML_CACHE v65 → v66
+```
+
+### Worker job state machine (`app/api/worker/jobs/[id]/route.ts`)
+`TRANSITIONS`: accept (requested→assigned) · start (assigned→in_progress) ·
+complete (in_progress→completed, bumps `jobs_done`) · decline (requested|
+assigned→cancelled). Every PATCH re-checks `worker_id` ownership before the
+transition; `complete` is the only action that mutates a counter.
+
+### Auth model (all separate from customer/partner/admin)
+- **Worker session:** `sb_worker_token` + `sb_worker` localStorage keys.
+- **`workerFromReq(req)`** decodes the JWT phone, matches `workforce_workers`
+  by last-10-digit `phone=ilike.*<last10>`. Returns `{phone, worker|null}` or
+  null (no token). Self-edit routes require `status='approved'`.
+- Admin routes: `adminFromReq` (x-admin-token/x-admin-id) + `logAdminAction`.
+
+### Things to Avoid (v283)
+- **Never** let the public hire catalog (`/api/host/workforce`) drop the
+  `status=eq.approved` filter (both the worker query AND the cities/skills
+  facet query). Without it, pending/rejected/suspended applicants leak into
+  the customer-facing hire feed.
+- **Never** allow the worker self-edit route (`/api/worker/profile` PATCH) to
+  write `status`, `verified`, `background_checked`, or `jobs_done` — those are
+  admin/system-owned. The route whitelists only availability/bio/city/locality/
+  avatar_url/rate/rate_unit/languages.
+- **Never** match a worker by full phone-equality — Firebase/Railway store
+  phones with/without +91 (the cross-identity problem). `workerFromReq` uses
+  last-10-digit `ilike` for the same reason `resolveUserIds` does.
+- **Never** add a DB CHECK on `workforce_workers.status`. It's intentionally
+  API-enforced (`WORKER_STATUSES` set) so a new status is a code change, not a
+  migration + constraint drop.
+- **Never** skip the `worker_id` ownership guard in `/api/worker/jobs/[id]` —
+  a worker must only transition their OWN jobs.
+- **Never** point the admin Workers CRUD at the public `/api/host/workforce`
+  read filter — the admin editor must see pending/rejected/suspended rows
+  (`GET /api/admin/host/workers` selects `*`, no status filter).
+- The `sb_worker` session keys are separate; the `/worker` routes are added to
+  the hide-gate of all 5 nav components (Navbar/DialerNav/ServerStatus/BackChip/
+  BottomDock) — the worker panel renders its own chrome.
+
+### Host 3-gap status — COMPLETE
+- **Gap 1 (v282)** — admin catalog CRUD (Store products/categories + Property
+  listings). ✓
+- **Gap 2 (v281)** — property-listing separation (lease-out vs run-it-yourself). ✓
+- **Gap 3 (v283)** — workforce onboarding + worker panel. ✓
+
+### Updated production state (v283, 2026-07-02)
+- **Current version:** v283 · branch `claude/nifty-einstein-xot22w` ·
+  migration applied live · `tsc` clean · `next build` green (`/worker` +
+  `/worker/dashboard` prerendered, 8 new API routes compiled).
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — host vertical stays
+  fully isolated additive surface.
