@@ -13,6 +13,8 @@ type Kpis = {
   inquiries: number; inquiriesNew: number;
   jobs: number; jobsActive: number; workforceRevenue: number;
   channels: number; channelsNew: number;
+  // v281 — owner property listings for lease/rent.
+  propertySubmissions?: number; propertySubmissionsPending?: number;
 };
 
 type HostData = {
@@ -23,12 +25,14 @@ type HostData = {
   inquiries: any[];
   jobs: any[];
   channels: any[];
+  propertySubmissions?: any[];
 };
 
-type Tab = "leads" | "projects" | "orders" | "inquiries" | "jobs" | "channels";
+type Tab = "leads" | "properties" | "projects" | "orders" | "inquiries" | "jobs" | "channels";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "leads", label: "Leads", icon: "📨" },
+  { id: "properties", label: "Property Listings", icon: "🏡" },
   { id: "inquiries", label: "Property Inquiries", icon: "🔍" },
   { id: "projects", label: "Design Studio", icon: "🎨" },
   { id: "orders", label: "Store Orders", icon: "🛋️" },
@@ -43,6 +47,9 @@ const STATUS_OPTS: Record<string, string[]> = {
   order:   ["pending", "paid", "processing", "delivered", "cancelled"],
   job:     ["requested", "assigned", "in_progress", "completed", "cancelled"],
   channel: ["requested", "connected", "syncing", "error", "paused"],
+  // v281 — property submission lifecycle. approve → available (live in the
+  // /host/properties discovery feed); reject → rejected.
+  property: ["pending_review", "available", "shortlisted", "rented", "rejected", "inactive"],
 };
 
 const inr = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
@@ -121,6 +128,7 @@ export default function AdminHost() {
       {k && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
           <Kpi label="Leads" value={String(k.leads)} sub={`${k.leadsNew} new`} color="#D4AF37" />
+          <Kpi label="Property listings" value={String(k.propertySubmissions ?? 0)} sub={`${k.propertySubmissionsPending ?? 0} pending review`} color="#22C55E" />
           <Kpi label="Property inquiries" value={String(k.inquiries)} sub={`${k.inquiriesNew} new`} color="#3D9CF5" />
           <Kpi label="Design projects" value={String(k.projects)} color="#A855F7" subtle />
           <Kpi label="Store orders" value={String(k.orders)} sub={inr(k.storeGmv) + " GMV"} color="#0EA5A0" />
@@ -134,6 +142,7 @@ export default function AdminHost() {
         {TABS.map((t) => {
           const count =
             t.id === "leads" ? data?.leads.length
+            : t.id === "properties" ? data?.propertySubmissions?.length
             : t.id === "inquiries" ? data?.inquiries.length
             : t.id === "projects" ? data?.projects.length
             : t.id === "orders" ? data?.orders.length
@@ -161,6 +170,7 @@ export default function AdminHost() {
         ) : (
           <div style={{ overflowX: "auto" }}>
             {tab === "leads" && <LeadsTable rows={data?.leads || []} busy={busy} onStatus={setStatus} />}
+            {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} />}
             {tab === "inquiries" && <InquiriesTable rows={data?.inquiries || []} busy={busy} onStatus={setStatus} />}
             {tab === "projects" && <ProjectsTable rows={data?.projects || []} />}
             {tab === "orders" && <OrdersTable rows={data?.orders || []} busy={busy} onStatus={setStatus} />}
@@ -197,6 +207,70 @@ function LeadsTable({ rows, busy, onStatus }: TableProps) {
             <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+function PropertiesTable({ rows, busy, onStatus }: TableProps) {
+  if (!rows.length) return <Empty label="No property listings submitted yet." />;
+  // Pending-review first, then everything else — newest within each group.
+  const sorted = [...rows].sort((a, b) => {
+    const ap = a.status === "pending_review" ? 0 : 1;
+    const bp = b.status === "pending_review" ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  });
+  return (
+    <table style={tbl}>
+      <thead><tr style={trHead}><Th>Property</Th><Th>Submitted by</Th><Th>Type · Config</Th><Th align="right">Rent</Th><Th>Source</Th><Th>Status</Th><Th>Review</Th><Th>When</Th></tr></thead>
+      <tbody>
+        {sorted.map((r) => {
+          const img = Array.isArray(r.images) ? r.images[0] : null;
+          const oc = r.owner_contact || {};
+          const isPending = r.status === "pending_review";
+          return (
+            <tr key={r.id} style={trBody}>
+              <Td>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {img && <img src={img} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />}
+                  <div>
+                    <div style={{ color: "#E8EAF0", fontWeight: 600 }}>{r.title || "Untitled"}</div>
+                    <div style={{ color: "#8A8FA8", fontSize: 11 }}>{[r.locality, r.city, r.state].filter(Boolean).join(", ") || "—"}</div>
+                  </div>
+                </div>
+              </Td>
+              <Td>
+                <div style={{ color: "#E8EAF0" }}>{oc.name || r._user?.name || "—"}</div>
+                <div style={{ color: "#8A8FA8", fontSize: 11 }}>{oc.phone || r._user?.phone || ""}{oc.email ? ` · ${oc.email}` : ""}</div>
+                {oc.note && <div style={{ color: "#8A8FA8", fontSize: 11, marginTop: 3, maxWidth: 220 }}>“{oc.note}”</div>}
+              </Td>
+              <Td style={{ color: "#8A8FA8" }}>
+                {r.property_type || "—"}{r.bhk ? ` · ${r.bhk}` : ""}
+                {r.furnishing && <div style={{ fontSize: 11 }}>{r.furnishing}{r.area_sqft ? ` · ${r.area_sqft} sqft` : ""}</div>}
+              </Td>
+              <Td align="right" style={{ color: "#22C55E", fontWeight: 700 }}>
+                {r.rent_monthly ? inr(r.rent_monthly) : "—"}
+                {r.deposit ? <div style={{ color: "#8A8FA8", fontSize: 10, fontWeight: 400 }}>{inr(r.deposit)} dep</div> : null}
+              </Td>
+              <Td><span style={pill}>{r.source || "owner"}</span></Td>
+              <Td><StatusPicker source="property" id={r.id} status={r.status} busy={busy} onStatus={onStatus} /></Td>
+              <Td>
+                {isPending ? (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "available")}
+                      style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>✓ Approve</button>
+                    <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "rejected")}
+                      style={{ ...miniBtn, background: "rgba(239,68,68,0.12)", color: "#EF4444", borderColor: "rgba(239,68,68,0.35)" }}>✕ Reject</button>
+                  </div>
+                ) : (
+                  <span style={{ color: "#8A8FA8", fontSize: 11 }}>—</span>
+                )}
+              </Td>
+              <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -396,6 +470,7 @@ const tbl: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fo
 const trHead: React.CSSProperties = { background: "rgba(0,0,0,0.35)", color: "#8A8FA8" };
 const trBody: React.CSSProperties = { borderTop: "1px solid rgba(255,255,255,0.06)" };
 const pill: React.CSSProperties = { padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(255,255,255,0.05)", color: "#C9CEDB", border: "1px solid rgba(255,255,255,0.1)" };
+const miniBtn: React.CSSProperties = { padding: "4px 9px", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid", fontFamily: "inherit", whiteSpace: "nowrap" };
 const btnPrimary: React.CSSProperties = {
   background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117",
   border: "none", borderRadius: 10, padding: "8px 14px", fontWeight: 700, cursor: "pointer",

@@ -9649,3 +9649,84 @@ of truth" contract (wizard preview == server charge).
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host Property-Listing Separation — Gap 2 (v281, 2026-07-01)
+
+Sachin flagged three Host-vertical architecture gaps; this ships **Gap 2**
+first (the property CLASH), the highest-value structural fix. Two "property"
+intents were colliding:
+
+- **Sourcing side** (`discovery_properties`) — an owner wants StayBid to
+  **lease / rent out** their property. Browse feed at `/host/properties`.
+- **Run-it-yourself** (`/onboard`) — a hotel partner runs their **own**
+  property live on StayBid.
+
+Before v281 there was NO submission surface for the lease-out intent, and the
+landing's "List & Launch" module pushed those users into **hotel onboarding**
+(`/onboard`) — the wrong flow. v281 gives lease-out its own path and re-words
+onboarding so the two never cross.
+
+### What shipped (additive, isolated)
+- **`app/host/list-property/page.tsx`** — client submission form (title, city,
+  locality/state, property_type, BHK, area, furnishing, rent, deposit,
+  amenities, images) + owner contact. Theme tokens + `.sb-card-lift`; success
+  state; `MySubmissions` list; disambiguation banner *"Already run your own
+  property? → Hotel Onboarding"*.
+- **`app/api/host/list-property/route.ts`** — `POST` inserts a
+  `discovery_properties` row with `status='pending_review'`, `source='owner'`,
+  `submitted_by=<user.id>`, contact in `owner_contact` JSONB (validates title /
+  city / name / phone≥8 digits). `GET` returns the signed-in owner's own
+  submissions filtered by `submitted_by=eq.<user.id>`.
+- **`app/host/properties/page.tsx`** — hero CTA "🏡 List your property for
+  lease / rent →".
+- **`lib/host/modules.ts`** — the **"list"** module re-titled *"List & Launch
+  (run it yourself)"* + desc clarifies "run your OWN property live … (Want
+  StayBid to lease/rent it out for you instead? Use Smart Property
+  Discovery.)". `href` stays `/onboard`.
+- **Admin** — `app/admin/host/page.tsx` gets a **Property Listings** tab
+  (`PropertiesTable`, pending-first, Approve→`available` / Reject→`rejected`) +
+  a KPI card ("N pending review"). `app/api/admin/host/route.ts` GET surfaces
+  `propertySubmissions` (with `submitted_by` user side-load) + KPIs; PATCH
+  `source: "property"` → `discovery_properties` (added to `NO_UPDATED_AT` — it
+  has no `updated_at` column).
+- `SB_BUILD` + badge v280 → v281; `public/sw.js` `HTML_CACHE v63 → v64`.
+
+### Migration (applied live)
+`migrations/2026-07-01-v281-property-listing-submissions.sql` on
+`uxxhbdqedazpmvbvaosh`:
+- `discovery_properties_status_check` dropped + re-added with `pending_review`
+  + `rejected`: `CHECK (status IN ('pending_review','available','shortlisted',
+  'rented','inactive','rejected'))`.
+- `ADD COLUMN IF NOT EXISTS submitted_by TEXT`.
+- 2 indexes: `idx_discovery_props_pending` (partial WHERE
+  status='pending_review') + `idx_discovery_props_submitter`.
+- Verified live: constraint updated, `submitted_by` present.
+
+### Things to Avoid (v281)
+- **Never** route a lease-out submission through `/onboard` — that's the
+  run-it-yourself hotel-partner flow. Lease-out goes to `/host/list-property`
+  → `discovery_properties status=pending_review`.
+- **Never** add `discovery_properties` to a PATCH path that stamps
+  `updated_at` — the table has no such column (it's in `NO_UPDATED_AT`).
+- **Never** point a `submitted_by` side-load at a PostgREST FK embed — no FK
+  exists; use the manual `users?id=in.(…)` + `attachUsers(rows, "submitted_by")`
+  pattern.
+- The stray Netlify project `willowy-mooncake-a50d6f` fails its
+  Pages/Header/Redirect checks on EVERY PR (no repo config) — not a deploy
+  target. Canonical deploy is Vercel `staybid-customer-frontend`. Ignore the
+  red Netlify checks.
+
+### Remaining Host gaps (per Sachin's original 3-gap ask)
+- **Gap 1** — admin CRUD to add/remove Store products, tiers, property
+  listings. (Not started — confirm before building.)
+- **Gap 3** — workforce onboarding flow + worker panel (currently only
+  hire-from-catalog exists). (Not started — confirm before building.)
+
+### Updated production state (v281, 2026-07-01)
+- **Current version:** v281 · branch `claude/nifty-einstein-xot22w` · draft
+  PR #251 → `main`. Migration applied live. `next build` green.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — host vertical stays
+  fully isolated additive surface.

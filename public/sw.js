@@ -320,7 +320,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // so warm SWR clients load the new markup.
 // v278 — Host "My activity" page (/host/me) + hero entry-point link. Bump so
 // warm SWR clients load the new /host markup.
-const HTML_CACHE = 'staybid-html-v63';
+// v281 — Host property-listing separation (/host/list-property + admin
+// Property Listings tab). Bump so warm SWR clients load the new /host markup.
+const HTML_CACHE = 'staybid-html-v64';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

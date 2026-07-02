@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
       inquiries,
       jobs,
       channels,
+      propertySubmissions,
     ] = await Promise.all([
       sbGet("host_leads?select=*&order=created_at.desc&limit=200"),
       sbGet("host_design_projects?select=*&order=created_at.desc&limit=120"),
@@ -78,14 +79,19 @@ export async function GET(req: NextRequest) {
       sbGet("discovery_inquiries?select=*&order=created_at.desc&limit=200"),
       sbGet("workforce_jobs?select=*&order=created_at.desc&limit=200"),
       sbGet("host_channels?select=*&order=created_at.desc&limit=200"),
+      // v281 — owner property listings for lease/rent. Newest + pending on top
+      // so the admin review queue sees fresh submissions first.
+      sbGet("discovery_properties?select=*&order=created_at.desc&limit=200").catch(() => []),
     ]);
 
     // Enrich rows that only carry user_id.
-    const [projectsU, ordersU, jobsU, channelsU] = await Promise.all([
+    const [projectsU, ordersU, jobsU, channelsU, propSubsU] = await Promise.all([
       attachUsers(projects),
       attachUsers(orders),
       attachUsers(jobs),
       attachUsers(channels),
+      // v281 — property submissions carry submitted_by (nullable for seed rows).
+      attachUsers(propertySubmissions, "submitted_by"),
     ]);
 
     // Side-load design-option counts + worker names + property names + order items.
@@ -150,6 +156,9 @@ export async function GET(req: NextRequest) {
       workforceRevenue,
       channels: channelsU.length,
       channelsNew: channelsU.filter((c) => isNew(c.status)).length,
+      // v281 — owner property listings awaiting review.
+      propertySubmissions: propSubsU.length,
+      propertySubmissionsPending: propSubsU.filter((p) => p.status === "pending_review").length,
     };
 
     return NextResponse.json({
@@ -160,6 +169,7 @@ export async function GET(req: NextRequest) {
       inquiries: inquiriesOut,
       jobs: jobsOut,
       channels: channelsU,
+      propertySubmissions: propSubsU,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to load host data" }, { status: 500 });
@@ -172,7 +182,12 @@ const SOURCE_TABLE: Record<string, string> = {
   order: "store_orders",
   job: "workforce_jobs",
   channel: "host_channels",
+  // v281 — owner property listing review (pending_review → available / rejected).
+  property: "discovery_properties",
 };
+
+// Tables that do NOT have an updated_at column — skip the timestamp bump.
+const NO_UPDATED_AT = new Set(["host_leads", "discovery_inquiries", "discovery_properties"]);
 
 export async function PATCH(req: NextRequest) {
   const admin = adminFromReq(req);
@@ -192,7 +207,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const patch: any = { status };
     // These tables carry an updated_at column; keep it fresh.
-    if (table !== "host_leads" && table !== "discovery_inquiries") {
+    if (!NO_UPDATED_AT.has(table)) {
       patch.updated_at = new Date().toISOString();
     }
     const r = await fetch(`${REST}/${table}?id=eq.${encodeURIComponent(id)}`, {
