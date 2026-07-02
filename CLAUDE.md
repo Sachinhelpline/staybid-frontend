@@ -9730,3 +9730,72 @@ onboarding so the two never cross.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host Catalog Admin CRUD — Gap 1 (v282, 2026-07-02)
+
+Second of Sachin's three Host-vertical gaps: admins can now **add / edit /
+remove** the Host catalog data directly. Before v282 the admin hub
+(`/admin/host`) could only set a *status* on existing rows (the v281 review
+queue) — there was no way to create a new Store product or curate a property
+listing. **No migration** — all columns already existed; pure API + UI.
+
+### What shipped (additive, isolated)
+- **`app/api/admin/host/store/route.ts`** — full CRUD for **Store products +
+  categories**. `GET` (all rows incl. inactive — the editor view, distinct
+  from the public `/api/host/store` which reads only `active+in_stock`).
+  `POST`/`PATCH`/`DELETE` with `body.entity ∈ {product,category}`. Field
+  coercion whitelist (numerics clamped ≥0, jsonb `images`/`badges` arrays,
+  `specs` object). PATCH is partial (only provided keys).
+- **`app/api/admin/host/listings/route.ts`** — full CRUD for **Smart Property
+  Discovery** (`discovery_properties`). Complements the v281 status queue.
+  Admin-created rows get `source='platform'` (see gotcha below) + default
+  `status='available'`.
+- **`app/admin/host/catalog/page.tsx`** — dark-luxury manager, 3 section tabs
+  (Products / Categories / Listings). Config-driven `EditorModal` (one modal
+  drives all three via a `Field[]` spec: text/num/bool/select/textarea/
+  list/kv). Row actions: ✎ Edit · ⏸ Deactivate↔Activate (store only) · 🗑
+  Delete (confirm). `list` fields serialize newline-per-item → jsonb array;
+  `kv` serialises `key: value` lines → jsonb object.
+- **`/admin/host` hub** — "🗂 Manage Catalog" header link (beside 🧮 Wizard
+  Pricing).
+- `SB_BUILD` + badge v281 → v282; `public/sw.js` `HTML_CACHE v64 → v65`.
+
+### Auth + safety
+- All routes `adminFromReq` (x-admin-token / x-admin-id) + `logAdminAction`
+  on every mutation. Same pattern as `/api/admin/host/pricing`.
+- "Remove" is offered two ways: soft (PATCH `active=false`, store only) and
+  hard (`DELETE`). No FK from `store_order_items` → deleting a product is
+  safe (orders snapshot their own line data).
+
+### Gotcha caught in verification (write round-trip against live DB)
+- `discovery_properties.source` has a CHECK: `owner | broker | agent |
+  platform` — it does **NOT** allow `'admin'`. First draft hardcoded
+  `source='admin'` → every admin-created listing would 502. Fixed to
+  `'platform'` (StayBid-curated). Verified insert→delete round-trip for all
+  three tables with the exact field sets the routes send.
+- `discovery_properties`, `store_products`, `store_categories` all have **no
+  `updated_at`** column — never stamp one (routes don't).
+
+### Things to Avoid (v282)
+- **Never** set `discovery_properties.source='admin'` — the CHECK rejects it.
+  Admin/curated listings are `'platform'`.
+- **Never** point the admin catalog GET at the public read filter — the admin
+  editor must see inactive/out-of-stock rows too (it selects `*`, no
+  `active`/`in_stock` filter). The customer `/api/host/store` keeps its
+  `active+in_stock` filter.
+- **Never** add a Store CRUD field without adding it to BOTH the route's
+  `productFields`/`categoryFields` whitelist AND the page's `Field[]` spec —
+  they're the matched write + form contract.
+
+### Remaining Host gap
+- **Gap 3** — workforce onboarding flow + a worker panel (currently only
+  hire-from-catalog exists). Not started — confirm before building.
+
+### Updated production state (v282, 2026-07-02)
+- **Current version:** v282 · branch `claude/nifty-einstein-xot22w` (fresh from
+  `main` post-v281 merge) · `next build` green · live write-paths verified.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — host vertical stays
+  fully isolated additive surface.

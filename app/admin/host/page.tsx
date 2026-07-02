@@ -113,6 +113,7 @@ export default function AdminHost() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
+          <a href="/admin/host/catalog" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0" }}>🗂 Manage Catalog</a>
           <a href="/admin/host/pricing" style={{ ...btnPrimary, textDecoration: "none", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0" }}>🧮 Wizard Pricing</a>
           <button onClick={load} disabled={loading} style={btnPrimary}>↻ Refresh</button>
         </div>
