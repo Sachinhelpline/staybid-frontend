@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Section = "products" | "categories" | "listings";
+type Section = "products" | "categories" | "listings" | "workers";
 
 const inr = (n: any) => (n == null || n === "" ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
 
@@ -45,11 +45,39 @@ const LISTING_FIELDS: Field[] = [
   { key: "amenities", label: "Amenities (one per line)", type: "list" },
 ];
 
+const WORKER_SKILLS = [
+  "housekeeping", "cook", "chef", "front_desk", "manager", "security",
+  "maintenance", "gardener", "driver", "spa", "waiter", "cleaner", "other",
+];
+const WORKER_STATUSES = ["pending", "approved", "rejected", "suspended"];
+
+const WORKER_FIELDS: Field[] = [
+  { key: "name", label: "Name *", type: "text", half: true },
+  { key: "phone", label: "Phone", type: "text", half: true, ph: "10-digit mobile" },
+  { key: "email", label: "Email", type: "text", half: true },
+  { key: "skill", label: "Skill", type: "select", opts: WORKER_SKILLS.map((s) => ({ value: s, label: s })), half: true },
+  { key: "status", label: "Status", type: "select", opts: WORKER_STATUSES.map((s) => ({ value: s, label: s })), half: true },
+  { key: "city", label: "City", type: "text", half: true },
+  { key: "locality", label: "Locality", type: "text", half: true },
+  { key: "rate", label: "Rate ₹", type: "num", half: true },
+  { key: "rate_unit", label: "Rate unit", type: "select", opts: [{ value: "job", label: "per job" }, { value: "hour", label: "per hour" }, { value: "day", label: "per day" }, { value: "month", label: "per month" }], half: true },
+  { key: "rating", label: "Rating (0-5)", type: "num", half: true },
+  { key: "jobs_done", label: "Jobs done", type: "num", half: true },
+  { key: "verified", label: "Verified", type: "bool", half: true },
+  { key: "background_checked", label: "Background checked", type: "bool", half: true },
+  { key: "available", label: "Available", type: "bool", half: true },
+  { key: "active", label: "Active", type: "bool", half: true },
+  { key: "avatar_url", label: "Avatar URL", type: "text" },
+  { key: "bio", label: "About", type: "textarea" },
+  { key: "languages", label: "Languages (one per line)", type: "list" },
+];
+
 export default function AdminHostCatalog() {
   const [section, setSection] = useState<Section>("products");
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
@@ -66,13 +94,16 @@ export default function AdminHostCatalog() {
     Promise.all([
       fetch("/api/admin/host/store", { headers: headers() }).then((r) => r.json()),
       fetch("/api/admin/host/listings", { headers: headers() }).then((r) => r.json()),
+      fetch("/api/admin/host/workers", { headers: headers() }).then((r) => r.json()),
     ])
-      .then(([store, list]) => {
+      .then(([store, list, wk]) => {
         if (store?.error) throw new Error(store.error);
         if (list?.error) throw new Error(list.error);
+        if (wk?.error) throw new Error(wk.error);
         setProducts(store.products || []);
         setCategories(store.categories || []);
         setListings(list.listings || []);
+        setWorkers(wk.workers || []);
       })
       .catch((e) => setErr(e?.message || "Failed to load catalog"))
       .finally(() => setLoading(false));
@@ -106,6 +137,7 @@ export default function AdminHostCatalog() {
   const fieldsFor = (entity: Section): Field[] =>
     entity === "product" as any || entity === "products" ? PRODUCT_FIELDS
     : entity === "categories" ? CATEGORY_FIELDS
+    : entity === "workers" ? WORKER_FIELDS
     : LISTING_FIELDS;
 
   const remove = async (entity: Section, id: string, label: string) => {
@@ -114,6 +146,8 @@ export default function AdminHostCatalog() {
     try {
       const url = entity === "listings"
         ? `/api/admin/host/listings?id=${encodeURIComponent(id)}`
+        : entity === "workers"
+        ? `/api/admin/host/workers?id=${encodeURIComponent(id)}`
         : `/api/admin/host/store?entity=${entity === "categories" ? "category" : "product"}&id=${encodeURIComponent(id)}`;
       const r = await fetch(url, { method: "DELETE", headers: headers() });
       const d = await r.json();
@@ -127,8 +161,10 @@ export default function AdminHostCatalog() {
     setBusy(row.id);
     try {
       const body: any = { id: row.id, [key]: !row[key] };
-      const url = entity === "listings" ? "/api/admin/host/listings" : "/api/admin/host/store";
-      if (entity !== "listings") body.entity = entity === "categories" ? "category" : "product";
+      const url = entity === "listings" ? "/api/admin/host/listings"
+        : entity === "workers" ? "/api/admin/host/workers"
+        : "/api/admin/host/store";
+      if (entity === "products" || entity === "categories") body.entity = entity === "categories" ? "category" : "product";
       const r = await fetch(url, { method: "PATCH", headers: headers(), body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || "Update failed");
@@ -137,7 +173,22 @@ export default function AdminHostCatalog() {
     finally { setBusy(""); }
   };
 
-  const rows = section === "products" ? products : section === "categories" ? categories : listings;
+  // Worker approve / reject / suspend — sets status directly.
+  const setWorkerStatus = async (row: any, status: string) => {
+    setBusy(row.id);
+    try {
+      const r = await fetch("/api/admin/host/workers", {
+        method: "PATCH", headers: headers(), body: JSON.stringify({ id: row.id, status }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "Update failed");
+      load();
+    } catch (e: any) { setErr(e?.message || "Update failed"); }
+    finally { setBusy(""); }
+  };
+
+  const rows = section === "products" ? products : section === "categories" ? categories
+    : section === "workers" ? workers : listings;
 
   return (
     <div style={{ padding: "0 4px" }}>
@@ -159,7 +210,7 @@ export default function AdminHostCatalog() {
 
       {/* Section tabs + Add */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {(["products", "categories", "listings"] as Section[]).map((s) => (
+        {(["products", "categories", "listings", "workers"] as Section[]).map((s) => (
           <button key={s} onClick={() => setSection(s)}
             style={{
               padding: "7px 15px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: "1px solid",
@@ -167,11 +218,11 @@ export default function AdminHostCatalog() {
                 ? { background: "linear-gradient(135deg,#D4AF37,#F0D060)", color: "#0F1117", borderColor: "transparent" }
                 : { background: "rgba(255,255,255,0.04)", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.1)" }),
             }}>
-            {s === "products" ? "🛋️ Products" : s === "categories" ? "🏷️ Categories" : "🏡 Listings"} · {s === "products" ? products.length : s === "categories" ? categories.length : listings.length}
+            {s === "products" ? "🛋️ Products" : s === "categories" ? "🏷️ Categories" : s === "workers" ? "🧑‍🔧 Workers" : "🏡 Listings"} · {s === "products" ? products.length : s === "categories" ? categories.length : s === "workers" ? workers.length : listings.length}
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <button onClick={() => setEditor({ entity: section, row: {} })} style={btnPrimary}>＋ Add {section === "categories" ? "category" : section === "listings" ? "listing" : "product"}</button>
+        <button onClick={() => setEditor({ entity: section, row: {} })} style={btnPrimary}>＋ Add {section === "categories" ? "category" : section === "listings" ? "listing" : section === "workers" ? "worker" : "product"}</button>
       </div>
 
       {/* Body */}
@@ -193,6 +244,9 @@ export default function AdminHostCatalog() {
                   </>}
                   {section === "listings" && <>
                     <Th>Listing</Th><Th>City</Th><Th>Type</Th><Th>Rent/mo</Th><Th>Status</Th><Th>Actions</Th>
+                  </>}
+                  {section === "workers" && <>
+                    <Th>Worker</Th><Th>Skill</Th><Th>City</Th><Th>Rate</Th><Th>Status</Th><Th>Actions</Th>
                   </>}
                 </tr>
               </thead>
@@ -220,10 +274,30 @@ export default function AdminHostCatalog() {
                       <Td>{inr(r.rent_monthly)}</Td>
                       <Td><span style={statusPill(r.status)}>{r.status}</span>{r.featured ? <span style={{ ...chip, marginLeft: 6 }}>★</span> : null}</Td>
                     </>}
+                    {section === "workers" && <>
+                      <Td>
+                        <b style={{ color: "#E8EAF0" }}>{r.name}</b>
+                        {r.verified ? <span style={{ ...chip, marginLeft: 6 }}>✓</span> : null}
+                        {r.phone ? <div style={{ color: "#8A8FA8", fontSize: 11 }}>{r.phone}</div> : null}
+                      </Td>
+                      <Td>{r.skill || "—"}</Td>
+                      <Td>{r.city || "—"}</Td>
+                      <Td>{inr(r.rate)}{r.rate ? <span style={{ color: "#8A8FA8" }}>/{r.rate_unit || "job"}</span> : null}</Td>
+                      <Td><span style={statusPill(r.status)}>{r.status || "—"}</span>{r.available ? <span style={{ ...chip, marginLeft: 6 }}>free</span> : null}</Td>
+                    </>}
                     <Td>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {section === "workers" && r.status !== "approved" && (
+                          <button style={{ ...miniBtn, borderColor: "rgba(34,197,94,0.4)", color: "#7DE3A0" }} disabled={busy === r.id} onClick={() => setWorkerStatus(r, "approved")}>✓ Approve</button>
+                        )}
+                        {section === "workers" && r.status !== "rejected" && (
+                          <button style={miniBtn} disabled={busy === r.id} onClick={() => setWorkerStatus(r, "rejected")}>✕ Reject</button>
+                        )}
+                        {section === "workers" && r.status !== "suspended" && (
+                          <button style={miniBtn} disabled={busy === r.id} onClick={() => setWorkerStatus(r, "suspended")}>⏸ Suspend</button>
+                        )}
                         <button style={miniBtn} disabled={busy === r.id} onClick={() => setEditor({ entity: section, row: r })}>✎ Edit</button>
-                        {section !== "listings" && (
+                        {(section === "products" || section === "categories") && (
                           <button style={miniBtn} disabled={busy === r.id} onClick={() => toggle(section, r, "active")}>{r.active ? "⏸ Deactivate" : "▶ Activate"}</button>
                         )}
                         <button style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }} disabled={busy === r.id} onClick={() => remove(section, r.id, r.name || r.title || r.id)}>🗑 Delete</button>
@@ -284,7 +358,9 @@ function EditorModal({ section, row, fields, onClose, onSaved, headers }: {
       if (isEdit) body.id = row.id;
 
       const isStore = section === "products" || section === "categories";
-      const url = isStore ? "/api/admin/host/store" : "/api/admin/host/listings";
+      const url = isStore ? "/api/admin/host/store"
+        : section === "workers" ? "/api/admin/host/workers"
+        : "/api/admin/host/listings";
       if (isStore) body.entity = section === "categories" ? "category" : "product";
 
       const r = await fetch(url, { method: isEdit ? "PATCH" : "POST", headers: headers(), body: JSON.stringify(body) });
@@ -300,7 +376,7 @@ function EditorModal({ section, row, fields, onClose, onSaved, headers }: {
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, width: "100%", maxWidth: 560, padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 style={{ color: "#E8EAF0", fontSize: 18, fontWeight: 700, margin: 0, fontFamily: "Syne, sans-serif" }}>
-            {isEdit ? "Edit" : "Add"} {section === "categories" ? "category" : section === "listings" ? "listing" : "product"}
+            {isEdit ? "Edit" : "Add"} {section === "categories" ? "category" : section === "listings" ? "listing" : section === "workers" ? "worker" : "product"}
           </h3>
           <button onClick={onClose} style={{ ...btnGhost, padding: "4px 10px" }}>✕</button>
         </div>
@@ -366,6 +442,8 @@ function statusPill(status: string): React.CSSProperties {
     available: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending_review: ["rgba(245,158,11,0.14)", "#F5C161"],
     shortlisted: ["rgba(61,156,245,0.14)", "#93C5FD"], rented: ["rgba(168,85,247,0.14)", "#D0A8F7"],
     rejected: ["rgba(255,71,87,0.14)", "#FF9AA8"], inactive: ["rgba(255,255,255,0.06)", "#8A8FA8"],
+    approved: ["rgba(34,197,94,0.14)", "#7DE3A0"], pending: ["rgba(245,158,11,0.14)", "#F5C161"],
+    suspended: ["rgba(255,255,255,0.06)", "#8A8FA8"],
   };
   const [bg, color] = map[status] || map.inactive;
   return { fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 999, background: bg, color };

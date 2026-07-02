@@ -61,6 +61,16 @@ export default function HostWorkforce() {
           Verified, background-checked housekeeping, kitchen, maintenance and guest-support staff —
           book per job, per hour, or per day. No long-term contracts.
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Link href="/host/workforce/join"
+            className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full text-white"
+            style={{ background: "linear-gradient(135deg,#9a3412,#7c2d12)" }}>
+            🧑‍🔧 Are you a hospitality pro? Join as a worker →
+          </Link>
+          <Link href="/worker" className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+            Already registered? Sign in →
+          </Link>
+        </div>
       </section>
 
       {/* Filters */}

@@ -34,6 +34,7 @@ export function BackChip() {
     pathname === "/flash-deals" ||           // v159.21: dock-tab page — bottom nav handles navigation
     pathname.startsWith("/admin") ||
     pathname.startsWith("/partner") ||
+    pathname.startsWith("/worker") ||
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/auth");
