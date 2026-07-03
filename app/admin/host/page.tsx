@@ -56,6 +56,18 @@ const STATUS_OPTS: Record<string, string[]> = {
   property: ["pending_review", "available", "shortlisted", "rented", "rejected", "inactive"],
 };
 
+// v284.1 — `sb_admin_id` never existed as a localStorage key (login stores
+// sb_admin_token + sb_admin_user). Derive the id from sb_admin_user like the
+// working admin pages (Content, Passports) do.
+const adminIdFromLS = (): string => {
+  if (typeof window === "undefined") return "";
+  try {
+    return JSON.parse(localStorage.getItem("sb_admin_user") || "null")?.id || "";
+  } catch {
+    return "";
+  }
+};
+
 const inr = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
 const when = (s?: string) =>
   s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -70,7 +82,7 @@ export default function AdminHost() {
   const load = () => {
     setLoading(true); setErr("");
     const tok = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "";
-    const id = typeof window !== "undefined" ? localStorage.getItem("sb_admin_id") || "" : "";
+    const id = adminIdFromLS();
     fetch("/api/admin/host", { headers: { "x-admin-token": tok, "x-admin-id": id } })
       .then((r) => r.json())
       .then((d) => {
@@ -86,7 +98,7 @@ export default function AdminHost() {
     setBusy(id);
     try {
       const tok = localStorage.getItem("sb_admin_token") || "";
-      const adminId = localStorage.getItem("sb_admin_id") || "";
+      const adminId = adminIdFromLS();
       const r = await fetch("/api/admin/host", {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-token": tok, "x-admin-id": adminId },
