@@ -29,8 +29,17 @@ export type AdminIdentity = {
 
 export function adminFromReq(req: Request): AdminIdentity {
   try {
+    // v284.1 — ALSO accept the token via the `x-admin-token` header. Most
+    // admin pages send { "x-admin-token": localStorage.sb_admin_token }
+    // (NOT an Authorization Bearer), so gated routes using adminFromReq
+    // were 401-ing whenever the x-admin-id fallback header was empty
+    // (e.g. the /admin/host pages read the non-existent `sb_admin_id`
+    // localStorage key). The token itself — Railway JWT or adm_ opaque —
+    // is the proof; honor it from either header.
     const auth = req.headers.get("authorization") || "";
-    const t = auth.replace(/^Bearer\s+/i, "").trim();
+    const t =
+      auth.replace(/^Bearer\s+/i, "").trim() ||
+      (req.headers.get("x-admin-token") || "").trim();
     if (t) {
       // 1. JWT path — Railway-issued admin JWTs (OTP login flow) decode to
       //    a claim payload with { id, phone, name }.

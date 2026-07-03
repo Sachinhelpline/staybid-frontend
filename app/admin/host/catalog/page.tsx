@@ -85,7 +85,7 @@ export default function AdminHostCatalog() {
 
   const headers = () => {
     const tok = typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "";
-    const id = typeof window !== "undefined" ? localStorage.getItem("sb_admin_id") || "" : "";
+    const id = typeof window !== "undefined" ? (() => { try { return JSON.parse(localStorage.getItem("sb_admin_user") || "null")?.id || ""; } catch { return ""; } })() : "";
     return { "Content-Type": "application/json", "x-admin-token": tok, "x-admin-id": id };
   };
 
