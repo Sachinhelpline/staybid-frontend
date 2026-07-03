@@ -236,6 +236,85 @@
 /* ── Ticker number emphasis ── */
 .hostos .ho-num { font-variant-numeric: tabular-nums; }
 
+/* ── v285 · Amount-first budget slider (Phase 1 redesign) ── */
+.hostos .ho-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--ho-tone, #c9911a) var(--ho-fill, 30%),
+    var(--border-soft) var(--ho-fill, 30%)
+  );
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.hostos .ho-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #fff;
+  border: 4px solid var(--ho-tone, #c9911a);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.hostos .ho-slider::-webkit-slider-thumb:active { transform: scale(1.15); }
+.hostos .ho-slider::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #fff;
+  border: 4px solid var(--ho-tone, #c9911a);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
+}
+.hostos .ho-slider:focus-visible {
+  box-shadow: 0 0 0 3px rgba(201, 145, 26, 0.25);
+}
+
+/* ── v285 · Investor badge journey rail ── */
+.hostos .ho-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.hostos .ho-rail::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 10%;
+  right: 10%;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c9911a, var(--border-soft) 55%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.hostos .ho-rail-stop {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease;
+}
+.hostos .ho-rail-stop:hover { transform: translateY(-3px); }
+
+/* ── v285 · Plain-language details accordion ── */
+.hostos details.ho-details > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.hostos details.ho-details > summary::-webkit-details-marker { display: none; }
+.hostos details.ho-details > summary .ho-caret {
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.hostos details.ho-details[open] > summary .ho-caret { transform: rotate(90deg); }
+
 /* ── Reduced motion — kill every decorative animation ── */
 @media (prefers-reduced-motion: reduce) {
   .hostos .ho-aurora::before,

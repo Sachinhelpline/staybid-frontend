@@ -32,6 +32,7 @@ import {
 } from "@/lib/host/wizard-rules";
 import {
   HOST_PHASES, TIER_INTEL, RETURN_PROFILES, INVEST_BADGES, PAYMENT_METHODS,
+  TIER_BUDGETS, BUDGET_SLIDER, tierForAmount,
   COMPLIANCE_RULES, IMPORTANT_NOTES, CITY_INTEL, revpar, KEY_CITY_FACTORS,
   DISTANCE_BANDS, recommendCities, PROPERTY_CATEGORIES, SOURCING_OPTIONS,
   SOURCING_ASSISTANCE, POPULAR_COMBINATIONS, SCORECARD_DIMENSIONS,
@@ -55,7 +56,7 @@ export default function HostBuildPage() {
 }
 
 // ── Session persistence (survives the studio/store/properties round-trip) ──
-interface JourneySnap { phase: number; cfg: PortfolioConfig; prefs: JourneyPreferences; ts: number }
+interface JourneySnap { phase: number; cfg: PortfolioConfig; prefs: JourneyPreferences; amt?: number; ts: number }
 function readSnap(): JourneySnap | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
@@ -92,6 +93,17 @@ function Journey() {
     return snap?.prefs || { returnProfile: "balanced", cityMode: "tourist", operatingMode: "fully_managed", sourcing: "lease" };
   });
 
+  // v285 — amount-first slider. Display-only: dragging it auto-matches the
+  // priced tier key (cfg.tier stays the single priced source of truth).
+  const [amt, setAmt] = useState<number>(() => {
+    const snap = readSnap();
+    if (typeof snap?.amt === "number") return snap.amt;
+    const t = (snap?.cfg?.tier || startTier || "explorer") as HostTierKey;
+    return (TIER_BUDGETS[t] || TIER_BUDGETS.explorer).def;
+  });
+  // v285 — which investor badge is expanded on the journey rail.
+  const [badgeOpen, setBadgeOpen] = useState<string>(INVEST_BADGES[0].key);
+
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [consent, setConsent] = useState(false);
   const [pay, setPay] = useState<"idle" | "working" | "done" | "error">("idle");
@@ -124,9 +136,9 @@ function Journey() {
 
   // Persist the journey so a store/studio round-trip never loses progress.
   useEffect(() => {
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ phase, cfg, prefs, ts: Date.now() } satisfies JourneySnap)); }
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ phase, cfg, prefs, amt, ts: Date.now() } satisfies JourneySnap)); }
     catch { /* quota */ }
-  }, [phase, cfg, prefs]);
+  }, [phase, cfg, prefs, amt]);
 
   const tier = wc.tiers[cfg.tier];
   const intel = TIER_INTEL[cfg.tier];
@@ -159,9 +171,38 @@ function Journey() {
     return (match.length ? match : featured).slice(0, 3);
   }, [featured, cfg.cities]);
 
+  const openBadge = INVEST_BADGES.find((x) => x.key === badgeOpen) || INVEST_BADGES[0];
+
+  // v285 — live earnings projection (indicative, display-only — never priced).
+  const annualInvest = amt * 12;
+  const estMin = Math.round((annualInvest * returnProfile.roiMin) / 100);
+  const estMax = Math.round((annualInvest * returnProfile.roiMax) / 100);
+  const roiMid = (returnProfile.roiMin + returnProfile.roiMax) / 2;
+
+  // v285 — per-payment-mode live totals so each card can say "you save ₹X".
+  // 4 extra computeBundle calls over the SAME admin-resolved config — cheap,
+  // and it keeps every displayed rupee flowing through wizard-rules.
+  const modeBundles = useMemo(() => {
+    const out: Record<string, { payNow: number; save: number }> = {};
+    Object.values(wc.paymentModes).forEach((m) => {
+      const b = computeBundle({ ...cfg, paymentMode: m.key as PaymentModeKey }, wc);
+      out[m.key] = { payNow: b.payNow, save: b.recurringSavings };
+    });
+    return out;
+  }, [cfg, wc]);
+
   // ── mutations ──
   function setTier(t: HostTierKey) {
     setCfg((c) => clampConfig({ ...c, tier: t, rooms: Math.max(wc.tiers[t].minRooms, c.rooms) }, wc));
+  }
+  function onAmount(v: number) {
+    setAmt(v);
+    const t = tierForAmount(v);
+    if (t !== cfg.tier) setTier(t);
+  }
+  function pickPlan(t: HostTierKey) {
+    setAmt(TIER_BUDGETS[t].def);
+    setTier(t);
   }
   function toggleCity(name: string) {
     setFocusCity(name);
@@ -289,75 +330,169 @@ function Journey() {
         {/* ════════ PHASE 1 — CHOOSE YOUR INVESTMENT ════════ */}
         {phase === 1 && (
           <div className="ho-enter space-y-7">
-            {/* Investment slabs */}
+            {/* 1 · Amount-first — one question, the plan matches itself (v285) */}
             <div>
-              <SectionLabel n="1" title="Investment slabs" sub="Choose a budget tier that fits your goal — no payment yet." />
-              <div className="grid sm:grid-cols-2 gap-3">
-                {(Object.keys(wc.tiers) as HostTierKey[]).map((k) => {
-                  const t = wc.tiers[k];
-                  const ti = TIER_INTEL[k];
-                  const on = cfg.tier === k;
-                  return (
-                    <button key={k} onClick={() => setTier(k)}
-                      className={`ho-tile text-left rounded-2xl p-4 ${on ? "ho-glow" : ""}`}
-                      style={{ background: "var(--bg-card)", border: on ? `2px solid ${t.accent}` : "1px solid var(--border-soft)" }}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-base uppercase tracking-wide" style={{ color: t.accent }}>{t.name}</span>
-                        {on && <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: t.accent }}>Selected ✓</span>}
-                      </div>
-                      <div className="mt-1 font-display text-xl" style={{ color: "var(--text-base)" }}>{ti.monthlyBudget}<span className="text-xs font-sans" style={{ color: "var(--text-muted)" }}> /month</span></div>
-                      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--text-soft)" }}>
-                        <span>📍 {ti.citiesAccess}</span>
-                        <span>🛏 {ti.roomsAccess}</span>
-                        <span>📈 <b style={{ color: "#15803d" }}>{ti.returnBand}</b> p.a.*</span>
-                        <span>🎯 {ti.idealFor}</span>
-                        <span>🏨 Occupancy {ti.occupancyBand}</span>
-                        <span>🛡 Risk: {ti.riskScore}</span>
-                      </div>
-                      <div className="mt-2.5 pt-2 text-[11px]" style={{ borderTop: "1px dashed var(--border-soft)", color: "var(--text-muted)" }}>
-                        Setup {inr(t.setupPerRoom)}/room · Mgmt {inr(t.mgmtPerRoomMonthly)}/room/mo · {t.commissionPct}% platform fee · Payback {ti.payback}
-                      </div>
-                    </button>
-                  );
-                })}
+              <SectionLabel n="1" title="How much do you want to invest monthly?" sub="Just drag the slider — we instantly match the right plan for you. Nothing is charged yet." />
+              <div className="rounded-2xl p-5 sm:p-6 ho-glass">
+                <div className="text-center">
+                  <div className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: "var(--text-muted)" }}>Your monthly investment</div>
+                  <div className="font-display ho-num leading-tight" style={{ fontSize: "clamp(2.2rem,8vw,3rem)", color: tier.accent }}>
+                    {inr(amt)}
+                  </div>
+                  <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>≈ {inr(annualInvest)} invested over a year</div>
+                </div>
+                <input
+                  type="range" aria-label="Monthly investment amount"
+                  min={BUDGET_SLIDER.min} max={BUDGET_SLIDER.max} step={BUDGET_SLIDER.step}
+                  value={amt} onChange={(e) => onAmount(Number(e.target.value))}
+                  className="ho-slider mt-5"
+                  style={{
+                    ["--ho-fill" as any]: `${((amt - BUDGET_SLIDER.min) / (BUDGET_SLIDER.max - BUDGET_SLIDER.min)) * 100}%`,
+                    ["--ho-tone" as any]: tier.accent,
+                  }}
+                />
+                <div className="flex justify-between text-[10px] mt-1.5 font-semibold" style={{ color: "var(--text-muted)" }}>
+                  <span>₹20K</span><span>₹50K</span><span>₹1L</span><span>₹2L</span><span>₹3L+</span>
+                </div>
+
+                {/* plan rail — tap a plan to jump the slider there */}
+                <div className="grid grid-cols-4 gap-1.5 mt-4">
+                  {(Object.keys(wc.tiers) as HostTierKey[]).map((k) => {
+                    const t = wc.tiers[k];
+                    const on = cfg.tier === k;
+                    return (
+                      <button key={k} onClick={() => pickPlan(k)}
+                        className="ho-tile rounded-xl px-1 py-2 text-center"
+                        style={{
+                          background: on ? `${t.accent}14` : "var(--bg-card)",
+                          border: on ? `2px solid ${t.accent}` : "1px solid var(--border-soft)",
+                        }}>
+                        <div className="text-[11px] font-bold uppercase tracking-wide truncate" style={{ color: on ? t.accent : "var(--text-soft)" }}>{t.name}</div>
+                        <div className="text-[9px] truncate" style={{ color: "var(--text-muted)" }}>{TIER_INTEL[k].monthlyBudget.replace(/\s/g, "")}</div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <p className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>*Returns are indicative & based on average occupancy + market conditions.</p>
+
+              {/* matched plan — 3 big friendly facts, fine print behind one tap */}
+              <div key={cfg.tier} className="ho-enter rounded-2xl p-4 sm:p-5 mt-3"
+                style={{ background: "var(--bg-card)", border: `2px solid ${tier.accent}` }}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] font-bold" style={{ color: tier.accent }}>✓ Your matched plan</div>
+                    <div className="font-display text-2xl" style={{ color: "var(--text-base)" }}>{tier.name}</div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-3 py-1.5 rounded-full" style={{ background: `${tier.accent}14`, color: tier.accent }}>
+                    🎯 {intel.idealFor}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2.5 mt-3.5">
+                  <BigFact icon="🛏" value={intel.roomsAccess} label="managed rooms" />
+                  <BigFact icon="📍" value={intel.citiesAccess} label="cities you can pick" />
+                  <BigFact icon="📈" value={intel.returnBand} label="expected return p.a.*" tone="#15803d" />
+                </div>
+                <details className="ho-details mt-3.5 rounded-xl px-3.5 py-3" style={{ background: "var(--bg-input, rgba(0,0,0,0.02))", border: "1px solid var(--border-soft)" }}>
+                  <summary className="text-xs font-bold flex items-center gap-2" style={{ color: "var(--text-soft)" }}>
+                    <span className="ho-caret">▸</span> See full plan details — fees, payback & risk, explained simply
+                  </summary>
+                  <div className="mt-3 space-y-2.5">
+                    <Def k="Setup cost" v={`${inr(tier.setupPerRoom)} / room`} d="One-time — furnishing, photography & getting each room guest-ready." />
+                    <Def k="Management fee" v={`${inr(tier.mgmtPerRoomMonthly)} / room / month`} d="We run everything — cleaning, guests, pricing & listings." />
+                    <Def k="Platform fee" v={`${tier.commissionPct}% of revenue`} d="Charged only on the money your rooms actually earn." />
+                    <Def k="Typical occupancy" v={intel.occupancyBand} d="How full rooms on this plan usually stay through the year." />
+                    <Def k="Risk level" v={intel.riskScore} d="Based on city mix, demand stability & asset type." />
+                    <Def k="Payback period" v={intel.payback} d="Estimated time to recover your setup investment." />
+                  </div>
+                </details>
+                <p className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>*Returns are indicative & based on average occupancy + market conditions.</p>
+              </div>
             </div>
 
-            {/* Expected return engine */}
+            {/* 2 · What could you earn? — live projector, not abstract % (v285) */}
             <div>
-              <SectionLabel n="2" title="Expected return engine" sub="AI-powered projections based on market data & demand — pick your risk appetite." />
+              <SectionLabel n="2" title="What could you earn?" sub="Pick your investing style — your projection updates live below. Indicative, not guaranteed." />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {RETURN_PROFILES.map((r) => {
                   const on = prefs.returnProfile === r.key;
                   return (
                     <button key={r.key} onClick={() => setPrefs((p) => ({ ...p, returnProfile: r.key }))}
                       className={`ho-tile rounded-2xl p-3.5 text-center ${on ? "ho-glow" : ""}`}
-                      style={{ background: "var(--bg-card)", border: on ? `2px solid ${r.tone}` : "1px solid var(--border-soft)" }}>
-                      <div className="text-xs font-bold uppercase tracking-wide" style={{ color: r.tone }}>{r.name}</div>
-                      <div className="font-display text-xl mt-1 ho-num" style={{ color: "var(--text-base)" }}>{r.band}</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{r.blurb}</div>
+                      style={{ background: on ? `${r.tone}0d` : "var(--bg-card)", border: on ? `2px solid ${r.tone}` : "1px solid var(--border-soft)" }}>
+                      <div className="text-xs font-bold uppercase tracking-wide" style={{ color: r.tone }}>{on ? "✓ " : ""}{r.name}</div>
+                      <div className="flex items-center justify-center gap-1 mt-1.5" aria-label={`Risk level ${r.riskDots} of 4`}>
+                        {[1, 2, 3, 4].map((i) => (
+                          <span key={i} className="w-2 h-2 rounded-full" style={{ background: i <= r.riskDots ? r.tone : "var(--border-soft)" }} />
+                        ))}
+                      </div>
+                      <div className="text-[9px] uppercase tracking-wide mt-0.5" style={{ color: "var(--text-muted)" }}>risk</div>
+                      <div className="text-[10px] mt-1.5 leading-snug" style={{ color: "var(--text-soft)" }}>{r.plain}</div>
                     </button>
                   );
                 })}
               </div>
+
+              {/* live projection card */}
+              <div key={`${returnProfile.key}-${cfg.tier}`} className="ho-enter rounded-2xl p-4 sm:p-5 mt-3 ho-glass">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                  <div className="text-[10px] uppercase tracking-[0.18em] font-bold" style={{ color: returnProfile.tone }}>
+                    Live projection · {returnProfile.name} ({returnProfile.band})
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "rgba(21,128,61,0.12)", color: "#15803d" }}>
+                    <span className="ho-pulse" /> Updates as you drag
+                  </span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4 items-center">
+                  <div className="text-center sm:text-left">
+                    <div className="text-xs" style={{ color: "var(--text-soft)" }}>Investing <b style={{ color: "var(--text-base)" }}>{inr(amt)}/month</b>, you could earn</div>
+                    <div className="font-display ho-num leading-tight mt-1" style={{ fontSize: "clamp(1.6rem,6vw,2.2rem)", color: returnProfile.tone }}>
+                      <CountUp key={`min-${estMin}`} value={estMin} prefix="₹" duration={700} /> – <CountUp key={`max-${estMax}`} value={estMax} prefix="₹" duration={800} />
+                    </div>
+                    <div className="text-xs font-semibold" style={{ color: "var(--text-soft)" }}>per year · ≈ {inr(Math.round(estMin / 12))} – {inr(Math.round(estMax / 12))} every month</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold mb-1.5" style={{ color: "var(--text-soft)" }}>5-year outlook (cumulative returns)</div>
+                    <div className="ho-bars" style={{ height: 72 }}>
+                      {[1, 2, 3, 4, 5].map((yr) => (
+                        <div key={yr} className="ho-bar" title={`Year ${yr}: ~${inr(Math.round((annualInvest * roiMid * yr) / 100))}`}
+                          style={{ height: `${(yr / 5) * 100}%`, animationDelay: `${yr * 0.08}s`, background: `linear-gradient(180deg,${returnProfile.tone}cc,${returnProfile.tone})` }} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                      {[1, 2, 3, 4, 5].map((yr) => <span key={yr}>Y{yr}</span>)}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] mt-2.5" style={{ color: "var(--text-muted)" }}>
+                  Indicative projection on ~{inr(annualInvest)} deployed per year at {returnProfile.band} p.a. — actual returns depend on occupancy & market conditions.
+                </p>
+              </div>
             </div>
 
-            {/* Flexible payment modes */}
+            {/* 3 · How do you want to pay? — real ₹ savings per cycle (v285) */}
             <div>
-              <SectionLabel n="3" title="Flexible payment modes" sub="Invest the way you're comfortable — longer cycles earn a discount + lower security." />
+              <SectionLabel n="3" title="How do you want to pay?" sub="Pick a payment cycle — longer cycles cost less & need lower security. Switchable till you pay." />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {Object.values(wc.paymentModes).map((m) => {
                   const on = cfg.paymentMode === m.key;
+                  const mb = modeBundles[m.key];
+                  const best = m.key === "yearly";
                   return (
                     <button key={m.key} onClick={() => setCfg((c) => ({ ...c, paymentMode: m.key as PaymentModeKey }))}
-                      className={`ho-tile rounded-2xl p-3 text-center ${on ? "ho-glow" : ""}`}
-                      style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
-                      <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>{m.name}</div>
-                      {m.recurringDiscount > 0
-                        ? <div className="text-[11px] font-bold" style={{ color: "#15803d" }}>{Math.round(m.recurringDiscount * 100)}% off mgmt</div>
-                        : <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>standard</div>}
-                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>Security {m.securityMonths}× mo</div>
+                      className={`ho-tile relative rounded-2xl p-3 pt-3.5 text-center ${on ? "ho-glow" : ""}`}
+                      style={{ background: on ? `${tier.accent}0d` : "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
+                      {best && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-white whitespace-nowrap" style={{ background: "#15803d" }}>
+                          Best value
+                        </span>
+                      )}
+                      <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>{on ? "✓ " : ""}{m.name}</div>
+                      {m.recurringDiscount > 0 && mb?.save > 0
+                        ? <div className="text-[11px] font-bold mt-0.5" style={{ color: "#15803d" }}>Save {inr(mb.save)}</div>
+                        : m.recurringDiscount > 0
+                          ? <div className="text-[11px] font-bold mt-0.5" style={{ color: "#15803d" }}>{Math.round(m.recurringDiscount * 100)}% off</div>
+                          : <div className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>standard rate</div>}
+                      <div className="text-[10px] mt-1 leading-snug" style={{ color: "var(--text-muted)" }}>{m.blurb}</div>
                     </button>
                   );
                 })}
@@ -372,31 +507,55 @@ function Journey() {
               </div>
             </div>
 
-            {/* Badge system */}
+            {/* 4 · Investor badge journey — a path, not a wall of cards (v285) */}
             <div>
-              <SectionLabel n="4" title="Investment badge system" sub="Unlock exclusive benefits as your portfolio grows." />
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                {INVEST_BADGES.map((b, i) => (
-                  <div key={b.key} className="ho-tile rounded-2xl p-3 text-center"
-                    style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-                    <div className="text-2xl ho-float" style={{ animationDelay: `${i * 0.35}s` }}>{b.icon}</div>
-                    <div className="font-bold text-sm mt-1" style={{ color: b.tone }}>{b.name}</div>
-                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{b.unlockedAt}</div>
-                    <div className="mt-1.5 space-y-0.5">
-                      {b.benefits.map((x) => (
-                        <div key={x} className="text-[10px]" style={{ color: "var(--text-soft)" }}>✓ {x}</div>
-                      ))}
-                    </div>
+              <SectionLabel n="4" title="Your investor badge journey" sub="You start at Bronze with your first portfolio — tap a badge to see what it unlocks." />
+              <div className="rounded-2xl p-4 sm:p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                <div className="ho-rail">
+                  {INVEST_BADGES.map((b, i) => {
+                    const on = badgeOpen === b.key;
+                    const isStart = i === 0;
+                    return (
+                      <button key={b.key} onClick={() => setBadgeOpen(b.key)}
+                        className="ho-rail-stop flex flex-col items-center gap-1 py-1"
+                        aria-pressed={on} aria-label={`${b.name} badge — ${b.unlockedAt}`}>
+                        <span className="w-11 h-11 rounded-full flex items-center justify-center text-xl transition-all"
+                          style={{
+                            background: "var(--bg-card)",
+                            border: on ? `3px solid ${b.tone}` : "2px solid var(--border-soft)",
+                            boxShadow: on ? `0 0 0 4px ${b.tone}22` : "none",
+                          }}>
+                          {b.icon}
+                        </span>
+                        <span className="text-[11px] font-bold" style={{ color: on ? b.tone : "var(--text-soft)" }}>{b.name}</span>
+                        {isStart && (
+                          <span className="text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                            You start here
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div key={openBadge.key} className="ho-enter mt-3 rounded-xl p-3.5" style={{ background: `${openBadge.tone}0d`, border: `1px solid ${openBadge.tone}44` }}>
+                  <div className="text-xs font-bold" style={{ color: openBadge.tone }}>{openBadge.icon} {openBadge.name} · unlocked at {openBadge.unlockedAt.toLowerCase()}</div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {openBadge.benefits.map((x) => (
+                      <span key={x} className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: "var(--bg-card)", color: "var(--text-soft)", border: "1px solid var(--border-soft)" }}>✓ {x}</span>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             </div>
 
-            {/* Rules & compliance + important note */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-                <div className="font-semibold mb-2.5 flex items-center gap-2" style={{ color: "var(--text-base)" }}>🛡️ Rules & compliance <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Strict SOPs</span></div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            {/* Rules & risk — tucked into tap-to-expand accordions (v285) */}
+            <div className="space-y-2.5">
+              <details className="ho-details rounded-2xl px-4 py-3.5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                <summary className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+                  <span className="ho-caret">▸</span> 🛡️ Rules & compliance
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Strict SOPs</span>
+                </summary>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3">
                   {COMPLIANCE_RULES.map((r) => (
                     <div key={r.title} className="flex items-start gap-1.5 text-[11px]">
                       <span>{r.icon}</span>
@@ -404,10 +563,12 @@ function Journey() {
                     </div>
                   ))}
                 </div>
-              </div>
-              <div className="rounded-2xl p-4" style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#faf5eb" }}>
-                <div className="font-semibold mb-2.5">⚠️ Important note — read before you invest</div>
-                <ul className="space-y-1.5">
+              </details>
+              <details className="ho-details rounded-2xl px-4 py-3.5" style={{ background: "linear-gradient(135deg,#1f1a0f,#2b2415)", color: "#faf5eb" }}>
+                <summary className="font-semibold text-sm flex items-center gap-2">
+                  <span className="ho-caret">▸</span> ⚠️ Important note — read before you invest
+                </summary>
+                <ul className="space-y-1.5 mt-3">
                   {IMPORTANT_NOTES.map((n) => (
                     <li key={n} className="text-[11px] flex items-start gap-1.5" style={{ color: "#d9be82" }}>
                       <span style={{ color: "#2ecc71" }}>✓</span>{n}
@@ -417,7 +578,7 @@ function Journey() {
                 <div className="mt-3 pt-3 text-xs font-semibold" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}>
                   💎 Small start. Big future. Start with any plan — upgrade anytime.
                 </div>
-              </div>
+              </details>
             </div>
           </div>
         )}
@@ -1121,6 +1282,28 @@ function SectionLabel({ n, title, sub }: { n: string; title: string; sub: string
         <h2 className="font-semibold text-base" style={{ color: "var(--text-base)" }}>{title}</h2>
       </div>
       <p className="text-xs mt-1 ml-8" style={{ color: "var(--text-muted)" }}>{sub}</p>
+    </div>
+  );
+}
+// v285 — big friendly plan fact (matched-plan hero, Phase 1)
+function BigFact({ icon, value, label, tone }: { icon: string; value: string; label: string; tone?: string }) {
+  return (
+    <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-input, rgba(0,0,0,0.02))", border: "1px solid var(--border-soft)" }}>
+      <div className="text-lg leading-none">{icon}</div>
+      <div className="font-display text-base sm:text-lg mt-1 ho-num leading-tight" style={{ color: tone || "var(--text-base)" }}>{value}</div>
+      <div className="text-[10px] mt-0.5 leading-snug" style={{ color: "var(--text-muted)" }}>{label}</div>
+    </div>
+  );
+}
+// v285 — plain-language definition row (fees/payback accordion, Phase 1)
+function Def({ k, v, d }: { k: string; v: string; d: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-[12px]">
+      <span className="min-w-0">
+        <b style={{ color: "var(--text-base)" }}>{k}</b>
+        <span className="block text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>{d}</span>
+      </span>
+      <span className="font-semibold ho-num text-right shrink-0" style={{ color: "var(--text-soft)" }}>{v}</span>
     </div>
   );
 }

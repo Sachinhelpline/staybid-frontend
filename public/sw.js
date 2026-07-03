@@ -326,7 +326,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // clients load the new admin markup.
 // v283 — Workforce onboarding + worker panel (/worker, /host/workforce/join,
 // admin Workers tab). Bump so warm SWR clients load the new markup.
-const HTML_CACHE = 'staybid-html-v68';
+const HTML_CACHE = 'staybid-html-v69';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
