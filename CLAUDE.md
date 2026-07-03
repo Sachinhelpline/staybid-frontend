@@ -9918,3 +9918,62 @@ transition; `complete` is the only action that mutates a counter.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host 5-Phase Premium Journey + Investor Dashboard (v284, 2026-07-03)
+
+Full redesign of the Host Portfolio Configurator. The v279 6-step form became
+a **5-phase premium journey** at `/host/build`: Return profile → Cities →
+Property / Rooms / Design → Operating mode / Add-ons → Review & Pay. Plus the
+interlinks on both sides: partner-facing investor dashboard + admin oversight.
+
+### What shipped (additive; pricing contract untouched)
+- **`lib/host/journey-data.ts`** — all journey datasets (return profiles,
+  city catalog with nearby/tourist modes, property categories, sourcing
+  options, design themes, operating modes, popular add-ons) + the shared
+  `sanitizeJourneyPreferences()` whitelist (client sends, server re-runs —
+  defense in depth). `JourneyPreferences` is **NON-PRICED metadata only**.
+- **`app/host/build/page.tsx`** — 1,200-line rewrite as the 5-phase journey.
+  Still computes every ₹ via `computeBundle(cfg, wc)` from
+  `lib/host/wizard-rules.ts` + `resolveWizardConfig` overrides — preview ==
+  server charge, unchanged. Suspense wrapper intact (`?tier=` static
+  prerender). `app/host/host-premium.css` (imported by `app/host/layout.tsx`)
+  carries the alive/premium look; landing modules upgraded in
+  `lib/host/modules.ts`.
+- **Migration `2026-07-02-v284-host-portfolio-preferences.sql`** (applied
+  live) — `host_portfolio_configs.preferences JSONB`. Checkout re-sanitizes
+  and stores the journey metadata alongside the bundle snapshot.
+- **`/host/me` investor dashboard** — "My portfolios" section (tier, cities,
+  rooms, design, plan, pay-now/recurring, status, journey summary) + summary
+  strip Portfolios count + invested total (active only).
+- **`/admin/host` Portfolios tab + KPI card** — total · active · revenue,
+  full config listing with partner contact + journey preferences.
+  **READ-ONLY by design** — see gotcha below.
+- `SB_BUILD` + badge v283 → v284; `HTML_CACHE` v66 → v67.
+
+### Things to Avoid (v284)
+- **Never** give the admin Portfolios tab a status picker or add `portfolio`
+  to the hub PATCH `SOURCE_TABLE`. The config lifecycle (`draft →
+  pending_payment → active`) is the anti-tamper payment chain — `active` is
+  flipped ONLY by `/api/host/portfolio/verify` (Razorpay HMAC, matched on
+  `razorpay_order_id` + `status='pending_payment'`). A manual admin flip
+  would grant a portfolio without a verified payment.
+- **Never** let `JourneyPreferences` feed `computeBundle` — preferences are
+  presentation/ops metadata. Any journey choice that should change the price
+  must become a real `WizardConfig` field (tier/design/add-on/mode) so the
+  wizard preview and the server-validated charge stay in lockstep.
+- **Never** store raw client preferences — always through
+  `sanitizeJourneyPreferences` (fixed key set, whitelisted values, capped
+  arrays). The checkout route re-runs it server-side regardless of what the
+  client sanitized.
+- `components/CountUp` is a **named export with a `value` prop** (`import {
+  CountUp }`, `<CountUp value={n} />`) — a default-import + `end=` prop
+  fails tsc (caught this ship).
+
+### Updated production state (v284, 2026-07-03)
+- **Current version:** v284 · branch `claude/host-panel-redesign-phases-1xday7`
+  · draft PR #254 → `main`. Migration applied live. `tsc` + `next build` green.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, partner pricing — host vertical stays
+  fully isolated additive surface.

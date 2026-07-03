@@ -1,0 +1,256 @@
+/* ============================================================================
+   StayBid for Hosts — premium "alive" visual layer (v284)
+   ----------------------------------------------------------------------------
+   Scoped to the /host vertical via the `.hostos` root class set in
+   app/host/layout.tsx. Plain CSS (NOT styled-jsx — the SWC styled-jsx
+   visitor panics with multiple blocks; see CLAUDE.md v120/v132.9.1).
+   Every animation respects prefers-reduced-motion at the bottom.
+   ============================================================================ */
+
+/* ── Aurora hero backdrop — slow drifting gold/champagne mesh ── */
+.hostos .ho-aurora {
+  position: relative;
+  overflow: hidden;
+}
+.hostos .ho-aurora::before,
+.hostos .ho-aurora::after {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 32% at 22% 28%, rgba(201, 145, 26, 0.14), transparent 70%),
+    radial-gradient(30% 28% at 78% 18%, rgba(124, 58, 237, 0.08), transparent 70%),
+    radial-gradient(34% 30% at 62% 78%, rgba(13, 148, 136, 0.09), transparent 70%);
+  animation: hoAurora 22s ease-in-out infinite alternate;
+}
+.hostos .ho-aurora::after {
+  animation-duration: 30s;
+  animation-direction: alternate-reverse;
+  opacity: 0.7;
+}
+@keyframes hoAurora {
+  0%   { transform: translate3d(-4%, -2%, 0) rotate(0deg) scale(1); }
+  50%  { transform: translate3d(3%, 4%, 0) rotate(4deg) scale(1.06); }
+  100% { transform: translate3d(-2%, 2%, 0) rotate(-3deg) scale(1.02); }
+}
+
+/* ── Glass surfaces ── */
+.hostos .ho-glass {
+  background: color-mix(in srgb, var(--bg-card) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Glow-border card (selected / featured state) ── */
+.hostos .ho-glow {
+  position: relative;
+  box-shadow:
+    0 0 0 2px rgba(201, 145, 26, 0.55),
+    0 8px 28px -10px rgba(201, 145, 26, 0.45);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+/* ── Shimmer sweep (premium CTA / live chips) ── */
+.hostos .ho-shine {
+  position: relative;
+  overflow: hidden;
+}
+.hostos .ho-shine::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; width: 55%;
+  left: -70%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  animation: hoShine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes hoShine {
+  0%, 55% { left: -70%; }
+  100%    { left: 130%; }
+}
+
+/* ── Live pulse dot ── */
+.hostos .ho-pulse {
+  position: relative;
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: #2ecc71;
+  flex: none;
+}
+.hostos .ho-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid rgba(46, 204, 113, 0.55);
+  animation: hoPulse 1.8s ease-out infinite;
+}
+.hostos .ho-pulse.is-gold { background: #c9911a; }
+.hostos .ho-pulse.is-gold::after { border-color: rgba(201, 145, 26, 0.55); }
+@keyframes hoPulse {
+  0%   { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* ── Animated vertical bars (seasonality / pricing charts) ── */
+.hostos .ho-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 88px;
+}
+.hostos .ho-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 4px 4px 2px 2px;
+  transform-origin: bottom;
+  animation: hoGrow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes hoGrow {
+  from { transform: scaleY(0.05); opacity: 0.3; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+
+/* ── Horizontal meter fill (scorecard dimensions) ── */
+.hostos .ho-meter {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.hostos .ho-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c9911a, #f0d060);
+  transform-origin: left;
+  animation: hoMeter 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes hoMeter {
+  from { transform: scaleX(0.04); }
+  to   { transform: scaleX(1); }
+}
+
+/* ── Conic score ring (AI property scorecard) ── */
+.hostos .ho-ring {
+  --ho-ring-pct: 82;
+  --ho-ring-tone: #c9911a;
+  width: 108px; height: 108px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(closest-side, var(--bg-card) 78%, transparent 79% 100%),
+    conic-gradient(var(--ho-ring-tone) calc(var(--ho-ring-pct) * 1%), var(--border-soft) 0);
+  animation: hoRingIn 1s ease both;
+}
+@keyframes hoRingIn { from { filter: saturate(0.4); opacity: 0.4; } to { filter: none; opacity: 1; } }
+
+/* ── Gentle float (hero ornaments / badges) ── */
+.hostos .ho-float { animation: hoFloat 5.5s ease-in-out infinite; }
+@keyframes hoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+
+/* ── Phase stepper (wizard spine) ── */
+.hostos .ho-step {
+  position: relative;
+  transition: all 0.25s ease;
+}
+.hostos .ho-step .ho-step-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.hostos .ho-step .ho-step-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c9911a, #f0d060);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hostos .ho-step.is-done .ho-step-track > span,
+.hostos .ho-step.is-active .ho-step-track > span { transform: scaleX(1); }
+.hostos .ho-step.is-active .ho-step-dot {
+  box-shadow: 0 0 0 4px rgba(201, 145, 26, 0.22);
+}
+
+/* ── Card entrance (used when a phase mounts) ── */
+.hostos .ho-enter { animation: hoEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes hoEnter {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Selectable tile — lift + border morph ── */
+.hostos .ho-tile {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  will-change: transform;
+}
+.hostos .ho-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+.hostos .ho-tile:active { transform: translateY(-1px) scale(0.995); }
+
+/* ── Sticky bundle dock (live estimator) ── */
+.hostos .ho-dock {
+  background: color-mix(in srgb, var(--bg-page) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ── Gradient text (hero highlights) ── */
+.hostos .ho-goldtext {
+  background: linear-gradient(100deg, #c9911a, #f0d060 55%, #c9911a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hoGoldSlide 6s ease-in-out infinite;
+}
+@keyframes hoGoldSlide {
+  0%, 100% { background-position: 0% 0; }
+  50%      { background-position: 100% 0; }
+}
+
+/* ── Marquee strip (payment methods / trust chips) ── */
+.hostos .ho-marquee { overflow: hidden; position: relative; }
+.hostos .ho-marquee > div {
+  display: flex;
+  gap: 10px;
+  width: max-content;
+  animation: hoMarquee 26s linear infinite;
+}
+.hostos .ho-marquee:hover > div { animation-play-state: paused; }
+@keyframes hoMarquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── Ticker number emphasis ── */
+.hostos .ho-num { font-variant-numeric: tabular-nums; }
+
+/* ── Reduced motion — kill every decorative animation ── */
+@media (prefers-reduced-motion: reduce) {
+  .hostos .ho-aurora::before,
+  .hostos .ho-aurora::after,
+  .hostos .ho-shine::after,
+  .hostos .ho-pulse::after,
+  .hostos .ho-bar,
+  .hostos .ho-meter > span,
+  .hostos .ho-ring,
+  .hostos .ho-float,
+  .hostos .ho-enter,
+  .hostos .ho-goldtext,
+  .hostos .ho-marquee > div {
+    animation: none !important;
+  }
+  .hostos .ho-step .ho-step-track > span { transition: none; }
+  .hostos .ho-tile { transition: none; }
+}

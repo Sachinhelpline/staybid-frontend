@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
       jobs,
       channels,
       propertySubmissions,
+      portfolios,
     ] = await Promise.all([
       sbGet("host_leads?select=*&order=created_at.desc&limit=200"),
       sbGet("host_design_projects?select=*&order=created_at.desc&limit=120"),
@@ -82,16 +83,21 @@ export async function GET(req: NextRequest) {
       // v281 — owner property listings for lease/rent. Newest + pending on top
       // so the admin review queue sees fresh submissions first.
       sbGet("discovery_properties?select=*&order=created_at.desc&limit=200").catch(() => []),
+      // v284 — portfolio configurator purchases (the 5-phase journey).
+      // preferences JSONB is the sanitized non-priced journey metadata.
+      sbGet("host_portfolio_configs?select=*&order=created_at.desc&limit=200").catch(() => []),
     ]);
 
     // Enrich rows that only carry user_id.
-    const [projectsU, ordersU, jobsU, channelsU, propSubsU] = await Promise.all([
+    const [projectsU, ordersU, jobsU, channelsU, propSubsU, portfoliosU] = await Promise.all([
       attachUsers(projects),
       attachUsers(orders),
       attachUsers(jobs),
       attachUsers(channels),
       // v281 — property submissions carry submitted_by (nullable for seed rows).
       attachUsers(propertySubmissions, "submitted_by"),
+      // v284 — portfolio configs carry user_id.
+      attachUsers(portfolios),
     ]);
 
     // Side-load design-option counts + worker names + property names + order items.
@@ -159,6 +165,12 @@ export async function GET(req: NextRequest) {
       // v281 — owner property listings awaiting review.
       propertySubmissions: propSubsU.length,
       propertySubmissionsPending: propSubsU.filter((p) => p.status === "pending_review").length,
+      // v284 — portfolio configurator purchases.
+      portfolios: portfoliosU.length,
+      portfoliosActive: portfoliosU.filter((p) => p.status === "active").length,
+      portfolioRevenue: portfoliosU
+        .filter((p) => p.status === "active")
+        .reduce((a, p) => a + num(p.pay_now), 0),
     };
 
     return NextResponse.json({
@@ -170,6 +182,7 @@ export async function GET(req: NextRequest) {
       jobs: jobsOut,
       channels: channelsU,
       propertySubmissions: propSubsU,
+      portfolios: portfoliosU,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Failed to load host data" }, { status: 500 });

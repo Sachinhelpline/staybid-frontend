@@ -39,25 +39,30 @@ export interface TierRule {
 
 export const HOST_UNLIMITED = 999; // sentinel for "unlimited" so UI/maths stay simple
 
+// v284 — slab bands aligned to the 5-phase journey master spec:
+// Explorer 1–3 rooms · 1–2 cities | Growth 3–8 · 2–5 | Premium 8–15 · 5–10 |
+// Elite 15+ · 10+ (unlimited). Keys are STABLE ("adventurer"/"trailblazer"
+// stay as keys — stored configs + admin overrides reference them); only the
+// display NAMES changed to Growth / Premium.
 export const TIER_RULES: Record<HostTierKey, TierRule> = {
   explorer: {
     key: "explorer", name: "Explorer", accent: "#0d9488",
-    minRooms: 1, maxRooms: 1, maxCities: 1,
+    minRooms: 1, maxRooms: 3, maxCities: 2,
     setupPerRoom: 20000, mgmtPerRoomMonthly: 2000, commissionPct: 15,
   },
   adventurer: {
-    key: "adventurer", name: "Adventurer", accent: "#2563eb",
-    minRooms: 2, maxRooms: 3, maxCities: 2,
+    key: "adventurer", name: "Growth", accent: "#2563eb",
+    minRooms: 3, maxRooms: 8, maxCities: 5,
     setupPerRoom: 18000, mgmtPerRoomMonthly: 1900, commissionPct: 12,
   },
   trailblazer: {
-    key: "trailblazer", name: "Trailblazer", accent: "#7c3aed",
-    minRooms: 4, maxRooms: 6, maxCities: 3,
+    key: "trailblazer", name: "Premium", accent: "#7c3aed",
+    minRooms: 8, maxRooms: 15, maxCities: 10,
     setupPerRoom: 16000, mgmtPerRoomMonthly: 1800, commissionPct: 9,
   },
   elite: {
     key: "elite", name: "Elite", accent: "#c9911a",
-    minRooms: 7, maxRooms: HOST_UNLIMITED, maxCities: HOST_UNLIMITED,
+    minRooms: 15, maxRooms: HOST_UNLIMITED, maxCities: HOST_UNLIMITED,
     setupPerRoom: 14000, mgmtPerRoomMonthly: 1600, commissionPct: 5,
   },
 };
@@ -73,10 +78,14 @@ export interface DesignPackage {
   perRoom: number;   // ⚠️
   icon: string;
 }
+// v284 — 4 packages matching the Design & Setup master spec
+// (Basic / Premium / Luxury / Signature). Keys stay stable for stored
+// configs + admin overrides; `bespoke` is the new additive 4th package.
 export const DESIGN_PACKAGES: DesignPackage[] = [
-  { key: "essential", name: "Essential",  blurb: "Clean, functional, guest-ready basics", perRoom: 0,     icon: "🛏️" },
-  { key: "signature", name: "Signature",  blurb: "Styled interiors that photograph + book well", perRoom: 12000, icon: "🎨" },
-  { key: "luxe",      name: "Luxe",       blurb: "Premium design + custom branding for top rates", perRoom: 25000, icon: "💎" },
+  { key: "essential", name: "Basic",     blurb: "Elegant & functional — guest-ready essentials",     perRoom: 0,     icon: "🛏️" },
+  { key: "signature", name: "Premium",   blurb: "Stylish & comfortable — photographs + books well",  perRoom: 12000, icon: "🎨" },
+  { key: "luxe",      name: "Luxury",    blurb: "High-end & sophisticated — top-rate interiors",     perRoom: 25000, icon: "💎" },
+  { key: "bespoke",   name: "Signature", blurb: "Bespoke & ultra-luxury — custom branding included", perRoom: 50000, icon: "👑" },
 ];
 
 // ── Optional add-on services (rental / EMI / one-off) ───────────────────────

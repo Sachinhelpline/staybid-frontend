@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { computeBundle, clampConfig, type PortfolioConfig } from "@/lib/host/wizard-rules";
 import { resolveWizardConfig } from "@/lib/host/wizard-config-store";
+import { sanitizeJourneyPreferences } from "@/lib/host/journey-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,9 +10,12 @@ export const dynamic = "force-dynamic";
 const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
 
 // POST /api/host/portfolio/checkout
-// Body: { config: { tier, cities, rooms, design, addons, paymentMode }, contact:{name,phone,email} }
+// Body: { config: { tier, cities, rooms, design, addons, paymentMode },
+//         contact:{name,phone,email}, preferences?: JourneyPreferences }
 // The server re-computes the ENTIRE bundle from lib/host/wizard-rules — the
 // client never sets any amount. The Razorpay charge = breakdown.payNow.
+// `preferences` are NON-PRICED journey metadata (v284 5-phase wizard) —
+// whitelisted via sanitizeJourneyPreferences, never touch computeBundle.
 export async function POST(req: Request) {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
@@ -86,6 +90,10 @@ export async function POST(req: Request) {
     security: bundle.security,
     status: "pending_payment",
     contact: { name, phone, email: String(contact?.email || "").trim().slice(0, 160) || null },
+    // v284: sanitized journey preferences (return profile, city mode, property
+    // types, sourcing, design theme, operating mode, wishlist add-ons).
+    // Display/ops metadata only — pricing stays 100% computeBundle-driven.
+    preferences: sanitizeJourneyPreferences(body?.preferences),
     razorpay_order_id: rzp.id,
   };
 

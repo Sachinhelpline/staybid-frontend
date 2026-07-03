@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import "./host-premium.css";
 
 export const metadata = {
   title: "StayBid for Hosts — Build. Launch. Manage. Grow.",
