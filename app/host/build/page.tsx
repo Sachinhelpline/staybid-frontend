@@ -21,6 +21,7 @@
 // ============================================================================
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CountUp } from "@/components/CountUp";
@@ -148,6 +149,8 @@ function Journey() {
 
   // Phase-3 live featured properties (Smart Property Discovery interlink).
   const [featured, setFeatured] = useState<any[]>([]);
+  // v287 — which property's full tour sheet is open (null = closed).
+  const [tourProp, setTourProp] = useState<any | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -906,82 +909,184 @@ function Journey() {
           </div>
         )}
 
-        {/* ════════ PHASE 3 — CHOOSE PROPERTY TYPE ════════ */}
+        {/* ════════ PHASE 3 — CHOOSE PROPERTY TYPE (v287 dynamic rebuild) ════════ */}
         {phase === 3 && (
           <div className="ho-enter space-y-7">
-            {/* Rooms */}
+            {/* 1 · Rooms — native tap-a-bed selector + live cost */}
             <div>
-              <SectionLabel n="1" title="How many managed rooms?" sub={`${tier.name} supports ${roomsLabel(tier)} across ${maxCitiesLabel(tier).toLowerCase()}. We set up, list & run every room.`} />
-              <div className="rounded-2xl p-6 ho-glass flex items-center justify-center gap-7">
-                <Stepper onClick={() => setRooms(cfg.rooms - 1)} disabled={cfg.rooms <= tier.minRooms}>−</Stepper>
-                <div className="text-center">
-                  <div className="font-display text-5xl ho-num" style={{ color: tier.accent }}><CountUp key={cfg.rooms} value={cfg.rooms} duration={300} /></div>
-                  <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{cfg.rooms === 1 ? "room" : "rooms"} · setup {inr(bundle.setup)} · mgmt {inr(bundle.mgmtMonthly)}/mo</div>
+              <SectionLabel n="1" title="How many managed rooms?" sub={`${tier.name} supports ${roomsLabel(tier)} across ${maxCitiesLabel(tier).toLowerCase()}. Tap a bed to set the count — we set up, list & run every room.`} />
+              <div className="rounded-2xl p-5 sm:p-6 ho-glass">
+                <div className="flex flex-wrap justify-center gap-1.5" role="group" aria-label="Room count selector">
+                  {Array.from({ length: Math.min(maxRooms, 12) }).map((_, i) => {
+                    const n = i + 1;
+                    const on = n <= cfg.rooms;
+                    const allowed = n >= tier.minRooms && n <= maxRooms;
+                    return (
+                      <button key={n} onClick={() => allowed && setRooms(n)} disabled={!allowed}
+                        aria-label={`Set ${n} ${n === 1 ? "room" : "rooms"}`} aria-pressed={on}
+                        className={`ho-roomcell ${on ? "is-on" : ""}`}>
+                        <span aria-hidden>{on ? "🛏️" : "·"}</span>
+                        <span className="ho-roomcell-n">{n}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <Stepper onClick={() => setRooms(cfg.rooms + 1)} disabled={cfg.rooms >= maxRooms}>+</Stepper>
+                <div className="flex items-center justify-center gap-6 mt-4">
+                  <Stepper onClick={() => setRooms(cfg.rooms - 1)} disabled={cfg.rooms <= tier.minRooms}>−</Stepper>
+                  <div className="text-center">
+                    <div className="font-display text-5xl ho-num" style={{ color: tier.accent }}><CountUp key={cfg.rooms} value={cfg.rooms} duration={300} /></div>
+                    <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>{cfg.rooms === 1 ? "managed room" : "managed rooms"} in your portfolio</div>
+                  </div>
+                  <Stepper onClick={() => setRooms(cfg.rooms + 1)} disabled={cfg.rooms >= maxRooms}>+</Stepper>
+                </div>
+                {maxRooms > 12 && (
+                  <>
+                    <input
+                      type="range" aria-label="Number of managed rooms"
+                      min={tier.minRooms} max={maxRooms} step={1} value={cfg.rooms}
+                      onChange={(e) => setRooms(Number(e.target.value))}
+                      className="ho-slider mt-4"
+                      style={{
+                        ["--ho-fill" as any]: `${((cfg.rooms - tier.minRooms) / Math.max(1, maxRooms - tier.minRooms)) * 100}%`,
+                        ["--ho-tone" as any]: tier.accent,
+                      }}
+                    />
+                    <div className="flex justify-between text-[10px] mt-1 font-semibold" style={{ color: "var(--text-muted)" }}>
+                      <span>{tier.minRooms} {tier.minRooms === 1 ? "room" : "rooms"}</span><span>up to {maxRooms} rooms</span>
+                    </div>
+                  </>
+                )}
+                <div className="grid grid-cols-2 gap-2 mt-4 text-center">
+                  <div className="rounded-xl py-2.5 px-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                    <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: "var(--text-muted)" }}>One-time setup</div>
+                    <div className="text-sm font-bold ho-num" style={{ color: "var(--text-base)" }}><CountUp key={`s${bundle.setup}`} value={bundle.setup} duration={400} prefix="₹" /></div>
+                  </div>
+                  <div className="rounded-xl py-2.5 px-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                    <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: "var(--text-muted)" }}>Management</div>
+                    <div className="text-sm font-bold ho-num" style={{ color: "var(--text-base)" }}><CountUp key={`m${bundle.mgmtMonthly}`} value={bundle.mgmtMonthly} duration={400} prefix="₹" suffix="/mo" /></div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Property type categories */}
+            {/* 2 · Property type categories — 3D scenic cards */}
             <div>
               <SectionLabel n="2" title="Property type categories" sub="Pick up to 6 categories you want in your portfolio — we source to match." />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  {(prefs.propertyTypes || []).length}/6 picked · tap to toggle
+                </span>
+                {(prefs.propertyTypes || []).length > 0 && (
+                  <button onClick={() => setPrefs((p) => ({ ...p, propertyTypes: [] }))}
+                    className="text-[10px] font-semibold" style={{ color: "var(--text-muted)" }}>Clear all</button>
+                )}
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {PROPERTY_CATEGORIES.map((c) => {
                   const on = (prefs.propertyTypes || []).includes(c.key);
                   return (
-                    <button key={c.key} onClick={() => togglePropertyType(c.key)}
-                      className={`ho-tile text-left rounded-2xl p-3 ${on ? "ho-glow" : ""}`}
+                    <button key={c.key} onClick={() => togglePropertyType(c.key)} aria-pressed={on}
+                      className={`ho-city3d text-left rounded-2xl overflow-hidden ${on ? "ho-glow" : ""}`}
                       style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
-                      <div className="text-xl">{c.icon}</div>
-                      <div className="font-semibold text-[13px] mt-1" style={{ color: "var(--text-base)" }}>{on ? "✓ " : ""}{c.name}</div>
-                      <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.sub}</div>
+                      <div className="ho-cityscape" style={{ height: 52, background: c.grad }}>
+                        <span className="ho-city-lm" style={{ fontSize: 24, left: 8, bottom: 3 }}>{c.icon}</span>
+                        {on && (
+                          <span className="absolute top-1.5 right-1.5 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>✓ Picked</span>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <div className="font-semibold text-[13px]" style={{ color: "var(--text-base)" }}>{c.name}</div>
+                        <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.sub}</div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {POPULAR_COMBINATIONS.map((c) => (
-                  <span key={c} className="text-[10px] px-2.5 py-1 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>{c}</span>
-                ))}
+              <div className="ho-marquee mt-3 rounded-full py-2 ho-glass">
+                <div>
+                  {[...POPULAR_COMBINATIONS, ...POPULAR_COMBINATIONS].map((c, i) => (
+                    <span key={i} className="text-[10px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap"
+                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>{c}</span>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Sourcing options */}
+            {/* 3 · Sourcing options — informative expandable cards */}
             <div>
-              <SectionLabel n="3" title="Property sourcing options" sub="Multiple ways to acquire or partner — pick the structure that fits." />
+              <SectionLabel n="3" title="Property sourcing options" sub="Six ways to acquire or partner. Open “How it works” on any card — understanding the structure matters before you pick." />
               <div className="grid sm:grid-cols-2 gap-2.5">
                 {SOURCING_OPTIONS.map((s) => {
                   const on = prefs.sourcing === s.key;
                   return (
-                    <button key={s.key} onClick={() => setPrefs((p) => ({ ...p, sourcing: s.key }))}
-                      className={`ho-tile text-left rounded-2xl p-3.5 flex items-start gap-3 ${on ? "ho-glow" : ""}`}
+                    <div key={s.key} className={`rounded-2xl overflow-hidden ${on ? "ho-glow" : ""}`}
                       style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
-                      <span className="text-xl leading-none mt-0.5">{s.icon}</span>
-                      <span className="flex-1">
-                        <span className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text-base)" }}>{s.name}{on && <span style={{ color: tier.accent }}>✓</span>}</span>
-                        <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>{s.desc}</span>
-                        <span className="mt-1 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Best for: {s.bestFor}</span>
-                      </span>
-                    </button>
+                      <button onClick={() => setPrefs((p) => ({ ...p, sourcing: s.key }))} aria-pressed={on}
+                        className="ho-tile w-full text-left p-3.5 flex items-start gap-3">
+                        <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                          style={{ background: on ? "linear-gradient(135deg,#c9911a,#a9790f)" : "var(--accent-soft)" }}>{s.icon}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text-base)" }}>
+                            {s.name}{on && <span style={{ color: tier.accent }}>✓</span>}
+                          </span>
+                          <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>{s.desc}</span>
+                          <span className="flex flex-wrap gap-1.5 mt-1.5">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input, rgba(0,0,0,0.03))", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>💰 Capital: {s.capital}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "var(--bg-input, rgba(0,0,0,0.03))", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>📈 {s.earn}</span>
+                          </span>
+                          <span className="mt-1.5 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Best for: {s.bestFor}</span>
+                        </span>
+                      </button>
+                      <details className="ho-details px-3.5 pb-3" style={{ borderTop: "1px dashed var(--border-soft)" }}>
+                        <summary className="flex items-center gap-1.5 pt-2 text-[11px] font-bold" style={{ color: "var(--accent)" }}>
+                          <span className="ho-caret">▸</span> How it works
+                        </summary>
+                        <ol className="mt-2 space-y-1.5">
+                          {s.steps.map((st, i) => (
+                            <li key={i} className="flex items-start gap-2 text-[11px]" style={{ color: "var(--text-soft)" }}>
+                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"
+                                style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>{i + 1}</span>
+                              {st}
+                            </li>
+                          ))}
+                        </ol>
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {s.pros.map((pr) => (
+                            <span key={pr} className="text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "rgba(21,128,61,0.08)", color: "#15803d" }}>✓ {pr}</span>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
                   );
                 })}
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {SOURCING_ASSISTANCE.map((s) => (
-                  <span key={s} className="text-[10px] px-2.5 py-1 rounded-full" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>✓ {s}</span>
-                ))}
+              <div className="mt-3 rounded-2xl p-3 ho-glass">
+                <div className="text-[9px] uppercase tracking-[0.18em] font-bold mb-1.5" style={{ color: "var(--accent)" }}>StayBid handles for you</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {SOURCING_ASSISTANCE.map((s) => (
+                    <span key={s} className="text-[10px] px-2.5 py-1 rounded-full" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>✓ {s}</span>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* AI property scorecard */}
+            {/* 4 · AI property scorecard — reacts live to every selection */}
             <div className="rounded-2xl p-4 sm:p-5 ho-glass">
-              <div className="text-[10px] uppercase tracking-[0.18em] font-bold mb-3" style={{ color: "var(--accent)" }}>AI property scorecard — live for your selection</div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="ho-pulse is-gold" />
+                <span className="text-[10px] uppercase tracking-[0.18em] font-bold" style={{ color: "var(--accent)" }}>AI property scorecard · live</span>
+                <span className="text-[10px] ml-auto" style={{ color: "var(--text-muted)" }}>recomputes with every selection</span>
+              </div>
               <div className="grid sm:grid-cols-[auto_1fr] gap-5 items-center">
                 <div className="flex flex-col items-center gap-1.5 mx-auto">
-                  <div className="ho-ring" style={{ ["--ho-ring-pct" as any]: aiScore, ["--ho-ring-tone" as any]: aiScore >= 80 ? "#c9911a" : "#2563eb" }}>
-                    <div className="text-center">
-                      <div className="font-display text-3xl ho-num" style={{ color: "var(--text-base)" }}><CountUp key={aiScore} value={aiScore} duration={700} /></div>
-                      <div className="text-[9px] -mt-0.5" style={{ color: "var(--text-muted)" }}>/100</div>
+                  <div className="ho-scorewrap">
+                    <div className="ho-scorehalo" aria-hidden />
+                    <div className="ho-ring" style={{ ["--ho-ring-pct" as any]: aiScore, ["--ho-ring-tone" as any]: aiScore >= 80 ? "#c9911a" : "#2563eb" }}>
+                      <div className="text-center">
+                        <div className="font-display text-3xl ho-num" style={{ color: "var(--text-base)" }}><CountUp key={aiScore} value={aiScore} duration={700} /></div>
+                        <div className="text-[9px] -mt-0.5" style={{ color: "var(--text-muted)" }}>/100</div>
+                      </div>
                     </div>
                   </div>
                   <div className="text-[11px] font-bold" style={{ color: aiScore >= 80 ? "#15803d" : "#2563eb" }}>
@@ -1004,28 +1109,61 @@ function Journey() {
                   <p className="text-[10px] pt-1" style={{ color: "var(--text-muted)" }}>
                     Overall insight: this configuration has {aiScore >= 80 ? "excellent" : "solid"} potential for high returns with good occupancy & strong location advantage.
                   </p>
+                  {(cfg.cities.length === 0 || !(prefs.propertyTypes || []).length || !prefs.sourcing) && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {cfg.cities.length === 0 && (
+                        <button onClick={() => setPhase(2)} className="text-[10px] font-bold px-2 py-1 rounded-full"
+                          style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>+ Add a city to raise your score</button>
+                      )}
+                      {!(prefs.propertyTypes || []).length && (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>+ Pick property types above</span>
+                      )}
+                      {!prefs.sourcing && (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>+ Choose a sourcing route</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Featured live properties (Smart Property Discovery interlink) */}
+            {/* 5 · Featured live properties — tap any card for the full tour */}
             {featuredForCity.length > 0 && (
               <div>
-                <SectionLabel n="4" title="Featured properties — live inventory" sub="Handpicked opportunities from Smart Property Discovery, matched to your cities." />
+                <SectionLabel n="4" title="Featured properties — live inventory" sub="Handpicked from Smart Property Discovery, matched to your cities. Tap any card for the complete tour — photos, amenities & specs." />
                 <div className="grid sm:grid-cols-3 gap-2.5">
                   {featuredForCity.map((p: any) => (
-                    <div key={p.id} className="ho-tile rounded-2xl overflow-hidden" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-                      {Array.isArray(p.images) && p.images[0] && (
-                        <img src={p.images[0]} alt={p.title} loading="lazy" className="w-full h-24 object-cover" />
-                      )}
+                    <button key={p.id} onClick={() => setTourProp(p)}
+                      className="ho-city3d text-left rounded-2xl overflow-hidden"
+                      style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}
+                      aria-label={`Open full tour of ${p.title}`}>
+                      <div className="relative">
+                        {Array.isArray(p.images) && p.images[0] ? (
+                          <img src={p.images[0]} alt={p.title} loading="lazy" className="w-full h-28 object-cover" />
+                        ) : (
+                          <div className="w-full h-28 flex items-center justify-center text-3xl" style={{ background: "var(--accent-soft)" }}>🏡</div>
+                        )}
+                        {p.featured ? (
+                          <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(201,145,26,0.95)", color: "#fff" }}>⭐ Featured</span>
+                        ) : null}
+                        {Number(p.score) > 0 && (
+                          <span className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>⚡ {p.score}/100</span>
+                        )}
+                        {Array.isArray(p.images) && p.images.length > 1 && (
+                          <span className="absolute bottom-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(20,16,8,0.6)", color: "#fff" }}>📷 {p.images.length}</span>
+                        )}
+                      </div>
                       <div className="p-3">
                         <div className="font-semibold text-[13px] truncate" style={{ color: "var(--text-base)" }}>{p.title}</div>
                         <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>📍 {p.city}{p.bhk ? ` · ${p.bhk} BHK` : ""}{p.area_sqft ? ` · ${p.area_sqft} sq.ft` : ""}</div>
-                        {p.rent_monthly ? (
-                          <div className="text-xs font-bold mt-1" style={{ color: "var(--accent)" }}>{inr(p.rent_monthly)}/mo</div>
-                        ) : null}
+                        <div className="flex items-center justify-between mt-1.5">
+                          {p.rent_monthly ? (
+                            <span className="text-xs font-bold" style={{ color: "var(--accent)" }}>{inr(p.rent_monthly)}/mo</span>
+                          ) : <span />}
+                          <span className="text-[10px] font-bold" style={{ color: "var(--accent)" }}>View full tour →</span>
+                        </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
                 <Link href="/host/properties" className="inline-block mt-2.5 text-xs font-bold" style={{ color: "var(--accent)" }}>
@@ -1410,7 +1548,205 @@ function Journey() {
           )}
         </div>
       </div>
+
+      {/* v287 — full property tour (portal to document.body — escapes any transformed ancestor) */}
+      {tourProp && (
+        <PropertyTourSheet
+          prop={tourProp}
+          onClose={() => setTourProp(null)}
+          defaultName={contact.name}
+          defaultPhone={contact.phone}
+        />
+      )}
     </div>
+  );
+}
+
+/* ── v287 · Full property tour sheet (Phase 3 featured inventory) ── */
+function PropertyTourSheet({ prop, onClose, defaultName, defaultPhone }: {
+  prop: any; onClose: () => void; defaultName: string; defaultPhone: string;
+}) {
+  const imgs: string[] = Array.isArray(prop.images) ? prop.images.filter(Boolean) : [];
+  const amens: string[] = Array.isArray(prop.amenities) ? prop.amenities.filter(Boolean) : [];
+  const [idx, setIdx] = useState(0);
+  const [form, setForm] = useState({ name: defaultName || "", phone: defaultPhone || "", message: "" });
+  const [state, setState] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [err, setErr] = useState("");
+
+  const prev = () => setIdx((i) => (i - 1 + Math.max(1, imgs.length)) % Math.max(1, imgs.length));
+  const next = () => setIdx((i) => (i + 1) % Math.max(1, imgs.length));
+
+  // Esc closes · arrows navigate the gallery · body scroll locked while open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function submitInquiry() {
+    const phoneDigits = form.phone.replace(/[^\d+]/g, "");
+    if (!form.name.trim() || phoneDigits.length < 8) {
+      setErr("Please add your name and a valid phone number.");
+      setState("error");
+      return;
+    }
+    setState("working"); setErr("");
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+      const r = await fetch("/api/host/properties/inquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ propertyId: prop.id, name: form.name.trim(), phone: phoneDigits, message: form.message.trim() || undefined }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d?.error || "Could not send your request. Please retry.");
+      setState("done");
+    } catch (e: any) {
+      setErr(String(e?.message || e));
+      setState("error");
+    }
+  }
+
+  const specs: { k: string; v: string }[] = [
+    prop.property_type ? { k: "Type", v: String(prop.property_type).replace(/_/g, " ") } : null,
+    prop.bhk ? { k: "Configuration", v: `${prop.bhk} BHK` } : null,
+    prop.area_sqft ? { k: "Area", v: `${prop.area_sqft} sq.ft` } : null,
+    prop.furnishing ? { k: "Furnishing", v: String(prop.furnishing).replace(/_/g, " ") } : null,
+    prop.rent_monthly ? { k: "Monthly rent", v: inr(prop.rent_monthly) } : null,
+    prop.deposit ? { k: "Deposit", v: inr(prop.deposit) } : null,
+  ].filter(Boolean) as { k: string; v: string }[];
+
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div className="hostos ho-tour-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Property tour — ${prop.title}`}>
+      <div className="ho-tour-sheet" onClick={(e) => e.stopPropagation()}>
+        {/* header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3"
+          style={{ background: "var(--bg-page)", borderBottom: "1px solid var(--border-soft)" }}>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate" style={{ color: "var(--text-base)" }}>{prop.title}</div>
+            <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+              📍 {[prop.locality, prop.city, prop.state].filter(Boolean).join(", ")}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close tour"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}>✕</button>
+        </div>
+
+        {/* gallery */}
+        <div className="relative">
+          {imgs.length > 0 ? (
+            <img key={idx} src={imgs[idx]} alt={`${prop.title} — photo ${idx + 1}`} className="w-full h-56 sm:h-64 object-cover" />
+          ) : (
+            <div className="w-full h-40 flex items-center justify-center text-5xl" style={{ background: "var(--accent-soft)" }}>🏡</div>
+          )}
+          {imgs.length > 1 && (
+            <>
+              <button onClick={prev} aria-label="Previous photo" className="ho-tour-navbtn absolute left-2 top-1/2 -translate-y-1/2">‹</button>
+              <button onClick={next} aria-label="Next photo" className="ho-tour-navbtn absolute right-2 top-1/2 -translate-y-1/2">›</button>
+              <span className="absolute bottom-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(20,16,8,0.6)", color: "#fff" }}>
+                {idx + 1} / {imgs.length}
+              </span>
+            </>
+          )}
+          {Number(prop.score) > 0 && (
+            <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.92)", color: "#a9790f" }}>
+              ⚡ AI score {prop.score}/100
+            </span>
+          )}
+        </div>
+        {imgs.length > 1 && (
+          <div className="flex gap-1.5 px-4 py-2 overflow-x-auto">
+            {imgs.map((im, i) => (
+              <button key={i} onClick={() => setIdx(i)} aria-label={`Photo ${i + 1}`}
+                className={`ho-tour-thumb ${i === idx ? "is-on" : ""}`}>
+                <img src={im} alt="" loading="lazy" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="px-4 pb-5 space-y-4">
+          {/* specs */}
+          {specs.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+              {specs.map((s) => (
+                <div key={s.k} className="rounded-xl px-2.5 py-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+                  <div className="text-[9px] uppercase tracking-wider font-bold" style={{ color: "var(--text-muted)" }}>{s.k}</div>
+                  <div className="text-[12px] font-semibold capitalize" style={{ color: "var(--text-base)" }}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* amenities */}
+          {amens.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-1.5" style={{ color: "var(--accent)" }}>Amenities</div>
+              <div className="flex flex-wrap gap-1.5">
+                {amens.map((a) => (
+                  <span key={a} className="text-[11px] px-2.5 py-1 rounded-full capitalize" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)", color: "var(--text-soft)" }}>
+                    ✓ {String(a).replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* inquiry */}
+          <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+            {state === "done" ? (
+              <div className="text-center py-2">
+                <div className="text-3xl">🎉</div>
+                <div className="font-semibold text-sm mt-1" style={{ color: "var(--text-base)" }}>Request sent!</div>
+                <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
+                  Our sourcing team will call you about <b>{prop.title}</b> within 24 hours — verification, best-deal negotiation & documentation included.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>Interested in this property?</div>
+                <p className="text-[11px] mt-0.5 mb-3" style={{ color: "var(--text-muted)" }}>Request it for your portfolio — the sourcing team handles everything end-to-end.</p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Your name" aria-label="Your name"
+                    className="rounded-xl px-3 py-2.5 text-sm w-full"
+                    style={{ background: "var(--bg-page)", border: "1px solid var(--border-strong)", color: "var(--text-base)" }} />
+                  <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="Phone number" aria-label="Phone number" inputMode="tel"
+                    className="rounded-xl px-3 py-2.5 text-sm w-full"
+                    style={{ background: "var(--bg-page)", border: "1px solid var(--border-strong)", color: "var(--text-base)" }} />
+                </div>
+                <textarea value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+                  placeholder="Anything specific? (optional)" aria-label="Message" rows={2}
+                  className="rounded-xl px-3 py-2.5 text-sm w-full mt-2 resize-none"
+                  style={{ background: "var(--bg-page)", border: "1px solid var(--border-strong)", color: "var(--text-base)" }} />
+                {state === "error" && err && (
+                  <div className="text-[11px] mt-2 font-semibold" style={{ color: "#b91c1c" }}>⚠ {err}</div>
+                )}
+                <button onClick={submitInquiry} disabled={state === "working"}
+                  className="ho-shine w-full mt-3 py-3 rounded-full font-semibold text-white text-sm disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>
+                  {state === "working" ? "Sending…" : "Request this property →"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

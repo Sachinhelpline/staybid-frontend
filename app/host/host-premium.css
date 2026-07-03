@@ -360,6 +360,112 @@
   animation: hoFloat 5.5s ease-in-out infinite;
 }
 
+/* ── v287 · Phase 3 — native rooms selector (tap-a-bed cells) ── */
+.hostos .ho-roomcell {
+  width: 44px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--border-strong);
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+.hostos .ho-roomcell.is-on {
+  border: 1.5px solid #c9911a;
+  background: linear-gradient(160deg, #fdf3dc, #f3ddab);
+  box-shadow: 0 4px 10px -5px rgba(201, 145, 26, 0.55);
+  animation: hoCellPop 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.hostos .ho-roomcell:hover:not(:disabled) { transform: translateY(-3px); }
+.hostos .ho-roomcell:active:not(:disabled) { transform: translateY(-1px) scale(0.96); }
+.hostos .ho-roomcell:disabled { opacity: 0.35; cursor: not-allowed; }
+.hostos .ho-roomcell-n { font-size: 9px; font-weight: 700; color: var(--text-muted); }
+.hostos .ho-roomcell.is-on .ho-roomcell-n { color: #a9790f; }
+@keyframes hoCellPop {
+  0% { transform: scale(0.8); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* ── v287 · Phase 3 — AI scorecard breathing halo ── */
+.hostos .ho-scorewrap { position: relative; }
+.hostos .ho-scorehalo {
+  position: absolute;
+  inset: -16px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(201, 145, 26, 0.3), transparent 65%);
+  animation: hoHalo 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes hoHalo {
+  0%, 100% { opacity: 0.45; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* ── v287 · Phase 3 — property tour sheet (portal to document.body) ── */
+.hostos.ho-tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(20, 16, 8, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: hoFadeIn 0.2s ease both;
+}
+.hostos .ho-tour-sheet {
+  background: var(--bg-page);
+  width: 100%;
+  max-width: 580px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid var(--border-soft);
+  animation: hoSheetUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (min-width: 640px) {
+  .hostos.ho-tour-backdrop { align-items: center; padding: 24px; }
+  .hostos .ho-tour-sheet { border-radius: 24px; }
+}
+@keyframes hoFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hoSheetUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.hostos .ho-tour-navbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: rgba(20, 16, 8, 0.55);
+  color: #fff;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.hostos .ho-tour-navbtn:hover { background: rgba(20, 16, 8, 0.8); transform: scale(1.08); }
+.hostos .ho-tour-thumb {
+  width: 52px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.hostos .ho-tour-thumb.is-on { border-color: #c9911a; opacity: 1; transform: translateY(-2px); }
+
 /* ── Reduced motion — kill every decorative animation ── */
 @media (prefers-reduced-motion: reduce) {
   .hostos .ho-aurora::before,
@@ -373,9 +479,14 @@
   .hostos .ho-city-lm,
   .hostos .ho-enter,
   .hostos .ho-goldtext,
+  .hostos .ho-scorehalo,
+  .hostos .ho-roomcell.is-on,
+  .hostos.ho-tour-backdrop,
+  .hostos .ho-tour-sheet,
   .hostos .ho-marquee > div {
     animation: none !important;
   }
+  .hostos .ho-roomcell { transition: none; }
   .hostos .ho-step .ho-step-track > span { transition: none; }
   .hostos .ho-tile { transition: none; }
 }

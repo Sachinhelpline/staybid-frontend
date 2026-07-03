@@ -333,47 +333,110 @@ export function recommendCities(profile: ReturnProfile["key"], picked: string[],
 }
 
 // ── Phase 3 · Property type categories (15) ─────────────────────────────────
+// v287: `grad` is a scenic gradient band for the 3D category cards —
+// display-only, mirrors the v286 city-card SCENES pattern.
 export interface PropertyCategory {
   key: string;
   name: string;
   sub: string;
   icon: string;
+  grad: string;
 }
 
 export const PROPERTY_CATEGORIES: PropertyCategory[] = [
-  { key: "studio",        name: "Studio Apartment",   sub: "Compact & smart · high yield",       icon: "🛏️" },
-  { key: "premium_apt",   name: "Premium Apartment",  sub: "Modern comfort · urban stays",       icon: "🏢" },
-  { key: "villa",         name: "Villa",              sub: "Luxury & privacy · high returns",    icon: "🏡" },
-  { key: "cottage",       name: "Cottage",            sub: "Nature getaway · peaceful retreat",  icon: "🏕️" },
-  { key: "farm_stay",     name: "Farm Stay",          sub: "Rural experience · unique stays",    icon: "🌾" },
-  { key: "luxury_tent",   name: "Luxury Tent",        sub: "Unique & premium · high demand",     icon: "⛺" },
-  { key: "homestay",      name: "Homestay",           sub: "Local experience · budget friendly", icon: "🏠" },
-  { key: "hotel_room",    name: "Hotel Room",         sub: "Business & leisure · high turnover", icon: "🛎️" },
-  { key: "serviced_apt",  name: "Serviced Apartment", sub: "Long-stay friendly · high occupancy", icon: "🏬" },
-  { key: "boutique",      name: "Boutique Resort",    sub: "Premium hospitality · high ADR",     icon: "🌺" },
-  { key: "hostel",        name: "Hostel",             sub: "Budget travellers · high volume",    icon: "🎒" },
-  { key: "glamping",      name: "Glamping",           sub: "Luxury + nature · premium niche",    icon: "🌌" },
-  { key: "beach_house",   name: "Beach House",        sub: "Beachfront living · high demand",    icon: "🏖️" },
-  { key: "lake_view",     name: "Lake View Property", sub: "Scenic & serene · high returns",     icon: "🌊" },
-  { key: "heritage",      name: "Heritage Property",  sub: "Royal experience · premium niche",   icon: "🏰" },
+  { key: "studio",        name: "Studio Apartment",   sub: "Compact & smart · high yield",       icon: "🛏️", grad: "linear-gradient(160deg,#3d3f56,#6f7290 55%,#d8d9e6)" },
+  { key: "premium_apt",   name: "Premium Apartment",  sub: "Modern comfort · urban stays",       icon: "🏢", grad: "linear-gradient(160deg,#31485e,#5b7f9e 55%,#d7e5f0)" },
+  { key: "villa",         name: "Villa",              sub: "Luxury & privacy · high returns",    icon: "🏡", grad: "linear-gradient(160deg,#7a5a2e,#c9a15a 55%,#f3e6c8)" },
+  { key: "cottage",       name: "Cottage",            sub: "Nature getaway · peaceful retreat",  icon: "🏕️", grad: "linear-gradient(160deg,#2e5b3f,#5f9469 55%,#cfe8d4)" },
+  { key: "farm_stay",     name: "Farm Stay",          sub: "Rural experience · unique stays",    icon: "🌾", grad: "linear-gradient(160deg,#5d6b2a,#96a84e 55%,#e8eec6)" },
+  { key: "luxury_tent",   name: "Luxury Tent",        sub: "Unique & premium · high demand",     icon: "⛺", grad: "linear-gradient(160deg,#563a6b,#8a63a8 55%,#e4d6f0)" },
+  { key: "homestay",      name: "Homestay",           sub: "Local experience · budget friendly", icon: "🏠", grad: "linear-gradient(160deg,#8a5a17,#d99a3d 55%,#f7e6c4)" },
+  { key: "hotel_room",    name: "Hotel Room",         sub: "Business & leisure · high turnover", icon: "🛎️", grad: "linear-gradient(160deg,#484057,#7a6f92 55%,#e0dbeb)" },
+  { key: "serviced_apt",  name: "Serviced Apartment", sub: "Long-stay friendly · high occupancy", icon: "🏬", grad: "linear-gradient(160deg,#2c5f6e,#5b98a8 55%,#d5ecf1)" },
+  { key: "boutique",      name: "Boutique Resort",    sub: "Premium hospitality · high ADR",     icon: "🌺", grad: "linear-gradient(160deg,#8a2f4d,#c96183 55%,#f6d9e3)" },
+  { key: "hostel",        name: "Hostel",             sub: "Budget travellers · high volume",    icon: "🎒", grad: "linear-gradient(160deg,#2f6e8a,#61a4c9 55%,#d9ecf6)" },
+  { key: "glamping",      name: "Glamping",           sub: "Luxury + nature · premium niche",    icon: "🌌", grad: "linear-gradient(160deg,#1f2b4d,#4a5d94 55%,#c9d3ee)" },
+  { key: "beach_house",   name: "Beach House",        sub: "Beachfront living · high demand",    icon: "🏖️", grad: "linear-gradient(160deg,#0f7fa8,#43b8d8 55%,#ffe9b8)" },
+  { key: "lake_view",     name: "Lake View Property", sub: "Scenic & serene · high returns",     icon: "🌊", grad: "linear-gradient(160deg,#28618c,#5b9bc4 55%,#d3ecf7)" },
+  { key: "heritage",      name: "Heritage Property",  sub: "Royal experience · premium niche",   icon: "🏰", grad: "linear-gradient(160deg,#8f3f2a,#c9704e 55%,#f3d9b8)" },
 ];
 
 // ── Phase 3 · Property sourcing options (6) ─────────────────────────────────
+// v287: `capital` / `earn` / `steps` / `pros` make each structure genuinely
+// explainable in the journey UI. All display-only metadata — never priced.
 export interface SourcingOption {
   key: string;
   name: string;
   desc: string;
   bestFor: string;
   icon: string;
+  capital: string;
+  earn: string;
+  steps: string[];
+  pros: string[];
 }
 
 export const SOURCING_OPTIONS: SourcingOption[] = [
-  { key: "lease",      name: "Lease Property",      desc: "Take property on lease & operate",      bestFor: "New investors · low capital", icon: "📈" },
-  { key: "revshare",   name: "Revenue Sharing",     desc: "Share revenue with the property owner", bestFor: "Low-risk partnership",        icon: "🤝" },
-  { key: "management", name: "Management Contract", desc: "Manage an owner's property & earn",     bestFor: "Experienced operators",       icon: "🗂️" },
-  { key: "buy",        name: "Buy Property",        desc: "Full ownership & high appreciation",    bestFor: "Long-term investment",        icon: "🏦" },
-  { key: "coinvest",   name: "Co-Invest Property",  desc: "Partner & invest together",             bestFor: "High-value properties",       icon: "👥" },
-  { key: "franchise",  name: "Franchise Property",  desc: "Operate branded StayBid units",         bestFor: "Brand power & support",       icon: "🏷️" },
+  {
+    key: "lease", name: "Lease Property", desc: "Take property on lease & operate", bestFor: "New investors · low capital", icon: "📈",
+    capital: "Low–Medium", earn: "Full revenue after rent",
+    steps: [
+      "We shortlist verified owner properties in your chosen cities",
+      "StayBid negotiates the lease, legal checks & documentation",
+      "You operate through StayBid — everything after rent is yours",
+    ],
+    pros: ["Low entry capital", "Full operational control", "Scale fast across cities"],
+  },
+  {
+    key: "revshare", name: "Revenue Sharing", desc: "Share revenue with the property owner", bestFor: "Low-risk partnership", icon: "🤝",
+    capital: "Very low", earn: "Agreed % of revenue",
+    steps: [
+      "Owner keeps the property — you bring StayBid operations",
+      "Revenue split is agreed up-front (typically 60/40)",
+      "Payouts settle monthly with full transparent statements",
+    ],
+    pros: ["No lease liability", "Lowest risk to start", "Owner incentives aligned"],
+  },
+  {
+    key: "management", name: "Management Contract", desc: "Manage an owner's property & earn", bestFor: "Experienced operators", icon: "🗂️",
+    capital: "Low", earn: "8–15% management fee",
+    steps: [
+      "Owner contracts day-to-day management to you via StayBid",
+      "You oversee operations from the partner dashboard",
+      "You earn a fee on every booking with zero asset risk",
+    ],
+    pros: ["Zero asset risk", "Predictable fee income", "Great for experienced operators"],
+  },
+  {
+    key: "buy", name: "Buy Property", desc: "Full ownership & high appreciation", bestFor: "Long-term investment", icon: "🏦",
+    capital: "High", earn: "Full revenue + appreciation",
+    steps: [
+      "Smart Discovery surfaces verified on-sale properties",
+      "Legal verification + market price analysis included",
+      "You own the asset — StayBid runs it end-to-end",
+    ],
+    pros: ["Asset appreciation", "Full revenue retained", "Long-term wealth building"],
+  },
+  {
+    key: "coinvest", name: "Co-Invest Property", desc: "Partner & invest together", bestFor: "High-value properties", icon: "👥",
+    capital: "Medium", earn: "Pro-rata share of returns",
+    steps: [
+      "Pool capital with vetted co-investors on one property",
+      "Shared ownership is documented with full legal support",
+      "Returns are distributed pro-rata every quarter",
+    ],
+    pros: ["Access premium properties", "Risk shared across partners", "Professionally structured"],
+  },
+  {
+    key: "franchise", name: "Franchise Property", desc: "Operate branded StayBid units", bestFor: "Brand power & support", icon: "🏷️",
+    capital: "Medium", earn: "Brand-backed revenue",
+    steps: [
+      "Apply for a StayBid-branded unit in your city",
+      "Brand playbook, training & demand funnel included",
+      "Operate under the brand with central support",
+    ],
+    pros: ["Instant brand trust", "Central demand engine", "Playbooks + ongoing support"],
+  },
 ];
 
 export const SOURCING_ASSISTANCE = [
