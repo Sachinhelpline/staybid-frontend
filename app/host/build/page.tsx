@@ -34,7 +34,8 @@ import {
   HOST_PHASES, TIER_INTEL, RETURN_PROFILES, INVEST_BADGES, PAYMENT_METHODS,
   TIER_BUDGETS, BUDGET_SLIDER, tierForAmount,
   COMPLIANCE_RULES, IMPORTANT_NOTES, CITY_INTEL, revpar, KEY_CITY_FACTORS,
-  DISTANCE_BANDS, recommendCities, PROPERTY_CATEGORIES, SOURCING_OPTIONS,
+  recommendCities, haversineKm, driveHours, recoMatchPct, recoReason,
+  PROPERTY_CATEGORIES, SOURCING_OPTIONS,
   SOURCING_ASSISTANCE, POPULAR_COMBINATIONS, SCORECARD_DIMENSIONS,
   DESIGN_THEMES, POPULAR_ADDONS, ADDON_BENEFITS, DESIGN_PROCESS,
   WHY_DESIGN_MATTERS, OPERATING_MODES, WORKFORCE_CATEGORIES, PRICING_FACTORS,
@@ -44,6 +45,25 @@ import {
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 
 const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+// v286 — scenery gradients for the 3D city cards, keyed by CityIntel.scene.
+const SCENES: Record<string, string> = {
+  hills: "linear-gradient(160deg,#3b6e8f,#7fb2c9 55%,#dbeef7)",
+  snow: "linear-gradient(160deg,#5a7d9a,#a9c6dc 50%,#f2f8fd)",
+  river: "linear-gradient(160deg,#1f6f6b,#4aa8a0 55%,#c8ece7)",
+  forest: "linear-gradient(160deg,#2e5b3f,#5f9469 55%,#cfe8d4)",
+  lake: "linear-gradient(160deg,#28618c,#5b9bc4 55%,#d3ecf7)",
+  spiritual: "linear-gradient(160deg,#8a5a17,#d99a3d 55%,#f7e6c4)",
+  beach: "linear-gradient(160deg,#0f7fa8,#43b8d8 55%,#ffe9b8)",
+  heritage: "linear-gradient(160deg,#8f3f2a,#c9704e 55%,#f3d9b8)",
+  plantation: "linear-gradient(160deg,#3a5c2e,#6e9450 55%,#dcecc8)",
+  coast: "linear-gradient(160deg,#146a8f,#4ba3c4 55%,#e8f4dc)",
+  metro: "linear-gradient(160deg,#3d3f56,#6f7290 55%,#d8d9e6)",
+};
+// v286 — kilometre selector range. Sliding to the max means "Anywhere in India".
+const KM_MIN = 100;
+const KM_MAX = 1600;
+const KM_ANYWHERE = 99999;
 const SESSION_KEY = "sb_host_journey_v1";
 const SESSION_TTL = 24 * 60 * 60 * 1000;
 
@@ -110,8 +130,21 @@ function Journey() {
   const [payErr, setPayErr] = useState("");
 
   // Phase-2 UI state
-  const [distBand, setDistBand] = useState(DISTANCE_BANDS[1].km);
+  const [distBand, setDistBand] = useState(300);
   const [focusCity, setFocusCity] = useState<string>("");
+
+  // v286 — live device location for Option A "Nearby you". Display-only:
+  // it re-sorts + re-filters the city cards; nothing priced reads from it.
+  const [geo, setGeo] = useState<{ status: "idle" | "locating" | "ready" | "denied"; lat?: number; lng?: number }>({ status: "idle" });
+  function requestGeo() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setGeo({ status: "denied" }); return; }
+    setGeo({ status: "locating" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setGeo({ status: "ready", lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setGeo({ status: "denied" }),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    );
+  }
 
   // Phase-3 live featured properties (Smart Property Discovery interlink).
   const [featured, setFeatured] = useState<any[]>([]);
@@ -153,6 +186,32 @@ function Journey() {
   );
   const focus = CITY_INTEL.find((c) => c.name === (focusCity || cfg.cities[cfg.cities.length - 1])) || null;
   const recos = useMemo(() => recommendCities(returnProfile.key, cfg.cities), [returnProfile.key, cfg.cities]);
+
+  // v286 — auto-ask for location the first time Nearby mode is visible.
+  useEffect(() => {
+    if (phase === 2 && prefs.cityMode === "nearby" && geo.status === "idle") requestGeo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, prefs.cityMode, geo.status]);
+
+  // v286 — per-city distance: live haversine × 1.25 road factor when we have
+  // the device fix, else the bundled approx-from-Delhi-NCR figure.
+  const liveDist = useMemo(() => {
+    const out: Record<string, number> = {};
+    CITY_INTEL.forEach((c) => {
+      out[c.key] = geo.status === "ready" && geo.lat != null && geo.lng != null
+        ? Math.round(haversineKm(geo.lat, geo.lng, c.lat, c.lng) * 1.25)
+        : c.distanceKm;
+    });
+    return out;
+  }, [geo]);
+  const nearestCity = useMemo(() => {
+    if (geo.status !== "ready") return null;
+    return [...CITY_INTEL].sort((a, b) => (liveDist[a.key] ?? 1e9) - (liveDist[b.key] ?? 1e9))[0] || null;
+  }, [geo.status, liveDist]);
+  const nearbyCount = useMemo(
+    () => CITY_INTEL.filter((c) => (liveDist[c.key] ?? c.distanceKm) <= distBand).length,
+    [liveDist, distBand],
+  );
 
   // Deterministic AI scorecard — responds to the live selection.
   const aiScore = useMemo(() => {
@@ -604,45 +663,107 @@ function Journey() {
               </div>
 
               {prefs.cityMode === "nearby" && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {DISTANCE_BANDS.map((d) => (
-                    <button key={d.km} onClick={() => setDistBand(d.km)}
-                      className="px-3 py-1.5 rounded-full text-[11px] font-semibold"
-                      style={distBand === d.km
-                        ? { background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)" }
-                        : { border: "1px solid var(--border-soft)", color: "var(--text-muted)" }}>
-                      {d.label}
-                    </button>
-                  ))}
-                  <span className="text-[10px] self-center" style={{ color: "var(--text-muted)" }}>· road distance from Delhi NCR</span>
+                <div className="rounded-2xl p-3.5 mb-3 ho-glass">
+                  {/* live-location status banner */}
+                  {geo.status === "locating" && (
+                    <div className="flex items-center gap-2 text-[11px] font-semibold mb-3" style={{ color: "var(--text-soft)" }}>
+                      <span className="ho-pulse is-gold" /> Finding your location…
+                    </div>
+                  )}
+                  {geo.status === "ready" && nearestCity && (
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full"
+                        style={{ background: "rgba(21,128,61,0.12)", color: "#15803d" }}>
+                        <span className="ho-pulse" /> You're near {nearestCity.name} — distances from your live location
+                      </span>
+                      <button onClick={requestGeo} className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                        style={{ border: "1px solid var(--border-strong)", color: "var(--text-soft)" }}>↻ Refresh</button>
+                    </div>
+                  )}
+                  {geo.status === "denied" && (
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+                      <span className="text-[11px] font-semibold" style={{ color: "#b45309" }}>
+                        ⚠️ Location unavailable — showing approx distances from Delhi NCR
+                      </span>
+                      <button onClick={requestGeo} className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                        style={{ background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)" }}>
+                        📍 Enable location
+                      </button>
+                    </div>
+                  )}
+
+                  {/* kilometre selector */}
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-[11px] font-bold" style={{ color: "var(--text-soft)" }}>How far will you go?</span>
+                    <span className="text-xs font-bold ho-num" style={{ color: "var(--accent)" }}>
+                      {distBand >= KM_MAX ? "🌏 Anywhere in India" : `Within ${distBand} km`}
+                    </span>
+                  </div>
+                  <input type="range" min={KM_MIN} max={KM_MAX} step={50}
+                    value={Math.min(distBand, KM_MAX)}
+                    onChange={(e) => { const v = Number(e.target.value); setDistBand(v >= KM_MAX ? KM_ANYWHERE : v); }}
+                    className="ho-slider"
+                    style={{ "--ho-fill": `${((Math.min(distBand, KM_MAX) - KM_MIN) / (KM_MAX - KM_MIN)) * 100}%`, "--ho-tone": "#c9911a" } as React.CSSProperties}
+                    aria-label="Distance range in kilometres" />
+                  <div className="flex justify-between text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
+                    <span>{KM_MIN} km</span><span>{nearbyCount} {nearbyCount === 1 ? "city" : "cities"} in range</span><span>Anywhere</span>
+                  </div>
                 </div>
               )}
 
-              {/* City cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {/* 3D city cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {CITY_INTEL
-                  .filter((c) => prefs.cityMode === "nearby" ? c.distanceKm <= distBand : c.kind === "tourist")
-                  .sort((a, b) => prefs.cityMode === "nearby" ? a.distanceKm - b.distanceKm : b.roiMax - a.roiMax)
-                  .map((c) => {
+                  .filter((c) => prefs.cityMode === "nearby" ? (liveDist[c.key] ?? c.distanceKm) <= distBand : c.kind === "tourist")
+                  .sort((a, b) => prefs.cityMode === "nearby"
+                    ? (liveDist[a.key] ?? a.distanceKm) - (liveDist[b.key] ?? b.distanceKm)
+                    : b.roiMax - a.roiMax)
+                  .map((c, idx) => {
                     const on = cfg.cities.includes(c.name);
                     const full = !on && cfg.cities.length >= maxCities;
+                    const km = liveDist[c.key] ?? c.distanceKm;
+                    const closest = prefs.cityMode === "nearby" && geo.status === "ready" && idx === 0;
                     return (
                       <button key={c.key} disabled={full} onClick={() => toggleCity(c.name)}
-                        className={`ho-tile text-left rounded-2xl p-3 disabled:opacity-40 ${on ? "ho-glow" : ""}`}
+                        className={`ho-city3d text-left rounded-2xl overflow-hidden disabled:opacity-40 ${on ? "ho-glow" : ""}`}
                         style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-semibold text-sm truncate" style={{ color: "var(--text-base)" }}>{on ? "✓ " : "📍 "}{c.name}</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                        <div className="ho-cityscape" style={{ background: SCENES[c.scene] || SCENES.hills }}>
+                          <span className="ho-city-lm" aria-hidden>{c.emoji}</span>
+                          <span className="absolute top-1.5 right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-[1]"
                             style={c.demand === "High Demand"
-                              ? { background: "rgba(21,128,61,0.12)", color: "#15803d" }
-                              : { background: "rgba(180,83,9,0.12)", color: "#b45309" }}>
-                            {c.demand === "High Demand" ? "HIGH" : "MED"}
+                              ? { background: "rgba(21,128,61,0.85)", color: "#fff" }
+                              : { background: "rgba(180,83,9,0.85)", color: "#fff" }}>
+                            {c.demand === "High Demand" ? "HIGH DEMAND" : "STEADY"}
                           </span>
+                          {on && (
+                            <span className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold text-white z-[1]"
+                              style={{ background: tier.accent }}>✓</span>
+                          )}
+                          {closest && !on && (
+                            <span className="absolute top-1.5 left-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full z-[1]"
+                              style={{ background: "rgba(21,128,61,0.9)", color: "#fff" }}>📍 CLOSEST TO YOU</span>
+                          )}
                         </div>
-                        <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.state}{prefs.cityMode === "nearby" ? ` · ${c.distanceKm} km` : ""}</div>
-                        <div className="mt-1.5 flex items-center justify-between text-[11px]">
-                          <span style={{ color: "var(--text-soft)" }}><b style={{ color: "var(--accent)" }}>{c.occupancy}%</b> occ</span>
-                          <span style={{ color: "var(--text-soft)" }}><b style={{ color: "var(--accent)" }}>{inr(c.adr)}</b> ADR</span>
+                        <div className="p-3">
+                          <div className="font-semibold text-sm truncate" style={{ color: "var(--text-base)" }}>{c.name}</div>
+                          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            {c.state}
+                            {prefs.cityMode === "nearby" && <> · 📍 {km} km · ~{driveHours(km)}h drive</>}
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-1 text-center">
+                            <span className="rounded-lg py-1" style={{ background: "var(--accent-soft)" }}>
+                              <b className="block text-[11px]" style={{ color: "var(--accent)" }}>{c.occupancy}%</b>
+                              <span className="text-[8px] uppercase" style={{ color: "var(--text-muted)" }}>occ</span>
+                            </span>
+                            <span className="rounded-lg py-1" style={{ background: "var(--accent-soft)" }}>
+                              <b className="block text-[11px]" style={{ color: "var(--accent)" }}>{Math.round(c.adr / 100) / 10}k</b>
+                              <span className="text-[8px] uppercase" style={{ color: "var(--text-muted)" }}>ADR ₹</span>
+                            </span>
+                            <span className="rounded-lg py-1" style={{ background: "rgba(21,128,61,0.1)" }}>
+                              <b className="block text-[11px]" style={{ color: "#15803d" }}>{c.roiMin}–{c.roiMax}%</b>
+                              <span className="text-[8px] uppercase" style={{ color: "var(--text-muted)" }}>ROI</span>
+                            </span>
+                          </div>
                         </div>
                       </button>
                     );
@@ -737,17 +858,38 @@ function Journey() {
             {/* Smart recommendations */}
             {recos.length > 0 && cfg.cities.length < maxCities && (
               <div>
-                <SectionLabel n="✨" title="Smart recommendations" sub={`AI-matched to your ${returnProfile.name.toLowerCase()} return profile.`} />
-                <div className="grid sm:grid-cols-3 gap-2.5">
-                  {recos.map((c) => (
-                    <button key={c.key} onClick={() => toggleCity(c.name)}
-                      className="ho-tile ho-shine text-left rounded-2xl p-3"
-                      style={{ background: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
-                      <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>+ {c.name}</div>
-                      <div className="text-[11px]" style={{ color: "var(--text-soft)" }}>{c.roiMin}–{c.roiMax}% ROI · {c.occupancy}% occ · {c.risk} risk</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{c.bestFor}</div>
-                    </button>
-                  ))}
+                <SectionLabel n="✨" title="Smart recommendations" sub={`Top matches for your ${returnProfile.name.toLowerCase()} return profile — ranked by fit.`} />
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {recos.map((c, i) => {
+                    const medal = ["🥇", "🥈", "🥉"][i] || "⭐";
+                    const pct = recoMatchPct(i, c);
+                    return (
+                      <button key={c.key} onClick={() => toggleCity(c.name)}
+                        className="ho-city3d ho-shine text-left rounded-2xl overflow-hidden"
+                        style={{ background: "var(--bg-card)", border: "1px solid var(--accent)" }}>
+                        <div className="flex items-center gap-2.5 p-3 pb-0">
+                          <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                            style={{ background: SCENES[c.scene] || SCENES.hills }}>{c.emoji}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="font-semibold text-sm block truncate" style={{ color: "var(--text-base)" }}>{medal} {c.name}</span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.state}</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                            style={{ background: "rgba(21,128,61,0.12)", color: "#15803d" }}>{pct}% match</span>
+                        </div>
+                        <div className="px-3 pt-2">
+                          <div className="text-[10px] leading-snug" style={{ color: "var(--text-soft)" }}>
+                            <b style={{ color: "var(--accent)" }}>Why:</b> {recoReason(returnProfile.key, c)}
+                          </div>
+                          <div className="ho-meter mt-2"><span style={{ width: `${pct}%` }} /></div>
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2.5 mt-1" style={{ borderTop: "1px dashed var(--border-soft)" }}>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{c.roiMin}–{c.roiMax}% ROI · {c.occupancy}% occ · {c.risk} risk</span>
+                          <span className="text-[11px] font-bold" style={{ color: "var(--accent)" }}>+ Add</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -218,7 +218,11 @@ export interface CityIntel {
   roiMax: number;
   risk: "Low" | "Medium";
   footfallLakh: number;  // annual tourist footfall in lakhs (indicative)
-  distanceKm: number;    // from Delhi NCR
+  distanceKm: number;    // fallback road distance from Delhi NCR (used when live location is unavailable)
+  lat: number;           // v286 — city centroid for live-location distances
+  lng: number;
+  emoji: string;         // v286 — landmark glyph on the 3D city card
+  scene: string;         // v286 — scenery gradient key (SCENES map in /host/build)
   demand: "High Demand" | "Medium Demand";
   bestFor: string;
   tags: string[];
@@ -229,29 +233,29 @@ const S = (arr: number[]) => arr; // readability helper
 
 export const CITY_INTEL: CityIntel[] = [
   // ── Himalayan / nearby cluster (matches live StayBid inventory) ──
-  { key: "mussoorie",  name: "Mussoorie",  state: "Uttarakhand", kind: "tourist", occupancy: 75, adr: 5200, roiMin: 24, roiMax: 32, risk: "Low",    footfallLakh: 30, distanceKm: 290, demand: "High Demand",   bestFor: "Hill-station cottages & premium stays", tags: ["Hill Station", "Honeymoon", "Weekend"], seasonality: S([55,60,70,85,95,100,60,55,65,80,75,85]) },
-  { key: "rishikesh",  name: "Rishikesh",  state: "Uttarakhand", kind: "tourist", occupancy: 73, adr: 4200, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 45, distanceKm: 240, demand: "High Demand",   bestFor: "Riverside camps, yoga retreats & hostels", tags: ["Adventure", "Spiritual", "Backpacker"], seasonality: S([70,80,90,95,90,75,55,60,80,95,90,80]) },
-  { key: "dehradun",   name: "Dehradun",   state: "Uttarakhand", kind: "tourist", occupancy: 72, adr: 4200, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 28, distanceKm: 250, demand: "High Demand",   bestFor: "Serviced apartments & transit stays", tags: ["Gateway City", "Business", "Family"], seasonality: S([60,65,75,85,90,95,65,60,70,80,75,80]) },
-  { key: "dhanaulti",  name: "Dhanaulti",  state: "Uttarakhand", kind: "tourist", occupancy: 68, adr: 3800, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 8,  distanceKm: 320, demand: "High Demand",   bestFor: "Eco resorts, camps & nature getaways", tags: ["Offbeat", "Nature", "Camping"], seasonality: S([65,60,70,85,95,100,55,50,60,75,80,90]) },
-  { key: "haridwar",   name: "Haridwar",   state: "Uttarakhand", kind: "tourist", occupancy: 65, adr: 3200, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 70, distanceKm: 220, demand: "Medium Demand", bestFor: "Pilgrim stays & budget hotels", tags: ["Spiritual", "Budget", "Year-round"], seasonality: S([75,80,85,90,85,70,65,70,85,90,85,80]) },
-  { key: "nainital",   name: "Nainital",   state: "Uttarakhand", kind: "tourist", occupancy: 70, adr: 4100, roiMin: 22, roiMax: 28, risk: "Low",    footfallLakh: 22, distanceKm: 300, demand: "High Demand",   bestFor: "Lake-view properties & family stays", tags: ["Lake", "Family", "Honeymoon"], seasonality: S([50,55,70,85,100,100,60,55,65,80,70,85]) },
-  { key: "shimla",     name: "Shimla",     state: "Himachal Pradesh", kind: "tourist", occupancy: 72, adr: 4800, roiMin: 22, roiMax: 30, risk: "Low", footfallLakh: 35, distanceKm: 340, demand: "High Demand", bestFor: "Colonial-charm hotels & apartments", tags: ["Hill Station", "Heritage", "Snow"], seasonality: S([70,65,70,85,95,100,60,55,65,75,70,95]) },
-  { key: "manali",     name: "Manali",     state: "Himachal Pradesh", kind: "tourist", occupancy: 78, adr: 6500, roiMin: 24, roiMax: 34, risk: "Low", footfallLakh: 18.5, distanceKm: 540, demand: "High Demand", bestFor: "Premium cottages, villas & luxury camps", tags: ["Snow", "Adventure", "Honeymoon"], seasonality: S([75,70,75,85,100,100,55,50,60,75,70,95]) },
-  { key: "dharamshala", name: "Dharamshala", state: "Himachal Pradesh", kind: "tourist", occupancy: 70, adr: 4900, roiMin: 22, roiMax: 30, risk: "Low", footfallLakh: 12, distanceKm: 480, demand: "High Demand", bestFor: "Boutique stays & workation homes", tags: ["Workation", "Spiritual", "Nature"], seasonality: S([60,65,80,90,95,85,55,55,70,85,80,75]) },
-  { key: "kasauli",    name: "Kasauli",    state: "Himachal Pradesh", kind: "tourist", occupancy: 60, adr: 4100, roiMin: 18, roiMax: 26, risk: "Low",  footfallLakh: 6, distanceKm: 290, demand: "Medium Demand", bestFor: "Quiet weekend cottages", tags: ["Offbeat", "Weekend", "Quiet"], seasonality: S([55,60,70,85,95,90,60,55,65,80,75,80]) },
+  { key: "mussoorie",  name: "Mussoorie",  state: "Uttarakhand", kind: "tourist", occupancy: 75, adr: 5200, roiMin: 24, roiMax: 32, risk: "Low",    footfallLakh: 30, distanceKm: 290, lat: 30.4599, lng: 78.0664, emoji: "🏔️", scene: "hills", demand: "High Demand",   bestFor: "Hill-station cottages & premium stays", tags: ["Hill Station", "Honeymoon", "Weekend"], seasonality: S([55,60,70,85,95,100,60,55,65,80,75,85]) },
+  { key: "rishikesh",  name: "Rishikesh",  state: "Uttarakhand", kind: "tourist", occupancy: 73, adr: 4200, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 45, distanceKm: 240, lat: 30.0869, lng: 78.2676, emoji: "🛶", scene: "river", demand: "High Demand",   bestFor: "Riverside camps, yoga retreats & hostels", tags: ["Adventure", "Spiritual", "Backpacker"], seasonality: S([70,80,90,95,90,75,55,60,80,95,90,80]) },
+  { key: "dehradun",   name: "Dehradun",   state: "Uttarakhand", kind: "tourist", occupancy: 72, adr: 4200, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 28, distanceKm: 250, lat: 30.3165, lng: 78.0322, emoji: "🌄", scene: "forest", demand: "High Demand",   bestFor: "Serviced apartments & transit stays", tags: ["Gateway City", "Business", "Family"], seasonality: S([60,65,75,85,90,95,65,60,70,80,75,80]) },
+  { key: "dhanaulti",  name: "Dhanaulti",  state: "Uttarakhand", kind: "tourist", occupancy: 68, adr: 3800, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 8,  distanceKm: 320, lat: 30.4227, lng: 78.241, emoji: "🌲", scene: "forest", demand: "High Demand",   bestFor: "Eco resorts, camps & nature getaways", tags: ["Offbeat", "Nature", "Camping"], seasonality: S([65,60,70,85,95,100,55,50,60,75,80,90]) },
+  { key: "haridwar",   name: "Haridwar",   state: "Uttarakhand", kind: "tourist", occupancy: 65, adr: 3200, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 70, distanceKm: 220, lat: 29.9457, lng: 78.1642, emoji: "🛕", scene: "spiritual", demand: "Medium Demand", bestFor: "Pilgrim stays & budget hotels", tags: ["Spiritual", "Budget", "Year-round"], seasonality: S([75,80,85,90,85,70,65,70,85,90,85,80]) },
+  { key: "nainital",   name: "Nainital",   state: "Uttarakhand", kind: "tourist", occupancy: 70, adr: 4100, roiMin: 22, roiMax: 28, risk: "Low",    footfallLakh: 22, distanceKm: 300, lat: 29.3919, lng: 79.4542, emoji: "🚣", scene: "lake", demand: "High Demand",   bestFor: "Lake-view properties & family stays", tags: ["Lake", "Family", "Honeymoon"], seasonality: S([50,55,70,85,100,100,60,55,65,80,70,85]) },
+  { key: "shimla",     name: "Shimla",     state: "Himachal Pradesh", kind: "tourist", occupancy: 72, adr: 4800, roiMin: 22, roiMax: 30, risk: "Low", footfallLakh: 35, distanceKm: 340, lat: 31.1048, lng: 77.1734, emoji: "🚞", scene: "hills", demand: "High Demand", bestFor: "Colonial-charm hotels & apartments", tags: ["Hill Station", "Heritage", "Snow"], seasonality: S([70,65,70,85,95,100,60,55,65,75,70,95]) },
+  { key: "manali",     name: "Manali",     state: "Himachal Pradesh", kind: "tourist", occupancy: 78, adr: 6500, roiMin: 24, roiMax: 34, risk: "Low", footfallLakh: 18.5, distanceKm: 540, lat: 32.2396, lng: 77.1887, emoji: "🎿", scene: "snow", demand: "High Demand", bestFor: "Premium cottages, villas & luxury camps", tags: ["Snow", "Adventure", "Honeymoon"], seasonality: S([75,70,75,85,100,100,55,50,60,75,70,95]) },
+  { key: "dharamshala", name: "Dharamshala", state: "Himachal Pradesh", kind: "tourist", occupancy: 70, adr: 4900, roiMin: 22, roiMax: 30, risk: "Low", footfallLakh: 12, distanceKm: 480, lat: 32.219, lng: 76.3234, emoji: "🧘", scene: "hills", demand: "High Demand", bestFor: "Boutique stays & workation homes", tags: ["Workation", "Spiritual", "Nature"], seasonality: S([60,65,80,90,95,85,55,55,70,85,80,75]) },
+  { key: "kasauli",    name: "Kasauli",    state: "Himachal Pradesh", kind: "tourist", occupancy: 60, adr: 4100, roiMin: 18, roiMax: 26, risk: "Low",  footfallLakh: 6, distanceKm: 290, lat: 30.8977, lng: 76.9645, emoji: "🌿", scene: "forest", demand: "Medium Demand", bestFor: "Quiet weekend cottages", tags: ["Offbeat", "Weekend", "Quiet"], seasonality: S([55,60,70,85,95,90,60,55,65,80,75,80]) },
   // ── Marquee tourist destinations ──
-  { key: "goa",        name: "Goa",        state: "Goa",       kind: "tourist", occupancy: 72, adr: 5800, roiMin: 25, roiMax: 34, risk: "Low",    footfallLakh: 80, distanceKm: 1900, demand: "High Demand",   bestFor: "Beach villas, apartments & boutique stays", tags: ["Beach", "Party", "International"], seasonality: S([100,90,70,55,45,40,45,50,60,80,95,100]) },
-  { key: "jaipur",     name: "Jaipur",     state: "Rajasthan", kind: "tourist", occupancy: 71, adr: 4600, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 55, distanceKm: 270, demand: "High Demand",   bestFor: "Heritage homes, apartments & homestays", tags: ["Heritage", "Wedding", "Culture"], seasonality: S([95,90,75,55,45,40,50,60,75,90,100,100]) },
-  { key: "udaipur",    name: "Udaipur",    state: "Rajasthan", kind: "tourist", occupancy: 69, adr: 5100, roiMin: 22, roiMax: 30, risk: "Medium", footfallLakh: 30, distanceKm: 660, demand: "High Demand",   bestFor: "Lake-facing boutique & wedding stays", tags: ["Lake", "Wedding", "Luxury"], seasonality: S([95,90,70,55,45,40,50,60,75,90,100,100]) },
-  { key: "pondicherry", name: "Pondicherry", state: "Puducherry", kind: "tourist", occupancy: 67, adr: 4300, roiMin: 20, roiMax: 28, risk: "Low", footfallLakh: 15, distanceKm: 2400, demand: "Medium Demand", bestFor: "French-quarter villas & cafés-adjacent stays", tags: ["Beach", "Heritage", "Café Culture"], seasonality: S([90,85,70,60,50,45,55,65,70,80,90,100]) },
-  { key: "coorg",      name: "Coorg",      state: "Karnataka", kind: "tourist", occupancy: 66, adr: 4700, roiMin: 20, roiMax: 30, risk: "Low",    footfallLakh: 10, distanceKm: 2300, demand: "Medium Demand", bestFor: "Plantation farm stays & nature resorts", tags: ["Plantation", "Nature", "Monsoon"], seasonality: S([85,80,75,70,60,55,65,70,75,85,90,95]) },
+  { key: "goa",        name: "Goa",        state: "Goa",       kind: "tourist", occupancy: 72, adr: 5800, roiMin: 25, roiMax: 34, risk: "Low",    footfallLakh: 80, distanceKm: 1900, lat: 15.4909, lng: 73.8278, emoji: "🏖️", scene: "beach", demand: "High Demand",   bestFor: "Beach villas, apartments & boutique stays", tags: ["Beach", "Party", "International"], seasonality: S([100,90,70,55,45,40,45,50,60,80,95,100]) },
+  { key: "jaipur",     name: "Jaipur",     state: "Rajasthan", kind: "tourist", occupancy: 71, adr: 4600, roiMin: 22, roiMax: 30, risk: "Low",    footfallLakh: 55, distanceKm: 270, lat: 26.9124, lng: 75.7873, emoji: "🏰", scene: "heritage", demand: "High Demand",   bestFor: "Heritage homes, apartments & homestays", tags: ["Heritage", "Wedding", "Culture"], seasonality: S([95,90,75,55,45,40,50,60,75,90,100,100]) },
+  { key: "udaipur",    name: "Udaipur",    state: "Rajasthan", kind: "tourist", occupancy: 69, adr: 5100, roiMin: 22, roiMax: 30, risk: "Medium", footfallLakh: 30, distanceKm: 660, lat: 24.5854, lng: 73.7125, emoji: "🏯", scene: "lake", demand: "High Demand",   bestFor: "Lake-facing boutique & wedding stays", tags: ["Lake", "Wedding", "Luxury"], seasonality: S([95,90,70,55,45,40,50,60,75,90,100,100]) },
+  { key: "pondicherry", name: "Pondicherry", state: "Puducherry", kind: "tourist", occupancy: 67, adr: 4300, roiMin: 20, roiMax: 28, risk: "Low", footfallLakh: 15, distanceKm: 2400, lat: 11.9416, lng: 79.8083, emoji: "🏝️", scene: "coast", demand: "Medium Demand", bestFor: "French-quarter villas & cafés-adjacent stays", tags: ["Beach", "Heritage", "Café Culture"], seasonality: S([90,85,70,60,50,45,55,65,70,80,90,100]) },
+  { key: "coorg",      name: "Coorg",      state: "Karnataka", kind: "tourist", occupancy: 66, adr: 4700, roiMin: 20, roiMax: 30, risk: "Low",    footfallLakh: 10, distanceKm: 2300, lat: 12.4208, lng: 75.7397, emoji: "☕", scene: "plantation", demand: "Medium Demand", bestFor: "Plantation farm stays & nature resorts", tags: ["Plantation", "Nature", "Monsoon"], seasonality: S([85,80,75,70,60,55,65,70,75,85,90,95]) },
   // ── Metro cities (business + bleisure demand) ──
-  { key: "delhi",      name: "Delhi NCR",  state: "Delhi",       kind: "metro", occupancy: 74, adr: 4800, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 120, distanceKm: 0,   demand: "High Demand",   bestFor: "Serviced apartments & corporate stays", tags: ["Business", "Transit", "Events"], seasonality: S([80,85,80,70,60,55,60,65,75,90,95,90]) },
-  { key: "mumbai",     name: "Mumbai",     state: "Maharashtra", kind: "metro", occupancy: 77, adr: 6200, roiMin: 20, roiMax: 28, risk: "Low",    footfallLakh: 150, distanceKm: 1400, demand: "High Demand",  bestFor: "Studio & premium apartments", tags: ["Business", "High ADR", "Year-round"], seasonality: S([85,85,80,75,65,55,60,65,75,85,95,95]) },
-  { key: "bangalore",  name: "Bangalore",  state: "Karnataka",   kind: "metro", occupancy: 75, adr: 5400, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 95,  distanceKm: 2100, demand: "High Demand",  bestFor: "Co-living & workation apartments", tags: ["Tech", "Workation", "Year-round"], seasonality: S([85,85,85,80,75,70,70,75,80,85,90,90]) },
-  { key: "hyderabad",  name: "Hyderabad",  state: "Telangana",   kind: "metro", occupancy: 72, adr: 4600, roiMin: 18, roiMax: 25, risk: "Low",    footfallLakh: 70,  distanceKm: 1550, demand: "Medium Demand", bestFor: "Business apartments & events stays", tags: ["Business", "Events", "Value"], seasonality: S([85,85,80,75,65,60,65,70,80,85,90,90]) },
-  { key: "pune",       name: "Pune",       state: "Maharashtra", kind: "metro", occupancy: 70, adr: 4200, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 60,  distanceKm: 1450, demand: "Medium Demand", bestFor: "Student + IT corridor stays", tags: ["Education", "IT", "Weekend Gateway"], seasonality: S([80,80,80,75,70,60,65,70,80,85,90,85]) },
-  { key: "chennai",    name: "Chennai",    state: "Tamil Nadu",  kind: "metro", occupancy: 69, adr: 4300, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 75,  distanceKm: 2200, demand: "Medium Demand", bestFor: "Medical + business travel stays", tags: ["Medical", "Business", "Coastal"], seasonality: S([90,85,75,65,55,50,60,65,70,80,90,100]) },
+  { key: "delhi",      name: "Delhi NCR",  state: "Delhi",       kind: "metro", occupancy: 74, adr: 4800, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 120, distanceKm: 0, lat: 28.6139, lng: 77.209, emoji: "🏛️", scene: "metro",   demand: "High Demand",   bestFor: "Serviced apartments & corporate stays", tags: ["Business", "Transit", "Events"], seasonality: S([80,85,80,70,60,55,60,65,75,90,95,90]) },
+  { key: "mumbai",     name: "Mumbai",     state: "Maharashtra", kind: "metro", occupancy: 77, adr: 6200, roiMin: 20, roiMax: 28, risk: "Low",    footfallLakh: 150, distanceKm: 1400, lat: 19.076, lng: 72.8777, emoji: "🌇", scene: "metro", demand: "High Demand",  bestFor: "Studio & premium apartments", tags: ["Business", "High ADR", "Year-round"], seasonality: S([85,85,80,75,65,55,60,65,75,85,95,95]) },
+  { key: "bangalore",  name: "Bangalore",  state: "Karnataka",   kind: "metro", occupancy: 75, adr: 5400, roiMin: 20, roiMax: 26, risk: "Low",    footfallLakh: 95,  distanceKm: 2100, lat: 12.9716, lng: 77.5946, emoji: "🌆", scene: "metro", demand: "High Demand",  bestFor: "Co-living & workation apartments", tags: ["Tech", "Workation", "Year-round"], seasonality: S([85,85,85,80,75,70,70,75,80,85,90,90]) },
+  { key: "hyderabad",  name: "Hyderabad",  state: "Telangana",   kind: "metro", occupancy: 72, adr: 4600, roiMin: 18, roiMax: 25, risk: "Low",    footfallLakh: 70,  distanceKm: 1550, lat: 17.385, lng: 78.4867, emoji: "🕌", scene: "metro", demand: "Medium Demand", bestFor: "Business apartments & events stays", tags: ["Business", "Events", "Value"], seasonality: S([85,85,80,75,65,60,65,70,80,85,90,90]) },
+  { key: "pune",       name: "Pune",       state: "Maharashtra", kind: "metro", occupancy: 70, adr: 4200, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 60,  distanceKm: 1450, lat: 18.5204, lng: 73.8567, emoji: "🏙️", scene: "metro", demand: "Medium Demand", bestFor: "Student + IT corridor stays", tags: ["Education", "IT", "Weekend Gateway"], seasonality: S([80,80,80,75,70,60,65,70,80,85,90,85]) },
+  { key: "chennai",    name: "Chennai",    state: "Tamil Nadu",  kind: "metro", occupancy: 69, adr: 4300, roiMin: 18, roiMax: 24, risk: "Low",    footfallLakh: 75,  distanceKm: 2200, lat: 13.0827, lng: 80.2707, emoji: "🌊", scene: "coast", demand: "Medium Demand", bestFor: "Medical + business travel stays", tags: ["Medical", "Business", "Coastal"], seasonality: S([90,85,75,65,55,50,60,65,70,80,90,100]) },
 ];
 
 export const revpar = (c: CityIntel) => Math.round((c.adr * c.occupancy) / 100);
@@ -283,6 +287,39 @@ export const DISTANCE_BANDS = [
   { label: "Within 600 km", km: 600 },
   { label: "Anywhere in India", km: 99999 },
 ];
+
+// ── v286 · Live-location helpers (Option A "Nearby you") ────────────────────
+// Great-circle distance between the user's device and a city centroid.
+// UI multiplies by a 1.25 road factor and labels it "approx road distance".
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Rough drive-time estimate at ~55 km/h average Indian highway pace.
+export function driveHours(km: number): number {
+  return Math.max(1, Math.round(km / 55));
+}
+
+// ── v286 · Smart-recommendation intelligence (Option B upgrade) ─────────────
+// Deterministic match % per ranked pick — rank bonus + demand bonus, capped.
+export function recoMatchPct(rank: number, c: CityIntel): number {
+  const base = 78 + (rank === 0 ? 14 : rank === 1 ? 9 : rank === 2 ? 5 : 2);
+  return Math.min(97, base + (c.demand === "High Demand" ? 2 : 0));
+}
+
+// Plain-language "Why this city" line, tuned to the investor's return profile.
+export function recoReason(profile: ReturnProfile["key"], c: CityIntel): string {
+  const inrAdr = `₹${c.adr.toLocaleString("en-IN")}`;
+  if (profile === "luxury") return `Premium ${inrAdr} ADR with ${c.roiMin}–${c.roiMax}% ROI — fits your luxury play`;
+  if (profile === "aggressive") return `Highest ROI ${c.roiMin}–${c.roiMax}% for your growth appetite`;
+  if (profile === "conservative") return `Steady ${c.occupancy}% occupancy · ${c.risk.toLowerCase()} risk · dependable demand`;
+  return `Strong ${c.occupancy}% occupancy + ${c.roiMin}–${c.roiMax}% ROI — balanced sweet spot`;
+}
 
 // Deterministic "smart recommendation" — highest ROI within tier risk appetite.
 export function recommendCities(profile: ReturnProfile["key"], picked: string[], max = 3): CityIntel[] {
