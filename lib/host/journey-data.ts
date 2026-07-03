@@ -102,22 +102,43 @@ export const TIER_INTEL: Record<HostTierKey, TierIntel> = {
   },
 };
 
+// ── Phase 1 · Amount-first budget slider (v285 redesign) ────────────────────
+// The slider is DISPLAY-ONLY UX sugar: dragging it auto-matches the priced
+// tier key (cfg.tier stays the single priced source of truth). Bands mirror
+// TIER_INTEL.monthlyBudget so the matched plan always agrees with the copy.
+export const TIER_BUDGETS: Record<HostTierKey, { min: number; max: number; def: number }> = {
+  explorer:    { min: 20_000,  max: 50_000,  def: 30_000 },
+  adventurer:  { min: 50_000,  max: 100_000, def: 75_000 },
+  trailblazer: { min: 100_000, max: 200_000, def: 150_000 },
+  elite:       { min: 200_000, max: 300_000, def: 250_000 },
+};
+export const BUDGET_SLIDER = { min: 20_000, max: 300_000, step: 5_000 };
+
+export function tierForAmount(amount: number): HostTierKey {
+  if (amount >= 200_000) return "elite";
+  if (amount >= 100_000) return "trailblazer";
+  if (amount >= 50_000) return "adventurer";
+  return "explorer";
+}
+
 // ── Phase 1 · Expected Return Engine (AI-powered projection profiles) ───────
 export interface ReturnProfile {
   key: "conservative" | "balanced" | "aggressive" | "luxury";
   name: string;
   band: string;
   blurb: string;
+  plain: string;         // v285 — one-line plain-language explainer
+  riskDots: 1 | 2 | 3 | 4; // v285 — visual risk meter (1 = safest)
   tone: string;          // accent hex
   roiMin: number;        // for the projection chart
   roiMax: number;
 }
 
 export const RETURN_PROFILES: ReturnProfile[] = [
-  { key: "conservative", name: "Conservative", band: "18% – 22%",  blurb: "Low risk, steady growth",    tone: "#15803d", roiMin: 18, roiMax: 22 },
-  { key: "balanced",     name: "Balanced",     band: "22% – 28%",  blurb: "Optimal risk & returns",     tone: "#2563eb", roiMin: 22, roiMax: 28 },
-  { key: "aggressive",   name: "Aggressive",   band: "28% – 34%",  blurb: "High growth potential",      tone: "#b45309", roiMin: 28, roiMax: 34 },
-  { key: "luxury",       name: "Luxury",       band: "32% – 36%+", blurb: "Premium locations",          tone: "#7c3aed", roiMin: 32, roiMax: 36 },
+  { key: "conservative", name: "Conservative", band: "18% – 22%",  blurb: "Low risk, steady growth",    plain: "Safe & steady — slow but sure", riskDots: 1, tone: "#15803d", roiMin: 18, roiMax: 22 },
+  { key: "balanced",     name: "Balanced",     band: "22% – 28%",  blurb: "Optimal risk & returns",     plain: "The sweet spot most investors pick", riskDots: 2, tone: "#2563eb", roiMin: 22, roiMax: 28 },
+  { key: "aggressive",   name: "Aggressive",   band: "28% – 34%",  blurb: "High growth potential",      plain: "Chase growth — bigger swings, bigger upside", riskDots: 3, tone: "#b45309", roiMin: 28, roiMax: 34 },
+  { key: "luxury",       name: "Luxury",       band: "32% – 36%+", blurb: "Premium locations",          plain: "Premium stays in premium locations", riskDots: 4, tone: "#7c3aed", roiMin: 32, roiMax: 36 },
 ];
 
 // ── Phase 1 · Investment badge system (unlocks as the portfolio grows) ──────
