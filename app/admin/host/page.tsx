@@ -15,6 +15,8 @@ type Kpis = {
   channels: number; channelsNew: number;
   // v281 — owner property listings for lease/rent.
   propertySubmissions?: number; propertySubmissionsPending?: number;
+  // v284 — portfolio configurator purchases (the 5-phase journey).
+  portfolios?: number; portfoliosActive?: number; portfolioRevenue?: number;
 };
 
 type HostData = {
@@ -26,12 +28,14 @@ type HostData = {
   jobs: any[];
   channels: any[];
   propertySubmissions?: any[];
+  portfolios?: any[];
 };
 
-type Tab = "leads" | "properties" | "projects" | "orders" | "inquiries" | "jobs" | "channels";
+type Tab = "leads" | "properties" | "portfolios" | "projects" | "orders" | "inquiries" | "jobs" | "channels";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "leads", label: "Leads", icon: "📨" },
+  { id: "portfolios", label: "Portfolios", icon: "💼" },
   { id: "properties", label: "Property Listings", icon: "🏡" },
   { id: "inquiries", label: "Property Inquiries", icon: "🔍" },
   { id: "projects", label: "Design Studio", icon: "🎨" },
@@ -129,6 +133,7 @@ export default function AdminHost() {
       {k && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
           <Kpi label="Leads" value={String(k.leads)} sub={`${k.leadsNew} new`} color="#D4AF37" />
+          <Kpi label="Portfolios" value={String(k.portfolios ?? 0)} sub={`${k.portfoliosActive ?? 0} active · ${inr(k.portfolioRevenue)}`} color="#E879A0" />
           <Kpi label="Property listings" value={String(k.propertySubmissions ?? 0)} sub={`${k.propertySubmissionsPending ?? 0} pending review`} color="#22C55E" />
           <Kpi label="Property inquiries" value={String(k.inquiries)} sub={`${k.inquiriesNew} new`} color="#3D9CF5" />
           <Kpi label="Design projects" value={String(k.projects)} color="#A855F7" subtle />
@@ -143,6 +148,7 @@ export default function AdminHost() {
         {TABS.map((t) => {
           const count =
             t.id === "leads" ? data?.leads.length
+            : t.id === "portfolios" ? data?.portfolios?.length
             : t.id === "properties" ? data?.propertySubmissions?.length
             : t.id === "inquiries" ? data?.inquiries.length
             : t.id === "projects" ? data?.projects.length
@@ -171,6 +177,7 @@ export default function AdminHost() {
         ) : (
           <div style={{ overflowX: "auto" }}>
             {tab === "leads" && <LeadsTable rows={data?.leads || []} busy={busy} onStatus={setStatus} />}
+            {tab === "portfolios" && <PortfoliosTable rows={data?.portfolios || []} />}
             {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} />}
             {tab === "inquiries" && <InquiriesTable rows={data?.inquiries || []} busy={busy} onStatus={setStatus} />}
             {tab === "projects" && <ProjectsTable rows={data?.projects || []} />}
@@ -208,6 +215,67 @@ function LeadsTable({ rows, busy, onStatus }: TableProps) {
             <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+// v284 — Portfolio Configurator purchases. READ-ONLY by design: the row's
+// status is the anti-tamper payment lifecycle (draft → pending_payment →
+// active flipped ONLY by the Razorpay HMAC verify route, matched on
+// razorpay_order_id). Admin never gets a status picker here — a manual flip
+// to "active" would grant a portfolio without a verified payment.
+function PortfoliosTable({ rows }: { rows: any[] }) {
+  if (!rows.length) return <Empty label="No portfolio configurations yet." />;
+  // Active (paid) first, then pending_payment, then drafts — newest in each.
+  const rank = (s?: string) => (s === "active" ? 0 : s === "pending_payment" ? 1 : s === "draft" ? 2 : 3);
+  const sorted = [...rows].sort((a, b) => {
+    const d = rank(a.status) - rank(b.status);
+    if (d) return d;
+    return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  });
+  return (
+    <table style={tbl}>
+      <thead><tr style={trHead}><Th>Config</Th><Th>Partner</Th><Th>Tier · Plan</Th><Th>Cities · Rooms</Th><Th>Journey</Th><Th align="right">Pay now</Th><Th>Status</Th><Th>When</Th></tr></thead>
+      <tbody>
+        {sorted.map((r) => {
+          const cities = Array.isArray(r.cities) ? r.cities : [];
+          const addons = Array.isArray(r.addons) ? r.addons : [];
+          const p = r.preferences || {};
+          const journey = [p.returnProfile, p.designTheme, p.operatingMode].filter(Boolean);
+          return (
+            <tr key={r.id} style={trBody}>
+              <Td>
+                <div style={{ color: "#8A8FA8", fontSize: 10, fontFamily: "monospace" }}>{String(r.id).slice(0, 8)}</div>
+                {r.razorpay_payment_id && <div style={{ color: "#2ECC71", fontSize: 10 }}>paid ✓</div>}
+              </Td>
+              <Td>
+                <div style={{ color: "#E8EAF0" }}>{r.contact?.name || r._user?.name || "—"}</div>
+                <div style={{ color: "#8A8FA8", fontSize: 11 }}>{r.contact?.phone || r._user?.phone || ""}</div>
+              </Td>
+              <Td>
+                <span style={pill}>{r.tier || "—"}</span>
+                <div style={{ color: "#8A8FA8", fontSize: 11, marginTop: 3 }}>{r.design || "essential"} · {r.payment_mode || "monthly"}</div>
+              </Td>
+              <Td style={{ color: "#8A8FA8", fontSize: 12, maxWidth: 200 }}>
+                {cities.length ? cities.join(", ") : "—"}
+                <div style={{ fontSize: 11 }}>{r.rooms || 0} room{Number(r.rooms) === 1 ? "" : "s"}{addons.length ? ` · ${addons.length} add-on${addons.length === 1 ? "" : "s"}` : ""}</div>
+              </Td>
+              <Td style={{ color: "#8A8FA8", fontSize: 11, maxWidth: 180 }}>
+                {journey.length ? journey.join(" · ") : "—"}
+                {Array.isArray(p.propertyTypes) && p.propertyTypes.length > 0 && (
+                  <div style={{ fontSize: 10, marginTop: 2 }}>{p.propertyTypes.slice(0, 3).join(", ")}{p.propertyTypes.length > 3 ? ` +${p.propertyTypes.length - 3}` : ""}</div>
+                )}
+              </Td>
+              <Td align="right" style={{ color: "#E879A0", fontWeight: 700 }}>
+                {r.pay_now ? inr(r.pay_now) : "—"}
+                {r.recurring ? <div style={{ color: "#8A8FA8", fontSize: 10, fontWeight: 400 }}>{inr(r.recurring)}/period</div> : null}
+              </Td>
+              <Td><StaticBadge status={r.status} /></Td>
+              <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -438,7 +506,7 @@ function StaticBadge({ status }: { status?: string }) {
 
 function statusColor(s?: string): string {
   switch (s) {
-    case "converted": case "connected": case "completed": case "delivered": case "paid": return "#2ECC71";
+    case "converted": case "connected": case "completed": case "delivered": case "paid": case "active": return "#2ECC71";
     case "qualified": case "contacted": case "assigned": case "visited": case "syncing": case "processing": case "in_progress": return "#3D9CF5";
     case "cancelled": case "closed": case "error": return "#EF4444";
     case "paused": return "#9CA3AF";

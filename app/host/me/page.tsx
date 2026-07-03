@@ -5,11 +5,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { prefLabels, type JourneyPreferences } from "@/lib/host/journey-data";
 
 interface MeData {
   signedIn: boolean;
   leads: any[]; inquiries: any[]; projects: any[]; orders: any[]; jobs: any[]; channels: any[];
-  summary: { leads: number; inquiries: number; projects: number; orders: number; jobs: number; channels: number; storeSpend: number; total: number };
+  portfolios: any[];
+  summary: {
+    leads: number; inquiries: number; projects: number; orders: number; jobs: number; channels: number;
+    portfolios: number; activePortfolios: number; portfolioInvested: number;
+    storeSpend: number; total: number;
+  };
 }
 
 const inr = (n: any) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
@@ -76,7 +82,8 @@ export default function HostMe() {
         <>
           {/* Summary strip */}
           <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sb-stagger">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sb-stagger">
+              <Stat label="Portfolios" value={s!.portfolios ?? 0} sub={s!.portfolioInvested ? inr(s!.portfolioInvested) : undefined} />
               <Stat label="Applications" value={s!.leads} />
               <Stat label="Inquiries" value={s!.inquiries} />
               <Stat label="Designs" value={s!.projects} />
@@ -87,6 +94,20 @@ export default function HostMe() {
           </section>
 
           <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-28 space-y-5 mt-3">
+            {/* Investor dashboard — portfolio configs from the 5-phase journey (v284) */}
+            {(data!.portfolios?.length || 0) > 0 && (
+              <div className="sb-card-lift rounded-2xl p-4 sm:p-5"
+                style={{ background: "linear-gradient(140deg, rgba(201,145,26,0.10), var(--bg-card) 55%)", border: "1px solid var(--border-soft)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-display text-lg" style={{ color: "var(--text-base)" }}>💼 My portfolios</h2>
+                  <Link href="/host/build" className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Build another ›</Link>
+                </div>
+                <div className="space-y-3">
+                  {data!.portfolios.map((p) => <PortfolioCard key={p.id} p={p} />)}
+                </div>
+              </div>
+            )}
+
             {/* Applications */}
             <Card show={data!.leads.length} title="📨 Your applications" cta={{ href: "/host", label: "Explore tiers" }}>
               {data!.leads.map((r) => (
@@ -143,6 +164,54 @@ export default function HostMe() {
         </>
       )}
       <style jsx global>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}`}</style>
+    </div>
+  );
+}
+
+// One purchased/pending portfolio config (5-phase configurator, v284).
+// Shows the money facts + the journey preferences the investor picked.
+function PortfolioCard({ p }: { p: any }) {
+  const prefs = prefLabels((p.preferences || null) as JourneyPreferences | null);
+  const cities: string[] = Array.isArray(p.cities) ? p.cities : [];
+  const tierName = String(p.tier || "").replace(/^\w/, (c: string) => c.toUpperCase());
+  const active = p.status === "active";
+  return (
+    <div className="rounded-xl p-4" style={{ background: "var(--bg-input, rgba(0,0,0,0.02))", border: "1px solid var(--border-soft)" }}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-display font-bold" style={{ color: "var(--text-base)", fontSize: 16 }}>
+          {tierName} portfolio
+        </span>
+        <Badge s={active ? "paid" : p.status} />
+        {active && (
+          <span className="sb-pulse-dot" aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: "#3f7d4f", display: "inline-block" }} />
+        )}
+        <span className="ml-auto" style={{ color: "var(--text-muted)", fontSize: 11 }}>{when(p.created_at)}</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+        <MiniFact k="Rooms" v={String(p.rooms || 1)} />
+        <MiniFact k="Cities" v={cities.length ? cities.join(", ") : "—"} />
+        <MiniFact k="Paid now" v={inr(p.pay_now)} accent />
+        <MiniFact k="Recurring" v={`${inr(p.recurring)}/mo`} />
+      </div>
+      {prefs.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {prefs.map((x) => (
+            <span key={x.k} title={x.k} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+              background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--border-soft)" }}>
+              {x.k}: {x.v}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MiniFact({ k, v, accent }: { k: string; v: string; accent?: boolean }) {
+  return (
+    <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{k}</div>
+      <div className="truncate" style={{ fontSize: 13, fontWeight: 700, color: accent ? "var(--accent)" : "var(--text-base)" }}>{v}</div>
     </div>
   );
 }
