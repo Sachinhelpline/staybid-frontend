@@ -347,7 +347,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // → collapsed to 0 → black. Fix: on ≥700px force .sbc-rapp/.sbc-rfull/
 // .sbc-rfull-stage to a LITERAL 100dvh (immune to the poisoned var) with
 // position:fixed. Verified: rfull=1440x820, stage=461x820 (9:16 portrait).
-const HTML_CACHE = 'staybid-html-v79';
+// v292 — StayCircle full-screen ROOM-TOUR reel: the "Rooms" dock now opens an
+// immersive one-reel-per-room feed (ken-burns of each room's photos + property
+// film toggle + full amenities/view/ROI/desc), city/property-wise, with
+// Add-to-Bundle + Remove-property; replaces the old room bottom-sheet.
+const HTML_CACHE = 'staybid-html-v80';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
