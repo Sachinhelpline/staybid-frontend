@@ -231,10 +231,10 @@ export default function CircleDiscoverPage() {
         </button>
       )}
 
-      {/* list-a-property entry — owners / admin upload a property with full
-          details (routes to the StayCircle admin editor). */}
+      {/* list-a-property entry — owners submit a property for lease / rent
+          (routes to the PUBLIC lease-onboarding panel, NOT the admin editor). */}
       {!loading && (
-        <button className="sbc-rlist-chip" onClick={() => router.push("/admin/circle")} aria-label="List a property">
+        <button className="sbc-rlist-chip" onClick={() => router.push("/host/list-property")} aria-label="List a property">
           <span>＋</span> List property
         </button>
       )}
@@ -404,12 +404,14 @@ function FullReel({
       <div className="sbc-rfull-stage" onClick={onOpen} role="button" tabIndex={0}
         onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
         <div className="sbc-rfull-media">
+          {/* persistent poster base layer — guarantees the reel is never
+              black even if the video fails to load / autoplay (desktop) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {poster ? <img className="sbc-rfull-poster" src={poster} alt={p.title} loading="lazy" /> : null}
+          {/* video overlays the poster once the card is in view */}
           {p.videoUrl && inView ? (
-            <video ref={videoRef} src={p.videoUrl} muted={muted} playsInline loop preload="none" poster={poster} />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            poster ? <img src={poster} alt={p.title} loading="lazy" /> : null
-          )}
+            <video className="sbc-rfull-vid" ref={videoRef} src={p.videoUrl} muted={muted} playsInline loop preload="none" poster={poster} />
+          ) : null}
         </div>
         <div className="sbc-rfull-shade" />
 
@@ -469,7 +471,7 @@ function FullReel({
           <div className="sbc-rfull-ctas">
             <button className="sbc-rfull-btn-tour" onClick={onOpen}>▶ View full tour</button>
             <button className="sbc-rfull-btn-invest" onClick={onInvest} disabled={soldOut && !locked}>
-              {soldOut && !locked ? "Sold out" : "💎 Invest now"}
+              {soldOut && !locked ? "Sold out" : "🔒 Lock for Investment"}
             </button>
           </div>
         </div>

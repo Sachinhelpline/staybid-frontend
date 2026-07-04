@@ -67,6 +67,7 @@ const HIDE_PREFIXES = [
   "/agent",
   "/onboard",
   "/auth",
+  "/circle",
 ];
 const HIDE_EXACT = new Set(["/", "/discover", "/reels", "/me", "/me/posts", "/saved/posts"]);
 

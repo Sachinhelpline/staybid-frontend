@@ -335,7 +335,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v291 — StayCircle reel native 9:16 stage (no control overlap, responsive),
 // clear Bundle/Invest CTAs, List-property entry + per-room accordion tours +
 // auto-comparison table on /circle/[id]. Bump so warm clients get the markup.
-const HTML_CACHE = 'staybid-html-v75';
+// v291.1 — laptop reels black-screen fix (persistent poster layer), Invest→
+// "Lock for Investment", Support/Tour widgets hidden on /circle, List-property
+// re-routed to the public lease panel /host/list-property (was /admin/circle).
+const HTML_CACHE = 'staybid-html-v76';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

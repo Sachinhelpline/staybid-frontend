@@ -22,7 +22,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTutorial, TUTORIAL_MATURE_THRESHOLD } from "@/lib/tutorial/tutorial-store";
 import { TutorialReplayList } from "./TutorialReplayList";
 
-const HIDE_PREFIXES = ["/admin", "/partner", "/onboard", "/auth"];
+const HIDE_PREFIXES = ["/admin", "/partner", "/onboard", "/auth", "/circle"];
 
 export function TutorialHelpButton() {
   const pathname = usePathname() || "/";
