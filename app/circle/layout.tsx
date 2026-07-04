@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { CircleDock } from "@/components/circle/CircleDock";
 import "./circle-premium.css";
 
 export const metadata = {
@@ -73,6 +74,11 @@ export default function CircleLayout({ children }: { children: ReactNode }) {
           Returns shown are indicative projections based on property performance bands — not guaranteed. © StayBid.
         </div>
       </footer>
+
+      {/* v290 — Instagram-style bottom nav for the whole /circle vertical.
+          Hidden automatically on the immersive reel feed? No — it OWNS the
+          reel feed's navigation, so it stays visible above .sbc-rapp. */}
+      <CircleDock />
     </div>
   );
 }
