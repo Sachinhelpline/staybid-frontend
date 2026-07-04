@@ -783,15 +783,28 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   overflow: hidden; background: #0b0805; cursor: pointer;
 }
 @media (min-width: 700px) {
+  /* ⚠️ THE laptop-black-screen root cause (found via live headless inspect):
+     app/desktop.css pins `html.is-reel-page { --reel-vh: auto !important }`
+     at ≥1024px for the /discover + /reels centered-card model. StayCircle's
+     reel feed instead reads `height: var(--reel-vh, 100dvh)` on .sbc-rapp /
+     .sbc-rfull / .sbc-rfull-stage — so on desktop the var resolves to `auto`
+     (the fallback 100dvh never fires because the var IS defined), every reel
+     card collapses to height 0, and the whole feed shows its black bg.
+     Fix: on any non-phone width, size the reel feed with a LITERAL 100dvh
+     (immune to the poisoned var). --reel-vh (visualViewport) is only needed
+     on narrow phones with a URL bar; 100dvh is correct on tablet/desktop. */
+  .sbc-rapp {
+    position: fixed !important; inset: 0 !important;
+    height: 100dvh !important; z-index: 45 !important;
+    overflow-y: auto !important;
+  }
+  .sbc-rfull {
+    position: relative !important;
+    height: 100dvh !important;
+  }
   .sbc-rfull-stage {
-    /* explicit px sizing off --reel-vh so the portrait stage can NEVER
-       collapse to zero inside the centered flex card. The previous
-       `width:auto; height:100%; aspect-ratio:9/16` combo resolved to a
-       0×0 box in some desktop engines (percentage height in an
-       align-items:center flex item) → the whole card showed its black
-       background = "laptop black screen". */
-    height: var(--reel-vh, 100dvh);
-    width: min(100%, calc(var(--reel-vh, 100dvh) * 0.5625));
+    height: 100dvh;
+    width: min(100%, calc(100dvh * 0.5625));
     max-width: 100%;
     border-radius: 20px; box-shadow: 0 24px 70px -24px rgba(0,0,0,.7);
   }
