@@ -1258,7 +1258,24 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-qa-item:active { transform: scale(.95); }
 .sbc-qa-item:hover { background: rgba(201,166,107,.14); }
-.sbc-qa-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 1.25rem; background: rgba(201,166,107,.16); border: 1px solid rgba(231,207,160,.2); }
+.sbc-qa-ic {
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  font-size: 1.42rem; line-height: 1;
+  background:
+    radial-gradient(120% 120% at 30% 22%, rgba(255,246,228,.5), transparent 55%),
+    linear-gradient(150deg, var(--sbc-gold-2), var(--sbc-gold) 55%, var(--sbc-gold-deep));
+  border: 1px solid rgba(255,246,228,.45);
+  box-shadow: 0 10px 20px -8px rgba(139,105,20,.7), 0 2px 4px -1px rgba(0,0,0,.35),
+    inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 6px rgba(120,88,20,.5);
+  text-shadow: 0 1px 2px rgba(80,55,10,.5);
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+.sbc-qa-item:hover .sbc-qa-ic {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px -8px rgba(139,105,20,.8), 0 3px 6px -1px rgba(0,0,0,.4),
+    inset 0 2px 3px rgba(255,255,255,.6), inset 0 -4px 6px rgba(120,88,20,.5);
+}
+.sbc-qa-item:active .sbc-qa-ic { transform: translateY(0) scale(.94); }
 
 /* journey */
 .sbc-journey { display: flex; flex-direction: column; }
@@ -1783,11 +1800,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-home-hero .sbc-qa-sec { margin-top: 22px; }
 @media (min-width: 900px) {
   .sbc-home-hero {
-    display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; align-items: stretch;
+    display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; align-items: start;
   }
   .sbc-home-hero .sbc-home-portfolio { margin-top: 0; }
-  .sbc-home-hero .sbc-qa-sec { margin-top: 0; display: flex; flex-direction: column; }
-  .sbc-home-hero .sbc-qa-sec .sbc-qa { flex: 1; }
+  .sbc-home-hero .sbc-qa-sec { margin-top: 0; }
+  /* 2×2 right-sized cards — not stretched tall to match the portfolio column */
+  .sbc-home-hero .sbc-qa { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }
 
 /* SS1(b): a touch more content width on big screens so blocks read intentional
@@ -1824,9 +1842,20 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   box-shadow: 0 8px 20px -10px rgba(139,105,20,.8);
 }
 .sbc-home-bundle-go {
-  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 1.1rem; font-weight: 800; color: var(--sbc-gold-2);
-  background: rgba(20,14,6,.4); border: 1px solid rgba(231,207,160,.28);
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 1.15rem; font-weight: 800; color: var(--sbc-walnut);
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold-deep));
+  border: 1px solid rgba(255,246,228,.4);
+  box-shadow: 0 8px 18px -8px rgba(139,105,20,.75), inset 0 1px 2px rgba(255,255,255,.5);
+}
+/* eyebrow — compound selector beats `.sbc-home-bundle span` */
+.sbc-home-bundle .sbc-home-bundle-eyebrow {
+  display: block; font-size: .62rem; font-weight: 800; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--sbc-gold-2); margin: 0 0 4px;
+}
+/* cap width on desktop so the CTA reads as a button, not a full-bleed banner */
+@media (min-width: 620px) {
+  .sbc-home-bundle { max-width: 620px; margin-inline: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .sbc-home-bundle::after { animation: none; } }
 
