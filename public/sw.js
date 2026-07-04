@@ -358,7 +358,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // v294 — reel Lock = lock-only (no auto-jump) + tap-to-release; every room is
 // a select+lock stepper that expands into a shared complete tour (gallery +
 // all amenities + full details); /circle/[id] room cards get the same picker.
-const HTML_CACHE = 'staybid-html-v89';
+const HTML_CACHE = 'staybid-html-v90';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
