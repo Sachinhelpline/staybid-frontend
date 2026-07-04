@@ -332,7 +332,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // v289 — StayCircle Discover rebuilt as Instagram-style reel feed + Airbnb
 // filter pill bar + full property-tour page (/circle/[id]) + admin media
 // upload. Bump so warm SWR clients load the new reel-feed markup.
-const HTML_CACHE = 'staybid-html-v73';
+const HTML_CACHE = 'staybid-html-v74';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

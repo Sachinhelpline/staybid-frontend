@@ -669,3 +669,228 @@
 @media (prefers-reduced-motion: reduce) {
   .sbc-fbar-pop, .sbc-reel-livepill .dot { animation: none !important; }
 }
+
+/* ============================================================================
+   v290 — Immersive one-reel-per-screen feed + StayCircle bottom dock.
+   Turns /circle into a full-screen swipe feed (like StayBid home): topbar +
+   footer hide, each property is a full-viewport scroll-snap reel, a circle
+   bottom dock owns navigation (Reels / Rooms / Invest / Portfolio / StayBid).
+   ============================================================================ */
+
+/* While the immersive feed is mounted (is-reel-page set by useReelFullscreen),
+   hide the circle chrome so the reels bleed edge-to-edge. */
+body.is-reel-page .sbc-topbar,
+body.is-reel-page .sbc-footer { display: none !important; }
+
+/* Reserve dock height on normal (non-reel) circle pages; reel feed opts out. */
+.sbc { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+body.is-reel-page .sbc { padding-bottom: 0; }
+
+/* ---------- immersive reel app shell ---------- */
+.sbc-rapp {
+  position: fixed; inset: 0; z-index: 45;
+  height: var(--reel-vh, 100dvh);
+  background: #000;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.sbc-rapp::-webkit-scrollbar { display: none; }
+
+/* per-reel full-viewport card */
+.sbc-rfull {
+  position: relative; width: 100%;
+  height: var(--reel-vh, 100dvh);
+  scroll-snap-align: start; scroll-snap-stop: always;
+  overflow: hidden; background: #0b0805; cursor: pointer;
+}
+.sbc-rfull-media { position: absolute; inset: 0; }
+.sbc-rfull-media video, .sbc-rfull-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbc-rfull-shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8,5,2,.58) 0%, rgba(8,5,2,0) 24%, rgba(8,5,2,0) 44%, rgba(8,5,2,.78) 100%);
+}
+
+/* top: property chip (avatar + title + city) + Lock pill (mirrors "Follow") */
+.sbc-rfull-top {
+  position: absolute; left: 14px; right: 14px; z-index: 7;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  display: flex; align-items: center; gap: 10px;
+}
+.sbc-rfull-chip {
+  display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1;
+  padding: 5px 10px 5px 5px; border-radius: 999px;
+  background: rgba(20,14,6,.44); backdrop-filter: blur(10px);
+  border: 1px solid rgba(231,207,160,.2);
+}
+.sbc-rfull-ava {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 999px; object-fit: cover;
+  border: 2px solid rgba(231,207,160,.55); background: #241B10;
+  display: grid; place-items: center; color: #F3E3BF; font-weight: 800; font-size: .8rem;
+}
+.sbc-rfull-hand { min-width: 0; line-height: 1.15; }
+.sbc-rfull-hand b { display: block; color: #FBF3E2; font-size: .82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
+.sbc-rfull-hand span { display: block; color: rgba(251,243,226,.72); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbc-rfull-lockpill {
+  flex: 0 0 auto; height: 32px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  font-size: .78rem; font-weight: 800; border: 1px solid rgba(231,207,160,.5); white-space: nowrap;
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold)); color: var(--sbc-walnut);
+}
+.sbc-rfull-lockpill.locked { background: rgba(127,146,105,.65); border-color: rgba(157,173,143,.6); color: #EDF5E4; }
+.sbc-rfull-lockpill:disabled { opacity: .55; cursor: not-allowed; }
+
+/* right action rail */
+.sbc-rfull-rail {
+  position: absolute; right: 10px; z-index: 6;
+  bottom: calc(158px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 15px; align-items: center;
+}
+.sbc-rail-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; background: none; border: none; }
+.sbc-rail-ic {
+  width: 46px; height: 46px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 1.28rem; color: #FBF3E2;
+  background: rgba(20,14,6,.44); backdrop-filter: blur(10px);
+  border: 1px solid rgba(231,207,160,.18); transition: transform .14s ease;
+}
+.sbc-rail-btn:active .sbc-rail-ic { transform: scale(.9); }
+.sbc-rail-btn.on .sbc-rail-ic { color: var(--sbc-rose); border-color: rgba(212,149,131,.55); }
+.sbc-rail-cap { font-size: .6rem; font-weight: 700; color: rgba(251,243,226,.85); }
+
+/* bottom info */
+.sbc-rfull-info {
+  position: absolute; left: 14px; right: 72px; z-index: 5;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  color: #FBF3E2;
+}
+.sbc-rfull-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.sbc-rfull-badge {
+  font-size: .66rem; font-weight: 800; padding: 4px 9px; border-radius: 999px; backdrop-filter: blur(8px);
+  background: rgba(20,14,6,.5); border: 1px solid rgba(231,207,160,.28); color: #F3E3BF;
+}
+.sbc-rfull-badge.roi { background: linear-gradient(135deg, rgba(127,146,105,.6), rgba(127,146,105,.4)); color: #E9F3DE; border-color: rgba(157,173,143,.5); }
+.sbc-rfull-title { font-family: var(--font-display, serif); font-size: 1.68rem; line-height: 1.08; text-shadow: 0 2px 12px rgba(0,0,0,.55); }
+.sbc-rfull-sub { font-size: .82rem; color: rgba(251,243,226,.82); margin-top: 3px; }
+.sbc-rfull-rate { margin-top: 10px; display: flex; align-items: baseline; gap: 6px; }
+.sbc-rfull-rate b { font-size: 1.5rem; font-variant-numeric: tabular-nums; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.sbc-rfull-rate span { font-size: .72rem; color: rgba(251,243,226,.75); }
+
+/* bottom CTAs — sit above the dock */
+.sbc-rfull-ctas {
+  position: absolute; left: 14px; right: 14px; z-index: 6;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 10px;
+}
+.sbc-rfull-btn-tour {
+  flex: 1.5; height: 46px; border-radius: 15px; border: none; cursor: pointer; font-size: .92rem; font-weight: 800;
+  color: var(--sbc-walnut); display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold), var(--sbc-gold-deep));
+  box-shadow: 0 10px 26px -10px rgba(139,105,20,.7); transition: transform .16s ease;
+}
+.sbc-rfull-btn-tour:active { transform: scale(.97); }
+.sbc-rfull-btn-invest {
+  flex: 1; height: 46px; border-radius: 15px; cursor: pointer; font-size: .9rem; font-weight: 800;
+  color: #FBF3E2; background: rgba(20,14,6,.5); backdrop-filter: blur(10px);
+  border: 1px solid rgba(231,207,160,.34); display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  transition: transform .16s ease;
+}
+.sbc-rfull-btn-invest:active { transform: scale(.97); }
+
+/* first-reel swipe hint */
+.sbc-rfull-hint {
+  position: absolute; left: 50%; transform: translateX(-50%); z-index: 6;
+  bottom: calc(128px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
+  color: rgba(251,243,226,.8); font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  animation: sbcHintBounce 1.8s ease-in-out infinite;
+}
+@keyframes sbcHintBounce { 0%,100% { transform: translateX(-50%) translateY(0); opacity:.85; } 50% { transform: translateX(-50%) translateY(6px); opacity:.4; } }
+
+/* floating filter chip */
+.sbc-rfilter-chip {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 48;
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 8px 16px; border-radius: 999px; font-size: .8rem; font-weight: 700;
+  color: #FBF3E2; background: rgba(20,14,6,.55); backdrop-filter: blur(14px);
+  border: 1px solid rgba(231,207,160,.28); box-shadow: 0 8px 22px -10px rgba(0,0,0,.55);
+}
+
+/* empty / loading immersive states */
+.sbc-rfull-empty {
+  height: var(--reel-vh, 100dvh); display: grid; place-items: center; text-align: center; color: #FBF3E2;
+  scroll-snap-align: start; padding: 24px;
+  background: linear-gradient(160deg, #2A2013, var(--sbc-walnut));
+}
+.sbc-rfull-skel {
+  height: var(--reel-vh, 100dvh); scroll-snap-align: start;
+  background: linear-gradient(120deg,#241B10,#3A2C18,#241B10); background-size: 200% 100%;
+  animation: sbcShimmerBg 1.4s linear infinite;
+}
+@keyframes sbcShimmerBg { to { background-position: -200% 0; } }
+
+/* ---------- StayCircle bottom dock ---------- */
+.sbc-dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+  display: flex; align-items: flex-end; justify-content: space-around; gap: 2px;
+  padding: 6px 6px calc(env(safe-area-inset-bottom, 0px) + 6px);
+  background: rgba(26,19,10,.94); backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border-top: 1px solid rgba(231,207,160,.14); box-shadow: 0 -6px 22px rgba(0,0,0,.4);
+}
+.sbc-dock-item {
+  position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 2px; color: rgba(251,243,226,.6); text-decoration: none; cursor: pointer;
+  background: none; border: none; border-radius: 12px; transition: color .18s ease, transform .14s ease;
+}
+.sbc-dock-item:active { transform: scale(.94); }
+.sbc-dock-item.on { color: var(--sbc-gold-2); }
+.sbc-dock-glyph { font-size: 1.28rem; line-height: 1; font-weight: 600; }
+.sbc-dock-label { font-size: .54rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.sbc-dock-item.center .sbc-dock-glyph {
+  width: 46px; height: 46px; margin-top: -16px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 1.42rem; color: var(--sbc-walnut);
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold), var(--sbc-gold-deep));
+  box-shadow: 0 8px 20px -6px rgba(139,105,20,.7), inset 0 1px 0 rgba(255,255,255,.4);
+}
+.sbc-dock-badge {
+  position: absolute; top: 0; left: 50%; transform: translateX(6px); min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--sbc-rose); color: #241B10; font-size: .58rem; font-weight: 900;
+  display: grid; place-items: center;
+}
+
+/* ---------- bottom sheets (filter + rooms) ---------- */
+.sbc-sheet-bd { position: fixed; inset: 0; z-index: 70; background: rgba(10,7,3,.55); backdrop-filter: blur(3px); }
+.sbc-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 71;
+  background: var(--sbc-cream); border-radius: 22px 22px 0 0;
+  padding: 10px 18px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  max-height: 80vh; overflow-y: auto; box-shadow: 0 -18px 50px -20px rgba(0,0,0,.5);
+  animation: sbcSheetUp .28s cubic-bezier(.32,1.2,.36,1);
+}
+@keyframes sbcSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sbc-sheet-grab { width: 42px; height: 5px; border-radius: 999px; background: rgba(74,56,32,.25); margin: 0 auto 12px; }
+.sbc-sheet-h { font-family: var(--font-display, serif); font-size: 1.3rem; color: var(--sbc-coffee); }
+.sbc-sheet-sub { font-size: .8rem; color: rgba(74,56,32,.62); margin-top: 2px; }
+.sbc-sheet-grp { margin-top: 18px; }
+.sbc-sheet-grp-t { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; color: rgba(74,56,32,.55); margin-bottom: 8px; }
+.sbc-sheet-btn {
+  width: 100%; height: 50px; border-radius: 16px; border: none; cursor: pointer; margin-top: 18px;
+  font-size: 1rem; font-weight: 800; color: var(--sbc-walnut);
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold), var(--sbc-gold-deep));
+  box-shadow: 0 10px 26px -10px rgba(139,105,20,.6);
+}
+.sbc-roomrow {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: 14px; background: rgba(201,166,107,.08);
+  border: 1px solid rgba(139,105,20,.14); margin-bottom: 8px;
+}
+.sbc-roomrow b { font-weight: 700; color: var(--sbc-coffee); font-size: .92rem; }
+.sbc-roomrow small { display: block; font-size: .72rem; color: rgba(74,56,32,.62); margin-top: 1px; }
+.sbc-roomrow .rate { text-align: right; font-variant-numeric: tabular-nums; }
+.sbc-roomrow .rate b { font-size: 1rem; color: var(--sbc-ink); }
+.sbc-roomrow .rate span { font-size: .64rem; color: rgba(74,56,32,.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sbc-rfull-hint, .sbc-sheet { animation: none !important; }
+}
