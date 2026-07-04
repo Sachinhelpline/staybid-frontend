@@ -1452,6 +1452,11 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 
 /* ---- one section per locked property ---- */
 .sbc-rsel-prop {
+  /* flex-shrink:0 is load-bearing: .sbc-rsel-scroll is a flex column, and
+     without this the flex algorithm compresses each property card (which is
+     overflow:hidden) to fit them all in the viewport → the room rows clip and
+     the list won't scroll ("stuck + overlapping"). Never let these shrink. */
+  flex: 0 0 auto;
   border-radius: 20px; overflow: hidden;
   background: #FFFDF8; border: 1px solid rgba(139,105,20,.16);
   box-shadow: 0 14px 38px -24px rgba(36,27,16,.4);
@@ -1591,7 +1596,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-tour-selbox b small { font-size: .68rem; font-weight: 500; color: rgba(247,239,223,.6); }
 
 /* ---- Step-2 sheet room card: expandable complete tour ---- */
-.sbc-rsel-room { flex-direction: column; align-items: stretch; gap: 0; }
+/* flex-shrink:0 so a room row keeps its natural height (never compressed by a
+   flex-column parent) — same clip guard as .sbc-rsel-prop. */
+.sbc-rsel-room { flex-direction: column; align-items: stretch; gap: 0; flex: 0 0 auto; }
 .sbc-rsel-room.expanded { background: rgba(201,166,107,.14); border-color: rgba(139,105,20,.32); }
 .sbc-rsel-rmain { display: flex; align-items: center; gap: 11px; width: 100%; }
 .sbc-rsel-rthumb { border: none; padding: 0; cursor: pointer; }
