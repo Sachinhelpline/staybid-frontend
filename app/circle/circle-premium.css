@@ -763,6 +763,8 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* v294.7 — explicit vertical pan so the swipe-to-next never feels "stuck" */
+  touch-action: pan-y;
   scrollbar-width: none;
 }
 .sbc-rapp::-webkit-scrollbar { display: none; }
@@ -825,7 +827,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 /* top: property chip (avatar + title + city) + Add-to-Bundle pill */
 .sbc-rfull-top {
   position: absolute; left: 14px; right: 14px; z-index: 7;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  /* v294.7 — dropped from 14px to 56px so the identity chip sits BELOW the
+     top-LEFT filter + top-RIGHT list utility row (no more SS2 overlap). */
+  top: calc(env(safe-area-inset-top, 0px) + 56px);
   display: flex; align-items: center; gap: 10px;
 }
 .sbc-rfull-chip {
@@ -842,15 +846,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rfull-hand { min-width: 0; line-height: 1.15; }
 .sbc-rfull-hand b { display: block; color: #FBF3E2; font-size: .82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
 .sbc-rfull-hand span { display: block; color: rgba(251,243,226,.72); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* small "Locked" state tag (non-interactive — the single Lock CTA below
-   is the only lock action; unlock/remove happens on the bundle page) */
-.sbc-rfull-locktag {
-  flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 999px;
-  display: inline-flex; align-items: center; white-space: nowrap;
-  font-size: .74rem; font-weight: 800; letter-spacing: .01em;
-  background: rgba(127,146,105,.6); border: 1px solid rgba(157,173,143,.6);
-  color: #EDF5E4; backdrop-filter: blur(8px);
-}
+/* (v294.7 — .sbc-rfull-locktag removed; lock state reads from the bottom CTA) */
 
 /* right action rail — sits just above the bottom info+CTA block */
 .sbc-rfull-rail {
@@ -924,20 +920,27 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 @keyframes sbcHintBounce { 0%,100% { transform: translateX(-50%) translateY(0); opacity:.85; } 50% { transform: translateX(-50%) translateY(6px); opacity:.4; } }
 
-/* floating filter chip */
+/* floating filter chip — v294.7: TOP-LEFT utility (was top-CENTER at 62px,
+   which sat on the same y-band as the property identity chip → SS2 overlap).
+   Now the top zone is two clean lanes: utility row (filter left · list right)
+   at 12px, and the property identity chip BELOW it (.sbc-rfull-top → 56px).
+   Compact + max-width so a long "All properties · India" label never crosses
+   the centre toward the list chip. */
 .sbc-rfilter-chip {
-  position: fixed; left: 50%; transform: translateX(-50%); z-index: 48;
-  top: calc(env(safe-area-inset-top, 0px) + 62px);
-  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  padding: 8px 16px; border-radius: 999px; font-size: .8rem; font-weight: 700;
+  position: fixed; left: 12px; z-index: 48;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  max-width: calc(100vw - 150px);
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 7px 13px; border-radius: 999px; font-size: .76rem; font-weight: 700;
   color: #FBF3E2; background: rgba(20,14,6,.55); backdrop-filter: blur(14px);
   border: 1px solid rgba(231,207,160,.28); box-shadow: 0 8px 22px -10px rgba(0,0,0,.55);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* list-a-property entry — top-right, gold outline */
+/* list-a-property entry — top-right, gold outline (shares the utility row) */
 .sbc-rlist-chip {
   position: fixed; z-index: 48;
-  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   right: 12px;
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
   padding: 8px 13px; border-radius: 999px; font-size: .78rem; font-weight: 800;
@@ -1445,7 +1448,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 
 .sbc-rsel-scroll {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  -webkit-overflow-scrolling: touch; touch-action: pan-y;
   padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 14px;
 }
 
@@ -1753,8 +1756,18 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   /* floating filter / list chips clear the fixed header */
   .sbc-rfilter-chip, .sbc-rlist-chip { top: 74px !important; }
 
-  /* ── 5. ROOMS SHEET — modal over the header, bar no longer dock-blocked ── */
-  .sbc-rsel-app { z-index: 82 !important; }   /* v294.5 — stay above topbar (60) */
+  /* ── 5. ROOMS SHEET — v294.7: sit BELOW the fixed topbar so the StayCircle
+     navbar stays VISIBLE + CLICKABLE while choosing rooms (Sachin SS3: "room
+     button main navbar remove ho gaya hai … future proof"). The v294.5 z-82
+     covered the nav → felt "stuck". Now z-52 (above the reel 45, below the
+     topbar 60) + top-offset 60 so the sheet header clears the fixed header.
+     On mobile the base (z-82, inset 0) is unchanged — there's no topbar there,
+     the CircleDock is intentionally covered by the focused sheet. */
+  .sbc-rsel-app {
+    z-index: 52 !important;
+    top: 60px !important;
+    height: calc(100dvh - 60px) !important;
+  }
   .sbc-rsel-bar { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
