@@ -302,8 +302,9 @@ export default function CircleHomePage() {
         <Link href="/circle/build" className="sbc-home-bundle">
           <span className="sbc-home-bundle-ic">💎</span>
           <div className="sbc-home-bundle-body">
+            <span className="sbc-home-bundle-eyebrow">Final step · Review &amp; pay</span>
             <b>Build Your Investment Bundle</b>
-            <span>Combine properties across locations, pick a plan &amp; see live projected returns.</span>
+            <span>Combine your locked properties, pick a payment plan &amp; go live.</span>
           </div>
           <span className="sbc-home-bundle-go" aria-hidden>→</span>
         </Link>

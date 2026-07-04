@@ -358,7 +358,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // v294 — reel Lock = lock-only (no auto-jump) + tap-to-release; every room is
 // a select+lock stepper that expands into a shared complete tour (gallery +
 // all amenities + full details); /circle/[id] room cards get the same picker.
-const HTML_CACHE = 'staybid-html-v93';
+// v294.8 — /circle home: 3D gold quick-action tiles, de-stretched desktop
+// hero (2×2 right-sized cards), capped + clarified "Build Investment Bundle" CTA.
+const HTML_CACHE = 'staybid-html-v94';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
