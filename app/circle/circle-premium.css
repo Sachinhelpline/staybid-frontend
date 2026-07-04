@@ -1612,66 +1612,53 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rsel-rtour { margin-top: 10px; padding-top: 12px; border-top: 1px dashed rgba(139,105,20,.2); }
 
 /* ══════════════════════════════════════════════════════════════════════
-   v294.2 — God-level responsive. The whole /circle vertical is mobile-first;
-   these are ADDITIVE breakpoint overrides (appended last → later source order
-   wins at equal specificity, base mobile rules untouched). Fixes the 3
-   screenshots Sachin flagged — nothing should render one aspect-ratio on every
-   device, and nothing should sit in a narrow mobile column on a laptop:
-     · SS1 home  — 640px centred column on laptop → device-scaled canvas +
-                   horizontal journey + wider handpicked grid, per-device card
-                   aspect ratios (16/11 → 4/3 → 16/11 → 16/10).
-     · SS2 sheet — full-width stretched room rows → a centred reading column
-                   (tablet) then a 2-up property grid (wide desktop).
-     · SS3 tour  — one giant zoomed room photo → capped card + a device-scaled
-                   stage aspect so the gallery is framed, never full-bleed.
+   v294.3 — Responsive, done right (replaces the v294.2 grid experiment which
+   overlapped/stuck the rooms sheet). Two principles:
+     1. FLUID, not fixed steps — the home grids auto-fit to ANY screen width via
+        repeat(auto-fill,…), so 2 cols on a small laptop → 5 on an ultrawide,
+        no hardcoded breakpoint jumps.
+     2. BULLETPROOF rooms sheet — a single centred reading column at every
+        desktop size. It keeps the exact flex-column engine the mobile layout
+        (+ the v294.1 clip-fix) is proven on — NO grid, NO :has — so a property
+        card / room row / expanded room-tour gallery can never overlap or stick.
+   Additive (appended last → wins at equal specificity); base mobile untouched.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ---- SS1: home + dashboard canvas scales with the device ---- */
-@media (min-width: 768px) {
-  .sbc-home > *, .sbc-dash > * { max-width: 760px; }
-  .sbc-pcard-media { aspect-ratio: 4 / 3; }   /* roomier frame on tablet */
+/* ---- SS1: home + dashboard — fluid canvas + auto-fitting card grid ---- */
+@media (min-width: 560px) {
+  /* handpicked cards: as many columns as comfortably fit the real width —
+     this is what makes it adapt to EVERY screen size, not fixed 2/3/4 steps */
+  .sbc-home-grid { grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); }
+  .sbc-pcard-media { aspect-ratio: 4 / 3; }
 }
-@media (min-width: 1024px) {
-  .sbc-home, .sbc-dash { padding-left: 24px; padding-right: 24px; }
-  .sbc-home > *, .sbc-dash > * { max-width: 1080px; }
+@media (min-width: 768px) {
+  .sbc-home, .sbc-dash { padding-left: clamp(16px, 3vw, 44px); padding-right: clamp(16px, 3vw, 44px); }
+  /* fluid content width: fills wide screens (small gutters) but never runs
+     edge-to-edge on an ultrawide */
+  .sbc-home > *, .sbc-dash > * { max-width: min(96vw, 1280px); }
+}
+@media (min-width: 980px) {
   /* the 3 journey steps read left→right on a wide screen (were stacked) */
   .sbc-journey { flex-direction: row; align-items: stretch; gap: 14px; }
   .sbc-jstep { flex: 1 1 0; min-width: 0; }
   .sbc-jline { display: none; }
-  .sbc-home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .sbc-pcard-media { aspect-ratio: 16 / 11; }
 }
 @media (min-width: 1280px) {
-  .sbc-home > *, .sbc-dash > * { max-width: 1160px; }
-  .sbc-home-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .sbc-pcard-media { aspect-ratio: 16 / 10; }
+  .sbc-pcard-media { aspect-ratio: 3 / 2; }   /* landscape frame on big screens */
 }
 
-/* ---- SS2 + SS3: Step-2 "choose your rooms" sheet stops stretching ----
-   Tablet: a centred reading column so property cards, room rows AND the
-   expanded room-tour gallery are framed instead of ballooning full-width. */
-@media (min-width: 768px) {
+/* ---- SS2 + SS3: Step-2 "choose your rooms" sheet — one centred column ----
+   Same flex-column as mobile, just centred + width-capped so rows never
+   stretch full-width and the expanded room-tour gallery is a framed photo,
+   never a full-screen zoom. No grid / no :has → zero overlap, zero stuck. */
+@media (min-width: 700px) {
   .sbc-rsel-scroll {
-    align-items: center;
-    padding: 18px clamp(16px, 4vw, 40px) 26px;
+    align-items: center;                      /* centre the column, keep flex-column */
+    padding: 18px clamp(16px, 4vw, 44px) 26px;
   }
-  .sbc-rsel-prop { width: 100%; max-width: 720px; }
-  .sbc-rsel-top, .sbc-rsel-bar { width: 100%; max-width: 760px; margin-inline: auto; }
-  /* SS3: the sheet's room-tour gallery reads as a framed 3/2 photo, not the
-     full-width 16/10 that balloons on a wide card */
-  .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 3 / 2; }
-}
-/* Wide desktop: two property cards side-by-side — a genuine device layout,
-   not a re-centred phone column. A property mid-tour (a room expanded into
-   its full gallery) spans both columns so the tour never sits cramped. */
-@media (min-width: 1200px) {
-  .sbc-rsel-scroll {
-    display: grid; align-items: start;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px; width: 100%; max-width: 1120px; margin-inline: auto;
-    padding: 22px 28px 30px;
-  }
-  .sbc-rsel-prop { max-width: none; }
-  .sbc-rsel-prop:has(.sbc-rsel-room.expanded) { grid-column: 1 / -1; }
-  .sbc-rsel-top, .sbc-rsel-bar { max-width: 1176px; }
+  .sbc-rsel-prop { width: 100%; max-width: 740px; }
+  .sbc-rsel-top, .sbc-rsel-bar { width: 100%; max-width: 780px; margin-inline: auto; }
+  /* SS3: the room-tour gallery inside the sheet is a framed photo, height-
+     capped so it can never fill the screen regardless of column width */
+  .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 3 / 2; max-height: 440px; }
 }
