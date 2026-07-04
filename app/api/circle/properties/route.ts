@@ -51,6 +51,17 @@ export async function GET(req: Request) {
         totalUnits: Number(rt.total_units) || 0,
         lockedUnits: Number(rt.locked_units) || 0,
         availableUnits: Math.max(0, (Number(rt.total_units) || 0) - (Number(rt.locked_units) || 0)),
+        // v292 — per-room detail so the full-screen room-tour reel can render
+        // without an extra detail fetch per property. Additive: legacy consumers
+        // (bottom-sheet room rows) simply ignore these fields.
+        description: rt.description || "",
+        images: Array.isArray(rt.images) ? rt.images.filter(Boolean) : [],
+        amenities: Array.isArray(rt.amenities) ? rt.amenities.filter(Boolean) : [],
+        sizeSqft: Number(rt.size_sqft) || 0,
+        capacity: Number(rt.capacity) || 0,
+        bedType: rt.bed_type || "",
+        viewLabel: rt.view_label || "",
+        roiPct: Number(rt.roi_pct) || 0,
       });
     });
 
