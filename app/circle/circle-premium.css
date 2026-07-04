@@ -1023,13 +1023,16 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 
 /* ============================================================================
    v292 — Full-screen ROOM-TOUR reel. One immersive reel per room (reuses the
-   .sbc-rfull* card + overlay classes) inside a dedicated full-viewport shell
-   that floats above the dock. Each reel is a ken-burns tour of the room's own
-   photos with a property-film toggle. Desktop-safe: same literal-100dvh guard
-   as the property feed (app/desktop.css poisons --reel-vh:auto at ≥1024px).
+   .sbc-rfull* card + overlay classes) inside a dedicated full-viewport shell.
+   v293.2 — z-index 50 (BELOW the dock's z-index 55) so the bottom nav stays
+   visible while room tours are open (was z-index 60, which swallowed the dock:
+   "rooms par click karne par nav bar hide ho jata hai"). The room CTAs already
+   clear the dock via the shared .sbc-rfull-bottom { bottom: 70px + safe-area },
+   exactly like the property feed (.sbc-rapp z-index 45). Desktop-safe: same
+   literal-100dvh guard (app/desktop.css poisons --reel-vh:auto at ≥1024px).
    ============================================================================ */
 .sbc-rrapp {
-  position: fixed; inset: 0; z-index: 60;
+  position: fixed; inset: 0; z-index: 50;
   height: var(--reel-vh, 100dvh);
   background: #0b0805;
 }
