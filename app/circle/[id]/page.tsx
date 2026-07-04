@@ -13,7 +13,12 @@ import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
 import { fmtINR } from "@/lib/circle/engine";
 
-type RoomType = { id: string; name: string; monthlyRate: number; totalUnits: number; lockedUnits: number; availableUnits: number };
+type RoomType = {
+  id: string; name: string; monthlyRate: number; totalUnits: number; lockedUnits: number; availableUnits: number;
+  // v291 — real per-room detail for the room tour + comparison
+  description?: string; images?: string[]; amenities?: string[];
+  sizeSqft?: number; capacity?: number; bedType?: string; viewLabel?: string; roiPct?: number;
+};
 type CircleProperty = {
   id: string; title: string; city: string; state?: string; locationLabel?: string;
   tagline?: string; description?: string; images: string[]; videoUrl?: string | null;
@@ -44,6 +49,7 @@ export default function CircleTourPage() {
   const [showVideo, setShowVideo] = useState(false);
   const [locked, setLocked] = useState(false);
   const [toast, setToast] = useState("");
+  const [openRoom, setOpenRoom] = useState<string | null>(null); // accordion (single open)
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -188,19 +194,87 @@ export default function CircleTourPage() {
           <h2 className="sbc-tour-h2">Room types &amp; availability</h2>
           {p.roomTypes.length === 0 ? (
             <p className="sbc-tour-desc">Room types are being finalised — lock this property to reserve your spot.</p>
-          ) : p.roomTypes.map((rt) => (
-            <div key={rt.id} className="sbc-tour-room">
-              <div>
-                <div className="sbc-tour-room-name">{rt.name}</div>
-                <div className="sbc-tour-room-avail" style={{ color: rt.availableUnits > 0 ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>
-                  {rt.availableUnits > 0 ? `${rt.availableUnits} of ${rt.totalUnits} unit${rt.totalUnits > 1 ? "s" : ""} available` : "Fully subscribed"}
-                </div>
-              </div>
-              <div className="sbc-tour-room-rate">
-                <b>{fmtINR(rt.monthlyRate)}</b><span> /mo</span>
-              </div>
-            </div>
-          ))}
+          ) : (
+            <>
+              <p className="sbc-tour-desc" style={{ marginTop: 4 }}>Tap any room for its complete tour — photos, size, amenities and ROI.</p>
+              {p.roomTypes.map((rt) => (
+                <RoomCard
+                  key={rt.id}
+                  rt={rt}
+                  fallbackRoi={`${p.roiMin}–${p.roiMax}`}
+                  open={(openRoom ?? p.roomTypes[0]?.id) === rt.id}
+                  onToggle={() => setOpenRoom((cur) => (cur === rt.id ? "" : rt.id))}
+                />
+              ))}
+
+              {/* auto-comparison across every room type — all real data */}
+              {p.roomTypes.length > 1 && (
+                <>
+                  <h2 className="sbc-tour-h2">Compare all rooms</h2>
+                  <div className="sbc-cmp-wrap">
+                    <table className="sbc-cmp">
+                      <thead>
+                        <tr>
+                          <th>Room</th>
+                          {p.roomTypes.map((rt) => <th key={rt.id}>{rt.name}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const cheapestRate = Math.min(...p.roomTypes.map((r) => r.monthlyRate || Infinity));
+                          const topRoi = Math.max(...p.roomTypes.map((r) => Number(r.roiPct) || 0));
+                          return (
+                            <>
+                              <tr>
+                                <td>₹ / month</td>
+                                {p.roomTypes.map((rt) => (
+                                  <td key={rt.id} className={rt.monthlyRate === cheapestRate ? "best" : ""}>
+                                    {fmtINR(rt.monthlyRate)}{rt.monthlyRate === cheapestRate && <span className="sbc-cmp-tag">Lowest</span>}
+                                  </td>
+                                ))}
+                              </tr>
+                              <tr>
+                                <td>Expected ROI</td>
+                                {p.roomTypes.map((rt) => (
+                                  <td key={rt.id} className={Number(rt.roiPct) > 0 && Number(rt.roiPct) === topRoi ? "best" : ""}>
+                                    {rt.roiPct ? `${rt.roiPct}%` : "—"}{Number(rt.roiPct) > 0 && Number(rt.roiPct) === topRoi && <span className="sbc-cmp-tag">Best</span>}
+                                  </td>
+                                ))}
+                              </tr>
+                              <tr>
+                                <td>Room size</td>
+                                {p.roomTypes.map((rt) => <td key={rt.id}>{rt.sizeSqft ? `${rt.sizeSqft} sq ft` : "—"}</td>)}
+                              </tr>
+                              <tr>
+                                <td>Sleeps</td>
+                                {p.roomTypes.map((rt) => <td key={rt.id}>{rt.capacity ? `${rt.capacity} guest${rt.capacity > 1 ? "s" : ""}` : "—"}</td>)}
+                              </tr>
+                              <tr>
+                                <td>Bed</td>
+                                {p.roomTypes.map((rt) => <td key={rt.id}>{rt.bedType || "—"}</td>)}
+                              </tr>
+                              <tr>
+                                <td>View</td>
+                                {p.roomTypes.map((rt) => <td key={rt.id}>{rt.viewLabel || "—"}</td>)}
+                              </tr>
+                              <tr>
+                                <td>Available</td>
+                                {p.roomTypes.map((rt) => (
+                                  <td key={rt.id} style={{ color: rt.availableUnits > 0 ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>
+                                    {rt.availableUnits > 0 ? `${rt.availableUnits} / ${rt.totalUnits}` : "Full"}
+                                  </td>
+                                ))}
+                              </tr>
+                            </>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
 
           <h2 className="sbc-tour-h2">How StayCircle works</h2>
           <div className="sbc-tour-how">
@@ -249,6 +323,81 @@ export default function CircleTourPage() {
           background: "rgba(36,27,16,.94)", color: "#F3E3BF", padding: "10px 18px",
           borderRadius: 999, fontSize: ".85rem", boxShadow: "0 12px 32px -10px rgba(0,0,0,.5)",
         }}>{toast}</div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RoomCard — accordion header (name + rate + availability) that expands into a
+// full per-room tour: photo gallery, description, spec grid + amenity chips.
+function RoomCard({
+  rt, open, onToggle, fallbackRoi,
+}: {
+  rt: RoomType;
+  open: boolean;
+  onToggle: () => void;
+  fallbackRoi: string;
+}) {
+  const [gi, setGi] = useState(0);
+  const imgs = Array.isArray(rt.images) ? rt.images.filter(Boolean) : [];
+  const amen = Array.isArray(rt.amenities) ? rt.amenities.filter(Boolean) : [];
+  const avail = rt.availableUnits > 0;
+
+  return (
+    <div className={`sbc-rc ${open ? "open" : ""}`}>
+      <button className="sbc-rc-head" onClick={onToggle} aria-expanded={open}>
+        <div className="sbc-rc-head-l">
+          <div className="sbc-rc-name">{rt.name}</div>
+          <div className="sbc-rc-avail" style={{ color: avail ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>
+            {avail ? `${rt.availableUnits} of ${rt.totalUnits} unit${rt.totalUnits > 1 ? "s" : ""} available` : "Fully subscribed"}
+          </div>
+        </div>
+        <div className="sbc-rc-head-r">
+          <div className="sbc-rc-rate"><b>{fmtINR(rt.monthlyRate)}</b><span> /mo</span></div>
+          <span className="sbc-rc-chev">{open ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="sbc-rc-body">
+          {imgs.length > 0 && (
+            <div className="sbc-rc-gallery">
+              <div className="sbc-rc-stage">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imgs[Math.min(gi, imgs.length - 1)]} alt={rt.name} loading="lazy" />
+                {imgs.length > 1 && <span className="sbc-rc-count">{Math.min(gi, imgs.length - 1) + 1} / {imgs.length}</span>}
+              </div>
+              {imgs.length > 1 && (
+                <div className="sbc-rc-thumbs">
+                  {imgs.map((src, i) => (
+                    <button key={i} className={`sbc-rc-thumb ${i === gi ? "on" : ""}`} onClick={() => setGi(i)} aria-label={`Photo ${i + 1}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {rt.description && <p className="sbc-rc-desc">{rt.description}</p>}
+
+          <div className="sbc-rc-specs">
+            {rt.sizeSqft ? <div className="sbc-rc-spec"><span>Size</span><b>{rt.sizeSqft} sq ft</b></div> : null}
+            {rt.capacity ? <div className="sbc-rc-spec"><span>Sleeps</span><b>{rt.capacity} guest{rt.capacity > 1 ? "s" : ""}</b></div> : null}
+            {rt.bedType ? <div className="sbc-rc-spec"><span>Bed</span><b>{rt.bedType}</b></div> : null}
+            {rt.viewLabel ? <div className="sbc-rc-spec"><span>View</span><b>{rt.viewLabel}</b></div> : null}
+            <div className="sbc-rc-spec"><span>Expected ROI</span><b>{rt.roiPct ? `${rt.roiPct}%` : `${fallbackRoi}%`}</b></div>
+            <div className="sbc-rc-spec"><span>Availability</span><b style={{ color: avail ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>{avail ? `${rt.availableUnits} / ${rt.totalUnits}` : "Full"}</b></div>
+          </div>
+
+          {amen.length > 0 && (
+            <div className="sbc-rc-amen">
+              {amen.map((a) => <span key={a} className="sbc-rc-amen-chip">{a}</span>)}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
