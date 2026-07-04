@@ -1,20 +1,20 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// CircleDock — StayCircle's Instagram-style bottom nav (v290).
+// CircleDock — StayCircle's bottom nav, redesigned as a 3-step wizard (v293).
 //
-// Owns navigation across the /circle vertical the same way BottomDock owns
-// the StayBid reel surfaces. Mounted once in app/circle/layout.tsx so it
-// appears on every /circle page. 5 slots:
+// The 3 core buttons now read as a numbered PHASE PROGRESSION so anyone
+// instantly understands these are the steps to complete to take a portfolio
+// live:
 //
-//   🎬 Reels     → /circle          (the immersive discover feed)
-//   🛏 Rooms     → room-selector sheet (dispatches `sbc:rooms`; nav to /circle
-//                  first if elsewhere so the discover page can open the sheet)
-//   💎 Invest    → /circle/build     (center gold FAB)
-//   📊 Portfolio → /circle/me
-//   ◎ StayBid    → /                 (back to the main app)
+//   🏠 Home       → /circle              (the "Hello, Investor" home)
+//   ① Property    → /circle/discover     (Step 1 · Choose & Lock Property)
+//   ② Rooms       → room-tour sheet       (Step 2 · Choose & Lock Rooms)
+//   ③ Plan        → /circle/build         (Step 3 · Build Your Plan · gold FAB)
+//   ☰ Dashboard   → /circle/dashboard    (profile · mode-switch · account)
 //
-// The bundle-lock count (localStorage `sb_circle_locks_v1`) shows as a badge
-// on the Invest slot.
+// The middle three sit on a connecting progress rail. Step ① shows ✓ once a
+// property is locked; the lock count badges Step ③. `onRooms` fires the
+// `sbc:rooms` event on the discover feed (nav there first from elsewhere).
 // ═══════════════════════════════════════════════════════════════════════════
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -37,8 +37,6 @@ export function CircleDock() {
   const router = useRouter();
   const [lockCount, setLockCount] = useState(0);
 
-  // Keep the bundle badge in sync — refresh on mount, on lock changes broadcast
-  // by the discover page, and whenever the tab regains focus.
   useEffect(() => {
     const refresh = () => setLockCount(readLockCount());
     refresh();
@@ -54,45 +52,66 @@ export function CircleDock() {
   }, [pathname]);
 
   const onRooms = useCallback(() => {
-    // On /circle the discover feed listens for this and opens the room sheet.
-    // Elsewhere, land on /circle first (the event fires again on mount there).
-    if (pathname === "/circle") {
+    // Step 2 opens the room-tour sheet, which lives on the discover feed.
+    if (pathname.startsWith("/circle/discover")) {
       window.dispatchEvent(new Event("sbc:rooms"));
     } else {
-      router.push("/circle?rooms=1");
+      router.push("/circle/discover?rooms=1");
     }
   }, [pathname, router]);
 
-  const isReels = pathname === "/circle";
-  const isInvest = pathname.startsWith("/circle/build");
-  const isPortfolio = pathname.startsWith("/circle/me");
+  const isHome = pathname === "/circle";
+  const isProperty = pathname.startsWith("/circle/discover");
+  const isPlan = pathname.startsWith("/circle/build");
+  const isDash = pathname.startsWith("/circle/dashboard");
+  const hasLocks = lockCount > 0;
 
   return (
-    <nav className="sbc-dock" aria-label="StayCircle navigation">
-      <Link href="/circle" prefetch className={`sbc-dock-item${isReels ? " on" : ""}`} aria-current={isReels ? "page" : undefined}>
-        <span className="sbc-dock-glyph">🎬</span>
-        <span className="sbc-dock-label">Reels</span>
+    <nav className="sbc-dock v2" aria-label="StayCircle steps">
+      {/* Home */}
+      <Link href="/circle" prefetch className={`sbc-dock-end${isHome ? " on" : ""}`} aria-current={isHome ? "page" : undefined}>
+        <span className="sbc-dock-glyph">🏠</span>
+        <span className="sbc-dock-label">Home</span>
       </Link>
 
-      <button type="button" className="sbc-dock-item" onClick={onRooms} aria-label="Room selector">
-        <span className="sbc-dock-glyph">🛏</span>
-        <span className="sbc-dock-label">Rooms</span>
-      </button>
+      {/* ───── the 3-step wizard rail ───── */}
+      <div className="sbc-steps" role="group" aria-label="Portfolio steps">
+        <span className="sbc-steps-rail" aria-hidden />
 
-      <Link href="/circle/build" prefetch className={`sbc-dock-item center${isInvest ? " on" : ""}`} aria-current={isInvest ? "page" : undefined}>
-        {lockCount > 0 && <span className="sbc-dock-badge">{lockCount > 9 ? "9+" : lockCount}</span>}
-        <span className="sbc-dock-glyph">💎</span>
-        <span className="sbc-dock-label">Invest</span>
-      </Link>
+        {/* Step 1 · Property */}
+        <Link
+          href="/circle/discover"
+          prefetch
+          className={`sbc-step${isProperty ? " on" : ""}${hasLocks ? " done" : ""}`}
+          aria-current={isProperty ? "page" : undefined}
+        >
+          <span className="sbc-step-num">{hasLocks ? "✓" : "1"}</span>
+          <span className="sbc-step-label">Property</span>
+        </Link>
 
-      <Link href="/circle/me" prefetch className={`sbc-dock-item${isPortfolio ? " on" : ""}`} aria-current={isPortfolio ? "page" : undefined}>
-        <span className="sbc-dock-glyph">📊</span>
-        <span className="sbc-dock-label">Portfolio</span>
-      </Link>
+        {/* Step 2 · Rooms */}
+        <button type="button" className="sbc-step" onClick={onRooms} aria-label="Step 2 — choose and lock rooms">
+          <span className="sbc-step-num">2</span>
+          <span className="sbc-step-label">Rooms</span>
+        </button>
 
-      <Link href="/" className="sbc-dock-item">
-        <span className="sbc-dock-glyph">◎</span>
-        <span className="sbc-dock-label">StayBid</span>
+        {/* Step 3 · Plan (gold FAB) */}
+        <Link
+          href="/circle/build"
+          prefetch
+          className={`sbc-step fab${isPlan ? " on" : ""}`}
+          aria-current={isPlan ? "page" : undefined}
+        >
+          {lockCount > 0 && <span className="sbc-dock-badge">{lockCount > 9 ? "9+" : lockCount}</span>}
+          <span className="sbc-step-num">3</span>
+          <span className="sbc-step-label">Plan</span>
+        </Link>
+      </div>
+
+      {/* Dashboard */}
+      <Link href="/circle/dashboard" prefetch className={`sbc-dock-end${isDash ? " on" : ""}`} aria-current={isDash ? "page" : undefined}>
+        <span className="sbc-dock-glyph">☰</span>
+        <span className="sbc-dock-label">Dashboard</span>
       </Link>
     </nav>
   );
