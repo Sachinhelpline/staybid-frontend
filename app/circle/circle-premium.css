@@ -784,8 +784,15 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 @media (min-width: 700px) {
   .sbc-rfull-stage {
-    width: auto; height: 100%; max-height: var(--reel-vh, 100dvh);
-    aspect-ratio: 9 / 16; max-width: 100%;
+    /* explicit px sizing off --reel-vh so the portrait stage can NEVER
+       collapse to zero inside the centered flex card. The previous
+       `width:auto; height:100%; aspect-ratio:9/16` combo resolved to a
+       0×0 box in some desktop engines (percentage height in an
+       align-items:center flex item) → the whole card showed its black
+       background = "laptop black screen". */
+    height: var(--reel-vh, 100dvh);
+    width: min(100%, calc(var(--reel-vh, 100dvh) * 0.5625));
+    max-width: 100%;
     border-radius: 20px; box-shadow: 0 24px 70px -24px rgba(0,0,0,.7);
   }
 }
