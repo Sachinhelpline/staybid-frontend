@@ -1,26 +1,32 @@
 "use client";
 // ═══════════════════════════════════════════════════════════════════════════
-// CircleChrome — the cream top bar + footer for the /circle vertical (v293).
+// CircleChrome — the top bar + footer for the /circle vertical.
 //
-// These belong to the classic "content" pages (build · me · [id]). The dark
-// app-shell routes render their own headers, so the cream chrome hides on:
-//   /circle            (Hello, Investor home — its own greeting header)
-//   /circle/discover   (immersive reel feed — full-bleed)
-//   /circle/dashboard  (Airbnb-style hub — its own header)
+// v294.4 — DESKTOP SHELL. The vertical was mobile-first: on the dark app-shell
+// routes (home · reel · dashboard) the topbar returned null, so DESKTOP showed
+// only the mobile bottom dock ("navbar bottom mein show ho raha hai jabki
+// header mein hona chahiye"). Now the topbar ALWAYS renders; on the dark routes
+// it carries the `.sbc-topbar--dark` glass variant which is:
+//   • hidden on mobile   (<1024px — the CircleDock owns nav there, unchanged)
+//   • shown on desktop   (≥1024px — a proper top header, the dock is CSS-hidden)
+// Light "content" routes (build · me · [id]) keep the cream topbar exactly as
+// before, on every width. The footer still hides on the dark app-shell routes.
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const HIDE = new Set(["/circle", "/circle/discover", "/circle/dashboard"]);
+const DARK = new Set(["/circle", "/circle/discover", "/circle/dashboard"]);
 function isDark(pathname: string) {
-  return HIDE.has(pathname) || pathname.startsWith("/circle/discover");
+  return DARK.has(pathname) || pathname.startsWith("/circle/discover");
 }
 
 export function CircleTopbar() {
   const pathname = usePathname() || "/circle";
-  if (isDark(pathname)) return null;
+  const dark = isDark(pathname);
+  const active = (href: string) =>
+    href === "/circle" ? pathname === "/circle" : pathname.startsWith(href);
   return (
-    <header className="sbc-topbar">
+    <header className={`sbc-topbar${dark ? " sbc-topbar--dark" : ""}`}>
       <div className="sbc-topbar-inner">
         <Link href="/circle" className="sbc-brand">
           <span className="sbc-brand-mark">◎</span>
@@ -30,10 +36,10 @@ export function CircleTopbar() {
           </span>
         </Link>
         <nav className="sbc-topnav">
-          <Link href="/circle" className="sbc-topnav-link">Home</Link>
-          <Link href="/circle/discover" className="sbc-topnav-link">Discover</Link>
-          <Link href="/circle/build" className="sbc-topnav-link">Build Bundle</Link>
-          <Link href="/circle/me" className="sbc-topnav-link hidden sm:inline-flex">My Portfolio</Link>
+          <Link href="/circle" className={`sbc-topnav-link${active("/circle") ? " on" : ""}`}>Home</Link>
+          <Link href="/circle/discover" className={`sbc-topnav-link${active("/circle/discover") ? " on" : ""}`}>Discover</Link>
+          <Link href="/circle/build" className={`sbc-topnav-link${active("/circle/build") ? " on" : ""}`}>Build Bundle</Link>
+          <Link href="/circle/me" className={`sbc-topnav-link hidden sm:inline-flex${active("/circle/me") ? " on" : ""}`}>My Portfolio</Link>
           <Link href="/circle/dashboard" className="sbc-topnav-cta">Dashboard</Link>
         </nav>
       </div>

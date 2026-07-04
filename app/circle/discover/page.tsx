@@ -432,6 +432,13 @@ function FullReel({
 
   return (
     <div className="sbc-rfull" ref={wrapRef}>
+      {/* v294.4 — cinematic ambient backdrop (desktop ≥1024px only, via CSS):
+          a blurred, dimmed copy of the poster FILLS the letterbox around the
+          centered portrait so the reel reads as a premium media player, never a
+          lone phone-reel in a black void. Hidden on phones (full-bleed there). */}
+      {poster ? (
+        <div className="sbc-rfull-backdrop" style={{ backgroundImage: `url(${poster})` }} aria-hidden />
+      ) : null}
       {/* native 9:16 stage — full-bleed on phones, centered portrait on wide */}
       <div className="sbc-rfull-stage" onClick={onOpen} role="button" tabIndex={0}
         onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>

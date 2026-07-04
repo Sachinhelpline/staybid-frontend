@@ -1662,3 +1662,90 @@ body.is-reel-page .sbc { padding-bottom: 0; }
      capped so it can never fill the screen regardless of column width */
   .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 3 / 2; max-height: 440px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   v294.4 — DESKTOP SHELL for the whole /circle vertical.
+
+   Root cause of "laptop pe bhi mobile jaisa hi show ho raha hai": the whole
+   vertical was built mobile-first with NO desktop shell. CircleTopbar returned
+   null on the dark app-shell routes (home · reel · dashboard), so on DESKTOP
+   the only navigation was the mobile bottom dock; the reel feed rendered as a
+   lone 9:16 portrait floating in a black void (SS4 — the "reason"); and the
+   rooms sheet's ₹/mo · Pick-rooms bar sat behind that same dock.
+
+   This block gives desktop (≥1024px) a real top-header shell:
+     1. a dark-glass TOP HEADER on every /circle route (the dock's job on mobile)
+     2. the bottom dock HIDDEN — the header is the desktop nav
+     3. dark pages clear the fixed header
+     4. the reel feed sits below the header + a cinematic ambient backdrop FILLS
+        the width around the portrait → no black dead space
+     5. the rooms sheet becomes a proper modal with an unobstructed bottom bar
+
+   Every rule is gated ≥1024px → mobile + tablet are byte-identical to v294.3.
+   The two base hides below keep the always-rendered dark topbar + reel backdrop
+   invisible on phones (where the dock owns nav and the reel is full-bleed).
+   ══════════════════════════════════════════════════════════════════════ */
+
+.sbc-topbar--dark { display: none; }     /* mobile: CircleDock owns navigation */
+.sbc-rfull-backdrop { display: none; }   /* mobile: reel is full-bleed, no fill */
+
+@media (min-width: 1024px) {
+  /* ── 1. TOP HEADER on every /circle route ─────────────────────────────── */
+  .sbc-topbar--dark { display: block; }
+  /* the reel route force-hides the topbar on mobile (body.is-reel-page …
+     display:none !important) — override that at desktop so the header shows */
+  body.is-reel-page .sbc-topbar,
+  body.is-reel-page .sbc-topbar--dark { display: block !important; }
+
+  .sbc-topbar--dark {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+    background: color-mix(in srgb, #211a0f 88%, transparent);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border-bottom: 1px solid rgba(231, 207, 160, 0.16);
+  }
+  .sbc-topbar--dark .sbc-brand-name { color: #FBF3E2; }
+  .sbc-topbar--dark .sbc-brand-name em { color: var(--sbc-gold-2); }
+  .sbc-topbar--dark .sbc-brand-sub { color: rgba(245, 236, 216, 0.5); }
+  .sbc-topbar--dark .sbc-topnav-link { color: rgba(245, 236, 216, 0.82); }
+  .sbc-topbar--dark .sbc-topnav-link:hover,
+  .sbc-topbar--dark .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.2); color: #FFF6E4; }
+  /* active-link highlight on the light content topbar (build · me) too */
+  .sbc-topbar .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.18); color: var(--sbc-coffee); }
+
+  /* ── 2. NO mobile bottom dock — the top header is the desktop nav ──────── */
+  .sbc-dock { display: none !important; }
+  .sbc { padding-bottom: 0 !important; }
+
+  /* ── 3. dark app-shell pages clear the fixed ~60px header ──────────────── */
+  .sbc-home, .sbc-dash { padding-top: 74px; }
+
+  /* ── 4. REEL FEED — cinematic full-width, kills the black void (SS4) ───── */
+  body.is-reel-page .sbc-rapp {
+    top: 60px !important; height: calc(100dvh - 60px) !important; background: #08060a;
+  }
+  .sbc-rfull { height: calc(100dvh - 60px) !important; background: #08060a; }
+  /* blurred, dimmed poster fills the whole card behind the centered portrait */
+  .sbc-rfull-backdrop {
+    display: block; position: absolute; inset: -10%; z-index: 0;
+    background-size: cover; background-position: center;
+    filter: blur(42px) saturate(1.3) brightness(0.42);
+    transform: scale(1.12); pointer-events: none;
+  }
+  /* premium framed portrait stage, floating above the ambient backdrop */
+  .sbc-rfull-stage {
+    position: relative; z-index: 1; height: 100%;
+    width: min(calc((100dvh - 60px) * 0.5625), 44vw); max-width: 560px;
+    border-radius: 22px;
+    box-shadow: 0 34px 90px -30px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(231, 207, 160, 0.08);
+  }
+  /* overlays no longer clear a bottom dock → tuck them near the portrait base */
+  .sbc-rfull-bottom { bottom: 22px !important; }
+  .sbc-rfull-rail { bottom: 150px !important; }
+  /* floating filter / list chips clear the fixed header */
+  .sbc-rfilter-chip, .sbc-rlist-chip { top: 74px !important; }
+
+  /* ── 5. ROOMS SHEET — modal over the header, bar no longer dock-blocked ── */
+  .sbc-rsel-app { z-index: 65 !important; }
+  .sbc-rsel-bar { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important; }
+}
