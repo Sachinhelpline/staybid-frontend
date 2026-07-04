@@ -1,9 +1,9 @@
 "use client";
 
 // StayCircle™ — Discover Properties (Step 1)
-// Cinematic hero (GSAP entrance + drifting-mist CSS) → glass filter bar →
-// reel-feed of 3D-tilt property cards (video autoplay on view) → lock flow.
-// Locked properties feed /circle/build (Step 2).
+// v289: Airbnb-grade filter pill bar + Instagram-style vertical reel feed.
+// Each reel autoplays its property video; tap → full property tour
+// (/circle/[id], a hotel-page replica). Lock still adds to the bundle.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,11 @@ const MODELS = [
   { key: "managed", label: "Fully Managed" },
   { key: "revenue_share", label: "Revenue Share" },
   { key: "lease", label: "Lease" },
+  { key: "franchise", label: "Franchise" },
 ];
+const MODEL_LABEL: Record<string, string> = Object.fromEntries(MODELS.map((m) => [m.key, m.label]));
+
+const BUDGET_STOPS = [20000, 30000, 40000, 50000, 75000, 100000];
 
 export default function CircleDiscoverPage() {
   const router = useRouter();
@@ -76,7 +80,6 @@ export default function CircleDiscoverPage() {
   const [budget, setBudget] = useState(100000); // ₹/room/month ceiling
   const [likes, setLikes] = useState<string[]>([]);
   const [locks, setLocks] = useState<string[]>([]);
-  const [detail, setDetail] = useState<CircleProperty | null>(null);
   const [toast, setToast] = useState("");
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -146,7 +149,7 @@ export default function CircleDiscoverPage() {
   // ------- filters -------
   const filtered = useMemo(() => {
     return props.filter((p) => {
-      if (city !== "all" && p.city !== city) return false;
+      if (city !== "all" && String(p.city).toLowerCase() !== city.toLowerCase()) return false;
       if (model !== "all" && p.operationModel !== model) return false;
       if (budget < 100000 && p.monthlyRate > budget) return false;
       return true;
@@ -175,6 +178,15 @@ export default function CircleDiscoverPage() {
       return next;
     });
   }, []);
+
+  const share = useCallback(async (p: CircleProperty) => {
+    const url = `${typeof window !== "undefined" ? window.location.origin : ""}/circle/${p.id}`;
+    try {
+      if (navigator.share) { await navigator.share({ title: p.title, text: `Invest in ${p.title} on StayCircle`, url }); return; }
+      await navigator.clipboard.writeText(url);
+      flash("🔗 Link copied");
+    } catch { /* cancelled */ }
+  }, [flash]);
 
   const lockProperty = useCallback(async (p: CircleProperty) => {
     if (!user) {
@@ -210,14 +222,14 @@ export default function CircleDiscoverPage() {
             Build Wealth<br />with <span className="gold">Hospitality</span>
           </h1>
           <p className="sbc-hero-sub">
-            Handpicked hill-station properties. Lock rooms, build your investment
-            bundle and earn monthly returns — StayBid runs everything for you.
+            Handpicked hill-station properties. Watch the reels, lock rooms, build
+            your investment bundle and earn monthly returns — StayBid runs everything.
           </p>
           <div className="sbc-hero-steps">
             <span>① Discover</span><span>② Lock</span><span>③ Invest</span><span>④ Earn</span>
           </div>
           <div className="sbc-hero-ctas">
-            <a href="#discover" className="sbc-btn-gold">Explore Properties ↓</a>
+            <a href="#discover" className="sbc-btn-gold">Explore Reels ↓</a>
             <Link href="/circle/build" className="sbc-btn-ghost">Build Your Bundle →</Link>
           </div>
           <div className="sbc-hero-stats">
@@ -229,38 +241,23 @@ export default function CircleDiscoverPage() {
         </div>
       </section>
 
-      {/* ============ STEP 1 · DISCOVER ============ */}
+      {/* ============ STEP 1 · DISCOVER (reel feed) ============ */}
       <section className="sbc-section" id="discover">
         <h2 className="sbc-h2 sbc-reveal"><span className="step-pill">STEP 1</span>Discover Properties</h2>
-        <p className="sbc-sub sbc-reveal">Explore handpicked hospitality properties across top destinations. Short reels, real numbers, big opportunities.</p>
+        <p className="sbc-sub sbc-reveal">Swipe through handpicked hospitality reels — real numbers, big opportunities. Tap any reel for the complete property tour.</p>
 
-        <div className="sbc-filterbar sbc-reveal">
-          <div className="sbc-filter-field">
-            <label>📍 City</label>
-            <select value={city} onChange={(e) => setCity(e.target.value)}>
-              <option value="all">All Cities</option>
-              {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="sbc-filter-field">
-            <label>⚙ Operation Model</label>
-            <select value={model} onChange={(e) => setModel(e.target.value)}>
-              {MODELS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-            </select>
-          </div>
-          <div className="sbc-filter-field" style={{ minWidth: 200 }}>
-            <label>₹ Budget / Month — <span className="sbc-budget-val">{budget >= 100000 ? "Any Budget" : fmtINR(budget)}</span></label>
-            <input
-              type="range" min={20000} max={100000} step={5000} value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
-            />
-          </div>
-        </div>
+        <FilterBar
+          city={city} setCity={setCity}
+          model={model} setModel={setModel}
+          budget={budget} setBudget={setBudget}
+          cities={cities}
+          count={filtered.length}
+        />
 
         {loading ? (
-          <div className="sbc-grid">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="sbc-card" style={{ aspectRatio: "4/6.2", background: "linear-gradient(120deg,#F2E8D5,#FAF3E6,#F2E8D5)", backgroundSize: "200% 100%", animation: "sbcShimmerBg 1.4s linear infinite" }} />
+          <div className="sbc-reelfeed">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="sbc-reel" style={{ background: "linear-gradient(120deg,#241B10,#3A2C18,#241B10)", backgroundSize: "200% 100%", animation: "sbcShimmerBg 1.4s linear infinite" }} />
             ))}
             <style>{`@keyframes sbcShimmerBg { to { background-position: -200% 0; } }`}</style>
           </div>
@@ -270,18 +267,20 @@ export default function CircleDiscoverPage() {
             <p style={{ marginTop: 8, color: "rgba(74,56,32,.7)" }}>Is filter me abhi koi property nahi — budget ya city change karke dekhein.</p>
           </div>
         ) : (
-          <div className="sbc-grid">
+          <div className="sbc-reelfeed">
             {filtered.map((p) => (
-              <PropertyCard
+              <ReelCard
                 key={p.id}
                 p={p}
                 liked={likes.includes(p.id)}
                 locked={locks.includes(p.id)}
                 onLike={() => toggleLike(p.id)}
                 onLock={() => lockProperty(p)}
-                onDetail={() => setDetail(p)}
+                onShare={() => share(p)}
+                onOpen={() => router.push(`/circle/${p.id}`)}
               />
             ))}
+            <div className="sbc-reel-scrollhint">Scroll for more reels ↓</div>
           </div>
         )}
       </section>
@@ -337,20 +336,6 @@ export default function CircleDiscoverPage() {
         </Link>
       )}
 
-      {/* details bottom-sheet */}
-      {detail && (
-        <div className="sbc-sheet-backdrop" onClick={() => setDetail(null)}>
-          <div className="sbc-sheet" onClick={(e) => e.stopPropagation()}>
-            <DetailSheet
-              p={detail}
-              locked={locks.includes(detail.id)}
-              onLock={() => { lockProperty(detail); }}
-              onClose={() => setDetail(null)}
-            />
-          </div>
-        </div>
-      )}
-
       {/* toast */}
       {toast && (
         <div style={{
@@ -365,21 +350,102 @@ export default function CircleDiscoverPage() {
 }
 
 // ---------------------------------------------------------------------------
-function PropertyCard({
-  p, liked, locked, onLike, onLock, onDetail,
+// Airbnb-style expandable filter pill bar.
+function FilterBar({
+  city, setCity, model, setModel, budget, setBudget, cities, count,
+}: {
+  city: string; setCity: (v: string) => void;
+  model: string; setModel: (v: string) => void;
+  budget: number; setBudget: (v: number) => void;
+  cities: string[]; count: number;
+}) {
+  const [open, setOpen] = useState<null | "city" | "model" | "budget">(null);
+  const budgetLabel = budget >= 100000 ? "Any budget" : `Up to ${fmtINR(budget)}`;
+
+  return (
+    <div className="sbc-fbar-wrap sbc-reveal">
+      {open && <div className="sbc-fbar-backdrop" onClick={() => setOpen(null)} />}
+      <div className="sbc-fbar">
+        <button className={`sbc-fbar-seg ${open === "city" ? "active" : ""}`} onClick={() => setOpen(open === "city" ? null : "city")}>
+          <span className="sbc-fbar-seg-label">📍 Location</span>
+          <span className={`sbc-fbar-seg-val ${city === "all" ? "dim" : ""}`}>{city === "all" ? "Anywhere" : city}</span>
+        </button>
+        <div className="sbc-fbar-div" />
+        <button className={`sbc-fbar-seg ${open === "model" ? "active" : ""}`} onClick={() => setOpen(open === "model" ? null : "model")}>
+          <span className="sbc-fbar-seg-label">⚙ Model</span>
+          <span className={`sbc-fbar-seg-val ${model === "all" ? "dim" : ""}`}>{MODEL_LABEL[model] || "All models"}</span>
+        </button>
+        <div className="sbc-fbar-div" />
+        <button className={`sbc-fbar-seg ${open === "budget" ? "active" : ""}`} onClick={() => setOpen(open === "budget" ? null : "budget")}>
+          <span className="sbc-fbar-seg-label">₹ Budget / mo</span>
+          <span className={`sbc-fbar-seg-val ${budget >= 100000 ? "dim" : ""}`}>{budgetLabel}</span>
+        </button>
+        <button className="sbc-fbar-go" onClick={() => setOpen(null)} aria-label="Apply filters" title={`${count} properties`}>
+          {count > 0 ? count : "🔍"}
+        </button>
+      </div>
+
+      {open === "city" && (
+        <div className="sbc-fbar-pop">
+          <div className="sbc-fbar-pop-title">Where do you want to invest?</div>
+          <div className="sbc-fbar-chips">
+            <button className={`sbc-fbar-chip ${city === "all" ? "on" : ""}`} onClick={() => { setCity("all"); setOpen(null); }}>🌐 Anywhere</button>
+            {cities.map((c) => (
+              <button key={c} className={`sbc-fbar-chip ${city === c ? "on" : ""}`} onClick={() => { setCity(c); setOpen(null); }}>{c}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {open === "model" && (
+        <div className="sbc-fbar-pop">
+          <div className="sbc-fbar-pop-title">Operating model</div>
+          <div className="sbc-fbar-chips">
+            {MODELS.map((m) => (
+              <button key={m.key} className={`sbc-fbar-chip ${model === m.key ? "on" : ""}`} onClick={() => { setModel(m.key); setOpen(null); }}>{m.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {open === "budget" && (
+        <div className="sbc-fbar-pop">
+          <div className="sbc-fbar-pop-title">Max monthly investment per room</div>
+          <div className="sbc-fbar-budget-val">{budgetLabel}</div>
+          <input
+            className="sbc-fbar-range"
+            type="range" min={20000} max={100000} step={5000} value={budget}
+            onChange={(e) => setBudget(Number(e.target.value))}
+          />
+          <div className="sbc-fbar-chips" style={{ marginTop: 10 }}>
+            {BUDGET_STOPS.map((b) => (
+              <button key={b} className={`sbc-fbar-chip ${budget === b ? "on" : ""}`} onClick={() => setBudget(b)}>
+                {b >= 100000 ? "Any" : `≤ ${fmtINR(b)}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Instagram-style reel card — autoplay video on view, action rail, tap → tour.
+function ReelCard({
+  p, liked, locked, onLike, onLock, onShare, onOpen,
 }: {
   p: CircleProperty;
   liked: boolean;
   locked: boolean;
   onLike: () => void;
   onLock: () => void;
-  onDetail: () => void;
+  onShare: () => void;
+  onOpen: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  const [muted, setMuted] = useState(true);
 
-  // Reel behaviour — autoplay muted when the card is mostly visible.
   useEffect(() => {
     if (!wrapRef.current) return;
     const io = new IntersectionObserver(
@@ -402,130 +468,60 @@ function PropertyCard({
     }
   }, [inView]);
 
-  const soldOut = p.status === "sold_out" ||
-    p.roomTypes.every((rt) => rt.availableUnits <= 0);
+  const soldOut = p.status === "sold_out" || p.roomTypes.every((rt) => rt.availableUnits <= 0);
+  const poster = p.images[0];
 
   return (
-    <div className="sbc-card sbc-reveal" ref={wrapRef}>
-      <div className="sbc-card-media">
+    <div className="sbc-reel sbc-reveal" ref={wrapRef} onClick={onOpen} role="button" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
+      <div className="sbc-reel-media">
         {p.videoUrl && inView ? (
           <video
             ref={videoRef}
             src={p.videoUrl}
-            muted playsInline loop preload="none"
-            poster={p.images[0]}
+            muted={muted} playsInline loop preload="none"
+            poster={poster}
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.images[0]} alt={p.title} loading="lazy" />
+          poster ? <img src={poster} alt={p.title} loading="lazy" /> : null
         )}
-        <span className="sbc-chip-city">📍 {p.city}</span>
-        <button className={`sbc-like ${liked ? "liked" : ""}`} onClick={onLike} aria-label="Like">
-          {liked ? "♥" : "♡"}
+      </div>
+      <div className="sbc-reel-shade" />
+
+      <div className="sbc-reel-top">
+        <span className="sbc-reel-city">📍 {p.locationLabel || p.city}</span>
+        <span className={`sbc-reel-livepill ${soldOut ? "wait" : ""}`}><span className="dot" /> {soldOut ? "WAITLIST" : "LIVE"}</span>
+      </div>
+
+      {/* action rail */}
+      <div className="sbc-reel-rail" onClick={(e) => e.stopPropagation()}>
+        <button className={`sbc-reel-railbtn ${liked ? "on" : ""}`} onClick={onLike} aria-label="Like">{liked ? "♥" : "♡"}</button>
+        <button className="sbc-reel-railbtn" onClick={onShare} aria-label="Share">↗</button>
+        {p.videoUrl && (
+          <button className="sbc-reel-railbtn" onClick={() => setMuted((m) => !m)} aria-label="Mute">{muted ? "🔇" : "🔊"}</button>
+        )}
+        <button className="sbc-reel-railbtn" onClick={onOpen} aria-label="Details">ⓘ</button>
+      </div>
+
+      {/* info */}
+      <div className="sbc-reel-info">
+        <div className="sbc-reel-badges">
+          <span className="sbc-reel-badge roi">📈 up to {p.roiMax}% ROI</span>
+          {p.occupancyLabel && <span className="sbc-reel-badge">🔥 {p.occupancyLabel}</span>}
+          <span className="sbc-reel-badge">🛎 {p.operationModel === "managed" ? "Fully Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</span>
+        </div>
+        <div className="sbc-reel-title">{p.title}</div>
+        <div className="sbc-reel-sub">{p.roomsLabel || p.viewLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</div>
+        <div className="sbc-reel-rate"><b>{fmtINR(p.monthlyRate)}</b><span>/ room / month</span></div>
+      </div>
+
+      {/* CTAs */}
+      <div className="sbc-reel-cta" onClick={(e) => e.stopPropagation()}>
+        <button className="sbc-reel-btn-tour" onClick={onOpen}>▶ View Full Tour</button>
+        <button className={`sbc-reel-btn-lock ${locked ? "locked" : ""}`} onClick={onLock} disabled={soldOut && !locked}>
+          {locked ? "✓ Locked" : soldOut ? "Sold Out" : "🔒 Lock"}
         </button>
-        <span className="sbc-live-pill"><span className="dot" /> {soldOut ? "WAITLIST" : "LIVE"}</span>
-      </div>
-      <div className="sbc-card-body">
-        <div className="sbc-card-title">{p.title}</div>
-        <div className="sbc-card-meta">{p.roomsLabel || p.viewLabel}</div>
-        <div className="sbc-card-rate">
-          <b>{fmtINR(p.monthlyRate)}</b><span>/ Room / Month</span>
-        </div>
-        <div className="sbc-badges">
-          <span className="sbc-badge-roi">📈 {p.roiMax}% ROI</span>
-          {p.occupancyLabel && <span className="sbc-badge-occ">🔥 {p.occupancyLabel}</span>}
-        </div>
-        <div className="sbc-card-actions">
-          <button className="sbc-btn-detail" onClick={onDetail}>Details</button>
-          <button className={`sbc-btn-lock ${locked ? "locked" : ""}`} onClick={onLock} disabled={soldOut && !locked}>
-            {locked ? "✓ Locked" : soldOut ? "Sold Out" : "🔒 Lock Property"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-function DetailSheet({
-  p, locked, onLock, onClose,
-}: {
-  p: CircleProperty;
-  locked: boolean;
-  onLock: () => void;
-  onClose: () => void;
-}) {
-  const [imgIdx, setImgIdx] = useState(0);
-  return (
-    <div>
-      <div style={{ position: "relative", aspectRatio: "16/9", overflow: "hidden", borderRadius: "26px 26px 0 0" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={p.images[imgIdx] || p.images[0]} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: "absolute", top: 12, right: 12, width: 34, height: 34, borderRadius: 999,
-            background: "rgba(20,14,6,.55)", color: "#F3E3BF", border: "1px solid rgba(231,207,160,.3)",
-            backdropFilter: "blur(8px)", cursor: "pointer",
-          }}
-        >✕</button>
-        {p.images.length > 1 && (
-          <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 6 }}>
-            {p.images.map((_, i) => (
-              <button key={i} onClick={() => setImgIdx(i)} aria-label={`Photo ${i + 1}`} style={{
-                width: i === imgIdx ? 20 : 8, height: 8, borderRadius: 999, border: "none", cursor: "pointer",
-                background: i === imgIdx ? "#F3E3BF" : "rgba(255,255,255,.5)", transition: "width .25s ease",
-              }} />
-            ))}
-          </div>
-        )}
-      </div>
-      <div style={{ padding: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 10 }}>
-          <div>
-            <div className="sbc-card-title" style={{ fontSize: "1.45rem" }}>{p.title}</div>
-            <div className="sbc-card-meta">📍 {p.locationLabel || p.city}{p.state ? `, ${p.state}` : ""}</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)" }}>{fmtINR(p.monthlyRate)}</b>
-            <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>/ Room / Month</div>
-          </div>
-        </div>
-        {p.tagline && <p style={{ marginTop: 10, fontSize: ".88rem", color: "rgba(74,56,32,.75)" }}>{p.tagline}</p>}
-        <div className="sbc-badges" style={{ marginTop: 12 }}>
-          <span className="sbc-badge-roi">📈 {p.roiMin}–{p.roiMax}% expected ROI</span>
-          {p.occupancyLabel && <span className="sbc-badge-occ">🔥 {p.occupancyLabel}</span>}
-          <span className="sbc-badge-occ">🛎 {p.operationModel === "managed" ? "Fully Managed by StayBid" : p.operationModel}</span>
-        </div>
-
-        <div style={{ marginTop: 16, fontWeight: 700, color: "var(--sbc-coffee)", fontSize: ".9rem" }}>Room types &amp; availability</div>
-        <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
-          {p.roomTypes.map((rt) => (
-            <div key={rt.id} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "10px 14px", borderRadius: 14, background: "rgba(201,166,107,.08)",
-              border: "1px solid rgba(139,105,20,.15)",
-            }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: ".88rem", color: "var(--sbc-coffee)" }}>{rt.name}</div>
-                <div style={{ fontSize: ".72rem", color: rt.availableUnits > 0 ? "#3F5233" : "#a85b4e" }}>
-                  {rt.availableUnits > 0 ? `${rt.availableUnits} unit${rt.availableUnits > 1 ? "s" : ""} available` : "Sold out"}
-                </div>
-              </div>
-              <b style={{ fontVariantNumeric: "tabular-nums", color: "var(--sbc-ink)" }}>{fmtINR(rt.monthlyRate)}<span style={{ fontSize: ".68rem", fontWeight: 400, color: "rgba(74,56,32,.55)" }}> /mo</span></b>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-          <button className={`sbc-btn-lock ${locked ? "locked" : ""}`} style={{ flex: 1, padding: "13px 0" }} onClick={onLock}>
-            {locked ? "✓ Locked — in your bundle" : "🔒 Lock Property"}
-          </button>
-          <Link href="/circle/build" className="sbc-btn-detail" style={{ flex: .8, display: "grid", placeItems: "center", textDecoration: "none" }}>
-            Build Bundle →
-          </Link>
-        </div>
       </div>
     </div>
   );

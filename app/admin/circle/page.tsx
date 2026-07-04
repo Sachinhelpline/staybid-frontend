@@ -6,9 +6,45 @@
 // (cancel/complete only — 'active' is owned by the payment verify chain) ·
 // Payouts (post monthly returns) · Locks (read-only).
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CountUp } from "@/components/CountUp";
 import { fmtINR } from "@/lib/circle/engine";
+import { resizeImageBeforeUpload } from "@/lib/image-resize";
+
+// v289 — direct-to-Storage uploader for the property editor (image + reel
+// video). Pushes to the public `social-media` bucket (anon-key write, same
+// bucket the reel Composer uses) and returns the public URL.
+const SB_STORAGE = "https://uxxhbdqedazpmvbvaosh.supabase.co";
+const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
+
+function pushFileToStorage(
+  file: Blob, subdir: string, ext: string, contentType: string,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
+  const stamp = Date.now();
+  const rand = Math.random().toString(36).slice(2, 8);
+  const path = `circle/${subdir}/${stamp}-${rand}.${ext}`;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.timeout = 120_000;
+    xhr.open("POST", `${SB_STORAGE}/storage/v1/object/social-media/${path}`, true);
+    xhr.setRequestHeader("Authorization", `Bearer ${SB_ANON}`);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.setRequestHeader("x-upsert", "true");
+    if (onProgress) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress((e.loaded / e.total) * 100); };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve(`${SB_STORAGE}/storage/v1/object/public/social-media/${path}`);
+      else reject(new Error(`Upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed: network error"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out"));
+    xhr.send(file);
+  });
+}
+
+function extFromMime(mime: string, fb: string) {
+  return ((mime || "").split("/")[1]?.split(";")[0] || fb).replace(/[^a-z0-9]/gi, "").slice(0, 8) || fb;
+}
 
 const C = {
   bg: "#07080C", card: "#151820", border: "rgba(255,255,255,0.07)",
@@ -265,6 +301,61 @@ export default function AdminCirclePage() {
 }
 
 // ---------------------------------------------------------------------------
+// v289 — reel-composer-style media uploader (image / video → social-media bucket).
+function MediaUploader({ kind, onDone }: { kind: "image" | "video"; onDone: (urls: string[]) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [msg, setMsg] = useState("");
+
+  const handle = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setBusy(true); setMsg(""); setPct(0);
+    const urls: string[] = [];
+    try {
+      const list = Array.from(files);
+      for (let i = 0; i < list.length; i++) {
+        const f = list[i];
+        if (kind === "image") {
+          if (!f.type.startsWith("image/")) continue;
+          let up: Blob = f;
+          try { up = await resizeImageBeforeUpload(f, { maxDim: 1600, quality: 0.82 }); } catch { up = f; }
+          const url = await pushFileToStorage(up, "photos", extFromMime(up.type || "image/jpeg", "jpg"), up.type || "image/jpeg",
+            (p) => setPct(Math.round(((i + p / 100) / list.length) * 100)));
+          urls.push(url);
+        } else {
+          if (!f.type.startsWith("video/")) continue;
+          if (f.size > 220 * 1024 * 1024) { setMsg("Video too large (max 220MB)"); continue; }
+          const url = await pushFileToStorage(f, "videos", extFromMime(f.type || "video/mp4", "mp4"), f.type || "video/mp4",
+            (p) => setPct(Math.round(p)));
+          urls.push(url);
+          break; // single video
+        }
+      }
+      if (urls.length) { onDone(urls); setMsg(`✓ ${urls.length} uploaded`); }
+      else if (!msg) setMsg("No valid files");
+    } catch (e: any) {
+      setMsg(e?.message || "Upload failed");
+    } finally {
+      setBusy(false); setPct(0);
+      if (ref.current) ref.current.value = "";
+    }
+  };
+
+  return (
+    <div className="sbc-admin-up">
+      <input ref={ref} type="file" hidden accept={kind === "image" ? "image/*" : "video/*"} multiple={kind === "image"}
+        onChange={(e) => handle(e.target.files)} />
+      <button type="button" disabled={busy} onClick={() => ref.current?.click()}
+        style={{ ...btnS(busy ? "#0F1117" : C.green, busy ? C.sub : "#07080C"), border: `1px solid ${C.border}` }}>
+        {busy ? `⏳ ${pct}%` : kind === "image" ? "⬆ Upload photos" : "⬆ Upload reel video"}
+      </button>
+      {msg && <span style={{ fontSize: 11.5, color: msg.startsWith("✓") ? C.green : C.red }}>{msg}</span>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 function EditorModal({
   entity, row, properties, bundles, onClose, onSave,
 }: {
@@ -316,11 +407,33 @@ function EditorModal({
                 <F label="Occupancy label"><input style={inputS} value={form.occupancy_label || ""} onChange={(e) => set("occupancy_label", e.target.value)} /></F>
                 <F label="Rooms label (e.g. 2 Rooms · Mountain View)"><input style={inputS} value={form.rooms_label || ""} onChange={(e) => set("rooms_label", e.target.value)} /></F>
               </div>
-              <F label="Images (one URL per line)">
-                <textarea style={{ ...inputS, minHeight: 74 }} value={(Array.isArray(form.images) ? form.images : []).join("\n")}
+              <F label="Photos — upload from device or paste URLs (one per line)">
+                <MediaUploader
+                  kind="image"
+                  onDone={(urls) => set("images", [...(Array.isArray(form.images) ? form.images : []), ...urls])}
+                />
+                <textarea style={{ ...inputS, minHeight: 74, marginTop: 8 }} value={(Array.isArray(form.images) ? form.images : []).join("\n")}
                   onChange={(e) => set("images", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} />
+                {Array.isArray(form.images) && form.images.length > 0 && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                    {form.images.map((src: string, i: number) => (
+                      <div key={i} style={{ position: "relative", width: 58, height: 44, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <button onClick={() => set("images", form.images.filter((_: string, j: number) => j !== i))}
+                          style={{ position: "absolute", top: 1, right: 1, width: 16, height: 16, borderRadius: 999, border: "none", cursor: "pointer", background: "rgba(255,71,87,.9)", color: "#fff", fontSize: 10, lineHeight: "16px", padding: 0 }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </F>
-              <F label="Reel video URL"><input style={inputS} value={form.video_url || ""} onChange={(e) => set("video_url", e.target.value)} /></F>
+              <F label="Reel video — upload from device or paste a URL">
+                <MediaUploader kind="video" onDone={(urls) => { if (urls[0]) set("video_url", urls[0]); }} />
+                <input style={{ ...inputS, marginTop: 8 }} value={form.video_url || ""} onChange={(e) => set("video_url", e.target.value)} placeholder="https://…mp4" />
+                {form.video_url && (
+                  <video src={form.video_url} controls muted playsInline style={{ width: "100%", maxHeight: 160, borderRadius: 10, marginTop: 8, background: "#000" }} />
+                )}
+              </F>
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
                 <F label="Operation model">
                   <select style={inputS} value={form.operation_model || "managed"} onChange={(e) => set("operation_model", e.target.value)}>
