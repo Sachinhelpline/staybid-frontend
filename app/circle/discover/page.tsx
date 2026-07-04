@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { useReelFullscreen } from "@/lib/useReelFullscreen";
+import RoomTourBody from "@/components/circle/RoomTourBody";
 import { fmtINR } from "@/lib/circle/engine";
 
 type RoomType = {
@@ -201,10 +202,11 @@ export default function CircleDiscoverPage() {
     } catch { /* cancelled */ }
   }, [flash]);
 
-  // "Lock for Investment" from a reel — ensure the property is locked, then jump to the
-  // bundle builder. Distinct from Lock (top pill): this drives the customer
-  // forward into checkout, it is NOT a duplicate lock toggle.
-  const investFromReel = useCallback((p: CircleProperty) => {
+  // "Lock for Investment" from a reel — LOCK ONLY, stay on the feed so the
+  // customer can lock as many properties as they like (no auto-jump to Plan).
+  // Once locked, the reel CTA flips to "Choose rooms →" which opens the Step-2
+  // room-selection sheet; the "✓ Locked" tag unlocks. (v294)
+  const lockFromReel = useCallback((p: CircleProperty) => {
     if (!user) {
       redirectToSignIn(router, { route: "/circle/discover", action: "circle_invest" });
       return;
@@ -221,8 +223,8 @@ export default function CircleDiscoverPage() {
       }).catch(() => {});
       return n;
     });
-    router.push("/circle/build");
-  }, [user, router]);
+    flash(`🔒 ${p.title} locked — aur bhi lock karo ya "Choose rooms" se rooms chuno`);
+  }, [user, router, flash]);
 
   // Remove a locked property directly from the room-select sheet.
   const removeLock = useCallback((propertyId: string, title: string) => {
@@ -292,7 +294,12 @@ export default function CircleDiscoverPage() {
               liked={likes.includes(p.id)}
               locked={locks.includes(p.id)}
               onLike={() => toggleLike(p.id)}
-              onInvest={() => investFromReel(p)}
+              onInvest={() => {
+                // locked → open the room-selection sheet; unlocked → lock only
+                if (locks.includes(p.id)) setRoomsOpen(true);
+                else lockFromReel(p);
+              }}
+              onUnlock={() => removeLock(p.id, p.title)}
               onShare={() => share(p)}
               onOpen={() => router.push(`/circle/${p.id}`)}
             />
@@ -380,7 +387,7 @@ export default function CircleDiscoverPage() {
 // wide screens, full-bleed on phones); info + CTAs share ONE bottom flex
 // container so they can never overlap on any device.
 function FullReel({
-  p, first, liked, locked, onLike, onInvest, onShare, onOpen,
+  p, first, liked, locked, onLike, onInvest, onUnlock, onShare, onOpen,
 }: {
   p: CircleProperty;
   first: boolean;
@@ -388,6 +395,7 @@ function FullReel({
   locked: boolean;
   onLike: () => void;
   onInvest: () => void;
+  onUnlock: () => void;
   onShare: () => void;
   onOpen: () => void;
 }) {
@@ -454,7 +462,11 @@ function FullReel({
               <span>📍 {p.locationLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</span>
             </div>
           </div>
-          {locked && <span className="sbc-rfull-locktag">✓ Locked</span>}
+          {locked && (
+            <button className="sbc-rfull-locktag" onClick={onUnlock} aria-label={`Release ${p.title}`} title="Tap to release">
+              ✓ Locked · release
+            </button>
+          )}
         </div>
 
         {/* right action rail */}
@@ -495,7 +507,7 @@ function FullReel({
           <div className="sbc-rfull-ctas">
             <button className="sbc-rfull-btn-tour" onClick={onOpen}>▶ View full tour</button>
             <button className={`sbc-rfull-btn-invest ${locked ? "islocked" : ""}`} onClick={onInvest} disabled={soldOut && !locked}>
-              {soldOut && !locked ? "Sold out" : locked ? "✓ Locked · View bundle →" : "🔒 Lock for Investment"}
+              {soldOut && !locked ? "Sold out" : locked ? "🛏 Choose rooms →" : "🔒 Lock for Investment"}
             </button>
           </div>
         </div>
@@ -554,6 +566,9 @@ function RoomSelectSheet({
   // flows straight into /circle/build's steppers.
   const [sel, setSel] = useState<Record<string, number>>(() => readRoomSel());
   useEffect(() => { writeRoomSel(sel); }, [sel]);
+  // which room's complete tour is expanded (single-open per sheet)
+  const [expanded, setExpanded] = useState<string>("");
+  const toggleExpand = useCallback((rtId: string) => setExpanded((cur) => (cur === rtId ? "" : rtId)), []);
 
   const setRoom = useCallback((rtId: string, next: number, max: number) => {
     setSel((prev) => {
@@ -657,34 +672,45 @@ function RoomSelectSheet({
                       rt.sizeSqft ? `📐 ${rt.sizeSqft}ft²` : "",
                       rt.bedType ? `🛏 ${rt.bedType}` : "",
                     ].filter(Boolean).slice(0, 3);
+                    const isOpen = expanded === rt.id;
                     return (
-                      <div key={rt.id} className={`sbc-rsel-room ${v > 0 ? "on" : ""} ${avail ? "" : "gone"}`}>
-                        <div className="sbc-rsel-rthumb">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={img} alt={rt.name} loading="lazy" />
-                          <span className="sbc-rsel-roi">📈 {roi}</span>
-                        </div>
-                        <div className="sbc-rsel-rinfo">
-                          <b>{rt.name}</b>
-                          <div className="sbc-rsel-rrate">
-                            <strong>{fmtINR(rt.monthlyRate)}</strong><span>/mo</span>
-                            <em className={avail ? "" : "sold"}>
-                              {avail ? `${rt.availableUnits} of ${rt.totalUnits} available` : "Fully subscribed"}
-                            </em>
-                          </div>
-                          {specs.length > 0 && (
-                            <div className="sbc-rsel-rspecs">
-                              {specs.map((s) => <span key={s}>{s}</span>)}
+                      <div key={rt.id} className={`sbc-rsel-room ${v > 0 ? "on" : ""} ${avail ? "" : "gone"} ${isOpen ? "expanded" : ""}`}>
+                        <div className="sbc-rsel-rmain">
+                          <button className="sbc-rsel-rthumb" onClick={() => toggleExpand(rt.id)} aria-label={`View ${rt.name} tour`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img} alt={rt.name} loading="lazy" />
+                            <span className="sbc-rsel-roi">📈 {roi}</span>
+                          </button>
+                          <div className="sbc-rsel-rinfo">
+                            <b>{rt.name}</b>
+                            <div className="sbc-rsel-rrate">
+                              <strong>{fmtINR(rt.monthlyRate)}</strong><span>/mo</span>
+                              <em className={avail ? "" : "sold"}>
+                                {avail ? `${rt.availableUnits} of ${rt.totalUnits} available` : "Fully subscribed"}
+                              </em>
                             </div>
-                          )}
-                        </div>
-                        <div className="sbc-rsel-rpick">
-                          <div className="sbc-stepper">
-                            <button onClick={() => setRoom(rt.id, v - 1, max)} disabled={v <= 0} aria-label="Fewer rooms">−</button>
-                            <span className="val">{v}</span>
-                            <button onClick={() => setRoom(rt.id, v + 1, max)} disabled={!avail || v >= max} aria-label="More rooms">＋</button>
+                            {specs.length > 0 && (
+                              <div className="sbc-rsel-rspecs">
+                                {specs.map((s) => <span key={s}>{s}</span>)}
+                              </div>
+                            )}
+                            <button className="sbc-rsel-rmore" onClick={() => toggleExpand(rt.id)}>
+                              {isOpen ? "Hide room details ▲" : "🛏 View full room tour ▾"}
+                            </button>
+                          </div>
+                          <div className="sbc-rsel-rpick">
+                            <div className="sbc-stepper">
+                              <button onClick={() => setRoom(rt.id, v - 1, max)} disabled={v <= 0} aria-label="Fewer rooms">−</button>
+                              <span className="val">{v}</span>
+                              <button onClick={() => setRoom(rt.id, v + 1, max)} disabled={!avail || v >= max} aria-label="More rooms">＋</button>
+                            </div>
                           </div>
                         </div>
+                        {isOpen && (
+                          <div className="sbc-rsel-rtour">
+                            <RoomTourBody rt={rt} fallbackRoi={`${p.roiMin}–${p.roiMax}`} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

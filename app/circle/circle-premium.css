@@ -1544,3 +1544,62 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rsel-cta:active { transform: scale(.97); }
 
 @media (prefers-reduced-motion: reduce) { .sbc-rsel-app { animation: none !important; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   v294 — Rooms = the star. The rooms section decides whether anyone invests,
+   so it must be perfect + alive everywhere:
+   · reel "Lock for Investment" = lock-only, stay on feed (no auto-jump); the
+     "✓ Locked · release" pill unlocks; the CTA flips to "🛏 Choose rooms →".
+   · every room is a SELECT stepper (all rooms actionable — no "only 1 shows")
+     that expands into a shared complete tour (<RoomTourBody/>: gallery + all
+     amenities + full details) — identical on the Step-2 sheet and the tour page.
+   · the /circle/[id] tour page room cards get the same per-room select + lock.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* shared complete-tour body (used by the sheet + the tour-page accordion) */
+.sbc-roomtour { animation: sbcRcIn .24s ease; }
+
+/* ---- tour page (/circle/[id]) room card: always-visible select action row ---- */
+.sbc-rc-head { cursor: pointer; }
+.sbc-rc.picked {
+  border-color: rgba(139,105,20,.4);
+  box-shadow: 0 0 0 1.5px rgba(201,166,107,.45) inset, 0 14px 34px -20px rgba(139,105,20,.4);
+}
+.sbc-rc-actionrow {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 16px 14px; flex-wrap: wrap;
+}
+.sbc-rc-minispecs { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; flex: 1 1 auto; }
+.sbc-rc-minispecs span, .sbc-rc-roi {
+  font-size: .66rem; font-weight: 700; color: rgba(74,56,32,.72);
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(255,252,246,.8); border: 1px solid rgba(139,105,20,.14);
+}
+.sbc-rc-roi { color: #3F5233; background: rgba(127,146,105,.12); border-color: rgba(127,146,105,.28); }
+.sbc-rc-pick { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+.sbc-rc-picked { font-size: .68rem; font-weight: 800; color: #3F5233; white-space: nowrap; }
+.sbc-rc-tourwrap { padding: 0 16px 16px; }
+
+/* ---- tour page invest panel: selected-rooms summary ---- */
+.sbc-tour-selbox {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 14px; padding: 11px 14px; border-radius: 14px;
+  background: rgba(127,146,105,.16); border: 1px solid rgba(157,173,143,.4);
+}
+.sbc-tour-selbox span { font-size: .82rem; font-weight: 700; color: #E8F0DC; }
+.sbc-tour-selbox b { font-size: 1.08rem; color: #FBF3E2; font-variant-numeric: tabular-nums; }
+.sbc-tour-selbox b small { font-size: .68rem; font-weight: 500; color: rgba(247,239,223,.6); }
+
+/* ---- Step-2 sheet room card: expandable complete tour ---- */
+.sbc-rsel-room { flex-direction: column; align-items: stretch; gap: 0; }
+.sbc-rsel-room.expanded { background: rgba(201,166,107,.14); border-color: rgba(139,105,20,.32); }
+.sbc-rsel-rmain { display: flex; align-items: center; gap: 11px; width: 100%; }
+.sbc-rsel-rthumb { border: none; padding: 0; cursor: pointer; }
+.sbc-rsel-rmore {
+  display: inline-block; margin-top: 6px; cursor: pointer;
+  font-size: .7rem; font-weight: 800; color: var(--sbc-gold-deep);
+  background: rgba(201,166,107,.12); border: 1px solid rgba(201,166,107,.28);
+  padding: 4px 11px; border-radius: 999px; transition: background .15s ease;
+}
+.sbc-rsel-rmore:hover { background: rgba(201,166,107,.22); }
+.sbc-rsel-rtour { margin-top: 10px; padding-top: 12px; border-top: 1px dashed rgba(139,105,20,.2); }

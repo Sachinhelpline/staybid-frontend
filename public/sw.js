@@ -355,7 +355,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // (useReelFullscreen({ immersive:false })); full-bleed layout preserved.
 // v293.2 — room-tour overlay z-index 60→50 so the bottom dock stays visible.
 // v293.4 — Step-2 room reel replaced by a clean room-selection sheet.
-const HTML_CACHE = 'staybid-html-v85';
+// v294 — reel Lock = lock-only (no auto-jump) + tap-to-release; every room is
+// a select+lock stepper that expands into a shared complete tour (gallery +
+// all amenities + full details); /circle/[id] room cards get the same picker.
+const HTML_CACHE = 'staybid-html-v86';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
