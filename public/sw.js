@@ -338,7 +338,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v291.1 — laptop reels black-screen fix (persistent poster layer), Invest→
 // "Lock for Investment", Support/Tour widgets hidden on /circle, List-property
 // re-routed to the public lease panel /host/list-property (was /admin/circle).
-const HTML_CACHE = 'staybid-html-v76';
+// v291.2 — reel: removed the duplicate top "Bundle" pill (single "Lock for
+// Investment" CTA + a "✓ Locked" state tag); /circle/build: each locked
+// property now has an "✕ Remove" button to unlock/remove it anytime.
+const HTML_CACHE = 'staybid-html-v77';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
