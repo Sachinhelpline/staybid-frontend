@@ -1,17 +1,17 @@
 "use client";
 
-// StayCircle™ — Build Your Investment Bundle (Step 2)
-// Locked properties → room-type steppers → LIVE animated investment
-// calculator (CountUp + Recharts projection) → payment plan → Razorpay.
+// StayCircle™ — Review & Invest (Step 3)
+// Read-only recap of the rooms picked on the Discover rooms sheet →
+// a SIMPLE "you invest / you earn" summary → payment plan → Razorpay.
 // Every ₹ shown here comes from lib/circle/engine.computeBundle — the SAME
-// function the server checkout re-runs with DB rates, so preview == charge.
+// function the server checkout re-runs with the circle-property DB rates, so
+// preview == charge. The numbers are the 8-city StayCircle properties' OWN
+// pricing/ROI (circle_properties.roi_*, circle_room_types.monthly_rate) — NOT
+// the hotel-night AI demand engine.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from "recharts";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
@@ -20,7 +20,6 @@ import {
   CIRCLE_PLANS, PLAN_ORDER, computeBundle, fmtINR,
   type BundleItem, type PaymentPlanKey,
 } from "@/lib/circle/engine";
-import { MONTH_SHORT, MONTH_LABELS, type LiveReturns } from "@/lib/circle/returns";
 
 type RoomType = {
   id: string; name: string; monthlyRate: number;
@@ -34,8 +33,8 @@ type CircleProperty = {
 };
 
 const LOCKS_KEY = "sb_circle_locks_v1";
-// Shared with the Step-2 room-selection sheet on /circle/discover, so the
-// rooms you pick there pre-fill the steppers here (one source of truth).
+// Shared with the Step-2 room-selection sheet on /circle/discover — the rooms
+// you pick THERE are the single source of truth; this page only reviews them.
 const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
 function readRoomSel(): Record<string, number> {
   try {
@@ -52,9 +51,6 @@ function readRoomSel(): Record<string, number> {
   } catch { /* noop */ }
   return {};
 }
-function writeRoomSel(sel: Record<string, number>) {
-  try { localStorage.setItem(ROOM_SEL_KEY, JSON.stringify(sel)); } catch { /* full */ }
-}
 
 export default function CircleBuildPage() {
   const router = useRouter();
@@ -62,31 +58,20 @@ export default function CircleBuildPage() {
 
   const [props, setProps] = useState<CircleProperty[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lockedIds, setLockedIds] = useState<string[]>([]);
-  // roomTypeId → rooms count
   const [selection, setSelection] = useState<Record<string, number>>({});
-  const [hydrated, setHydrated] = useState(false);
   const [plan, setPlan] = useState<PaymentPlanKey>("monthly");
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
   const [payError, setPayError] = useState("");
   const [doneBundle, setDoneBundle] = useState<any>(null);
-  const [kpiPop, setKpiPop] = useState(0);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LOCKS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(arr)) setLockedIds(arr.map(String));
-    } catch { /* noop */ }
     try {
       const u = JSON.parse(localStorage.getItem("sb_user") || "null");
       if (u) setContact({ name: u.name || "", phone: u.phone || "", email: u.email || "" });
     } catch { /* noop */ }
-    // seed the steppers with rooms picked on the Step-2 selection sheet
-    const rs = readRoomSel();
-    if (Object.keys(rs).length) setSelection(rs);
-    setHydrated(true);
+    // rooms picked on the Discover selection sheet — read-only here
+    setSelection(readRoomSel());
     fetch("/api/circle/properties")
       .then((r) => r.json())
       .then((d) => setProps(Array.isArray(d?.properties) ? d.properties : []))
@@ -94,62 +79,7 @@ export default function CircleBuildPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // keep the shared room-selection key in sync (only after hydration so the
-  // initial empty state never clobbers what Step 2 saved).
-  useEffect(() => {
-    if (!hydrated) return;
-    writeRoomSel(selection);
-  }, [selection, hydrated]);
-
-  // Locked-first ordering; the rest are one tap away ("+ Add More Property").
-  const lockedProps = useMemo(
-    () => props.filter((p) => lockedIds.includes(p.id)),
-    [props, lockedIds],
-  );
-  const otherProps = useMemo(
-    () => props.filter((p) => !lockedIds.includes(p.id) && p.status === "active"),
-    [props, lockedIds],
-  );
-  const [showMore, setShowMore] = useState(false);
-
-  const setRooms = useCallback((rtId: string, next: number, max: number) => {
-    setSelection((prev) => {
-      const v = Math.max(0, Math.min(Math.min(10, max), next));
-      const out = { ...prev };
-      if (v <= 0) delete out[rtId]; else out[rtId] = v;
-      return out;
-    });
-    setKpiPop((n) => n + 1);
-  }, []);
-
-  // Unlock / remove a locked property from the bundle — anytime, one tap.
-  // Drops it from the lock list + localStorage, clears its room selections,
-  // releases the server-side lock (best-effort), and refreshes the dock badge.
-  const removeLock = useCallback((propertyId: string) => {
-    setLockedIds((prev) => {
-      const n = prev.filter((x) => x !== propertyId);
-      try { localStorage.setItem(LOCKS_KEY, JSON.stringify(n)); } catch { /* full */ }
-      try { window.dispatchEvent(new Event("sbc:locks-change")); } catch { /* noop */ }
-      return n;
-    });
-    setSelection((prev) => {
-      const prop = props.find((p) => p.id === propertyId);
-      if (!prop) return prev;
-      const rtIds = new Set(prop.roomTypes.map((rt) => rt.id));
-      const out: Record<string, number> = {};
-      Object.entries(prev).forEach(([k, v]) => { if (!rtIds.has(k)) out[k] = v; });
-      return out;
-    });
-    try {
-      const token = localStorage.getItem("sb_token") || "";
-      fetch(`/api/circle/locks?propertyId=${encodeURIComponent(propertyId)}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    } catch { /* noop */ }
-    setKpiPop((n) => n + 1);
-  }, [props]);
-
-  // ---- live bundle (single source of truth) ----
+  // ---- live bundle (single source of truth · circle-property data) ----
   const items: BundleItem[] = useMemo(() => {
     const out: BundleItem[] = [];
     props.forEach((p) => {
@@ -170,75 +100,37 @@ export default function CircleBuildPage() {
 
   const bundle = useMemo(() => computeBundle(items, plan), [items, plan]);
 
-  // ─── LIVE "Investment & Returns" — real StayBid AI demand engine ───────────
-  // The returns swing with the selected month + city (season · weekends ·
-  // festivals · monsoon · city demand). Fetched from /api/circle/returns which
-  // runs lib/ai-pricing.calculateDynamicPrice — the SAME model that prices
-  // every hotel night. The COMMITMENT (bundle.monthlyTotal / payNow) stays from
-  // the base engine so preview == server charge; only the RETURN projection is
-  // demand-driven here.
-  const [month, setMonth] = useState<number>(() => new Date().getMonth());
-  const [live, setLive] = useState<LiveReturns | null>(null);
-  const [liveLoading, setLiveLoading] = useState(false);
-
-  useEffect(() => {
-    if (!bundle.ok) { setLive(null); return; }
-    const payload = {
-      items: items.map((it) => ({
-        propertyId: it.propertyId, city: it.city,
-        monthlyRate: it.monthlyRate, rooms: it.rooms,
-        roiMin: it.roiMin, roiMax: it.roiMax,
-      })),
-      month,
-    };
-    let cancelled = false;
-    setLiveLoading(true);
-    const t = setTimeout(() => {
-      fetch("/api/circle/returns", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then((r) => r.json())
-        .then((d) => { if (!cancelled) setLive(d?.ok ? d : null); })
-        .catch(() => { if (!cancelled) setLive(null); })
-        .finally(() => { if (!cancelled) setLiveLoading(false); });
-    }, 260);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [items, month, bundle.ok]);
-
-  // Display KPIs prefer the live demand-driven numbers; fall back to the base
-  // engine band until the first fetch resolves so the card never shows "—".
-  const roiMin = live?.ok ? live.expectedRoiMin : bundle.expectedRoiMin;
-  const roiMax = live?.ok ? live.expectedRoiMax : bundle.expectedRoiMax;
-  const divBonus = live?.ok ? live.diversificationBonusPct : bundle.diversificationBonusPct;
-  const roiAvg = (roiMin + roiMax) / 2;
-  const expectedAnnualIncome = Math.round(bundle.monthlyTotal * 12 * (roiAvg / 100));
-  const expectedMonthlyIncome = Math.round(expectedAnnualIncome / 12);
-  const paybackYearsMin = roiMax > 0 ? Math.round((100 / roiMax) * 10) / 10 : 0;
-  const paybackYearsMax = roiMin > 0 ? Math.round((100 / roiMin) * 10) / 10 : 0;
-  const paybackLabel = paybackYearsMin > 0
-    ? `${Math.round(paybackYearsMin)}–${Math.round(paybackYearsMax)} years` : "—";
-
-  // 48-month projection for the animated chart: cumulative invested vs
-  // cumulative returns at the LIVE blended avg ROI for the selected month.
-  const projection = useMemo(() => {
-    if (!bundle.ok) return [];
-    const monthlyReturn = (bundle.monthlyTotal * roiAvg) / 100;
-    const rows: { m: string; invested: number; returns: number }[] = [];
-    let invested = 0, returns = 0;
-    for (let m = 1; m <= 48; m++) {
-      invested += bundle.monthlyTotal;
-      returns += monthlyReturn * (m / 12 > 1 ? 1 : m / 12); // ramp in year 1
-      if (m % 3 === 0) rows.push({ m: `M${m}`, invested: Math.round(invested), returns: Math.round(returns) });
-    }
-    return rows;
-  }, [bundle, roiAvg]);
+  // Group the recap by property so the review reads cleanly.
+  const grouped = useMemo(() => {
+    const map = new Map<string, {
+      id: string; title: string; city: string; image: string;
+      roiMin: number; roiMax: number;
+      rows: { name: string; rooms: number; monthlyRate: number }[];
+      monthly: number; rooms: number;
+    }>();
+    items.forEach((it) => {
+      const prop = props.find((p) => p.id === it.propertyId);
+      let g = map.get(it.propertyId);
+      if (!g) {
+        g = {
+          id: it.propertyId, title: it.propertyTitle, city: it.city,
+          image: prop?.images?.[0] || "",
+          roiMin: it.roiMin, roiMax: it.roiMax,
+          rows: [], monthly: 0, rooms: 0,
+        };
+        map.set(it.propertyId, g);
+      }
+      g.rows.push({ name: it.roomTypeName, rooms: it.rooms, monthlyRate: it.monthlyRate });
+      g.monthly += it.monthlyRate * it.rooms;
+      g.rooms += it.rooms;
+    });
+    return Array.from(map.values());
+  }, [items, props]);
 
   const startPayment = useCallback(async () => {
     setPayError("");
     if (!bundle.ok || bundle.payNow <= 0) {
-      setPayError("Pehle bundle me rooms add karein.");
+      setPayError("Pehle Discover se rooms choose karein.");
       return;
     }
     if (!user) {
@@ -282,6 +174,7 @@ export default function CircleBuildPage() {
       setDoneBundle(data.breakdown);
       setPay("done");
       setSelection({});
+      try { localStorage.removeItem(ROOM_SEL_KEY); } catch { /* noop */ }
     } catch (e: any) {
       setPayError(String(e?.message || e).slice(0, 200));
       setPay("idle");
@@ -303,7 +196,7 @@ export default function CircleBuildPage() {
             <div className="sbc-kpi"><b>{fmtINR(doneBundle?.payNow || 0)}</b><span>Paid Now</span></div>
             <div className="sbc-kpi"><b>{fmtINR(doneBundle?.monthlyTotal || 0)}</b><span>Monthly Plan</span></div>
             <div className="sbc-kpi"><b>{doneBundle?.expectedRoiMin}–{doneBundle?.expectedRoiMax}%</b><span>Expected ROI</span></div>
-            <div className="sbc-kpi"><b>{doneBundle?.paybackLabel}</b><span>Payback</span></div>
+            <div className="sbc-kpi"><b>{fmtINR(doneBundle?.expectedMonthlyIncome || 0)}</b><span>Est. Income /mo</span></div>
           </div>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
             <Link href="/circle/me" className="sbc-btn-gold">Open My Portfolio →</Link>
@@ -318,157 +211,110 @@ export default function CircleBuildPage() {
     <div>
       <section className="sbc-section" style={{ paddingBottom: 20 }}>
         <h1 className="sbc-h2">
-          <span className="step-pill">STEP 3 · Plan</span>
-          {bundle.ok ? "Confirm & Invest" : "Build Your Investment Bundle"}
+          <span className="step-pill">STEP 3 · Review &amp; Invest</span>
+          {bundle.ok ? "Confirm & Invest" : "Review Your Bundle"}
         </h1>
         <p className="sbc-sub">
           {bundle.ok
-            ? `${bundle.roomCount} room${bundle.roomCount > 1 ? "s" : ""} across ${bundle.propertyCount} ${bundle.propertyCount > 1 ? "properties" : "property"} locked — month choose karo, live returns dekho, aur invest karo.`
-            : "Rooms choose karo — projected returns live AI demand se update honge."}
+            ? `${bundle.roomCount} room${bundle.roomCount > 1 ? "s" : ""} across ${bundle.propertyCount} ${bundle.propertyCount > 1 ? "properties" : "property"} — review karo, payment plan choose karo, aur invest karo.`
+            : "Abhi bundle khaali hai — Discover se rooms choose karke yahan review karein."}
         </p>
       </section>
 
       <section className="sbc-section" style={{ paddingTop: 0, display: "grid", gap: 22, gridTemplateColumns: "1fr", alignItems: "start" }}>
-        <style>{`@media (min-width: 1024px) { .sbc-build-grid { grid-template-columns: 1.25fr 1fr !important; } }`}</style>
+        <style>{`@media (min-width: 1024px) { .sbc-build-grid { grid-template-columns: 1.15fr 1fr !important; } }`}</style>
         <div className="sbc-build-grid" style={{ display: "grid", gap: 22, gridTemplateColumns: "1fr", alignItems: "start" }}>
 
-          {/* ------- LEFT: properties + room steppers ------- */}
+          {/* ------- LEFT: read-only bundle recap ------- */}
           <div style={{ display: "grid", gap: 14 }}>
             {loading ? (
-              <div className="sbc-panel" style={{ padding: 40, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading properties…</div>
-            ) : lockedProps.length === 0 && !showMore ? (
+              <div className="sbc-panel" style={{ padding: 40, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading your bundle…</div>
+            ) : grouped.length === 0 ? (
               <div className="sbc-panel" style={{ padding: 32, textAlign: "center" }}>
-                <div style={{ fontSize: 34 }}>🔒</div>
+                <div style={{ fontSize: 34 }}>🏔️</div>
                 <p style={{ marginTop: 8, color: "rgba(74,56,32,.7)" }}>
-                  Abhi koi property locked nahi hai. Discover se lock karein ya yahin se add karein.
+                  Bundle abhi khaali hai. Discover par jaakar property + rooms choose karein.
                 </p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
-                  <Link href="/circle" className="sbc-btn-gold">← Discover Properties</Link>
-                  <button className="sbc-btn-ghost" style={{ color: "var(--sbc-gold-deep)", borderColor: "rgba(139,105,20,.3)" }} onClick={() => setShowMore(true)}>
-                    Browse all here
-                  </button>
+                  <Link href="/circle/discover" className="sbc-btn-gold">→ Choose rooms on Discover</Link>
                 </div>
               </div>
             ) : (
               <>
-                {lockedProps.map((p) => (
-                  <BuilderPropertyCard key={p.id} p={p} selection={selection} setRooms={setRooms} locked onRemove={() => removeLock(p.id)} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(74,56,32,.6)", fontWeight: 700 }}>Your Bundle</div>
+                  <Link href="/circle/discover" style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--sbc-gold-deep)", textDecoration: "none" }}>✏️ Edit rooms</Link>
+                </div>
+                {grouped.map((g) => (
+                  <div key={g.id} className="sbc-panel" style={{ padding: 16 }}>
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 14, overflow: "hidden", flexShrink: 0, background: "#241B10" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {g.image ? <img src={g.image} alt={g.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: "var(--sbc-coffee)" }}>{g.title}</div>
+                        <div style={{ fontSize: ".74rem", color: "rgba(74,56,32,.6)" }}>📍 {g.city} · 📈 {g.roiMin}–{g.roiMax}% ROI</div>
+                        <div style={{ marginTop: 4, fontSize: ".74rem", color: "#3F5233", fontWeight: 600 }}>
+                          ✓ {g.rooms} room{g.rooms > 1 ? "s" : ""} · {fmtINR(g.monthly)}/mo
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
+                      {g.rows.map((r) => (
+                        <div key={r.name} style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
+                          padding: "8px 12px", borderRadius: 12,
+                          background: "rgba(201,166,107,.1)", border: "1px solid rgba(139,105,20,.15)",
+                        }}>
+                          <div style={{ fontWeight: 600, fontSize: ".84rem", color: "var(--sbc-coffee)" }}>
+                            {r.name} <span style={{ color: "rgba(74,56,32,.55)", fontWeight: 500 }}>× {r.rooms}</span>
+                          </div>
+                          <div style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--sbc-gold-deep)", fontVariantNumeric: "tabular-nums" }}>
+                            {fmtINR(r.monthlyRate * r.rooms)}/mo
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-                {showMore && otherProps.map((p) => (
-                  <BuilderPropertyCard key={p.id} p={p} selection={selection} setRooms={setRooms} />
-                ))}
-                {!showMore && otherProps.length > 0 && (
-                  <button className="sbc-panel" style={{ padding: 16, cursor: "pointer", textAlign: "center", color: "var(--sbc-gold-deep)", fontWeight: 700, border: "1.5px dashed rgba(139,105,20,.35)", background: "transparent" }} onClick={() => setShowMore(true)}>
-                    + Add More Property ({otherProps.length} available)
-                  </button>
-                )}
               </>
             )}
           </div>
 
-          {/* ------- RIGHT: live investment calculator ------- */}
+          {/* ------- RIGHT: simple invest → earn summary + pay ------- */}
           <div className="sbc-panel-walnut" style={{ position: "sticky", top: 76 }}>
-            <div className="sbc-calc-eyebrow">
-              <span className="sbc-live-dot" aria-hidden />
-              Investment &amp; Returns · Live
-              {liveLoading && <span className="sbc-calc-updating">updating…</span>}
-            </div>
-            <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-              <b key={`t-${bundle.monthlyTotal}`} style={{ fontSize: "2rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                {fmtINR(bundle.monthlyTotal)}
-              </b>
-              <span style={{ fontSize: ".78rem", color: "rgba(247,239,223,.6)" }}>/ month · {bundle.roomCount} room(s) · {bundle.propertyCount} property(ies)</span>
+            <div style={{ fontSize: ".72rem", letterSpacing: ".16em", textTransform: "uppercase", color: "rgba(231,207,160,.7)", fontWeight: 700 }}>
+              Investment &amp; Returns
             </div>
 
-            {/* ── LIVE month selector — returns swing with real demand ── */}
-            <div className="sbc-month-label">Stay month · returns update live</div>
-            <div className="sbc-month-row">
-              {MONTH_SHORT.map((m, i) => (
-                <button
-                  key={m}
-                  className={`sbc-month-chip ${month === i ? "on" : ""} ${live?.ok && live.peakMonth === i ? "peak" : ""}`}
-                  onClick={() => setMonth(i)}
-                  aria-label={MONTH_LABELS[i]}
-                >{m}</button>
-              ))}
-            </div>
-
-            {/* ── real AI demand breakdown for the selected month × cities ── */}
-            {bundle.ok && (
-              <div className="sbc-demand" key={`dm-${month}-${live?.avgNightly ?? 0}`}>
-                <div className="sbc-demand-head">
-                  <b>{live?.monthLabel || MONTH_LABELS[month]} demand</b>
-                  {live?.ok && (
-                    <span className={`sbc-demand-swing ${live.demandFactor >= 1.03 ? "up" : live.demandFactor <= 0.97 ? "down" : ""}`}>
-                      {live.demandFactor >= 1.03 ? "▲" : live.demandFactor <= 0.97 ? "▼" : "•"} {Math.round((live.demandFactor - 1) * 100)}% vs avg
-                    </span>
-                  )}
-                </div>
-                <div className="sbc-demand-metrics">
-                  <div><b><CountUp key={live?.avgNightly ?? 0} value={live?.avgNightly ?? 0} prefix="₹" /></b><span>Live nightly rate</span></div>
-                  <div><b>{live?.ok ? `${live.avgOccupancyPct}%` : "—"}</b><span>Projected occupancy</span></div>
-                </div>
-                {live?.ok && live.factors.length > 0 && (
-                  <div className="sbc-demand-tags">
-                    {live.factors.map((f) => <span key={f}>{f}</span>)}
-                  </div>
-                )}
-                {live?.ok && live.peakMonth !== month && (
-                  <button className="sbc-demand-peak" onClick={() => setMonth(live.peakMonth)}>
-                    ⭐ Best season for this bundle: {MONTH_LABELS[live.peakMonth]} → tap to compare
-                  </button>
-                )}
+            {/* the two-line story: what you invest vs what you earn */}
+            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: ".82rem", color: "rgba(247,239,223,.65)" }}>You invest</span>
+                <b key={`inv-${bundle.monthlyTotal}`} style={{ fontSize: "1.7rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                  {fmtINR(bundle.monthlyTotal)}<span style={{ fontSize: ".8rem", color: "rgba(247,239,223,.5)", fontWeight: 500 }}> /mo</span>
+                </b>
               </div>
-            )}
+              <div style={{ height: 1, background: "rgba(231,207,160,.14)" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: ".82rem", color: "rgba(247,239,223,.65)" }}>You earn <span style={{ opacity: .6 }}>(expected)</span></span>
+                <b style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(183,208,160,.55)", fontWeight: 500 }}> /mo</span>
+                </b>
+              </div>
+            </div>
 
             <div className="sbc-kpi-row" style={{ marginTop: 16 }}>
-              <div className="sbc-kpi pop" key={`roi-${roiMin}-${roiMax}`}>
-                <b>{bundle.ok ? `${roiMin}–${roiMax}%` : "—"}</b>
-                <span>Expected ROI {divBonus > 0 ? `(+${divBonus}% diversify)` : ""}</span>
+              <div className="sbc-kpi" key={`roi-${bundle.expectedRoiMin}`}>
+                <b>{bundle.ok ? `${bundle.expectedRoiMin}–${bundle.expectedRoiMax}%` : "—"}</b>
+                <span>Expected ROI / yr{bundle.diversificationBonusPct > 0 ? ` · +${bundle.diversificationBonusPct}% diversify` : ""}</span>
               </div>
-              <div className="sbc-kpi pop" key={`inc-${expectedMonthlyIncome}`}>
-                <b><CountUp key={expectedMonthlyIncome} value={expectedMonthlyIncome} prefix="₹" /></b>
-                <span>Expected Monthly Income</span>
-              </div>
-              <div className="sbc-kpi pop" key={`ann-${expectedAnnualIncome}`}>
-                <b><CountUp key={expectedAnnualIncome} value={expectedAnnualIncome} prefix="₹" /></b>
+              <div className="sbc-kpi" key={`ann-${bundle.expectedAnnualIncome}`}>
+                <b><CountUp key={bundle.expectedAnnualIncome} value={bundle.expectedAnnualIncome} prefix="₹" /></b>
                 <span>Expected Annual Income</span>
               </div>
-              <div className="sbc-kpi" key={`pb-${paybackLabel}`}>
-                <b>{paybackLabel}</b>
-                <span>Payback Period</span>
-              </div>
             </div>
-
-            {/* animated projection chart */}
-            {bundle.ok && projection.length > 0 && (
-              <div style={{ marginTop: 18, height: 150 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={projection} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="sbcGold" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#E7CFA0" stopOpacity={0.75} />
-                        <stop offset="100%" stopColor="#C9A66B" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="sbcSage" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#9DAD8F" stopOpacity={0.6} />
-                        <stop offset="100%" stopColor="#7F9269" stopOpacity={0.04} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="rgba(231,207,160,.08)" vertical={false} />
-                    <XAxis dataKey="m" tick={{ fill: "rgba(247,239,223,.45)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "rgba(247,239,223,.45)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${Math.round(v / 100000)}L`} />
-                    <Tooltip
-                      contentStyle={{ background: "#241B10", border: "1px solid rgba(231,207,160,.3)", borderRadius: 12, fontSize: 12 }}
-                      labelStyle={{ color: "#F3E3BF" }}
-                      formatter={(v: any, n: any) => [fmtINR(Number(v)), n === "invested" ? "Invested" : "Returns"]}
-                    />
-                    <Area type="monotone" dataKey="invested" stroke="#C9A66B" strokeWidth={2} fill="url(#sbcGold)" isAnimationActive animationDuration={800} />
-                    <Area type="monotone" dataKey="returns" stroke="#9DAD8F" strokeWidth={2} fill="url(#sbcSage)" isAnimationActive animationDuration={800} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
 
             {/* payment plan */}
             <div style={{ marginTop: 18, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(231,207,160,.7)" }}>Payment Plan</div>
@@ -535,84 +381,6 @@ export default function CircleBuildPage() {
           </div>
         </div>
       </section>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-function BuilderPropertyCard({
-  p, selection, setRooms, locked, onRemove,
-}: {
-  p: CircleProperty;
-  selection: Record<string, number>;
-  setRooms: (rtId: string, next: number, max: number) => void;
-  locked?: boolean;
-  onRemove?: () => void;
-}) {
-  const totalSelected = p.roomTypes.reduce((s, rt) => s + (selection[rt.id] || 0), 0);
-  return (
-    <div className="sbc-panel" style={{ padding: 16 }}>
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ width: 72, height: 72, borderRadius: 14, overflow: "hidden", flexShrink: 0, background: "#241B10" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.images[0]} alt={p.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-            <div>
-              <div style={{ fontWeight: 700, color: "var(--sbc-coffee)" }}>{p.title}</div>
-              <div style={{ fontSize: ".74rem", color: "rgba(74,56,32,.6)" }}>📍 {p.city} · 📈 {p.roiMin}–{p.roiMax}% ROI</div>
-            </div>
-            {locked && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, height: "fit-content", flexShrink: 0 }}>
-                <span style={{ fontSize: ".66rem", fontWeight: 700, color: "var(--sbc-gold-deep)", background: "rgba(201,166,107,.16)", border: "1px solid rgba(201,166,107,.35)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>🔒 LOCKED</span>
-                {onRemove && (
-                  <button
-                    onClick={onRemove}
-                    aria-label={`Remove ${p.title} from bundle`}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 3, cursor: "pointer", fontSize: ".66rem", fontWeight: 700, whiteSpace: "nowrap", color: "#B0553F", background: "rgba(212,149,131,.14)", border: "1px solid rgba(212,149,131,.4)", borderRadius: 999, padding: "3px 9px" }}
-                  >
-                    ✕ Remove
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          {totalSelected > 0 && (
-            <div style={{ marginTop: 4, fontSize: ".74rem", color: "#3F5233", fontWeight: 600 }}>
-              ✓ {totalSelected} room(s) in bundle
-            </div>
-          )}
-        </div>
-      </div>
-      <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-        {p.roomTypes.map((rt) => {
-          const v = selection[rt.id] || 0;
-          const max = Math.min(10, rt.availableUnits);
-          const sold = rt.availableUnits <= 0;
-          return (
-            <div key={rt.id} style={{
-              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
-              padding: "9px 12px", borderRadius: 13,
-              background: v > 0 ? "rgba(201,166,107,.14)" : "rgba(201,166,107,.05)",
-              border: `1px solid ${v > 0 ? "rgba(139,105,20,.35)" : "rgba(139,105,20,.12)"}`,
-              opacity: sold ? 0.55 : 1, transition: "all .2s ease",
-            }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: ".84rem", color: "var(--sbc-coffee)" }}>{rt.name}</div>
-                <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.55)" }}>
-                  {fmtINR(rt.monthlyRate)} /mo · {sold ? "sold out" : `${rt.availableUnits} left`}
-                </div>
-              </div>
-              <div className="sbc-stepper">
-                <button onClick={() => setRooms(rt.id, v - 1, max)} disabled={v <= 0} aria-label="Less rooms">−</button>
-                <span className="val">{v}</span>
-                <button onClick={() => setRooms(rt.id, v + 1, max)} disabled={sold || v >= max} aria-label="More rooms">+</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
