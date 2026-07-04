@@ -789,8 +789,14 @@ body.is-reel-page .sbc { padding-bottom: 0; }
     border-radius: 20px; box-shadow: 0 24px 70px -24px rgba(0,0,0,.7);
   }
 }
-.sbc-rfull-media { position: absolute; inset: 0; }
-.sbc-rfull-media video, .sbc-rfull-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbc-rfull-media { position: absolute; inset: 0; background: #0b0805; }
+/* poster + video both fill the stage and stack (video overlays the poster),
+   so the reel is never black even if the video fails on desktop */
+.sbc-rfull-media video, .sbc-rfull-media img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.sbc-rfull-vid { z-index: 1; }
 .sbc-rfull-shade {
   position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(8,5,2,.58) 0%, rgba(8,5,2,0) 24%, rgba(8,5,2,0) 44%, rgba(8,5,2,.82) 100%);
