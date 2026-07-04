@@ -873,7 +873,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
    never overlap regardless of how many lines the title/badges wrap to */
 .sbc-rfull-bottom {
   position: absolute; left: 14px; right: 14px; z-index: 5;
-  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  /* v293.3: clear the FULL dock height including the step-3 FAB poke. The dock
+     content is ~44px + the .sbc-dock-item.center FAB rises 16px above the dock
+     top, so its visual peak sits ~60px above the safe-area bottom. 70px left
+     the CTAs kissing the dock; 92px gives a clean gap on both the property feed
+     and the room-tour feed (both cards are .sbc-rfull → share this class). */
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 12px;
 }
 .sbc-rfull-info { color: #FBF3E2; padding-right: 58px; }

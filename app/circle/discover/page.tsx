@@ -122,11 +122,31 @@ export default function CircleDiscoverPage() {
     } catch { /* noop */ }
   }, []);
 
-  // dock "Rooms" tap (same page) opens the room-selector sheet
+  // dock Step-2 "Rooms" opens the room-tour overlay; dock Step-1 "Property"
+  // dispatches sbc:rooms-close to shut it (so tapping Property while the room
+  // overlay is up never leaves it "stuck" behind the property feed — v293.3).
   useEffect(() => {
     const onRooms = () => setRoomsOpen(true);
+    const onRoomsClose = () => setRoomsOpen(false);
     window.addEventListener("sbc:rooms", onRooms);
-    return () => window.removeEventListener("sbc:rooms", onRooms);
+    window.addEventListener("sbc:rooms-close", onRoomsClose);
+    return () => {
+      window.removeEventListener("sbc:rooms", onRooms);
+      window.removeEventListener("sbc:rooms-close", onRoomsClose);
+    };
+  }, []);
+
+  // Broadcast the overlay's open/closed state so CircleDock can light up the
+  // correct step (Rooms active when open, Property when closed) instead of
+  // always showing Property active on /circle/discover (the "stuck" visual).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("sbc:rooms-state", { detail: { open: roomsOpen } }));
+  }, [roomsOpen]);
+  // Tell the dock the overlay is gone when we navigate away from this route.
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(new CustomEvent("sbc:rooms-state", { detail: { open: false } }));
+    };
   }, []);
 
   // Hydrate server locks for signed-in users (server is the source of truth).
