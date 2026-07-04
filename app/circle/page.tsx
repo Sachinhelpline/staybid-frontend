@@ -147,6 +147,8 @@ export default function CircleHomePage() {
         </Link>
       </header>
 
+      {/* ───────── hero: portfolio + quick actions (2-col on desktop) ───────── */}
+      <div className="sbc-home-hero">
       {/* ───────── portfolio snapshot ───────── */}
       <section className="sbc-home-portfolio">
         <div className="sbc-hp-glow" aria-hidden />
@@ -179,7 +181,7 @@ export default function CircleHomePage() {
       </section>
 
       {/* ───────── quick actions ───────── */}
-      <section className="sbc-home-sec">
+      <section className="sbc-home-sec sbc-qa-sec">
         <div className="sbc-home-sec-h">Quick Actions</div>
         <div className="sbc-qa">
           <Link href="/circle/discover" className="sbc-qa-item">
@@ -196,6 +198,7 @@ export default function CircleHomePage() {
           </a>
         </div>
       </section>
+      </div>{/* /sbc-home-hero */}
 
       {/* ───────── the 3-step journey (traditional explainer) ───────── */}
       <section className="sbc-home-sec" id="how">
@@ -297,11 +300,12 @@ export default function CircleHomePage() {
       {/* ───────── build-bundle CTA ───────── */}
       <section className="sbc-home-sec">
         <Link href="/circle/build" className="sbc-home-bundle">
-          <div>
+          <span className="sbc-home-bundle-ic">💎</span>
+          <div className="sbc-home-bundle-body">
             <b>Build Your Investment Bundle</b>
-            <span>Combine properties across locations &amp; maximise your returns.</span>
+            <span>Combine properties across locations, pick a plan &amp; see live projected returns.</span>
           </div>
-          <span className="sbc-home-bundle-ic">🧱</span>
+          <span className="sbc-home-bundle-go" aria-hidden>→</span>
         </Link>
       </section>
 

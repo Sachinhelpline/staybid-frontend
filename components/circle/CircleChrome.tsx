@@ -38,6 +38,10 @@ export function CircleTopbar() {
         <nav className="sbc-topnav">
           <Link href="/circle" className={`sbc-topnav-link${active("/circle") ? " on" : ""}`}>Home</Link>
           <Link href="/circle/discover" className={`sbc-topnav-link${active("/circle/discover") ? " on" : ""}`}>Discover</Link>
+          {/* Journey step 2 — surfaces the room-select flow from the header
+              (Sachin: "header nav main kahi bhi rooms button nahi hai"). Shares
+              the /circle/discover path so it carries no active-state of its own. */}
+          <Link href="/circle/discover?rooms=1" className="sbc-topnav-link hidden sm:inline-flex">Rooms</Link>
           <Link href="/circle/build" className={`sbc-topnav-link${active("/circle/build") ? " on" : ""}`}>Build Bundle</Link>
           <Link href="/circle/me" className={`sbc-topnav-link hidden sm:inline-flex${active("/circle/me") ? " on" : ""}`}>My Portfolio</Link>
           <Link href="/circle/dashboard" className="sbc-topnav-cta">Dashboard</Link>
