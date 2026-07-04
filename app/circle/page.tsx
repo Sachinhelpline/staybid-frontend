@@ -169,31 +169,7 @@ export default function CircleDiscoverPage() {
     } catch { /* cancelled */ }
   }, [flash]);
 
-  const lockProperty = useCallback(async (p: CircleProperty) => {
-    if (!user) {
-      redirectToSignIn(router, { route: "/circle", action: "circle_lock" });
-      return;
-    }
-    const already = locks.includes(p.id);
-    const token = localStorage.getItem("sb_token") || "";
-    if (already) {
-      setLocks((prev) => { const n = prev.filter((x) => x !== p.id); writeSet(LOCKS_KEY, n); return n; });
-      fetch(`/api/circle/locks?propertyId=${encodeURIComponent(p.id)}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-      flash(`🔓 ${p.title} released`);
-      return;
-    }
-    setLocks((prev) => { const n = [...prev, p.id]; writeSet(LOCKS_KEY, n); return n; });
-    fetch("/api/circle/locks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ propertyId: p.id }),
-    }).catch(() => {});
-    flash(`🔒 ${p.title} locked — bundle me add ho gaya`);
-  }, [user, locks, router, flash]);
-
-  // "Invest Now" from a reel — ensure the property is locked, then jump to the
+  // "Lock for Investment" from a reel — ensure the property is locked, then jump to the
   // bundle builder. Distinct from Lock (top pill): this drives the customer
   // forward into checkout, it is NOT a duplicate lock toggle.
   const investFromReel = useCallback((p: CircleProperty) => {
@@ -268,7 +244,6 @@ export default function CircleDiscoverPage() {
               liked={likes.includes(p.id)}
               locked={locks.includes(p.id)}
               onLike={() => toggleLike(p.id)}
-              onLock={() => lockProperty(p)}
               onInvest={() => investFromReel(p)}
               onShare={() => share(p)}
               onOpen={() => router.push(`/circle/${p.id}`)}
@@ -355,14 +330,13 @@ export default function CircleDiscoverPage() {
 // wide screens, full-bleed on phones); info + CTAs share ONE bottom flex
 // container so they can never overlap on any device.
 function FullReel({
-  p, first, liked, locked, onLike, onLock, onInvest, onShare, onOpen,
+  p, first, liked, locked, onLike, onInvest, onShare, onOpen,
 }: {
   p: CircleProperty;
   first: boolean;
   liked: boolean;
   locked: boolean;
   onLike: () => void;
-  onLock: () => void;
   onInvest: () => void;
   onShare: () => void;
   onOpen: () => void;
@@ -415,7 +389,9 @@ function FullReel({
         </div>
         <div className="sbc-rfull-shade" />
 
-        {/* top: property chip + Add-to-Bundle pill (the lock toggle) */}
+        {/* top: property chip only — the single "Lock for Investment" CTA
+            below is the sole lock action (v291.2, removed the duplicate
+            Bundle pill). A small "✓ Locked" tag shows current state. */}
         <div className="sbc-rfull-top" onClick={(e) => e.stopPropagation()}>
           <div className="sbc-rfull-chip" onClick={onOpen} role="button" tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
@@ -428,9 +404,7 @@ function FullReel({
               <span>📍 {p.locationLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</span>
             </div>
           </div>
-          <button className={`sbc-rfull-lockpill ${locked ? "locked" : ""}`} onClick={onLock} disabled={soldOut && !locked}>
-            {locked ? "✓ In bundle" : soldOut ? "Waitlist" : "＋ Bundle"}
-          </button>
+          {locked && <span className="sbc-rfull-locktag">✓ Locked</span>}
         </div>
 
         {/* right action rail */}
@@ -470,8 +444,8 @@ function FullReel({
 
           <div className="sbc-rfull-ctas">
             <button className="sbc-rfull-btn-tour" onClick={onOpen}>▶ View full tour</button>
-            <button className="sbc-rfull-btn-invest" onClick={onInvest} disabled={soldOut && !locked}>
-              {soldOut && !locked ? "Sold out" : "🔒 Lock for Investment"}
+            <button className={`sbc-rfull-btn-invest ${locked ? "islocked" : ""}`} onClick={onInvest} disabled={soldOut && !locked}>
+              {soldOut && !locked ? "Sold out" : locked ? "✓ Locked · View bundle →" : "🔒 Lock for Investment"}
             </button>
           </div>
         </div>

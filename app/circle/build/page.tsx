@@ -88,6 +88,33 @@ export default function CircleBuildPage() {
     setKpiPop((n) => n + 1);
   }, []);
 
+  // Unlock / remove a locked property from the bundle — anytime, one tap.
+  // Drops it from the lock list + localStorage, clears its room selections,
+  // releases the server-side lock (best-effort), and refreshes the dock badge.
+  const removeLock = useCallback((propertyId: string) => {
+    setLockedIds((prev) => {
+      const n = prev.filter((x) => x !== propertyId);
+      try { localStorage.setItem(LOCKS_KEY, JSON.stringify(n)); } catch { /* full */ }
+      try { window.dispatchEvent(new Event("sbc:locks-change")); } catch { /* noop */ }
+      return n;
+    });
+    setSelection((prev) => {
+      const prop = props.find((p) => p.id === propertyId);
+      if (!prop) return prev;
+      const rtIds = new Set(prop.roomTypes.map((rt) => rt.id));
+      const out: Record<string, number> = {};
+      Object.entries(prev).forEach(([k, v]) => { if (!rtIds.has(k)) out[k] = v; });
+      return out;
+    });
+    try {
+      const token = localStorage.getItem("sb_token") || "";
+      fetch(`/api/circle/locks?propertyId=${encodeURIComponent(propertyId)}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    } catch { /* noop */ }
+    setKpiPop((n) => n + 1);
+  }, [props]);
+
   // ---- live bundle (single source of truth) ----
   const items: BundleItem[] = useMemo(() => {
     const out: BundleItem[] = [];
@@ -235,7 +262,7 @@ export default function CircleBuildPage() {
             ) : (
               <>
                 {lockedProps.map((p) => (
-                  <BuilderPropertyCard key={p.id} p={p} selection={selection} setRooms={setRooms} locked />
+                  <BuilderPropertyCard key={p.id} p={p} selection={selection} setRooms={setRooms} locked onRemove={() => removeLock(p.id)} />
                 ))}
                 {showMore && otherProps.map((p) => (
                   <BuilderPropertyCard key={p.id} p={p} selection={selection} setRooms={setRooms} />
@@ -381,12 +408,13 @@ export default function CircleBuildPage() {
 
 // ---------------------------------------------------------------------------
 function BuilderPropertyCard({
-  p, selection, setRooms, locked,
+  p, selection, setRooms, locked, onRemove,
 }: {
   p: CircleProperty;
   selection: Record<string, number>;
   setRooms: (rtId: string, next: number, max: number) => void;
   locked?: boolean;
+  onRemove?: () => void;
 }) {
   const totalSelected = p.roomTypes.reduce((s, rt) => s + (selection[rt.id] || 0), 0);
   return (
@@ -402,7 +430,20 @@ function BuilderPropertyCard({
               <div style={{ fontWeight: 700, color: "var(--sbc-coffee)" }}>{p.title}</div>
               <div style={{ fontSize: ".74rem", color: "rgba(74,56,32,.6)" }}>📍 {p.city} · 📈 {p.roiMin}–{p.roiMax}% ROI</div>
             </div>
-            {locked && <span style={{ fontSize: ".66rem", fontWeight: 700, color: "var(--sbc-gold-deep)", background: "rgba(201,166,107,.16)", border: "1px solid rgba(201,166,107,.35)", borderRadius: 999, padding: "3px 9px", height: "fit-content", whiteSpace: "nowrap" }}>🔒 LOCKED</span>}
+            {locked && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, height: "fit-content", flexShrink: 0 }}>
+                <span style={{ fontSize: ".66rem", fontWeight: 700, color: "var(--sbc-gold-deep)", background: "rgba(201,166,107,.16)", border: "1px solid rgba(201,166,107,.35)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>🔒 LOCKED</span>
+                {onRemove && (
+                  <button
+                    onClick={onRemove}
+                    aria-label={`Remove ${p.title} from bundle`}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 3, cursor: "pointer", fontSize: ".66rem", fontWeight: 700, whiteSpace: "nowrap", color: "#B0553F", background: "rgba(212,149,131,.14)", border: "1px solid rgba(212,149,131,.4)", borderRadius: 999, padding: "3px 9px" }}
+                  >
+                    ✕ Remove
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {totalSelected > 0 && (
             <div style={{ marginTop: 4, fontSize: ".74rem", color: "#3F5233", fontWeight: 600 }}>

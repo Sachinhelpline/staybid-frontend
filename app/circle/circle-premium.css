@@ -822,13 +822,15 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rfull-hand { min-width: 0; line-height: 1.15; }
 .sbc-rfull-hand b { display: block; color: #FBF3E2; font-size: .82rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
 .sbc-rfull-hand span { display: block; color: rgba(251,243,226,.72); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sbc-rfull-lockpill {
-  flex: 0 0 auto; height: 32px; padding: 0 14px; border-radius: 999px; cursor: pointer;
-  font-size: .78rem; font-weight: 800; border: 1px solid rgba(231,207,160,.5); white-space: nowrap;
-  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold)); color: var(--sbc-walnut);
+/* small "Locked" state tag (non-interactive — the single Lock CTA below
+   is the only lock action; unlock/remove happens on the bundle page) */
+.sbc-rfull-locktag {
+  flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 999px;
+  display: inline-flex; align-items: center; white-space: nowrap;
+  font-size: .74rem; font-weight: 800; letter-spacing: .01em;
+  background: rgba(127,146,105,.6); border: 1px solid rgba(157,173,143,.6);
+  color: #EDF5E4; backdrop-filter: blur(8px);
 }
-.sbc-rfull-lockpill.locked { background: rgba(127,146,105,.65); border-color: rgba(157,173,143,.6); color: #EDF5E4; }
-.sbc-rfull-lockpill:disabled { opacity: .55; cursor: not-allowed; }
 
 /* right action rail — sits just above the bottom info+CTA block */
 .sbc-rfull-rail {
@@ -883,6 +885,10 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   transition: transform .16s ease;
 }
 .sbc-rfull-btn-invest:active { transform: scale(.97); }
+/* locked state — sage tint so it reads "already in your bundle, tap to review" */
+.sbc-rfull-btn-invest.islocked {
+  background: rgba(127,146,105,.62); border-color: rgba(157,173,143,.6); color: #EDF5E4;
+}
 
 /* first-reel swipe hint — clears the bottom info/CTA block */
 .sbc-rfull-hint {
