@@ -193,6 +193,29 @@ export default function CircleDiscoverPage() {
     flash(`🔒 ${p.title} locked — bundle me add ho gaya`);
   }, [user, locks, router, flash]);
 
+  // "Invest Now" from a reel — ensure the property is locked, then jump to the
+  // bundle builder. Distinct from Lock (top pill): this drives the customer
+  // forward into checkout, it is NOT a duplicate lock toggle.
+  const investFromReel = useCallback((p: CircleProperty) => {
+    if (!user) {
+      redirectToSignIn(router, { route: "/circle", action: "circle_invest" });
+      return;
+    }
+    setLocks((prev) => {
+      if (prev.includes(p.id)) return prev;
+      const n = [...prev, p.id];
+      writeSet(LOCKS_KEY, n);
+      const token = localStorage.getItem("sb_token") || "";
+      fetch("/api/circle/locks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ propertyId: p.id }),
+      }).catch(() => {});
+      return n;
+    });
+    router.push("/circle/build");
+  }, [user, router]);
+
   const filterActive = city !== "all" || model !== "all" || budget < 100000;
   const filterLabel = filterActive
     ? [city !== "all" ? `📍 ${city}` : null, model !== "all" ? MODEL_LABEL[model] : null, budget < 100000 ? `≤ ${fmtINR(budget)}` : null]
@@ -205,6 +228,14 @@ export default function CircleDiscoverPage() {
       {!loading && (
         <button className="sbc-rfilter-chip" onClick={() => setFilterOpen(true)}>
           <span>⚙</span>{filterLabel}<span style={{ opacity: .6 }}>▾</span>
+        </button>
+      )}
+
+      {/* list-a-property entry — owners / admin upload a property with full
+          details (routes to the StayCircle admin editor). */}
+      {!loading && (
+        <button className="sbc-rlist-chip" onClick={() => router.push("/admin/circle")} aria-label="List a property">
+          <span>＋</span> List property
         </button>
       )}
 
@@ -238,6 +269,7 @@ export default function CircleDiscoverPage() {
               locked={locks.includes(p.id)}
               onLike={() => toggleLike(p.id)}
               onLock={() => lockProperty(p)}
+              onInvest={() => investFromReel(p)}
               onShare={() => share(p)}
               onOpen={() => router.push(`/circle/${p.id}`)}
             />
@@ -319,8 +351,11 @@ export default function CircleDiscoverPage() {
 
 // ---------------------------------------------------------------------------
 // Full-viewport reel — autoplay video on view, action rail, top chip, CTAs.
+// v291: media + all overlays live inside a native 9:16 stage (portrait on
+// wide screens, full-bleed on phones); info + CTAs share ONE bottom flex
+// container so they can never overlap on any device.
 function FullReel({
-  p, first, liked, locked, onLike, onLock, onShare, onOpen,
+  p, first, liked, locked, onLike, onLock, onInvest, onShare, onOpen,
 }: {
   p: CircleProperty;
   first: boolean;
@@ -328,6 +363,7 @@ function FullReel({
   locked: boolean;
   onLike: () => void;
   onLock: () => void;
+  onInvest: () => void;
   onShare: () => void;
   onOpen: () => void;
 }) {
@@ -363,79 +399,83 @@ function FullReel({
   const initials = (p.title || "SC").trim().slice(0, 1).toUpperCase();
 
   return (
-    <div className="sbc-rfull" ref={wrapRef} onClick={onOpen} role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
-      <div className="sbc-rfull-media">
-        {p.videoUrl && inView ? (
-          <video ref={videoRef} src={p.videoUrl} muted={muted} playsInline loop preload="none" poster={poster} />
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          poster ? <img src={poster} alt={p.title} loading="lazy" /> : null
-        )}
-      </div>
-      <div className="sbc-rfull-shade" />
-
-      {/* top: property "creator" chip + Lock pill (mirrors Follow) */}
-      <div className="sbc-rfull-top" onClick={(e) => e.stopPropagation()}>
-        <div className="sbc-rfull-chip" onClick={onOpen} role="button" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
-          {poster
+    <div className="sbc-rfull" ref={wrapRef}>
+      {/* native 9:16 stage — full-bleed on phones, centered portrait on wide */}
+      <div className="sbc-rfull-stage" onClick={onOpen} role="button" tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
+        <div className="sbc-rfull-media">
+          {p.videoUrl && inView ? (
+            <video ref={videoRef} src={p.videoUrl} muted={muted} playsInline loop preload="none" poster={poster} />
+          ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img className="sbc-rfull-ava" src={poster} alt="" />
-            : <span className="sbc-rfull-ava">{initials}</span>}
-          <div className="sbc-rfull-hand">
-            <b>{p.title}</b>
-            <span>📍 {p.locationLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</span>
+            poster ? <img src={poster} alt={p.title} loading="lazy" /> : null
+          )}
+        </div>
+        <div className="sbc-rfull-shade" />
+
+        {/* top: property chip + Add-to-Bundle pill (the lock toggle) */}
+        <div className="sbc-rfull-top" onClick={(e) => e.stopPropagation()}>
+          <div className="sbc-rfull-chip" onClick={onOpen} role="button" tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }}>
+            {poster
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img className="sbc-rfull-ava" src={poster} alt="" />
+              : <span className="sbc-rfull-ava">{initials}</span>}
+            <div className="sbc-rfull-hand">
+              <b>{p.title}</b>
+              <span>📍 {p.locationLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</span>
+            </div>
+          </div>
+          <button className={`sbc-rfull-lockpill ${locked ? "locked" : ""}`} onClick={onLock} disabled={soldOut && !locked}>
+            {locked ? "✓ In bundle" : soldOut ? "Waitlist" : "＋ Bundle"}
+          </button>
+        </div>
+
+        {/* right action rail */}
+        <div className="sbc-rfull-rail" onClick={(e) => e.stopPropagation()}>
+          <button className={`sbc-rail-btn ${liked ? "on" : ""}`} onClick={onLike} aria-label="Like">
+            <span className="sbc-rail-ic">{liked ? "♥" : "♡"}</span>
+            <span className="sbc-rail-cap">Save</span>
+          </button>
+          <button className="sbc-rail-btn" onClick={onShare} aria-label="Share">
+            <span className="sbc-rail-ic">↗</span>
+            <span className="sbc-rail-cap">Share</span>
+          </button>
+          {p.videoUrl && (
+            <button className="sbc-rail-btn" onClick={() => setMuted((m) => !m)} aria-label="Mute">
+              <span className="sbc-rail-ic">{muted ? "🔇" : "🔊"}</span>
+              <span className="sbc-rail-cap">{muted ? "Muted" : "Sound"}</span>
+            </button>
+          )}
+          <button className="sbc-rail-btn" onClick={onOpen} aria-label="Details">
+            <span className="sbc-rail-ic">ⓘ</span>
+            <span className="sbc-rail-cap">Tour</span>
+          </button>
+        </div>
+
+        {/* bottom block — info + CTAs stacked in ONE flex column (no overlap) */}
+        <div className="sbc-rfull-bottom" onClick={(e) => e.stopPropagation()}>
+          <div className="sbc-rfull-info">
+            <div className="sbc-rfull-badges">
+              <span className="sbc-rfull-badge roi">📈 up to {p.roiMax}% ROI</span>
+              {p.occupancyLabel && <span className="sbc-rfull-badge">🔥 {p.occupancyLabel}</span>}
+              <span className="sbc-rfull-badge">🛎 {p.operationModel === "managed" ? "Fully Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</span>
+            </div>
+            <div className="sbc-rfull-title">{p.title}</div>
+            <div className="sbc-rfull-sub">{p.roomsLabel || p.viewLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</div>
+            <div className="sbc-rfull-rate"><b>{fmtINR(p.monthlyRate)}</b><span>/ room / month</span></div>
+          </div>
+
+          <div className="sbc-rfull-ctas">
+            <button className="sbc-rfull-btn-tour" onClick={onOpen}>▶ View full tour</button>
+            <button className="sbc-rfull-btn-invest" onClick={onInvest} disabled={soldOut && !locked}>
+              {soldOut && !locked ? "Sold out" : "💎 Invest now"}
+            </button>
           </div>
         </div>
-        <button className={`sbc-rfull-lockpill ${locked ? "locked" : ""}`} onClick={onLock} disabled={soldOut && !locked}>
-          {locked ? "✓ Locked" : soldOut ? "Waitlist" : "🔒 Lock"}
-        </button>
-      </div>
 
-      {/* right action rail */}
-      <div className="sbc-rfull-rail" onClick={(e) => e.stopPropagation()}>
-        <button className={`sbc-rail-btn ${liked ? "on" : ""}`} onClick={onLike} aria-label="Like">
-          <span className="sbc-rail-ic">{liked ? "♥" : "♡"}</span>
-          <span className="sbc-rail-cap">Save</span>
-        </button>
-        <button className="sbc-rail-btn" onClick={onShare} aria-label="Share">
-          <span className="sbc-rail-ic">↗</span>
-          <span className="sbc-rail-cap">Share</span>
-        </button>
-        {p.videoUrl && (
-          <button className="sbc-rail-btn" onClick={() => setMuted((m) => !m)} aria-label="Mute">
-            <span className="sbc-rail-ic">{muted ? "🔇" : "🔊"}</span>
-            <span className="sbc-rail-cap">{muted ? "Muted" : "Sound"}</span>
-          </button>
-        )}
-        <button className="sbc-rail-btn" onClick={onOpen} aria-label="Details">
-          <span className="sbc-rail-ic">ⓘ</span>
-          <span className="sbc-rail-cap">Tour</span>
-        </button>
+        {first && <div className="sbc-rfull-hint">Swipe up for more ↑</div>}
       </div>
-
-      {/* bottom info */}
-      <div className="sbc-rfull-info">
-        <div className="sbc-rfull-badges">
-          <span className="sbc-rfull-badge roi">📈 up to {p.roiMax}% ROI</span>
-          {p.occupancyLabel && <span className="sbc-rfull-badge">🔥 {p.occupancyLabel}</span>}
-          <span className="sbc-rfull-badge">🛎 {p.operationModel === "managed" ? "Fully Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</span>
-        </div>
-        <div className="sbc-rfull-title">{p.title}</div>
-        <div className="sbc-rfull-sub">{p.roomsLabel || p.viewLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</div>
-        <div className="sbc-rfull-rate"><b>{fmtINR(p.monthlyRate)}</b><span>/ room / month</span></div>
-      </div>
-
-      {/* CTAs */}
-      <div className="sbc-rfull-ctas" onClick={(e) => e.stopPropagation()}>
-        <button className="sbc-rfull-btn-tour" onClick={onOpen}>▶ View Full Tour</button>
-        <button className="sbc-rfull-btn-invest" onClick={onLock} disabled={soldOut && !locked}>
-          {locked ? "✓ In Bundle" : soldOut ? "Sold Out" : "💎 Invest"}
-        </button>
-      </div>
-
-      {first && <div className="sbc-rfull-hint">Swipe up for more ↑</div>}
     </div>
   );
 }

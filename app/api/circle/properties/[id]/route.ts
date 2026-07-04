@@ -52,6 +52,15 @@ export async function GET(
         totalUnits: Number(rt.total_units) || 0,
         lockedUnits: Number(rt.locked_units) || 0,
         availableUnits: Math.max(0, (Number(rt.total_units) || 0) - (Number(rt.locked_units) || 0)),
+        // v291 — real per-room detail for the room tour + auto-comparison
+        description: rt.description || "",
+        images: Array.isArray(rt.images) ? rt.images : [],
+        amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
+        sizeSqft: Number(rt.size_sqft) || 0,
+        capacity: Number(rt.capacity) || 0,
+        bedType: rt.bed_type || "",
+        viewLabel: rt.view_label || "",
+        roiPct: Number(rt.roi_pct) || 0,
       })),
     };
 

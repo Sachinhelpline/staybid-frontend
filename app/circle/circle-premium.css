@@ -632,6 +632,74 @@
 .sbc-tour-room-rate { text-align: right; }
 .sbc-tour-room-rate b { font-size: 1.1rem; color: var(--sbc-ink); font-variant-numeric: tabular-nums; }
 .sbc-tour-room-rate span { font-size: .66rem; color: rgba(74,56,32,.55); }
+
+/* ---------- v291: per-room accordion tour ---------- */
+.sbc-rc {
+  border-radius: 18px; overflow: hidden; margin-bottom: 12px;
+  background: rgba(201,166,107,.07); border: 1px solid rgba(139,105,20,.16);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.sbc-rc.open { border-color: rgba(139,105,20,.3); box-shadow: 0 14px 34px -20px rgba(139,105,20,.4); }
+.sbc-rc-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; background: none; border: none; cursor: pointer; text-align: left;
+}
+.sbc-rc-head-l { min-width: 0; }
+.sbc-rc-name { font-weight: 800; color: var(--sbc-coffee); font-size: 1rem; }
+.sbc-rc-avail { font-size: .74rem; margin-top: 2px; }
+.sbc-rc-head-r { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.sbc-rc-rate { text-align: right; font-variant-numeric: tabular-nums; }
+.sbc-rc-rate b { font-size: 1.12rem; color: var(--sbc-ink); }
+.sbc-rc-rate span { font-size: .64rem; color: rgba(74,56,32,.55); }
+.sbc-rc-chev { font-size: .64rem; color: rgba(139,105,20,.7); }
+.sbc-rc-body { padding: 0 16px 16px; animation: sbcRcIn .24s ease; }
+@keyframes sbcRcIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.sbc-rc-gallery { margin-bottom: 12px; }
+.sbc-rc-stage {
+  position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 16/10;
+  background: #17110A; box-shadow: 0 12px 30px -18px rgba(36,27,16,.5);
+}
+.sbc-rc-stage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbc-rc-count {
+  position: absolute; right: 8px; bottom: 8px; padding: 2px 9px; border-radius: 999px;
+  background: rgba(15,10,4,.6); color: #FBF3E2; font-size: .66rem; font-weight: 700; backdrop-filter: blur(6px);
+}
+.sbc-rc-thumbs { display: flex; gap: 7px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.sbc-rc-thumbs::-webkit-scrollbar { display: none; }
+.sbc-rc-thumb {
+  flex: 0 0 auto; width: 60px; height: 44px; border-radius: 9px; overflow: hidden; cursor: pointer; padding: 0;
+  border: 2px solid transparent; background: none; opacity: .7; transition: opacity .15s ease, border-color .15s ease;
+}
+.sbc-rc-thumb.on { opacity: 1; border-color: var(--sbc-gold); }
+.sbc-rc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbc-rc-desc { font-size: .88rem; line-height: 1.55; color: rgba(74,56,32,.82); margin-bottom: 12px; }
+.sbc-rc-specs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 560px) { .sbc-rc-specs { grid-template-columns: repeat(3, 1fr); } }
+.sbc-rc-spec {
+  padding: 9px 12px; border-radius: 12px; background: rgba(255,252,246,.6); border: 1px solid rgba(139,105,20,.12);
+}
+.sbc-rc-spec span { display: block; font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; color: rgba(74,56,32,.55); font-weight: 700; }
+.sbc-rc-spec b { display: block; font-size: .86rem; color: var(--sbc-coffee); margin-top: 2px; }
+.sbc-rc-amen { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.sbc-rc-amen-chip {
+  font-size: .74rem; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+  background: rgba(201,166,107,.16); color: var(--sbc-coffee); border: 1px solid rgba(139,105,20,.16);
+}
+
+/* ---------- v291: auto-comparison table ---------- */
+.sbc-cmp-wrap { overflow-x: auto; border-radius: 16px; border: 1px solid rgba(139,105,20,.16); -webkit-overflow-scrolling: touch; }
+.sbc-cmp { width: 100%; border-collapse: collapse; font-size: .82rem; min-width: 420px; background: rgba(255,252,246,.5); }
+.sbc-cmp th, .sbc-cmp td { padding: 11px 13px; text-align: left; border-bottom: 1px solid rgba(139,105,20,.1); vertical-align: top; }
+.sbc-cmp thead th { background: rgba(201,166,107,.14); color: var(--sbc-coffee); font-weight: 800; font-size: .82rem; position: sticky; top: 0; }
+.sbc-cmp thead th:first-child, .sbc-cmp tbody td:first-child { position: sticky; left: 0; background: rgba(250,244,234,.96); font-weight: 700; color: rgba(74,56,32,.7); z-index: 1; }
+.sbc-cmp tbody tr:last-child td { border-bottom: none; }
+.sbc-cmp td { color: var(--sbc-ink); font-variant-numeric: tabular-nums; }
+.sbc-cmp td.best { background: rgba(127,146,105,.14); }
+.sbc-cmp-tag {
+  display: inline-block; margin-left: 6px; font-size: .58rem; font-weight: 800; padding: 1px 6px; border-radius: 999px;
+  background: var(--sbc-sage, #7F9269); color: #fff; vertical-align: middle;
+}
 .sbc-tour-how { display: grid; gap: 10px; }
 .sbc-tour-step { display: flex; gap: 12px; align-items: flex-start; }
 .sbc-tour-step .n { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-weight: 800; font-size: .85rem; background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold)); color: var(--sbc-walnut); }
@@ -699,21 +767,36 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-rapp::-webkit-scrollbar { display: none; }
 
-/* per-reel full-viewport card */
+/* per-reel full-viewport card — flex-centres the native 9:16 stage so wide
+   screens (tablet/laptop/desktop) get a letterboxed portrait, phones full-bleed */
 .sbc-rfull {
   position: relative; width: 100%;
   height: var(--reel-vh, 100dvh);
   scroll-snap-align: start; scroll-snap-stop: always;
+  overflow: hidden; background: #000;
+  display: flex; align-items: center; justify-content: center;
+}
+/* the stage carries the media + every overlay; overlays anchor to it, not the
+   full card, so the aspect ratio is honoured on every device size */
+.sbc-rfull-stage {
+  position: relative; width: 100%; height: 100%;
   overflow: hidden; background: #0b0805; cursor: pointer;
+}
+@media (min-width: 700px) {
+  .sbc-rfull-stage {
+    width: auto; height: 100%; max-height: var(--reel-vh, 100dvh);
+    aspect-ratio: 9 / 16; max-width: 100%;
+    border-radius: 20px; box-shadow: 0 24px 70px -24px rgba(0,0,0,.7);
+  }
 }
 .sbc-rfull-media { position: absolute; inset: 0; }
 .sbc-rfull-media video, .sbc-rfull-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sbc-rfull-shade {
   position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(8,5,2,.58) 0%, rgba(8,5,2,0) 24%, rgba(8,5,2,0) 44%, rgba(8,5,2,.78) 100%);
+  background: linear-gradient(180deg, rgba(8,5,2,.58) 0%, rgba(8,5,2,0) 24%, rgba(8,5,2,0) 44%, rgba(8,5,2,.82) 100%);
 }
 
-/* top: property chip (avatar + title + city) + Lock pill (mirrors "Follow") */
+/* top: property chip (avatar + title + city) + Add-to-Bundle pill */
 .sbc-rfull-top {
   position: absolute; left: 14px; right: 14px; z-index: 7;
   top: calc(env(safe-area-inset-top, 0px) + 14px);
@@ -741,10 +824,10 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rfull-lockpill.locked { background: rgba(127,146,105,.65); border-color: rgba(157,173,143,.6); color: #EDF5E4; }
 .sbc-rfull-lockpill:disabled { opacity: .55; cursor: not-allowed; }
 
-/* right action rail */
+/* right action rail — sits just above the bottom info+CTA block */
 .sbc-rfull-rail {
   position: absolute; right: 10px; z-index: 6;
-  bottom: calc(158px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(214px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column; gap: 15px; align-items: center;
 }
 .sbc-rail-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; background: none; border: none; }
@@ -758,12 +841,14 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rail-btn.on .sbc-rail-ic { color: var(--sbc-rose); border-color: rgba(212,149,131,.55); }
 .sbc-rail-cap { font-size: .6rem; font-weight: 700; color: rgba(251,243,226,.85); }
 
-/* bottom info */
-.sbc-rfull-info {
-  position: absolute; left: 14px; right: 72px; z-index: 5;
-  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-  color: #FBF3E2;
+/* bottom block — info + CTAs stacked; anchored above the dock so they can
+   never overlap regardless of how many lines the title/badges wrap to */
+.sbc-rfull-bottom {
+  position: absolute; left: 14px; right: 14px; z-index: 5;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 12px;
 }
+.sbc-rfull-info { color: #FBF3E2; padding-right: 58px; }
 .sbc-rfull-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .sbc-rfull-badge {
   font-size: .66rem; font-weight: 800; padding: 4px 9px; border-radius: 999px; backdrop-filter: blur(8px);
@@ -776,12 +861,8 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-rfull-rate b { font-size: 1.5rem; font-variant-numeric: tabular-nums; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
 .sbc-rfull-rate span { font-size: .72rem; color: rgba(251,243,226,.75); }
 
-/* bottom CTAs — sit above the dock */
-.sbc-rfull-ctas {
-  position: absolute; left: 14px; right: 14px; z-index: 6;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  display: flex; gap: 10px;
-}
+/* bottom CTAs — in-flow inside .sbc-rfull-bottom (no absolute positioning) */
+.sbc-rfull-ctas { display: flex; gap: 10px; }
 .sbc-rfull-btn-tour {
   flex: 1.5; height: 46px; border-radius: 15px; border: none; cursor: pointer; font-size: .92rem; font-weight: 800;
   color: var(--sbc-walnut); display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -797,10 +878,10 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-rfull-btn-invest:active { transform: scale(.97); }
 
-/* first-reel swipe hint */
+/* first-reel swipe hint — clears the bottom info/CTA block */
 .sbc-rfull-hint {
   position: absolute; left: 50%; transform: translateX(-50%); z-index: 6;
-  bottom: calc(128px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
+  bottom: calc(260px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
   color: rgba(251,243,226,.8); font-size: .72rem; font-weight: 700; letter-spacing: .04em;
   animation: sbcHintBounce 1.8s ease-in-out infinite;
 }
@@ -815,6 +896,19 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   color: #FBF3E2; background: rgba(20,14,6,.55); backdrop-filter: blur(14px);
   border: 1px solid rgba(231,207,160,.28); box-shadow: 0 8px 22px -10px rgba(0,0,0,.55);
 }
+
+/* list-a-property entry — top-right, gold outline */
+.sbc-rlist-chip {
+  position: fixed; z-index: 48;
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  right: 12px;
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 8px 13px; border-radius: 999px; font-size: .78rem; font-weight: 800;
+  color: var(--sbc-walnut); background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
+  border: 1px solid rgba(231,207,160,.5); box-shadow: 0 8px 22px -10px rgba(139,105,20,.6);
+}
+.sbc-rlist-chip span { font-size: 1rem; line-height: 1; }
+.sbc-rlist-chip:active { transform: scale(.95); }
 
 /* empty / loading immersive states */
 .sbc-rfull-empty {
