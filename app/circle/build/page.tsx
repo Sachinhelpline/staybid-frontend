@@ -20,6 +20,7 @@ import {
   CIRCLE_PLANS, PLAN_ORDER, computeBundle, fmtINR,
   type BundleItem, type PaymentPlanKey,
 } from "@/lib/circle/engine";
+import { MONTH_SHORT, MONTH_LABELS, type LiveReturns } from "@/lib/circle/returns";
 
 type RoomType = {
   id: string; name: string; monthlyRate: number;
@@ -169,12 +170,61 @@ export default function CircleBuildPage() {
 
   const bundle = useMemo(() => computeBundle(items, plan), [items, plan]);
 
+  // ─── LIVE "Investment & Returns" — real StayBid AI demand engine ───────────
+  // The returns swing with the selected month + city (season · weekends ·
+  // festivals · monsoon · city demand). Fetched from /api/circle/returns which
+  // runs lib/ai-pricing.calculateDynamicPrice — the SAME model that prices
+  // every hotel night. The COMMITMENT (bundle.monthlyTotal / payNow) stays from
+  // the base engine so preview == server charge; only the RETURN projection is
+  // demand-driven here.
+  const [month, setMonth] = useState<number>(() => new Date().getMonth());
+  const [live, setLive] = useState<LiveReturns | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  useEffect(() => {
+    if (!bundle.ok) { setLive(null); return; }
+    const payload = {
+      items: items.map((it) => ({
+        propertyId: it.propertyId, city: it.city,
+        monthlyRate: it.monthlyRate, rooms: it.rooms,
+        roiMin: it.roiMin, roiMax: it.roiMax,
+      })),
+      month,
+    };
+    let cancelled = false;
+    setLiveLoading(true);
+    const t = setTimeout(() => {
+      fetch("/api/circle/returns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.json())
+        .then((d) => { if (!cancelled) setLive(d?.ok ? d : null); })
+        .catch(() => { if (!cancelled) setLive(null); })
+        .finally(() => { if (!cancelled) setLiveLoading(false); });
+    }, 260);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [items, month, bundle.ok]);
+
+  // Display KPIs prefer the live demand-driven numbers; fall back to the base
+  // engine band until the first fetch resolves so the card never shows "—".
+  const roiMin = live?.ok ? live.expectedRoiMin : bundle.expectedRoiMin;
+  const roiMax = live?.ok ? live.expectedRoiMax : bundle.expectedRoiMax;
+  const divBonus = live?.ok ? live.diversificationBonusPct : bundle.diversificationBonusPct;
+  const roiAvg = (roiMin + roiMax) / 2;
+  const expectedAnnualIncome = Math.round(bundle.monthlyTotal * 12 * (roiAvg / 100));
+  const expectedMonthlyIncome = Math.round(expectedAnnualIncome / 12);
+  const paybackYearsMin = roiMax > 0 ? Math.round((100 / roiMax) * 10) / 10 : 0;
+  const paybackYearsMax = roiMin > 0 ? Math.round((100 / roiMin) * 10) / 10 : 0;
+  const paybackLabel = paybackYearsMin > 0
+    ? `${Math.round(paybackYearsMin)}–${Math.round(paybackYearsMax)} years` : "—";
+
   // 48-month projection for the animated chart: cumulative invested vs
-  // cumulative returns at the blended avg ROI.
+  // cumulative returns at the LIVE blended avg ROI for the selected month.
   const projection = useMemo(() => {
     if (!bundle.ok) return [];
-    const roiAvg = (bundle.expectedRoiMin + bundle.expectedRoiMax) / 2;
-    const monthlyReturn = (bundle.monthlyTotal * roiAvg) / 100 / 1; // per-month income on running monthly commitment
+    const monthlyReturn = (bundle.monthlyTotal * roiAvg) / 100;
     const rows: { m: string; invested: number; returns: number }[] = [];
     let invested = 0, returns = 0;
     for (let m = 1; m <= 48; m++) {
@@ -183,7 +233,7 @@ export default function CircleBuildPage() {
       if (m % 3 === 0) rows.push({ m: `M${m}`, invested: Math.round(invested), returns: Math.round(returns) });
     }
     return rows;
-  }, [bundle]);
+  }, [bundle, roiAvg]);
 
   const startPayment = useCallback(async () => {
     setPayError("");
@@ -267,8 +317,15 @@ export default function CircleBuildPage() {
   return (
     <div>
       <section className="sbc-section" style={{ paddingBottom: 20 }}>
-        <h1 className="sbc-h2"><span className="step-pill">STEP 2</span>Build Your Investment Bundle</h1>
-        <p className="sbc-sub">From locked properties to your perfect income plan — rooms choose karo, returns live update honge.</p>
+        <h1 className="sbc-h2">
+          <span className="step-pill">STEP 3 · Plan</span>
+          {bundle.ok ? "Confirm & Invest" : "Build Your Investment Bundle"}
+        </h1>
+        <p className="sbc-sub">
+          {bundle.ok
+            ? `${bundle.roomCount} room${bundle.roomCount > 1 ? "s" : ""} across ${bundle.propertyCount} ${bundle.propertyCount > 1 ? "properties" : "property"} locked — month choose karo, live returns dekho, aur invest karo.`
+            : "Rooms choose karo — projected returns live AI demand se update honge."}
+        </p>
       </section>
 
       <section className="sbc-section" style={{ paddingTop: 0, display: "grid", gap: 22, gridTemplateColumns: "1fr", alignItems: "start" }}>
@@ -311,31 +368,74 @@ export default function CircleBuildPage() {
 
           {/* ------- RIGHT: live investment calculator ------- */}
           <div className="sbc-panel-walnut" style={{ position: "sticky", top: 76 }}>
-            <div style={{ fontSize: ".7rem", letterSpacing: ".18em", textTransform: "uppercase", color: "rgba(231,207,160,.7)" }}>
+            <div className="sbc-calc-eyebrow">
+              <span className="sbc-live-dot" aria-hidden />
               Investment &amp; Returns · Live
+              {liveLoading && <span className="sbc-calc-updating">updating…</span>}
             </div>
-            <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 8 }}>
+            <div style={{ marginTop: 10, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
               <b key={`t-${bundle.monthlyTotal}`} style={{ fontSize: "2rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
                 {fmtINR(bundle.monthlyTotal)}
               </b>
               <span style={{ fontSize: ".78rem", color: "rgba(247,239,223,.6)" }}>/ month · {bundle.roomCount} room(s) · {bundle.propertyCount} property(ies)</span>
             </div>
 
-            <div className="sbc-kpi-row" style={{ marginTop: 16 }}>
-              <div className="sbc-kpi pop" key={`roi-${bundle.expectedRoiMin}-${bundle.expectedRoiMax}`}>
-                <b>{bundle.ok ? `${bundle.expectedRoiMin}–${bundle.expectedRoiMax}%` : "—"}</b>
-                <span>Expected ROI {bundle.diversificationBonusPct > 0 ? `(+${bundle.diversificationBonusPct}% diversify)` : ""}</span>
+            {/* ── LIVE month selector — returns swing with real demand ── */}
+            <div className="sbc-month-label">Stay month · returns update live</div>
+            <div className="sbc-month-row">
+              {MONTH_SHORT.map((m, i) => (
+                <button
+                  key={m}
+                  className={`sbc-month-chip ${month === i ? "on" : ""} ${live?.ok && live.peakMonth === i ? "peak" : ""}`}
+                  onClick={() => setMonth(i)}
+                  aria-label={MONTH_LABELS[i]}
+                >{m}</button>
+              ))}
+            </div>
+
+            {/* ── real AI demand breakdown for the selected month × cities ── */}
+            {bundle.ok && (
+              <div className="sbc-demand" key={`dm-${month}-${live?.avgNightly ?? 0}`}>
+                <div className="sbc-demand-head">
+                  <b>{live?.monthLabel || MONTH_LABELS[month]} demand</b>
+                  {live?.ok && (
+                    <span className={`sbc-demand-swing ${live.demandFactor >= 1.03 ? "up" : live.demandFactor <= 0.97 ? "down" : ""}`}>
+                      {live.demandFactor >= 1.03 ? "▲" : live.demandFactor <= 0.97 ? "▼" : "•"} {Math.round((live.demandFactor - 1) * 100)}% vs avg
+                    </span>
+                  )}
+                </div>
+                <div className="sbc-demand-metrics">
+                  <div><b><CountUp key={live?.avgNightly ?? 0} value={live?.avgNightly ?? 0} prefix="₹" /></b><span>Live nightly rate</span></div>
+                  <div><b>{live?.ok ? `${live.avgOccupancyPct}%` : "—"}</b><span>Projected occupancy</span></div>
+                </div>
+                {live?.ok && live.factors.length > 0 && (
+                  <div className="sbc-demand-tags">
+                    {live.factors.map((f) => <span key={f}>{f}</span>)}
+                  </div>
+                )}
+                {live?.ok && live.peakMonth !== month && (
+                  <button className="sbc-demand-peak" onClick={() => setMonth(live.peakMonth)}>
+                    ⭐ Best season for this bundle: {MONTH_LABELS[live.peakMonth]} → tap to compare
+                  </button>
+                )}
               </div>
-              <div className="sbc-kpi pop" key={`inc-${bundle.expectedMonthlyIncome}`}>
-                <b><CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /></b>
+            )}
+
+            <div className="sbc-kpi-row" style={{ marginTop: 16 }}>
+              <div className="sbc-kpi pop" key={`roi-${roiMin}-${roiMax}`}>
+                <b>{bundle.ok ? `${roiMin}–${roiMax}%` : "—"}</b>
+                <span>Expected ROI {divBonus > 0 ? `(+${divBonus}% diversify)` : ""}</span>
+              </div>
+              <div className="sbc-kpi pop" key={`inc-${expectedMonthlyIncome}`}>
+                <b><CountUp key={expectedMonthlyIncome} value={expectedMonthlyIncome} prefix="₹" /></b>
                 <span>Expected Monthly Income</span>
               </div>
-              <div className="sbc-kpi pop" key={`ann-${bundle.expectedAnnualIncome}`}>
-                <b><CountUp key={bundle.expectedAnnualIncome} value={bundle.expectedAnnualIncome} prefix="₹" /></b>
+              <div className="sbc-kpi pop" key={`ann-${expectedAnnualIncome}`}>
+                <b><CountUp key={expectedAnnualIncome} value={expectedAnnualIncome} prefix="₹" /></b>
                 <span>Expected Annual Income</span>
               </div>
-              <div className="sbc-kpi" key={`pb-${bundle.paybackLabel}`}>
-                <b>{bundle.paybackLabel}</b>
+              <div className="sbc-kpi" key={`pb-${paybackLabel}`}>
+                <b>{paybackLabel}</b>
                 <span>Payback Period</span>
               </div>
             </div>

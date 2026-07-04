@@ -1411,7 +1411,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
    dark reel. Desktop-safe: literal 100dvh guard (desktop.css --reel-vh:auto).
    ══════════════════════════════════════════════════════════════════════ */
 .sbc-rsel-app {
-  position: fixed; inset: 0; z-index: 50;
+  /* SS2 v294.5 — z-index 82 sits ABOVE the topbar (60) + CircleDock (55) so
+     the full-screen room sheet always covers the nav. At z-50 the topbar's
+     "Discover" link + the dock bled through the sheet ("room stuck on discover
+     button"). The sheet has its own opaque bg + bottom bar, so covering the
+     chrome is correct. */
+  position: fixed; inset: 0; z-index: 82;
   height: var(--reel-vh, 100dvh);
   display: flex; flex-direction: column;
   background: linear-gradient(180deg, var(--sbc-cream), var(--sbc-cream-2));
@@ -1709,9 +1714,12 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-topbar--dark .sbc-brand-sub { color: rgba(245, 236, 216, 0.5); }
   .sbc-topbar--dark .sbc-topnav-link { color: rgba(245, 236, 216, 0.82); }
   .sbc-topbar--dark .sbc-topnav-link:hover,
-  .sbc-topbar--dark .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.2); color: #FFF6E4; }
-  /* active-link highlight on the light content topbar (build · me) too */
-  .sbc-topbar .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.18); color: var(--sbc-coffee); }
+  .sbc-topbar--dark .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.28); color: #FFF6E4; }
+  /* active-link highlight on the light content topbar (build · me) ONLY —
+     :not(.sbc-topbar--dark) so the dark-cocoa coffee colour never wins on the
+     dark home/reel/dashboard header (that was the SS1 "Home font hide" bug:
+     equal specificity + later source order made coffee-on-dark invisible). */
+  .sbc-topbar:not(.sbc-topbar--dark) .sbc-topnav-link.on { background: rgba(201, 166, 107, 0.18); color: var(--sbc-coffee); }
 
   /* ── 2. NO mobile bottom dock — the top header is the desktop nav ──────── */
   .sbc-dock { display: none !important; }
@@ -1746,6 +1754,123 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-rfilter-chip, .sbc-rlist-chip { top: 74px !important; }
 
   /* ── 5. ROOMS SHEET — modal over the header, bar no longer dock-blocked ── */
-  .sbc-rsel-app { z-index: 65 !important; }
+  .sbc-rsel-app { z-index: 82 !important; }   /* v294.5 — stay above topbar (60) */
   .sbc-rsel-bar { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   v294.5 — home polish (SS1) + LIVE build calculator (SS3)
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── SS1(b): home hero — portfolio + quick-actions fill the desktop width ──
+   On mobile the wrapper is a plain block → the two sections stack exactly as
+   before. On wide screens they sit side-by-side so the top region no longer
+   floats as a narrow card in a wide dark canvas ("left-right dead space"). */
+.sbc-home-hero { width: 100%; }
+.sbc-home-hero .sbc-qa-sec { margin-top: 22px; }
+@media (min-width: 900px) {
+  .sbc-home-hero {
+    display: grid; grid-template-columns: 1.35fr 1fr; gap: 18px; align-items: stretch;
+  }
+  .sbc-home-hero .sbc-home-portfolio { margin-top: 0; }
+  .sbc-home-hero .sbc-qa-sec { margin-top: 0; display: flex; flex-direction: column; }
+  .sbc-home-hero .sbc-qa-sec .sbc-qa { flex: 1; }
+}
+
+/* SS1(b): a touch more content width on big screens so blocks read intentional
+   rather than pinched. */
+@media (min-width: 1280px) {
+  .sbc-home > *, .sbc-dash > * { max-width: min(94vw, 1340px); }
+}
+
+/* ── SS1(c): the portfolio "Build plan" CTA was full-width → on a wide card it
+   became a giant stretched gold bar. Cap it + left-align so it reads as a
+   button, not a banner. Mobile (full-width) unchanged. */
+@media (min-width: 620px) {
+  .sbc-home-portfolio .sbc-hp-cta { width: auto; min-width: 240px; max-width: 340px; padding: 0 26px; align-self: flex-start; }
+}
+
+/* ── SS1(d): premium bottom "Build Your Investment Bundle" CTA. Was flat with a
+   meaningless 🧱 icon. Now: gem tile + gradient sheen + arrow affordance. */
+.sbc-home-bundle {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, rgba(201,166,107,.26), rgba(139,105,20,.16));
+  border: 1px solid rgba(231,207,160,.36);
+  box-shadow: 0 14px 34px -18px rgba(139,105,20,.55);
+}
+.sbc-home-bundle::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,246,228,.14) 48%, transparent 62%);
+  transform: translateX(-120%); animation: sbcBundleSheen 4.6s ease-in-out infinite;
+}
+@keyframes sbcBundleSheen { 0%,72% { transform: translateX(-120%); } 88%,100% { transform: translateX(120%); } }
+.sbc-home-bundle-body { flex: 1; min-width: 0; }
+.sbc-home-bundle-ic {
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold-deep));
+  color: var(--sbc-walnut); border-color: rgba(255,246,228,.35);
+  box-shadow: 0 8px 20px -10px rgba(139,105,20,.8);
+}
+.sbc-home-bundle-go {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 1.1rem; font-weight: 800; color: var(--sbc-gold-2);
+  background: rgba(20,14,6,.4); border: 1px solid rgba(231,207,160,.28);
+}
+@media (prefers-reduced-motion: reduce) { .sbc-home-bundle::after { animation: none; } }
+
+/* ── SS3: LIVE build calculator — month selector + real AI demand panel ──── */
+.sbc-calc-eyebrow {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 800;
+  color: rgba(231,207,160,.72);
+}
+.sbc-live-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #7FB77E;
+  box-shadow: 0 0 0 0 rgba(127,183,126,.6); animation: sbcLivePulse 1.8s ease-in-out infinite;
+}
+@keyframes sbcLivePulse { 0% { box-shadow: 0 0 0 0 rgba(127,183,126,.55); } 70% { box-shadow: 0 0 0 7px rgba(127,183,126,0); } 100% { box-shadow: 0 0 0 0 rgba(127,183,126,0); } }
+.sbc-calc-updating { margin-left: auto; font-size: .62rem; letter-spacing: .06em; color: rgba(231,207,160,.55); text-transform: none; }
+
+.sbc-month-label { margin-top: 14px; font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; color: rgba(231,207,160,.6); }
+.sbc-month-row { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 4px; margin: 2px -2px 0; scrollbar-width: none; }
+.sbc-month-row::-webkit-scrollbar { display: none; }
+.sbc-month-chip {
+  flex: 0 0 auto; padding: 7px 12px; border-radius: 11px; cursor: pointer;
+  font-size: .78rem; font-weight: 700; color: rgba(247,239,223,.72);
+  background: rgba(255,250,240,.06); border: 1px solid rgba(231,207,160,.16);
+  transition: transform .12s ease, background .15s ease;
+}
+.sbc-month-chip:active { transform: scale(.94); }
+.sbc-month-chip.peak::before { content: "⭐ "; font-size: .7rem; }
+.sbc-month-chip.on {
+  color: var(--sbc-walnut); border-color: transparent;
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
+  box-shadow: 0 6px 16px -8px rgba(139,105,20,.7);
+}
+
+.sbc-demand {
+  margin-top: 14px; padding: 13px 14px; border-radius: 15px;
+  background: rgba(20,14,6,.42); border: 1px solid rgba(231,207,160,.16);
+  animation: sbcKpiPop .4s ease;
+}
+.sbc-demand-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sbc-demand-head b { font-size: .84rem; color: #F3E3BF; }
+.sbc-demand-swing { font-size: .72rem; font-weight: 800; color: rgba(247,239,223,.6); }
+.sbc-demand-swing.up { color: #9FCB8F; }
+.sbc-demand-swing.down { color: #E0A38C; }
+.sbc-demand-metrics { display: flex; gap: 10px; margin-top: 10px; }
+.sbc-demand-metrics > div { flex: 1; padding: 9px 11px; border-radius: 12px; background: rgba(255,250,240,.05); border: 1px solid rgba(231,207,160,.12); }
+.sbc-demand-metrics b { display: block; font-size: 1rem; font-weight: 900; color: #FFF6E4; font-variant-numeric: tabular-nums; }
+.sbc-demand-metrics span { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .05em; color: rgba(245,236,216,.5); font-weight: 700; margin-top: 2px; }
+.sbc-demand-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sbc-demand-tags span {
+  font-size: .68rem; font-weight: 700; color: rgba(231,207,160,.85);
+  padding: 3px 9px; border-radius: 999px; background: rgba(201,166,107,.14); border: 1px solid rgba(231,207,160,.2);
+}
+.sbc-demand-peak {
+  display: block; width: 100%; margin-top: 11px; padding: 9px 12px; border-radius: 11px; cursor: pointer; text-align: left;
+  font-size: .74rem; font-weight: 700; color: var(--sbc-gold-2);
+  background: rgba(201,166,107,.12); border: 1px dashed rgba(231,207,160,.32);
+  transition: background .15s ease;
+}
+.sbc-demand-peak:active { transform: scale(.99); }
+@media (prefers-reduced-motion: reduce) { .sbc-live-dot, .sbc-demand { animation: none !important; } }
