@@ -1,9 +1,13 @@
 "use client";
 
-// StayCircle™ — Full Property Tour (/circle/[id]) — v289.
-// A hotel-page replica for investment: hero gallery + reel video, all room
-// types with live availability + lock, ROI/details, "how it works", and a
-// sticky invest panel. Lock adds to the bundle (same contract as Discover).
+// StayCircle™ — Full Property Tour (/circle/[id]) — v294.
+// A hotel-page replica for investment: hero gallery + reel video, then EVERY
+// room type shown with an always-visible SELECT + LOCK stepper (all rooms
+// actionable — no more "only 1 room shows"), each expandable into a complete
+// tour (photo gallery + all amenities + full details via <RoomTourBody/>).
+// Selecting a room locks the property + adds it to the shared bundle; the
+// stepper unselects. Same sb_circle_room_sel_v1 key as the Step-2 sheet and
+// the Plan builder — one source of truth.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -11,11 +15,11 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
+import RoomTourBody from "@/components/circle/RoomTourBody";
 import { fmtINR } from "@/lib/circle/engine";
 
 type RoomType = {
   id: string; name: string; monthlyRate: number; totalUnits: number; lockedUnits: number; availableUnits: number;
-  // v291 — real per-room detail for the room tour + comparison
   description?: string; images?: string[]; amenities?: string[];
   sizeSqft?: number; capacity?: number; bedType?: string; viewLabel?: string; roiPct?: number;
 };
@@ -27,10 +31,35 @@ type CircleProperty = {
 };
 
 const LOCKS_KEY = "sb_circle_locks_v1";
+// Shared with the Step-2 room-selection sheet + the Plan builder.
+const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
+
 function readSet(key: string): string[] {
   try { const raw = localStorage.getItem(key); const a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a.map(String) : []; } catch { return []; }
 }
-function writeSet(key: string, arr: string[]) { try { localStorage.setItem(key, JSON.stringify(arr)); } catch { /* full */ } }
+function writeSet(key: string, arr: string[]) {
+  try { localStorage.setItem(key, JSON.stringify(arr)); } catch { /* full */ }
+  // keep the CircleDock lock badge in sync (same event the discover feed fires)
+  try { window.dispatchEvent(new Event("sbc:locks-change")); } catch { /* noop */ }
+}
+function readRoomSel(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(ROOM_SEL_KEY);
+    const o = raw ? JSON.parse(raw) : {};
+    if (o && typeof o === "object") {
+      const out: Record<string, number> = {};
+      Object.entries(o).forEach(([k, v]) => {
+        const n = Math.floor(Number(v));
+        if (n > 0) out[k] = Math.min(10, n);
+      });
+      return out;
+    }
+  } catch { /* noop */ }
+  return {};
+}
+function writeRoomSel(sel: Record<string, number>) {
+  try { localStorage.setItem(ROOM_SEL_KEY, JSON.stringify(sel)); } catch { /* full */ }
+}
 
 const MODEL_LABEL: Record<string, string> = {
   managed: "Fully Managed by StayBid", revenue_share: "Revenue Share", lease: "Lease", franchise: "Franchise",
@@ -50,17 +79,25 @@ export default function CircleTourPage() {
   const [locked, setLocked] = useState(false);
   const [toast, setToast] = useState("");
   const [openRoom, setOpenRoom] = useState<string | null>(null); // accordion (single open)
+  const [roomSel, setRoomSel] = useState<Record<string, number>>({});
+  const [hydrated, setHydrated] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!id) return;
     setLocked(readSet(LOCKS_KEY).includes(id));
+    setRoomSel(readRoomSel());
+    setHydrated(true);
     fetch(`/api/circle/properties/${encodeURIComponent(id)}`)
       .then((r) => r.json())
       .then((d) => { if (d?.error) setErr(String(d.error)); else setP(d.property || null); })
       .catch(() => setErr("Couldn't load this property."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // persist room selection (only after hydration so the initial empty state
+  // never clobbers what the discover sheet / plan builder saved).
+  useEffect(() => { if (!hydrated) return; writeRoomSel(roomSel); }, [roomSel, hydrated]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -69,9 +106,41 @@ export default function CircleTourPage() {
     else v.pause();
   }, [showVideo]);
 
-  const flash = useCallback((m: string) => { setToast(m); setTimeout(() => setToast(""), 2400); }, []);
+  const flash = useCallback((m: string) => { setToast(m); setTimeout(() => setToast(""), 2600); }, []);
 
-  const toggleLock = useCallback(async () => {
+  const lockNow = useCallback(() => {
+    const cur = readSet(LOCKS_KEY);
+    if (!cur.includes(id)) {
+      writeSet(LOCKS_KEY, Array.from(new Set([...cur, id])));
+      const token = localStorage.getItem("sb_token") || "";
+      fetch("/api/circle/locks", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ propertyId: id }),
+      }).catch(() => {});
+    }
+    setLocked(true);
+  }, [id]);
+
+  // Per-room select/unselect. Selecting a room (v>0) auto-locks the property so
+  // the bundle builder picks it up; the stepper down to 0 unselects.
+  const setRoom = useCallback((rtId: string, next: number, max: number) => {
+    if (!user) { redirectToSignIn(router, { route: `/circle/${id}`, action: "circle_lock" }); return; }
+    const v = Math.max(0, Math.min(Math.min(10, max), next));
+    setRoomSel((prev) => {
+      const out = { ...prev };
+      if (v <= 0) delete out[rtId]; else out[rtId] = v;
+      return out;
+    });
+    if (v > 0 && !readSet(LOCKS_KEY).includes(id)) {
+      lockNow();
+      flash(`🔒 ${p?.title || "Property"} locked — bundle me add ho gaya`);
+    }
+  }, [user, id, router, p, lockNow, flash]);
+
+  // Lock / unlock toggle from the sticky invest panel. Unlocking releases the
+  // server lock AND clears this property's room selections (drops it from the
+  // bundle — the "unselect everything" affordance).
+  const toggleLock = useCallback(() => {
     if (!p) return;
     if (!user) { redirectToSignIn(router, { route: `/circle/${id}`, action: "circle_lock" }); return; }
     const token = localStorage.getItem("sb_token") || "";
@@ -79,28 +148,36 @@ export default function CircleTourPage() {
     if (locked) {
       writeSet(LOCKS_KEY, cur.filter((x) => x !== id));
       setLocked(false);
+      setRoomSel((prev) => {
+        const rtIds = new Set(p.roomTypes.map((rt) => rt.id));
+        const out: Record<string, number> = {};
+        Object.entries(prev).forEach(([k, v]) => { if (!rtIds.has(k)) out[k] = v; });
+        return out;
+      });
       fetch(`/api/circle/locks?propertyId=${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-      flash(`🔓 ${p.title} released`);
+      flash(`🔓 ${p.title} released — rooms bhi hata diye`);
       return;
     }
-    writeSet(LOCKS_KEY, Array.from(new Set([...cur, id])));
-    setLocked(true);
-    fetch("/api/circle/locks", {
-      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ propertyId: id }),
-    }).catch(() => {});
-    flash(`🔒 ${p.title} locked — bundle me add ho gaya`);
-  }, [p, user, id, locked, router, flash]);
+    lockNow();
+    flash(`🔒 ${p.title} locked — ab niche se rooms chuno`);
+  }, [p, user, id, locked, router, lockNow, flash]);
 
   const goInvest = useCallback(() => {
     if (!user) { redirectToSignIn(router, { route: `/circle/${id}`, action: "circle_invest" }); return; }
-    // ensure locked so the bundle builder picks it up
-    const cur = readSet(LOCKS_KEY);
-    if (!cur.includes(id)) { writeSet(LOCKS_KEY, Array.from(new Set([...cur, id]))); setLocked(true); }
+    // ensure locked so the bundle builder picks it up even if no room was tapped
+    if (!readSet(LOCKS_KEY).includes(id)) lockNow();
     router.push("/circle/build");
-  }, [user, id, router]);
+  }, [user, id, router, lockNow]);
 
   const availRooms = useMemo(() => (p ? p.roomTypes.reduce((s, rt) => s + rt.availableUnits, 0) : 0), [p]);
+  const selectedHere = useMemo(
+    () => (p ? p.roomTypes.reduce((s, rt) => s + (roomSel[rt.id] || 0), 0) : 0),
+    [p, roomSel],
+  );
+  const selectedMonthly = useMemo(
+    () => (p ? p.roomTypes.reduce((s, rt) => s + (roomSel[rt.id] || 0) * rt.monthlyRate, 0) : 0),
+    [p, roomSel],
+  );
   const cheapest = useMemo(() => {
     if (!p || !p.roomTypes.length) return p?.monthlyRate || 0;
     return Math.min(...p.roomTypes.map((rt) => rt.monthlyRate || p.monthlyRate));
@@ -191,19 +268,24 @@ export default function CircleTourPage() {
             </>
           )}
 
-          <h2 className="sbc-tour-h2">Room types &amp; availability</h2>
+          <h2 className="sbc-tour-h2">Choose your rooms</h2>
           {p.roomTypes.length === 0 ? (
             <p className="sbc-tour-desc">Room types are being finalised — lock this property to reserve your spot.</p>
           ) : (
             <>
-              <p className="sbc-tour-desc" style={{ marginTop: 4 }}>Tap any room for its complete tour — photos, size, amenities and ROI.</p>
+              <p className="sbc-tour-desc" style={{ marginTop: 4 }}>
+                Har room ka price + availability niche hai — <b>＋ se select</b> karo (property apne aap lock ho jayegi),
+                aur room tap karke uska poora tour (photos, size, amenities) dekho.
+              </p>
               {p.roomTypes.map((rt) => (
                 <RoomCard
                   key={rt.id}
                   rt={rt}
                   fallbackRoi={`${p.roiMin}–${p.roiMax}`}
-                  open={(openRoom ?? p.roomTypes[0]?.id) === rt.id}
-                  onToggle={() => setOpenRoom((cur) => (cur === rt.id ? "" : rt.id))}
+                  count={roomSel[rt.id] || 0}
+                  onSet={(next, max) => setRoom(rt.id, next, max)}
+                  open={openRoom === rt.id}
+                  onToggle={() => setOpenRoom((cur) => (cur === rt.id ? null : rt.id))}
                 />
               ))}
 
@@ -303,8 +385,16 @@ export default function CircleTourPage() {
               <div className="row"><span>Rooms available</span><b>{availRooms}</b></div>
               <div className="row"><span>Operations</span><b>{p.operationModel === "managed" ? "Managed" : MODEL_LABEL[p.operationModel] || p.operationModel}</b></div>
             </div>
-            <button className={`sbc-tour-invest-cta ${locked ? "locked" : ""}`} onClick={goInvest} disabled={soldOut && !locked}>
-              {soldOut && !locked ? "Join waitlist" : "💎 Start Investing →"}
+
+            {selectedHere > 0 && (
+              <div className="sbc-tour-selbox">
+                <span>✓ {selectedHere} room{selectedHere > 1 ? "s" : ""} selected</span>
+                <b>{fmtINR(selectedMonthly)}<small> /mo</small></b>
+              </div>
+            )}
+
+            <button className={`sbc-tour-invest-cta ${locked ? "locked" : ""}`} onClick={goInvest} disabled={soldOut && !locked && selectedHere === 0}>
+              {soldOut && !locked && selectedHere === 0 ? "Join waitlist" : selectedHere > 0 ? `Continue to Plan → (${selectedHere})` : "💎 Start Investing →"}
             </button>
             <button className={`sbc-tour-invest-lock ${locked ? "locked" : ""}`} onClick={toggleLock} disabled={soldOut && !locked}>
               {locked ? "✓ Locked in your bundle — tap to release" : "🔒 Lock this property"}
@@ -322,6 +412,7 @@ export default function CircleTourPage() {
           bottom: "calc(24px + env(safe-area-inset-bottom, 0px))", zIndex: 90,
           background: "rgba(36,27,16,.94)", color: "#F3E3BF", padding: "10px 18px",
           borderRadius: 999, fontSize: ".85rem", boxShadow: "0 12px 32px -10px rgba(0,0,0,.5)",
+          maxWidth: "90vw", textAlign: "center",
         }}>{toast}</div>
       )}
     </div>
@@ -329,24 +420,32 @@ export default function CircleTourPage() {
 }
 
 // ---------------------------------------------------------------------------
-// RoomCard — accordion header (name + rate + availability) that expands into a
-// full per-room tour: photo gallery, description, spec grid + amenity chips.
+// RoomCard — always-visible header (name + rate + availability) + an
+// always-visible action row (mini-specs + SELECT stepper, so every room is
+// actionable without expanding), that expands into the full <RoomTourBody/>.
 function RoomCard({
-  rt, open, onToggle, fallbackRoi,
+  rt, count, onSet, open, onToggle, fallbackRoi,
 }: {
   rt: RoomType;
+  count: number;
+  onSet: (next: number, max: number) => void;
   open: boolean;
   onToggle: () => void;
   fallbackRoi: string;
 }) {
-  const [gi, setGi] = useState(0);
-  const imgs = Array.isArray(rt.images) ? rt.images.filter(Boolean) : [];
-  const amen = Array.isArray(rt.amenities) ? rt.amenities.filter(Boolean) : [];
   const avail = rt.availableUnits > 0;
+  const max = Math.min(10, rt.availableUnits);
+  const miniSpecs = [
+    rt.viewLabel ? `👁 ${rt.viewLabel}` : "",
+    rt.capacity ? `👥 ${rt.capacity}` : "",
+    rt.sizeSqft ? `📐 ${rt.sizeSqft}ft²` : "",
+    rt.bedType ? `🛏 ${rt.bedType}` : "",
+  ].filter(Boolean).slice(0, 4);
 
   return (
-    <div className={`sbc-rc ${open ? "open" : ""}`}>
-      <button className="sbc-rc-head" onClick={onToggle} aria-expanded={open}>
+    <div className={`sbc-rc ${open ? "open" : ""} ${count > 0 ? "picked" : ""}`}>
+      <div className="sbc-rc-head" role="button" tabIndex={0} aria-expanded={open}
+        onClick={onToggle} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}>
         <div className="sbc-rc-head-l">
           <div className="sbc-rc-name">{rt.name}</div>
           <div className="sbc-rc-avail" style={{ color: avail ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>
@@ -357,46 +456,27 @@ function RoomCard({
           <div className="sbc-rc-rate"><b>{fmtINR(rt.monthlyRate)}</b><span> /mo</span></div>
           <span className="sbc-rc-chev">{open ? "▲" : "▼"}</span>
         </div>
-      </button>
+      </div>
+
+      {/* action row — always visible, so all rooms are selectable at a glance */}
+      <div className="sbc-rc-actionrow">
+        <div className="sbc-rc-minispecs">
+          {miniSpecs.map((s) => <span key={s}>{s}</span>)}
+          <span className="sbc-rc-roi">📈 {rt.roiPct ? `${rt.roiPct}%` : `${fallbackRoi}%`}</span>
+        </div>
+        <div className="sbc-rc-pick">
+          {count > 0 && <span className="sbc-rc-picked">✓ {count} in bundle</span>}
+          <div className="sbc-stepper">
+            <button onClick={() => onSet(count - 1, max)} disabled={count <= 0} aria-label="Fewer rooms">−</button>
+            <span className="val">{count}</span>
+            <button onClick={() => onSet(count + 1, max)} disabled={!avail || count >= max} aria-label="More rooms">＋</button>
+          </div>
+        </div>
+      </div>
 
       {open && (
-        <div className="sbc-rc-body">
-          {imgs.length > 0 && (
-            <div className="sbc-rc-gallery">
-              <div className="sbc-rc-stage">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imgs[Math.min(gi, imgs.length - 1)]} alt={rt.name} loading="lazy" />
-                {imgs.length > 1 && <span className="sbc-rc-count">{Math.min(gi, imgs.length - 1) + 1} / {imgs.length}</span>}
-              </div>
-              {imgs.length > 1 && (
-                <div className="sbc-rc-thumbs">
-                  {imgs.map((src, i) => (
-                    <button key={i} className={`sbc-rc-thumb ${i === gi ? "on" : ""}`} onClick={() => setGi(i)} aria-label={`Photo ${i + 1}`}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt="" loading="lazy" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {rt.description && <p className="sbc-rc-desc">{rt.description}</p>}
-
-          <div className="sbc-rc-specs">
-            {rt.sizeSqft ? <div className="sbc-rc-spec"><span>Size</span><b>{rt.sizeSqft} sq ft</b></div> : null}
-            {rt.capacity ? <div className="sbc-rc-spec"><span>Sleeps</span><b>{rt.capacity} guest{rt.capacity > 1 ? "s" : ""}</b></div> : null}
-            {rt.bedType ? <div className="sbc-rc-spec"><span>Bed</span><b>{rt.bedType}</b></div> : null}
-            {rt.viewLabel ? <div className="sbc-rc-spec"><span>View</span><b>{rt.viewLabel}</b></div> : null}
-            <div className="sbc-rc-spec"><span>Expected ROI</span><b>{rt.roiPct ? `${rt.roiPct}%` : `${fallbackRoi}%`}</b></div>
-            <div className="sbc-rc-spec"><span>Availability</span><b style={{ color: avail ? "var(--sbc-sage)" : "var(--sbc-rose)" }}>{avail ? `${rt.availableUnits} / ${rt.totalUnits}` : "Full"}</b></div>
-          </div>
-
-          {amen.length > 0 && (
-            <div className="sbc-rc-amen">
-              {amen.map((a) => <span key={a} className="sbc-rc-amen-chip">{a}</span>)}
-            </div>
-          )}
+        <div className="sbc-rc-tourwrap">
+          <RoomTourBody rt={rt} fallbackRoi={fallbackRoi} />
         </div>
       )}
     </div>
