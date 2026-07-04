@@ -339,6 +339,7 @@ export function DialerNav() {
       pathname.startsWith("/agent") ||
       pathname.startsWith("/onboard") ||
       pathname.startsWith("/host") ||
+      pathname.startsWith("/circle") ||   // v288 StayCircle — own chrome
       pathname.startsWith("/order") ||
       pathname.startsWith("/kiosk") ||
       pathname.startsWith("/bid") ||

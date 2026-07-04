@@ -54,6 +54,11 @@ export const USER_LINKS_BASE: UserLink[] = [
   // portfolio. The /host vertical hides its own chrome, so this menu row is
   // the only discoverable way into it from the customer app.
   { href: "/host",         label: "StayBid for Hosts",  sub: "Invest in a managed BnB portfolio", icon: "🏠" },
+  // v288 — StayCircle™ Community Partner Platform. Room-level hospitality
+  // investing: discover properties as reels → lock → build a bundle → earn
+  // monthly returns. The /circle vertical hides its own chrome, so this menu
+  // row is the discoverable entry from the customer app.
+  { href: "/circle",       label: "StayCircle",         sub: "Invest in rooms · earn monthly returns", icon: "◎" },
 ];
 
 export const CREATOR_LINK: UserLink = {

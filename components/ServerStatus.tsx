@@ -54,6 +54,7 @@ export function ServerStatus() {
   if (pathname?.startsWith("/agent")) return null;
   if (pathname?.startsWith("/onboard")) return null;
   if (pathname?.startsWith("/host")) return null;
+  if (pathname?.startsWith("/circle")) return null; // v288 StayCircle — own chrome
   if (pathname?.startsWith("/order")) return null;
   if (pathname?.startsWith("/kiosk")) return null;
 

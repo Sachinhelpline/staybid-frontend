@@ -10,6 +10,8 @@ import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/Avai
 // Phase 5 tier-system — Pending content reviews queue (auth: x-partner-token)
 import PartnerContentTab from "@/components/partner/PartnerContentTab";
 import PartnerPassportTab from "@/components/partner/PartnerPassportTab";
+// v288 — StayCircle investments linked to this hotel (read-only live view)
+import PartnerCircleTab from "@/components/partner/PartnerCircleTab";
 // v170 — camera QR / barcode scanner for the Redeem Codes tab.
 import CodeScanner from "@/components/partner/CodeScanner";
 // v170 — create / fully edit a room category from the dashboard.
@@ -163,7 +165,7 @@ export default function PartnerDashboard() {
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -925,6 +927,8 @@ export default function PartnerDashboard() {
     { id:"guests", icon:"👥", label:"Guests" },
     // v265 — Passport Guests (read-only Explorer Passport holders at this hotel).
     { id:"passport", icon:"🛂", label:"Passport Guests" },
+    // v288 — StayCircle investments linked to this hotel (read-only)
+    { id:"circle", icon:"◎", label:"StayCircle" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
     { id:"reports", icon:"📈", label:"Reports" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
@@ -2589,6 +2593,11 @@ export default function PartnerDashboard() {
 
         {tab === "passport" && hotel?.id && (
           <PartnerPassportTab />
+        )}
+
+        {/* ══════════════ STAYCIRCLE (v288) ══════════════ */}
+        {tab === "circle" && hotel?.id && (
+          <PartnerCircleTab />
         )}
 
         {/* ══════════════ PROFILE ══════════════ */}
