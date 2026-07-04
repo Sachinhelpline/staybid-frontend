@@ -83,9 +83,12 @@ export default function CircleDiscoverPage() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // immersive viewport lock (writes --reel-vh, sets body.is-reel-page,
-  // requests fullscreen on first gesture — hides circle topbar/footer via CSS)
-  useReelFullscreen();
+  // viewport lock (writes --reel-vh, sets body.is-reel-page, hides circle
+  // topbar/footer via CSS). immersive:false → NO forced native fullscreen on
+  // the property/room screens (Sachin: "full screen forcefully hota hai usko
+  // remove karo"). The reel stays full-bleed via --reel-vh; the browser is
+  // never pushed into system fullscreen.
+  useReelFullscreen({ immersive: false });
 
   const [props, setProps] = useState<CircleProperty[]>([]);
   const [cities, setCities] = useState<string[]>([]);

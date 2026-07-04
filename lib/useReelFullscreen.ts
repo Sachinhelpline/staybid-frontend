@@ -48,10 +48,21 @@
    actually holds the back gesture in this Next.js app.
 
    Call this once from /discover and /reels page components.
+
+   opts.immersive (default TRUE):
+   -----------------------------
+   When false, the viewport lock (#1–#3 + the status-bar blend #5) all stay,
+   but the native `requestFullscreen()` immersive request (#4) is SKIPPED —
+   so the browser is never FORCED into system fullscreen. Used by the
+   StayCircle property/room reels (/circle/discover), where Sachin does not
+   want the forced-fullscreen behaviour. The full-bleed reel layout is
+   unchanged (it's driven by `--reel-vh` + `.is-reel-page`, not the
+   fullscreen API); only the forced native fullscreen goes away.
    ────────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef } from "react";
 
-export function useReelFullscreen() {
+export function useReelFullscreen(opts?: { immersive?: boolean }) {
+  const immersive = opts?.immersive !== false; // default: true (StayBid reels)
   const askedRef = useRef(false);
 
   useEffect(() => {
@@ -124,8 +135,14 @@ export function useReelFullscreen() {
         setTimeout(() => window.scrollTo(0, 0), 50);
       } catch {}
     };
-    window.addEventListener("touchstart", tryFullscreen, { passive: true, once: true });
-    window.addEventListener("click",      tryFullscreen, { passive: true, once: true });
+    // immersive=false (StayCircle) → keep the viewport lock but never force
+    // native fullscreen. Everything above (--reel-vh, is-reel-page, theme
+    // blend) still applies, so the reel stays full-bleed without the forced
+    // system-fullscreen the property/room screens complained about.
+    if (immersive) {
+      window.addEventListener("touchstart", tryFullscreen, { passive: true, once: true });
+      window.addEventListener("click",      tryFullscreen, { passive: true, once: true });
+    }
 
     return () => {
       html.classList.remove("is-reel-page");
@@ -149,5 +166,5 @@ export function useReelFullscreen() {
       } catch {}
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [immersive]);
 }
