@@ -351,7 +351,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // immersive one-reel-per-room feed (ken-burns of each room's photos + property
 // film toggle + full amenities/view/ROI/desc), city/property-wise, with
 // Add-to-Bundle + Remove-property; replaces the old room bottom-sheet.
-const HTML_CACHE = 'staybid-html-v81';
+// v293.1 — StayCircle property/room reels no longer force native fullscreen
+// (useReelFullscreen({ immersive:false })); full-bleed layout preserved.
+const HTML_CACHE = 'staybid-html-v82';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
