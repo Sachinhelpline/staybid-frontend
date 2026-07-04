@@ -299,7 +299,6 @@ export default function CircleDiscoverPage() {
                 if (locks.includes(p.id)) setRoomsOpen(true);
                 else lockFromReel(p);
               }}
-              onUnlock={() => removeLock(p.id, p.title)}
               onShare={() => share(p)}
               onOpen={() => router.push(`/circle/${p.id}`)}
             />
@@ -387,7 +386,7 @@ export default function CircleDiscoverPage() {
 // wide screens, full-bleed on phones); info + CTAs share ONE bottom flex
 // container so they can never overlap on any device.
 function FullReel({
-  p, first, liked, locked, onLike, onInvest, onUnlock, onShare, onOpen,
+  p, first, liked, locked, onLike, onInvest, onShare, onOpen,
 }: {
   p: CircleProperty;
   first: boolean;
@@ -395,7 +394,6 @@ function FullReel({
   locked: boolean;
   onLike: () => void;
   onInvest: () => void;
-  onUnlock: () => void;
   onShare: () => void;
   onOpen: () => void;
 }) {
@@ -469,11 +467,10 @@ function FullReel({
               <span>📍 {p.locationLabel || `${p.city}${p.state ? `, ${p.state}` : ""}`}</span>
             </div>
           </div>
-          {locked && (
-            <button className="sbc-rfull-locktag" onClick={onUnlock} aria-label={`Release ${p.title}`} title="Tap to release">
-              ✓ Locked · release
-            </button>
-          )}
+          {/* v294.7 — the "✓ Locked · release" chip was removed (Sachin: "koi
+              kaam nhi hai"). Lock state now reads from the bottom CTA flipping
+              to "Choose rooms →"; unlock/release happens on the rooms sheet
+              ("✕ Remove") + the build recap. */}
         </div>
 
         {/* right action rail */}
