@@ -354,7 +354,8 @@ const CACHE_NAME = 'staybid-static-v2';
 // v293.1 — StayCircle property/room reels no longer force native fullscreen
 // (useReelFullscreen({ immersive:false })); full-bleed layout preserved.
 // v293.2 — room-tour overlay z-index 60→50 so the bottom dock stays visible.
-const HTML_CACHE = 'staybid-html-v84';
+// v293.4 — Step-2 room reel replaced by a clean room-selection sheet.
+const HTML_CACHE = 'staybid-html-v85';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

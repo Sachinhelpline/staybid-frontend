@@ -224,28 +224,7 @@ export default function CircleDiscoverPage() {
     router.push("/circle/build");
   }, [user, router]);
 
-  // Lock a property (from a room reel) then jump to the bundle builder.
-  const addToBundle = useCallback((propertyId: string) => {
-    if (!user) {
-      redirectToSignIn(router, { route: "/circle/discover?rooms=1", action: "circle_invest" });
-      return;
-    }
-    setLocks((prev) => {
-      if (prev.includes(propertyId)) return prev;
-      const n = [...prev, propertyId];
-      writeSet(LOCKS_KEY, n);
-      const token = localStorage.getItem("sb_token") || "";
-      fetch("/api/circle/locks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ propertyId }),
-      }).catch(() => {});
-      return n;
-    });
-    router.push("/circle/build");
-  }, [user, router]);
-
-  // Remove a locked property directly from the room-tour feed.
+  // Remove a locked property directly from the room-select sheet.
   const removeLock = useCallback((propertyId: string, title: string) => {
     setLocks((prev) => {
       if (!prev.includes(propertyId)) return prev;
@@ -370,14 +349,14 @@ export default function CircleDiscoverPage() {
         </>
       )}
 
-      {/* ============ full-screen room-tour reel ============ */}
+      {/* ============ room-selection sheet (Step 2) ============ */}
       {roomsOpen && (
-        <RoomReelFeed
+        <RoomSelectSheet
           props={props}
           locks={locks}
           onClose={() => setRoomsOpen(false)}
-          onAdd={addToBundle}
-          onRemove={removeLock}
+          onContinue={() => { setRoomsOpen(false); router.push("/circle/build"); }}
+          onRemoveLock={removeLock}
           onOpenProperty={(id) => router.push(`/circle/${id}`)}
         />
       )}
@@ -528,298 +507,206 @@ function FullReel({
 }
 
 // ---------------------------------------------------------------------------
-// Full-screen ROOM-TOUR reel (v292) — one immersive reel per room, exactly
-// like the Phase-1 discover feed but at room granularity. Default source is
-// your LOCKED properties' rooms (property-wise / city-wise); if you have no
-// locks yet it previews every property's rooms. Each reel is a ken-burns tour
-// of the room's own photos (rooms have no video column) with a one-tap toggle
-// to the property film, plus complete amenities / view / ROI / rate and
-// Add-to-Bundle + Remove-property actions — everything an investor needs to
-// decide, without leaving the feed.
-const ROOM_LIKES_KEY = "sb_circle_room_likes_v1";
+// Room-selection sheet (Step 2, v293.4) — replaces the confusing full-screen
+// per-room video reel with a clean, scannable "choose your rooms" list.
+//
+// One section per LOCKED property; every available room is a compact card with
+// photo + rate + units-left + ROI + a familiar quantity stepper (the same
+// .sbc-stepper used on the Plan step). A live sticky bottom bar totals the
+// picks and sends them to Step 3 "Plan". Selections persist to
+// sb_circle_room_sel_v1 (roomTypeId → count), which /circle/build reads to
+// pre-fill its steppers — one shared source of truth, no lock-contract change.
+const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
 
-function RoomReelFeed({
-  props, locks, onClose, onAdd, onRemove, onOpenProperty,
+function readRoomSel(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(ROOM_SEL_KEY);
+    const o = raw ? JSON.parse(raw) : {};
+    if (o && typeof o === "object") {
+      const out: Record<string, number> = {};
+      Object.entries(o).forEach(([k, v]) => {
+        const n = Math.floor(Number(v));
+        if (n > 0) out[k] = Math.min(10, n);
+      });
+      return out;
+    }
+  } catch { /* noop */ }
+  return {};
+}
+function writeRoomSel(sel: Record<string, number>) {
+  try { localStorage.setItem(ROOM_SEL_KEY, JSON.stringify(sel)); } catch { /* full */ }
+}
+
+function RoomSelectSheet({
+  props, locks, onClose, onContinue, onRemoveLock, onOpenProperty,
 }: {
   props: CircleProperty[];
   locks: string[];
   onClose: () => void;
-  onAdd: (propertyId: string) => void;
-  onRemove: (propertyId: string, title: string) => void;
+  onContinue: () => void;
+  onRemoveLock: (propertyId: string, title: string) => void;
   onOpenProperty: (id: string) => void;
 }) {
   const lockedProps = props.filter((p) => locks.includes(p.id));
   const usingLocked = lockedProps.length > 0;
-  const sourceProps = usingLocked ? lockedProps : props;
 
-  // flatten to one reel item per room, property-wise (props already come
-  // city/sort ordered from the API), available rooms first within a property.
-  const items = useMemo(() => {
-    const out: { p: CircleProperty; rt: RoomType }[] = [];
-    sourceProps.forEach((p) => {
-      const rts = [...(p.roomTypes || [])].sort(
-        (a, b) => (b.availableUnits > 0 ? 1 : 0) - (a.availableUnits > 0 ? 1 : 0),
-      );
-      rts.forEach((rt) => out.push({ p, rt }));
-    });
-    return out;
-  }, [sourceProps]);
+  // per-room-type selected count, seeded from + persisted to localStorage so it
+  // flows straight into /circle/build's steppers.
+  const [sel, setSel] = useState<Record<string, number>>(() => readRoomSel());
+  useEffect(() => { writeRoomSel(sel); }, [sel]);
 
-  const [likes, setLikes] = useState<string[]>([]);
-  useEffect(() => { setLikes(readSet(ROOM_LIKES_KEY)); }, []);
-  const toggleRoomLike = useCallback((id: string) => {
-    setLikes((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      try { localStorage.setItem(ROOM_LIKES_KEY, JSON.stringify(next)); } catch { /* full */ }
-      return next;
+  const setRoom = useCallback((rtId: string, next: number, max: number) => {
+    setSel((prev) => {
+      const v = Math.max(0, Math.min(Math.min(10, max), next));
+      const out = { ...prev };
+      if (v <= 0) delete out[rtId]; else out[rtId] = v;
+      return out;
     });
   }, []);
 
-  const propCount = sourceProps.length;
-  const roomCount = items.length;
+  // "＋ Add all rooms" — one of each available room type in this property.
+  const addAll = useCallback((p: CircleProperty) => {
+    setSel((prev) => {
+      const out = { ...prev };
+      p.roomTypes.forEach((rt) => {
+        if (rt.availableUnits > 0 && !(out[rt.id] > 0)) out[rt.id] = 1;
+      });
+      return out;
+    });
+  }, []);
+
+  // live totals over the locked properties' rooms only.
+  const { totalRooms, totalMonthly, propCount } = useMemo(() => {
+    let rooms = 0, monthly = 0; const propSet = new Set<string>();
+    lockedProps.forEach((p) => {
+      p.roomTypes.forEach((rt) => {
+        const c = sel[rt.id] || 0;
+        if (c > 0) { rooms += c; monthly += rt.monthlyRate * c; propSet.add(p.id); }
+      });
+    });
+    return { totalRooms: rooms, totalMonthly: monthly, propCount: propSet.size };
+  }, [lockedProps, sel]);
 
   return (
-    <div className="sbc-rrapp" role="dialog" aria-label="Room tour">
-      {/* top brand bar — close + context + build shortcut */}
-      <div className="sbc-rr-topbar">
-        <button className="sbc-rr-close" onClick={onClose} aria-label="Close room tour">✕</button>
-        <div className="sbc-rr-topmid">
-          <b>🛏 Room tours</b>
+    <div className="sbc-rsel-app" role="dialog" aria-label="Choose your rooms">
+      {/* header */}
+      <div className="sbc-rsel-top">
+        <button className="sbc-rsel-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="sbc-rsel-title">
+          <b>🛏 Choose your rooms</b>
           <span>
             {usingLocked
-              ? `${roomCount} rooms · ${propCount} locked ${propCount === 1 ? "property" : "properties"}`
-              : `${roomCount} rooms · preview — lock to build`}
+              ? `${lockedProps.length} locked ${lockedProps.length === 1 ? "property" : "properties"} · pick rooms for your bundle`
+              : "Lock a property in Step 1 first"}
           </span>
         </div>
-        {usingLocked ? (
-          <button className="sbc-rr-build" onClick={() => onAdd(lockedProps[0].id)}>Bundle →</button>
-        ) : <span style={{ width: 34 }} />}
       </div>
 
-      <div className="sbc-rrscroll">
-        {items.length === 0 ? (
-          <div className="sbc-rfull-empty" style={{ height: "100%" }}>
-            <div>
-              <div style={{ fontSize: 44 }}>🛏️</div>
-              <p style={{ marginTop: 10, color: "rgba(251,243,226,.8)", maxWidth: 300 }}>
-                In properties me abhi koi room type listed nahi hai.
-              </p>
-              <button className="sbc-rfull-btn-invest" style={{ marginTop: 16, padding: "0 22px" }} onClick={onClose}>
-                ← Back to properties
-              </button>
-            </div>
+      {/* body */}
+      <div className="sbc-rsel-scroll">
+        {!usingLocked ? (
+          <div className="sbc-rsel-empty">
+            <div style={{ fontSize: 46 }}>🔒</div>
+            <p>Abhi koi property locked nahi. Step 1 me koi property choose karo, fir uske rooms yahan select honge.</p>
+            <button className="sbc-btn-gold" style={{ marginTop: 4 }}
+              onClick={() => { try { window.dispatchEvent(new Event("sbc:rooms-close")); } catch { /* noop */ } }}>
+              ← Choose a property
+            </button>
           </div>
         ) : (
-          items.map(({ p, rt }, i) => (
-            <RoomReel
-              key={rt.id}
-              p={p}
-              rt={rt}
-              first={i === 0}
-              locked={locks.includes(p.id)}
-              liked={likes.includes(rt.id)}
-              onLike={() => toggleRoomLike(rt.id)}
-              onAdd={() => onAdd(p.id)}
-              onRemove={() => onRemove(p.id, p.title)}
-              onOpenProperty={() => onOpenProperty(p.id)}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
+          lockedProps.map((p) => {
+            const picked = p.roomTypes.reduce((s, rt) => s + (sel[rt.id] || 0), 0);
+            const hasAvail = p.roomTypes.some((rt) => rt.availableUnits > 0);
+            return (
+              <div className="sbc-rsel-prop" key={p.id}>
+                {/* property header */}
+                <div className="sbc-rsel-phead">
+                  <button className="sbc-rsel-pthumb" onClick={() => onOpenProperty(p.id)} aria-label={`Open ${p.title}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.images[0]} alt={p.title} loading="lazy" />
+                  </button>
+                  <div className="sbc-rsel-pinfo">
+                    <b onClick={() => onOpenProperty(p.id)}>{p.title}</b>
+                    <span>📍 {p.city}{p.state ? `, ${p.state}` : ""} · 📈 {p.roiMin}–{p.roiMax}% ROI</span>
+                    {picked > 0 && <em>✓ {picked} room{picked > 1 ? "s" : ""} selected</em>}
+                  </div>
+                  <div className="sbc-rsel-pactions">
+                    {hasAvail && (
+                      <button className="sbc-rsel-all" onClick={() => addAll(p)}>＋ All rooms</button>
+                    )}
+                    <button className="sbc-rsel-remove" onClick={() => onRemoveLock(p.id, p.title)} aria-label={`Remove ${p.title}`}>
+                      ✕ Remove
+                    </button>
+                  </div>
+                </div>
 
-// One room reel: ken-burns tour of the room's photos + property-film toggle,
-// full room detail overlay, and the invest CTAs.
-function RoomReel({
-  p, rt, first, locked, liked, onLike, onAdd, onRemove, onOpenProperty,
-}: {
-  p: CircleProperty;
-  rt: RoomType;
-  first: boolean;
-  locked: boolean;
-  liked: boolean;
-  onLike: () => void;
-  onAdd: () => void;
-  onRemove: () => void;
-  onOpenProperty: () => void;
-}) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [inView, setInView] = useState(false);
-  const [gi, setGi] = useState(0);
-  const [film, setFilm] = useState(false); // property video mode
-  const [muted, setMuted] = useState(true);
-  const [expand, setExpand] = useState(false);
-
-  const imgs = useMemo(() => {
-    const a = Array.isArray(rt.images) ? rt.images.filter(Boolean) : [];
-    return a.length ? a : p.images.slice(0, 3);
-  }, [rt.images, p.images]);
-  const amen = Array.isArray(rt.amenities) ? rt.amenities.filter(Boolean) : [];
-  const avail = rt.availableUnits > 0;
-  const roi = rt.roiPct && rt.roiPct > 0 ? `${rt.roiPct}%` : `${p.roiMin}–${p.roiMax}%`;
-
-  useEffect(() => {
-    if (!wrapRef.current) return;
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => setInView(e.isIntersecting && e.intersectionRatio > 0.6)),
-      { threshold: [0, 0.6, 1] },
-    );
-    io.observe(wrapRef.current);
-    return () => io.disconnect();
-  }, []);
-
-  // ken-burns auto-advance (only when in view, showing photos, >1 image)
-  useEffect(() => {
-    if (!inView || film || imgs.length < 2) return;
-    const t = setInterval(() => setGi((g) => (g + 1) % imgs.length), 3400);
-    return () => clearInterval(t);
-  }, [inView, film, imgs.length]);
-
-  // property film playback control
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (inView && film) { try { v.load(); } catch { /* noop */ } v.play().catch(() => {}); }
-    else v.pause();
-  }, [inView, film]);
-
-  const canFilm = !!p.videoUrl;
-  const activeImg = imgs.length ? imgs[Math.min(gi, imgs.length - 1)] : "";
-
-  return (
-    <div className="sbc-rfull sbc-rr" ref={wrapRef}>
-      <div className="sbc-rfull-stage">
-        <div className="sbc-rfull-media">
-          {/* ken-burns photo stack — each layer cross-fades; active one pans */}
-          {!film && imgs.map((src, idx) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={idx}
-              className={`sbc-rr-kb ${idx === Math.min(gi, imgs.length - 1) ? "on" : ""}`}
-              src={src}
-              alt={rt.name}
-              loading={idx === 0 ? "eager" : "lazy"}
-            />
-          ))}
-          {/* property film overlay when toggled on */}
-          {film && canFilm && inView ? (
-            <video className="sbc-rfull-vid" ref={videoRef} src={p.videoUrl || undefined}
-              muted={muted} playsInline loop preload="none" poster={activeImg} />
-          ) : null}
-        </div>
-        <div className="sbc-rfull-shade" />
-
-        {/* tap-to-advance zone over the central media */}
-        {!film && imgs.length > 1 && (
-          <button className="sbc-rr-tapzone" aria-label="Next photo"
-            onClick={() => setGi((g) => (g + 1) % imgs.length)} />
-        )}
-
-        {/* top: property context chip (+ locked tag) */}
-        <div className="sbc-rfull-top">
-          <div className="sbc-rfull-chip" onClick={onOpenProperty} role="button" tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter") onOpenProperty(); }}>
-            {p.images[0]
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img className="sbc-rfull-ava" src={p.images[0]} alt="" />
-              : <span className="sbc-rfull-ava">{(p.title || "SC").slice(0, 1).toUpperCase()}</span>}
-            <div className="sbc-rfull-hand">
-              <b>{p.title}</b>
-              <span>📍 {p.city}{p.state ? `, ${p.state}` : ""}</span>
-            </div>
-          </div>
-          {locked && <span className="sbc-rfull-locktag">✓ In bundle</span>}
-        </div>
-
-        {/* right rail */}
-        <div className="sbc-rfull-rail">
-          <button className={`sbc-rail-btn ${liked ? "on" : ""}`} onClick={onLike} aria-label="Save room">
-            <span className="sbc-rail-ic">{liked ? "♥" : "♡"}</span>
-            <span className="sbc-rail-cap">Save</span>
-          </button>
-          {canFilm && (
-            <button className={`sbc-rail-btn ${film ? "on" : ""}`} onClick={() => setFilm((f) => !f)} aria-label="Property film">
-              <span className="sbc-rail-ic">{film ? "🖼" : "▶"}</span>
-              <span className="sbc-rail-cap">{film ? "Photos" : "Film"}</span>
-            </button>
-          )}
-          {film && canFilm && (
-            <button className="sbc-rail-btn" onClick={() => setMuted((m) => !m)} aria-label="Mute">
-              <span className="sbc-rail-ic">{muted ? "🔇" : "🔊"}</span>
-              <span className="sbc-rail-cap">{muted ? "Muted" : "Sound"}</span>
-            </button>
-          )}
-          <button className="sbc-rail-btn" onClick={onOpenProperty} aria-label="Full tour">
-            <span className="sbc-rail-ic">ⓘ</span>
-            <span className="sbc-rail-cap">Tour</span>
-          </button>
-        </div>
-
-        {/* bottom: full room detail + CTAs */}
-        <div className="sbc-rfull-bottom">
-          {!film && imgs.length > 1 && (
-            <div className="sbc-rr-dots">
-              {imgs.map((_, idx) => <span key={idx} className={idx === Math.min(gi, imgs.length - 1) ? "on" : ""} />)}
-            </div>
-          )}
-          <div className="sbc-rfull-info">
-            <div className="sbc-rfull-badges">
-              <span className="sbc-rfull-badge roi">📈 {roi} ROI</span>
-              <span className={`sbc-rfull-badge ${avail ? "" : "gone"}`}>
-                {avail ? `🟢 ${rt.availableUnits} of ${rt.totalUnits} open` : "Fully subscribed"}
-              </span>
-            </div>
-            <div className="sbc-rr-name">{rt.name}</div>
-            <div className="sbc-rfull-sub">{p.title} · {p.city}</div>
-
-            {/* compact spec row — real per-room data */}
-            <div className="sbc-rr-specs">
-              {rt.viewLabel ? <span>👁 {rt.viewLabel}</span> : null}
-              {rt.capacity ? <span>👥 Sleeps {rt.capacity}</span> : null}
-              {rt.sizeSqft ? <span>📐 {rt.sizeSqft} sq ft</span> : null}
-              {rt.bedType ? <span>🛏 {rt.bedType}</span> : null}
-            </div>
-
-            {rt.description ? (
-              <p className={`sbc-rr-desc ${expand ? "open" : ""}`} onClick={() => setExpand((v) => !v)}>
-                {rt.description}
-              </p>
-            ) : null}
-
-            {amen.length > 0 && (
-              <div className="sbc-rr-amen">
-                {(expand ? amen : amen.slice(0, 6)).map((a) => <span key={a}>{a}</span>)}
-                {!expand && amen.length > 6 && (
-                  <span className="more" onClick={() => setExpand(true)}>+{amen.length - 6} more</span>
-                )}
+                {/* room rows */}
+                <div className="sbc-rsel-rooms">
+                  {p.roomTypes.length === 0 && (
+                    <div className="sbc-rsel-noroom">Is property ke rooms abhi list nahi hue.</div>
+                  )}
+                  {p.roomTypes.map((rt) => {
+                    const v = sel[rt.id] || 0;
+                    const avail = rt.availableUnits > 0;
+                    const max = Math.min(10, rt.availableUnits);
+                    const img = (Array.isArray(rt.images) && rt.images[0]) || p.images[0];
+                    const roi = rt.roiPct && rt.roiPct > 0 ? `${rt.roiPct}%` : `${p.roiMin}–${p.roiMax}%`;
+                    const specs = [
+                      rt.viewLabel ? `👁 ${rt.viewLabel}` : "",
+                      rt.capacity ? `👥 ${rt.capacity}` : "",
+                      rt.sizeSqft ? `📐 ${rt.sizeSqft}ft²` : "",
+                      rt.bedType ? `🛏 ${rt.bedType}` : "",
+                    ].filter(Boolean).slice(0, 3);
+                    return (
+                      <div key={rt.id} className={`sbc-rsel-room ${v > 0 ? "on" : ""} ${avail ? "" : "gone"}`}>
+                        <div className="sbc-rsel-rthumb">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img} alt={rt.name} loading="lazy" />
+                          <span className="sbc-rsel-roi">📈 {roi}</span>
+                        </div>
+                        <div className="sbc-rsel-rinfo">
+                          <b>{rt.name}</b>
+                          <div className="sbc-rsel-rrate">
+                            <strong>{fmtINR(rt.monthlyRate)}</strong><span>/mo</span>
+                            <em className={avail ? "" : "sold"}>
+                              {avail ? `${rt.availableUnits} of ${rt.totalUnits} available` : "Fully subscribed"}
+                            </em>
+                          </div>
+                          {specs.length > 0 && (
+                            <div className="sbc-rsel-rspecs">
+                              {specs.map((s) => <span key={s}>{s}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        <div className="sbc-rsel-rpick">
+                          <div className="sbc-stepper">
+                            <button onClick={() => setRoom(rt.id, v - 1, max)} disabled={v <= 0} aria-label="Fewer rooms">−</button>
+                            <span className="val">{v}</span>
+                            <button onClick={() => setRoom(rt.id, v + 1, max)} disabled={!avail || v >= max} aria-label="More rooms">＋</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-
-            <div className="sbc-rfull-rate"><b>{fmtINR(rt.monthlyRate)}</b><span>/ room / month</span></div>
-          </div>
-
-          <div className="sbc-rfull-ctas">
-            {locked ? (
-              <>
-                <button className="sbc-rfull-btn-invest islocked" onClick={onAdd}>✓ In bundle · Build →</button>
-                <button className="sbc-rr-remove" onClick={onRemove}>🔓 Remove property</button>
-              </>
-            ) : (
-              <>
-                <button className="sbc-rfull-btn-tour" onClick={onOpenProperty}>▶ Property tour</button>
-                <button className="sbc-rfull-btn-invest" onClick={onAdd} disabled={!avail}>
-                  {avail ? "🔒 Add to bundle" : "Sold out"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {first && <div className="sbc-rfull-hint">Swipe up for more rooms ↑</div>}
+            );
+          })
+        )}
       </div>
+
+      {/* sticky bottom bar */}
+      {usingLocked && (
+        <div className="sbc-rsel-bar">
+          <div className="sbc-rsel-bar-info">
+            <b>{fmtINR(totalMonthly)}<small>/mo</small></b>
+            <span>{totalRooms} room{totalRooms === 1 ? "" : "s"} · {propCount} propert{propCount === 1 ? "y" : "ies"}</span>
+          </div>
+          <button className="sbc-rsel-cta" onClick={onContinue}>
+            {totalRooms > 0 ? "Continue to Plan →" : "Pick rooms · Plan →"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

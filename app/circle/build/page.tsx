@@ -33,6 +33,27 @@ type CircleProperty = {
 };
 
 const LOCKS_KEY = "sb_circle_locks_v1";
+// Shared with the Step-2 room-selection sheet on /circle/discover, so the
+// rooms you pick there pre-fill the steppers here (one source of truth).
+const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
+function readRoomSel(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(ROOM_SEL_KEY);
+    const o = raw ? JSON.parse(raw) : {};
+    if (o && typeof o === "object") {
+      const out: Record<string, number> = {};
+      Object.entries(o).forEach(([k, v]) => {
+        const n = Math.floor(Number(v));
+        if (n > 0) out[k] = Math.min(10, n);
+      });
+      return out;
+    }
+  } catch { /* noop */ }
+  return {};
+}
+function writeRoomSel(sel: Record<string, number>) {
+  try { localStorage.setItem(ROOM_SEL_KEY, JSON.stringify(sel)); } catch { /* full */ }
+}
 
 export default function CircleBuildPage() {
   const router = useRouter();
@@ -43,6 +64,7 @@ export default function CircleBuildPage() {
   const [lockedIds, setLockedIds] = useState<string[]>([]);
   // roomTypeId → rooms count
   const [selection, setSelection] = useState<Record<string, number>>({});
+  const [hydrated, setHydrated] = useState(false);
   const [plan, setPlan] = useState<PaymentPlanKey>("monthly");
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
@@ -60,12 +82,23 @@ export default function CircleBuildPage() {
       const u = JSON.parse(localStorage.getItem("sb_user") || "null");
       if (u) setContact({ name: u.name || "", phone: u.phone || "", email: u.email || "" });
     } catch { /* noop */ }
+    // seed the steppers with rooms picked on the Step-2 selection sheet
+    const rs = readRoomSel();
+    if (Object.keys(rs).length) setSelection(rs);
+    setHydrated(true);
     fetch("/api/circle/properties")
       .then((r) => r.json())
       .then((d) => setProps(Array.isArray(d?.properties) ? d.properties : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // keep the shared room-selection key in sync (only after hydration so the
+  // initial empty state never clobbers what Step 2 saved).
+  useEffect(() => {
+    if (!hydrated) return;
+    writeRoomSel(selection);
+  }, [selection, hydrated]);
 
   // Locked-first ordering; the rest are one tap away ("+ Add More Property").
   const lockedProps = useMemo(
