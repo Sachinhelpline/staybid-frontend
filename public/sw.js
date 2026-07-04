@@ -326,7 +326,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // clients load the new admin markup.
 // v283 — Workforce onboarding + worker panel (/worker, /host/workforce/join,
 // admin Workers tab). Bump so warm SWR clients load the new markup.
-const HTML_CACHE = 'staybid-html-v71';
+// v288 — StayCircle™ Community Partner Platform (/circle vertical + nav
+// entries + partner StayCircle tab + admin page). Bump so warm SWR clients
+// load the new menu rows + chrome hide-gates.
+const HTML_CACHE = 'staybid-html-v72';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

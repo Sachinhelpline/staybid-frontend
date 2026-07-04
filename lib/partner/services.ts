@@ -8,6 +8,8 @@ export const DEFAULT_SERVICES = [
   "overview", "bids", "rooms", "bookings", "availability", "complaints", "content", "profile",
   // v265 — Passport Guests (read-only Explorer Passport holders at this hotel).
   "passport",
+  // v288 — StayCircle investments (read-only community-partner view).
+  "circle",
 ] as const;
 
 export const SUBSCRIPTION_SERVICES = [

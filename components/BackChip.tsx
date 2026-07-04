@@ -37,6 +37,7 @@ export function BackChip() {
     pathname.startsWith("/worker") ||
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
+    pathname.startsWith("/circle") ||        // v288: StayCircle — own topbar chrome
     pathname.startsWith("/auth");
   if (hidden) return null;
 

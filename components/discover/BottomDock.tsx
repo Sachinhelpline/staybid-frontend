@@ -55,6 +55,7 @@ export function BottomDock() {
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/host") ||      // Hospitality Business OS — own chrome
+    pathname.startsWith("/circle") ||    // v288 StayCircle — own chrome
     pathname.startsWith("/order") ||     // public QR food-ordering page
     pathname.startsWith("/kiosk") ||     // offline kiosk = its own fullscreen surface
     pathname.startsWith("/auth");        // auth screens should be chrome-free
