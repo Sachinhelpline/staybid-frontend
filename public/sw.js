@@ -341,7 +341,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // v291.2 — reel: removed the duplicate top "Bundle" pill (single "Lock for
 // Investment" CTA + a "✓ Locked" state tag); /circle/build: each locked
 // property now has an "✕ Remove" button to unlock/remove it anytime.
-const HTML_CACHE = 'staybid-html-v78';
+// v291.4 — laptop black screen ROOT-CAUSE fix (found via live headless
+// inspect): app/desktop.css pins `html.is-reel-page{--reel-vh:auto!important}`
+// at ≥1024px, which poisoned StayCircle's `height:var(--reel-vh)` reel cards
+// → collapsed to 0 → black. Fix: on ≥700px force .sbc-rapp/.sbc-rfull/
+// .sbc-rfull-stage to a LITERAL 100dvh (immune to the poisoned var) with
+// position:fixed. Verified: rfull=1440x820, stage=461x820 (9:16 portrait).
+const HTML_CACHE = 'staybid-html-v79';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
