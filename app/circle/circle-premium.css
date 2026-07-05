@@ -2018,3 +2018,28 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-earn-empty-ic { font-size: 2rem; }
 .sbc-earn-empty b { display: block; font-size: 1rem; color: var(--sbc-c-ink); margin-top: 6px; }
 .sbc-earn-empty span { display: block; font-size: .76rem; color: var(--sbc-c-ink-soft); margin-top: 5px; line-height: 1.5; }
+
+/* ─────────────────────────────────────────────────────────────
+   Circle-own Help & support (v294.20, Phase 6)
+   Premium-cozy help screen — FAQ accordion + contact cards.
+   Self-contained (no backend); WhatsApp + email deep-links.
+   ───────────────────────────────────────────────────────────── */
+.sbc-help-intro { margin-top: 8px; padding: 17px 17px; border-radius: 18px; background: linear-gradient(150deg, var(--sbc-c-sage-tint), rgba(92,107,69,.05)); border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 30%, transparent); box-shadow: var(--sbc-c-shadow); }
+.sbc-help-intro b { display: block; font-size: 1.06rem; color: var(--sbc-c-ink); }
+.sbc-help-intro span { display: block; font-size: .78rem; color: var(--sbc-c-ink-soft); margin-top: 4px; line-height: 1.5; }
+
+.sbc-help-contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+.sbc-help-contact { display: flex; flex-direction: column; gap: 3px; padding: 14px 13px; border-radius: 16px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease; }
+.sbc-help-contact:active { transform: scale(.98); }
+.sbc-help-contact-ic { font-size: 1.4rem; }
+.sbc-help-contact b { font-size: .9rem; color: var(--sbc-c-ink); font-weight: 800; }
+.sbc-help-contact span { font-size: .68rem; color: var(--sbc-c-ink-soft); }
+
+.sbc-faq { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.sbc-faq-item { border-radius: 15px; overflow: hidden; background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
+.sbc-faq-q { display: flex; align-items: center; gap: 11px; width: 100%; padding: 14px 15px; text-align: left; cursor: pointer; background: none; border: none; color: var(--sbc-c-ink); font-size: .88rem; font-weight: 700; }
+.sbc-faq-q:hover { background: var(--sbc-c-sage-tint); }
+.sbc-faq-q em { margin-left: auto; font-style: normal; color: var(--sbc-c-ink-faint); font-size: 1.2rem; transition: transform .18s ease; }
+.sbc-faq-item.open .sbc-faq-q em { transform: rotate(45deg); }
+.sbc-faq-a { padding: 0 15px 14px; font-size: .8rem; color: var(--sbc-c-ink-soft); line-height: 1.55; }
+.sbc-faq-a b { color: var(--sbc-c-ink); }
