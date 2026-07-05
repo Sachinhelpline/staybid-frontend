@@ -13,7 +13,8 @@
 // before, on every width. The footer still hides on the dark app-shell routes.
 // ═══════════════════════════════════════════════════════════════════════════
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import type { MouseEvent as ReactMouseEvent } from "react";
 
 // Dark app-shell routes carry the dark glass topbar (desktop) + no footer.
 // v294.15 — the dashboard is now a LIGHT cream + sage "account" surface (ss3
@@ -31,9 +32,37 @@ function hideFooter(pathname: string) {
 
 export function CircleTopbar() {
   const pathname = usePathname() || "/circle";
+  const router = useRouter();
   const dark = isDark(pathname);
+  const onDiscover = pathname.startsWith("/circle/discover");
   const active = (href: string) =>
     href === "/circle" ? pathname === "/circle" : pathname.startsWith(href);
+
+  // "Discover" — when the room-select overlay may be open (we're already on
+  // /circle/discover) tapping Discover must CLOSE the sheet, not fire a
+  // same-URL no-op <Link> nav that leaves the sheet stuck on desktop (the
+  // bottom CircleDock is CSS-hidden ≥1024px, so the header owns this). Mirrors
+  // CircleDock.onProperty. Dispatch is a harmless no-op when nothing is open.
+  const onDiscoverClick = (e: ReactMouseEvent) => {
+    if (onDiscover) {
+      e.preventDefault();
+      window.dispatchEvent(new Event("sbc:rooms-close"));
+    }
+    // else let the <Link> navigate to /circle/discover normally.
+  };
+
+  // "Rooms" — open the room-select overlay in place when already on the
+  // discover feed; otherwise navigate there with ?rooms=1 to auto-open it.
+  // Mirrors CircleDock.onRooms.
+  const onRoomsClick = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    if (onDiscover) {
+      window.dispatchEvent(new Event("sbc:rooms"));
+    } else {
+      router.push("/circle/discover?rooms=1");
+    }
+  };
+
   return (
     <header className={`sbc-topbar${dark ? " sbc-topbar--dark" : ""}`}>
       <div className="sbc-topbar-inner">
@@ -46,11 +75,13 @@ export function CircleTopbar() {
         </Link>
         <nav className="sbc-topnav">
           <Link href="/circle" className={`sbc-topnav-link${active("/circle") ? " on" : ""}`}>Home</Link>
-          <Link href="/circle/discover" className={`sbc-topnav-link${active("/circle/discover") ? " on" : ""}`}>Discover</Link>
+          <Link href="/circle/discover" onClick={onDiscoverClick} className={`sbc-topnav-link${active("/circle/discover") ? " on" : ""}`}>Discover</Link>
           {/* Journey step 2 — surfaces the room-select flow from the header
               (Sachin: "header nav main kahi bhi rooms button nahi hai"). Shares
-              the /circle/discover path so it carries no active-state of its own. */}
-          <Link href="/circle/discover?rooms=1" className="sbc-topnav-link hidden sm:inline-flex">Rooms</Link>
+              the /circle/discover path so it carries no active-state of its own.
+              onClick opens the overlay in place (or navigates ?rooms=1) instead
+              of a plain nav — mirrors CircleDock so header + dock behave alike. */}
+          <Link href="/circle/discover?rooms=1" onClick={onRoomsClick} className="sbc-topnav-link hidden sm:inline-flex">Rooms</Link>
           <Link href="/circle/build" className={`sbc-topnav-link${active("/circle/build") ? " on" : ""}`}>Build Bundle</Link>
           <Link href="/circle/me" className={`sbc-topnav-link hidden sm:inline-flex${active("/circle/me") ? " on" : ""}`}>My Portfolio</Link>
           <Link href="/circle/dashboard" className="sbc-topnav-cta">Dashboard</Link>
