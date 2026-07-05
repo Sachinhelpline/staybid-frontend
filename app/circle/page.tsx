@@ -18,7 +18,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { fmtINR, computeBundle, type BundleItem } from "@/lib/circle/engine";
+import {
+  fmtINR, computeBundle, type BundleItem,
+  DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig,
+} from "@/lib/circle/engine";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
 type CircleProperty = {
@@ -44,6 +47,10 @@ type CircleProperty = {
 
 const LIKES_KEY = "sb_circle_likes_v1";
 const LOCKS_KEY = "sb_circle_locks_v1";
+// Actual room selections from the /circle/discover Step-2 sheet — the SAME
+// single source of truth /circle/build reads. Home mirrors it so the two
+// pages can never show different portfolio numbers (v297.4).
+const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
 
 function readSet(key: string): string[] {
   try {
@@ -51,6 +58,23 @@ function readSet(key: string): string[] {
     const arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr.map(String) : [];
   } catch { return []; }
+}
+// Mirror of /circle/build's readRoomSel() — identical parsing so both pages
+// derive the bundle from byte-identical inputs.
+function readRoomSel(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(ROOM_SEL_KEY);
+    const o = raw ? JSON.parse(raw) : {};
+    if (o && typeof o === "object") {
+      const out: Record<string, number> = {};
+      Object.entries(o).forEach(([k, v]) => {
+        const n = Math.floor(Number(v));
+        if (n > 0) out[k] = Math.min(10, n);
+      });
+      return out;
+    }
+  } catch { /* noop */ }
+  return {};
 }
 function writeSet(key: string, arr: string[]) {
   try { localStorage.setItem(key, JSON.stringify(arr)); } catch { /* full */ }
@@ -73,10 +97,20 @@ export default function CircleHomePage() {
   const [city, setCity] = useState("all");
   const [likes, setLikes] = useState<string[]>([]);
   const [locks, setLocks] = useState<string[]>([]);
+  // Actual room picks (v297.4) — primary bundle input, same as /circle/build.
+  const [roomSel, setRoomSel] = useState<Record<string, number>>({});
+  // Honest-revenue levers (admin-editable) — display-only, matches build page.
+  const [revConfig, setRevConfig] = useState<CircleRevenueConfig>(DEFAULT_CIRCLE_REVENUE);
 
   useEffect(() => {
     setLikes(readSet(LIKES_KEY));
     setLocks(readSet(LOCKS_KEY));
+    setRoomSel(readRoomSel());
+    // Same revenue config /circle/build fetches → identical income math.
+    fetch("/api/circle/revenue-config")
+      .then((r) => r.json())
+      .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
+      .catch(() => {});
     fetch("/api/circle/properties")
       .then((r) => r.json())
       .then((d) => {
@@ -106,43 +140,75 @@ export default function CircleHomePage() {
     [props, city],
   );
 
-  // Portfolio snapshot — routed through the SAME computeBundle engine that
-  // /circle/build uses, so the ROI band + diversification bonus + income can
-  // NEVER drift between the two pages (v294.10). Home = "potential across your
-  // N LOCKED properties (cheapest room each)"; build = "the bundle you're
-  // actually configuring". Same math, different scope — labelled as such.
   const lockedProps = useMemo(() => props.filter((p) => locks.includes(p.id)), [props, locks]);
+
+  // Portfolio snapshot — FUTUREPROOF single-source (v297.4). It routes through
+  // the exact same computeBundle(items, "monthly", revConfig) call as
+  // /circle/build, with the SAME inputs whenever an active bundle exists:
+  //
+  //   PRIMARY  → the real room selections (sb_circle_room_sel_v1). This is
+  //              byte-identical to what /circle/build builds, so property count
+  //              / monthly investment / income / diversification bonus can NEVER
+  //              diverge once the customer has picked rooms.
+  //   FALLBACK → when no rooms are picked yet, a preview across LOCKED
+  //              properties (cheapest room each). In that state /circle/build
+  //              is ALSO empty, so there is no visible surface to compare
+  //              against → no divergence possible.
   const snapshot = useMemo(() => {
-    if (!lockedProps.length) return null;
-    // Cheapest available room per locked property → one bundle item each.
-    const items: BundleItem[] = lockedProps.map((p) => {
-      const rooms = (p.roomTypes || []).filter((r) => r.monthlyRate > 0);
-      const cheapest = rooms.length
-        ? rooms.reduce((a, b) => (b.monthlyRate < a.monthlyRate ? b : a))
-        : null;
-      return {
-        propertyId: p.id,
-        propertyTitle: p.title,
-        city: p.city,
-        roomTypeId: cheapest?.id || `${p.id}-base`,
-        roomTypeName: cheapest?.name || "Room",
-        monthlyRate: cheapest?.monthlyRate || p.monthlyRate,
-        rooms: 1,
-        roiMin: p.roiMin || 0,
-        roiMax: p.roiMax || 0,
-      };
+    // PRIMARY: real room picks → identical to /circle/build's `items`.
+    const selItems: BundleItem[] = [];
+    props.forEach((p) => {
+      (p.roomTypes || []).forEach((rt) => {
+        const rooms = roomSel[rt.id] || 0;
+        if (rooms > 0) {
+          selItems.push({
+            propertyId: p.id, propertyTitle: p.title, city: p.city,
+            roomTypeId: rt.id, roomTypeName: rt.name,
+            monthlyRate: rt.monthlyRate, rooms,
+            roiMin: p.roiMin, roiMax: p.roiMax,
+          });
+        }
+      });
     });
-    const b = computeBundle(items, "monthly");
+
+    const fromRoomSel = selItems.length > 0;
+    // FALLBACK: cheapest available room per locked property → one item each.
+    const items: BundleItem[] = fromRoomSel
+      ? selItems
+      : lockedProps.map((p) => {
+          const rooms = (p.roomTypes || []).filter((r) => r.monthlyRate > 0);
+          const cheapest = rooms.length
+            ? rooms.reduce((a, b) => (b.monthlyRate < a.monthlyRate ? b : a))
+            : null;
+          return {
+            propertyId: p.id,
+            propertyTitle: p.title,
+            city: p.city,
+            roomTypeId: cheapest?.id || `${p.id}-base`,
+            roomTypeName: cheapest?.name || "Room",
+            monthlyRate: cheapest?.monthlyRate || p.monthlyRate,
+            rooms: 1,
+            roiMin: p.roiMin || 0,
+            roiMax: p.roiMax || 0,
+          };
+        });
+
+    if (!items.length) return null;
+    // Same engine, same plan ("monthly"), same revConfig as /circle/build.
+    const b = computeBundle(items, "monthly", revConfig);
     if (!b.ok) return null;
+    const roomCount = items.reduce((s, it) => s + it.rooms, 0);
     return {
       committed: b.monthlyTotal,
       rMin: b.expectedRoiMin,
       rMax: b.expectedRoiMax,
       monthlyIncome: b.expectedMonthlyIncome,
       count: b.propertyCount,
+      roomCount,
       bonus: b.diversificationBonusPct,
+      fromRoomSel,
     };
-  }, [lockedProps]);
+  }, [props, roomSel, lockedProps, revConfig]);
 
   const displayName = (user?.name || "").trim().split(" ")[0] || "Investor";
 
@@ -176,7 +242,11 @@ export default function CircleHomePage() {
           <>
             <div className="sbc-hp-label">
               Portfolio potential
-              <span className="sbc-hp-scope">across {snapshot.count} locked {snapshot.count === 1 ? "property" : "properties"}</span>
+              <span className="sbc-hp-scope">
+                {snapshot.fromRoomSel
+                  ? `${snapshot.roomCount} ${snapshot.roomCount === 1 ? "room" : "rooms"} across ${snapshot.count} ${snapshot.count === 1 ? "property" : "properties"}`
+                  : `across ${snapshot.count} locked ${snapshot.count === 1 ? "property" : "properties"}`}
+              </span>
             </div>
             <div className="sbc-hp-value">{fmtINR(snapshot.committed)}<span>/mo to invest</span></div>
             <div className="sbc-hp-grid">

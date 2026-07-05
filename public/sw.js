@@ -386,7 +386,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // /mo turnover, investment shows the total advance alongside the /mo figure, and
 // a pre-known "Property from date" picker (rent-start, server-clamped to
 // available_from) was added.
-const HTML_CACHE = 'staybid-html-v116';
+// v297.4 — one-time HTML_CACHE bump (v116 -> v117). StayCircle /circle home
+// "Portfolio potential" snapshot now derives from the SAME room-selection state
+// (sb_circle_room_sel_v1) + same computeBundle + same revenue-config that
+// /circle/build uses, so the two pages can never show divergent property count /
+// monthly investment / income / diversification numbers. SWR-cached HTML must
+// refresh so the unified snapshot ships.
+const HTML_CACHE = 'staybid-html-v117';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
