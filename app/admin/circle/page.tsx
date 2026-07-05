@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CountUp } from "@/components/CountUp";
-import { fmtINR } from "@/lib/circle/engine";
+import { fmtINR, DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig } from "@/lib/circle/engine";
 import { resizeImageBeforeUpload } from "@/lib/image-resize";
 
 // v289 — direct-to-Storage uploader for the property editor (image + reel
@@ -52,7 +52,7 @@ const C = {
   red: "#FF4757", blue: "#3D9CF5", purple: "#A855F7",
 };
 
-type Tab = "properties" | "room_types" | "bundles" | "payouts" | "locks";
+type Tab = "properties" | "room_types" | "bundles" | "payouts" | "locks" | "revenue";
 
 function adminHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -157,6 +157,7 @@ export default function AdminCirclePage() {
           ["bundles", `🧺 Bundles (${bundles.length})`],
           ["payouts", `💸 Payouts (${payouts.length})`],
           ["locks", `🔒 Locks (${locks.length})`],
+          ["revenue", `🧮 Revenue Model`],
         ] as [Tab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} style={{
             ...btnS(tab === k ? C.gold : "#0F1117", tab === k ? "#07080C" : C.sub),
@@ -271,6 +272,14 @@ export default function AdminCirclePage() {
               </div>
             </div>
           ))}
+
+          {tab === "revenue" && (
+            <RevenueModelEditor
+              initial={data?.revenueConfig}
+              busy={!!busy}
+              onSave={(d) => mutate("PATCH", { entity: "revenue_config", data: d })}
+            />
+          )}
 
           {((tab === "properties" && !properties.length) ||
             (tab === "room_types" && !roomTypes.length) ||
@@ -497,6 +506,74 @@ function EditorModal({
             onSave(payload);
           }}>💾 Save</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// v294.13 — Honest revenue model editor. Numbers drive the /circle/build
+// "Investment & Returns" transparency panel (uplift %, commission %, one-time
+// setup/city, monthly channel-manager). DISPLAY-ONLY — never charged. Merged
+// + clamped server-side (mergeRevenueConfig) so a bad value can't corrupt.
+// ---------------------------------------------------------------------------
+function RevenueModelEditor({
+  initial, busy, onSave,
+}: {
+  initial?: Partial<CircleRevenueConfig> | null;
+  busy: boolean;
+  onSave: (data: CircleRevenueConfig) => void;
+}) {
+  const base: CircleRevenueConfig = { ...DEFAULT_CIRCLE_REVENUE, ...(initial || {}) };
+  const [f, setF] = useState<CircleRevenueConfig>(base);
+  const key = JSON.stringify(initial || {});
+  useEffect(() => { setF({ ...DEFAULT_CIRCLE_REVENUE, ...(initial || {}) }); }, [key]);
+
+  const set = (k: keyof CircleRevenueConfig, v: string) =>
+    setF((c) => ({ ...c, [k]: v === "" ? 0 : Number(v) }));
+
+  const FIELDS: { k: keyof CircleRevenueConfig; label: string; hint: string; prefix?: string; suffix?: string }[] = [
+    { k: "upliftPct", label: "Booking revenue uplift", hint: "Booking revenue as % of the investor's monthly investment (≥100). 140 = properties earn 1.4× what's invested.", suffix: "%" },
+    { k: "commissionPct", label: "StayBid platform fee", hint: "StayBid's fee as % of gross booking revenue (0–90).", suffix: "%" },
+    { k: "setupPerRoom", label: "Setup (per room)", hint: "One-time onboarding cost per room.", prefix: "₹" },
+    { k: "cityActivationFee", label: "City activation (per city)", hint: "One-time cost to activate each city.", prefix: "₹" },
+    { k: "managementMonthly", label: "Management / channel manager", hint: "Recurring ₹ per property per month (StayBid + Airbnb + Booking.com + other OTAs).", prefix: "₹", suffix: "/mo" },
+  ];
+
+  return (
+    <div style={box}>
+      <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>🧮 Revenue Model — /circle/build panel</div>
+      <div style={{ fontSize: 12, color: C.sub, marginBottom: 16 }}>
+        These numbers drive the customer's <b>Investment &amp; Returns</b> transparency panel. Display-only — the Razorpay charge (investment) is never affected. Live within ~60s of Save.
+      </div>
+
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+        {FIELDS.map((fd) => (
+          <div key={fd.k}>
+            <label style={{ fontSize: 12.5, fontWeight: 700, color: C.text }}>{fd.label}</label>
+            <div style={{ position: "relative", marginTop: 6 }}>
+              {fd.prefix && <span style={{ position: "absolute", left: 12, top: 9, color: C.sub, fontSize: 13 }}>{fd.prefix}</span>}
+              <input
+                type="number" inputMode="decimal" min={0}
+                value={String(f[fd.k])}
+                onChange={(e) => set(fd.k, e.target.value)}
+                style={{ ...inputS, paddingLeft: fd.prefix ? 26 : 12, paddingRight: fd.suffix ? 40 : 12 }}
+                disabled={busy}
+              />
+              {fd.suffix && <span style={{ position: "absolute", right: 12, top: 9, color: C.sub, fontSize: 13 }}>{fd.suffix}</span>}
+            </div>
+            <div style={{ fontSize: 11, color: C.sub, marginTop: 4, lineHeight: 1.4 }}>{fd.hint}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+        <button style={btnS(C.gold)} disabled={busy} onClick={() => onSave(f)}>💾 Save revenue model</button>
+        <button
+          style={btnS("#0F1117", C.sub)}
+          disabled={busy}
+          onClick={() => setF({ ...DEFAULT_CIRCLE_REVENUE })}
+        >↺ Reset to defaults</button>
       </div>
     </div>
   );

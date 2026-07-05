@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
 import { sbCacheInvalidate } from "@/lib/sb-cache";
+import { mergeRevenueConfig } from "@/lib/circle/engine";
+import {
+  resolveRevenueConfig,
+  invalidateRevenueConfigCache,
+  CIRCLE_REVENUE_CONFIG_ID,
+} from "@/lib/circle/revenue-config-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +92,8 @@ export async function GET(req: Request) {
     locks = await attachUsers(Array.isArray(locks) ? locks : [], "user_id");
     bundles = await attachUsers(Array.isArray(bundles) ? bundles : [], "user_id");
 
+    const revenueConfig = await resolveRevenueConfig();
+
     const activeBundles = bundles.filter((b: any) => b.status === "active");
     const kpis = {
       properties: (Array.isArray(properties) ? properties : []).length,
@@ -102,7 +110,7 @@ export async function GET(req: Request) {
         .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0),
     };
 
-    return NextResponse.json({ properties, roomTypes, locks, bundles, payouts, kpis });
+    return NextResponse.json({ properties, roomTypes, locks, bundles, payouts, kpis, revenueConfig });
   } catch (e: any) {
     return NextResponse.json({ error: String(e?.message || e).slice(0, 200) }, { status: 502 });
   }
@@ -154,6 +162,33 @@ export async function PATCH(req: Request) {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const entity = String(body?.entity || "");
+
+  // Honest revenue levers (v294.13) — singleton config, no per-row id. Merge +
+  // clamp the posted numbers (mergeRevenueConfig) then upsert the 'default'
+  // row. DISPLAY-ONLY; the checkout charge is untouched.
+  if (entity === "revenue_config") {
+    const cfg = mergeRevenueConfig(body?.data);
+    try {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/circle_revenue_config?id=eq.${CIRCLE_REVENUE_CONFIG_ID}`,
+        {
+          method: "PATCH",
+          headers: { ...SB_H, Prefer: "return=representation" },
+          body: JSON.stringify({ config: cfg, updated_at: new Date().toISOString(), updated_by: admin.id || admin.phone || "admin" }),
+        },
+      );
+      if (!r.ok) {
+        const t = await r.text();
+        return NextResponse.json({ error: "Save failed", detail: t.slice(0, 200) }, { status: 502 });
+      }
+      invalidateRevenueConfigCache();
+      logAdminAction({ admin, action: "circle.revenue_config.update", targetType: "revenue_config", targetId: CIRCLE_REVENUE_CONFIG_ID, details: cfg });
+      return NextResponse.json({ ok: true, revenueConfig: cfg });
+    } catch (e: any) {
+      return NextResponse.json({ error: String(e?.message || e).slice(0, 160) }, { status: 502 });
+    }
+  }
+
   const id = String(body?.id || "").trim();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
