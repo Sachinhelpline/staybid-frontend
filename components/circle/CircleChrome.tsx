@@ -24,7 +24,7 @@ const DARK = new Set(["/circle", "/circle/discover"]);
 function isDark(pathname: string) {
   return DARK.has(pathname) || pathname.startsWith("/circle/discover");
 }
-const NO_FOOTER = new Set(["/circle", "/circle/discover", "/circle/dashboard", "/circle/profile", "/circle/kyc"]);
+const NO_FOOTER = new Set(["/circle", "/circle/discover", "/circle/dashboard", "/circle/profile", "/circle/kyc", "/circle/earnings", "/circle/support"]);
 function hideFooter(pathname: string) {
   return NO_FOOTER.has(pathname) || pathname.startsWith("/circle/discover");
 }
