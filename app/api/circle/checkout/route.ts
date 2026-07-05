@@ -118,6 +118,24 @@ export async function POST(req: Request) {
   // v297.1 — monthly single-property restriction removed (Sachin): every plan
   // works for multi-property bundles now (bundle.monthlyPlanBlocked === false).
 
+  // v297.3 — resolve the rent-start date. The day the customer PAYS is NOT
+  // necessarily the day rent starts. Server re-validates + clamps the requested
+  // date to the earliest date EVERY bundled property is free (never before
+  // today) — pre-known via circle_properties.available_from.
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const bundledPropIds = Array.from(new Set(items.map((it) => it.propertyId)));
+  let earliestStart = todayStr;
+  for (const pid of bundledPropIds) {
+    const af = String(propById[pid]?.available_from || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(af) && af > earliestStart) earliestStart = af;
+  }
+  const reqStart = String(body?.startDate || "").slice(0, 10);
+  const startDate =
+    /^\d{4}-\d{2}-\d{2}$/.test(reqStart) && reqStart > earliestStart ? reqStart : earliestStart;
+
   // Pay-option amounts (server-authoritative — client never sets a ₹).
   const holdAmount = Math.round(bundle.payNow * HOLD_FRACTION);
   const chargeable = payOption === "hold" ? holdAmount : bundle.payNow;
@@ -173,6 +191,7 @@ export async function POST(req: Request) {
     payback_label: bundle.paybackLabel,
     breakdown: bundle,
     contact: { name, phone, email: String(contact?.email || "").trim().slice(0, 160) || null },
+    start_date: startDate, // v297.3 — server-validated rent-start (≥ available_from)
     status: "pending_payment",
     razorpay_order_id: rzp.id,
   };
