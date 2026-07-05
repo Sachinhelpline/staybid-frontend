@@ -119,12 +119,26 @@ export interface PaymentModeRule {
   securityMonths: number;    // ⚠️ refundable security = securityMonths × monthly recurring
   blurb: string;
 }
+// v285 — Sachin's payment-plan rules (all admin-editable via /admin/host/pricing):
+//   monthly     → 2mo security + 1mo advance (periodCharge = 1mo recurring), 0% off,
+//                 covers a SINGLE property (enforced at checkout + wizard gate).
+//   quarterly   → 1mo security + a quarter's advance (3mo recurring), 7% off. Next
+//                 instalment falls due ~1 month before the quarter ends.
+//   half-yearly → 12% off, low security (same pattern: prepay the period + deposit).
+//   yearly      → 20% off, lowest security (biggest advance → smallest deposit).
+// The "advance" IS periodCharge in computeBundle (monthlyRecurring × periodMonths ×
+// (1 - discount)); security = securityMonths × monthlyRecurring — no new field needed.
 export const PAYMENT_MODES: Record<PaymentModeKey, PaymentModeRule> = {
-  monthly:     { key: "monthly",     name: "Monthly",      periodMonths: 1,  recurringDiscount: 0,    securityMonths: 2,   blurb: "Lowest commitment · highest security" },
-  quarterly:   { key: "quarterly",   name: "Quarterly",    periodMonths: 3,  recurringDiscount: 0.03, securityMonths: 1.5, blurb: "3% off management · less security" },
-  half_yearly: { key: "half_yearly", name: "Half-yearly",  periodMonths: 6,  recurringDiscount: 0.06, securityMonths: 1,   blurb: "6% off management · low security" },
-  yearly:      { key: "yearly",      name: "Yearly",       periodMonths: 12, recurringDiscount: 0.12, securityMonths: 0.5, blurb: "Best value · 12% off · lowest security" },
+  monthly:     { key: "monthly",     name: "Monthly",      periodMonths: 1,  recurringDiscount: 0,    securityMonths: 2,   blurb: "2mo security + 1mo advance · single property" },
+  quarterly:   { key: "quarterly",   name: "Quarterly",    periodMonths: 3,  recurringDiscount: 0.07, securityMonths: 1,   blurb: "7% off · 1mo security + quarterly advance" },
+  half_yearly: { key: "half_yearly", name: "Half-yearly",  periodMonths: 6,  recurringDiscount: 0.12, securityMonths: 1,   blurb: "12% off · low security + half-yearly advance" },
+  yearly:      { key: "yearly",      name: "Yearly",       periodMonths: 12, recurringDiscount: 0.20, securityMonths: 0.5, blurb: "Best value · 20% off · lowest security" },
 };
+
+// v285 — the monthly plan covers ONE property only. Wizard gate + checkout both
+// reject monthly when rooms > this. Keep as a named constant so the rule is
+// discoverable + tunable in one place.
+export const MONTHLY_MAX_ROOMS = 1;
 
 // ── Editable config bundle ──────────────────────────────────────────────────
 // v280: every number above is now ADMIN-EDITABLE. The constants stay as the

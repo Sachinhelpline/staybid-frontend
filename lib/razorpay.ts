@@ -49,6 +49,11 @@ export interface OpenForOrderOptions {
   userName?: string;
   userPhone?: string;
   userEmail?: string;
+  // v285 — optional Razorpay Checkout `method` map (e.g. { emi:true, paylater:true,
+  // card:true }) to emphasise EMI / BNPL. Providers actually shown (Home Credit,
+  // Snapmint, Bajaj Finserv, Mobikwik, card/cardless EMI) depend on the merchant
+  // account's activated methods — this only asks Checkout to surface them.
+  method?: Record<string, boolean>;
 }
 
 export async function openRazorpayForOrder(
@@ -80,6 +85,7 @@ export async function openRazorpayForOrder(
         email: opts.userEmail || "",
       },
       theme: { color: "#c9911a" },
+      ...(opts.method ? { method: opts.method } : {}),
       handler: (response: RazorpayPaymentResult) => resolve(response),
       modal: {
         ondismiss: () => reject(new RazorpayError("__CANCELLED__")),

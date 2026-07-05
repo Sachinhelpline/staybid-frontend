@@ -27,7 +27,7 @@ import Link from "next/link";
 import { CountUp } from "@/components/CountUp";
 import { HOST_CHANNELS } from "@/lib/host/modules";
 import {
-  DEFAULT_WIZARD_CONFIG, HOST_UNLIMITED,
+  DEFAULT_WIZARD_CONFIG, HOST_UNLIMITED, MONTHLY_MAX_ROOMS,
   computeBundle, clampConfig, roomsLabel, maxCitiesLabel, inr,
   type HostTierKey, type PaymentModeKey, type PortfolioConfig, type WizardConfig,
 } from "@/lib/host/wizard-rules";
@@ -41,7 +41,8 @@ import {
   DESIGN_THEMES, POPULAR_ADDONS, ADDON_BENEFITS, DESIGN_PROCESS,
   WHY_DESIGN_MATTERS, OPERATING_MODES, WORKFORCE_CATEGORIES, PRICING_FACTORS,
   PRICING_STRATEGIES, PRICING_PREVIEW, GO_LIVE_CHECKLIST,
-  sanitizeJourneyPreferences, prefLabels, type JourneyPreferences, type CityIntel,
+  sanitizeJourneyPreferences, prefLabels, projectReturns,
+  type JourneyPreferences, type CityIntel,
 } from "@/lib/host/journey-data";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 
@@ -129,6 +130,8 @@ function Journey() {
   const [consent, setConsent] = useState(false);
   const [pay, setPay] = useState<"idle" | "working" | "done" | "error">("idle");
   const [payErr, setPayErr] = useState("");
+  // v285 — how the partner pays the "pay now" amount at Review & Pay.
+  const [payOption, setPayOption] = useState<"full" | "hold" | "emi">("full");
 
   // Phase-2 UI state
   const [distBand, setDistBand] = useState(300);
@@ -182,6 +185,12 @@ function Journey() {
   const maxRooms = tier.maxRooms >= HOST_UNLIMITED ? 50 : tier.maxRooms;
   const maxCities = tier.maxCities >= HOST_UNLIMITED ? 50 : tier.maxCities;
 
+  // v285 — monthly plan = single property. Advisory + payment gate.
+  const monthlyBlocked = cfg.paymentMode === "monthly" && cfg.rooms > MONTHLY_MAX_ROOMS;
+  // v285 — 10% Visit-Access Hold amount (reserve for a visit; balance after signing).
+  const holdNow = Math.round(bundle.payNow * 0.10);
+  const holdBalance = Math.max(0, bundle.payNow - holdNow);
+
   const returnProfile = RETURN_PROFILES.find((r) => r.key === prefs.returnProfile) || RETURN_PROFILES[1];
   const selectedCities = useMemo(
     () => cfg.cities.map((n) => CITY_INTEL.find((c) => c.name === n)).filter(Boolean) as CityIntel[],
@@ -189,6 +198,21 @@ function Journey() {
   );
   const focus = CITY_INTEL.find((c) => c.name === (focusCity || cfg.cities[cfg.cities.length - 1])) || null;
   const recos = useMemo(() => recommendCities(returnProfile.key, cfg.cities), [returnProfile.key, cfg.cities]);
+
+  // v285 — indicative gross → expenses → net bifurcation for the chosen plan.
+  // Recomputes whenever the payment period, return profile, cities, rooms, or
+  // invested capital change → the numbers update live as the mode flips.
+  const periodMonths = wc.paymentModes[cfg.paymentMode].periodMonths;
+  const returns = useMemo(
+    () => projectReturns({
+      returnProfileKey: prefs.returnProfile,
+      cities: selectedCities,
+      monthlyRecurring: bundle.monthlyRecurring,
+      oneTimeTotal: bundle.oneTimeTotal,
+      periodMonths,
+    }),
+    [prefs.returnProfile, selectedCities, bundle.monthlyRecurring, bundle.oneTimeTotal, periodMonths],
+  );
 
   // v286 — auto-ask for location the first time Nearby mode is visible.
   useEffect(() => {
@@ -302,7 +326,11 @@ function Journey() {
   async function doPay() {
     if (!consent) { setPayErr("Please confirm you agree to proceed."); setPay("error"); return; }
     if (!contact.name.trim() || contact.phone.replace(/\D/g, "").length < 8) {
-      setPayErr("Enter your name and a valid phone number."); setPay("error"); return;
+      setPayErr("Enter your name and a valid mobile number."); setPay("error"); return;
+    }
+    if (monthlyBlocked) {
+      setPayErr(`The Monthly plan covers ${MONTHLY_MAX_ROOMS} property. Reduce to ${MONTHLY_MAX_ROOMS} room, or switch to Quarterly / Half-yearly / Yearly for your ${cfg.rooms}-room portfolio.`);
+      setPay("error"); return;
     }
     setPay("working"); setPayErr("");
     try {
@@ -310,7 +338,7 @@ function Journey() {
       const res = await fetch("/api/host/portfolio/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ config: cfg, contact, preferences: sanitizeJourneyPreferences(prefs) }),
+        body: JSON.stringify({ config: cfg, contact, payOption, preferences: sanitizeJourneyPreferences(prefs) }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) throw new RazorpayError(data?.error || "Could not start payment.");
@@ -319,8 +347,13 @@ function Journey() {
         orderId: data.razorpayOrderId,
         amountPaise: Math.round(data.amount * 100),
         keyId: data.keyId,
-        description: `${tier.name} portfolio · ${cfg.rooms} room(s) · ${cfg.cities.length} city(ies)`,
+        description: payOption === "hold"
+          ? `${tier.name} portfolio · 10% visit-access hold`
+          : `${tier.name} portfolio · ${cfg.rooms} room(s) · ${cfg.cities.length} city(ies)`,
         userName: contact.name, userPhone: contact.phone, userEmail: contact.email,
+        // v285 — emphasise EMI + BNPL (Home Credit / Snapmint / Bajaj / Mobikwik
+        // surface here IF the Razorpay account has them enabled).
+        ...(payOption === "emi" ? { method: { emi: true, paylater: true, card: true, upi: true, netbanking: true } } : {}),
       });
 
       const vr = await fetch("/api/host/portfolio/verify", {
@@ -338,7 +371,7 @@ function Journey() {
     }
   }
 
-  if (pay === "done") return <SuccessScreen tier={tier.name} payNow={bundle.payNow} cities={cfg.cities} rooms={cfg.rooms} />;
+  if (pay === "done") return <SuccessScreen tier={tier.name} payNow={payOption === "hold" ? holdNow : bundle.payNow} balance={payOption === "hold" ? holdBalance : 0} cities={cfg.cities} rooms={cfg.rooms} />;
 
   const currentPhase = HOST_PHASES[phase - 1];
 
@@ -1445,22 +1478,35 @@ function Journey() {
                 ))}
               </div>
 
-              {/* payment cycle (still switchable) */}
+              {/* payment cycle (still switchable) — changing it recomputes the
+                  investment AND the gross→expenses→net bifurcation below, live. */}
               <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>Payment cycle</div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                 {Object.values(wc.paymentModes).map((m) => {
                   const on = cfg.paymentMode === m.key;
+                  const advanceLabel = m.periodMonths === 1 ? "1mo advance" : `${m.periodMonths}mo advance`;
                   return (
                     <button key={m.key} onClick={() => setCfg((c) => ({ ...c, paymentMode: m.key as PaymentModeKey }))}
                       className="ho-tile rounded-2xl p-3 text-center"
                       style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
-                      <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>{m.name}</div>
-                      {m.recurringDiscount > 0 && <div className="text-[11px] font-semibold" style={{ color: "#15803d" }}>{Math.round(m.recurringDiscount * 100)}% off</div>}
-                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>Security {m.securityMonths}× mo</div>
+                      <div className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>{on ? "✓ " : ""}{m.name}</div>
+                      {m.recurringDiscount > 0
+                        ? <div className="text-[11px] font-semibold" style={{ color: "#15803d" }}>{Math.round(m.recurringDiscount * 100)}% off</div>
+                        : <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>Standard</div>}
+                      <div className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{m.securityMonths}mo security · {advanceLabel}</div>
+                      {m.key === "monthly" && <div className="text-[9px] mt-0.5 font-semibold" style={{ color: "var(--accent)" }}>1 property only</div>}
                     </button>
                   );
                 })}
               </div>
+              <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+                Monthly = 2mo security + 1mo advance (single property). Quarterly = 1mo security + quarter advance, 7% off — next instalment falls due ~1 month before the quarter ends. Half-yearly 12% off · Yearly 20% off.
+              </p>
+              {monthlyBlocked && (
+                <div className="rounded-2xl p-3 mb-4 text-xs" style={{ background: "#fff4e6", border: "1px solid #e0a458", color: "#8a5a17" }}>
+                  ⚠️ The <b>Monthly</b> plan covers <b>1 property</b>. Your portfolio has <b>{cfg.rooms} rooms</b> — switch to <b>Quarterly / Half-yearly / Yearly</b>, or reduce to 1 room, to continue.
+                </div>
+              )}
 
               {/* breakdown */}
               <div className="rounded-2xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
@@ -1484,6 +1530,29 @@ function Journey() {
                 </div>
               </div>
 
+              {/* v285 — Investment & Returns bifurcation. Auto-recomputes the
+                  moment the payment plan (or return profile / cities / rooms)
+                  changes: gross revenue expected → − expenses → net income. */}
+              <div className="rounded-2xl p-4 mt-3" style={{ background: "linear-gradient(135deg,var(--accent-soft),var(--bg-card))", border: "1px solid var(--accent)" }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--accent)" }}>Expected returns · {wc.paymentModes[cfg.paymentMode].name.toLowerCase()}</div>
+                  <div className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "var(--accent)", color: "#fff" }}>~{returns.effReturnPct}% p.a.*</div>
+                </div>
+                <div className="flex items-baseline justify-between py-1.5 text-sm">
+                  <span style={{ color: "var(--text-soft)" }}>Gross revenue expected<span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>over {returns.periodMonths} month{returns.periodMonths > 1 ? "s" : ""} · {cfg.rooms} room{cfg.rooms > 1 ? "s" : ""}</span></span>
+                  <span className="font-semibold tabular-nums" style={{ color: "var(--text-base)" }}>{inr(returns.grossPeriod)}</span>
+                </div>
+                <div className="flex items-baseline justify-between py-1.5 text-sm" style={{ borderTop: "1px dashed var(--border-soft)" }}>
+                  <span style={{ color: "var(--text-soft)" }}>− Expenses<span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>ops · {tier.commissionPct}% platform fee · management</span></span>
+                  <span className="font-semibold tabular-nums" style={{ color: "#c0392b" }}>− {inr(returns.expensesPeriod)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: "1px solid var(--border-strong)" }}>
+                  <span className="font-semibold" style={{ color: "var(--text-base)" }}>Net income expected</span>
+                  <span className="font-display text-xl ho-num" style={{ color: "#15803d" }}>{inr(returns.netPeriod)}</span>
+                </div>
+                <div className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>≈ {inr(returns.netMonthly)}/month · indicative &amp; performance-based — not guaranteed. Recomputes with your plan, cities &amp; return profile.</div>
+              </div>
+
               {bundle.emiPlans.length > 0 && (
                 <div className="rounded-2xl p-4 mt-3" style={{ background: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
                   <div className="text-xs font-semibold mb-1.5" style={{ color: "var(--accent)" }}>EMI schedule</div>
@@ -1496,25 +1565,70 @@ function Journey() {
                 </div>
               )}
 
-              {/* contact + consent */}
-              <div className="mt-4 space-y-2.5">
-                <input value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} placeholder="Your name" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
-                <input value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} placeholder="Phone number" inputMode="tel" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
-                <input value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder="Email (optional)" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
+              {/* v285 — how do you want to pay? */}
+              <div className="text-xs font-semibold uppercase tracking-wide mt-5 mb-2" style={{ color: "var(--text-muted)" }}>How do you want to pay?</div>
+              <div className="space-y-2.5">
+                {([
+                  { key: "hold", icon: "🔒", title: "10% Visit-Access Hold", now: holdNow,
+                    sub: `Pay ${inr(holdNow)} now to reserve the property for a visit. Balance ${inr(holdBalance)} after you visit & sign the agreement.` },
+                  { key: "emi", icon: "💳", title: "EMI · Pay Later", now: bundle.payNow,
+                    sub: "Split with Razorpay EMI (card / cardless) & Pay-Later — Home Credit, Snapmint, Bajaj Finserv, Mobikwik (where available). Works for full payment too." },
+                  { key: "full", icon: "⚡", title: "Proceed & Pay", now: bundle.payNow,
+                    sub: "Complete the full payment now — fastest activation." },
+                ] as const).map((o) => {
+                  const on = payOption === o.key;
+                  return (
+                    <button key={o.key} onClick={() => setPayOption(o.key)}
+                      className="ho-tile w-full rounded-2xl p-3.5 text-left flex items-start gap-3"
+                      style={{ background: "var(--bg-card)", border: on ? `2px solid ${tier.accent}` : "1px solid var(--border-soft)" }}>
+                      <span className="text-xl mt-0.5">{o.icon}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-sm" style={{ color: "var(--text-base)" }}>{on ? "✓ " : ""}{o.title}</span>
+                          <span className="font-display text-base ho-num shrink-0" style={{ color: tier.accent }}>{inr(o.now)}<span className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}> now</span></span>
+                        </span>
+                        <span className="block text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{o.sub}</span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <label className="flex items-start gap-2.5 mt-3 text-xs cursor-pointer" style={{ color: "var(--text-soft)" }}>
+
+              {/* contact — labelled so each column is clear */}
+              <div className="text-xs font-semibold uppercase tracking-wide mt-5 mb-2" style={{ color: "var(--text-muted)" }}>Your details</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <label className="block">
+                  <span className="block text-[11px] font-semibold mb-1" style={{ color: "var(--text-soft)" }}>Full name<span style={{ color: "var(--accent)" }}> *</span></span>
+                  <input value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} placeholder="e.g. Sachin Tomer" autoComplete="name" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] font-semibold mb-1" style={{ color: "var(--text-soft)" }}>Mobile number<span style={{ color: "var(--accent)" }}> *</span></span>
+                  <input value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} placeholder="10-digit mobile" inputMode="tel" autoComplete="tel" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
+                </label>
+                <label className="block">
+                  <span className="block text-[11px] font-semibold mb-1" style={{ color: "var(--text-soft)" }}>Email <span style={{ color: "var(--text-muted)" }}>(optional)</span></span>
+                  <input value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} placeholder="you@email.com" type="email" autoComplete="email" className="w-full rounded-xl px-4 py-3 text-sm" style={inpStyle} />
+                </label>
+              </div>
+
+              <label className="flex items-start gap-2.5 mt-4 text-xs cursor-pointer" style={{ color: "var(--text-soft)" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5" />
                 <span>
-                  I agree to set up my {tier.name} portfolio as configured above and authorise the <b>{inr(bundle.payNow)}</b> charge now.
-                  Returns are indicative & performance-based; StayBid charges a {tier.commissionPct}% platform fee on revenue.
-                  Security is refundable per the agreement. KYC, SOP acceptance & compliance agreement apply.
+                  {payOption === "hold"
+                    ? <>I authorise the <b>{inr(holdNow)}</b> 10% visit-access hold now to reserve my {tier.name} portfolio; the <b>{inr(holdBalance)}</b> balance is due after I visit the property and sign the agreement.</>
+                    : <>I agree to set up my {tier.name} portfolio as configured above and authorise the <b>{inr(bundle.payNow)}</b> charge now{payOption === "emi" ? " (payable via EMI / Pay-Later)" : ""}.</>}
+                  {" "}Returns are indicative &amp; performance-based; StayBid charges a {tier.commissionPct}% platform fee on revenue.
+                  Security is refundable per the agreement. KYC, SOP acceptance &amp; compliance agreement apply.
                 </span>
               </label>
               {pay === "error" && <div className="text-sm mt-2" style={{ color: "#c0392b" }}>{payErr}</div>}
-              <button onClick={doPay} disabled={pay === "working"}
+              <button onClick={doPay} disabled={pay === "working" || monthlyBlocked}
                 className="ho-shine w-full mt-4 px-6 py-3.5 rounded-full text-white font-semibold disabled:opacity-60"
                 style={{ background: `linear-gradient(135deg,${tier.accent},${tier.accent}cc)` }}>
-                {pay === "working" ? "Opening secure payment…" : `Confirm & pay ${inr(bundle.payNow)} securely →`}
+                {pay === "working" ? "Opening secure payment…"
+                  : payOption === "hold" ? `Pay ${inr(holdNow)} hold & reserve →`
+                  : payOption === "emi" ? `Pay ${inr(bundle.payNow)} via EMI / Pay-Later →`
+                  : `Confirm & pay ${inr(bundle.payNow)} securely →`}
               </button>
               <p className="text-center text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>🔒 Razorpay secure checkout · server-verified amount · instant receipt</p>
             </div>
@@ -1814,15 +1928,16 @@ function Recap({ k, v, last }: { k: string; v: string; last?: boolean }) {
   );
 }
 
-function SuccessScreen({ tier, payNow, cities, rooms }: { tier: string; payNow: number; cities: string[]; rooms: number }) {
+function SuccessScreen({ tier, payNow, cities, rooms, balance = 0 }: { tier: string; payNow: number; cities: string[]; rooms: number; balance?: number }) {
   return (
     <div className="ho-aurora min-h-screen">
       <div className="relative max-w-md mx-auto px-6 py-20 text-center ho-enter">
         <div className="text-5xl mb-3 ho-float">🎉</div>
         <h1 className="font-display text-3xl" style={{ color: "var(--text-base)" }}>Welcome to the portfolio club!</h1>
         <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>
-          Your <b>{tier}</b> portfolio ({rooms} room{rooms > 1 ? "s" : ""} · {cities.join(", ")}) is confirmed —
+          Your <b>{tier}</b> portfolio ({rooms} room{rooms > 1 ? "s" : ""} · {cities.join(", ")}) is {balance > 0 ? "reserved" : "confirmed"} —
           we've received <b>{inr(payNow)}</b>.
+          {balance > 0 && <> The <b>{inr(balance)}</b> balance is due after your property visit &amp; agreement signing.</>}
         </p>
         <div className="rounded-2xl p-4 mt-5 text-left ho-glass">
           <div className="text-[10px] uppercase tracking-[0.18em] font-bold mb-2" style={{ color: "var(--accent)" }}>What happens next</div>

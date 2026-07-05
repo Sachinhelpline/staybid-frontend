@@ -282,6 +282,10 @@ function PortfoliosTable({ rows }: { rows: any[] }) {
               <Td align="right" style={{ color: "#E879A0", fontWeight: 700 }}>
                 {r.pay_now ? inr(r.pay_now) : "—"}
                 {r.recurring ? <div style={{ color: "#8A8FA8", fontSize: 10, fontWeight: 400 }}>{inr(r.recurring)}/period</div> : null}
+                {r.pay_option === "hold" && Number(r.balance_due) > 0 && (
+                  <div style={{ color: "#e0a458", fontSize: 10, fontWeight: 600 }}>🔒 10% hold · {inr(Number(r.balance_due))} due</div>
+                )}
+                {r.pay_option === "emi" && <div style={{ color: "#3D9CF5", fontSize: 10, fontWeight: 400 }}>💳 EMI / Pay-Later</div>}
               </Td>
               <Td><StaticBadge status={r.status} /></Td>
               <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>

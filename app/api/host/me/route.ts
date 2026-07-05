@@ -37,7 +37,7 @@ export async function GET(req: Request) {
       sbGet(`host_channels?user_id=eq.${uid}&select=id,channel,property_ref,status,created_at&order=created_at.desc&limit=50`),
       // v284: portfolio configs (the 5-phase configurator purchases). preferences
       // is the sanitized journey metadata written by /api/host/portfolio/checkout.
-      sbGet(`host_portfolio_configs?user_id=eq.${uid}&select=id,tier,cities,rooms,design,addons,payment_mode,pay_now,recurring,security,status,preferences,created_at&order=created_at.desc&limit=20`),
+      sbGet(`host_portfolio_configs?user_id=eq.${uid}&select=id,tier,cities,rooms,design,addons,payment_mode,pay_now,recurring,security,pay_option,charged_amount,balance_due,status,preferences,created_at&order=created_at.desc&limit=20`),
     ]);
 
     // Side-load joins: property titles + worker names + order items + option counts.
