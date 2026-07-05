@@ -4,19 +4,27 @@
 // Live KPIs (CountUp) + active bundles + monthly payout ledger (live ROI feed)
 // + locked properties. Data: /api/circle/me (locks + bundles + payouts).
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
-import { CIRCLE_PLANS, fmtINR, type PaymentPlanKey } from "@/lib/circle/engine";
+import {
+  CIRCLE_PLANS, computeBundle, fmtINR,
+  DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig, type PaymentPlanKey,
+} from "@/lib/circle/engine";
 
 export default function CircleMePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // v297.5 — recompute every bundle's ROI/income/payback LIVE from the same
+  // unified engine + revConfig used by /circle home + /circle/build, so stored
+  // (possibly old-formula) snapshot columns never diverge from what the wizard
+  // shows. Fetch the admin-editable revenue levers exactly like the other pages.
+  const [revConfig, setRevConfig] = useState<CircleRevenueConfig>(DEFAULT_CIRCLE_REVENUE);
 
   useEffect(() => {
     if (authLoading) return;
@@ -30,12 +38,48 @@ export default function CircleMePage() {
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetch("/api/circle/revenue-config")
+      .then((r) => r.json())
+      .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
+      .catch(() => {});
   }, [user, authLoading, router]);
 
-  const kpis = data?.kpis || {};
-  const bundles: any[] = Array.isArray(data?.bundles) ? data.bundles : [];
+  const serverKpis = data?.kpis || {};
+  const bundlesRaw: any[] = Array.isArray(data?.bundles) ? data.bundles : [];
   const payouts: any[] = Array.isArray(data?.payouts) ? data.payouts : [];
   const locks: any[] = Array.isArray(data?.locks) ? data.locks : [];
+
+  // Live recompute per bundle — the SINGLE source of truth (computeBundle).
+  const bundles = useMemo(
+    () =>
+      bundlesRaw.map((b) => {
+        const items = Array.isArray(b.items) ? b.items : [];
+        const plan = (b.payment_plan as PaymentPlanKey) || "monthly";
+        const bd = computeBundle(items, plan, revConfig);
+        return {
+          ...b,
+          _monthlyTotal: bd.ok ? bd.monthlyTotal : Number(b.monthly_total) || 0,
+          _roiMin: bd.ok ? bd.expectedRoiMin : b.expected_roi_min,
+          _roiMax: bd.ok ? bd.expectedRoiMax : b.expected_roi_max,
+          _income: bd.ok ? bd.expectedMonthlyIncome : Number(b.expected_monthly_income) || 0,
+          _payback: bd.ok ? bd.paybackLabel : b.payback_label,
+        };
+      }),
+    [bundlesRaw, revConfig],
+  );
+
+  // KPI tiles recomputed from the SAME engine (active bundles only) so the hero
+  // strip and each card agree. activeBundles count + totalPaidOut are engine-
+  // independent, keep them from the server payload.
+  const kpis = useMemo(() => {
+    const active = bundles.filter((b) => b.status === "active");
+    return {
+      activeBundles: active.length,
+      investedMonthly: active.reduce((s, b) => s + b._monthlyTotal, 0),
+      expectedMonthlyIncome: active.reduce((s, b) => s + b._income, 0),
+      totalPaidOut: Number(serverKpis.totalPaidOut || 0),
+    };
+  }, [bundles, serverKpis]);
 
   return (
     <div>
@@ -92,14 +136,14 @@ export default function CircleMePage() {
                             </div>
                           </div>
                           <div style={{ textAlign: "right" }}>
-                            <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(b.monthly_total)}</b>
+                            <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(b._monthlyTotal)}</b>
                             <div style={{ fontSize: ".68rem", color: "rgba(74,56,32,.55)" }}>/ month</div>
                           </div>
                         </div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                          <span className="sbc-badge-roi">📈 {b.expected_roi_min}–{b.expected_roi_max}% ROI</span>
-                          <span className="sbc-badge-occ">₹ {fmtINR(b.expected_monthly_income)} / mo expected</span>
-                          <span className="sbc-badge-occ">⏳ Payback {b.payback_label}</span>
+                          <span className="sbc-badge-roi">📈 {b._roiMin}–{b._roiMax}% ROI</span>
+                          <span className="sbc-badge-occ">₹ {fmtINR(b._income)} / mo expected</span>
+                          <span className="sbc-badge-occ">⏳ Payback {b._payback}</span>
                         </div>
                       </div>
                     );

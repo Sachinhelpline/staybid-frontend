@@ -7,6 +7,7 @@ import {
   type BundleItem,
   type PaymentPlanKey,
 } from "@/lib/circle/engine";
+import { resolveRevenueConfig } from "@/lib/circle/revenue-config-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,7 +112,12 @@ export async function POST(req: Request) {
     });
   }
 
-  const bundle = computeBundle(items, planKey);
+  // v297.5 — pass the SAME admin-editable revenue levers the wizard uses so the
+  // frozen snapshot columns (ROI / income / payback) match the live display.
+  // The charge (payNow) is plan-only and unaffected; this only corrects the
+  // stored audit snapshot. Display surfaces recompute live regardless.
+  const revenueConfig = await resolveRevenueConfig().catch(() => undefined);
+  const bundle = computeBundle(items, planKey, revenueConfig);
   if (!bundle.ok || bundle.payNow <= 0) {
     return NextResponse.json({ error: bundle.error || "Invalid bundle." }, { status: 400 });
   }
