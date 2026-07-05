@@ -1223,6 +1223,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-hp-glow { position: absolute; inset: -40% 40% auto -20%; height: 160px; border-radius: 50%; background: radial-gradient(circle, rgba(201,166,107,.35), transparent 70%); filter: blur(24px); }
 .sbc-hp-label { position: relative; font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; color: rgba(231,207,160,.7); }
+.sbc-hp-scope { display: block; margin-top: 3px; font-size: .62rem; font-weight: 600; letter-spacing: .04em; text-transform: none; color: rgba(245,236,216,.5); }
+.sbc-hp-note { position: relative; margin-top: 12px; font-size: .72rem; line-height: 1.5; color: rgba(183,208,160,.85); background: rgba(183,208,160,.09); border: 1px solid rgba(183,208,160,.2); border-radius: 12px; padding: 9px 12px; }
+.sbc-hp-note b { color: #C7E0A8; font-weight: 800; }
 .sbc-hp-value { position: relative; font-family: var(--font-display, serif); font-size: 2.05rem; font-weight: 800; color: #FFF6E4; line-height: 1.05; margin-top: 4px; }
 .sbc-hp-value span { display: block; font-family: var(--font-sans, system-ui); font-size: .78rem; font-weight: 600; color: rgba(245,236,216,.55); letter-spacing: .02em; margin-top: 3px; }
 .sbc-hp-empty { position: relative; font-size: .86rem; color: rgba(245,236,216,.72); margin-top: 8px; line-height: 1.5; }
