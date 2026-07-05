@@ -1977,3 +1977,44 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .sbc-home-bundle::after { animation: none; } }
 
+
+/* ─────────────────────────────────────────────────────────────
+   Circle-own Earnings & payouts (v294.19, Phase 5)
+   Premium-cozy income screen — separate from hotel-partner /
+   creator earnings. Reads /api/circle/me (circle_payouts).
+   ───────────────────────────────────────────────────────────── */
+.sbc-earn-hero {
+  margin-top: 8px; padding: 20px 18px; border-radius: 20px;
+  background: linear-gradient(150deg, var(--sbc-c-sage-tint), rgba(92,107,69,.05));
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 34%, transparent);
+  box-shadow: var(--sbc-c-shadow);
+}
+.sbc-earn-hero-k { display: block; font-size: .64rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--sbc-c-sage-deep); }
+.sbc-earn-hero-v { display: block; font-size: 2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 4px; line-height: 1.05; }
+.sbc-earn-hero-sub { display: block; font-size: .74rem; color: var(--sbc-c-ink-soft); margin-top: 6px; line-height: 1.45; }
+
+.sbc-earn-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+.sbc-earn-kpi { padding: 13px 12px; border-radius: 15px; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
+.sbc-earn-kpi-k { display: block; font-size: .58rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--sbc-c-ink-faint); }
+.sbc-earn-kpi-v { display: block; font-size: 1.06rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 3px; }
+
+.sbc-earn-note { display: flex; gap: 9px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line-soft); }
+.sbc-earn-note span { font-size: .72rem; color: var(--sbc-c-ink-soft); line-height: 1.5; }
+.sbc-earn-note b { color: var(--sbc-c-ink); }
+
+.sbc-earn-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.sbc-earn-row { display: flex; align-items: center; gap: 13px; padding: 13px 15px; border-radius: 15px; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
+.sbc-earn-row-ic { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 1.05rem; background: var(--sbc-c-sage-tint); }
+.sbc-earn-row-main { flex: 1 1 auto; min-width: 0; }
+.sbc-earn-row-main b { display: block; font-size: .9rem; color: var(--sbc-c-ink); font-weight: 800; }
+.sbc-earn-row-main span { display: block; font-size: .7rem; color: var(--sbc-c-ink-soft); margin-top: 2px; }
+.sbc-earn-row-amt { flex: 0 0 auto; text-align: right; }
+.sbc-earn-row-amt b { display: block; font-size: 1rem; font-weight: 900; color: var(--sbc-c-ink); }
+.sbc-earn-status { display: inline-block; margin-top: 3px; font-size: .58rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+.sbc-earn-status.paid    { color: var(--sbc-c-sage-deep); background: var(--sbc-c-sage-tint); }
+.sbc-earn-status.pending { color: #8a6b18; background: rgba(201,166,107,.16); }
+
+.sbc-earn-empty { margin-top: 10px; padding: 26px 20px; border-radius: 18px; text-align: center; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px dashed var(--sbc-c-line); }
+.sbc-earn-empty-ic { font-size: 2rem; }
+.sbc-earn-empty b { display: block; font-size: 1rem; color: var(--sbc-c-ink); margin-top: 6px; }
+.sbc-earn-empty span { display: block; font-size: .76rem; color: var(--sbc-c-ink-soft); margin-top: 5px; line-height: 1.5; }

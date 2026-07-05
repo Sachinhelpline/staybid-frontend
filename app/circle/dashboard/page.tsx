@@ -231,7 +231,7 @@ export default function CircleDashboardPage() {
         <div className="sbc-dash-links">
           <Link href="/circle/profile" className="sbc-dash-link"><span>⚙</span>Profile &amp; settings<em>›</em></Link>
           <Link href="/circle/kyc" className="sbc-dash-link"><span>✅</span>KYC &amp; verification<em>›</em></Link>
-          <Link href="/circle/me" className="sbc-dash-link"><span>💰</span>Earnings &amp; payouts<em>›</em></Link>
+          <Link href="/circle/earnings" className="sbc-dash-link"><span>💰</span>Earnings &amp; payouts<em>›</em></Link>
           <a href={`https://wa.me/918881555188?text=${encodeURIComponent("Hi StayCircle, I need help with my investment.")}`} target="_blank" rel="noopener noreferrer" className="sbc-dash-link"><span>💬</span>Help &amp; support<em>›</em></a>
           {user && (
             <button className="sbc-dash-link danger" onClick={doLogout}><span>↩</span>Sign out<em></em></button>
