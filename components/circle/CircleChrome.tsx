@@ -15,9 +15,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const DARK = new Set(["/circle", "/circle/discover", "/circle/dashboard"]);
+// Dark app-shell routes carry the dark glass topbar (desktop) + no footer.
+// v294.15 — the dashboard is now a LIGHT cream + sage "account" surface (ss3
+// premium-cozy), so it leaves the DARK set: its desktop topbar becomes the
+// cream `.sbc-topbar` (consistent with the cream page beneath it). It stays in
+// NO_FOOTER because the account hub is app-like — no website footer under it.
+const DARK = new Set(["/circle", "/circle/discover"]);
 function isDark(pathname: string) {
   return DARK.has(pathname) || pathname.startsWith("/circle/discover");
+}
+const NO_FOOTER = new Set(["/circle", "/circle/discover", "/circle/dashboard"]);
+function hideFooter(pathname: string) {
+  return NO_FOOTER.has(pathname) || pathname.startsWith("/circle/discover");
 }
 
 export function CircleTopbar() {
@@ -53,7 +62,7 @@ export function CircleTopbar() {
 
 export function CircleFooter() {
   const pathname = usePathname() || "/circle";
-  if (isDark(pathname)) return null;
+  if (hideFooter(pathname)) return null;
   return (
     <footer className="sbc-footer">
       <div className="sbc-footer-inner">
