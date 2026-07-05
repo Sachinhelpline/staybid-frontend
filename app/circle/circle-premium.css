@@ -754,6 +754,16 @@ body.is-reel-page .sbc-footer { display: none !important; }
 .sbc { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
 body.is-reel-page .sbc { padding-bottom: 0; }
 
+/* Mobile is an app, not a website: hide the cream content-route topbar AND the
+   website footer on phones/tablets. Navigation there is the CircleDock (3-step
+   wizard dock). Desktop (>=1024px) keeps both. The dark topbar
+   (.sbc-topbar--dark) is already mobile-hidden further down, so this only
+   affects the light content-route topbar + the footer. */
+@media (max-width: 1023px) {
+  .sbc-topbar,
+  .sbc-footer { display: none !important; }
+}
+
 /* ---------- immersive reel app shell ---------- */
 .sbc-rapp {
   position: fixed; inset: 0; z-index: 45;
