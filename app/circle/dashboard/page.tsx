@@ -119,7 +119,7 @@ export default function CircleDashboardPage() {
           <span>{phone ? `📱 ${phone} · ` : ""}StayCircle Partner</span>
         </div>
         {user ? (
-          <Link href="/profile" className="sbc-dash-edit">Edit</Link>
+          <Link href="/circle/profile" className="sbc-dash-edit">Edit</Link>
         ) : (
           <Link href="/auth" className="sbc-dash-edit gold">Sign in</Link>
         )}
@@ -229,7 +229,7 @@ export default function CircleDashboardPage() {
       <section className="sbc-dash-sec">
         <div className="sbc-dash-sec-h">Account</div>
         <div className="sbc-dash-links">
-          <Link href="/profile" className="sbc-dash-link"><span>⚙</span>Profile &amp; settings<em>›</em></Link>
+          <Link href="/circle/profile" className="sbc-dash-link"><span>⚙</span>Profile &amp; settings<em>›</em></Link>
           <Link href="/verification" className="sbc-dash-link"><span>✅</span>KYC &amp; verification<em>›</em></Link>
           <Link href="/circle/me" className="sbc-dash-link"><span>💰</span>Earnings &amp; payouts<em>›</em></Link>
           <a href={`https://wa.me/918881555188?text=${encodeURIComponent("Hi StayCircle, I need help with my investment.")}`} target="_blank" rel="noopener noreferrer" className="sbc-dash-link"><span>💬</span>Help &amp; support<em>›</em></a>
