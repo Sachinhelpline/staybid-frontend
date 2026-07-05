@@ -1429,7 +1429,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dash-seemore { font-size: .72rem; font-weight: 800; color: var(--sbc-c-sage-deep); text-decoration: none; text-transform: none; letter-spacing: 0; }
 
 /* mode switch */
-.sbc-mode-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
+.sbc-mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .sbc-mode-card { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 15px 14px; border-radius: 17px; text-decoration: none; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease, border-color .16s ease; }
 .sbc-mode-card:active { transform: scale(.97); }
 .sbc-mode-card:hover { border-color: color-mix(in srgb, var(--sbc-c-sage) 55%, transparent); }
@@ -1444,7 +1444,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-mode-go.locked { color: var(--sbc-c-ink-faint); }
 
 /* dashboard tiles */
-.sbc-dash-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sbc-dash-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .sbc-dash-tile { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 16px 4px; border-radius: 15px; text-decoration: none; color: var(--sbc-c-ink); font-size: .68rem; font-weight: 700; background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); transition: transform .16s ease, background .16s ease; }
 .sbc-dash-tile:active { transform: scale(.95); }
 .sbc-dash-tile:hover { background: var(--sbc-c-sage-tint); }
@@ -1754,7 +1754,11 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-home, .sbc-dash { padding-left: clamp(16px, 3vw, 44px); padding-right: clamp(16px, 3vw, 44px); }
   /* fluid content width: fills wide screens (small gutters) but never runs
      edge-to-edge on an ultrawide */
-  .sbc-home > *, .sbc-dash > * { max-width: min(96vw, 1280px); }
+  .sbc-home > * { max-width: min(96vw, 1280px); }
+  /* the account hub (dashboard · profile · kyc · earnings · support) is a
+     LIST-based surface — capped narrower so rows stay readable and there is
+     no desktop dead space stretching cards across a wide screen (v294.21). */
+  .sbc-dash > * { max-width: min(94vw, 760px); }
 }
 @media (min-width: 980px) {
   /* the 3 journey steps read left→right on a wide screen (were stacked) */
@@ -1929,7 +1933,9 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 /* SS1(b): a touch more content width on big screens so blocks read intentional
    rather than pinched. */
 @media (min-width: 1280px) {
-  .sbc-home > *, .sbc-dash > * { max-width: min(94vw, 1340px); }
+  .sbc-home > * { max-width: min(94vw, 1340px); }
+  /* account hub stays list-width even on the widest screens (v294.21). */
+  .sbc-dash > * { max-width: min(90vw, 760px); }
 }
 
 /* ── SS1(c): the portfolio "Build plan" CTA was full-width → on a wide card it
@@ -1993,7 +1999,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-earn-hero-v { display: block; font-size: 2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 4px; line-height: 1.05; }
 .sbc-earn-hero-sub { display: block; font-size: .74rem; color: var(--sbc-c-ink-soft); margin-top: 6px; line-height: 1.45; }
 
-.sbc-earn-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 12px; }
+.sbc-earn-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 12px; }
 .sbc-earn-kpi { padding: 13px 12px; border-radius: 15px; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
 .sbc-earn-kpi-k { display: block; font-size: .58rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--sbc-c-ink-faint); }
 .sbc-earn-kpi-v { display: block; font-size: 1.06rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 3px; }
@@ -2043,3 +2049,13 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-faq-item.open .sbc-faq-q em { transform: rotate(45deg); }
 .sbc-faq-a { padding: 0 15px 14px; font-size: .8rem; color: var(--sbc-c-ink-soft); line-height: 1.55; }
 .sbc-faq-a b { color: var(--sbc-c-ink); }
+
+/* v294.21 — device-fit guard: 3-col ₹ KPI grid must not overflow on
+   small phones. minmax(0,1fr) lets cells shrink; tabular-nums + a font
+   step-down keep lakh amounts on one line down to 320px. */
+.sbc-earn-kpi { min-width: 0; }
+.sbc-earn-kpi-v { font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) {
+  .sbc-earn-kpi-v { font-size: .9rem; }
+  .sbc-earn-kpi-k { font-size: .54rem; }
+}
