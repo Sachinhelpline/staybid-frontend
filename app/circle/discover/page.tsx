@@ -115,10 +115,13 @@ export default function CircleDiscoverPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-    // dock "Rooms" from another page navigates here with ?rooms=1
+    // dock "Rooms" from another page navigates here with ?rooms=1. Consume it
+    // ONCE then strip it from the URL (history.replaceState — no remount/nav) so
+    // a stale ?rooms=1 can never re-open the sheet or desync discover↔rooms.
     try {
       if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("rooms") === "1") {
         setRoomsOpen(true);
+        window.history.replaceState(null, "", "/circle/discover");
       }
     } catch { /* noop */ }
   }, []);
