@@ -379,7 +379,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // multi-property bundles) and re-worked the pay row so the refundable
 // security deposit is visibly separate from the advance rent + carries an
 // explicit "returns are unaffected by it" note. SWR-cached HTML must refresh.
-const HTML_CACHE = 'staybid-html-v114';
+// v297.2 — one-time HTML_CACHE bump (v114 -> v115). StayCircle /circle/build
+// Investment & Returns re-worked: "You invest" now shows the discounted
+// EFFECTIVE /mo per plan (was flat monthlyTotal), per-plan platform-fee slabs
+// (12/10/8/5%) + per-plan management discount (0/10/18/25%) so net profit rises
+// with tenure, one-time onboarding shown as a separate upfront (not deducted),
+// half-yearly discount 12% -> 13%, and a real indicative EMI-tenure preview.
+const HTML_CACHE = 'staybid-html-v115';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

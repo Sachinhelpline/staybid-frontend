@@ -24,6 +24,10 @@ import {
 
 type PayOption = "full" | "hold" | "emi";
 
+// Indicative EMI tenures (months). The ACTUAL tenure + interest is chosen on
+// the secure Razorpay screen with the customer's bank — this is a preview only.
+const EMI_TENURES = [3, 6, 9, 12];
+
 type RoomType = {
   id: string; name: string; monthlyRate: number;
   totalUnits: number; lockedUnits: number; availableUnits: number;
@@ -64,6 +68,7 @@ export default function CircleBuildPage() {
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [plan, setPlan] = useState<PaymentPlanKey>("monthly");
   const [payOption, setPayOption] = useState<PayOption>("full");
+  const [emiTenure, setEmiTenure] = useState<number>(6);
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
   const [payError, setPayError] = useState("");
@@ -332,14 +337,28 @@ export default function CircleBuildPage() {
               Investment &amp; Returns
             </div>
 
-            {/* what you invest */}
+            {/* what you invest — EFFECTIVE per-month rate AFTER the plan discount
+                (this number CHANGES per plan). Base rate struck through when a
+                discount is live, so the saving is visibly real (Sachin #1 + #2). */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontSize: ".82rem", color: "var(--sbc-c-ink-soft)" }}>You invest</span>
-                <b key={`inv-${bundle.monthlyTotal}`} style={{ fontSize: "1.7rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  {fmtINR(bundle.monthlyTotal)}<span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
-                </b>
+                <span style={{ textAlign: "right" }}>
+                  {bundle.discountPct > 0 && (
+                    <span style={{ display: "block", fontSize: ".74rem", color: "var(--sbc-c-ink-faint)", textDecoration: "line-through", fontVariantNumeric: "tabular-nums" }}>
+                      {fmtINR(bundle.monthlyTotal)}/mo
+                    </span>
+                  )}
+                  <b key={`inv-${bundle.effectiveMonthlyInvestment}`} style={{ fontSize: "1.7rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                    {fmtINR(bundle.effectiveMonthlyInvestment)}<span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
+                  </b>
+                </span>
               </div>
+              {bundle.discountPct > 0 && (
+                <div style={{ marginTop: 4, fontSize: ".72rem", color: "var(--sbc-c-sage-deep)", textAlign: "right" }}>
+                  {Math.round(bundle.discountPct * 100)}% off applied · you save {fmtINR(bundle.discountAmount)} on the {bundle.planMonths}-mo advance
+                </div>
+              )}
             </div>
 
             {/* booking revenue — proof the asset earns MORE than you invest.
@@ -358,7 +377,10 @@ export default function CircleBuildPage() {
               )}
             </div>
 
-            {/* transparent deductions — platform fee + management + one-time */}
+            {/* transparent deductions — platform fee + management, BOTH plan-tuned.
+                Longer plans lower the fee % and discount management → net rises.
+                One-time onboarding is NOT here — it is a separate upfront cost
+                that is never deducted from the returns (Sachin #4/#5/#6). */}
             {bundle.ok && (
               <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)", display: "grid", gap: 7 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
@@ -366,12 +388,13 @@ export default function CircleBuildPage() {
                   <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.commissionPeriod)} {periodLabel}</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
-                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>Management · channel manager</span>
+                  <span style={{ color: "var(--sbc-c-ink-soft)", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    Management · channel manager
+                    {bundle.mgmtDiscountPct > 0 && (
+                      <span style={{ fontSize: ".58rem", fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--sbc-c-sage-deep)", background: "rgba(157,173,143,.24)", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>{Math.round(bundle.mgmtDiscountPct * 100)}% off</span>
+                    )}
+                  </span>
                   <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementPeriod)} {periodLabel}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem", paddingTop: 6, borderTop: "1px dashed var(--sbc-c-line)" }}>
-                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>One-time onboarding<span style={{ display: "block", fontSize: ".68rem", color: "var(--sbc-c-ink-faint)" }}>Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)}</span></span>
-                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.oneTimeTotal)}</b>
                 </div>
               </div>
             )}
@@ -396,6 +419,21 @@ export default function CircleBuildPage() {
                 <span>Expected Annual Income</span>
               </div>
             </div>
+
+            {/* one-time onboarding — a SEPARATE upfront cost, kept out of the
+                returns math on purpose (Sachin #6). Never added to investment,
+                never subtracted from the net income above. */}
+            {bundle.ok && bundle.oneTimeTotal > 0 && (
+              <div style={{ marginTop: 12, padding: "10px 13px", borderRadius: 12, background: "var(--sbc-c-surface)", border: "1px dashed var(--sbc-c-line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: ".8rem" }}>
+                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>One-time onboarding <span style={{ opacity: .7, fontSize: ".7rem" }}>(paid once)</span></span>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.oneTimeTotal)}</b>
+                </div>
+                <div style={{ marginTop: 3, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", lineHeight: 1.45 }}>
+                  Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)} — a one-time cost, <b>not deducted</b> from the returns shown above.
+                </div>
+              </div>
+            )}
 
             {/* payment plan */}
             <div style={{ marginTop: 18, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)" }}>Payment Plan</div>
@@ -483,6 +521,42 @@ export default function CircleBuildPage() {
                 </button>
               ))}
             </div>
+
+            {/* EMI tenure preview — indicative split shown when EMI is chosen.
+                The real tenure + bank + interest are set on the secure Razorpay
+                screen; this is an honest preview, not a fixed plan (Sachin #7). */}
+            {payOption === "emi" && bundle.ok && (
+              <div style={{ marginTop: 12, padding: "13px 15px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
+                <div style={{ fontSize: ".74rem", fontWeight: 700, color: "var(--sbc-c-ink-soft)", letterSpacing: ".02em" }}>Preview your EMI tenure</div>
+                <div style={{ marginTop: 9, display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 7 }}>
+                  {EMI_TENURES.map((m) => {
+                    const per = Math.round(chargeNow / m);
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => setEmiTenure(m)}
+                        style={{
+                          display: "grid", gap: 2, textAlign: "center", cursor: "pointer",
+                          padding: "9px 4px", borderRadius: 11,
+                          background: emiTenure === m ? "rgba(201,166,107,.18)" : "var(--sbc-c-surface)",
+                          border: emiTenure === m ? "1.5px solid var(--sbc-gold-deep)" : "1px solid var(--sbc-c-line)",
+                        }}
+                      >
+                        <b style={{ fontSize: ".84rem", color: emiTenure === m ? "var(--sbc-gold-deep)" : "var(--sbc-c-ink)" }}>{m} mo</b>
+                        <span style={{ fontSize: ".64rem", color: "var(--sbc-c-ink-faint)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(per)}/mo</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: 9, display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: ".8rem", color: "var(--sbc-c-ink-soft)" }}>
+                  <span>≈ {emiTenure} monthly payments of</span>
+                  <b style={{ fontSize: "1.05rem", color: "var(--sbc-gold-deep)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(Math.round(chargeNow / emiTenure))}/mo</b>
+                </div>
+                <div style={{ marginTop: 6, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", lineHeight: 1.5 }}>
+                  Indicative split of {fmtINR(chargeNow)}. The final tenure, bank &amp; interest are confirmed on the secure Razorpay screen with your debit/credit card — no-cost EMI applies where your bank offers it.
+                </div>
+              </div>
+            )}
 
             {/* contact — labelled so each column is clear */}
             <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
