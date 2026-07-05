@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { scopeHotelIds } from "@/lib/partner/scope";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest) {
   if (!hotels.length) {
     return NextResponse.json({ complaints: [], vpComplaints: [], stats: { open: 0, total: 0 } });
   }
-  const hotelIds = hotels.map((h) => h.id);
+  // v285 — Multi-property: narrow to the switcher's selected hotel; default all owned.
+  const hotelIds = scopeHotelIds(req, hotels.map((h) => h.id));
   const hotelInList = hotelIds.map(encodeURIComponent).join(",");
 
   // Bulk read both complaint sources in parallel

@@ -164,6 +164,10 @@ export default function PartnerDashboard() {
   const [bids, setBids]           = useState<any[]>([]);
   const [bookings, setBookings]   = useState<any[]>([]);
   const [flashDeals, setFlashDeals] = useState<any[]>([]);
+  // v285 — Multi-property: every hotel this partner owns + the active selection.
+  const [hotelList, setHotelList]   = useState<any[]>([]);
+  const [activeHotelId, setActiveHotelId] = useState<string>("");
+  const [switcherOpen, setSwitcherOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
 
@@ -255,11 +259,40 @@ export default function PartnerDashboard() {
     const user  = getPartnerUser();
     if (!token || !user) { router.replace("/partner"); return; }
     setPUser(user);
-    loadAll(token, user);
-    // v130 — kick off autopilot lookup in the background. Falls back to
-    // 'auto' if the API isn't reachable / migration isn't applied yet.
-    loadAutopilot();
+    // v285 — resolve owned-property list FIRST so the correct hotel loads.
+    (async () => {
+      const hid = await loadHotelList(token);
+      loadAll(token, user, hid);
+      loadAutopilot();
+    })();
   }, []);
+
+  // v285 — fetch every hotel this partner owns; pick the persisted active id
+  // (or the first owned) and return it so the initial load uses it.
+  async function loadHotelList(token: string): Promise<string> {
+    try {
+      const r = await fetch("/api/partner/hotels", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      const list: any[] = Array.isArray(d?.hotels) ? d.hotels : [];
+      setHotelList(list);
+      if (!list.length) return "";
+      const saved = typeof window !== "undefined" ? localStorage.getItem("sb_partner_active_hotel") || "" : "";
+      const active = list.find((h) => h.id === saved) ? saved : list[0].id;
+      setActiveHotelId(active);
+      return active;
+    } catch { return ""; }
+  }
+
+  // v285 — switch the active property: persist + reload everything for it.
+  function switchHotel(hid: string) {
+    if (!hid || hid === activeHotelId) { setSwitcherOpen(false); return; }
+    setActiveHotelId(hid);
+    if (typeof window !== "undefined") localStorage.setItem("sb_partner_active_hotel", hid);
+    setSwitcherOpen(false);
+    const token = getToken();
+    const user  = getPartnerUser();
+    if (token && user) loadAll(token, user, hid);
+  }
 
   // ── Live auto-refresh every 20s + on focus (silent, no spinner) ────────
   useEffect(() => {
@@ -294,14 +327,16 @@ export default function PartnerDashboard() {
     return () => clearInterval(t);
   }, [rooms, hotel]);
 
-  async function loadAll(token: string, user: any) {
+  async function loadAll(token: string, user: any, hid?: string) {
     setLoading(true);
+    // v285 — multi-property scope suffix (empty for single-hotel owners).
+    const s = (hid ?? activeHotelId) ? `?hotelId=${encodeURIComponent(hid ?? activeHotelId)}` : "";
     try {
       const [hotelRes, bidsRes, flashRes, svcRes] = await Promise.all([
-        fetch("/api/partner/hotel",        { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/partner/bids",         { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/partner/flash-deals",  { headers: { Authorization: `Bearer ${token}` } }),
-        fetch("/api/partner/services",     { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/partner/hotel${s}`,        { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/partner/bids${s}`,         { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/partner/flash-deals${s}`,  { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/partner/services${s}`,     { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const [hotelData, bidsData, flashData, svcData] = await Promise.all([
         hotelRes.json(), bidsRes.json(), flashRes.json(), svcRes.json().catch(() => ({})),
@@ -320,12 +355,13 @@ export default function PartnerDashboard() {
   }
 
   async function refreshLive(token: string) {
+    const s = activeHotelId ? `?hotelId=${encodeURIComponent(activeHotelId)}` : "";
     try {
       const [hotelRes, bidsRes, flashRes, svcRes] = await Promise.all([
-        fetch("/api/partner/hotel",       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-        fetch("/api/partner/bids",        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-        fetch("/api/partner/flash-deals", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-        fetch("/api/partner/services",    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch(`/api/partner/hotel${s}`,       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch(`/api/partner/bids${s}`,        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch(`/api/partner/flash-deals${s}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+        fetch(`/api/partner/services${s}`,    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
       ]);
       const [hotelData, bidsData, flashData, svcData] = await Promise.all([
         hotelRes.json(), bidsRes.json(), flashRes.json(), svcRes.json().catch(() => ({})),
@@ -1028,10 +1064,56 @@ export default function PartnerDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            {hotel && (
+            {hotel && hotelList.length <= 1 && (
               <span className="hidden sm:block text-xs font-semibold text-white/75 bg-white/6 px-2.5 py-1 rounded-full border border-white/10 truncate max-w-[180px]">
                 🏨 {hotel.name}
               </span>
+            )}
+            {/* v285 — Multi-property switcher (only when the partner owns 2+ hotels) */}
+            {hotelList.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={() => setSwitcherOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-full border border-amber-400/30 transition-all max-w-[190px]"
+                  title="Switch property"
+                >
+                  <span className="truncate">🏨 {hotel?.name || "Select property"}</span>
+                  <span className="text-amber-300/80 text-[0.6rem] shrink-0">▾</span>
+                </button>
+                {switcherOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setSwitcherOpen(false)} />
+                    <div className="absolute right-0 mt-1.5 z-50 w-64 rounded-xl overflow-hidden shadow-2xl"
+                      style={{ background: "#1c140a", border: "1px solid rgba(240,180,41,0.22)" }}>
+                      <div className="px-3 py-2 text-[0.58rem] font-bold text-amber-400/70 uppercase tracking-[0.16em] border-b border-white/8">
+                        Your properties · {hotelList.length}
+                      </div>
+                      <div className="max-h-[60vh] overflow-y-auto py-1">
+                        {hotelList.map((h) => {
+                          const on = h.id === activeHotelId;
+                          const isCircle = h.account_type === "circle_operator";
+                          return (
+                            <button
+                              key={h.id}
+                              onClick={() => switchHotel(h.id)}
+                              className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors ${on ? "bg-amber-400/12" : "hover:bg-white/6"}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${on ? "bg-amber-400" : "bg-white/25"}`} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-[0.8rem] font-semibold text-white truncate">{h.name}</span>
+                                <span className="block text-[0.62rem] text-white/45 truncate">
+                                  {h.city || "—"}{isCircle ? " · Circle" : ""}
+                                </span>
+                              </span>
+                              {on && <span className="text-amber-300 text-[0.7rem] shrink-0">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             {pUser?.staffRole && (
               <span className="text-[0.58rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-1 rounded-full uppercase tracking-wide">

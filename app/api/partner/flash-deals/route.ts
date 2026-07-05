@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { scopeHotelId } from "@/lib/partner/scope";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 
@@ -29,8 +30,11 @@ export async function GET(req: NextRequest) {
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ deals: [] });
 
+  // v285 — Multi-property: honour the switcher's selected hotel; default first owned.
+  const ownedIds = hotels.map((h: any) => h.id);
+  const activeId = scopeHotelId(req, ownedIds) || hotels[0].id;
   const fRes = await fetch(
-    `${SB_URL}/rest/v1/flash_deals?hotelId=eq.${hotels[0].id}&select=*&order=createdAt.desc`,
+    `${SB_URL}/rest/v1/flash_deals?hotelId=eq.${encodeURIComponent(activeId)}&select=*&order=createdAt.desc`,
     { headers: SB_H }
   );
   const deals = await fRes.json();
