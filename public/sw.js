@@ -368,7 +368,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // v294.11 — SS3 rooms sheet: wide-desktop auto-fill grid fills the canvas (no
 // left/right dead space, cards never stuck) + mobile bottom nav stays visible
 // while choosing rooms (dock raised above the sheet in its reserved strip).
-const HTML_CACHE = 'staybid-html-v108';
+// v294.23 — one-time HTML_CACHE bump (v108 -> v109). The Circle dock was
+// re-skinned to cream/sage + slimmed, and the /circle/build result panel's
+// inline text was remapped from dark-walnut-era light hues to the cream
+// palette (v294.22 had flipped the panel bg to cream, leaving the text
+// invisible). SWR-cached HTML must refresh so users see the readable panel.
+const HTML_CACHE = 'staybid-html-v109';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

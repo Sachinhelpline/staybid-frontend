@@ -771,8 +771,13 @@
 body.is-reel-page .sbc-topbar,
 body.is-reel-page .sbc-footer { display: none !important; }
 
-/* Reserve dock height on normal (non-reel) circle pages; reel feed opts out. */
-.sbc { padding-bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+/* Reserve dock height on normal (non-reel) circle pages; reel feed opts out.
+   v294.23: 62 → 82px. The v294.23 dock is slimmer but the step-3 FAB still
+   pokes ~8px above the dock top, and the build page's sticky Pay panel + last
+   room card were kissing/overlapping the dock ("bottom main overlapping ho
+   rahi hai"). 82px clears the full dock body + FAB poke + a clean gap on every
+   device. */
+.sbc { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
 body.is-reel-page .sbc { padding-bottom: 0; }
 
 /* Mobile is an app, not a website: hide the cream content-route topbar AND the
@@ -2281,3 +2286,70 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-hero-stat b { color: var(--sbc-c-ink); }
 .sbc-hero-stat span { color: var(--sbc-c-ink-faint); }
 
+
+/* ============================================================================
+   v294.23 — DOCK RE-SKIN (cream/sage) + SLIMMER SIZE
+   SS1: the 3-step bottom dock was still on the original dark walnut palette
+   ("color match nhi kar raha hai theme se") AND too tall ("size bada hai").
+   This block flips the dock to the SAME premium-cozy cream + sage + charcoal
+   language as the rest of the panel and shrinks every metric. Gold stays ONLY
+   on the step-3 "Plan" FAB — the wealth/invest action, consistent with the
+   home portfolio CTA + gem tiles keeping gold. Appended at EOF so same-
+   specificity rules win by source order.
+   ============================================================================ */
+
+/* shell: cream glass instead of dark walnut, slimmer vertical padding */
+.sbc-dock {
+  background: rgba(255, 253, 248, .92);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-top: 1px solid var(--sbc-c-line);
+  box-shadow: 0 -8px 26px -14px rgba(60, 52, 32, .3);
+  padding: 3px 6px calc(env(safe-area-inset-bottom, 0px) + 3px);
+}
+.sbc-dock.v2 { padding-top: 2px; }
+
+/* end buttons (Home · Dashboard): charcoal-faint idle → sage-deep active */
+.sbc-dock-end {
+  width: 52px; padding: 6px 2px;
+  color: var(--sbc-c-ink-faint);
+}
+.sbc-dock-end.on { color: var(--sbc-c-sage-deep); }
+.sbc-dock-end .sbc-dock-glyph { font-size: 1.05rem; }
+.sbc-dock-end .sbc-dock-label { font-size: .46rem; }
+
+/* step rail → sage tint (was gold) */
+.sbc-steps { padding: 6px 6px 0; }
+.sbc-steps-rail {
+  top: 18px;
+  background: linear-gradient(90deg,
+    rgba(127, 146, 105, .18),
+    rgba(127, 146, 105, .5),
+    rgba(127, 146, 105, .18));
+}
+
+/* step 1/2 chips: cream surface + sage-tint ring, charcoal text */
+.sbc-step { color: var(--sbc-c-ink-faint); gap: 4px; }
+.sbc-step.on { color: var(--sbc-c-sage-deep); }
+.sbc-step-num {
+  width: 24px; height: 24px; font-size: .74rem;
+  color: var(--sbc-c-ink-soft);
+  background: var(--sbc-c-surface-2);
+  border: 1.5px solid color-mix(in srgb, var(--sbc-c-sage) 34%, transparent);
+  box-shadow: 0 3px 9px -6px rgba(60, 52, 32, .4);
+}
+.sbc-step-label { font-size: .48rem; }
+.sbc-step.on .sbc-step-num {
+  border-color: var(--sbc-c-sage);
+  background: var(--sbc-c-sage-tint);
+  color: var(--sbc-c-sage-deep);
+}
+/* done (property locked) keeps the sage gradient it already had */
+.sbc-step.done .sbc-step-num {
+  background: linear-gradient(135deg, var(--sbc-c-sage), var(--sbc-c-sage-deep));
+  border-color: var(--sbc-c-sage); color: #fff;
+}
+/* step-3 FAB (Plan/Invest) KEEPS gold — the wealth action — just slimmer */
+.sbc-step.fab .sbc-step-num {
+  width: 40px; height: 40px; margin-top: -8px; font-size: .96rem;
+}
