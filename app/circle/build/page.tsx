@@ -298,35 +298,13 @@ export default function CircleBuildPage() {
               </div>
             </div>
 
-            {/* revenue → bifurcation → net income (v294.9) */}
-            <div style={{ marginTop: 14, padding: "14px 16px", borderRadius: 16, background: "rgba(183,208,160,.08)", border: "1px solid rgba(183,208,160,.2)" }}>
-              <div style={{ fontSize: ".68rem", letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(183,208,160,.75)", fontWeight: 700, marginBottom: 10 }}>
-                How your income is earned
-              </div>
-              {/* gross revenue */}
+            {/* what you earn */}
+            <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "rgba(247,239,223,.7)" }}>Expected revenue <span style={{ opacity: .55 }}>(gross)</span></span>
-                <b style={{ fontSize: "1.35rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums" }}>
-                  <CountUp key={bundle.expectedMonthlyRevenue} value={bundle.expectedMonthlyRevenue} prefix="₹" /><span style={{ fontSize: ".72rem", color: "rgba(247,239,223,.45)", fontWeight: 500 }}> /mo</span>
-                </b>
-              </div>
-              {/* minus platform share */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 8 }}>
-                <span style={{ fontSize: ".8rem", color: "rgba(247,239,223,.55)" }}>− StayBid management <span style={{ opacity: .7 }}>({bundle.platformSharePct}%)</span></span>
-                <span style={{ fontSize: ".95rem", color: "rgba(212,149,131,.9)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                  − {fmtINR(bundle.platformShareMonthly)}
-                </span>
-              </div>
-              <div style={{ height: 1, background: "rgba(231,207,160,.16)", margin: "10px 0" }} />
-              {/* equals net income */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "rgba(183,208,160,.9)", fontWeight: 600 }}>= Your net income</span>
+                <span style={{ fontSize: ".82rem", color: "rgba(183,208,160,.9)", fontWeight: 600 }}>You earn <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
                 <b style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums" }}>
                   <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(183,208,160,.55)", fontWeight: 500 }}> /mo</span>
                 </b>
-              </div>
-              <div style={{ marginTop: 8, fontSize: ".68rem", color: "rgba(247,239,223,.42)", lineHeight: 1.5 }}>
-                You keep {bundle.investorSharePct}% of the booking revenue your rooms earn. StayBid runs everything for the rest.
               </div>
             </div>
 

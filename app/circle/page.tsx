@@ -139,7 +139,6 @@ export default function CircleHomePage() {
       rMin: b.expectedRoiMin,
       rMax: b.expectedRoiMax,
       monthlyIncome: b.expectedMonthlyIncome,
-      monthlyRevenue: b.expectedMonthlyRevenue,
       count: b.propertyCount,
       bonus: b.diversificationBonusPct,
     };

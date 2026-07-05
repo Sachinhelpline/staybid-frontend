@@ -30,24 +30,6 @@ export const CIRCLE_PLANS: Record<PaymentPlanKey, PaymentPlan> = {
 
 export const PLAN_ORDER: PaymentPlanKey[] = ["monthly", "quarterly", "half_yearly", "yearly"];
 
-// ---------------------------------------------------------------------------
-// Revenue bifurcation (v294.9)
-// The investor's NET income is the ROI-anchored number (unchanged). The GROSS
-// booking revenue the property earns sits ABOVE it — StayBid keeps a
-// management/platform share, the investor keeps the rest. So:
-//   net income  = gross revenue × INVESTOR_SHARE
-//   platform    = gross revenue × (1 − INVESTOR_SHARE)
-//   ⇒ gross revenue = net income ÷ INVESTOR_SHARE   (derive up from income)
-// This keeps the net income EXACT (== the ROI number the investor sees) and
-// only derives the revenue line above it for the "where does my income come
-// from" breakdown.
-//
-// ⚠ FLAGGED SENSIBLE DEFAULT — pending Sachin's real business number. The
-// investor keeps 72% of gross booking revenue; StayBid management + platform
-// takes 28%. Change here → both the engine + build page update in lockstep.
-export const INVESTOR_SHARE = 0.72;
-export const PLATFORM_SHARE = Math.round((1 - INVESTOR_SHARE) * 1000) / 1000; // 0.28
-
 export interface BundleItem {
   propertyId: string;
   propertyTitle: string;
@@ -77,14 +59,6 @@ export interface CircleBundle {
   expectedRoiMax: number;
   expectedMonthlyIncome: number; // ₹ / month at avg ROI — your NET take-home
   expectedAnnualIncome: number;
-  // Revenue bifurcation (v294.9) — gross booking revenue the property earns,
-  // and StayBid's management/platform share. Net income = revenue − platform.
-  investorSharePct: number;         // pct the investor keeps (e.g. 72)
-  platformSharePct: number;         // pct StayBid keeps (e.g. 28)
-  expectedMonthlyRevenue: number;   // ₹ / month GROSS booking revenue
-  expectedAnnualRevenue: number;
-  platformShareMonthly: number;     // ₹ / month StayBid management + platform
-  platformShareAnnual: number;
   paybackYearsMin: number;
   paybackYearsMax: number;
   paybackLabel: string;          // "3–4 years"
@@ -133,12 +107,6 @@ export function computeBundle(
     expectedRoiMax: 0,
     expectedMonthlyIncome: 0,
     expectedAnnualIncome: 0,
-    investorSharePct: Math.round(INVESTOR_SHARE * 100),
-    platformSharePct: Math.round(PLATFORM_SHARE * 100),
-    expectedMonthlyRevenue: 0,
-    expectedAnnualRevenue: 0,
-    platformShareMonthly: 0,
-    platformShareAnnual: 0,
     paybackYearsMin: 0,
     paybackYearsMax: 0,
     paybackLabel: "—",
@@ -170,13 +138,6 @@ export function computeBundle(
   const expectedAnnualIncome = r0(monthlyTotal * 12 * (roiAvg / 100));
   const expectedMonthlyIncome = r0(expectedAnnualIncome / 12);
 
-  // Revenue bifurcation: derive gross revenue ABOVE the net income so the
-  // net income stays EXACTLY the ROI number and the platform share is the gap.
-  const expectedMonthlyRevenue = r0(expectedMonthlyIncome / INVESTOR_SHARE);
-  const platformShareMonthly = r0(expectedMonthlyRevenue - expectedMonthlyIncome);
-  const expectedAnnualRevenue = r0(expectedMonthlyRevenue * 12);
-  const platformShareAnnual = r0(platformShareMonthly * 12);
-
   const paybackYearsMin = expectedRoiMax > 0 ? Math.round((100 / expectedRoiMax) * 10) / 10 : 0;
   const paybackYearsMax = expectedRoiMin > 0 ? Math.round((100 / expectedRoiMin) * 10) / 10 : 0;
   const paybackLabel =
@@ -200,12 +161,6 @@ export function computeBundle(
     expectedRoiMax,
     expectedMonthlyIncome,
     expectedAnnualIncome,
-    investorSharePct: Math.round(INVESTOR_SHARE * 100),
-    platformSharePct: Math.round(PLATFORM_SHARE * 100),
-    expectedMonthlyRevenue,
-    expectedAnnualRevenue,
-    platformShareMonthly,
-    platformShareAnnual,
     paybackYearsMin,
     paybackYearsMax,
     paybackLabel,
