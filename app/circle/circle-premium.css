@@ -36,6 +36,10 @@
   --sbc-c-sage-deep:  #5C6B45;   /* deep accent */
   --sbc-c-sage-tint:  rgba(127,146,105,.13);
   --sbc-c-shadow:     0 10px 28px -14px rgba(60,52,32,.28);
+  /* premium bold/numeric typeface — pairs with Cormorant serif headings.
+     Applied to bold values, KPIs, section labels + strong text across the
+     panel (v294.22). Falls back to Inter → system-ui. */
+  --sbc-font-bold:    'Space Grotesk', 'Inter', system-ui, sans-serif;
   background: var(--sbc-cream);
   color: var(--sbc-ink);
   font-feature-settings: "tnum";
@@ -2059,3 +2063,221 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-earn-kpi-v { font-size: .9rem; }
   .sbc-earn-kpi-k { font-size: .54rem; }
 }
+
+/* ============================================================================
+   v294.22 — PANEL-WIDE PREMIUM-COZY RE-SKIN + PREMIUM BOLD FONT
+   The traditional (non-reel-video) surfaces — Home, property cards, the Build
+   result panel, the cinematic /circle/me hero, bundle CTA — were still on the
+   original dark walnut palette. This block flips them to the SAME premium-cozy
+   cream + sage + charcoal language already used by the account hub (.sbc-dash),
+   so the whole panel is one theme end-to-end. Gold stays as the "wealth/action"
+   accent (portfolio CTA, step numbers, gem tiles); sage is the secondary accent;
+   charcoal is text on cream surfaces. The immersive reel VIDEO feed (.sbc-rapp)
+   stays dark by design — video needs a dark stage.
+   Appended at EOF so same-specificity rules win by source order; shell-scoped
+   selectors raise specificity where the originals are single-class.
+   ============================================================================ */
+
+/* ---- premium bold typeface: every <b>/<strong>/value/number across the panel ---- */
+.sbc-home b, .sbc-home strong,
+.sbc-dash b, .sbc-dash strong,
+.sbc-panel-walnut b, .sbc-panel-walnut strong,
+.sbc-hero-stat b, .sbc-kpi b, .sbc-plan b, .sbc-stepper .val,
+.sbc-hp-value span, .sbc-hp-label, .sbc-hp-scope, .sbc-hp-k,
+.sbc-home-sec-h, .sbc-home-reels, .sbc-home-chip, .sbc-qa-item,
+.sbc-pcard-cta, .sbc-pcard-stats span, .sbc-pcard-loc,
+.sbc-hero-stat span, .sbc-kpi span, .sbc-jgo,
+.sbc-dash-hi-sub, .sbc-earn-kpi-v, .sbc-earn-kpi-k {
+  font-family: var(--sbc-font-bold);
+  letter-spacing: -0.005em;
+}
+
+/* ---- HOME shell → cream/sage canvas (mirror .sbc-dash) ---- */
+.sbc-home {
+  color: var(--sbc-c-ink);
+  background:
+    radial-gradient(115% 68% at 88% -8%, rgba(127,146,105,.16), transparent 56%),
+    radial-gradient(88% 52% at 3% 105%, rgba(201,166,107,.15), transparent 60%),
+    linear-gradient(172deg, #FAF4E8 0%, var(--sbc-c-bg) 46%, var(--sbc-c-bg-2) 100%);
+}
+
+/* greeting */
+.sbc-home .sbc-home-hi { color: var(--sbc-c-ink); }
+.sbc-home .sbc-home-sub { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-home-bell {
+  color: var(--sbc-c-sage-deep);
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+  box-shadow: var(--sbc-c-shadow); backdrop-filter: none;
+}
+
+/* portfolio hero card */
+.sbc-home .sbc-home-portfolio {
+  background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2));
+  border: 1px solid var(--sbc-c-line);
+  box-shadow: 0 18px 44px -22px rgba(60,52,32,.34);
+}
+.sbc-home .sbc-hp-glow {
+  background: radial-gradient(circle, rgba(201,166,107,.28), transparent 70%);
+  opacity: .8;
+}
+.sbc-home .sbc-hp-label { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-hp-scope { color: var(--sbc-c-ink-faint); }
+.sbc-home .sbc-hp-note {
+  color: var(--sbc-c-sage-deep);
+  background: var(--sbc-c-sage-tint);
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 30%, transparent);
+}
+.sbc-home .sbc-hp-note b { color: var(--sbc-c-sage-deep); }
+.sbc-home .sbc-hp-value { color: var(--sbc-c-ink); }
+.sbc-home .sbc-hp-value span { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-hp-empty { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-hp-empty b { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-hp-grid > div {
+  background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line);
+}
+.sbc-home .sbc-hp-k { color: var(--sbc-c-ink-faint); }
+.sbc-home .sbc-hp-v { color: var(--sbc-c-ink); }
+.sbc-home .sbc-hp-v.sage { color: var(--sbc-c-sage-deep); }
+.sbc-home .sbc-hp-v.gold { color: var(--sbc-gold-deep); }
+/* .sbc-hp-cta keeps its gold gradient — premium "invest" action on cream */
+
+/* section headers + reels chip */
+.sbc-home .sbc-home-sec-h { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-home-reels {
+  color: var(--sbc-c-sage-deep);
+  background: var(--sbc-c-sage-tint);
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 26%, transparent);
+}
+
+/* quick-action tiles (gem icons keep their gold — read premium on cream) */
+.sbc-home .sbc-qa-item {
+  color: var(--sbc-c-ink);
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+  box-shadow: var(--sbc-c-shadow);
+}
+.sbc-home .sbc-qa-item:hover { background: var(--sbc-c-sage-tint); }
+
+/* journey steps (step numbers keep gold) */
+.sbc-home .sbc-jstep {
+  background: linear-gradient(140deg, var(--sbc-c-surface), var(--sbc-c-surface-2));
+  border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow);
+}
+.sbc-home .sbc-jstep:hover { border-color: color-mix(in srgb, var(--sbc-c-sage) 50%, transparent); }
+.sbc-home .sbc-jbody b { color: var(--sbc-c-ink); }
+.sbc-home .sbc-jbody span { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-jgo { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-jline { background: color-mix(in srgb, var(--sbc-c-sage) 34%, transparent); }
+
+/* city filter chips */
+.sbc-home .sbc-home-chip {
+  color: var(--sbc-c-ink-soft);
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+}
+.sbc-home .sbc-home-chip.on {
+  color: var(--sbc-walnut);
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
+  border-color: transparent;
+}
+
+/* property cards (image overlays badge/like/lock stay dark — they sit on photos) */
+.sbc-home .sbc-pcard {
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+  box-shadow: var(--sbc-c-shadow);
+}
+.sbc-home .sbc-pcard:hover { border-color: color-mix(in srgb, var(--sbc-c-sage) 50%, transparent); }
+.sbc-home .sbc-pcard.skel {
+  background: linear-gradient(100deg, var(--sbc-c-surface-2), #EFE7D6, var(--sbc-c-surface-2));
+  background-size: 200% 100%;
+}
+.sbc-home .sbc-pcard-media { background: var(--sbc-c-surface-2); }
+.sbc-home .sbc-pcard-noimg { color: var(--sbc-c-sage); }
+.sbc-home .sbc-pcard-title { color: var(--sbc-c-ink); }
+.sbc-home .sbc-pcard-loc { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-pcard-rate b { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-pcard-rate span { color: var(--sbc-c-ink-faint); }
+.sbc-home .sbc-pcard-stats > div {
+  background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line);
+}
+.sbc-home .sbc-pcard-stats b { color: var(--sbc-c-ink); }
+.sbc-home .sbc-pcard-stats b.sage { color: var(--sbc-c-sage-deep); }
+.sbc-home .sbc-pcard-stats b.gold { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-pcard-stats span { color: var(--sbc-c-ink-faint); }
+.sbc-home .sbc-pcard-cta { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-home-empty { color: var(--sbc-c-ink-soft); }
+
+/* bundle CTA banner */
+.sbc-home .sbc-home-bundle {
+  background: linear-gradient(140deg, var(--sbc-c-surface), var(--sbc-c-surface-2));
+  border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow);
+}
+.sbc-home .sbc-home-bundle b { color: var(--sbc-c-ink); }
+.sbc-home .sbc-home-bundle span { color: var(--sbc-c-ink-soft); }
+.sbc-home .sbc-home-bundle-ic {
+  background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line);
+}
+.sbc-home .sbc-home-bundle-go { color: var(--sbc-gold-deep); }
+.sbc-home .sbc-home-bundle-eyebrow { color: var(--sbc-c-sage-deep); }
+
+/* ---- BUILD result panel + KPIs + plan chips → cream ---- */
+.sbc-panel-walnut {
+  color: var(--sbc-c-ink);
+  background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2));
+  border: 1px solid var(--sbc-c-line);
+  box-shadow: 0 18px 44px -22px rgba(60,52,32,.34);
+}
+.sbc-panel-walnut::before {
+  background: radial-gradient(circle at 30% 20%, var(--sbc-c-sage-tint), transparent 55%);
+}
+.sbc-panel-walnut .sbc-kpi {
+  background: var(--sbc-c-surface-2); border: 1px solid var(--sbc-c-line);
+}
+.sbc-kpi b { color: var(--sbc-c-ink); }
+.sbc-kpi span { color: var(--sbc-c-ink-faint); }
+.sbc-panel-walnut .sbc-plan {
+  color: var(--sbc-c-ink-soft);
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+}
+.sbc-panel-walnut .sbc-plan:hover { background: var(--sbc-c-sage-tint); }
+.sbc-panel-walnut .sbc-plan.active {
+  color: var(--sbc-c-ink);
+  background: linear-gradient(135deg, var(--sbc-c-sage-tint), rgba(92,107,69,.10));
+  border-color: color-mix(in srgb, var(--sbc-c-sage) 45%, transparent);
+}
+
+/* ---- /circle/me cinematic hero → cream cinematic (sage mist, gold sweep kept) ---- */
+.sbc-hero {
+  color: var(--sbc-c-ink);
+  background:
+    radial-gradient(120% 90% at 85% 0%, rgba(127,146,105,.20), transparent 55%),
+    radial-gradient(90% 70% at 10% 100%, rgba(201,166,107,.20), transparent 60%),
+    linear-gradient(160deg, #FAF4E8 0%, var(--sbc-c-bg) 48%, var(--sbc-c-bg-2) 100%);
+}
+.sbc-hero::before {
+  background:
+    radial-gradient(circle at 30% 40%, rgba(127,146,105,.10), transparent 42%),
+    radial-gradient(circle at 72% 60%, rgba(201,166,107,.12), transparent 40%);
+}
+.sbc-hero::after {
+  background: linear-gradient(to top, rgba(201,166,107,.18), transparent);
+}
+.sbc-hero-eyebrow {
+  color: var(--sbc-c-sage-deep);
+  background: var(--sbc-c-sage-tint);
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 30%, transparent);
+  backdrop-filter: none;
+}
+.sbc-hero-eyebrow .dot { background: var(--sbc-c-sage); box-shadow: 0 0 0 0 rgba(127,146,105,.6); }
+.sbc-hero-title { color: var(--sbc-c-ink); }
+.sbc-hero-sub { color: var(--sbc-c-ink-soft); }
+.sbc-hero-steps { color: var(--sbc-c-ink-soft); }
+.sbc-hero-steps span {
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+  color: var(--sbc-c-ink-soft); backdrop-filter: none;
+}
+.sbc-hero-stat {
+  background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line);
+  box-shadow: var(--sbc-c-shadow); backdrop-filter: none;
+}
+.sbc-hero-stat b { color: var(--sbc-c-ink); }
+.sbc-hero-stat span { color: var(--sbc-c-ink-faint); }
+
