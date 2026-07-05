@@ -194,8 +194,8 @@ export default function CircleBuildPage() {
       <section className="sbc-section" style={{ maxWidth: 640 }}>
         <div className="sbc-panel-walnut" style={{ textAlign: "center", padding: 36 }}>
           <div style={{ fontSize: 56 }}>🎉</div>
-          <h1 className="sbc-h2" style={{ color: "#F3E3BF" }}>Welcome to the Circle!</h1>
-          <p style={{ color: "rgba(247,239,223,.75)" }}>
+          <h1 className="sbc-h2" style={{ color: "var(--sbc-c-ink)" }}>Welcome to the Circle!</h1>
+          <p style={{ color: "var(--sbc-c-ink-soft)" }}>
             Aapka investment bundle active ho gaya. Monthly statements + returns
             aapke partner dashboard par live milenge.
           </p>
@@ -291,16 +291,16 @@ export default function CircleBuildPage() {
 
           {/* ------- RIGHT: simple invest → earn summary + pay ------- */}
           <div className="sbc-panel-walnut" style={{ position: "sticky", top: 76 }}>
-            <div style={{ fontSize: ".72rem", letterSpacing: ".16em", textTransform: "uppercase", color: "rgba(231,207,160,.7)", fontWeight: 700 }}>
+            <div style={{ fontSize: ".72rem", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)", fontWeight: 700 }}>
               Investment &amp; Returns
             </div>
 
             {/* what you invest */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "rgba(247,239,223,.65)" }}>You invest</span>
-                <b key={`inv-${bundle.monthlyTotal}`} style={{ fontSize: "1.7rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  {fmtINR(bundle.monthlyTotal)}<span style={{ fontSize: ".8rem", color: "rgba(247,239,223,.5)", fontWeight: 500 }}> /mo</span>
+                <span style={{ fontSize: ".82rem", color: "var(--sbc-c-ink-soft)" }}>You invest</span>
+                <b key={`inv-${bundle.monthlyTotal}`} style={{ fontSize: "1.7rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                  {fmtINR(bundle.monthlyTotal)}<span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
                 </b>
               </div>
             </div>
@@ -308,13 +308,13 @@ export default function CircleBuildPage() {
             {/* booking revenue — proof the asset earns MORE than you invest */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "rgba(183,208,160,.9)", fontWeight: 600 }}>Booking revenue <span style={{ opacity: .7, fontWeight: 500 }}>(gross)</span></span>
+                <span style={{ fontSize: ".82rem", color: "var(--sbc-c-sage-deep)", fontWeight: 600 }}>Booking revenue <span style={{ opacity: .7, fontWeight: 500 }}>(gross)</span></span>
                 <b key={`gr-${bundle.grossBookingRevenue}`} style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  <CountUp key={bundle.grossBookingRevenue} value={bundle.grossBookingRevenue} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(183,208,160,.55)", fontWeight: 500 }}> /mo</span>
+                  <CountUp key={bundle.grossBookingRevenue} value={bundle.grossBookingRevenue} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(92,107,69,.62)", fontWeight: 500 }}> /mo</span>
                 </b>
               </div>
               {bundle.ok && (
-                <div style={{ marginTop: 4, fontSize: ".72rem", color: "rgba(183,208,160,.72)" }}>
+                <div style={{ marginTop: 4, fontSize: ".72rem", color: "var(--sbc-c-sage-deep)" }}>
                   {bundle.revenueUpliftPct}% of your investment — your properties earn more than you put in
                 </div>
               )}
@@ -322,18 +322,18 @@ export default function CircleBuildPage() {
 
             {/* transparent deductions — platform fee + management + one-time */}
             {bundle.ok && (
-              <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "rgba(255,255,255,.04)", border: "1px solid rgba(231,207,160,.16)", display: "grid", gap: 7 }}>
+              <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)", display: "grid", gap: 7 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
-                  <span style={{ color: "rgba(247,239,223,.62)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
-                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.stayBidCommission)}/mo</b>
+                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.stayBidCommission)}/mo</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
-                  <span style={{ color: "rgba(247,239,223,.62)" }}>Management · channel manager</span>
-                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementFee)}/mo</b>
+                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>Management · channel manager</span>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementFee)}/mo</b>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem", paddingTop: 6, borderTop: "1px dashed rgba(231,207,160,.16)" }}>
-                  <span style={{ color: "rgba(247,239,223,.62)" }}>One-time onboarding<span style={{ display: "block", fontSize: ".68rem", color: "rgba(247,239,223,.42)" }}>Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)}</span></span>
-                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.oneTimeTotal)}</b>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem", paddingTop: 6, borderTop: "1px dashed var(--sbc-c-line)" }}>
+                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>One-time onboarding<span style={{ display: "block", fontSize: ".68rem", color: "var(--sbc-c-ink-faint)" }}>Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)}</span></span>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.oneTimeTotal)}</b>
                 </div>
               </div>
             )}
@@ -341,9 +341,9 @@ export default function CircleBuildPage() {
             {/* what you earn — realistic ROI-based net take-home */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "#E7CFA0", fontWeight: 700 }}>Your net income <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
-                <b style={{ fontSize: "1.7rem", color: "#E7CFA0", fontVariantNumeric: "tabular-nums" }}>
-                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(231,207,160,.55)", fontWeight: 500 }}> /mo</span>
+                <span style={{ fontSize: ".82rem", color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Your net income <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
+                <b style={{ fontSize: "1.7rem", color: "var(--sbc-gold-deep)", fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
                 </b>
               </div>
             </div>
@@ -360,7 +360,7 @@ export default function CircleBuildPage() {
             </div>
 
             {/* payment plan */}
-            <div style={{ marginTop: 18, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "rgba(231,207,160,.7)" }}>Payment Plan</div>
+            <div style={{ marginTop: 18, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)" }}>Payment Plan</div>
             <div className="sbc-plan-grid" style={{ marginTop: 10 }}>
               {PLAN_ORDER.map((k) => {
                 const pl = CIRCLE_PLANS[k];
@@ -374,14 +374,14 @@ export default function CircleBuildPage() {
             </div>
 
             {/* pay row */}
-            <div style={{ marginTop: 18, padding: "14px 16px", borderRadius: 16, background: "rgba(243,227,191,.1)", border: "1px solid rgba(231,207,160,.25)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".82rem", color: "rgba(247,239,223,.7)" }}>
+            <div style={{ marginTop: 18, padding: "14px 16px", borderRadius: 16, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".82rem", color: "var(--sbc-c-ink-soft)" }}>
                 <span>{CIRCLE_PLANS[plan].name}</span>
-                {bundle.discountAmount > 0 && <span style={{ color: "#9DAD8F" }}>− {fmtINR(bundle.discountAmount)} saved</span>}
+                {bundle.discountAmount > 0 && <span style={{ color: "var(--sbc-c-sage-deep)" }}>− {fmtINR(bundle.discountAmount)} saved</span>}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 }}>
-                <span style={{ fontSize: ".8rem", color: "rgba(247,239,223,.6)" }}>Pay now</span>
-                <b key={`pn-${bundle.payNow}`} style={{ fontSize: "1.5rem", color: "#F3E3BF", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                <span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-soft)" }}>Pay now</span>
+                <b key={`pn-${bundle.payNow}`} style={{ fontSize: "1.5rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
                   {fmtINR(bundle.payNow)}
                 </b>
               </div>
@@ -397,8 +397,8 @@ export default function CircleBuildPage() {
                   onChange={(e) => setContact((c) => ({ ...c, [f]: e.target.value }))}
                   style={{
                     padding: "11px 14px", borderRadius: 12, fontSize: ".88rem",
-                    background: "rgba(255,255,255,.06)", border: "1px solid rgba(231,207,160,.22)",
-                    color: "#F7EFDF", outline: "none",
+                    background: "var(--sbc-c-surface)", border: "1px solid var(--sbc-c-line)",
+                    color: "var(--sbc-c-ink)", outline: "none",
                   }}
                 />
               ))}
@@ -418,7 +418,7 @@ export default function CircleBuildPage() {
             >
               {pay === "paying" ? "Processing payment…" : `Proceed & Pay ${bundle.ok ? fmtINR(bundle.payNow) : ""}`}
             </button>
-            <p style={{ marginTop: 10, fontSize: ".68rem", color: "rgba(247,239,223,.45)", textAlign: "center" }}>
+            <p style={{ marginTop: 10, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", textAlign: "center" }}>
               Secure Razorpay payment · Returns are indicative projections, not guaranteed.
             </p>
           </div>
