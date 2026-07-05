@@ -373,7 +373,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // inline text was remapped from dark-walnut-era light hues to the cream
 // palette (v294.22 had flipped the panel bg to cream, leaving the text
 // invisible). SWR-cached HTML must refresh so users see the readable panel.
-const HTML_CACHE = 'staybid-html-v109';
+const HTML_CACHE = 'staybid-html-v110';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

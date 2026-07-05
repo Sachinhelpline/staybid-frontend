@@ -1764,10 +1764,13 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   /* fluid content width: fills wide screens (small gutters) but never runs
      edge-to-edge on an ultrawide */
   .sbc-home > * { max-width: min(96vw, 1280px); }
-  /* the account hub (dashboard · profile · kyc · earnings · support) is a
-     LIST-based surface — capped narrower so rows stay readable and there is
-     no desktop dead space stretching cards across a wide screen (v294.21). */
-  .sbc-dash > * { max-width: min(94vw, 760px); }
+  /* SS3 v295 — the account hub fills the width (was capped 760px → "centre
+     based, left-right dead space"). A generous premium container + auto-fill
+     card grids (below) so every card sizes to its content, no dead space. */
+  .sbc-dash > * { max-width: min(96vw, 1180px); }
+  /* mode + tile cards fill the row + size to content on any device */
+  .sbc-mode-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+  .sbc-dash-tiles { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 }
 @media (min-width: 980px) {
   /* the 3 journey steps read left→right on a wide screen (were stacked) */
@@ -1779,44 +1782,33 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   .sbc-pcard-media { aspect-ratio: 3 / 2; }   /* landscape frame on big screens */
 }
 
-/* ---- SS2 + SS3: Step-2 "choose your rooms" sheet — one centred column ----
-   Same flex-column as mobile, just centred + width-capped so rows never
-   stretch full-width and the expanded room-tour gallery is a framed photo,
-   never a full-screen zoom. No grid / no :has → zero overlap, zero stuck. */
-@media (min-width: 700px) {
-  .sbc-rsel-scroll {
-    align-items: center;                      /* centre the column, keep flex-column */
-    padding: 18px clamp(16px, 4vw, 44px) 26px;
-  }
-  .sbc-rsel-prop { width: 100%; max-width: 740px; }
-  .sbc-rsel-top, .sbc-rsel-bar { width: 100%; max-width: 780px; margin-inline: auto; }
-  /* SS3: the room-tour gallery inside the sheet is a framed photo, height-
-     capped so it can never fill the screen regardless of column width */
-  .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 3 / 2; max-height: 440px; }
-}
-
-/* ---- SS3 v294.11 — wide-desktop rooms sheet: fill the canvas, kill dead space
-   On big screens the single 740px centred column left huge dead margins left+
-   right ("centre based hai … dono side main dead space"). Turn the scroll area
-   into a responsive auto-fill grid so 2-3 property sections sit side-by-side and
-   fill the width. align-items:start + align-content:start keep every property
-   card top-aligned + independent → they can NEVER stretch or merge into each
-   other ("property aur rooms aapas main stuck"). No :has, no fragile calc,
-   auto-fill minmax adapts to any width → future-proof / bulletproof. Placed
-   AFTER the 700px block so it wins at ≥1100px; tablet 700-1099 stays 1 column. */
-@media (min-width: 1100px) {
-  .sbc-rsel-scroll {
+/* ---- SS1 v295 — Step-2 "choose your rooms" sheet: fill the width, never
+   overlap, never dead-space. Two earlier attempts both failed:
+     · v294.3 single 740px centred column  → "centre based, dono side dead space"
+     · v294.11 property-level auto-fill grid → an expandable room-tour grew its
+       property card and collided with the card beside it ("property aur rooms
+       ek dushre par stuck / overlap"), and the 1300px cap re-added dead space.
+   v295 fixes it at the RIGHT level:
+     · PROPERTY SECTIONS stay a full-width flex COLUMN — the proven zero-overlap
+       engine. A property card never sits beside another, so its expandable
+       tour can never collide with a sibling property (kills the stuck/overlap).
+     · the ROOMS inside each property become a fluid auto-fill grid so they
+       fill the whole width → no dead space. An EXPANDED room spans the full
+       property width (grid-column 1/-1) so its tour renders below its row and
+       can never overlap a neighbouring room.
+   No :has, no fragile calc, no property-level grid → bulletproof + future-proof.
+   ≥720px only; mobile is byte-identical (single flex column). */
+@media (min-width: 720px) {
+  .sbc-rsel-scroll { padding: 20px clamp(20px, 4vw, 60px) 30px; }
+  .sbc-rsel-prop { width: 100%; max-width: none; }   /* full width → no dead space */
+  .sbc-rsel-top, .sbc-rsel-bar { width: 100%; }
+  .sbc-rsel-rooms {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    align-content: start;   /* pack rows from the top — no vertical stretch */
-    align-items: start;     /* each card hugs its own height — never stuck */
-    gap: 18px;
-    width: 100%; max-width: 1300px; margin-inline: auto;
-    padding: 22px clamp(20px, 3vw, 44px) 32px;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 10px; align-items: start;                     /* variable heights → no stretch */
   }
-  .sbc-rsel-prop { width: auto; max-width: none; align-self: start; }
-  .sbc-rsel-empty { grid-column: 1 / -1; }   /* empty state spans full width */
-  .sbc-rsel-top, .sbc-rsel-bar { max-width: 1300px; }
+  .sbc-rsel-room.expanded { grid-column: 1 / -1; }     /* tour spans full width → never overlaps */
+  .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 16 / 9; max-height: 460px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1943,8 +1935,8 @@ body.is-reel-page .sbc { padding-bottom: 0; }
    rather than pinched. */
 @media (min-width: 1280px) {
   .sbc-home > * { max-width: min(94vw, 1340px); }
-  /* account hub stays list-width even on the widest screens (v294.21). */
-  .sbc-dash > * { max-width: min(90vw, 760px); }
+  /* SS3 v295 — account hub fills a wide premium canvas (was pinned 760px). */
+  .sbc-dash > * { max-width: min(94vw, 1280px); }
 }
 
 /* ── SS1(c): the portfolio "Build plan" CTA was full-width → on a wide card it

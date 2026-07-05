@@ -40,12 +40,12 @@ export default function CircleMePage() {
   return (
     <div>
       <section className="sbc-hero" style={{ paddingBottom: 0 }}>
-        <div className="sbc-hero-inner" style={{ padding: "44px 20px 52px" }}>
+        <div className="sbc-hero-inner" style={{ maxWidth: 980, padding: "26px 20px 30px" }}>
           <span className="sbc-hero-eyebrow"><span className="dot" /> Community Partner Dashboard</span>
-          <h1 className="sbc-hero-title" style={{ fontSize: "clamp(1.9rem, 4.5vw, 3rem)" }}>
+          <h1 className="sbc-hero-title" style={{ fontSize: "clamp(1.6rem, 3.4vw, 2.4rem)", margin: "12px 0 6px" }}>
             My <span className="gold">Portfolio</span>
           </h1>
-          <div className="sbc-hero-stats" style={{ marginTop: 26 }}>
+          <div className="sbc-hero-stats" style={{ marginTop: 18 }}>
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.activeBundles || 0)} /></b><span>Active Bundles</span></div>
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.investedMonthly || 0)} prefix="₹" /></b><span>Monthly Investment</span></div>
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.expectedMonthlyIncome || 0)} prefix="₹" /></b><span>Expected Monthly Income</span></div>
@@ -54,7 +54,7 @@ export default function CircleMePage() {
         </div>
       </section>
 
-      <section className="sbc-section">
+      <section className="sbc-section" style={{ maxWidth: 900, paddingTop: "clamp(24px, 4vw, 40px)" }}>
         {loading ? (
           <div className="sbc-panel" style={{ padding: 40, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading your portfolio…</div>
         ) : (

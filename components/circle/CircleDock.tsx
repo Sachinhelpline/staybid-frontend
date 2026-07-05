@@ -80,15 +80,19 @@ export function CircleDock() {
     }
   }, [pathname, router]);
 
-  // Step 1 "Property": if the room overlay is open on this page, just close it
-  // (stay put) instead of a same-URL navigation that leaves the overlay stuck.
+  // Step 1 "Property": when we're already on the discover feed, ALWAYS close any
+  // open room sheet + prevent the same-URL <Link> navigation. This no longer
+  // gates on the `roomsOpen` mirror (a broadcast that could lag → tapping
+  // Property fired a no-op same-URL nav that left the sheet stuck). Property =
+  // "show the property feed" → dispatch close (a harmless no-op if already
+  // closed). Only when we're NOT on discover does the <Link> navigate there.
   const onProperty = useCallback((e: ReactMouseEvent) => {
-    if (onDiscover && roomsOpen) {
+    if (onDiscover) {
       e.preventDefault();
       window.dispatchEvent(new Event("sbc:rooms-close"));
     }
     // else let the <Link> navigate to /circle/discover normally.
-  }, [onDiscover, roomsOpen]);
+  }, [onDiscover]);
 
   const isHome = pathname === "/circle";
   // Property step is "active" only when the property feed is actually showing
