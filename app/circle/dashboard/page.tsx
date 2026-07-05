@@ -48,9 +48,17 @@ export default function CircleDashboardPage() {
 
   const [props, setProps] = useState<CircleProperty[]>([]);
   const [locks, setLocks] = useState<string[]>([]);
+  // Panel-access gating (v294.16). StayCircle is always the active panel and
+  // Travelling is open to everyone; Hotel Partner + For Hosts stay 🔒 LOCKED
+  // unless the user is actually a partner / host. The dashboard is Circle's
+  // own hub — the Switch cards exist only so one app reaches every panel.
+  const [hasPartner, setHasPartner] = useState(false);
+  const [isHost, setIsHost] = useState(false);
 
   useEffect(() => {
     setLocks(readSet(LOCKS_KEY));
+    // Hotel-partner unlock signal: a partner-panel session token exists.
+    try { setHasPartner(!!localStorage.getItem("sb_partner_token")); } catch { /* noop */ }
     fetch("/api/circle/properties")
       .then((r) => r.json())
       .then((d) => setProps(Array.isArray(d?.properties) ? d.properties : []))
@@ -67,6 +75,12 @@ export default function CircleDashboardPage() {
         const ids = (Array.isArray(d?.locks) ? d.locks : []).map((l: any) => String(l.property_id));
         if (ids.length) setLocks((prev) => Array.from(new Set([...prev, ...ids])));
       })
+      .catch(() => {});
+    // Host unlock signal: any activity across the StayBid-for-Hosts modules
+    // (a lead, inquiry, portfolio, order, workforce job, channel request…).
+    fetch("/api/host/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setIsHost(Number(d?.summary?.total || 0) > 0))
       .catch(() => {});
   }, [user]);
 
@@ -140,18 +154,38 @@ export default function CircleDashboardPage() {
             <span className="sbc-mode-sub">Bid &amp; book stays on StayBid</span>
             <span className="sbc-mode-go">Switch →</span>
           </Link>
-          <a href={HOST_PANEL} target="_blank" rel="noopener noreferrer" className="sbc-mode-card">
-            <span className="sbc-mode-ic">🏨</span>
-            <b>Hotel Partner</b>
-            <span className="sbc-mode-sub">Manage your hotel &amp; bids ↗</span>
-            <span className="sbc-mode-go">Open →</span>
-          </a>
-          <Link href="/host" className="sbc-mode-card">
-            <span className="sbc-mode-ic">🏠</span>
-            <b>For Hosts</b>
-            <span className="sbc-mode-sub">Managed portfolio ownership</span>
-            <span className="sbc-mode-go">Open →</span>
-          </Link>
+          {hasPartner ? (
+            <a href={HOST_PANEL} target="_blank" rel="noopener noreferrer" className="sbc-mode-card">
+              <span className="sbc-mode-ic">🏨</span>
+              <b>Hotel Partner</b>
+              <span className="sbc-mode-sub">Manage your hotel &amp; bids ↗</span>
+              <span className="sbc-mode-go">Open →</span>
+            </a>
+          ) : (
+            <Link href="/onboard" className="sbc-mode-card locked">
+              <span className="sbc-mode-ic">🏨</span>
+              <b>Hotel Partner</b>
+              <span className="sbc-mode-sub">List your hotel to unlock this panel</span>
+              <span className="sbc-mode-badge locked">🔒 Locked</span>
+              <span className="sbc-mode-go locked">Become a partner →</span>
+            </Link>
+          )}
+          {isHost ? (
+            <Link href="/host/me" className="sbc-mode-card">
+              <span className="sbc-mode-ic">🏠</span>
+              <b>For Hosts</b>
+              <span className="sbc-mode-sub">Managed portfolio ownership</span>
+              <span className="sbc-mode-go">Open →</span>
+            </Link>
+          ) : (
+            <Link href="/host" className="sbc-mode-card locked">
+              <span className="sbc-mode-ic">🏠</span>
+              <b>For Hosts</b>
+              <span className="sbc-mode-sub">Start a managed portfolio to unlock</span>
+              <span className="sbc-mode-badge locked">🔒 Locked</span>
+              <span className="sbc-mode-go locked">Explore hosting →</span>
+            </Link>
+          )}
         </div>
       </section>
 
