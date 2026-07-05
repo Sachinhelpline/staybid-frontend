@@ -18,7 +18,8 @@ import { CountUp } from "@/components/CountUp";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 import {
   CIRCLE_PLANS, PLAN_ORDER, computeBundle, fmtINR,
-  type BundleItem, type PaymentPlanKey,
+  DEFAULT_CIRCLE_REVENUE,
+  type BundleItem, type PaymentPlanKey, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
 
 type RoomType = {
@@ -64,6 +65,8 @@ export default function CircleBuildPage() {
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
   const [payError, setPayError] = useState("");
   const [doneBundle, setDoneBundle] = useState<any>(null);
+  // Honest-revenue levers (admin-editable) — DISPLAY-ONLY, never charged.
+  const [revConfig, setRevConfig] = useState<CircleRevenueConfig>(DEFAULT_CIRCLE_REVENUE);
 
   useEffect(() => {
     try {
@@ -77,6 +80,10 @@ export default function CircleBuildPage() {
       .then((d) => setProps(Array.isArray(d?.properties) ? d.properties : []))
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetch("/api/circle/revenue-config")
+      .then((r) => r.json())
+      .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
+      .catch(() => {});
   }, []);
 
   // ---- live bundle (single source of truth · circle-property data) ----
@@ -98,7 +105,7 @@ export default function CircleBuildPage() {
     return out;
   }, [props, selection]);
 
-  const bundle = useMemo(() => computeBundle(items, plan), [items, plan]);
+  const bundle = useMemo(() => computeBundle(items, plan, revConfig), [items, plan, revConfig]);
 
   // Group the recap by property so the review reads cleanly.
   const grouped = useMemo(() => {
@@ -298,12 +305,45 @@ export default function CircleBuildPage() {
               </div>
             </div>
 
-            {/* what you earn */}
+            {/* booking revenue — proof the asset earns MORE than you invest */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "rgba(183,208,160,.9)", fontWeight: 600 }}>You earn <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
-                <b style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums" }}>
-                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(183,208,160,.55)", fontWeight: 500 }}> /mo</span>
+                <span style={{ fontSize: ".82rem", color: "rgba(183,208,160,.9)", fontWeight: 600 }}>Booking revenue <span style={{ opacity: .7, fontWeight: 500 }}>(gross)</span></span>
+                <b key={`gr-${bundle.grossBookingRevenue}`} style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                  <CountUp key={bundle.grossBookingRevenue} value={bundle.grossBookingRevenue} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(183,208,160,.55)", fontWeight: 500 }}> /mo</span>
+                </b>
+              </div>
+              {bundle.ok && (
+                <div style={{ marginTop: 4, fontSize: ".72rem", color: "rgba(183,208,160,.72)" }}>
+                  {bundle.revenueUpliftPct}% of your investment — your properties earn more than you put in
+                </div>
+              )}
+            </div>
+
+            {/* transparent deductions — platform fee + management + one-time */}
+            {bundle.ok && (
+              <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "rgba(255,255,255,.04)", border: "1px solid rgba(231,207,160,.16)", display: "grid", gap: 7 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
+                  <span style={{ color: "rgba(247,239,223,.62)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
+                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.stayBidCommission)}/mo</b>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
+                  <span style={{ color: "rgba(247,239,223,.62)" }}>Management · channel manager</span>
+                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementFee)}/mo</b>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem", paddingTop: 6, borderTop: "1px dashed rgba(231,207,160,.16)" }}>
+                  <span style={{ color: "rgba(247,239,223,.62)" }}>One-time onboarding<span style={{ display: "block", fontSize: ".68rem", color: "rgba(247,239,223,.42)" }}>Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)}</span></span>
+                  <b style={{ color: "rgba(247,239,223,.85)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.oneTimeTotal)}</b>
+                </div>
+              </div>
+            )}
+
+            {/* what you earn — realistic ROI-based net take-home */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: ".82rem", color: "#E7CFA0", fontWeight: 700 }}>Your net income <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
+                <b style={{ fontSize: "1.7rem", color: "#E7CFA0", fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(231,207,160,.55)", fontWeight: 500 }}> /mo</span>
                 </b>
               </div>
             </div>
