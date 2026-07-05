@@ -972,6 +972,16 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   border-top: 1px solid rgba(231,207,160,.14); box-shadow: 0 -6px 22px rgba(0,0,0,.4);
 }
+/* SS3 v294.11 — mobile: keep the bottom nav VISIBLE + CLICKABLE while the room-
+   selection sheet is open ("mobile par rooms section main niche nav bar hidden
+   hai"). The sheet is z-82 (covers the chrome); the dock is z-55 → hidden behind
+   the sheet's reserved 64px bottom strip. Raise the dock above the sheet so it
+   fills that strip with the real nav — parity with the desktop fix (nav stays
+   visible during room-select). The sheet's .sbc-rsel-bar already reserves
+   64px + safe-area at the bottom, so the "Continue" CTA sits ABOVE the dock —
+   no overlap. Desktop hides the dock (display:none ≥1024) so this is mobile-
+   only by construction; roomsActive gates it so it never lifts elsewhere. */
+.sbc-dock.rooms-open { z-index: 90; }
 .sbc-dock-item {
   position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
   padding: 6px 2px; color: rgba(251,243,226,.6); text-decoration: none; cursor: pointer;
@@ -1689,6 +1699,30 @@ body.is-reel-page .sbc { padding-bottom: 0; }
   /* SS3: the room-tour gallery inside the sheet is a framed photo, height-
      capped so it can never fill the screen regardless of column width */
   .sbc-rsel-rtour .sbc-rc-stage { aspect-ratio: 3 / 2; max-height: 440px; }
+}
+
+/* ---- SS3 v294.11 — wide-desktop rooms sheet: fill the canvas, kill dead space
+   On big screens the single 740px centred column left huge dead margins left+
+   right ("centre based hai … dono side main dead space"). Turn the scroll area
+   into a responsive auto-fill grid so 2-3 property sections sit side-by-side and
+   fill the width. align-items:start + align-content:start keep every property
+   card top-aligned + independent → they can NEVER stretch or merge into each
+   other ("property aur rooms aapas main stuck"). No :has, no fragile calc,
+   auto-fill minmax adapts to any width → future-proof / bulletproof. Placed
+   AFTER the 700px block so it wins at ≥1100px; tablet 700-1099 stays 1 column. */
+@media (min-width: 1100px) {
+  .sbc-rsel-scroll {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    align-content: start;   /* pack rows from the top — no vertical stretch */
+    align-items: start;     /* each card hugs its own height — never stuck */
+    gap: 18px;
+    width: 100%; max-width: 1300px; margin-inline: auto;
+    padding: 22px clamp(20px, 3vw, 44px) 32px;
+  }
+  .sbc-rsel-prop { width: auto; max-width: none; align-self: start; }
+  .sbc-rsel-empty { grid-column: 1 / -1; }   /* empty state spans full width */
+  .sbc-rsel-top, .sbc-rsel-bar { max-width: 1300px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════

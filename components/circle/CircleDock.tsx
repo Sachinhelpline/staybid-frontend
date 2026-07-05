@@ -99,7 +99,7 @@ export function CircleDock() {
   const hasLocks = lockCount > 0;
 
   return (
-    <nav className="sbc-dock v2" aria-label="StayCircle steps">
+    <nav className={`sbc-dock v2${roomsActive ? " rooms-open" : ""}`} aria-label="StayCircle steps">
       {/* Home */}
       <Link href="/circle" prefetch className={`sbc-dock-end${isHome ? " on" : ""}`} aria-current={isHome ? "page" : undefined}>
         <span className="sbc-dock-glyph">🏠</span>
