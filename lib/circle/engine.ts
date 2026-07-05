@@ -14,21 +14,36 @@ export type PaymentPlanKey = "monthly" | "quarterly" | "half_yearly" | "yearly";
 export interface PaymentPlan {
   key: PaymentPlanKey;
   name: string;
-  months: number;       // billing period covered by one payment
-  discountPct: number;  // 0–1 fraction off the period total
+  months: number;         // advance period covered by one payment (billing period)
+  securityMonths: number; // refundable security deposit, in months of investment
+  discountPct: number;    // 0–1 fraction off the ADVANCE portion only
   hint: string;
 }
 
-// From the launch design: Monthly · Quarterly (5% off) · Half-Yearly (8% off)
-// · Yearly (12% off).
+// v297 payment rules (Sachin's spec):
+//   Monthly     — 2 months security + 1 month advance · ONLY 1 property · 0% off
+//   Quarterly   — 1 month security + quarterly (3mo) advance · 7% off
+//   Half-Yearly — 1 month security + 6mo advance · 12% off
+//   Yearly      — 0.5 month security + 12mo advance · 20% off
+// Pay-now = security(monthly×securityMonths) + advance(monthly×months×(1−disc)).
+// The discount applies to the advance portion only; security is a deposit.
 export const CIRCLE_PLANS: Record<PaymentPlanKey, PaymentPlan> = {
-  monthly:     { key: "monthly",     name: "Monthly",              months: 1,  discountPct: 0,    hint: "Pay month to month" },
-  quarterly:   { key: "quarterly",   name: "Quarterly (3 months)", months: 3,  discountPct: 0.05, hint: "5% off" },
-  half_yearly: { key: "half_yearly", name: "Half-Yearly (6 months)", months: 6, discountPct: 0.08, hint: "8% off" },
-  yearly:      { key: "yearly",      name: "Yearly (12 months)",   months: 12, discountPct: 0.12, hint: "12% off" },
+  monthly:     { key: "monthly",     name: "Monthly",               months: 1,  securityMonths: 2,   discountPct: 0,    hint: "2mo security + 1mo advance" },
+  quarterly:   { key: "quarterly",   name: "Quarterly (3 months)",  months: 3,  securityMonths: 1,   discountPct: 0.07, hint: "1mo security + quarter advance · 7% off" },
+  half_yearly: { key: "half_yearly", name: "Half-Yearly (6 months)", months: 6, securityMonths: 1,   discountPct: 0.12, hint: "1mo security + 6mo advance · 12% off" },
+  yearly:      { key: "yearly",      name: "Yearly (12 months)",    months: 12, securityMonths: 0.5, discountPct: 0.20, hint: "12mo advance · 20% off" },
 };
 
 export const PLAN_ORDER: PaymentPlanKey[] = ["monthly", "quarterly", "half_yearly", "yearly"];
+
+// Monthly plan is restricted to a single property (Sachin's rule). Multi-
+// property bundles must pick quarterly or larger. Enforced in computeBundle
+// (monthlyPlanBlocked) + the checkout route.
+export const MONTHLY_MAX_PROPERTIES = 1;
+
+// Visit-Access Hold: reserve the property for a physical visit by paying this
+// fraction of pay-now; the balance is due after the visit + signed agreement.
+export const HOLD_FRACTION = 0.10;
 
 // ----------------------------------------------------------------------------
 // Honest revenue model (v294.13) — admin-editable, ALL defaults.
@@ -97,10 +112,21 @@ export interface CircleBundle {
   roomCount: number;
   monthlyTotal: number;          // ₹ committed per month before discount
   plan: PaymentPlanKey;
-  planMonths: number;
-  discountPct: number;           // 0–1
-  discountAmount: number;        // ₹ saved on this payment
-  payNow: number;                // ₹ charged today (period total − discount)
+  planMonths: number;            // advance months (billing period)
+  securityMonths: number;        // refundable deposit, months of investment
+  securityAmount: number;        // ₹ security deposit
+  advanceAmount: number;         // ₹ advance (period × monthly − discount)
+  discountPct: number;           // 0–1 (on advance only)
+  discountAmount: number;        // ₹ saved on the advance
+  payNow: number;                // ₹ charged today (security + discounted advance)
+  monthlyPlanBlocked: boolean;   // true when plan=monthly but >1 property
+  // Plan-period revenue bifurcation — every figure scales with the selected
+  // plan's advance period so "gross → −fees → net" auto-changes with the mode.
+  periodMonths: number;          // = planMonths (advance period for revenue)
+  grossPeriod: number;           // ₹ gross booking revenue over the period
+  commissionPeriod: number;      // ₹ platform fee over the period
+  managementPeriod: number;      // ₹ management/channel-manager over the period
+  netPeriod: number;             // ₹ net income over the period
   diversificationBonusPct: number;
   expectedRoiMin: number;        // pct, incl. diversification bonus
   expectedRoiMax: number;
@@ -158,9 +184,18 @@ export function computeBundle(
     monthlyTotal: 0,
     plan: plan.key,
     planMonths: plan.months,
+    securityMonths: plan.securityMonths,
+    securityAmount: 0,
+    advanceAmount: 0,
     discountPct: plan.discountPct,
     discountAmount: 0,
     payNow: 0,
+    monthlyPlanBlocked: false,
+    periodMonths: plan.months,
+    grossPeriod: 0,
+    commissionPeriod: 0,
+    managementPeriod: 0,
+    netPeriod: 0,
     diversificationBonusPct: 0,
     expectedRoiMin: 0,
     expectedRoiMax: 0,
@@ -199,9 +234,12 @@ export function computeBundle(
   const expectedRoiMax = Math.round((wMax + bonus) * 10) / 10;
   const roiAvg = (expectedRoiMin + expectedRoiMax) / 2;
 
-  const periodGross = monthlyTotal * plan.months;
-  const discountAmount = r0(periodGross * plan.discountPct);
-  const payNow = r0(periodGross - discountAmount);
+  // Pay-now = refundable security deposit + discounted advance.
+  const discountAmount = r0(monthlyTotal * plan.months * plan.discountPct);
+  const advanceAmount = r0(monthlyTotal * plan.months - discountAmount);
+  const securityAmount = r0(monthlyTotal * plan.securityMonths);
+  const payNow = advanceAmount + securityAmount;
+  const monthlyPlanBlocked = plan.key === "monthly" && propertyCount > MONTHLY_MAX_PROPERTIES;
 
   const expectedAnnualIncome = r0(monthlyTotal * 12 * (roiAvg / 100));
   const expectedMonthlyIncome = r0(expectedAnnualIncome / 12);
@@ -229,6 +267,14 @@ export function computeBundle(
   const cityOneTime = r0(rc.cityActivationFee * cityCount);
   const oneTimeTotal = setupOneTime + cityOneTime;
 
+  // Plan-period bifurcation — scales the /mo figures to the plan's advance
+  // period so the whole "gross → −fees → net" panel auto-changes with the mode.
+  const periodMonths = plan.months;
+  const grossPeriod = r0(grossBookingRevenue * periodMonths);
+  const commissionPeriod = r0(stayBidCommission * periodMonths);
+  const managementPeriod = r0(managementFee * periodMonths);
+  const netPeriod = r0(expectedMonthlyIncome * periodMonths);
+
   return {
     ok: true,
     items,
@@ -237,9 +283,18 @@ export function computeBundle(
     monthlyTotal,
     plan: plan.key,
     planMonths: plan.months,
+    securityMonths: plan.securityMonths,
+    securityAmount,
+    advanceAmount,
     discountPct: plan.discountPct,
     discountAmount,
     payNow,
+    monthlyPlanBlocked,
+    periodMonths,
+    grossPeriod,
+    commissionPeriod,
+    managementPeriod,
+    netPeriod,
     diversificationBonusPct: bonus,
     expectedRoiMin,
     expectedRoiMax,
