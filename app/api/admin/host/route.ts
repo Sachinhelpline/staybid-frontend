@@ -165,12 +165,14 @@ export async function GET(req: NextRequest) {
       // v281 — owner property listings awaiting review.
       propertySubmissions: propSubsU.length,
       propertySubmissionsPending: propSubsU.filter((p) => p.status === "pending_review").length,
-      // v284 — portfolio configurator purchases.
+      // v284/v285 — portfolio configurator purchases. Revenue = money ACTUALLY
+      // collected (charged_amount for holds, else pay_now); 'hold_paid' counts as
+      // a live portfolio (10% paid, balance pending after the visit).
       portfolios: portfoliosU.length,
-      portfoliosActive: portfoliosU.filter((p) => p.status === "active").length,
+      portfoliosActive: portfoliosU.filter((p) => p.status === "active" || p.status === "hold_paid").length,
       portfolioRevenue: portfoliosU
-        .filter((p) => p.status === "active")
-        .reduce((a, p) => a + num(p.pay_now), 0),
+        .filter((p) => p.status === "active" || p.status === "hold_paid")
+        .reduce((a, p) => a + (num(p.charged_amount) > 0 ? num(p.charged_amount) : num(p.pay_now)), 0),
     };
 
     return NextResponse.json({

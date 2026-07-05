@@ -141,6 +141,62 @@ export const RETURN_PROFILES: ReturnProfile[] = [
   { key: "luxury",       name: "Luxury",       band: "32% – 36%+", blurb: "Premium locations",          plain: "Premium stays in premium locations", riskDots: 4, tone: "#7c3aed", roiMin: 32, roiMax: 36 },
 ];
 
+// ── Phase 1/5 · Returns bifurcation engine (v285) ───────────────────────────
+// Deterministic, INDICATIVE projection shown at Review & Pay. Recomputes whenever
+// the payment plan (periodMonths), the return profile, the chosen cities, the room
+// count, or the invested capital changes — so "gross revenue → − expenses → net
+// income" updates live the moment the mode flips (Sachin's ask).
+//
+// Model — capital-yield (NOT raw ADR): the partner is an asset-light investor, so
+// the return is a yield on deployed capital, not the property's full rental.
+//   netAnnual   = effReturn% × deployedCapital
+//   deployed    = 12×monthlyRecurring + oneTimeTotal   (annual run-rate + setup)
+//   grossPeriod = netPeriod / (1 − EXPENSE_RATIO)       (expenses reverse-solved)
+//   netPeriod   = netAnnual × periodMonths/12
+// effReturn blends the picked return profile with the average ROI of the chosen
+// cities so the number feels "alive" to both Phase-1 and Phase-2 choices.
+// EXPENSE_RATIO ≈ 0.62 → ~38% net margin (hospitality GOP band). Admin-tunable here.
+export const RETURNS_EXPENSE_RATIO = 0.62;
+
+export interface ReturnsProjection {
+  effReturnPct: number;   // blended annual yield used
+  deployedCapital: number;
+  grossPeriod: number;
+  expensesPeriod: number;
+  netPeriod: number;
+  grossMonthly: number;
+  netMonthly: number;
+  periodMonths: number;
+}
+
+export function projectReturns(opts: {
+  returnProfileKey?: string;
+  cities: CityIntel[];
+  monthlyRecurring: number;
+  oneTimeTotal: number;
+  periodMonths: number;
+}): ReturnsProjection {
+  const rp = RETURN_PROFILES.find((r) => r.key === opts.returnProfileKey) || RETURN_PROFILES[1];
+  const profileMid = (rp.roiMin + rp.roiMax) / 2;
+  const cityMid = opts.cities.length
+    ? opts.cities.reduce((s, c) => s + (c.roiMin + c.roiMax) / 2, 0) / opts.cities.length
+    : profileMid;
+  const effReturnPct = Math.round(((profileMid + cityMid) / 2) * 10) / 10;
+
+  const deployedCapital = Math.max(0, opts.monthlyRecurring * 12 + opts.oneTimeTotal);
+  const periodMonths = Math.max(1, opts.periodMonths);
+  const netAnnual = deployedCapital * effReturnPct / 100;
+  const netPeriod = Math.round(netAnnual * periodMonths / 12);
+  const grossPeriod = Math.round(netPeriod / (1 - RETURNS_EXPENSE_RATIO));
+  const expensesPeriod = Math.max(0, grossPeriod - netPeriod);
+  return {
+    effReturnPct, deployedCapital, grossPeriod, expensesPeriod, netPeriod,
+    grossMonthly: Math.round(grossPeriod / periodMonths),
+    netMonthly: Math.round(netPeriod / periodMonths),
+    periodMonths,
+  };
+}
+
 // ── Phase 1 · Investment badge system (unlocks as the portfolio grows) ──────
 export interface InvestBadge {
   key: string;

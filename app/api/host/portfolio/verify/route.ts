@@ -43,6 +43,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Payment signature mismatch" }, { status: 400 });
   }
 
+  // v285 — a 10% Visit-Access Hold lands in 'hold_paid' (balance due after the
+  // visit + agreement); full/emi land in 'active'. Read the stored pay_option so
+  // the label is server-authoritative (no CHECK on status → no constraint alter).
+  let targetStatus = "active";
+  try {
+    const gr = await fetch(
+      `${SB_URL}/rest/v1/host_portfolio_configs?id=eq.${configId}&razorpay_order_id=eq.${rzpOrderId}&select=pay_option`,
+      { headers: SB_H },
+    );
+    if (gr.ok) {
+      const rows = await gr.json().catch(() => []);
+      if (rows?.[0]?.pay_option === "hold") targetStatus = "hold_paid";
+    }
+  } catch { /* default 'active' */ }
+
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/host_portfolio_configs?id=eq.${configId}&razorpay_order_id=eq.${rzpOrderId}&status=eq.pending_payment`,
@@ -50,7 +65,7 @@ export async function POST(req: Request) {
         method: "PATCH",
         headers: { ...SB_H, Prefer: "return=representation" },
         body: JSON.stringify({
-          status: "active",
+          status: targetStatus,
           razorpay_payment_id: paymentId,
           updated_at: new Date().toISOString(),
         }),

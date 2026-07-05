@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
-import { computeBundle, clampConfig, type PortfolioConfig } from "@/lib/host/wizard-rules";
+import { computeBundle, clampConfig, MONTHLY_MAX_ROOMS, type PortfolioConfig } from "@/lib/host/wizard-rules";
 import { resolveWizardConfig } from "@/lib/host/wizard-config-store";
 import { sanitizeJourneyPreferences } from "@/lib/host/journey-data";
 
@@ -40,12 +40,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name and a valid phone are required." }, { status: 400 });
   }
 
+  // v285 — monthly plan covers a SINGLE property. Enforce server-side too so a
+  // tampered client can't sneak a multi-room monthly through.
+  if (cfg.paymentMode === "monthly" && cfg.rooms > MONTHLY_MAX_ROOMS) {
+    return NextResponse.json(
+      { error: `The Monthly plan covers ${MONTHLY_MAX_ROOMS} property. Reduce to ${MONTHLY_MAX_ROOMS} room, or pick Quarterly / Half-yearly / Yearly for a ${cfg.rooms}-room portfolio.` },
+      { status: 400 },
+    );
+  }
+
   // Server-authoritative compute (same resolved config the wizard previewed).
   const bundle = computeBundle(cfg, wc);
   if (!bundle.ok) {
     return NextResponse.json({ error: bundle.error || "Invalid configuration." }, { status: 400 });
   }
-  const chargeable = bundle.payNow;
+
+  // v285 — pay option decides the amount charged NOW (the client never sets it):
+  //   full → full payNow · emi → full payNow (split by Razorpay) · hold → 10% now.
+  const payOption = ["full", "hold", "emi"].includes(String(body?.payOption)) ? String(body.payOption) : "full";
+  const holdAmount = Math.round(bundle.payNow * 0.10);
+  const chargeable = payOption === "hold" ? holdAmount : bundle.payNow;
+  const balanceDue = payOption === "hold" ? Math.max(0, bundle.payNow - holdAmount) : 0;
   if (!Number.isFinite(chargeable) || chargeable <= 0) {
     return NextResponse.json({ error: "Nothing to charge for this configuration." }, { status: 400 });
   }
@@ -60,7 +75,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         amount: chargeable,
         receipt: `hostpf_${Date.now()}`,
-        notes: { kind: "host_portfolio", tier: cfg.tier, rooms: String(cfg.rooms), cities: String(cfg.cities.length) },
+        notes: { kind: "host_portfolio", payOption, tier: cfg.tier, rooms: String(cfg.rooms), cities: String(cfg.cities.length) },
       }),
     });
     rzp = await orderRes.json().catch(() => ({}));
@@ -88,6 +103,11 @@ export async function POST(req: Request) {
     pay_now: bundle.payNow,
     recurring: bundle.recurringAfter,
     security: bundle.security,
+    // v285 — how the partner chose to pay the payNow amount.
+    pay_option: payOption,
+    charged_amount: chargeable,
+    hold_amount: payOption === "hold" ? holdAmount : null,
+    balance_due: payOption === "hold" ? balanceDue : 0,
     status: "pending_payment",
     contact: { name, phone, email: String(contact?.email || "").trim().slice(0, 160) || null },
     // v284: sanitized journey preferences (return profile, city mode, property
@@ -120,6 +140,9 @@ export async function POST(req: Request) {
     razorpayOrderId: rzp.id,
     amount: chargeable,
     keyId: PUBLIC_KEY_ID,
+    payOption,
+    holdAmount: payOption === "hold" ? holdAmount : 0,
+    balanceDue,
     breakdown: bundle,
   });
 }

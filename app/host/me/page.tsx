@@ -174,14 +174,17 @@ function PortfolioCard({ p }: { p: any }) {
   const prefs = prefLabels((p.preferences || null) as JourneyPreferences | null);
   const cities: string[] = Array.isArray(p.cities) ? p.cities : [];
   const tierName = String(p.tier || "").replace(/^\w/, (c: string) => c.toUpperCase());
-  const active = p.status === "active";
+  const isHold = p.status === "hold_paid" || (p.pay_option === "hold" && Number(p.balance_due) > 0);
+  const active = p.status === "active" || p.status === "hold_paid";
+  const paidNow = Number(p.charged_amount) > 0 ? Number(p.charged_amount) : Number(p.pay_now);
+  const balanceDue = Number(p.balance_due) || 0;
   return (
     <div className="rounded-xl p-4" style={{ background: "var(--bg-input, rgba(0,0,0,0.02))", border: "1px solid var(--border-soft)" }}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-display font-bold" style={{ color: "var(--text-base)", fontSize: 16 }}>
           {tierName} portfolio
         </span>
-        <Badge s={active ? "paid" : p.status} />
+        <Badge s={isHold ? "hold" : active ? "paid" : p.status} />
         {active && (
           <span className="sb-pulse-dot" aria-hidden style={{ width: 7, height: 7, borderRadius: 999, background: "#3f7d4f", display: "inline-block" }} />
         )}
@@ -190,9 +193,14 @@ function PortfolioCard({ p }: { p: any }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
         <MiniFact k="Rooms" v={String(p.rooms || 1)} />
         <MiniFact k="Cities" v={cities.length ? cities.join(", ") : "—"} />
-        <MiniFact k="Paid now" v={inr(p.pay_now)} accent />
+        <MiniFact k={isHold ? "Hold paid" : "Paid now"} v={inr(paidNow)} accent />
         <MiniFact k="Recurring" v={`${inr(p.recurring)}/mo`} />
       </div>
+      {balanceDue > 0 && (
+        <div className="mt-2 rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: "#fff4e6", border: "1px solid #e0a458", color: "#8a5a17" }}>
+          🔒 Visit-access hold · balance {inr(balanceDue)} due after your property visit &amp; agreement signing.
+        </div>
+      )}
       {prefs.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {prefs.map((x) => (
