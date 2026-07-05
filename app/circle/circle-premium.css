@@ -1494,6 +1494,21 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-toggle.on { background: linear-gradient(135deg, var(--sbc-c-sage), var(--sbc-c-sage-deep)); border-color: transparent; }
 .sbc-toggle.on i { transform: translateX(18px); }
 
+/* ---------- KYC (Circle-own, v294.18) ---------- */
+.sbc-kyc-banner { display: flex; align-items: flex-start; gap: 13px; margin-top: 8px; padding: 16px 17px; border-radius: 18px; background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2)); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
+.sbc-kyc-banner.ok   { background: linear-gradient(150deg, var(--sbc-c-sage-tint), rgba(92,107,69,.05)); border-color: color-mix(in srgb, var(--sbc-c-sage) 42%, transparent); }
+.sbc-kyc-banner.wait { background: linear-gradient(150deg, rgba(201,166,107,.14), rgba(201,166,107,.05)); border-color: rgba(201,166,107,.4); }
+.sbc-kyc-banner.bad  { background: linear-gradient(150deg, rgba(212,149,131,.16), rgba(212,149,131,.05)); border-color: rgba(180,85,63,.4); }
+.sbc-kyc-ic { flex: 0 0 auto; font-size: 1.7rem; line-height: 1; }
+.sbc-kyc-banner b { display: block; font-size: 1.02rem; color: var(--sbc-c-ink); }
+.sbc-kyc-banner span { display: block; font-size: .76rem; color: var(--sbc-c-ink-soft); margin-top: 3px; line-height: 1.45; }
+.sbc-kyc-banner em { display: block; font-style: normal; font-size: .74rem; color: #B4553F; margin-top: 6px; }
+.sbc-kyc-note { font-size: .72rem; color: var(--sbc-c-ink-soft); margin: 12px 2px 0; line-height: 1.5; }
+.sbc-kyc-note b { color: var(--sbc-c-ink); }
+.sbc-kyc-form { display: grid; gap: 12px; padding: 16px; border-radius: 18px; background: var(--sbc-c-surface); border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow); }
+.sbc-kyc-div { margin-top: 4px; font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--sbc-c-sage-deep); }
+.sbc-kyc-err { font-size: .74rem; color: #B4553F; margin: 0; }
+
 @media (min-width: 560px) {
   .sbc-home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
