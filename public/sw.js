@@ -360,7 +360,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // all amenities + full details); /circle/[id] room cards get the same picker.
 // v294.8 — /circle home: 3D gold quick-action tiles, de-stretched desktop
 // hero (2×2 right-sized cards), capped + clarified "Build Investment Bundle" CTA.
-const HTML_CACHE = 'staybid-html-v94';
+// v294.9 — /circle/build Investment & Returns: revenue → bifurcation → net
+// income breakdown (gross revenue − StayBid management % = your net income).
+const HTML_CACHE = 'staybid-html-v95';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
