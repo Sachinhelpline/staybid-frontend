@@ -368,7 +368,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // v294.11 — SS3 rooms sheet: wide-desktop auto-fill grid fills the canvas (no
 // left/right dead space, cards never stuck) + mobile bottom nav stays visible
 // while choosing rooms (dock raised above the sheet in its reserved strip).
-const HTML_CACHE = 'staybid-html-v103';
+const HTML_CACHE = 'staybid-html-v104';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
