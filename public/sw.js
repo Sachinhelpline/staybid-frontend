@@ -392,7 +392,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // /circle/build uses, so the two pages can never show divergent property count /
 // monthly investment / income / diversification numbers. SWR-cached HTML must
 // refresh so the unified snapshot ships.
-const HTML_CACHE = 'staybid-html-v117';
+// v297.5 — one-time HTML_CACHE bump (v117 -> v118). /circle/dashboard "Committed
+// / month" and /circle/me bundle cards + KPIs now RECOMPUTE live from the same
+// computeBundle engine + revConfig (was: dashboard read LOCKS-only cheapest-room,
+// /circle/me rendered frozen old-formula snapshot columns). All four surfaces
+// (home / build / dashboard / me) now share ONE engine — stale snapshots self-
+// correct on display. SWR-cached HTML must refresh so the recompute ships.
+const HTML_CACHE = 'staybid-html-v118';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

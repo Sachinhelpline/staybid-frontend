@@ -14,7 +14,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { fmtINR } from "@/lib/circle/engine";
+import {
+  computeBundle, fmtINR,
+  DEFAULT_CIRCLE_REVENUE, type BundleItem, type CircleRevenueConfig,
+} from "@/lib/circle/engine";
 
 type CircleProperty = {
   id: string;
@@ -31,6 +34,10 @@ type CircleProperty = {
 };
 
 const LOCKS_KEY = "sb_circle_locks_v1";
+// v297.5 — same room-selection key + reader as /circle home + /circle/build, so
+// the dashboard "Committed / month" strip reads the SAME source through the SAME
+// engine (no more LOCKS-only cheapest-room drift vs the wizard).
+const ROOM_SEL_KEY = "sb_circle_room_sel_v1";
 
 function readSet(key: string): string[] {
   try {
@@ -38,6 +45,20 @@ function readSet(key: string): string[] {
     const arr = raw ? JSON.parse(raw) : [];
     return Array.isArray(arr) ? arr.map(String) : [];
   } catch { return []; }
+}
+
+function readRoomSel(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(ROOM_SEL_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    if (!obj || typeof obj !== "object") return {};
+    const out: Record<string, number> = {};
+    Object.entries(obj).forEach(([k, v]) => {
+      const n = Math.min(10, Math.floor(Number(v) || 0));
+      if (n > 0) out[k] = n;
+    });
+    return out;
+  } catch { return {}; }
 }
 
 const HOST_PANEL = "https://staybid-hotel-panel.vercel.app";
@@ -48,6 +69,8 @@ export default function CircleDashboardPage() {
 
   const [props, setProps] = useState<CircleProperty[]>([]);
   const [locks, setLocks] = useState<string[]>([]);
+  const [roomSel, setRoomSel] = useState<Record<string, number>>({});
+  const [revConfig, setRevConfig] = useState<CircleRevenueConfig>(DEFAULT_CIRCLE_REVENUE);
   // Panel-access gating (v294.16). StayCircle is always the active panel and
   // Travelling is open to everyone; Hotel Partner + For Hosts stay 🔒 LOCKED
   // unless the user is actually a partner / host. The dashboard is Circle's
@@ -57,11 +80,16 @@ export default function CircleDashboardPage() {
 
   useEffect(() => {
     setLocks(readSet(LOCKS_KEY));
+    setRoomSel(readRoomSel());
     // Hotel-partner unlock signal: a partner-panel session token exists.
     try { setHasPartner(!!localStorage.getItem("sb_partner_token")); } catch { /* noop */ }
     fetch("/api/circle/properties")
       .then((r) => r.json())
       .then((d) => setProps(Array.isArray(d?.properties) ? d.properties : []))
+      .catch(() => {});
+    fetch("/api/circle/revenue-config")
+      .then((r) => r.json())
+      .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
       .catch(() => {});
   }, []);
 
@@ -85,13 +113,43 @@ export default function CircleDashboardPage() {
   }, [user]);
 
   const lockedProps = useMemo(() => props.filter((p) => locks.includes(p.id)), [props, locks]);
-  const committed = useMemo(
-    () => lockedProps.reduce((s, p) => {
+
+  // v297.5 — SINGLE source of truth for the portfolio strip, identical to the
+  // /circle home snapshot: PRIMARY = real room selection (sb_circle_room_sel_v1)
+  // run through computeBundle(+revConfig); FALLBACK = locked-property cheapest-
+  // room preview. Both routes now show the exact same "Committed / month".
+  const snapshot = useMemo(() => {
+    const selItems: BundleItem[] = [];
+    props.forEach((p) => {
+      (p.roomTypes || []).forEach((rt) => {
+        const rooms = roomSel[rt.id] || 0;
+        if (rooms > 0 && Number(rt.monthlyRate) > 0) {
+          selItems.push({
+            propertyId: p.id,
+            propertyTitle: p.title,
+            city: p.city,
+            roomTypeId: rt.id,
+            roomTypeName: "",
+            monthlyRate: rt.monthlyRate,
+            rooms,
+            roiMin: p.roiMin,
+            roiMax: p.roiMax,
+          });
+        }
+      });
+    });
+    if (selItems.length) {
+      const b = computeBundle(selItems, "monthly", revConfig);
+      if (b.ok) return { committed: b.monthlyTotal, propCount: b.propertyCount };
+    }
+    // Fallback — locked-property cheapest-room preview.
+    const committed = lockedProps.reduce((s, p) => {
       const rates = (p.roomTypes || []).map((r) => r.monthlyRate).filter((n) => n > 0);
       return s + (rates.length ? Math.min(...rates) : p.monthlyRate);
-    }, 0),
-    [lockedProps],
-  );
+    }, 0);
+    return { committed, propCount: lockedProps.length };
+  }, [props, roomSel, lockedProps, revConfig]);
+  const committed = snapshot.committed;
 
   const name = (user?.name || "").trim() || "Investor";
   const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "SC";
