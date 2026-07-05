@@ -239,7 +239,9 @@ export function computeBundle(
   const advanceAmount = r0(monthlyTotal * plan.months - discountAmount);
   const securityAmount = r0(monthlyTotal * plan.securityMonths);
   const payNow = advanceAmount + securityAmount;
-  const monthlyPlanBlocked = plan.key === "monthly" && propertyCount > MONTHLY_MAX_PROPERTIES;
+  // v297.1 — monthly single-property restriction removed (Sachin): every plan
+  // works for multi-property bundles now.
+  const monthlyPlanBlocked = false;
 
   const expectedAnnualIncome = r0(monthlyTotal * 12 * (roiAvg / 100));
   const expectedMonthlyIncome = r0(expectedAnnualIncome / 12);

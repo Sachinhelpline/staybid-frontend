@@ -112,7 +112,8 @@ export default function CircleBuildPage() {
 
   // Pay-option + plan-period derivations — all recompute live when the plan or
   // pay option changes (Sachin's "sab auto change" requirement).
-  const monthlyBlocked = bundle.monthlyPlanBlocked;
+  // v297.1 — monthly single-property lock removed: every plan works for
+  // multi-property bundles now.
   const holdNow = Math.round(bundle.payNow * HOLD_FRACTION);
   const holdBalance = Math.max(0, bundle.payNow - holdNow);
   const chargeNow = payOption === "hold" ? holdNow : bundle.payNow;
@@ -149,10 +150,6 @@ export default function CircleBuildPage() {
     setPayError("");
     if (!bundle.ok || bundle.payNow <= 0) {
       setPayError("Pehle Discover se rooms choose karein.");
-      return;
-    }
-    if (monthlyBlocked) {
-      setPayError("Monthly plan sirf 1 property ke liye hai — quarterly ya usse bada plan choose karein.");
       return;
     }
     if (!user) {
@@ -216,7 +213,7 @@ export default function CircleBuildPage() {
       setPayError(String(e?.message || e).slice(0, 200));
       setPay("idle");
     }
-  }, [bundle, user, contact, items, plan, payOption, monthlyBlocked, router]);
+  }, [bundle, user, contact, items, plan, payOption, router]);
 
   // ------- success screen -------
   if (pay === "done") {
@@ -414,17 +411,6 @@ export default function CircleBuildPage() {
               })}
             </div>
 
-            {/* monthly = single-property rule */}
-            {monthlyBlocked ? (
-              <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "rgba(212,149,131,.14)", border: "1px solid rgba(212,149,131,.4)", color: "#E8B4A4", fontSize: ".8rem", fontWeight: 600 }}>
-                ⚠ Monthly plan sirf 1 property ke liye hai. Aapke bundle me {bundle.propertyCount} properties hain — Quarterly ya usse bada plan choose karein.
-              </div>
-            ) : plan === "monthly" ? (
-              <div style={{ marginTop: 8, fontSize: ".72rem", color: "var(--sbc-c-ink-faint)" }}>
-                Monthly plan · 1 property tak. Multi-property ke liye Quarterly+ choose karein.
-              </div>
-            ) : null}
-
             {/* pay row — security + advance breakdown */}
             <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 16, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".82rem", color: "var(--sbc-c-ink-soft)" }}>
@@ -432,14 +418,25 @@ export default function CircleBuildPage() {
                 {bundle.discountAmount > 0 && <span style={{ color: "var(--sbc-c-sage-deep)" }}>− {fmtINR(bundle.discountAmount)} saved</span>}
               </div>
               {bundle.ok && (
-                <div style={{ marginTop: 8, display: "grid", gap: 5 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "var(--sbc-c-ink-soft)" }}>
-                    <span>Security deposit <span style={{ opacity: .7 }}>({bundle.securityMonths} mo · refundable)</span></span>
-                    <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.securityAmount)}</b>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "var(--sbc-c-ink-soft)" }}>
-                    <span>Advance <span style={{ opacity: .7 }}>({bundle.planMonths} mo{bundle.discountPct > 0 ? ` − ${Math.round(bundle.discountPct * 100)}%` : ""})</span></span>
+                <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                  {/* Advance rent — the ACTUAL investment your returns are based on */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: ".78rem", color: "var(--sbc-c-ink-soft)" }}>
+                    <span>Advance rent <span style={{ opacity: .7 }}>({bundle.planMonths} mo{bundle.discountPct > 0 ? ` − ${Math.round(bundle.discountPct * 100)}%` : ""})</span></span>
                     <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.advanceAmount)}</b>
+                  </div>
+                  {/* Security deposit — kept visibly separate + flagged refundable so it
+                      never reads as part of the investment (v297.1 — Sachin's ask). */}
+                  <div style={{ padding: "9px 11px", borderRadius: 11, background: "rgba(157,173,143,.13)", border: "1px dashed rgba(157,173,143,.5)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: ".78rem" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--sbc-c-ink-soft)", flexWrap: "wrap" }}>
+                        Security deposit
+                        <span style={{ fontSize: ".58rem", fontWeight: 800, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--sbc-c-sage-deep)", background: "rgba(157,173,143,.24)", padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>↩ Refundable</span>
+                      </span>
+                      <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600, flexShrink: 0 }}>{fmtINR(bundle.securityAmount)}</b>
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: ".68rem", color: "var(--sbc-c-sage-deep)", lineHeight: 1.45 }}>
+                      {bundle.securityMonths} mo deposit — fully returned to you at the end. It is <b>not an investment</b>, so your returns above are calculated on the advance rent only, never on this deposit.
+                    </div>
                   </div>
                 </div>
               )}
@@ -522,8 +519,8 @@ export default function CircleBuildPage() {
 
             <button
               className="sbc-btn-gold"
-              style={{ width: "100%", justifyContent: "center", marginTop: 14, opacity: pay === "paying" || !bundle.ok || monthlyBlocked ? 0.65 : 1 }}
-              disabled={pay === "paying" || !bundle.ok || monthlyBlocked}
+              style={{ width: "100%", justifyContent: "center", marginTop: 14, opacity: pay === "paying" || !bundle.ok ? 0.65 : 1 }}
+              disabled={pay === "paying" || !bundle.ok}
               onClick={startPayment}
             >
               {pay === "paying"

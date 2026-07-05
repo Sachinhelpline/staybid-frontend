@@ -115,13 +115,8 @@ export async function POST(req: Request) {
   if (!bundle.ok || bundle.payNow <= 0) {
     return NextResponse.json({ error: bundle.error || "Invalid bundle." }, { status: 400 });
   }
-  // Monthly plan is restricted to a single property (Sachin's rule).
-  if (bundle.monthlyPlanBlocked) {
-    return NextResponse.json(
-      { error: "Monthly plan sirf 1 property ke liye hai — quarterly ya usse bada plan choose karein, ya bundle me 1 hi property rakhein." },
-      { status: 400 },
-    );
-  }
+  // v297.1 — monthly single-property restriction removed (Sachin): every plan
+  // works for multi-property bundles now (bundle.monthlyPlanBlocked === false).
 
   // Pay-option amounts (server-authoritative — client never sets a ₹).
   const holdAmount = Math.round(bundle.payNow * HOLD_FRACTION);
