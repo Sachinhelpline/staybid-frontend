@@ -374,7 +374,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // the room-select sheet is open closes it (the sheet was staying stuck on
 // laptop because the bottom dock — which had this wiring — is CSS-hidden
 // ≥1024px). SWR-cached HTML must refresh so the header carries the new wiring.
-const HTML_CACHE = 'staybid-html-v113';
+// v297.1 — one-time HTML_CACHE bump (v113 -> v114). StayCircle /circle/build
+// dropped the monthly single-property lock (every plan now works for
+// multi-property bundles) and re-worked the pay row so the refundable
+// security deposit is visibly separate from the advance rent + carries an
+// explicit "returns are unaffected by it" note. SWR-cached HTML must refresh.
+const HTML_CACHE = 'staybid-html-v114';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
