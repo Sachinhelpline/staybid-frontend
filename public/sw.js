@@ -374,7 +374,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // the room-select sheet is open closes it (the sheet was staying stuck on
 // laptop because the bottom dock — which had this wiring — is CSS-hidden
 // ≥1024px). SWR-cached HTML must refresh so the header carries the new wiring.
-const HTML_CACHE = 'staybid-html-v112';
+const HTML_CACHE = 'staybid-html-v113';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

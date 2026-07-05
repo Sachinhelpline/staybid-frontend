@@ -3,6 +3,7 @@ import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import {
   computeBundle,
   CIRCLE_PLANS,
+  HOLD_FRACTION,
   type BundleItem,
   type PaymentPlanKey,
 } from "@/lib/circle/engine";
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
   const planKey: PaymentPlanKey = CIRCLE_PLANS[body?.plan as PaymentPlanKey]
     ? (body.plan as PaymentPlanKey)
     : "monthly";
+  const payOption: "full" | "hold" | "emi" =
+    body?.payOption === "hold" || body?.payOption === "emi" ? body.payOption : "full";
 
   const contact = body?.contact && typeof body.contact === "object" ? body.contact : {};
   const name = String(contact?.name || "").trim().slice(0, 120);
@@ -112,6 +115,18 @@ export async function POST(req: Request) {
   if (!bundle.ok || bundle.payNow <= 0) {
     return NextResponse.json({ error: bundle.error || "Invalid bundle." }, { status: 400 });
   }
+  // Monthly plan is restricted to a single property (Sachin's rule).
+  if (bundle.monthlyPlanBlocked) {
+    return NextResponse.json(
+      { error: "Monthly plan sirf 1 property ke liye hai — quarterly ya usse bada plan choose karein, ya bundle me 1 hi property rakhein." },
+      { status: 400 },
+    );
+  }
+
+  // Pay-option amounts (server-authoritative — client never sets a ₹).
+  const holdAmount = Math.round(bundle.payNow * HOLD_FRACTION);
+  const chargeable = payOption === "hold" ? holdAmount : bundle.payNow;
+  const balanceDue = payOption === "hold" ? bundle.payNow - holdAmount : 0;
 
   // Razorpay order via the shared self-healing route (amount in rupees).
   const origin = new URL(req.url).origin;
@@ -121,11 +136,12 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: bundle.payNow,
+        amount: chargeable,
         receipt: `circle_${Date.now()}`,
         notes: {
           kind: "circle_bundle",
           plan: bundle.plan,
+          pay_option: payOption,
           properties: String(bundle.propertyCount),
           rooms: String(bundle.roomCount),
         },
@@ -150,6 +166,12 @@ export async function POST(req: Request) {
     monthly_total: bundle.monthlyTotal,
     discount_pct: bundle.discountPct,
     pay_now: bundle.payNow,
+    pay_option: payOption,
+    charged_amount: chargeable,
+    hold_amount: payOption === "hold" ? holdAmount : null,
+    balance_due: balanceDue,
+    security_amount: bundle.securityAmount,
+    advance_amount: bundle.advanceAmount,
     expected_monthly_income: bundle.expectedMonthlyIncome,
     expected_roi_min: bundle.expectedRoiMin,
     expected_roi_max: bundle.expectedRoiMax,
@@ -181,7 +203,10 @@ export async function POST(req: Request) {
     ok: true,
     bundleId,
     razorpayOrderId: rzp.id,
-    amount: bundle.payNow,
+    amount: chargeable,
+    payOption,
+    holdAmount: payOption === "hold" ? holdAmount : 0,
+    balanceDue,
     keyId: PUBLIC_KEY_ID,
     breakdown: bundle,
   });

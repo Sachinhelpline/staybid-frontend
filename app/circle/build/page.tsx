@@ -18,9 +18,11 @@ import { CountUp } from "@/components/CountUp";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 import {
   CIRCLE_PLANS, PLAN_ORDER, computeBundle, fmtINR,
-  DEFAULT_CIRCLE_REVENUE,
+  DEFAULT_CIRCLE_REVENUE, HOLD_FRACTION,
   type BundleItem, type PaymentPlanKey, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
+
+type PayOption = "full" | "hold" | "emi";
 
 type RoomType = {
   id: string; name: string; monthlyRate: number;
@@ -61,6 +63,7 @@ export default function CircleBuildPage() {
   const [loading, setLoading] = useState(true);
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [plan, setPlan] = useState<PaymentPlanKey>("monthly");
+  const [payOption, setPayOption] = useState<PayOption>("full");
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
   const [payError, setPayError] = useState("");
@@ -107,6 +110,14 @@ export default function CircleBuildPage() {
 
   const bundle = useMemo(() => computeBundle(items, plan, revConfig), [items, plan, revConfig]);
 
+  // Pay-option + plan-period derivations — all recompute live when the plan or
+  // pay option changes (Sachin's "sab auto change" requirement).
+  const monthlyBlocked = bundle.monthlyPlanBlocked;
+  const holdNow = Math.round(bundle.payNow * HOLD_FRACTION);
+  const holdBalance = Math.max(0, bundle.payNow - holdNow);
+  const chargeNow = payOption === "hold" ? holdNow : bundle.payNow;
+  const periodLabel = bundle.periodMonths === 1 ? "/mo" : `over ${bundle.periodMonths} mo`;
+
   // Group the recap by property so the review reads cleanly.
   const grouped = useMemo(() => {
     const map = new Map<string, {
@@ -140,6 +151,10 @@ export default function CircleBuildPage() {
       setPayError("Pehle Discover se rooms choose karein.");
       return;
     }
+    if (monthlyBlocked) {
+      setPayError("Monthly plan sirf 1 property ke liye hai — quarterly ya usse bada plan choose karein.");
+      return;
+    }
     if (!user) {
       redirectToSignIn(router, { route: "/circle/build", action: "circle_checkout" });
       return;
@@ -157,6 +172,7 @@ export default function CircleBuildPage() {
         body: JSON.stringify({
           items: items.map((it) => ({ roomTypeId: it.roomTypeId, rooms: it.rooms })),
           plan,
+          payOption,
           contact,
         }),
       });
@@ -167,8 +183,17 @@ export default function CircleBuildPage() {
         orderId: data.razorpayOrderId,
         amountPaise: Math.round(data.amount * 100),
         keyId: data.keyId,
-        description: `StayCircle bundle · ${bundle.roomCount} room(s) · ${bundle.propertyCount} property(ies)`,
+        description:
+          payOption === "hold"
+            ? `StayCircle · 10% Visit-Access Hold · ${bundle.roomCount} room(s)`
+            : `StayCircle bundle · ${bundle.roomCount} room(s) · ${bundle.propertyCount} property(ies)`,
         userName: contact.name, userPhone: contact.phone, userEmail: contact.email,
+        // EMI/BNPL: ask Razorpay Checkout to surface every financing method the
+        // merchant has enabled (EMI, Pay-Later — Home Credit / Snapmint / Bajaj
+        // Finserv / Mobikwik appear inside these when active on the account).
+        ...(payOption === "emi"
+          ? { method: { emi: true, paylater: true, card: true, upi: true, netbanking: true, wallet: true } }
+          : {}),
       });
 
       const vr = await fetch("/api/circle/verify", {
@@ -178,7 +203,12 @@ export default function CircleBuildPage() {
       });
       const vj = await vr.json().catch(() => ({}));
       if (!vj?.ok) throw new RazorpayError(vj?.error || "Payment verification failed.");
-      setDoneBundle(data.breakdown);
+      setDoneBundle({
+        ...data.breakdown,
+        _payOption: data.payOption,
+        _charged: data.amount,
+        _balanceDue: data.balanceDue || 0,
+      });
       setPay("done");
       setSelection({});
       try { localStorage.removeItem(ROOM_SEL_KEY); } catch { /* noop */ }
@@ -186,22 +216,32 @@ export default function CircleBuildPage() {
       setPayError(String(e?.message || e).slice(0, 200));
       setPay("idle");
     }
-  }, [bundle, user, contact, items, plan, router]);
+  }, [bundle, user, contact, items, plan, payOption, monthlyBlocked, router]);
 
   // ------- success screen -------
   if (pay === "done") {
     return (
       <section className="sbc-section" style={{ maxWidth: 640 }}>
         <div className="sbc-panel-walnut" style={{ textAlign: "center", padding: 36 }}>
-          <div style={{ fontSize: 56 }}>🎉</div>
-          <h1 className="sbc-h2" style={{ color: "var(--sbc-c-ink)" }}>Welcome to the Circle!</h1>
+          <div style={{ fontSize: 56 }}>{doneBundle?._payOption === "hold" ? "🔒" : "🎉"}</div>
+          <h1 className="sbc-h2" style={{ color: "var(--sbc-c-ink)" }}>
+            {doneBundle?._payOption === "hold" ? "Property Held for Your Visit!" : "Welcome to the Circle!"}
+          </h1>
           <p style={{ color: "var(--sbc-c-ink-soft)" }}>
-            Aapka investment bundle active ho gaya. Monthly statements + returns
-            aapke partner dashboard par live milenge.
+            {doneBundle?._payOption === "hold"
+              ? "Aapka 10% Visit-Access Hold confirm ho gaya. Hamari team property visit coordinate karegi — visit + agreement sign ke baad balance pay karke bundle active ho jayega."
+              : "Aapka investment bundle active ho gaya. Monthly statements + returns aapke partner dashboard par live milenge."}
           </p>
+          {doneBundle?._payOption === "hold" && (doneBundle?._balanceDue || 0) > 0 && (
+            <div style={{ marginTop: 14, display: "inline-block", padding: "10px 16px", borderRadius: 12, background: "rgba(201,166,107,.14)", border: "1px solid rgba(201,166,107,.35)", color: "var(--sbc-c-ink)", fontWeight: 700 }}>
+              Balance due after visit: {fmtINR(doneBundle._balanceDue)}
+            </div>
+          )}
           <div className="sbc-kpi-row" style={{ marginTop: 20 }}>
-            <div className="sbc-kpi"><b>{fmtINR(doneBundle?.payNow || 0)}</b><span>Paid Now</span></div>
-            <div className="sbc-kpi"><b>{fmtINR(doneBundle?.monthlyTotal || 0)}</b><span>Monthly Plan</span></div>
+            <div className="sbc-kpi"><b>{fmtINR(doneBundle?._charged ?? doneBundle?.payNow ?? 0)}</b><span>Paid Now</span></div>
+            {doneBundle?._payOption === "hold"
+              ? <div className="sbc-kpi"><b>{fmtINR(doneBundle?._balanceDue || 0)}</b><span>Balance Due</span></div>
+              : <div className="sbc-kpi"><b>{fmtINR(doneBundle?.monthlyTotal || 0)}</b><span>Monthly Plan</span></div>}
             <div className="sbc-kpi"><b>{doneBundle?.expectedRoiMin}–{doneBundle?.expectedRoiMax}%</b><span>Expected ROI</span></div>
             <div className="sbc-kpi"><b>{fmtINR(doneBundle?.expectedMonthlyIncome || 0)}</b><span>Est. Income /mo</span></div>
           </div>
@@ -305,12 +345,13 @@ export default function CircleBuildPage() {
               </div>
             </div>
 
-            {/* booking revenue — proof the asset earns MORE than you invest */}
+            {/* booking revenue — proof the asset earns MORE than you invest.
+                Scaled to the selected plan's period so it auto-changes with the mode. */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontSize: ".82rem", color: "var(--sbc-c-sage-deep)", fontWeight: 600 }}>Booking revenue <span style={{ opacity: .7, fontWeight: 500 }}>(gross)</span></span>
-                <b key={`gr-${bundle.grossBookingRevenue}`} style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  <CountUp key={bundle.grossBookingRevenue} value={bundle.grossBookingRevenue} prefix="₹" /><span style={{ fontSize: ".8rem", color: "rgba(92,107,69,.62)", fontWeight: 500 }}> /mo</span>
+                <b key={`gr-${bundle.grossPeriod}`} style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                  <CountUp key={bundle.grossPeriod} value={bundle.grossPeriod} prefix="₹" /><span style={{ fontSize: ".78rem", color: "rgba(92,107,69,.62)", fontWeight: 500 }}> {periodLabel}</span>
                 </b>
               </div>
               {bundle.ok && (
@@ -325,11 +366,11 @@ export default function CircleBuildPage() {
               <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)", display: "grid", gap: 7 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
                   <span style={{ color: "var(--sbc-c-ink-soft)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
-                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.stayBidCommission)}/mo</b>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.commissionPeriod)} {periodLabel}</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
                   <span style={{ color: "var(--sbc-c-ink-soft)" }}>Management · channel manager</span>
-                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementFee)}/mo</b>
+                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementPeriod)} {periodLabel}</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem", paddingTop: 6, borderTop: "1px dashed var(--sbc-c-line)" }}>
                   <span style={{ color: "var(--sbc-c-ink-soft)" }}>One-time onboarding<span style={{ display: "block", fontSize: ".68rem", color: "var(--sbc-c-ink-faint)" }}>Setup {fmtINR(bundle.setupOneTime)} · City {fmtINR(bundle.cityOneTime)}</span></span>
@@ -338,12 +379,12 @@ export default function CircleBuildPage() {
               </div>
             )}
 
-            {/* what you earn — realistic ROI-based net take-home */}
+            {/* what you earn — realistic ROI-based net take-home, plan-period scaled */}
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontSize: ".82rem", color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Your net income <span style={{ opacity: .7, fontWeight: 500 }}>(expected)</span></span>
                 <b style={{ fontSize: "1.7rem", color: "var(--sbc-gold-deep)", fontVariantNumeric: "tabular-nums" }}>
-                  <CountUp key={bundle.expectedMonthlyIncome} value={bundle.expectedMonthlyIncome} prefix="₹" /><span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
+                  <CountUp key={bundle.netPeriod} value={bundle.netPeriod} prefix="₹" /><span style={{ fontSize: ".78rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> {periodLabel}</span>
                 </b>
               </div>
             </div>
@@ -373,34 +414,103 @@ export default function CircleBuildPage() {
               })}
             </div>
 
-            {/* pay row */}
-            <div style={{ marginTop: 18, padding: "14px 16px", borderRadius: 16, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
+            {/* monthly = single-property rule */}
+            {monthlyBlocked ? (
+              <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 12, background: "rgba(212,149,131,.14)", border: "1px solid rgba(212,149,131,.4)", color: "#E8B4A4", fontSize: ".8rem", fontWeight: 600 }}>
+                ⚠ Monthly plan sirf 1 property ke liye hai. Aapke bundle me {bundle.propertyCount} properties hain — Quarterly ya usse bada plan choose karein.
+              </div>
+            ) : plan === "monthly" ? (
+              <div style={{ marginTop: 8, fontSize: ".72rem", color: "var(--sbc-c-ink-faint)" }}>
+                Monthly plan · 1 property tak. Multi-property ke liye Quarterly+ choose karein.
+              </div>
+            ) : null}
+
+            {/* pay row — security + advance breakdown */}
+            <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 16, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".82rem", color: "var(--sbc-c-ink-soft)" }}>
                 <span>{CIRCLE_PLANS[plan].name}</span>
                 {bundle.discountAmount > 0 && <span style={{ color: "var(--sbc-c-sage-deep)" }}>− {fmtINR(bundle.discountAmount)} saved</span>}
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 6 }}>
-                <span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-soft)" }}>Pay now</span>
-                <b key={`pn-${bundle.payNow}`} style={{ fontSize: "1.5rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  {fmtINR(bundle.payNow)}
+              {bundle.ok && (
+                <div style={{ marginTop: 8, display: "grid", gap: 5 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "var(--sbc-c-ink-soft)" }}>
+                    <span>Security deposit <span style={{ opacity: .7 }}>({bundle.securityMonths} mo · refundable)</span></span>
+                    <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.securityAmount)}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "var(--sbc-c-ink-soft)" }}>
+                    <span>Advance <span style={{ opacity: .7 }}>({bundle.planMonths} mo{bundle.discountPct > 0 ? ` − ${Math.round(bundle.discountPct * 100)}%` : ""})</span></span>
+                    <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtINR(bundle.advanceAmount)}</b>
+                  </div>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--sbc-c-line)" }}>
+                <span style={{ fontSize: ".82rem", color: "var(--sbc-c-ink)", fontWeight: 700 }}>{payOption === "hold" ? "Hold now (10%)" : "Pay now"}</span>
+                <b key={`pn-${chargeNow}`} style={{ fontSize: "1.5rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
+                  {fmtINR(chargeNow)}
                 </b>
               </div>
+              {payOption === "hold" && bundle.ok && (
+                <div style={{ marginTop: 4, fontSize: ".72rem", color: "var(--sbc-c-ink-faint)", textAlign: "right" }}>
+                  Balance {fmtINR(holdBalance)} — after property visit + agreement
+                </div>
+              )}
             </div>
 
-            {/* contact */}
-            <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
-              {(["name", "phone", "email"] as const).map((f) => (
-                <input
-                  key={f}
-                  placeholder={f === "name" ? "Full name" : f === "phone" ? "Phone" : "Email (optional)"}
-                  value={contact[f]}
-                  onChange={(e) => setContact((c) => ({ ...c, [f]: e.target.value }))}
+            {/* ---- pay option: Full · 10% Hold · EMI/BNPL ---- */}
+            <div style={{ marginTop: 16, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)" }}>How do you want to pay?</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              {([
+                { key: "full", icon: "⚡", title: "Proceed & Pay", sub: "Full payment now — invest instantly", amt: bundle.payNow },
+                { key: "hold", icon: "🔒", title: "10% Visit-Access Hold", sub: "Reserve for a property visit · balance after visit + agreement", amt: holdNow },
+                { key: "emi", icon: "💳", title: "EMI / Pay Later", sub: "Razorpay EMI + BNPL (Home Credit · Snapmint · Bajaj Finserv · Mobikwik)", amt: bundle.payNow },
+              ] as { key: PayOption; icon: string; title: string; sub: string; amt: number }[]).map((o) => (
+                <button
+                  key={o.key}
+                  onClick={() => setPayOption(o.key)}
                   style={{
-                    padding: "11px 14px", borderRadius: 12, fontSize: ".88rem",
-                    background: "var(--sbc-c-surface)", border: "1px solid var(--sbc-c-line)",
-                    color: "var(--sbc-c-ink)", outline: "none",
+                    display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer",
+                    padding: "12px 14px", borderRadius: 14, width: "100%",
+                    background: payOption === o.key ? "rgba(201,166,107,.16)" : "var(--sbc-c-surface)",
+                    border: payOption === o.key ? "1.5px solid var(--sbc-gold-deep)" : "1px solid var(--sbc-c-line)",
+                    transition: "all .15s ease",
                   }}
-                />
+                >
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{o.icon}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontWeight: 700, fontSize: ".9rem", color: "var(--sbc-c-ink)" }}>{o.title}</span>
+                    <span style={{ display: "block", fontSize: ".72rem", color: "var(--sbc-c-ink-soft)", marginTop: 1 }}>{o.sub}</span>
+                  </span>
+                  <span style={{ fontSize: ".9rem", fontWeight: 800, color: payOption === o.key ? "var(--sbc-gold-deep)" : "var(--sbc-c-ink-soft)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                    {bundle.ok ? fmtINR(o.amt) : "—"}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* contact — labelled so each column is clear */}
+            <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+              {([
+                { f: "name" as const, label: "Full name", ph: "Aapka poora naam", type: "text", req: true },
+                { f: "phone" as const, label: "Mobile number", ph: "10-digit mobile number", type: "tel", req: true },
+                { f: "email" as const, label: "Email (optional)", ph: "you@email.com", type: "email", req: false },
+              ]).map(({ f, label, ph, type, req }) => (
+                <label key={f} style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: ".72rem", fontWeight: 700, color: "var(--sbc-c-ink-soft)", letterSpacing: ".02em" }}>
+                    {label}{req && <span style={{ color: "var(--sbc-gold-deep)" }}> *</span>}
+                  </span>
+                  <input
+                    type={type}
+                    inputMode={f === "phone" ? "numeric" : undefined}
+                    placeholder={ph}
+                    value={contact[f]}
+                    onChange={(e) => setContact((c) => ({ ...c, [f]: e.target.value }))}
+                    style={{
+                      padding: "11px 14px", borderRadius: 12, fontSize: ".88rem",
+                      background: "var(--sbc-c-surface)", border: "1px solid var(--sbc-c-line)",
+                      color: "var(--sbc-c-ink)", outline: "none",
+                    }}
+                  />
+                </label>
               ))}
             </div>
 
@@ -412,11 +522,17 @@ export default function CircleBuildPage() {
 
             <button
               className="sbc-btn-gold"
-              style={{ width: "100%", justifyContent: "center", marginTop: 14, opacity: pay === "paying" || !bundle.ok ? 0.65 : 1 }}
-              disabled={pay === "paying" || !bundle.ok}
+              style={{ width: "100%", justifyContent: "center", marginTop: 14, opacity: pay === "paying" || !bundle.ok || monthlyBlocked ? 0.65 : 1 }}
+              disabled={pay === "paying" || !bundle.ok || monthlyBlocked}
               onClick={startPayment}
             >
-              {pay === "paying" ? "Processing payment…" : `Proceed & Pay ${bundle.ok ? fmtINR(bundle.payNow) : ""}`}
+              {pay === "paying"
+                ? "Processing payment…"
+                : payOption === "hold"
+                  ? `🔒 Hold for Visit · ${bundle.ok ? fmtINR(chargeNow) : ""}`
+                  : payOption === "emi"
+                    ? `💳 Pay via EMI · ${bundle.ok ? fmtINR(chargeNow) : ""}`
+                    : `⚡ Proceed & Pay ${bundle.ok ? fmtINR(chargeNow) : ""}`}
             </button>
             <p style={{ marginTop: 10, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", textAlign: "center" }}>
               Secure Razorpay payment · Returns are indicative projections, not guaranteed.
