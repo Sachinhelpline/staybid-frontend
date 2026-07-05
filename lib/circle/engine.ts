@@ -149,6 +149,9 @@ export interface CircleBundle {
   grossBookingRevenue: number;   // ₹ / mo — properties' booking turnover (> investment)
   stayBidCommission: number;     // ₹ / mo — platform fee (plan commissionPct of gross)
   managementFee: number;         // ₹ / mo — channel manager × propertyCount, plan-discounted
+  // Per-plan SAVINGS vs the monthly baseline — how much a longer plan saves.
+  commissionSaved: number;       // ₹ over the period — platform-fee saving vs monthly (12%) slab
+  managementSaved: number;       // ₹ over the period — management saving vs no-discount baseline
   setupOneTime: number;          // one-time — setupPerRoom × roomCount (NOT in net basis)
   cityOneTime: number;           // one-time — cityActivationFee × cityCount (NOT in net basis)
   oneTimeTotal: number;          // setupOneTime + cityOneTime (separate upfront)
@@ -220,6 +223,8 @@ export function computeBundle(
     grossBookingRevenue: 0,
     stayBidCommission: 0,
     managementFee: 0,
+    commissionSaved: 0,
+    managementSaved: 0,
     setupOneTime: 0,
     cityOneTime: 0,
     oneTimeTotal: 0,
@@ -268,7 +273,16 @@ export function computeBundle(
   const stayBidCommission = r0(grossBookingRevenue * plan.commissionPct);
   // Management / channel-manager — PER-PLAN discount (0/10/18/25% off). Cheaper
   // for longer plans → higher net.
-  const managementFee = r0(rc.managementMonthly * Math.max(1, propertyCount) * (1 - plan.mgmtDiscountPct));
+  const baseManagementMonthly = r0(rc.managementMonthly * Math.max(1, propertyCount));
+  const managementFee = r0(baseManagementMonthly * (1 - plan.mgmtDiscountPct));
+  // Per-plan SAVINGS (period-scaled, matching commissionPeriod / managementPeriod):
+  //   Platform fee — vs the monthly baseline slab (12%).
+  //   Management   — vs the no-discount base management.
+  const baselineCommissionPct = CIRCLE_PLANS.monthly.commissionPct;
+  const commissionSaved = r0(
+    grossBookingRevenue * Math.max(0, baselineCommissionPct - plan.commissionPct) * plan.months,
+  );
+  const managementSaved = r0(baseManagementMonthly * plan.mgmtDiscountPct * plan.months);
   // One-time onboarding — SEPARATE upfront, NEVER added to investment nor
   // subtracted from net profit (Sachin's rule #6).
   const setupOneTime = r0(rc.setupPerRoom * roomCount);
@@ -346,6 +360,8 @@ export function computeBundle(
     grossBookingRevenue,
     stayBidCommission,
     managementFee,
+    commissionSaved,
+    managementSaved,
     setupOneTime,
     cityOneTime,
     oneTimeTotal,

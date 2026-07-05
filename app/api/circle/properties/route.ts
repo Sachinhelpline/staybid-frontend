@@ -83,6 +83,9 @@ export async function GET(req: Request) {
       badges: Array.isArray(p.badges) ? p.badges : [],
       operationModel: p.operation_model || "managed",
       status: p.status,
+      // v297.3 — pre-known availability date so the customer can pick a
+      // preferred start date upfront (rent starts here, not on pay day).
+      availableFrom: p.available_from || null,
       roomTypes: rtByProp[String(p.id)] || [],
     }));
 

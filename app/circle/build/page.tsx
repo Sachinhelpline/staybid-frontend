@@ -36,8 +36,21 @@ type CircleProperty = {
   id: string; title: string; city: string; images: string[];
   monthlyRate: number; roiMin: number; roiMax: number;
   roomsLabel?: string; occupancyLabel?: string; status: string;
+  availableFrom?: string | null; // v297.3 — pre-known rent-start date (YYYY-MM-DD)
   roomTypes: RoomType[];
 };
+
+// v297.3 — local YYYY-MM-DD (no UTC shift) + friendly display.
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function fmtDate(iso: string): string {
+  try {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  } catch { return iso; }
+}
 
 const LOCKS_KEY = "sb_circle_locks_v1";
 // Shared with the Step-2 room-selection sheet on /circle/discover — the rooms
@@ -70,6 +83,7 @@ export default function CircleBuildPage() {
   const [payOption, setPayOption] = useState<PayOption>("full");
   const [emiTenure, setEmiTenure] = useState<number>(6);
   const [contact, setContact] = useState({ name: "", phone: "", email: "" });
+  const [startDate, setStartDate] = useState<string>(""); // v297.3 preferred rent-start
   const [pay, setPay] = useState<"idle" | "paying" | "done">("idle");
   const [payError, setPayError] = useState("");
   const [doneBundle, setDoneBundle] = useState<any>(null);
@@ -151,6 +165,27 @@ export default function CircleBuildPage() {
     return Array.from(map.values());
   }, [items, props]);
 
+  // v297.3 — the whole bundle can only start once EVERY picked property is free,
+  // so the earliest allowed rent-start = max(available_from) across the bundle
+  // (never before today). Pre-known + shown upfront so the customer decides easily.
+  const bundledAvail = useMemo(() => {
+    const today = todayISO();
+    const dates = grouped
+      .map((g) => props.find((p) => p.id === g.id)?.availableFrom)
+      .filter((d): d is string => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d));
+    const earliest = dates.reduce((mx, d) => (d > mx ? d : mx), today);
+    const perProp = grouped.map((g) => {
+      const af = props.find((p) => p.id === g.id)?.availableFrom || null;
+      return { title: g.title, availableFrom: af && af > today ? af : null };
+    });
+    return { earliest, perProp, anyFuture: dates.some((d) => d > today) };
+  }, [grouped, props]);
+
+  // Keep the picked date valid: never before the earliest-available date.
+  useEffect(() => {
+    setStartDate((cur) => (!cur || cur < bundledAvail.earliest ? bundledAvail.earliest : cur));
+  }, [bundledAvail.earliest]);
+
   const startPayment = useCallback(async () => {
     setPayError("");
     if (!bundle.ok || bundle.payNow <= 0) {
@@ -176,6 +211,7 @@ export default function CircleBuildPage() {
           plan,
           payOption,
           contact,
+          startDate, // v297.3 — server re-validates/clamps against available_from
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -218,7 +254,7 @@ export default function CircleBuildPage() {
       setPayError(String(e?.message || e).slice(0, 200));
       setPay("idle");
     }
-  }, [bundle, user, contact, items, plan, payOption, router]);
+  }, [bundle, user, contact, items, plan, payOption, startDate, router]);
 
   // ------- success screen -------
   if (pay === "done") {
@@ -271,7 +307,28 @@ export default function CircleBuildPage() {
       </section>
 
       <section className="sbc-section" style={{ paddingTop: 0, display: "grid", gap: 22, gridTemplateColumns: "1fr", alignItems: "start" }}>
-        <style>{`@media (min-width: 1024px) { .sbc-build-grid { grid-template-columns: 1.15fr 1fr !important; } }`}</style>
+        <style>{`
+          @media (min-width: 1024px) { .sbc-build-grid { grid-template-columns: 1.15fr 1fr !important; } }
+          /* v297.3 — booking-revenue "reflective" shine + card shimmer sweep */
+          .sbc-rev-shine {
+            background: linear-gradient(100deg, #7FA968 18%, #EAF6DE 46%, #B7D0A0 54%, #7FA968 82%);
+            background-size: 220% 100%;
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
+            animation: sbcRevShine 3.2s linear infinite;
+          }
+          @keyframes sbcRevShine { 0% { background-position: 180% 0; } 100% { background-position: -80% 0; } }
+          .sbc-rev-card::after {
+            content: ""; position: absolute; inset: 0; pointer-events: none;
+            background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,.30) 49%, transparent 66%);
+            transform: translateX(-120%); animation: sbcRevSweep 3.6s ease-in-out infinite;
+          }
+          @keyframes sbcRevSweep { 0%,52% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+          @media (prefers-reduced-motion: reduce) {
+            .sbc-rev-shine { animation: none; -webkit-text-fill-color: #7FA968; color: #7FA968; }
+            .sbc-rev-card::after { display: none; }
+          }
+        `}</style>
         <div className="sbc-build-grid" style={{ display: "grid", gap: 22, gridTemplateColumns: "1fr", alignItems: "start" }}>
 
           {/* ------- LEFT: read-only bundle recap ------- */}
@@ -352,6 +409,11 @@ export default function CircleBuildPage() {
                   <b key={`inv-${bundle.effectiveMonthlyInvestment}`} style={{ fontSize: "1.7rem", color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
                     {fmtINR(bundle.effectiveMonthlyInvestment)}<span style={{ fontSize: ".8rem", color: "var(--sbc-c-ink-faint)", fontWeight: 500 }}> /mo</span>
                   </b>
+                  {bundle.ok && (
+                    <span style={{ display: "block", marginTop: 2, fontSize: ".72rem", color: "var(--sbc-c-ink-faint)", fontVariantNumeric: "tabular-nums" }}>
+                      {fmtINR(bundle.advanceAmount)} total · {bundle.planMonths} mo
+                    </span>
+                  )}
                 </span>
               </div>
               {bundle.discountPct > 0 && (
@@ -362,17 +424,25 @@ export default function CircleBuildPage() {
             </div>
 
             {/* booking revenue — proof the asset earns MORE than you invest.
-                Scaled to the selected plan's period so it auto-changes with the mode. */}
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: ".82rem", color: "var(--sbc-c-sage-deep)", fontWeight: 600 }}>Booking revenue <span style={{ opacity: .7, fontWeight: 500 }}>(gross)</span></span>
-                <b key={`gr-${bundle.grossPeriod}`} style={{ fontSize: "1.7rem", color: "#B7D0A0", fontVariantNumeric: "tabular-nums", animation: "sbcKpiPop .4s ease" }}>
-                  <CountUp key={bundle.grossPeriod} value={bundle.grossPeriod} prefix="₹" /><span style={{ fontSize: ".78rem", color: "rgba(92,107,69,.62)", fontWeight: 500 }}> {periodLabel}</span>
+                Bold + highlighted + reflective shine (Sachin #3). Shows BOTH the
+                total over the plan period AND the per-month turnover; both scale
+                to the selected plan so they auto-change with the mode. */}
+            <div className="sbc-rev-card" style={{ marginTop: 14, padding: "13px 15px", borderRadius: 16, position: "relative", overflow: "hidden", background: "linear-gradient(135deg, rgba(157,173,143,.22), rgba(183,208,160,.10))", border: "1px solid rgba(157,173,143,.44)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, position: "relative", zIndex: 1 }}>
+                <span style={{ fontSize: ".82rem", color: "var(--sbc-c-sage-deep)", fontWeight: 700 }}>Booking revenue <span style={{ opacity: .75, fontWeight: 600 }}>(gross)</span></span>
+                <b key={`gr-${bundle.grossPeriod}`} style={{ fontSize: "1.9rem", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+                  <CountUp key={bundle.grossPeriod} className="sbc-rev-shine" value={bundle.grossPeriod} prefix="₹" />
+                  <span style={{ fontSize: ".78rem", fontWeight: 600, color: "rgba(92,107,69,.7)" }}> {periodLabel}</span>
                 </b>
               </div>
               {bundle.ok && (
-                <div style={{ marginTop: 4, fontSize: ".72rem", color: "var(--sbc-c-sage-deep)" }}>
-                  {bundle.revenueUpliftPct}% of your investment — your properties earn more than you put in
+                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, position: "relative", zIndex: 1 }}>
+                  <span style={{ fontSize: ".72rem", color: "var(--sbc-c-sage-deep)" }}>
+                    {bundle.revenueUpliftPct}% of your investment
+                  </span>
+                  <b style={{ fontSize: ".92rem", color: "#7FA968", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                    {fmtINR(bundle.grossBookingRevenue)}<span style={{ fontSize: ".68rem", color: "rgba(92,107,69,.7)", fontWeight: 500 }}> /mo</span>
+                  </b>
                 </div>
               )}
             </div>
@@ -382,19 +452,35 @@ export default function CircleBuildPage() {
                 One-time onboarding is NOT here — it is a separate upfront cost
                 that is never deducted from the returns (Sachin #4/#5/#6). */}
             {bundle.ok && (
-              <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)", display: "grid", gap: 7 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
-                  <span style={{ color: "var(--sbc-c-ink-soft)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
-                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.commissionPeriod)} {periodLabel}</b>
+              <div style={{ marginTop: 12, padding: "11px 14px", borderRadius: 14, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)", display: "grid", gap: 9 }}>
+                {/* platform fee — shows how much a longer plan SAVES vs Monthly (Sachin #A) */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
+                    <span style={{ color: "var(--sbc-c-ink-soft)" }}>StayBid platform fee <span style={{ opacity: .7 }}>({bundle.revenueCommissionPct}%)</span></span>
+                    <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.commissionPeriod)} {periodLabel}</b>
+                  </div>
+                  {bundle.commissionSaved > 0 && (
+                    <div style={{ marginTop: 2, textAlign: "right", fontSize: ".68rem", fontWeight: 700, color: "var(--sbc-c-sage-deep)" }}>
+                      ↓ you save {fmtINR(bundle.commissionSaved)} vs Monthly ({Math.round(CIRCLE_PLANS.monthly.commissionPct * 100)}%)
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
-                  <span style={{ color: "var(--sbc-c-ink-soft)", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                    Management · channel manager
-                    {bundle.mgmtDiscountPct > 0 && (
-                      <span style={{ fontSize: ".58rem", fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--sbc-c-sage-deep)", background: "rgba(157,173,143,.24)", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>{Math.round(bundle.mgmtDiscountPct * 100)}% off</span>
-                    )}
-                  </span>
-                  <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementPeriod)} {periodLabel}</b>
+                {/* management — shows how much the per-plan discount SAVES (Sachin #B) */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8rem" }}>
+                    <span style={{ color: "var(--sbc-c-ink-soft)", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      Management · channel manager
+                      {bundle.mgmtDiscountPct > 0 && (
+                        <span style={{ fontSize: ".58rem", fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--sbc-c-sage-deep)", background: "rgba(157,173,143,.24)", padding: "2px 6px", borderRadius: 6, whiteSpace: "nowrap" }}>{Math.round(bundle.mgmtDiscountPct * 100)}% off</span>
+                      )}
+                    </span>
+                    <b style={{ color: "var(--sbc-c-ink)", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>− {fmtINR(bundle.managementPeriod)} {periodLabel}</b>
+                  </div>
+                  {bundle.managementSaved > 0 && (
+                    <div style={{ marginTop: 2, textAlign: "right", fontSize: ".68rem", fontWeight: 700, color: "var(--sbc-c-sage-deep)" }}>
+                      ↓ you save {fmtINR(bundle.managementSaved)} on management
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -490,6 +576,46 @@ export default function CircleBuildPage() {
                 </div>
               )}
             </div>
+
+            {/* ---- v297.3 · preferred property-from (rent-start) date ----
+                The pre-known availability is shown UPFRONT so the customer picks a
+                date they KNOW works — rent starts here, NOT on the day they pay.
+                The server re-validates + clamps to the earliest free date. */}
+            {bundle.ok && (
+              <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 16, background: "var(--sbc-c-surface-2)", border: "1px solid var(--sbc-c-line)" }}>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)", fontWeight: 700 }}>Property from date</span>
+                  <input
+                    type="date"
+                    min={bundledAvail.earliest}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      padding: "11px 14px", borderRadius: 12, fontSize: ".9rem",
+                      background: "var(--sbc-c-surface)", border: "1px solid var(--sbc-c-line)",
+                      color: "var(--sbc-c-ink)", outline: "none", colorScheme: "dark",
+                    }}
+                  />
+                </label>
+                <div style={{ marginTop: 8, fontSize: ".72rem", color: "var(--sbc-c-ink-soft)", lineHeight: 1.5 }}>
+                  {bundledAvail.anyFuture
+                    ? <>Earliest available: <b style={{ color: "var(--sbc-c-sage-deep)" }}>{fmtDate(bundledAvail.earliest)}</b> — rent starts on your chosen date, not on the day you pay.</>
+                    : <>✓ Available now — rent starts on your chosen date, not on the day you pay.</>}
+                </div>
+                {bundledAvail.perProp.some((p) => p.availableFrom) && (
+                  <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {bundledAvail.perProp.filter((p) => p.availableFrom).map((p) => (
+                      <span key={p.title} style={{ fontSize: ".68rem", fontWeight: 600, color: "var(--sbc-c-ink-soft)", background: "var(--sbc-c-surface)", border: "1px solid var(--sbc-c-line)", borderRadius: 8, padding: "3px 8px" }}>
+                        {p.title}: {fmtDate(p.availableFrom!)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ marginTop: 8, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", lineHeight: 1.45 }}>
+                  Our team confirms this date against live availability. If it's taken, we'll set the nearest available date and let you know before your stay begins.
+                </div>
+              </div>
+            )}
 
             {/* ---- pay option: Full · 10% Hold · EMI/BNPL ---- */}
             <div style={{ marginTop: 16, fontSize: ".76rem", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--sbc-c-ink-faint)" }}>How do you want to pay?</div>
