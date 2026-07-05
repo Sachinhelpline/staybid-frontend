@@ -1,7 +1,7 @@
 /* Font @import must precede all other rules per the CSS spec. Tailwind 4's
    `@import 'tailwindcss'` expands to rules, so the Google-Fonts import has to
    sit above it — Turbopack (Next 16's default bundler) now warns otherwise. */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 /* v122 — Desktop / laptop / tablet responsive layer. Activates ONLY at
