@@ -362,7 +362,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // hero (2×2 right-sized cards), capped + clarified "Build Investment Bundle" CTA.
 // v294.9 — /circle/build Investment & Returns: revenue → bifurcation → net
 // income breakdown (gross revenue − StayBid management % = your net income).
-const HTML_CACHE = 'staybid-html-v95';
+// v294.10 — /circle home portfolio snapshot routed through the SAME
+// computeBundle engine as build (no drift) + relabelled "potential across N
+// locked properties" + diversification-bonus note (SS1↔SS2 consistency).
+const HTML_CACHE = 'staybid-html-v96';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

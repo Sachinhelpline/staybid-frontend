@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { fmtINR } from "@/lib/circle/engine";
+import { fmtINR, computeBundle, type BundleItem } from "@/lib/circle/engine";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
 type CircleProperty = {
@@ -106,22 +106,43 @@ export default function CircleHomePage() {
     [props, city],
   );
 
-  // Portfolio snapshot — real, honest figures derived from the user's locks.
+  // Portfolio snapshot — routed through the SAME computeBundle engine that
+  // /circle/build uses, so the ROI band + diversification bonus + income can
+  // NEVER drift between the two pages (v294.10). Home = "potential across your
+  // N LOCKED properties (cheapest room each)"; build = "the bundle you're
+  // actually configuring". Same math, different scope — labelled as such.
   const lockedProps = useMemo(() => props.filter((p) => locks.includes(p.id)), [props, locks]);
   const snapshot = useMemo(() => {
     if (!lockedProps.length) return null;
-    // Cheapest available room per locked property = the "committed from" figure.
-    const committed = lockedProps.reduce((s, p) => {
-      const rates = (p.roomTypes || []).map((r) => r.monthlyRate).filter((n) => n > 0);
-      return s + (rates.length ? Math.min(...rates) : p.monthlyRate);
-    }, 0);
-    const roiMin = Math.min(...lockedProps.map((p) => p.roiMin || 0).filter((n) => n > 0), 99) || 0;
-    const roiMax = Math.max(...lockedProps.map((p) => p.roiMax || 0));
-    const bonus = Math.min(12, Math.max(0, lockedProps.length - 1) * 4);
-    const rMin = Math.round(roiMin + bonus);
-    const rMax = Math.round(roiMax + bonus);
-    const monthlyIncome = Math.round((committed * 12 * ((rMin + rMax) / 2 / 100)) / 12);
-    return { committed, rMin, rMax, monthlyIncome, count: lockedProps.length };
+    // Cheapest available room per locked property → one bundle item each.
+    const items: BundleItem[] = lockedProps.map((p) => {
+      const rooms = (p.roomTypes || []).filter((r) => r.monthlyRate > 0);
+      const cheapest = rooms.length
+        ? rooms.reduce((a, b) => (b.monthlyRate < a.monthlyRate ? b : a))
+        : null;
+      return {
+        propertyId: p.id,
+        propertyTitle: p.title,
+        city: p.city,
+        roomTypeId: cheapest?.id || `${p.id}-base`,
+        roomTypeName: cheapest?.name || "Room",
+        monthlyRate: cheapest?.monthlyRate || p.monthlyRate,
+        rooms: 1,
+        roiMin: p.roiMin || 0,
+        roiMax: p.roiMax || 0,
+      };
+    });
+    const b = computeBundle(items, "monthly");
+    if (!b.ok) return null;
+    return {
+      committed: b.monthlyTotal,
+      rMin: b.expectedRoiMin,
+      rMax: b.expectedRoiMax,
+      monthlyIncome: b.expectedMonthlyIncome,
+      monthlyRevenue: b.expectedMonthlyRevenue,
+      count: b.propertyCount,
+      bonus: b.diversificationBonusPct,
+    };
   }, [lockedProps]);
 
   const displayName = (user?.name || "").trim().split(" ")[0] || "Investor";
@@ -154,20 +175,28 @@ export default function CircleHomePage() {
         <div className="sbc-hp-glow" aria-hidden />
         {snapshot ? (
           <>
-            <div className="sbc-hp-label">Your Portfolio</div>
-            <div className="sbc-hp-value">{fmtINR(snapshot.committed)}<span>/mo committed</span></div>
+            <div className="sbc-hp-label">
+              Portfolio potential
+              <span className="sbc-hp-scope">across {snapshot.count} locked {snapshot.count === 1 ? "property" : "properties"}</span>
+            </div>
+            <div className="sbc-hp-value">{fmtINR(snapshot.committed)}<span>/mo to invest</span></div>
             <div className="sbc-hp-grid">
               <div>
                 <span className="sbc-hp-k">Projected income</span>
                 <b className="sbc-hp-v sage">{fmtINR(snapshot.monthlyIncome)}/mo</b>
               </div>
               <div>
-                <span className="sbc-hp-k">Expected returns</span>
+                <span className="sbc-hp-k">Expected returns / yr</span>
                 <b className="sbc-hp-v gold">{snapshot.rMin}% – {snapshot.rMax}%</b>
               </div>
             </div>
+            {snapshot.bonus > 0 && (
+              <div className="sbc-hp-note">
+                ✨ Includes a <b>+{snapshot.bonus}%</b> diversification bonus for spreading across {snapshot.count} properties.
+              </div>
+            )}
             <Link href="/circle/build" className="sbc-hp-cta">
-              {snapshot.count} {snapshot.count === 1 ? "property" : "properties"} locked · Build plan →
+              Build &amp; confirm your plan →
             </Link>
           </>
         ) : (
