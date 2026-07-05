@@ -28,11 +28,15 @@ export async function GET(req: NextRequest) {
   const headerEmail = req.headers.get("x-email") || "";
   const ownerIds = await resolveOwnerIds(payload.id, payload.phone || headerPhone, payload.email || headerEmail);
 
-  const hRes  = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=*`, { headers: SB_H });
+  const hRes  = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=*&order=createdAt.asc`, { headers: SB_H });
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ error: "No hotel found" }, { status: 404 });
 
-  const hotel = hotels[0];
+  // v285 — Multi-property: ?hotelId= picks a SPECIFIC owned hotel (ownership
+  // verified against the resolved list). Default keeps hotels[0] so single-hotel
+  // owners + legacy callers are byte-identical to pre-v285.
+  const wantId = (new URL(req.url).searchParams.get("hotelId") || "").trim();
+  const hotel = (wantId && hotels.find((h: any) => String(h.id) === wantId)) || hotels[0];
   const rRes  = await fetch(`${SB_URL}/rest/v1/rooms?hotelId=eq.${hotel.id}&select=*`, { headers: SB_H });
   const rooms = await rRes.json();
 
@@ -139,7 +143,26 @@ export async function PATCH(req: NextRequest) {
 
   // Update for any matching owner ID (across customer + onboarding pools)
   const ownerIds = await resolveOwnerIds(payload.id, payload.phone, payload.email);
-  const hRes = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})`, {
+
+  // v285 — Multi-property: scope the PATCH to ONE owned hotel when hotelId is
+  // provided (query param OR body). Pre-v285 this PATCHed EVERY owned hotel —
+  // fine for single-hotel owners, but a data-corruption bug once a partner owns
+  // 2+ properties. We verify the target belongs to this owner before writing.
+  const wantId = (new URL(req.url).searchParams.get("hotelId") || String(updates.hotelId || "")).trim();
+  let scope = `ownerId=in.(${ownerIds.join(",")})`;
+  if (wantId) {
+    const oRes = await fetch(
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(wantId)}&ownerId=in.(${ownerIds.join(",")})&select=id`,
+      { headers: SB_H }
+    );
+    const owned = await oRes.json().catch(() => []);
+    if (!Array.isArray(owned) || !owned[0]) {
+      return NextResponse.json({ error: "Not your hotel" }, { status: 403 });
+    }
+    scope = `id=eq.${encodeURIComponent(wantId)}`;
+  }
+
+  const hRes = await fetch(`${SB_URL}/rest/v1/hotels?${scope}`, {
     method: "PATCH", headers: SB_H, body: JSON.stringify(allowed),
   });
   if (!hRes.ok) return NextResponse.json({ error: "Update failed" }, { status: 500 });

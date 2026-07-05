@@ -114,6 +114,14 @@ export async function GET(req: NextRequest) {
     bids = Array.isArray(raw) ? raw : [];
   }
 
+  // v285 — Multi-property: narrow to the switcher's selected hotel. Every bid
+  // here already belongs to a hotel this partner owns (Railway keys by JWT,
+  // Supabase by ownerIds), so filtering by the requested hotelId is safe.
+  const wantHotel = (new URL(req.url).searchParams.get("hotelId") || "").trim();
+  if (wantHotel && wantHotel !== "all") {
+    bids = bids.filter((b: any) => String(b.hotelId) === wantHotel);
+  }
+
   const enriched = await enrichBids(bids);
   return NextResponse.json({ bids: enriched });
 }

@@ -5,6 +5,7 @@
 // can't mint or edit stamps from here. Auth mirrors /api/partner/hotel.
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { scopeHotelIds } from "@/lib/partner/scope";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { rankForXp } from "@/lib/passport/engine";
 
@@ -51,7 +52,8 @@ export async function GET(req: NextRequest) {
   if (!hotelList.length) {
     return NextResponse.json({ guests: [], summary: { guests: 0, stamps: 0, hotels: 0 } });
   }
-  const hotelIds = hotelList.map((h) => h.id);
+  // v285 — Multi-property: narrow to the switcher's selected hotel; default all owned.
+  const hotelIds = scopeHotelIds(req, hotelList.map((h) => h.id));
   const hotelNameById = new Map(hotelList.map((h) => [h.id, h.name]));
 
   // 2. Stamps earned at any of these hotels
