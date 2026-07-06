@@ -76,21 +76,39 @@ export async function GET(req: Request) {
   if (!admin) return unauthorized();
 
   try {
-    const [propsR, rtR, locksR, bundlesR, payoutsR] = await Promise.all([
+    const [propsR, rtR, locksR, bundlesR, payoutsR, unitsR] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/circle_properties?select=*&order=sort_order.asc&limit=300`, { headers: SB_H }),
       fetch(`${SB_URL}/rest/v1/circle_room_types?select=*&order=sort_order.asc&limit=1000`, { headers: SB_H }),
       fetch(`${SB_URL}/rest/v1/circle_locks?select=*&order=created_at.desc&limit=300`, { headers: SB_H }),
       fetch(`${SB_URL}/rest/v1/circle_bundles?select=*&order=created_at.desc&limit=300`, { headers: SB_H }),
       fetch(`${SB_URL}/rest/v1/circle_payouts?select=*&order=created_at.desc&limit=300`, { headers: SB_H }),
+      // Phase 3d — investor-owned physical units (the customer-facing individual
+      // listings). owner_user_id NOT NULL = provisioned to a StayCircle investor.
+      fetch(`${SB_URL}/rest/v1/hotel_room_units?owner_user_id=not.is.null&status=eq.active&select=id,hotelId,roomId,roomNumber,owner_user_id,circle_bundle_id,price_override,mrp_override,title,is_listed,view_label&order=hotelId.asc,roomNumber.asc&limit=1000`, { headers: SB_H }),
     ]);
     const properties = propsR.ok ? await propsR.json() : [];
     const roomTypes = rtR.ok ? await rtR.json() : [];
     let locks = locksR.ok ? await locksR.json() : [];
     let bundles = bundlesR.ok ? await bundlesR.json() : [];
     const payouts = payoutsR.ok ? await payoutsR.json() : [];
+    let ownedUnits = unitsR.ok ? await unitsR.json() : [];
 
     locks = await attachUsers(Array.isArray(locks) ? locks : [], "user_id");
     bundles = await attachUsers(Array.isArray(bundles) ? bundles : [], "user_id");
+    ownedUnits = await attachUsers(Array.isArray(ownedUnits) ? ownedUnits : [], "owner_user_id");
+    // Side-load hotel names for the owned units (no FK embed — manual join).
+    try {
+      const hIds = Array.from(new Set(ownedUnits.map((u: any) => String(u.hotelId)).filter(Boolean)));
+      if (hIds.length) {
+        const hr = await fetch(
+          `${SB_URL}/rest/v1/hotels?id=in.(${hIds.map((i) => `"${i}"`).join(",")})&select=id,name,city`,
+          { headers: SB_H },
+        );
+        const hotels = hr.ok ? await hr.json() : [];
+        const byId = Object.fromEntries((Array.isArray(hotels) ? hotels : []).map((h: any) => [String(h.id), h]));
+        ownedUnits = ownedUnits.map((u: any) => ({ ...u, hotel: byId[String(u.hotelId)] || null }));
+      }
+    } catch { /* best-effort */ }
 
     const revenueConfig = await resolveRevenueConfig();
 
@@ -110,7 +128,7 @@ export async function GET(req: Request) {
         .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0),
     };
 
-    return NextResponse.json({ properties, roomTypes, locks, bundles, payouts, kpis, revenueConfig });
+    return NextResponse.json({ properties, roomTypes, locks, bundles, payouts, ownedUnits, kpis, revenueConfig });
   } catch (e: any) {
     return NextResponse.json({ error: String(e?.message || e).slice(0, 200) }, { status: 502 });
   }

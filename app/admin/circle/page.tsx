@@ -52,7 +52,7 @@ const C = {
   red: "#FF4757", blue: "#3D9CF5", purple: "#A855F7",
 };
 
-type Tab = "properties" | "room_types" | "bundles" | "payouts" | "locks" | "revenue";
+type Tab = "properties" | "room_types" | "bundles" | "payouts" | "locks" | "owned" | "revenue";
 
 function adminHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -98,6 +98,7 @@ export default function AdminCirclePage() {
   const bundles: any[] = data?.bundles || [];
   const payouts: any[] = data?.payouts || [];
   const locks: any[] = data?.locks || [];
+  const ownedUnits: any[] = data?.ownedUnits || [];
   const propTitle = useMemo(
     () => Object.fromEntries(properties.map((p: any) => [String(p.id), p.title])),
     [properties],
@@ -157,6 +158,7 @@ export default function AdminCirclePage() {
           ["bundles", `🧺 Bundles (${bundles.length})`],
           ["payouts", `💸 Payouts (${payouts.length})`],
           ["locks", `🔒 Locks (${locks.length})`],
+          ["owned", `🛏 Owned Rooms (${ownedUnits.length})`],
           ["revenue", `🧮 Revenue Model`],
         ] as [Tab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} style={{
@@ -273,6 +275,36 @@ export default function AdminCirclePage() {
             </div>
           ))}
 
+          {/* Phase 3d — investor-owned physical rooms (the customer-facing
+              individual listings). Read-only oversight: which investor owns
+              which room on which hotel, its override price + listed state. */}
+          {tab === "owned" && ownedUnits.map((u: any) => (
+            <div key={u.id} style={{ ...box, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>
+                  {u.title || `Room ${u.roomNumber || "—"}`}
+                  {u.is_listed === false && <span style={{ color: C.sub, fontWeight: 400 }}> · hidden</span>}
+                </div>
+                <div style={{ fontSize: 12, color: C.sub }}>
+                  {u.hotel?.name || u.hotelId}
+                  {u.hotel?.city ? ` · ${u.hotel.city}` : ""}
+                  {u.roomNumber ? ` · Room ${u.roomNumber}` : ""}
+                  {u.view_label ? ` · ${u.view_label}` : ""}
+                </div>
+                <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>
+                  Owner: {u.user?.name || u.owner_user_id}{u.user?.phone ? ` · ${u.user.phone}` : ""}
+                  {u.circle_bundle_id ? ` · bundle ${String(u.circle_bundle_id).slice(-6)}` : ""}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <b style={{ color: C.gold }}>{u.price_override != null ? fmtINR(u.price_override) : "base"}</b>
+                <div style={{ fontSize: 11, color: u.is_listed === false ? C.red : C.green }}>
+                  {u.is_listed === false ? "○ Hidden" : "● Live"}
+                </div>
+              </div>
+            </div>
+          ))}
+
           {tab === "revenue" && (
             <RevenueModelEditor
               initial={data?.revenueConfig}
@@ -285,6 +317,7 @@ export default function AdminCirclePage() {
             (tab === "room_types" && !roomTypes.length) ||
             (tab === "bundles" && !bundles.length) ||
             (tab === "payouts" && !payouts.length) ||
+            (tab === "owned" && !ownedUnits.length) ||
             (tab === "locks" && !locks.length)) && (
             <div style={{ ...box, textAlign: "center", color: C.sub, padding: 34 }}>No rows yet.</div>
           )}
