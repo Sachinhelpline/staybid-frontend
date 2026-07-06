@@ -20,6 +20,7 @@ import ModalCloseButton from "@/components/ModalCloseButton";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
+import IndividualRoomsSection from "@/components/hotel/IndividualRoomsSection";
 import HotelFeedbackSummary from "@/components/HotelFeedbackSummary";
 import BackToTopButton from "@/components/BackToTopButton";
 // v201 — shared premium guest-count picker (animated figure icons +
@@ -1427,6 +1428,10 @@ export default function HotelDetail() {
     if (!bidAmount || !bidRoom || !checkIn || !checkOut) return alert("Please fill all fields");
     setBidLoading(true);
     try {
+      // Phase 3b — individual-room bid: force numRooms:1 (one physical unit)
+      // and carry _assignedUnitId so the bid routes to that room's owner.
+      const bidUnitId = bidRoom?._assignedUnitId as string | undefined;
+      const bidNumRooms = bidUnitId ? 1 : globalNumRooms;
       const reqRes = await api.createBidRequest?.({
         hotelId: hotel.id, roomId: bidRoom.id,
         amount: parseFloat(bidAmount),
@@ -1434,7 +1439,7 @@ export default function HotelDetail() {
         // v240 — Single-hotel Negotiate from /hotels/[id] → 'negotiate'.
         source: "negotiate",
         // v241.1 — multi-room support on simple Bid flow.
-        numRooms: globalNumRooms,
+        numRooms: bidNumRooms,
       });
       attributeReferral(reqRes?.request?.id);
       const bidRes = await api.placeBid({
@@ -1442,8 +1447,9 @@ export default function HotelDetail() {
         amount: parseFloat(bidAmount),
         message: bidMsg || undefined,
         requestId: reqRes?.request?.id,
-        numRooms: globalNumRooms,
+        numRooms: bidNumRooms,
         guests: globalTotalGuests || bidRoom.capacity || 2,
+        ...(bidUnitId ? { assignedUnitId: bidUnitId } : {}),
       });
       // v94 — record source for legacy/simple bid flow
       if (bidRes?.bid?.id) {
@@ -1717,9 +1723,12 @@ export default function HotelDetail() {
       // Step 2: Confirm booking in backend
       // v240 — Book Now (instant paid booking) → request.source='direct'.
       // v241.1 — multi-room support on Book Now flow.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren, source: "direct", numRooms: globalNumRooms });
+      // Phase 3b — individual-room Book Now: 1 physical unit, route to owner.
+      const bnUnitId = bnRoom?._assignedUnitId as string | undefined;
+      const bnNumRooms = bnUnitId ? 1 : globalNumRooms;
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, checkIn: bnIn, checkOut: bnOut, guests: bnAdults+bnChildren, source: "direct", numRooms: bnNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id, numRooms: globalNumRooms, guests: bnAdults+bnChildren });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: bnRoom.id, amount: bnRoom.floorPrice, requestId: reqRes?.request?.id, numRooms: bnNumRooms, guests: bnAdults+bnChildren, ...(bnUnitId ? { assignedUnitId: bnUnitId } : {}) });
       try { await api.acceptBid(bidRes.bid.id); } catch {}
       // v124 — apply redemption to bid
       if (applied?.couponCode || applied?.walletCreditAppliedInr) {
@@ -1858,9 +1867,12 @@ export default function HotelDetail() {
       // v240 — Negotiate modal submit (above-floor path) → 'negotiate'.
       // v241.1 — pass globalNumRooms + guests to server for multi-room
       // resolution + capacityMismatch flagging.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: globalNumRooms });
+      // Phase 3b — individual-room negotiate (below-floor): 1 unit → owner.
+      const negUnitId = negRoom?._assignedUnitId as string | undefined;
+      const negNumRooms = negUnitId ? 1 : globalNumRooms;
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: negNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: globalNumRooms, guests: globalTotalGuests || negRoom.capacity || 2 });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: submitAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: negNumRooms, guests: globalTotalGuests || negRoom.capacity || 2, ...(negUnitId ? { assignedUnitId: negUnitId } : {}) });
       localStorage.setItem(`bid_dates_${bidRes.bid.id}`, JSON.stringify({ checkIn: negIn, checkOut: negOut }));
 
       // Record customer intent (no payment for below-floor)
@@ -1939,9 +1951,12 @@ export default function HotelDetail() {
       const message = `Paid via Razorpay: ${paymentId} | paid:${charge} | rate:${negAmt}${mode !== "full" ? ` | hold:${charge} | total:${total}${mode === "payhotel" ? " | pay-at-hotel" : ""}` : ""}`;
       // v240 — Negotiate modal (below-floor branch) → 'negotiate'.
       // v241.1 — multi-room on Negotiate above-floor (paid) path.
-      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: globalNumRooms });
+      // Phase 3b — individual-room negotiate (above-floor, paid): 1 unit → owner.
+      const negUnitId = negRoom?._assignedUnitId as string | undefined;
+      const negNumRooms = negUnitId ? 1 : globalNumRooms;
+      const reqRes = await api.createBidRequest?.({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, checkIn: negIn, checkOut: negOut, guests: globalTotalGuests || negRoom.capacity || 2, source: "negotiate", numRooms: negNumRooms });
       attributeReferral(reqRes?.request?.id);
-      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: globalNumRooms, guests: globalTotalGuests || negRoom.capacity || 2 });
+      const bidRes = await api.placeBid({ hotelId: hotel.id, roomId: negRoom.id, amount: negAmt, message, requestId: reqRes?.request?.id, flow: "negotiate", numRooms: negNumRooms, guests: globalTotalGuests || negRoom.capacity || 2, ...(negUnitId ? { assignedUnitId: negUnitId } : {}) });
       // v124 — apply redemption to bid
       if (applied?.couponCode || applied?.walletCreditAppliedInr) {
         try {
@@ -3255,7 +3270,22 @@ export default function HotelDetail() {
             counteredByRoom.set(cheapestRoomId, orphanCounter);
           }
           return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
+        <>
+        {/* Phase 3b — circle-operated hotel: show each physical room as its
+            own Airbnb-style listing. The customer picks a SPECIFIC room →
+            _assignedUnitId flows into placeBid so the booking routes to that
+            room's owner. Category cards below are hidden for circle hotels
+            (they carry flash / lock / upgrade chrome not yet wired to units). */}
+        {hotel.individualRooms && (
+          <IndividualRoomsSection
+            listings={hotel.roomListings || []}
+            categories={hotel.rooms || []}
+            datesSelected={!!(globalCheckIn && globalCheckOut)}
+            onBook={(room) => withBackendAuth(() => openBookNow(room))}
+            onNegotiate={(room) => withBackendAuth(() => openNegotiate(room))}
+          />
+        )}
+        <div style={{ display: hotel.individualRooms ? "none" : "flex", flexDirection: "column", gap: "22px", marginBottom: "40px" }}>
           {hotel.rooms?.map((r: any) => {
             const isHeadlineRoom = dealRoomId === r.id;
             // A room is available unless explicitly flagged otherwise.
@@ -4045,6 +4075,7 @@ export default function HotelDetail() {
             );
           })}
         </div>
+        </>
           );
         })()}
 
