@@ -1,24 +1,34 @@
 "use client";
 
 // ============================================================================
-// List My Property for lease/rent (sourcing side — Concept A).
+// v285 — List My Property for lease/rent (comprehensive).
 // A property OWNER offers their property TO StayBid to be leased/rented/managed.
-// Distinct from /onboard (Concept B — a hotel partner runs their OWN property
-// live on StayBid). Submissions land in discovery_properties status='pending_review'
-// and appear in the public /host/properties feed only after admin approval.
+// Real Google/OSM location, full listing fields, photo upload, and a per-
+// property reel/photo studio (owner + admin only) reachable from each row.
+// Submissions land in discovery_properties status='pending_review' and appear
+// in the public /host/properties feed only after admin approval.
+// Contact details are NEVER shown publicly — buyers reach the owner only
+// through StayBid inquiries.
 // ============================================================================
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import HostLocationPicker, { HostLocationValue } from "@/components/host/HostLocationPicker";
+import { uploadImage } from "@/lib/supabase";
 
 interface Submission {
   id: string; title: string; city?: string; property_type?: string;
   rent_monthly?: number; status: string; created_at: string;
 }
 
-const PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Builder Floor", "Studio", "Farmhouse", "Cottage", "Bungalow", "Other"];
+const PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Builder Floor", "Studio", "Penthouse", "Farmhouse", "Cottage", "Bungalow", "Plot / Land", "Commercial", "Other"];
 const BHK = ["1RK", "1BHK", "2BHK", "3BHK", "4BHK", "5BHK+"];
 const FURNISHING = ["Unfurnished", "Semi-furnished", "Fully furnished"];
+const AREA_UNITS = ["sqft", "sqm", "sqyd", "acre"];
+const FACING = ["", "North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"];
+const LEASE_TYPES = ["Long-term (11 months+)", "Short-term", "Either"];
+const TENANT_PREF = ["Any", "Family", "Bachelors", "Company / Corporate", "Students"];
+const AMENITIES = ["Parking", "Lift", "Power backup", "Security", "Balcony", "Modular kitchen", "Gym", "Swimming pool", "Wi-Fi", "Air conditioning", "24x7 water", "Gas pipeline", "Kids play area", "Club house", "Pet friendly", "Gated community", "CCTV", "Servant room"];
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   pending_review: { label: "Under review", color: "#8a6d1a", bg: "rgba(201,145,26,0.14)" },
@@ -30,19 +40,27 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
 };
 
 const inr = (n?: number) => "₹" + Math.round(n || 0).toLocaleString("en-IN");
+const emptyLoc: HostLocationValue = { city: "", locality: "", state: "", formatted: "", lat: null, lng: null };
 
 export default function ListPropertyPage() {
   const [f, setF] = useState({
-    title: "", propertyType: "Apartment", bhk: "2BHK", city: "", locality: "", state: "",
-    areaSqft: "", furnishing: "Semi-furnished", rentMonthly: "", deposit: "",
-    amenities: "", name: "", phone: "", email: "", message: "",
+    title: "", propertyType: "Apartment", bhk: "2BHK", furnishing: "Semi-furnished",
+    areaSqft: "", carpetArea: "", areaUnit: "sqft",
+    floor: "", totalFloors: "", facing: "", ageYears: "", availableFrom: "", leaseType: "Long-term (11 months+)", tenantPref: "Any",
+    rentMonthly: "", deposit: "", maintenanceMonthly: "", negotiable: false,
+    landmarks: "", name: "", phone: "", email: "", message: "",
   });
+  const [loc, setLoc] = useState<HostLocationValue>(emptyLoc);
+  const [amen, setAmen] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [mine, setMine] = useState<Submission[]>([]);
 
   const set = (k: keyof typeof f) => (e: any) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const toggleAmen = (a: string) => setAmen((s) => (s.includes(a) ? s.filter((x) => x !== a) : [...s, a]));
 
   const loadMine = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
@@ -54,30 +72,53 @@ export default function ListPropertyPage() {
   };
   useEffect(loadMine, [done]);
 
+  async function addPhotos(files: FileList | null) {
+    if (!files || !files.length) return;
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files).slice(0, 12)) {
+        try { urls.push(await uploadImage(file, "property-photos")); } catch { /* skip one */ }
+      }
+      setImages((s) => [...s, ...urls].slice(0, 12));
+    } finally { setUploading(false); }
+  }
+
   async function submit() {
     setErr(null);
-    if (!f.title.trim() || !f.city.trim() || !f.name.trim() || f.phone.replace(/\D/g, "").length < 8) {
-      setErr("Property title, city, your name and a valid phone are required.");
+    if (!f.title.trim() || !loc.city.trim() || !f.name.trim() || f.phone.replace(/\D/g, "").length < 8) {
+      setErr("Property title, a location, your name and a valid phone are required.");
       return;
     }
     setSubmitting(true);
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+      const details = {
+        floor: f.floor, totalFloors: f.totalFloors, facing: f.facing, ageYears: f.ageYears,
+        availableFrom: f.availableFrom, leaseType: f.leaseType, tenantPref: f.tenantPref,
+        maintenanceMonthly: f.maintenanceMonthly, landmarks: f.landmarks,
+        carpetArea: f.carpetArea, areaUnit: f.areaUnit, negotiable: f.negotiable,
+      };
       const r = await fetch("/api/host/list-property", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
-          ...f,
+          title: f.title, propertyType: f.propertyType, bhk: f.bhk, furnishing: f.furnishing,
+          city: loc.city, locality: loc.locality, state: loc.state,
+          lat: loc.lat, lng: loc.lng, formattedAddress: loc.formatted,
           areaSqft: Number(f.areaSqft) || undefined,
           rentMonthly: Number(f.rentMonthly) || undefined,
           deposit: Number(f.deposit) || undefined,
-          amenities: f.amenities.split(",").map((x) => x.trim()).filter(Boolean),
+          amenities: amen, images, details,
+          name: f.name, phone: f.phone, email: f.email, message: f.message,
         }),
       });
-      const d = await r.json();
-      if (!r.ok || !d.ok) { setErr(d.error || "Could not submit. Try again."); return; }
-      setDone(d.id);
-      setF((s) => ({ ...s, title: "", locality: "", areaSqft: "", rentMonthly: "", deposit: "", amenities: "", message: "" }));
+      const dj = await r.json();
+      if (!r.ok || !dj.ok) { setErr(dj.error || "Could not submit. Try again."); return; }
+      setDone(dj.id);
+      // Reset the listing fields (keep contact for a quick second listing).
+      setF((s) => ({ ...s, title: "", areaSqft: "", carpetArea: "", floor: "", totalFloors: "", facing: "", ageYears: "", availableFrom: "", rentMonthly: "", deposit: "", maintenanceMonthly: "", landmarks: "", message: "", negotiable: false }));
+      setLoc(emptyLoc); setAmen([]); setImages([]);
     } catch {
       setErr("Network error. Please try again.");
     } finally {
@@ -95,7 +136,7 @@ export default function ListPropertyPage() {
           List your property. <span style={{ color: "var(--accent)" }}>StayBid handles the rest.</span>
         </h1>
         <p className="mt-3" style={{ color: "var(--text-soft)" }}>
-          Have a property you want leased or rented out? Submit the details — our team reviews it,
+          Add your property once — real location, photos, and full details. Our team reviews it,
           lists it to interested hosts, and helps you lock the best deal. No brokerage.
         </p>
         <div className="mt-4 rounded-xl p-3 text-sm sb-card-lift"
@@ -112,15 +153,17 @@ export default function ListPropertyPage() {
             <div className="text-5xl mb-3">✅</div>
             <h2 className="font-display text-2xl" style={{ color: "var(--text-base)" }}>Property submitted!</h2>
             <p className="mt-2" style={{ color: "var(--text-soft)" }}>
-              Our team will review your listing and reach out on your phone. You'll see it go live in the
-              discovery feed once approved.
+              Our team reviews your listing and reaches out on your phone. Meanwhile you can already
+              add reels & photos to it below — they show up on the listing once it goes live.
             </p>
             <div className="mt-5 flex gap-3 justify-center flex-wrap">
+              <Link href={`/host/property/${done}`} className="sb-card-lift px-5 py-2.5 rounded-full font-semibold text-white"
+                style={{ background: "var(--accent)" }}>🎬 Add reels & photos →</Link>
               <button onClick={() => setDone(null)} className="sb-card-lift px-5 py-2.5 rounded-full font-semibold"
-                style={{ background: "var(--accent)", color: "#fff" }}>List another property</button>
+                style={{ background: "var(--bg-input)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}>List another</button>
               <Link href="/host/properties" className="sb-card-lift px-5 py-2.5 rounded-full font-semibold"
                 style={{ background: "var(--bg-input)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}>
-                Browse the discovery feed →
+                Browse the feed →
               </Link>
             </div>
           </div>
@@ -130,42 +173,115 @@ export default function ListPropertyPage() {
         <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-28">
           <div className="rounded-2xl p-5 sm:p-7 sb-fade-in"
             style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
-            <Group label="Property details">
+
+            <Group label="Property basics">
               <Field label="Property title *" full>
                 <Input value={f.title} onChange={set("title")} placeholder="e.g. Sunlit 2BHK near MG Road" />
               </Field>
-              <Field label="Property type">
-                <Select value={f.propertyType} onChange={set("propertyType")} options={PROPERTY_TYPES} />
-              </Field>
-              <Field label="Configuration">
-                <Select value={f.bhk} onChange={set("bhk")} options={BHK} />
-              </Field>
-              <Field label="City *"><Input value={f.city} onChange={set("city")} placeholder="e.g. Bengaluru" /></Field>
-              <Field label="Locality"><Input value={f.locality} onChange={set("locality")} placeholder="e.g. Indiranagar" /></Field>
-              <Field label="State"><Input value={f.state} onChange={set("state")} placeholder="e.g. Karnataka" /></Field>
-              <Field label="Area (sq ft)"><Input value={f.areaSqft} onChange={set("areaSqft")} type="number" placeholder="e.g. 1100" /></Field>
+              <Field label="Property type"><Select value={f.propertyType} onChange={set("propertyType")} options={PROPERTY_TYPES} /></Field>
+              <Field label="Configuration"><Select value={f.bhk} onChange={set("bhk")} options={BHK} /></Field>
               <Field label="Furnishing"><Select value={f.furnishing} onChange={set("furnishing")} options={FURNISHING} /></Field>
+              <Field label="Built-up area">
+                <div className="flex gap-2">
+                  <Input value={f.areaSqft} onChange={set("areaSqft")} type="number" placeholder="1100" />
+                  <div style={{ width: 96 }}><Select value={f.areaUnit} onChange={set("areaUnit")} options={AREA_UNITS} /></div>
+                </div>
+              </Field>
+              <Field label="Carpet area (optional)"><Input value={f.carpetArea} onChange={set("carpetArea")} type="number" placeholder="e.g. 950" /></Field>
             </Group>
 
-            <Group label="Pricing (optional — helps us match faster)">
-              <Field label="Expected rent / month (₹)"><Input value={f.rentMonthly} onChange={set("rentMonthly")} type="number" placeholder="e.g. 45000" /></Field>
-              <Field label="Deposit (₹)"><Input value={f.deposit} onChange={set("deposit")} type="number" placeholder="e.g. 150000" /></Field>
-              <Field label="Amenities (comma separated)" full>
-                <Input value={f.amenities} onChange={set("amenities")} placeholder="Parking, Lift, Power backup, Balcony" />
+            <Group label="Location">
+              <div className="sm:col-span-2">
+                <span className="block text-xs font-medium mb-1" style={{ color: "var(--text-soft)" }}>Search real location *</span>
+                <HostLocationPicker value={loc} onChange={setLoc} />
+                {loc.city && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {loc.locality && <LocChip>📍 {loc.locality}</LocChip>}
+                    <LocChip>🏙️ {loc.city}</LocChip>
+                    {loc.state && <LocChip>{loc.state}</LocChip>}
+                    {loc.pincode && <LocChip>{loc.pincode}</LocChip>}
+                  </div>
+                )}
+              </div>
+              <Field label="Nearby landmarks" full>
+                <Input value={f.landmarks} onChange={set("landmarks")} placeholder="e.g. 500m from metro, next to City Mall" />
               </Field>
             </Group>
 
-            <Group label="Your contact">
+            <Group label="Property details">
+              <Field label="Floor (e.g. 3rd of 5)"><Input value={f.floor} onChange={set("floor")} placeholder="3rd" /></Field>
+              <Field label="Total floors"><Input value={f.totalFloors} onChange={set("totalFloors")} type="number" placeholder="5" /></Field>
+              <Field label="Facing"><Select value={f.facing} onChange={set("facing")} options={FACING} placeholderOption="Any" /></Field>
+              <Field label="Age of property (years)"><Input value={f.ageYears} onChange={set("ageYears")} type="number" placeholder="4" /></Field>
+              <Field label="Available from"><Input value={f.availableFrom} onChange={set("availableFrom")} type="date" /></Field>
+              <Field label="Preferred tenant"><Select value={f.tenantPref} onChange={set("tenantPref")} options={TENANT_PREF} /></Field>
+              <Field label="Lease type" full><Select value={f.leaseType} onChange={set("leaseType")} options={LEASE_TYPES} /></Field>
+            </Group>
+
+            <Group label="Pricing">
+              <Field label="Expected rent / month (₹)"><Input value={f.rentMonthly} onChange={set("rentMonthly")} type="number" placeholder="45000" /></Field>
+              <Field label="Deposit (₹)"><Input value={f.deposit} onChange={set("deposit")} type="number" placeholder="150000" /></Field>
+              <Field label="Maintenance / month (₹)"><Input value={f.maintenanceMonthly} onChange={set("maintenanceMonthly")} type="number" placeholder="2500" /></Field>
+              <Field label="Negotiable?">
+                <button type="button" onClick={() => setF((s) => ({ ...s, negotiable: !s.negotiable }))}
+                  className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-left"
+                  style={{ background: f.negotiable ? "var(--accent-soft)" : "var(--bg-input)", color: f.negotiable ? "var(--accent)" : "var(--text-soft)", border: "1px solid var(--border-soft)" }}>
+                  {f.negotiable ? "✓ Price is negotiable" : "Tap if price is negotiable"}
+                </button>
+              </Field>
+            </Group>
+
+            <div className="mb-5">
+              <div className="text-xs font-bold uppercase tracking-wide mb-2.5" style={{ color: "var(--text-muted)" }}>Amenities</div>
+              <div className="flex flex-wrap gap-2">
+                {AMENITIES.map((a) => (
+                  <button key={a} type="button" onClick={() => toggleAmen(a)}
+                    className="text-sm px-3 py-1.5 rounded-full"
+                    style={amen.includes(a)
+                      ? { background: "var(--accent)", color: "#fff" }
+                      : { background: "var(--bg-input)", color: "var(--text-soft)", border: "1px solid var(--border-soft)" }}>
+                    {amen.includes(a) ? "✓ " : ""}{a}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <div className="text-xs font-bold uppercase tracking-wide mb-2.5" style={{ color: "var(--text-muted)" }}>Photos</div>
+              <div className="flex flex-wrap gap-2">
+                {images.map((u, i) => (
+                  <div key={u} className="relative w-20 h-20 rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-soft)" }}>
+                    <img src={u} alt="" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setImages((s) => s.filter((_, j) => j !== i))}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full text-xs flex items-center justify-center"
+                      style={{ background: "rgba(0,0,0,0.6)", color: "#fff" }}>✕</button>
+                  </div>
+                ))}
+                {images.length < 12 && (
+                  <label className="w-20 h-20 rounded-lg flex flex-col items-center justify-center cursor-pointer text-xs"
+                    style={{ border: "1px dashed var(--border-soft)", color: "var(--text-muted)" }}>
+                    {uploading ? "…" : <>📷<span>Add</span></>}
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
+                  </label>
+                )}
+              </div>
+              <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>Up to 12 photos. You can add reels & videos after submitting.</p>
+            </div>
+
+            <Group label="Your contact (private)">
               <Field label="Your name *"><Input value={f.name} onChange={set("name")} placeholder="Full name" /></Field>
-              <Field label="Phone *"><Input value={f.phone} onChange={set("phone")} placeholder="10-digit mobile" /></Field>
+              <Field label="Phone *"><Input value={f.phone} onChange={set("phone")} placeholder="10-digit mobile" inputMode="tel" /></Field>
               <Field label="Email"><Input value={f.email} onChange={set("email")} type="email" placeholder="you@email.com" /></Field>
               <Field label="Anything else?" full>
-                <textarea value={f.message} onChange={set("message")} rows={3}
+                <textarea value={f.message} onChange={set("message")} rows={2}
                   placeholder="Availability, preferred lease term, special notes…"
                   className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                   style={{ background: "var(--bg-input)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }} />
               </Field>
             </Group>
+            <p className="text-xs -mt-2 mb-1" style={{ color: "var(--text-muted)" }}>
+              🔒 Your contact stays private — it is never shown on the public listing. Interested guests reach you only through StayBid.
+            </p>
 
             {err && <p className="mt-2 text-sm" style={{ color: "#b04242" }}>{err}</p>}
 
@@ -202,8 +318,12 @@ function MySubmissions({ rows }: { rows: Submission[] }) {
                   {[s.city, s.property_type, s.rent_monthly ? inr(s.rent_monthly) + "/mo" : null].filter(Boolean).join(" · ")}
                 </div>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
-                style={{ color: m.color, background: m.bg }}>{m.label}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
+                  style={{ color: m.color, background: m.bg }}>{m.label}</span>
+                <Link href={`/host/property/${s.id}`} className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap"
+                  style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>🎬 Content</Link>
+              </div>
             </div>
           );
         })}
@@ -238,12 +358,16 @@ function Input(props: any) {
   );
 }
 
-function Select({ value, onChange, options }: { value: string; onChange: any; options: string[] }) {
+function Select({ value, onChange, options, placeholderOption }: { value: string; onChange: any; options: string[]; placeholderOption?: string }) {
   return (
     <select value={value} onChange={onChange}
       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
       style={{ background: "var(--bg-input)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      {options.map((o) => <option key={o} value={o}>{o === "" ? (placeholderOption || "—") : o}</option>)}
     </select>
   );
+}
+
+function LocChip({ children }: { children: React.ReactNode }) {
+  return <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: "var(--bg-input)", color: "var(--text-soft)" }}>{children}</span>;
 }

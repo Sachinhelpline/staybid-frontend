@@ -396,7 +396,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // multi-property switcher (owners with 2+ hotels). The dashboard render + the
 // partner API routes now thread ?hotelId= so every tab scopes to the active
 // property. SWR-cached HTML must refresh so the switcher + threaded fetches ship.
-const HTML_CACHE = 'staybid-html-v122';
+// v305 — one-time HTML_CACHE bump (v122 -> v123). Host "List your property"
+// gains real Google/OSM location, a comprehensive listing form, and a
+// per-property owner/admin reel+photo studio (/host/property/[id]). SWR-cached
+// HTML must refresh so the new pages + routes ship.
+const HTML_CACHE = 'staybid-html-v123';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
