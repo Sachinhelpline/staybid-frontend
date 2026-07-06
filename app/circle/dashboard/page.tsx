@@ -77,6 +77,10 @@ export default function CircleDashboardPage() {
   // own hub — the Switch cards exist only so one app reaches every panel.
   const [hasPartner, setHasPartner] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  // Phase 3d — does this investor own any provisioned physical rooms yet?
+  // Drives the "Manage your rooms →" handoff into the partner dashboard's
+  // operator "My Rooms" tab.
+  const [ownsRooms, setOwnsRooms] = useState<{ ownsUnits: boolean; unitCount: number; hotelCount: number }>({ ownsUnits: false, unitCount: 0, hotelCount: 0 });
 
   useEffect(() => {
     setLocks(readSet(LOCKS_KEY));
@@ -109,6 +113,16 @@ export default function CircleDashboardPage() {
     fetch("/api/host/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => setIsHost(Number(d?.summary?.total || 0) > 0))
+      .catch(() => {});
+    // Owned-rooms signal — same cross-pool id resolver the partner dashboard
+    // uses, so the count here matches what the operator sees after signing in.
+    fetch("/api/circle/owned-summary", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setOwnsRooms({
+        ownsUnits: !!d?.ownsUnits,
+        unitCount: Number(d?.unitCount || 0),
+        hotelCount: Number(d?.hotelCount || 0),
+      }))
       .catch(() => {});
   }, [user]);
 
@@ -195,6 +209,25 @@ export default function CircleDashboardPage() {
         </div>
         <span className="sbc-dash-strip-go">View portfolio →</span>
       </Link>
+
+      {/* ───────── manage your rooms handoff (Phase 3d) ───────── */}
+      {ownsRooms.ownsUnits && (
+        <Link
+          href={hasPartner ? "/partner/dashboard" : "/partner"}
+          className="sbc-dash-strip sbc-dash-rooms"
+        >
+          <div>
+            <span className="sbc-dash-strip-k">🛏️ Your rooms are live</span>
+            <b className="sbc-dash-strip-v">
+              {ownsRooms.unitCount} {ownsRooms.unitCount === 1 ? "room" : "rooms"}
+              {ownsRooms.hotelCount > 1 ? ` · ${ownsRooms.hotelCount} properties` : ""}
+            </b>
+          </div>
+          <span className="sbc-dash-strip-go">
+            {hasPartner ? "Manage your rooms →" : "Sign in to manage →"}
+          </span>
+        </Link>
+      )}
 
       {/* ───────── mode switch (Airbnb-style) ───────── */}
       <section className="sbc-dash-sec">

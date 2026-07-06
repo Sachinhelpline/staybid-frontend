@@ -1431,6 +1431,7 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-dash-strip-k { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sbc-c-ink-faint); font-weight: 700; }
 .sbc-dash-strip-v { display: block; font-size: 1.2rem; font-weight: 900; color: var(--sbc-c-ink); margin-top: 2px; }
 .sbc-dash-strip-go { margin-left: auto; font-size: .76rem; font-weight: 800; color: var(--sbc-c-sage-deep); white-space: nowrap; }
+.sbc-dash-rooms { background: linear-gradient(135deg, var(--sbc-c-sage-tint), rgba(92,107,69,.06)); border-color: color-mix(in srgb, var(--sbc-c-sage) 42%, transparent); }
 
 .sbc-dash-sec { margin-top: 22px; }
 .sbc-dash-sec-h { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 800; color: var(--sbc-c-sage-deep); margin-bottom: 11px; }
