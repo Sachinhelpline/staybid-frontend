@@ -32,6 +32,7 @@ import FnbOrdersTab from "@/components/partner/FnbOrdersTab";
 import ServiceLockModal from "@/components/partner/ServiceLockModal";
 import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
 import SubscriptionBillingModal from "@/components/partner/SubscriptionBillingModal";
+import CircleUnitsTab from "@/components/partner/CircleUnitsTab";
 import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — shared platform catalog: property types, meal plans, add-on
 // services. The hotel declares here what the /bid auction targets.
@@ -169,7 +170,7 @@ export default function PartnerDashboard() {
   const [activeHotelId, setActiveHotelId] = useState<string>("");
   const [switcherOpen, setSwitcherOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -944,6 +945,10 @@ export default function PartnerDashboard() {
 
   const TABS = [
     { id:"overview",  icon:"📊", label:"Overview"   },
+    // Phase 3c — StayCircle operator: manage your OWN physical rooms
+    // (per-unit price / listing). Only shown when the hotel is reached via
+    // unit-ownership (isOperator), never for the classic hotel owner.
+    ...(hotel?.isOperator ? [{ id:"myrooms", icon:"🛏️", label:"My Rooms" }] : []),
     { id:"bids",      icon:"📩", label:`Bids ${pendingBids > 0 ? `(${pendingBids})` : ""}` },
     { id:"rooms",     icon:"🏨", label:"Rooms"      },
     { id:"flash",     icon:"⚡", label:"Flash Deals"},
@@ -1184,6 +1189,15 @@ export default function PartnerDashboard() {
           <ServiceRenewBanner
             entitlements={svcEnt}
             onRenew={(key) => setLockModal(key)}
+          />
+        )}
+
+        {/* ══════════════ MY ROOMS (StayCircle operator) ══════════════ */}
+        {tab === "myrooms" && hotel?.isOperator && (
+          <CircleUnitsTab
+            hotelId={hotel.id}
+            categories={rooms}
+            initialUnits={hotel.ownedUnits || []}
           />
         )}
 
