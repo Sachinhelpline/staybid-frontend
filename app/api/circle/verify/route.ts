@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { sbCacheInvalidate } from "@/lib/sb-cache";
+import { provisionBundle } from "@/lib/circle/provision";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -122,8 +123,19 @@ export async function POST(req: Request) {
     } catch { /* best-effort */ }
   }
 
+  // Phase 2 — provision real bookable inventory (hotel + rooms + owned units)
+  // ONLY on full activation. A 10% Visit-Access Hold ('hold_paid') still owes
+  // the balance + a signed agreement, so inventory is not created yet.
+  // Best-effort: never fail the verified-payment response.
+  let provision: any = null;
+  if (targetStatus === "active") {
+    try {
+      provision = await provisionBundle(bundle);
+    } catch { /* best-effort */ }
+  }
+
   // Availability changed — drop the cached catalog so the feed reflects it.
   try { sbCacheInvalidate("circle:"); } catch { /* best-effort */ }
 
-  return NextResponse.json({ ok: true, bundle });
+  return NextResponse.json({ ok: true, bundle, provision });
 }

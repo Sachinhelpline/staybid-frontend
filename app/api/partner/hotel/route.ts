@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
+import { resolveOperatedHotelIds } from "@/lib/partner/operator-access";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 
 // JWT-format anon key required for RLS-enabled tables (users)
@@ -28,7 +29,15 @@ export async function GET(req: NextRequest) {
   const headerEmail = req.headers.get("x-email") || "";
   const ownerIds = await resolveOwnerIds(payload.id, payload.phone || headerPhone, payload.email || headerEmail);
 
-  const hRes  = await fetch(`${SB_URL}/rest/v1/hotels?ownerId=in.(${ownerIds.join(",")})&select=*&order=createdAt.asc`, { headers: SB_H });
+  // Circle operators own physical units on StayBid-operated hotels (no ownerId
+  // match) — union those hotel ids so they resolve here too.
+  const operatedIds = await resolveOperatedHotelIds(ownerIds);
+  const ownerFilter = `ownerId.in.(${ownerIds.join(",")})`;
+  const hotelFilter = operatedIds.length
+    ? `or=(${ownerFilter},id.in.(${operatedIds.map((i) => encodeURIComponent(i)).join(",")}))`
+    : `ownerId=in.(${ownerIds.join(",")})`;
+
+  const hRes  = await fetch(`${SB_URL}/rest/v1/hotels?${hotelFilter}&select=*&order=createdAt.asc`, { headers: SB_H });
   const hotels = await hRes.json();
   if (!Array.isArray(hotels) || !hotels[0]) return NextResponse.json({ error: "No hotel found" }, { status: 404 });
 
@@ -40,13 +49,45 @@ export async function GET(req: NextRequest) {
   const rRes  = await fetch(`${SB_URL}/rest/v1/rooms?hotelId=eq.${hotel.id}&select=*`, { headers: SB_H });
   const rooms = await rRes.json();
 
-  // Bookings (accepted bids)
-  const bRes  = await fetch(
-    `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
-    { headers: SB_H }
-  );
-  const bookingsRaw = await bRes.json();
-  const bookingsArr: any[] = Array.isArray(bookingsRaw) ? bookingsRaw : [];
+  // Phase 2 — Circle operator scoping. A hotel reached via unit-ownership (NOT
+  // ownerId) is a multi-investor StayBid-operated property. The caller must see
+  // + manage ONLY their own physical units, and NEVER another owner's bookings.
+  const isOperator = !ownerIds.map(String).includes(String(hotel.ownerId));
+  let ownedUnits: any[] = [];
+  if (isOperator) {
+    const inList = ownerIds.map((i) => encodeURIComponent(i)).join(",");
+    const uRes = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(hotel.id)}&owner_user_id=in.(${inList})&select=*&order=roomNumber.asc`,
+      { headers: SB_H },
+    );
+    const u = await uRes.json().catch(() => []);
+    ownedUnits = Array.isArray(u) ? u : [];
+  }
+
+  // Bookings (accepted bids). For an operator-reached hotel we scope to bids
+  // assigned to the caller's OWN units. Until the individual-room booking flow
+  // assigns units (Phase 3), operators see zero shared-hotel bookings — which is
+  // the correct, leak-free state (never surface another owner's booking).
+  const ownedUnitIdSet = new Set(ownedUnits.map((u: any) => String(u.id)));
+  let bookingsArr: any[] = [];
+  if (!isOperator) {
+    const bRes  = await fetch(
+      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
+      { headers: SB_H }
+    );
+    const bookingsRaw = await bRes.json();
+    bookingsArr = Array.isArray(bookingsRaw) ? bookingsRaw : [];
+  } else {
+    const bRes  = await fetch(
+      `${SB_URL}/rest/v1/bids?hotelId=eq.${hotel.id}&status=eq.ACCEPTED&select=*&order=createdAt.desc&limit=100`,
+      { headers: SB_H }
+    );
+    const bookingsRaw = await bRes.json();
+    const all = Array.isArray(bookingsRaw) ? bookingsRaw : [];
+    // Only bids whose assigned unit the caller owns (assignedUnitId set once the
+    // individual-room flow lands). No unit → excluded (leak-safe).
+    bookingsArr = all.filter((b: any) => b.assignedUnitId && ownedUnitIdSet.has(String(b.assignedUnitId)));
+  }
 
   // Enrich with user + request + room data
   const customerIds = Array.from(new Set(bookingsArr.map((b: any) => b.customerId).filter(Boolean)));
@@ -120,7 +161,15 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({
-    hotel: { ...hotel, rooms: Array.isArray(rooms) ? rooms : [] },
+    hotel: {
+      ...hotel,
+      rooms: Array.isArray(rooms) ? rooms : [],
+      // Phase 2 — Circle operator context. isOperator=true means the caller
+      // reaches this hotel via unit-ownership; ownedUnits are the physical rooms
+      // they manage. For a classic ownerId partner these are false/[].
+      isOperator,
+      ownedUnits,
+    },
     bookings,
   });
 }
