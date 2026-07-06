@@ -6,7 +6,7 @@ import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { logPricingDecision } from "@/lib/pricing/decision-log";
-import { resolveOwnedUnit } from "@/lib/circle/room-listings";
+import { resolveOwnedUnit, isUnitFreeForRange } from "@/lib/circle/room-listings";
 
 // v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
 // side + tamper-proof: tier comes from loadServerScore (canonical
@@ -287,6 +287,14 @@ export async function POST(req: NextRequest) {
                   : `Only ${avail.free} ${roomLabel} room${avail.free === 1 ? "" : "s"} left for these dates. Reduce your room count.`,
                 maxAvailable: avail.free,
               },
+              { status: 409 }
+            );
+          }
+          // Phase 3 — booking a SPECIFIC physical room: that exact unit must be
+          // free for these dates (two guests can't hold the same room).
+          if (resolvedUnitId && !(await isUnitFreeForRange(resolvedUnitId, ci, co))) {
+            return NextResponse.json(
+              { error: `This room is already booked for these dates. Pick another room or different dates.` },
               { status: 409 }
             );
           }
