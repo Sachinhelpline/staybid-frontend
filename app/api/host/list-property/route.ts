@@ -33,8 +33,22 @@ export async function POST(req: Request) {
     const n = Number(v);
     return Number.isFinite(n) && n > 0 ? n : null;
   };
+  const coord = (v: any) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
   const cleanArr = (v: any, cap = 30) =>
     Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, cap) : [];
+
+  // v285 — flexible detail bag (floor / facing / lease terms / landmarks …).
+  const d = body?.details && typeof body.details === "object" ? body.details : {};
+  const details: Record<string, any> = {};
+  const keepStr = (k: string, cap = 200) => { const s = String(d[k] ?? "").trim().slice(0, cap); if (s) details[k] = s; };
+  const keepNum = (k: string) => { const n = Number(d[k]); if (Number.isFinite(n) && n >= 0) details[k] = n; };
+  keepStr("floor", 40); keepNum("totalFloors"); keepStr("facing", 20); keepNum("ageYears");
+  keepStr("availableFrom", 20); keepStr("leaseType", 40); keepNum("maintenanceMonthly");
+  keepStr("tenantPref", 40); keepStr("landmarks", 400); keepNum("carpetArea"); keepStr("areaUnit", 10);
+  if (d?.negotiable === true) details.negotiable = true;
 
   const row: any = {
     title,
@@ -49,6 +63,10 @@ export async function POST(req: Request) {
     deposit: num(body?.deposit),
     amenities: cleanArr(body?.amenities),
     images: cleanArr(body?.images, 12),
+    lat: coord(body?.lat),
+    lng: coord(body?.lng),
+    formatted_address: String(body?.formattedAddress || "").trim().slice(0, 400) || null,
+    details: Object.keys(details).length ? details : null,
     source: "owner",
     submitted_by: user?.id || null,
     owner_contact: {

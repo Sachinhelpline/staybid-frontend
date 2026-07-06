@@ -143,7 +143,7 @@ function PropertyCard({ p, shortlisted, onShortlist, onEnquire }: {
       </div>
       <div className="p-4 flex flex-col flex-1">
         <div className="flex items-center justify-between gap-2">
-          <div className="font-semibold leading-snug" style={{ color: "var(--text-base)" }}>{p.title}</div>
+          <Link href={`/host/property/${p.id}`} className="font-semibold leading-snug hover:underline" style={{ color: "var(--text-base)" }}>{p.title}</Link>
         </div>
         <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
           📍 {p.locality ? `${p.locality}, ` : ""}{p.city}
@@ -170,8 +170,11 @@ function PropertyCard({ p, shortlisted, onShortlist, onEnquire }: {
             </span>
           )}
         </div>
+        <Link href={`/host/property/${p.id}`}
+          className="mt-3 w-full text-center px-4 py-2 rounded-full font-semibold text-sm"
+          style={{ background: "var(--bg-input)", color: "var(--text-base)", border: "1px solid var(--border-soft)" }}>🎬 Reels & photos →</Link>
         <button onClick={onEnquire}
-          className="mt-3 w-full px-4 py-2.5 rounded-full text-white font-semibold text-sm"
+          className="mt-2 w-full px-4 py-2.5 rounded-full text-white font-semibold text-sm"
           style={{ background: "linear-gradient(135deg,#c9911a,#a9790f)" }}>Enquire / Schedule visit</button>
       </div>
     </div>

@@ -322,6 +322,7 @@ function PropertiesTable({ rows, busy, onStatus }: TableProps) {
                   <div>
                     <div style={{ color: "#E8EAF0", fontWeight: 600 }}>{r.title || "Untitled"}</div>
                     <div style={{ color: "#8A8FA8", fontSize: 11 }}>{[r.locality, r.city, r.state].filter(Boolean).join(", ") || "—"}</div>
+                    <a href={`/host/property/${r.id}`} target="_blank" rel="noreferrer" style={{ color: "#D4AF37", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🎬 Manage content ↗</a>
                   </div>
                 </div>
               </Td>
