@@ -396,7 +396,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // multi-property switcher (owners with 2+ hotels). The dashboard render + the
 // partner API routes now thread ?hotelId= so every tab scopes to the active
 // property. SWR-cached HTML must refresh so the switcher + threaded fetches ship.
-const HTML_CACHE = 'staybid-html-v120';
+const HTML_CACHE = 'staybid-html-v121';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
