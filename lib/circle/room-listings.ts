@@ -40,6 +40,72 @@ function arr(v: any): any[] {
   return Array.isArray(v) ? v : [];
 }
 
+function overlaps(aFrom: string, aTo: string, bFrom: string, bTo: string): boolean {
+  // [from, to) half-open — checkout day is free. Guard bad dates.
+  if (!aFrom || !aTo || !bFrom || !bTo) return false;
+  return aFrom < bTo && bFrom < aTo;
+}
+
+/**
+ * Is a SPECIFIC physical unit free for [from, to)? Checks partner/OTA
+ * `room_blocks` on the unit + active `bids` assigned to the unit (their dates
+ * from the linked bid_request). Prevents two guests double-booking one room.
+ * Fails OPEN on any gap (missing dates / query error) — a false "occupied" on
+ * the core booking path is worse than a rare edge; the category-level check in
+ * place-bid still guards the pool.
+ */
+export async function isUnitFreeForRange(
+  unitId: string,
+  from: string,
+  to: string,
+): Promise<boolean> {
+  if (!unitId || !from || !to) return true;
+  try {
+    // 1) Partner/OTA/walk-in blocks assigned to this unit.
+    const blkRes = await fetch(
+      `${SB_URL}/rest/v1/room_blocks?assignedUnitId=eq.${encodeURIComponent(unitId)}&select=fromDate,toDate`,
+      { headers: H },
+    );
+    if (blkRes.ok) {
+      const blocks = await blkRes.json().catch(() => []);
+      if (Array.isArray(blocks)) {
+        for (const b of blocks) {
+          if (overlaps(from, to, String(b.fromDate), String(b.toDate))) return false;
+        }
+      }
+    }
+    // 2) Active bids already assigned to this unit → their request dates.
+    const bidRes = await fetch(
+      `${SB_URL}/rest/v1/bids?assignedUnitId=eq.${encodeURIComponent(unitId)}` +
+        `&status=in.(PENDING,COUNTER,ACCEPTED,CONFIRMED,CHECKED_IN)&select=requestId`,
+      { headers: H },
+    );
+    if (bidRes.ok) {
+      const bids = await bidRes.json().catch(() => []);
+      const reqIds = Array.isArray(bids)
+        ? Array.from(new Set(bids.map((b: any) => b.requestId).filter(Boolean)))
+        : [];
+      if (reqIds.length) {
+        const rqRes = await fetch(
+          `${SB_URL}/rest/v1/bid_requests?id=in.(${reqIds.map((i) => encodeURIComponent(String(i))).join(",")})&select=checkIn,checkOut`,
+          { headers: H },
+        );
+        if (rqRes.ok) {
+          const rqs = await rqRes.json().catch(() => []);
+          if (Array.isArray(rqs)) {
+            for (const rq of rqs) {
+              if (overlaps(from, to, String(rq.checkIn), String(rq.checkOut))) return false;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  } catch {
+    return true; // fail open
+  }
+}
+
 /**
  * Build individual-room listings for a hotel.
  * @param hotelId  the hotel
@@ -51,11 +117,15 @@ export async function resolveRoomListings(
 ): Promise<{ individualRooms: boolean; listings: RoomListing[] }> {
   if (!hotelId) return { individualRooms: false, listings: [] };
 
+  // In a circle-operated hotel EVERY physical room is an individual listing —
+  // investor-owned units use their overrides; StayBid-ops units (owner_user_id
+  // NULL) use category defaults. getHotel already gates this to circle hotels via
+  // account_type, so we list all active + listed units here.
   let units: any[] = [];
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(hotelId)}` +
-        `&owner_user_id=not.is.null&is_listed=eq.true&status=eq.active` +
+        `&is_listed=eq.true&status=eq.active` +
         `&select=id,roomId,roomNumber,floor,title,price_override,mrp_override,amenities,photos,view_label,host_rating,host_reviews` +
         `&order=roomNumber.asc`,
       { headers: H },
@@ -108,21 +178,23 @@ export async function resolveRoomListings(
 }
 
 /**
- * Validate that `unitId` is a bookable owned listing on `hotelId` (optionally in
- * `roomId` category), and return its owner. Used by /api/bids/place to attach a
- * unit to a bid so the booking routes to that unit's owner. Returns null when
- * the unit is invalid → the caller drops the assignment (leak-safe).
+ * Validate that `unitId` is a bookable listing on `hotelId` (optionally in
+ * `roomId` category): active + listed + belongs to the hotel. Used by
+ * /api/bids/place to attach a unit to a bid so the booking is for that specific
+ * room (its owner_user_id — investor OR StayBid-ops NULL — is the payout owner).
+ * Returns null when the unit is invalid → the caller drops the assignment
+ * (leak-safe; never trust a client-supplied unit blindly).
  */
 export async function resolveOwnedUnit(
   hotelId: string,
   unitId: string,
   roomId?: string,
-): Promise<{ unitId: string; roomId: string; ownerUserId: string } | null> {
+): Promise<{ unitId: string; roomId: string; ownerUserId: string | null } | null> {
   if (!hotelId || !unitId) return null;
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(unitId)}` +
-        `&hotelId=eq.${encodeURIComponent(hotelId)}&owner_user_id=not.is.null` +
+        `&hotelId=eq.${encodeURIComponent(hotelId)}` +
         `&is_listed=eq.true&status=eq.active&select=id,roomId,owner_user_id`,
       { headers: H },
     );
@@ -134,7 +206,7 @@ export async function resolveOwnedUnit(
     return {
       unitId: String(u.id),
       roomId: String(u.roomId),
-      ownerUserId: String(u.owner_user_id),
+      ownerUserId: u.owner_user_id != null ? String(u.owner_user_id) : null,
     };
   } catch {
     return null;
