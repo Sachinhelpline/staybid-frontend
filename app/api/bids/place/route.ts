@@ -6,6 +6,7 @@ import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { logPricingDecision } from "@/lib/pricing/decision-log";
+import { resolveOwnedUnit } from "@/lib/circle/room-listings";
 
 // v241.26 / v248 — the auto-accept + auto-counter decision is fully server-
 // side + tamper-proof: tier comes from loadServerScore (canonical
@@ -179,7 +180,7 @@ export async function POST(req: NextRequest) {
   await ensureUser(customerId, p?.phone, p?.name);
 
   const body = await req.json().catch(() => ({}));
-  const { hotelId, roomId, amount, requestId, dealId, message, flow, numRooms, guests } = body || {};
+  const { hotelId, roomId, amount, requestId, dealId, message, flow, numRooms, guests, assignedUnitId } = body || {};
 
   if (!hotelId || !roomId || !amount) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -190,6 +191,18 @@ export async function POST(req: NextRequest) {
   // The customer's intent for the WHOLE broadcast is on
   // `bid_requests.numRoomsRequested`; this is the per-bid resolved value.
   const numRoomsClamped = Math.max(1, Math.min(10, Math.floor(Number(numRooms) || 1)));
+
+  // Phase 3 — individual-room booking. When the customer picked a SPECIFIC
+  // Airbnb-style room, `assignedUnitId` is validated against the hotel + category
+  // (must be an owned + listed + active unit). Its owner is the booking's owner —
+  // exact attribution, zero mis-routing. Absent / invalid → null (classic
+  // category bid, unchanged). We never trust a client-supplied unit blindly.
+  let resolvedUnitId: string | null = null;
+  if (assignedUnitId) {
+    const owned = await resolveOwnedUnit(hotelId, String(assignedUnitId), roomId);
+    resolvedUnitId = owned ? owned.unitId : null;
+  }
+
   // v241 — guests resolves from body first; fall back to the linked
   // bid_request row so legacy hotel-page callers (Negotiate / Book Now)
   // that send only `requestId` still get capacityMismatch flagged
@@ -441,6 +454,9 @@ export async function POST(req: NextRequest) {
       // need a join + /my-bids charge math reads it directly.
       numRooms: numRoomsClamped,
       capacityMismatch,
+      // Phase 3 — the specific owned room this booking is for (routes to that
+      // unit's owner). null for classic category bids.
+      ...(resolvedUnitId ? { assignedUnitId: resolvedUnitId } : {}),
     });
     // v249.1 — AI pricing data foundation. Fire-and-forget; never awaited into
     // the response, never throws. Captures the decision context for Phase-2

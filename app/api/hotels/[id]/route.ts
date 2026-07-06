@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
+import { resolveRoomListings } from "@/lib/circle/room-listings";
 
 
 const SB_H = {
@@ -31,10 +32,25 @@ export async function GET(
     return NextResponse.json({ error: "Hotel not found" }, { status: 404 });
   }
 
+  // Phase 3 — individual-room listings. For a hotel with investor-owned physical
+  // rooms, each becomes its own Airbnb-style listing (own price/amenities/photos/
+  // host-rating). A hotel with no owned units → individualRooms:false + [] → the
+  // customer page renders category cards exactly as today. Additive.
+  // PERF: only StayBid-operated / circle hotels can have owned units — skip the
+  // extra query for every classic hotel_owner hotel (the default).
+  const roomsArr = Array.isArray(rooms) ? rooms : [];
+  const acct = String(hotels[0]?.account_type || "hotel_owner");
+  const { individualRooms, listings } =
+    acct === "hotel_owner"
+      ? { individualRooms: false, listings: [] as any[] }
+      : await resolveRoomListings(id, roomsArr);
+
   const hotel = {
     ...hotels[0],
-    rooms: Array.isArray(rooms) ? rooms : [],
+    rooms: roomsArr,
     reviews: Array.isArray(reviews) ? reviews : [],
+    individualRooms,
+    roomListings: listings,
   };
 
   return NextResponse.json({ hotel });
