@@ -405,7 +405,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v307 — host list-property redesigned to professional hospitality onboarding
 // (property types, per-category room builder, room vs property amenities,
 // meal plans, add-ons, policies, name-resolve location). SWR HTML refresh.
-const HTML_CACHE = 'staybid-html-v125';
+// v308 — one-time HTML_CACHE bump (v125 -> v126). Admin catalog Listings
+// editor rebuilt for hospitality: property-type select, room builder,
+// property vs room amenities, meal plans, add-ons, policies. SWR HTML refresh.
+const HTML_CACHE = 'staybid-html-v126';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

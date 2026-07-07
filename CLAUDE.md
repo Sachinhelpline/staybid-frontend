@@ -9977,3 +9977,97 @@ interlinks on both sides: partner-facing investor dashboard + admin oversight.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host Property-Listing Hospitality Redesign (v306 → v308, 2026-07-07)
+
+Sachin's A–G ask for `staybids.in/host/list-property`: fix the photo bug,
+turn the residential (BHK) form into a professional **hospitality** onboarding
+(hotel/resort/cottage/camp… with per-category rooms, room-vs-property
+amenities, meal plans, add-ons, policies), keep + strengthen the location
+picker, add an **admin** listing option, and (Phases 4–5) auto-provision a
+StayBid-Circle partner dashboard on approval with a **separate per-property
+owner id** (`owner_type='host_circle'`). Phased build; self-check "clean" after
+each phase; branch `claude/property-listing-features-8m1v6g` / PR #311.
+
+`/host/list-property` → `discovery_properties` is the **sourcing / lease-out**
+catalog (owner offers a property TO StayBid). It is DISTINCT from `/onboard`
+(a hotel partner running their OWN property live). Never cross the two.
+
+### Phase 1 (v306) — photo bug + honest errors
+Silent `catch {}` in `addPhotos` swallowed per-file failures; the publishable
+anon key could RLS-403 on `hotel-images`. Fix: new server route
+`app/api/host/list-property/upload/route.ts` uploads via **service-role**
+(`lib/onboard/storage.ts uploadBuffer` → `hotel-images`, `pathPrefix:
+"property-photos"`) with real per-file `{error}` + progress. Client resizes via
+`lib/image-resize.ts` before POST.
+
+### Phase 2 (v307) — hospitality form (B + C)
+`app/host/list-property/page.tsx` rebuilt: `PROPERTY_TYPES` chip picker,
+per-category `RoomDraft` builder (`{category,name,count,price,capacity,
+amenities[],images[]}`), property-level amenities + room-level amenities kept
+SEPARATE, meal plans + add-ons + policies. `HostLocationPicker` gained a
+`nameHint` "🔎 Find '{title}' on the map" shortcut (name-resolve already worked
+via `searchPlaces` — Google Geocoding when `GOOGLE_MAPS_API_KEY` set, else
+Nominatim). `app/api/host/list-property/route.ts` POST stores `property_type`,
+`amenities` (property-level), `rooms` jsonb, and a `details` bag
+(description/checkIn/checkOut/houseRules/landmarks/starRating/mealPlans/
+addonServices) + `formatted_address`. Migration
+`2026-07-07-v307-discovery-properties-rooms-hospitality.sql` (applied live)
+added `discovery_properties.rooms jsonb`. `details`, `formatted_address`,
+`amenities`, `property_type` columns already existed.
+
+### Phase 3 (v308) — admin can create + fully EDIT hospitality listings (D)
+`app/api/admin/host/listings/route.ts` `listingFields()` extended (mirrors the
+customer route validation): `normalizeRooms()` (same shape/clamps),
+`normalizeDetails()` (bag), `formatted_address`. Residential columns kept in
+the API for backward compat (nullable) but dropped from the admin UI. Admin
+rows still `source='platform'` (CHECK = owner|broker|agent|platform — NEVER
+`'admin'`), default `status='available'`.
+
+Admin catalog editor (`app/admin/host/catalog/page.tsx`, the config-driven
+`Field[]` modal shared by Products/Categories/Listings/Workers) extended:
+- Two new field types — `multiselect` (catalog chip toggles, value = `string[]`)
+  and `rooms` (dedicated `<RoomBuilder>` — category select + name + count +
+  price + max-guests + in-room amenity chips + photo-URL textarea; auto-fills
+  name + capacity from `ROOM_CATEGORY_*` on category change).
+- New `group:"details"` flag — fields nested into the `details` jsonb bag on
+  `save()`, read from `row.details` on `seed()`. Star rating, check-in/out,
+  description, house rules, landmarks, meal plans, add-ons all use it.
+- `LISTING_FIELDS` rebuilt: property-type `select` (from `PROPERTY_TYPES`),
+  property amenities `multiselect` (from `AMENITIES`), meal plans + add-ons
+  `multiselect`, room builder, images `list`, discovery `score`. Listings table
+  row shows property-type label + `🛏 N` room-type count + `N★`.
+
+Verified: `tsc --noEmit` exit 0, `npm run build` exit 0, live insert→delete
+round-trip with the exact admin hospitality shape (2 room types, 4★, 4
+amenities) accepted + cleaned up. `SB_BUILD v307→v308`, badge v308,
+`HTML_CACHE v125→v126`.
+
+### Things to Avoid (Property-Listing Redesign)
+- **Never** set `discovery_properties.source='admin'` — the CHECK rejects it.
+  Admin/curated listings are `'platform'`; owner submissions are `'owner'`.
+- **Never** stamp `updated_at` on `discovery_properties` — no such column
+  (it's in the admin hub `NO_UPDATED_AT` set).
+- **Never** merge room-level amenities and property-level amenities into one
+  field — Sachin explicitly wants them separate (`rooms[].amenities` vs the
+  top-level `amenities` column).
+- **Never** point a `submitted_by` side-load at a PostgREST FK embed — no FK
+  exists; manual `users?id=in.(…)` + `attachUsers`.
+- Keep the admin editor's `listingFields()` validation in lock-step with the
+  customer `/api/host/list-property` route — both write the same
+  `discovery_properties` shape (rooms + details bag + property_type +
+  amenities). Phase 4 approval→provision reads `rooms` to create real hotel
+  rooms + `hotel_room_units`.
+- The stray Netlify project `willowy-mooncake-a50d6f` (no repo config) fails
+  its Pages/Header/Redirect checks on EVERY PR — not a deploy target. Ignore.
+
+### Pending (Phases 4–5, next on `continue`)
+- **Phase 4** — on admin "Approve + Provision" → create a real StayBid-Circle
+  `hotels` row (+ rooms + `hotel_room_units`) from `discovery_properties.rooms`;
+  lister sees it on `/partner/dashboard` via scope union. Uses the locked "Alag
+  owner ID per property" model (`owner_type='host_circle'`,
+  `account_type='staybid_operated'`).
+- **Phase 5** — owner-type discriminator surfaced to admin everywhere +
+  end-to-end verify + document.
