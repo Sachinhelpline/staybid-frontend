@@ -402,7 +402,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // HTML must refresh so the new pages + routes ship.
 // v306 — host list-property photo upload moved server-side (service-role,
 // real per-file errors + progress). SWR HTML refresh so the fixed page ships.
-const HTML_CACHE = 'staybid-html-v124';
+// v307 — host list-property redesigned to professional hospitality onboarding
+// (property types, per-category room builder, room vs property amenities,
+// meal plans, add-ons, policies, name-resolve location). SWR HTML refresh.
+const HTML_CACHE = 'staybid-html-v125';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

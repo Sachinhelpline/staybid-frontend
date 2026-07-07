@@ -36,10 +36,13 @@ const googleMapsLink = (lat: number, lng: number) =>
   `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 
 export default function HostLocationPicker({
-  value, onChange,
+  value, onChange, nameHint,
 }: {
   value: HostLocationValue;
   onChange: (v: HostLocationValue) => void;
+  /** Property name/title — enables a one-tap "Find by name" that resolves the
+   *  real pin from Google/OSM if the property is listed there. */
+  nameHint?: string;
 }) {
   const [q, setQ] = useState(value.formatted || "");
   const [sugs, setSugs] = useState<Suggestion[]>([]);
@@ -101,6 +104,14 @@ export default function HostLocationPicker({
   }
 
   const hasCoords = value.lat != null && value.lng != null;
+  const hint = (nameHint || "").trim();
+
+  function findByName() {
+    if (hint.length < 2) return;
+    setQ(hint);
+    setOpen(true);
+    runSearch(hint);
+  }
 
   return (
     <div ref={boxRef} className="relative">
@@ -110,7 +121,7 @@ export default function HostLocationPicker({
             value={q}
             onChange={(e) => { setQ(e.target.value); runSearch(e.target.value); }}
             onFocus={() => sugs.length && setOpen(true)}
-            placeholder="Search city, locality or address…"
+            placeholder="Property name, address or area…"
             className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
             style={{ background: "var(--bg-input)", border: "1px solid var(--border-soft)", color: "var(--text-base)" }}
           />
@@ -124,6 +135,13 @@ export default function HostLocationPicker({
           {locating ? "…" : "📍 Me"}
         </button>
       </div>
+      {hint.length >= 2 && (
+        <button type="button" onClick={findByName}
+          className="mt-2 text-xs font-semibold px-2.5 py-1 rounded-full sb-card-lift"
+          style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+          🔎 Find "{hint.length > 32 ? hint.slice(0, 32) + "…" : hint}" on the map
+        </button>
+      )}
 
       {open && sugs.length > 0 && (
         <div className="absolute z-30 mt-1 w-full rounded-xl overflow-hidden shadow-lg"
