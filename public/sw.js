@@ -400,7 +400,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // gains real Google/OSM location, a comprehensive listing form, and a
 // per-property owner/admin reel+photo studio (/host/property/[id]). SWR-cached
 // HTML must refresh so the new pages + routes ship.
-const HTML_CACHE = 'staybid-html-v123';
+// v306 — host list-property photo upload moved server-side (service-role,
+// real per-file errors + progress). SWR HTML refresh so the fixed page ships.
+const HTML_CACHE = 'staybid-html-v124';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

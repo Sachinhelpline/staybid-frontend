@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import HostLocationPicker, { HostLocationValue } from "@/components/host/HostLocationPicker";
-import { uploadImage } from "@/lib/supabase";
+import { resizeImageBeforeUpload } from "@/lib/image-resize";
 
 interface Submission {
   id: string; title: string; city?: string; property_type?: string;
@@ -54,6 +54,7 @@ export default function ListPropertyPage() {
   const [amen, setAmen] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [photoNote, setPhotoNote] = useState<{ text: string; kind: "ok" | "err" } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -74,14 +75,49 @@ export default function ListPropertyPage() {
 
   async function addPhotos(files: FileList | null) {
     if (!files || !files.length) return;
+    const remaining = Math.max(0, 12 - images.length);
+    if (remaining <= 0) {
+      setPhotoNote({ text: "You've reached the 12-photo limit. Remove one to add more.", kind: "err" });
+      return;
+    }
+    const picked = Array.from(files).slice(0, remaining);
     setUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const file of Array.from(files).slice(0, 12)) {
-        try { urls.push(await uploadImage(file, "property-photos")); } catch { /* skip one */ }
+    setPhotoNote({ text: `Uploading 0/${picked.length}…`, kind: "ok" });
+
+    const uploaded: string[] = [];
+    const failed: string[] = [];
+
+    for (let i = 0; i < picked.length; i++) {
+      const file = picked[i];
+      setPhotoNote({ text: `Uploading ${i + 1}/${picked.length}…`, kind: "ok" });
+      try {
+        // Resize client-side (typically 5 MB → ~350-500 KB) so the file stays
+        // well under Vercel's serverless body limit, then upload via the
+        // service-role server route (RLS-proof + surfaces real errors).
+        const resized = await resizeImageBeforeUpload(file).catch(() => file);
+        const fd = new FormData();
+        fd.append("file", resized, resized.name || file.name || "photo.jpg");
+        const res = await fetch("/api/host/list-property/upload", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.url) {
+          throw new Error(data?.error || `Upload failed (${res.status})`);
+        }
+        uploaded.push(data.url as string);
+      } catch (e: any) {
+        failed.push(e?.message || "unknown error");
       }
-      setImages((s) => [...s, ...urls].slice(0, 12));
-    } finally { setUploading(false); }
+    }
+
+    if (uploaded.length) setImages((s) => [...s, ...uploaded].slice(0, 12));
+
+    if (failed.length && uploaded.length) {
+      setPhotoNote({ text: `Added ${uploaded.length}. ${failed.length} failed — tap 📷 to retry.`, kind: "err" });
+    } else if (failed.length) {
+      setPhotoNote({ text: `Couldn't upload ${failed.length === 1 ? "that photo" : `those ${failed.length} photos`}: ${failed[0]}. Tap 📷 to retry.`, kind: "err" });
+    } else {
+      setPhotoNote({ text: `✓ ${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} added.`, kind: "ok" });
+    }
+    setUploading(false);
   }
 
   async function submit() {
@@ -266,6 +302,11 @@ export default function ListPropertyPage() {
                 )}
               </div>
               <p className="text-xs mt-1.5" style={{ color: "var(--text-muted)" }}>Up to 12 photos. You can add reels & videos after submitting.</p>
+              {photoNote && (
+                <p className="text-xs mt-1 font-medium" style={{ color: photoNote.kind === "err" ? "#b04242" : "var(--accent)" }}>
+                  {photoNote.text}
+                </p>
+              )}
             </div>
 
             <Group label="Your contact (private)">
