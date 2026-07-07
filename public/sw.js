@@ -408,7 +408,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v308 — one-time HTML_CACHE bump (v125 -> v126). Admin catalog Listings
 // editor rebuilt for hospitality: property-type select, room builder,
 // property vs room amenities, meal plans, add-ons, policies. SWR HTML refresh.
-const HTML_CACHE = 'staybid-html-v126';
+// v309 — one-time HTML_CACHE bump (v126 -> v127). Admin "Approve + Provision"
+// on a listing → creates the operated StayBid-Circle hotel (rooms + units),
+// grants the lister /partner/dashboard access via unit-ownership. SWR HTML.
+const HTML_CACHE = 'staybid-html-v127';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

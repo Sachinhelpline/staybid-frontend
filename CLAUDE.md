@@ -9980,7 +9980,7 @@ interlinks on both sides: partner-facing investor dashboard + admin oversight.
 
 ---
 
-## Host Property-Listing Hospitality Redesign (v306 → v308, 2026-07-07)
+## Host Property-Listing Hospitality Redesign (v306 → v309, 2026-07-07)
 
 Sachin's A–G ask for `staybids.in/host/list-property`: fix the photo bug,
 turn the residential (BHK) form into a professional **hospitality** onboarding
@@ -10045,7 +10045,76 @@ round-trip with the exact admin hospitality shape (2 room types, 4★, 4
 amenities) accepted + cleaned up. `SB_BUILD v307→v308`, badge v308,
 `HTML_CACHE v125→v126`.
 
+### Phase 4 (v309) — approve → provision operated StayBid-Circle hotel (E + F)
+On admin **"🏨 Approve + Provision"** a `discovery_properties` listing becomes a
+REAL bookable `hotels` row that StayBid operates, with its rooms + physical
+`hotel_room_units`, and the original lister gets `/partner/dashboard` access.
+
+**Locked owner-model ("alag owner ID per property", with Sachin):**
+- `hotels.ownerId = "hco_<propId>"` — a **distinct per-property** host-circle
+  owner id. Never a real person's id, never the shared circle sentinel
+  (`STAYBID_CIRCLE_OPS`). Two host-circle properties never clash; the lister's
+  classic hotels (`ownerId = <user id>`) stay separate (item F).
+- `hotels.owner_type = 'host_circle'` — the discriminator admin sees.
+- `hotels.account_type = 'staybid_operated'`.
+- **Dashboard access via read-time scope union:** every provisioned
+  `hotel_room_units.owner_user_id = <submitted_by>`, so the EXISTING
+  `resolveOperatedHotelIds` (`lib/partner/operator-access.ts`) surfaces the hotel
+  on `/partner/dashboard` across all 22 partner routes with **zero read-path
+  changes**. Deterministic hotel id `hcp_<propId>` = same reuse mechanism as
+  `lib/circle/provision.ts`, but per-property owner instead of the sentinel.
+- Provisioned as a **DRAFT** hotel (`isActive=false`, `status='draft'`) — the
+  inventory + ownership exist and are dashboard-manageable, but it does NOT
+  enter the customer feed until ops flips it live.
+
+**Migration `2026-07-07-v309-host-circle-provisioning.sql`** (applied live):
+- `hotels.owner_type TEXT` (nullable → existing = classic owner).
+- `discovery_properties.provisioned_hotel_id TEXT` + `provisioned_at TIMESTAMPTZ`
+  (traceability + idempotency link-back).
+- `discovery_properties_status_check` extended with `'provisioned'`.
+- `idx_hotels_owner_type` partial index.
+
+**Files:** `lib/host/provision.ts` (`provisionListing(propertyId)` — best-effort,
+idempotent, deterministic ids; rooms from the `rooms` jsonb → v247 trigger
+auto-creates units; stamps units to the lister only when `submitted_by` present)
+· `app/api/admin/host/provision/route.ts` (POST `{propertyId}`, `adminFromReq`
++ `logAdminAction`, flips status→`provisioned` + records the hotel id) ·
+`app/admin/host/page.tsx` Property Listings tab (🏨 Approve + Provision button
++ Provisioned chip with hotel link + ↻ Re-sync for idempotent re-runs).
+
+**Idempotent:** re-running converges — `ensureHotel`/`ensureRooms` check
+deterministic ids, `stampUnitsToLister` only fills the still-unowned pool. Admin/
+platform-created listings (v308, `source='platform'`, `submitted_by=NULL`)
+provision fine — units stay unstamped (StayBid fully operates, leak-safe).
+
+Verified: `tsc` + `next build` clean (`/api/admin/host/provision` compiled);
+live round-trip mirroring `provisionListing` = 5 units auto-created (3+2 from
+`rooms.quantity` via the v247 trigger), 5 stamped to the lister,
+`owner_type=host_circle`, `owner_id=hco_v309test`, `account_type=staybid_operated`,
+and the exact `resolveOperatedHotelIds` query returns the hotel for the lister
+(`lister_scope_union_hit=1`); test rows deleted. `SB_BUILD v308→v309`, badge v309,
+`HTML_CACHE v126→v127`.
+
+**PostgREST gotcha (caught during verify):** `hotels`/`rooms`
+`amenities`/`images`/`meal_plans`/`addon_services` are `text[]`, NOT jsonb.
+PostgREST coerces a JSON-array request body into `text[]` automatically (so
+`lib/host/provision.ts` passing JS arrays is correct — same as `lib/circle/
+provision.ts`), but raw SQL needs `'{a,b}'::text[]` literals, not `::jsonb`.
+
 ### Things to Avoid (Property-Listing Redesign)
+- **Never** give a host-circle hotel `ownerId = <lister user id>` OR the shared
+  `STAYBID_CIRCLE_OPS` sentinel — the locked model is a DISTINCT per-property
+  owner id `hco_<propId>`. A shared id would clash the lister's classic hotels
+  with their host-circle properties (item F).
+- **Never** grant the lister dashboard access by adding `hotels.ownerId` to
+  their scope — access is via `hotel_room_units.owner_user_id` (the existing
+  `resolveOperatedHotelIds` scope union). That path is zero-read-change across
+  all 22 partner routes; the `ownerId` path would surface a StayBid-operated
+  hotel in a real person's ownerId scope (wrong).
+- **Never** provision a hotel as `isActive=true` — it must stay DRAFT until ops
+  flips it live, or an un-ready operated hotel leaks into the customer feed.
+- **Never** pass `::jsonb` for `hotels`/`rooms` array columns in raw SQL — they
+  are `text[]`. `lib/host/provision.ts` is fine (PostgREST coerces JSON arrays).
 - **Never** set `discovery_properties.source='admin'` — the CHECK rejects it.
   Admin/curated listings are `'platform'`; owner submissions are `'owner'`.
 - **Never** stamp `updated_at` on `discovery_properties` — no such column
@@ -10063,11 +10132,11 @@ amenities) accepted + cleaned up. `SB_BUILD v307→v308`, badge v308,
 - The stray Netlify project `willowy-mooncake-a50d6f` (no repo config) fails
   its Pages/Header/Redirect checks on EVERY PR — not a deploy target. Ignore.
 
-### Pending (Phases 4–5, next on `continue`)
-- **Phase 4** — on admin "Approve + Provision" → create a real StayBid-Circle
-  `hotels` row (+ rooms + `hotel_room_units`) from `discovery_properties.rooms`;
-  lister sees it on `/partner/dashboard` via scope union. Uses the locked "Alag
-  owner ID per property" model (`owner_type='host_circle'`,
-  `account_type='staybid_operated'`).
-- **Phase 5** — owner-type discriminator surfaced to admin everywhere +
-  end-to-end verify + document.
+### Pending (Phase 5, next on `continue`)
+- **Phase 4 — DONE (v309).** See the Phase 4 section above.
+- **Phase 5** — surface the `owner_type='host_circle'` discriminator to admin
+  everywhere it matters (the admin hub Property Listings tab already shows the
+  🏨 Provisioned chip + hotel link; extend to `/admin/hotels` + the partner
+  dashboard so a host-circle operated hotel is visibly labelled distinct from a
+  classic owner-run hotel) + end-to-end verify with a real owner-submitted
+  listing through approve→provision→partner-dashboard-visible + document.

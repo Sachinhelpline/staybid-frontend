@@ -114,6 +114,28 @@ export default function AdminHost() {
     }
   };
 
+  // v309 — Approve + Provision: turn a listing into an operated StayBid-Circle
+  // hotel (rooms + units) and grant the lister dashboard access. Idempotent.
+  const provision = async (id: string) => {
+    setBusy(id); setErr("");
+    try {
+      const tok = localStorage.getItem("sb_admin_token") || "";
+      const adminId = adminIdFromLS();
+      const r = await fetch("/api/admin/host/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": tok, "x-admin-id": adminId },
+        body: JSON.stringify({ propertyId: id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "Provision failed");
+      load();
+    } catch (e: any) {
+      setErr(e?.message || "Provision failed");
+    } finally {
+      setBusy("");
+    }
+  };
+
   const k = data?.kpis;
 
   return (
@@ -190,7 +212,7 @@ export default function AdminHost() {
           <div style={{ overflowX: "auto" }}>
             {tab === "leads" && <LeadsTable rows={data?.leads || []} busy={busy} onStatus={setStatus} />}
             {tab === "portfolios" && <PortfoliosTable rows={data?.portfolios || []} />}
-            {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} />}
+            {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} onProvision={provision} />}
             {tab === "inquiries" && <InquiriesTable rows={data?.inquiries || []} busy={busy} onStatus={setStatus} />}
             {tab === "projects" && <ProjectsTable rows={data?.projects || []} />}
             {tab === "orders" && <OrdersTable rows={data?.orders || []} busy={busy} onStatus={setStatus} />}
@@ -297,7 +319,7 @@ function PortfoliosTable({ rows }: { rows: any[] }) {
   );
 }
 
-function PropertiesTable({ rows, busy, onStatus }: TableProps) {
+function PropertiesTable({ rows, busy, onStatus, onProvision }: TableProps) {
   if (!rows.length) return <Empty label="No property listings submitted yet." />;
   // Pending-review first, then everything else — newest within each group.
   const sorted = [...rows].sort((a, b) => {
@@ -342,15 +364,33 @@ function PropertiesTable({ rows, busy, onStatus }: TableProps) {
               <Td><span style={pill}>{r.source || "owner"}</span></Td>
               <Td><StatusPicker source="property" id={r.id} status={r.status} busy={busy} onStatus={onStatus} /></Td>
               <Td>
-                {isPending ? (
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "available")}
-                      style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>✓ Approve</button>
-                    <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "rejected")}
-                      style={{ ...miniBtn, background: "rgba(239,68,68,0.12)", color: "#EF4444", borderColor: "rgba(239,68,68,0.35)" }}>✕ Reject</button>
+                {r.provisioned_hotel_id ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ ...pill, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
+                    <a href={`/hotels/${r.provisioned_hotel_id}`} target="_blank" rel="noreferrer" style={{ color: "#8A8FA8", fontSize: 10, textDecoration: "none" }}>{r.provisioned_hotel_id} ↗</a>
+                    {onProvision && (
+                      <button disabled={busy === r.id} onClick={() => onProvision(r.id)} title="Re-run provisioning (idempotent — syncs rooms/units)"
+                        style={{ ...miniBtn, background: "transparent", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.18)", fontSize: 10 }}>↻ Re-sync</button>
+                    )}
                   </div>
                 ) : (
-                  <span style={{ color: "#8A8FA8", fontSize: 11 }}>—</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {isPending && (
+                      <>
+                        <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "available")}
+                          style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>✓ Approve</button>
+                        <button disabled={busy === r.id} onClick={() => onStatus("property", r.id, "rejected")}
+                          style={{ ...miniBtn, background: "rgba(239,68,68,0.12)", color: "#EF4444", borderColor: "rgba(239,68,68,0.35)" }}>✕ Reject</button>
+                      </>
+                    )}
+                    {onProvision && r.status !== "rejected" && (
+                      <button disabled={busy === r.id} onClick={() => onProvision(r.id)}
+                        title="Create the operated StayBid hotel (rooms + units) + grant the lister dashboard access"
+                        style={{ ...miniBtn, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)" }}>
+                        {busy === r.id ? "…" : "🏨 Approve + Provision"}
+                      </button>
+                    )}
+                  </div>
                 )}
               </Td>
               <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
@@ -492,7 +532,7 @@ function ChannelsTable({ rows, busy, onStatus }: TableProps) {
 
 /* ── Shared bits ─────────────────────────────────────────────────────── */
 
-type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void };
+type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void; onProvision?: (id: string) => void };
 
 function StatusPicker({ source, id, status, busy, onStatus }:
   { source: string; id: string; status?: string; busy: string; onStatus: (s: string, id: string, st: string) => void }) {
