@@ -68,6 +68,8 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { /* empty */ }
 
   const data = pick(body, PROPERTY_FIELDS);
+  // available_from is a `date` column — PostgREST 22007-rejects "" (empty string).
+  if (data.available_from === "") data.available_from = null;
   if (!String(data.title || "").trim()) return NextResponse.json({ error: "Property title is required." }, { status: 400 });
   if (!String(data.city || "").trim()) return NextResponse.json({ error: "City is required." }, { status: 400 });
 
