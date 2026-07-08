@@ -35,6 +35,8 @@ const PROPERTY_FIELDS = new Set([
   "images", "video_url", "rooms_label", "view_label", "monthly_rate",
   "roi_min_pct", "roi_max_pct", "occupancy_label", "badges", "hotel_id",
   "operation_model", "status", "sort_order",
+  // v311 — hospitality richness (matches the host onboarding form)
+  "property_type", "star_rating", "amenities",
 ]);
 const ROOM_TYPE_FIELDS = new Set([
   "property_id", "name", "monthly_rate", "total_units", "locked_units",

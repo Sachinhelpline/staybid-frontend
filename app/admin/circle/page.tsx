@@ -10,6 +10,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CountUp } from "@/components/CountUp";
 import { fmtINR, DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig } from "@/lib/circle/engine";
 import { resizeImageBeforeUpload } from "@/lib/image-resize";
+// v311 — reuse the SAME hospitality catalog the host onboarding form uses,
+// so admin "Add property" is at least as rich (property types + amenities).
+import { PROPERTY_TYPES, AMENITIES } from "@/lib/catalog";
 
 // v289 — direct-to-Storage uploader for the property editor (image + reel
 // video). Pushes to the public `social-media` bucket (anon-key write, same
@@ -73,6 +76,62 @@ const btnS = (bg: string, fg = "#07080C"): React.CSSProperties => ({
   background: bg, color: fg, border: "none", borderRadius: 10,
   padding: "8px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
 });
+const chipS: React.CSSProperties = {
+  background: "#0F1117", border: `1px solid ${C.border}`, color: C.sub,
+  borderRadius: 999, padding: "5px 11px", fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+};
+const chipOnS: React.CSSProperties = {
+  background: "rgba(212,175,55,0.14)", border: `1px solid ${C.gold}`, color: C.gold,
+};
+
+// ── Module-scope form helpers ──────────────────────────────────────────────
+// IMPORTANT: these MUST live at module scope. Defining a wrapper component
+// INSIDE EditorModal (as the old `const F = …` did) gives it a fresh identity
+// on every keystroke → React unmounts + remounts the <input> → focus is lost
+// after a single character. That was the "sirf ek hi letter type hota hai"
+// bug in the admin StayCircle Add-property modal. Hoisting fixes it for good.
+function F({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: C.sub }}>
+      {label}
+      {children}
+    </label>
+  );
+}
+function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 2 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.gold }}>{title}</div>
+      {sub && <div style={{ fontSize: 10.5, color: C.sub, marginTop: 2, marginBottom: 8 }}>{sub}</div>}
+      <div style={{ display: "grid", gap: 10, marginTop: sub ? 0 : 8 }}>{children}</div>
+    </div>
+  );
+}
+type ChipOpt = { id: string; label: string; emoji?: string };
+function ChipsSingle({ options, value, onPick }: { options: ChipOpt[]; value: string; onPick: (id: string) => void }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {options.map((o) => (
+        <button key={o.id} type="button" onClick={() => onPick(o.id)}
+          style={{ ...chipS, ...(value === o.id ? chipOnS : null) }}>
+          {o.emoji ? o.emoji + " " : ""}{o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+function ChipsMulti({ options, selected, onToggle }: { options: ChipOpt[]; selected: string[]; onToggle: (id: string) => void }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {options.map((o) => (
+        <button key={o.id} type="button" onClick={() => onToggle(o.id)}
+          style={{ ...chipS, ...(selected.includes(o.id) ? chipOnS : null) }}>
+          {o.emoji ? o.emoji + " " : ""}{o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminCirclePage() {
   const [data, setData] = useState<any>(null);
@@ -410,18 +469,15 @@ function EditorModal({
 }) {
   const [form, setForm] = useState<Record<string, any>>(() => {
     if (row) return { ...row };
-    if (entity === "property") return { title: "", city: "", state: "", location_label: "", tagline: "", monthly_rate: 25000, roi_min_pct: 14, roi_max_pct: 17, occupancy_label: "High Occupancy", operation_model: "managed", status: "active", sort_order: 100, images: [], badges: [], video_url: "", rooms_label: "", hotel_id: "" };
+    if (entity === "property") return { title: "", property_type: "hotel", star_rating: 0, description: "", amenities: [], city: "", state: "", location_label: "", tagline: "", monthly_rate: 25000, roi_min_pct: 14, roi_max_pct: 17, occupancy_label: "High Occupancy", operation_model: "managed", status: "active", sort_order: 100, images: [], badges: [], video_url: "", rooms_label: "", hotel_id: "" };
     if (entity === "room_type") return { property_id: properties[0]?.id || "", name: "Standard Room", monthly_rate: 20000, total_units: 2, locked_units: 0, active: true, sort_order: 100 };
     return { bundle_id: bundles[0]?.id || "", user_id: bundles[0]?.user_id || "", month_label: "", amount: 0, note: "", status: "paid" };
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-
-  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: C.sub }}>
-      {label}
-      {children}
-    </label>
-  );
+  const toggleAmenity = (id: string) => setForm((f) => {
+    const cur: string[] = Array.isArray(f.amenities) ? f.amenities : [];
+    return { ...f, amenities: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] };
+  });
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.65)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
@@ -433,57 +489,92 @@ function EditorModal({
         <div style={{ display: "grid", gap: 10 }}>
           {entity === "property" && (
             <>
-              <F label="Title"><input style={inputS} value={form.title || ""} onChange={(e) => set("title", e.target.value)} /></F>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                <F label="City"><input style={inputS} value={form.city || ""} onChange={(e) => set("city", e.target.value)} /></F>
-                <F label="State"><input style={inputS} value={form.state || ""} onChange={(e) => set("state", e.target.value)} /></F>
+              {/* v311 — direct-publish note. Admin adds go live instantly; no
+                  owner/approval step (unlike host listing submissions). */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(46,204,113,0.10)", border: `1px solid rgba(46,204,113,0.30)`, borderRadius: 10, padding: "8px 11px", fontSize: 11.5, color: C.green }}>
+                ⚡ Admin add — publishes instantly, no approval needed.
               </div>
-              <F label="Location label"><input style={inputS} value={form.location_label || ""} onChange={(e) => set("location_label", e.target.value)} /></F>
-              <F label="Tagline"><input style={inputS} value={form.tagline || ""} onChange={(e) => set("tagline", e.target.value)} /></F>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr 1fr" }}>
-                <F label="₹ / room / month"><input type="number" style={inputS} value={form.monthly_rate ?? 0} onChange={(e) => set("monthly_rate", Number(e.target.value))} /></F>
-                <F label="ROI min %"><input type="number" style={inputS} value={form.roi_min_pct ?? 0} onChange={(e) => set("roi_min_pct", Number(e.target.value))} /></F>
-                <F label="ROI max %"><input type="number" style={inputS} value={form.roi_max_pct ?? 0} onChange={(e) => set("roi_max_pct", Number(e.target.value))} /></F>
-              </div>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                <F label="Occupancy label"><input style={inputS} value={form.occupancy_label || ""} onChange={(e) => set("occupancy_label", e.target.value)} /></F>
-                <F label="Rooms label (e.g. 2 Rooms · Mountain View)"><input style={inputS} value={form.rooms_label || ""} onChange={(e) => set("rooms_label", e.target.value)} /></F>
-              </div>
-              <F label="Photos — upload from device or paste URLs (one per line)">
-                <MediaUploader
-                  kind="image"
-                  onDone={(urls) => set("images", [...(Array.isArray(form.images) ? form.images : []), ...urls])}
-                />
-                <textarea style={{ ...inputS, minHeight: 74, marginTop: 8 }} value={(Array.isArray(form.images) ? form.images : []).join("\n")}
-                  onChange={(e) => set("images", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} />
-                {Array.isArray(form.images) && form.images.length > 0 && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                    {form.images.map((src: string, i: number) => (
-                      <div key={i} style={{ position: "relative", width: 58, height: 44, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <button onClick={() => set("images", form.images.filter((_: string, j: number) => j !== i))}
-                          style={{ position: "absolute", top: 1, right: 1, width: 16, height: 16, borderRadius: 999, border: "none", cursor: "pointer", background: "rgba(255,71,87,.9)", color: "#fff", fontSize: 10, lineHeight: "16px", padding: 0 }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </F>
-              <F label="Reel video — upload from device or paste a URL">
-                <MediaUploader kind="video" onDone={(urls) => { if (urls[0]) set("video_url", urls[0]); }} />
-                <input style={{ ...inputS, marginTop: 8 }} value={form.video_url || ""} onChange={(e) => set("video_url", e.target.value)} placeholder="https://…mp4" />
-                {form.video_url && (
-                  <video src={form.video_url} controls muted playsInline style={{ width: "100%", maxHeight: 160, borderRadius: 10, marginTop: 8, background: "#000" }} />
-                )}
-              </F>
-              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                <F label="Operation model">
-                  <select style={inputS} value={form.operation_model || "managed"} onChange={(e) => set("operation_model", e.target.value)}>
-                    {["managed", "revenue_share", "lease", "franchise"].map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
+
+              <Section title="Property basics">
+                <F label="Title"><input style={inputS} value={form.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. The Mountain Grand, Mussoorie" /></F>
+                <F label="Property type">
+                  <ChipsSingle options={PROPERTY_TYPES} value={form.property_type || "hotel"} onPick={(id) => set("property_type", id)} />
                 </F>
-                <F label="Linked hotel id (live partner fetch — optional)"><input style={inputS} value={form.hotel_id || ""} onChange={(e) => set("hotel_id", e.target.value)} /></F>
-              </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+                  <F label="Star rating">
+                    <select style={inputS} value={String(form.star_rating ?? 0)} onChange={(e) => set("star_rating", Number(e.target.value))}>
+                      <option value="0">Not rated</option>
+                      {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)} {n}-star</option>)}
+                    </select>
+                  </F>
+                  <F label="Tagline"><input style={inputS} value={form.tagline || ""} onChange={(e) => set("tagline", e.target.value)} placeholder="Short highlight line" /></F>
+                </div>
+                <F label="Short description">
+                  <textarea style={{ ...inputS, minHeight: 60 }} value={form.description || ""} onChange={(e) => set("description", e.target.value)} placeholder="A line or two about what makes this property special…" />
+                </F>
+              </Section>
+
+              <Section title="Location">
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+                  <F label="City"><input style={inputS} value={form.city || ""} onChange={(e) => set("city", e.target.value)} /></F>
+                  <F label="State"><input style={inputS} value={form.state || ""} onChange={(e) => set("state", e.target.value)} /></F>
+                </div>
+                <F label="Location label (e.g. 500m from Mall Road)"><input style={inputS} value={form.location_label || ""} onChange={(e) => set("location_label", e.target.value)} /></F>
+              </Section>
+
+              <Section title="Amenities" sub="Same catalog the customer/host onboarding uses.">
+                <ChipsMulti options={AMENITIES} selected={Array.isArray(form.amenities) ? form.amenities : []} onToggle={toggleAmenity} />
+              </Section>
+
+              <Section title="Media" sub="Photos + a reel video — upload from device or paste URLs.">
+                <F label="Photos">
+                  <MediaUploader
+                    kind="image"
+                    onDone={(urls) => set("images", [...(Array.isArray(form.images) ? form.images : []), ...urls])}
+                  />
+                  <textarea style={{ ...inputS, minHeight: 60, marginTop: 8 }} value={(Array.isArray(form.images) ? form.images : []).join("\n")}
+                    onChange={(e) => set("images", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} placeholder="One image URL per line" />
+                  {Array.isArray(form.images) && form.images.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                      {form.images.map((src: string, i: number) => (
+                        <div key={i} style={{ position: "relative", width: 58, height: 44, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <button onClick={() => set("images", form.images.filter((_: string, j: number) => j !== i))}
+                            style={{ position: "absolute", top: 1, right: 1, width: 16, height: 16, borderRadius: 999, border: "none", cursor: "pointer", background: "rgba(255,71,87,.9)", color: "#fff", fontSize: 10, lineHeight: "16px", padding: 0 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </F>
+                <F label="Reel video">
+                  <MediaUploader kind="video" onDone={(urls) => { if (urls[0]) set("video_url", urls[0]); }} />
+                  <input style={{ ...inputS, marginTop: 8 }} value={form.video_url || ""} onChange={(e) => set("video_url", e.target.value)} placeholder="https://…mp4" />
+                  {form.video_url && (
+                    <video src={form.video_url} controls muted playsInline style={{ width: "100%", maxHeight: 160, borderRadius: 10, marginTop: 8, background: "#000" }} />
+                  )}
+                </F>
+              </Section>
+
+              <Section title="Investment & operations" sub="StayCircle-specific — drives the /circle catalog + ROI panel.">
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr 1fr" }}>
+                  <F label="₹ / room / month"><input type="number" style={inputS} value={form.monthly_rate ?? 0} onChange={(e) => set("monthly_rate", Number(e.target.value))} /></F>
+                  <F label="ROI min %"><input type="number" style={inputS} value={form.roi_min_pct ?? 0} onChange={(e) => set("roi_min_pct", Number(e.target.value))} /></F>
+                  <F label="ROI max %"><input type="number" style={inputS} value={form.roi_max_pct ?? 0} onChange={(e) => set("roi_max_pct", Number(e.target.value))} /></F>
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+                  <F label="Occupancy label"><input style={inputS} value={form.occupancy_label || ""} onChange={(e) => set("occupancy_label", e.target.value)} /></F>
+                  <F label="Rooms label (e.g. 2 Rooms · Mountain View)"><input style={inputS} value={form.rooms_label || ""} onChange={(e) => set("rooms_label", e.target.value)} /></F>
+                </div>
+                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+                  <F label="Operation model">
+                    <select style={inputS} value={form.operation_model || "managed"} onChange={(e) => set("operation_model", e.target.value)}>
+                      {["managed", "revenue_share", "lease", "franchise"].map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </F>
+                  <F label="Linked hotel id (live partner fetch — optional)"><input style={inputS} value={form.hotel_id || ""} onChange={(e) => set("hotel_id", e.target.value)} /></F>
+                </div>
+              </Section>
             </>
           )}
 
