@@ -228,6 +228,9 @@ export async function POST(req: Request) {
     entity === "property" ? PROPERTY_FIELDS :
     entity === "room_type" ? ROOM_TYPE_FIELDS : PAYOUT_FIELDS;
   const data = pickFields(body?.data, fields);
+  // available_from is a `date` column — PostgREST 22007-rejects "" (empty string).
+  // Coerce blank → null so a listing saved without a start date doesn't 502.
+  if (data.available_from === "") data.available_from = null;
   if (!Object.keys(data).length) return NextResponse.json({ error: "No fields" }, { status: 400 });
 
   try {
@@ -296,6 +299,8 @@ export async function PATCH(req: Request) {
   if (entity === "property") {
     table = "circle_properties";
     data = pickFields(body?.data, PROPERTY_FIELDS);
+    // available_from is a `date` column — PostgREST 22007-rejects "" (empty string).
+    if (data.available_from === "") data.available_from = null;
     data.updated_at = new Date().toISOString();
   } else if (entity === "room_type") {
     table = "circle_room_types";
