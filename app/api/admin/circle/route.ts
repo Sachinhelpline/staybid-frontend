@@ -35,12 +35,16 @@ const PROPERTY_FIELDS = new Set([
   "images", "video_url", "rooms_label", "view_label", "monthly_rate",
   "roi_min_pct", "roi_max_pct", "occupancy_label", "badges", "hotel_id",
   "operation_model", "status", "sort_order",
-  // v311 — hospitality richness (matches the host onboarding form)
+  // v311 — hospitality richness (matches the customer onboarding form)
   "property_type", "star_rating", "amenities",
+  // v312 — pre-known availability date (rent starts here, not on pay day)
+  "available_from",
 ]);
 const ROOM_TYPE_FIELDS = new Set([
   "property_id", "name", "monthly_rate", "total_units", "locked_units",
   "active", "sort_order",
+  // v312 — richer per-room detail (surfaces in the /circle room-tour reel)
+  "capacity", "bed_type", "view_label", "description",
 ]);
 const PAYOUT_FIELDS = new Set(["bundle_id", "user_id", "month_label", "amount", "note", "status"]);
 
@@ -51,6 +55,72 @@ function pickFields(data: any, allowed: Set<string>): Record<string, any> {
     if (allowed.has(k)) out[k] = data[k];
   });
   return out;
+}
+
+// v312 — sync a property's inline room categories with the customer/admin
+// onboarding form. Rooms WITH an id are updated; rooms WITHOUT an id are
+// inserted; existing active rooms NOT in the submitted set are SOFT-removed
+// (active=false — preserves id + locked_units so investor holdings survive).
+// This is what guarantees a property is never saved room-less (the false
+// "Sold out" bug on /circle/discover).
+function normalizeRoom(r: any, propertyId: string, idx: number): Record<string, any> {
+  return {
+    property_id: propertyId,
+    name: String(r?.name || "").trim().slice(0, 120),
+    monthly_rate: Math.max(0, Number(r?.monthly_rate) || 0),
+    total_units: Math.max(1, Math.floor(Number(r?.total_units) || 1)),
+    locked_units: Math.max(0, Math.floor(Number(r?.locked_units) || 0)),
+    capacity: Math.max(1, Math.floor(Number(r?.capacity) || 2)),
+    bed_type: String(r?.bed_type || "").trim().slice(0, 60),
+    view_label: String(r?.view_label || "").trim().slice(0, 60),
+    description: String(r?.description || "").trim().slice(0, 400),
+    active: true,
+    sort_order: (idx + 1) * 10,
+  };
+}
+
+async function syncRoomTypes(propertyId: string, rooms: any[]): Promise<void> {
+  if (!propertyId || !Array.isArray(rooms)) return;
+  const valid = rooms.filter((r) => String(r?.name || "").trim() && (Number(r?.total_units) || 0) > 0);
+  // existing active rooms for this property
+  let existing: any[] = [];
+  try {
+    const er = await fetch(
+      `${SB_URL}/rest/v1/circle_room_types?property_id=eq.${encodeURIComponent(propertyId)}&active=eq.true&select=id`,
+      { headers: SB_H },
+    );
+    existing = er.ok ? await er.json() : [];
+  } catch { existing = []; }
+  const existingIds = new Set((Array.isArray(existing) ? existing : []).map((x: any) => String(x.id)));
+  const keptIds = new Set<string>();
+  const inserts: Record<string, any>[] = [];
+
+  for (let i = 0; i < valid.length; i++) {
+    const r = valid[i];
+    const payload = normalizeRoom(r, propertyId, i);
+    const id = String(r?.id || "").trim();
+    if (id && existingIds.has(id)) {
+      keptIds.add(id);
+      await fetch(`${SB_URL}/rest/v1/circle_room_types?id=eq.${encodeURIComponent(id)}`, {
+        method: "PATCH", headers: SB_H, body: JSON.stringify(payload),
+      }).catch(() => {});
+    } else {
+      inserts.push(payload);
+    }
+  }
+  if (inserts.length) {
+    await fetch(`${SB_URL}/rest/v1/circle_room_types`, {
+      method: "POST", headers: SB_H, body: JSON.stringify(inserts),
+    }).catch(() => {});
+  }
+  // soft-remove existing rooms the admin dropped
+  const drop = Array.from(existingIds).filter((id) => !keptIds.has(id));
+  if (drop.length) {
+    await fetch(
+      `${SB_URL}/rest/v1/circle_room_types?id=in.(${drop.map((i) => `"${i}"`).join(",")})`,
+      { method: "PATCH", headers: SB_H, body: JSON.stringify({ active: false }) },
+    ).catch(() => {});
+  }
 }
 
 async function attachUsers(rows: any[], key: string): Promise<any[]> {
@@ -167,6 +237,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Insert failed", detail: t.slice(0, 200) }, { status: 502 });
     }
     const [row] = await r.json();
+    // v312 — inline room categories submitted with the property form.
+    if (entity === "property" && Array.isArray(body?.data?.roomTypes) && row?.id) {
+      await syncRoomTypes(String(row.id), body.data.roomTypes);
+    }
     logAdminAction({ admin, action: `circle.${entity}.create`, targetType: entity, targetId: row?.id, details: data });
     try { sbCacheInvalidate("circle:"); } catch { /* best-effort */ }
     return NextResponse.json({ ok: true, row });
@@ -251,6 +325,10 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Update failed", detail: t.slice(0, 200) }, { status: 502 });
     }
     const [row] = await r.json();
+    // v312 — inline room categories submitted with the property edit form.
+    if (entity === "property" && Array.isArray(body?.data?.roomTypes)) {
+      await syncRoomTypes(id, body.data.roomTypes);
+    }
     logAdminAction({ admin, action: `circle.${entity}.update`, targetType: entity, targetId: id, details: data });
     try { sbCacheInvalidate("circle:"); } catch { /* best-effort */ }
     return NextResponse.json({ ok: true, row });

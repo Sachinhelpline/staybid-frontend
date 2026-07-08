@@ -260,10 +260,11 @@ export default function CircleDiscoverPage() {
         </button>
       )}
 
-      {/* list-a-property entry — owners submit a property for lease / rent
-          (routes to the PUBLIC lease-onboarding panel, NOT the admin editor). */}
+      {/* list-a-property entry — owners submit a property INTO the StayCircle
+          investment catalog (same shared CircleOnboardForm the admin uses;
+          customer submissions land status='pending' for admin approval). */}
       {!loading && (
-        <button className="sbc-rlist-chip" onClick={() => router.push("/host/list-property")} aria-label="List a property">
+        <button className="sbc-rlist-chip" onClick={() => router.push("/circle/onboard")} aria-label="List a property">
           <span>＋</span> List property
         </button>
       )}
@@ -427,7 +428,11 @@ function FullReel({
     }
   }, [inView]);
 
-  const soldOut = p.status === "sold_out" || p.roomTypes.every((rt) => rt.availableUnits <= 0);
+  // Vacuous-truth guard: [].every() === true — a property with ZERO room-types
+  // (the "Dhanaulti Village Resort" case) must NOT read as "Sold out".
+  const soldOut =
+    p.status === "sold_out" ||
+    (p.roomTypes.length > 0 && p.roomTypes.every((rt) => rt.availableUnits <= 0));
   const poster = p.images[0];
   const initials = (p.title || "SC").trim().slice(0, 1).toUpperCase();
 

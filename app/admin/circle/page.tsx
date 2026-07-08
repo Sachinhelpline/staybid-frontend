@@ -6,48 +6,14 @@
 // (cancel/complete only — 'active' is owned by the payment verify chain) ·
 // Payouts (post monthly returns) · Locks (read-only).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CountUp } from "@/components/CountUp";
 import { fmtINR, DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig } from "@/lib/circle/engine";
-import { resizeImageBeforeUpload } from "@/lib/image-resize";
-// v311 — reuse the SAME hospitality catalog the host onboarding form uses,
-// so admin "Add property" is at least as rich (property types + amenities).
-import { PROPERTY_TYPES, AMENITIES } from "@/lib/catalog";
-
-// v289 — direct-to-Storage uploader for the property editor (image + reel
-// video). Pushes to the public `social-media` bucket (anon-key write, same
-// bucket the reel Composer uses) and returns the public URL.
-const SB_STORAGE = "https://uxxhbdqedazpmvbvaosh.supabase.co";
-const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4eGhiZHFlZGF6cG12YnZhb3NoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTIwMDgsImV4cCI6MjA5MDY4ODAwOH0.mBhr1tNlail5u0D_dj3ljA9oRZvZ7_2_0-lt7I6cJ60";
-
-function pushFileToStorage(
-  file: Blob, subdir: string, ext: string, contentType: string,
-  onProgress?: (pct: number) => void,
-): Promise<string> {
-  const stamp = Date.now();
-  const rand = Math.random().toString(36).slice(2, 8);
-  const path = `circle/${subdir}/${stamp}-${rand}.${ext}`;
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.timeout = 120_000;
-    xhr.open("POST", `${SB_STORAGE}/storage/v1/object/social-media/${path}`, true);
-    xhr.setRequestHeader("Authorization", `Bearer ${SB_ANON}`);
-    xhr.setRequestHeader("Content-Type", contentType);
-    xhr.setRequestHeader("x-upsert", "true");
-    if (onProgress) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress((e.loaded / e.total) * 100); };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve(`${SB_STORAGE}/storage/v1/object/public/social-media/${path}`);
-      else reject(new Error(`Upload failed (${xhr.status})`));
-    };
-    xhr.onerror = () => reject(new Error("Upload failed: network error"));
-    xhr.ontimeout = () => reject(new Error("Upload timed out"));
-    xhr.send(file);
-  });
-}
-
-function extFromMime(mime: string, fb: string) {
-  return ((mime || "").split("/")[1]?.split(";")[0] || fb).replace(/[^a-z0-9]/gi, "").slice(0, 8) || fb;
-}
+// v312 — the SINGLE StayCircle onboarding form, shared with /circle/onboard.
+// Carries the inline room-category builder (fixes the false-"Sold out" caused
+// by properties saved with zero circle_room_types).
+import CircleOnboardForm, { type CircleRoomDraft } from "@/components/circle/CircleOnboardForm";
+import { ROOM_CATEGORIES } from "@/lib/catalog";
 
 const C = {
   bg: "#07080C", card: "#151820", border: "rgba(255,255,255,0.07)",
@@ -76,20 +42,10 @@ const btnS = (bg: string, fg = "#07080C"): React.CSSProperties => ({
   background: bg, color: fg, border: "none", borderRadius: 10,
   padding: "8px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer",
 });
-const chipS: React.CSSProperties = {
-  background: "#0F1117", border: `1px solid ${C.border}`, color: C.sub,
-  borderRadius: 999, padding: "5px 11px", fontSize: 11.5, fontWeight: 600, cursor: "pointer",
-};
-const chipOnS: React.CSSProperties = {
-  background: "rgba(212,175,55,0.14)", border: `1px solid ${C.gold}`, color: C.gold,
-};
-
-// ── Module-scope form helpers ──────────────────────────────────────────────
-// IMPORTANT: these MUST live at module scope. Defining a wrapper component
-// INSIDE EditorModal (as the old `const F = …` did) gives it a fresh identity
-// on every keystroke → React unmounts + remounts the <input> → focus is lost
-// after a single character. That was the "sirf ek hi letter type hota hai"
-// bug in the admin StayCircle Add-property modal. Hoisting fixes it for good.
+// ── Module-scope form helper (room_type + payout editors) ──────────────────
+// IMPORTANT: MUST live at module scope. Defining a wrapper component INSIDE
+// EditorModal gives it a fresh identity on every keystroke → React remounts the
+// <input> → focus lost after one character ("sirf ek hi letter type hota hai").
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={{ display: "grid", gap: 4, fontSize: 11.5, color: C.sub }}>
@@ -98,39 +54,13 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
     </label>
   );
 }
-function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 12, marginTop: 2 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.gold }}>{title}</div>
-      {sub && <div style={{ fontSize: 10.5, color: C.sub, marginTop: 2, marginBottom: 8 }}>{sub}</div>}
-      <div style={{ display: "grid", gap: 10, marginTop: sub ? 0 : 8 }}>{children}</div>
-    </div>
-  );
-}
-type ChipOpt = { id: string; label: string; emoji?: string };
-function ChipsSingle({ options, value, onPick }: { options: ChipOpt[]; value: string; onPick: (id: string) => void }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {options.map((o) => (
-        <button key={o.id} type="button" onClick={() => onPick(o.id)}
-          style={{ ...chipS, ...(value === o.id ? chipOnS : null) }}>
-          {o.emoji ? o.emoji + " " : ""}{o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-function ChipsMulti({ options, selected, onToggle }: { options: ChipOpt[]; selected: string[]; onToggle: (id: string) => void }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {options.map((o) => (
-        <button key={o.id} type="button" onClick={() => onToggle(o.id)}
-          style={{ ...chipS, ...(selected.includes(o.id) ? chipOnS : null) }}>
-          {o.emoji ? o.emoji + " " : ""}{o.label}
-        </button>
-      ))}
-    </div>
-  );
+
+// Best-effort category inference for existing room_type rows (no category
+// column in circle_room_types) so editing pre-selects the right dropdown.
+function inferCategory(name: string): string {
+  const n = (name || "").trim().toLowerCase();
+  const hit = ROOM_CATEGORIES.find((c) => !c.custom && c.label.toLowerCase() === n);
+  return hit ? hit.id : "custom";
 }
 
 export default function AdminCirclePage() {
@@ -243,7 +173,7 @@ export default function AdminCirclePage() {
                 <div style={{ fontWeight: 700 }}>{p.title} <span style={{ color: C.sub, fontWeight: 400 }}>· {p.city}</span></div>
                 <div style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>
                   {fmtINR(p.monthly_rate)}/mo · ROI {p.roi_min_pct}–{p.roi_max_pct}% · {p.operation_model} ·{" "}
-                  <span style={{ color: p.status === "active" ? C.green : p.status === "sold_out" ? C.red : C.sub }}>{p.status}</span>
+                  <span style={{ color: p.status === "active" ? C.green : p.status === "pending" ? C.gold : p.status === "sold_out" ? C.red : C.sub, fontWeight: p.status === "pending" ? 700 : 400 }}>{p.status === "pending" ? "⏳ pending review" : p.status}</span>
                   {p.hotel_id && <span> · 🏨 linked: {p.hotel_id}</span>}
                 </div>
               </div>
@@ -254,7 +184,7 @@ export default function AdminCirclePage() {
                   style={{ ...inputS, width: "auto" }}
                   disabled={!!busy}
                 >
-                  {["active", "inactive", "sold_out", "coming_soon"].map((s) => <option key={s} value={s}>{s}</option>)}
+                  {["pending", "active", "inactive", "sold_out", "coming_soon", "rejected"].map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button style={btnS(C.blue)} onClick={() => setEditor({ entity: "property", row: p })}>✎ Edit</button>
                 <button style={btnS(C.red, "#fff")} disabled={!!busy} onClick={() => {
@@ -388,6 +318,7 @@ export default function AdminCirclePage() {
           entity={editor.entity}
           row={editor.row}
           properties={properties}
+          roomTypes={roomTypes}
           bundles={bundles}
           onClose={() => setEditor(null)}
           onSave={(payload) => {
@@ -402,82 +333,49 @@ export default function AdminCirclePage() {
 }
 
 // ---------------------------------------------------------------------------
-// v289 — reel-composer-style media uploader (image / video → social-media bucket).
-function MediaUploader({ kind, onDone }: { kind: "image" | "video"; onDone: (urls: string[]) => void }) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [pct, setPct] = useState(0);
-  const [msg, setMsg] = useState("");
-
-  const handle = async (files: FileList | null) => {
-    if (!files || !files.length) return;
-    setBusy(true); setMsg(""); setPct(0);
-    const urls: string[] = [];
-    try {
-      const list = Array.from(files);
-      for (let i = 0; i < list.length; i++) {
-        const f = list[i];
-        if (kind === "image") {
-          if (!f.type.startsWith("image/")) continue;
-          let up: Blob = f;
-          try { up = await resizeImageBeforeUpload(f, { maxDim: 1600, quality: 0.82 }); } catch { up = f; }
-          const url = await pushFileToStorage(up, "photos", extFromMime(up.type || "image/jpeg", "jpg"), up.type || "image/jpeg",
-            (p) => setPct(Math.round(((i + p / 100) / list.length) * 100)));
-          urls.push(url);
-        } else {
-          if (!f.type.startsWith("video/")) continue;
-          if (f.size > 220 * 1024 * 1024) { setMsg("Video too large (max 220MB)"); continue; }
-          const url = await pushFileToStorage(f, "videos", extFromMime(f.type || "video/mp4", "mp4"), f.type || "video/mp4",
-            (p) => setPct(Math.round(p)));
-          urls.push(url);
-          break; // single video
-        }
-      }
-      if (urls.length) { onDone(urls); setMsg(`✓ ${urls.length} uploaded`); }
-      else if (!msg) setMsg("No valid files");
-    } catch (e: any) {
-      setMsg(e?.message || "Upload failed");
-    } finally {
-      setBusy(false); setPct(0);
-      if (ref.current) ref.current.value = "";
-    }
-  };
-
-  return (
-    <div className="sbc-admin-up">
-      <input ref={ref} type="file" hidden accept={kind === "image" ? "image/*" : "video/*"} multiple={kind === "image"}
-        onChange={(e) => handle(e.target.files)} />
-      <button type="button" disabled={busy} onClick={() => ref.current?.click()}
-        style={{ ...btnS(busy ? "#0F1117" : C.green, busy ? C.sub : "#07080C"), border: `1px solid ${C.border}` }}>
-        {busy ? `⏳ ${pct}%` : kind === "image" ? "⬆ Upload photos" : "⬆ Upload reel video"}
-      </button>
-      {msg && <span style={{ fontSize: 11.5, color: msg.startsWith("✓") ? C.green : C.red }}>{msg}</span>}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 function EditorModal({
-  entity, row, properties, bundles, onClose, onSave,
+  entity, row, properties, roomTypes, bundles, onClose, onSave,
 }: {
   entity: "property" | "room_type" | "payout";
   row: any | null;
   properties: any[];
+  roomTypes: any[];
   bundles: any[];
   onClose: () => void;
   onSave: (payload: Record<string, any>) => void;
 }) {
+  // Hooks must be unconditional. Property uses CircleOnboardForm's own state;
+  // room_type + payout use this compact inline form.
   const [form, setForm] = useState<Record<string, any>>(() => {
-    if (row) return { ...row };
-    if (entity === "property") return { title: "", property_type: "hotel", star_rating: 0, description: "", amenities: [], city: "", state: "", location_label: "", tagline: "", monthly_rate: 25000, roi_min_pct: 14, roi_max_pct: 17, occupancy_label: "High Occupancy", operation_model: "managed", status: "active", sort_order: 100, images: [], badges: [], video_url: "", rooms_label: "", hotel_id: "" };
-    if (entity === "room_type") return { property_id: properties[0]?.id || "", name: "Standard Room", monthly_rate: 20000, total_units: 2, locked_units: 0, active: true, sort_order: 100 };
-    return { bundle_id: bundles[0]?.id || "", user_id: bundles[0]?.user_id || "", month_label: "", amount: 0, note: "", status: "paid" };
+    if (entity === "room_type") return row ? { ...row } : { property_id: properties[0]?.id || "", name: "Standard Room", monthly_rate: 20000, total_units: 2, locked_units: 0, active: true, sort_order: 100 };
+    if (entity === "payout") return row ? { ...row } : { bundle_id: bundles[0]?.id || "", user_id: bundles[0]?.user_id || "", month_label: "", amount: 0, note: "", status: "paid" };
+    return {};
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-  const toggleAmenity = (id: string) => setForm((f) => {
-    const cur: string[] = Array.isArray(f.amenities) ? f.amenities : [];
-    return { ...f, amenities: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] };
-  });
+
+  // Property → shared onboarding form. Seed `initial` from the row + its rooms.
+  const propInitial = entity === "property" && row
+    ? {
+        title: row.title || "", property_type: row.property_type || "cottage",
+        star_rating: Number(row.star_rating) || 0, tagline: row.tagline || "",
+        description: row.description || "", city: row.city || "", state: row.state || "",
+        location_label: row.location_label || "", available_from: row.available_from || "",
+        amenities: Array.isArray(row.amenities) ? row.amenities : [],
+        images: Array.isArray(row.images) ? row.images : [],
+        video_url: row.video_url || "", monthly_rate: Number(row.monthly_rate) || 0,
+        roi_min_pct: Number(row.roi_min_pct) || 0, roi_max_pct: Number(row.roi_max_pct) || 0,
+        occupancy_label: row.occupancy_label || "", rooms_label: row.rooms_label || "",
+        operation_model: row.operation_model || "managed", hotel_id: row.hotel_id || "",
+        roomTypes: roomTypes
+          .filter((rt: any) => String(rt.property_id) === String(row.id))
+          .map((rt: any): CircleRoomDraft => ({
+            id: rt.id, category: inferCategory(rt.name), name: rt.name || "",
+            monthly_rate: Number(rt.monthly_rate) || 0, total_units: Number(rt.total_units) || 1,
+            locked_units: Number(rt.locked_units) || 0, capacity: Number(rt.capacity) || 2,
+            bed_type: rt.bed_type || "", view_label: rt.view_label || "", description: rt.description || "",
+          })),
+      }
+    : undefined;
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.65)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
@@ -489,92 +387,21 @@ function EditorModal({
         <div style={{ display: "grid", gap: 10 }}>
           {entity === "property" && (
             <>
-              {/* v311 — direct-publish note. Admin adds go live instantly; no
-                  owner/approval step (unlike host listing submissions). */}
+              {/* v312 — direct-publish note. Admin adds go live instantly; no
+                  owner/approval step (unlike customer /circle/onboard submissions). */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(46,204,113,0.10)", border: `1px solid rgba(46,204,113,0.30)`, borderRadius: 10, padding: "8px 11px", fontSize: 11.5, color: C.green }}>
                 ⚡ Admin add — publishes instantly, no approval needed.
               </div>
-
-              <Section title="Property basics">
-                <F label="Title"><input style={inputS} value={form.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="e.g. The Mountain Grand, Mussoorie" /></F>
-                <F label="Property type">
-                  <ChipsSingle options={PROPERTY_TYPES} value={form.property_type || "hotel"} onPick={(id) => set("property_type", id)} />
-                </F>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                  <F label="Star rating">
-                    <select style={inputS} value={String(form.star_rating ?? 0)} onChange={(e) => set("star_rating", Number(e.target.value))}>
-                      <option value="0">Not rated</option>
-                      {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)} {n}-star</option>)}
-                    </select>
-                  </F>
-                  <F label="Tagline"><input style={inputS} value={form.tagline || ""} onChange={(e) => set("tagline", e.target.value)} placeholder="Short highlight line" /></F>
-                </div>
-                <F label="Short description">
-                  <textarea style={{ ...inputS, minHeight: 60 }} value={form.description || ""} onChange={(e) => set("description", e.target.value)} placeholder="A line or two about what makes this property special…" />
-                </F>
-              </Section>
-
-              <Section title="Location">
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                  <F label="City"><input style={inputS} value={form.city || ""} onChange={(e) => set("city", e.target.value)} /></F>
-                  <F label="State"><input style={inputS} value={form.state || ""} onChange={(e) => set("state", e.target.value)} /></F>
-                </div>
-                <F label="Location label (e.g. 500m from Mall Road)"><input style={inputS} value={form.location_label || ""} onChange={(e) => set("location_label", e.target.value)} /></F>
-              </Section>
-
-              <Section title="Amenities" sub="Same catalog the customer/host onboarding uses.">
-                <ChipsMulti options={AMENITIES} selected={Array.isArray(form.amenities) ? form.amenities : []} onToggle={toggleAmenity} />
-              </Section>
-
-              <Section title="Media" sub="Photos + a reel video — upload from device or paste URLs.">
-                <F label="Photos">
-                  <MediaUploader
-                    kind="image"
-                    onDone={(urls) => set("images", [...(Array.isArray(form.images) ? form.images : []), ...urls])}
-                  />
-                  <textarea style={{ ...inputS, minHeight: 60, marginTop: 8 }} value={(Array.isArray(form.images) ? form.images : []).join("\n")}
-                    onChange={(e) => set("images", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} placeholder="One image URL per line" />
-                  {Array.isArray(form.images) && form.images.length > 0 && (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                      {form.images.map((src: string, i: number) => (
-                        <div key={i} style={{ position: "relative", width: 58, height: 44, borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          <button onClick={() => set("images", form.images.filter((_: string, j: number) => j !== i))}
-                            style={{ position: "absolute", top: 1, right: 1, width: 16, height: 16, borderRadius: 999, border: "none", cursor: "pointer", background: "rgba(255,71,87,.9)", color: "#fff", fontSize: 10, lineHeight: "16px", padding: 0 }}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </F>
-                <F label="Reel video">
-                  <MediaUploader kind="video" onDone={(urls) => { if (urls[0]) set("video_url", urls[0]); }} />
-                  <input style={{ ...inputS, marginTop: 8 }} value={form.video_url || ""} onChange={(e) => set("video_url", e.target.value)} placeholder="https://…mp4" />
-                  {form.video_url && (
-                    <video src={form.video_url} controls muted playsInline style={{ width: "100%", maxHeight: 160, borderRadius: 10, marginTop: 8, background: "#000" }} />
-                  )}
-                </F>
-              </Section>
-
-              <Section title="Investment & operations" sub="StayCircle-specific — drives the /circle catalog + ROI panel.">
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr 1fr" }}>
-                  <F label="₹ / room / month"><input type="number" style={inputS} value={form.monthly_rate ?? 0} onChange={(e) => set("monthly_rate", Number(e.target.value))} /></F>
-                  <F label="ROI min %"><input type="number" style={inputS} value={form.roi_min_pct ?? 0} onChange={(e) => set("roi_min_pct", Number(e.target.value))} /></F>
-                  <F label="ROI max %"><input type="number" style={inputS} value={form.roi_max_pct ?? 0} onChange={(e) => set("roi_max_pct", Number(e.target.value))} /></F>
-                </div>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                  <F label="Occupancy label"><input style={inputS} value={form.occupancy_label || ""} onChange={(e) => set("occupancy_label", e.target.value)} /></F>
-                  <F label="Rooms label (e.g. 2 Rooms · Mountain View)"><input style={inputS} value={form.rooms_label || ""} onChange={(e) => set("rooms_label", e.target.value)} /></F>
-                </div>
-                <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
-                  <F label="Operation model">
-                    <select style={inputS} value={form.operation_model || "managed"} onChange={(e) => set("operation_model", e.target.value)}>
-                      {["managed", "revenue_share", "lease", "franchise"].map((m) => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </F>
-                  <F label="Linked hotel id (live partner fetch — optional)"><input style={inputS} value={form.hotel_id || ""} onChange={(e) => set("hotel_id", e.target.value)} /></F>
-                </div>
-              </Section>
+              {/* v312 — the SAME onboarding form the customer sees at /circle/onboard.
+                  Includes the inline room-category builder (≥1 room required), so a
+                  property can never be saved room-less (the false "Sold out" bug). */}
+              <CircleOnboardForm
+                variant="admin"
+                initial={propInitial}
+                submitLabel="💾 Save property"
+                onCancel={onClose}
+                onSubmit={(p) => onSave({ ...p, status: row?.status || "active" })}
+              />
             </>
           )}
 
@@ -622,14 +449,16 @@ function EditorModal({
             </>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-          <button style={btnS("#0F1117", C.sub)} onClick={onClose}>Cancel</button>
-          <button style={btnS(C.gold)} onClick={() => {
-            const { id, created_at, updated_at, user, ...payload } = form;
-            void id; void created_at; void updated_at; void user;
-            onSave(payload);
-          }}>💾 Save</button>
-        </div>
+        {entity !== "property" && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <button style={btnS("#0F1117", C.sub)} onClick={onClose}>Cancel</button>
+            <button style={btnS(C.gold)} onClick={() => {
+              const { id, created_at, updated_at, user, ...payload } = form;
+              void id; void created_at; void updated_at; void user;
+              onSave(payload);
+            }}>💾 Save</button>
+          </div>
+        )}
       </div>
     </div>
   );
