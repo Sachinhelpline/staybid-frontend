@@ -411,7 +411,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v309 — one-time HTML_CACHE bump (v126 -> v127). Admin "Approve + Provision"
 // on a listing → creates the operated StayBid-Circle hotel (rooms + units),
 // grants the lister /partner/dashboard access via unit-ownership. SWR HTML.
-const HTML_CACHE = 'staybid-html-v127';
+// v310 — one-time HTML_CACHE bump (v127 -> v128). owner_type='host_circle'
+// discriminator surfaced: /admin/hotels Type badge + partner-dashboard
+// "Operated by StayBid" chip. SWR HTML refresh.
+const HTML_CACHE = 'staybid-html-v128';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

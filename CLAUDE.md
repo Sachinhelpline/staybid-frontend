@@ -10132,11 +10132,56 @@ provision.ts`), but raw SQL needs `'{a,b}'::text[]` literals, not `::jsonb`.
 - The stray Netlify project `willowy-mooncake-a50d6f` (no repo config) fails
   its Pages/Header/Redirect checks on EVERY PR — not a deploy target. Ignore.
 
-### Pending (Phase 5, next on `continue`)
-- **Phase 4 — DONE (v309).** See the Phase 4 section above.
-- **Phase 5** — surface the `owner_type='host_circle'` discriminator to admin
-  everywhere it matters (the admin hub Property Listings tab already shows the
-  🏨 Provisioned chip + hotel link; extend to `/admin/hotels` + the partner
-  dashboard so a host-circle operated hotel is visibly labelled distinct from a
-  classic owner-run hotel) + end-to-end verify with a real owner-submitted
-  listing through approve→provision→partner-dashboard-visible + document.
+### Phase 5 (v310) — surface the `host_circle` discriminator (E + F visible labels)
+Presentation-only, additive; no migration, no engine touch. Makes a
+StayBid-operated (`owner_type='host_circle'`) hotel visibly distinct from a
+classic owner-run one on the two surfaces that matter.
+
+- **`/api/admin/hotels` GET select** — added `owner_type,account_type` to the
+  column list (was: id,name,city,state,ownerId,status,approval_status,…). The
+  route otherwise unchanged; PATCH untouched.
+- **`/admin/hotels` page** — new **Type** column + modal Field driven by
+  `hotelTypeInfo(h)`: `owner_type==='host_circle'` → "🏨 Host Circle" (purple);
+  `owner_type==='circle'` / `account_type∈{circle_operator,staybid_operated}` →
+  "🏨 Operated" (blue); else "Owner" (grey). All 35 current hotels are classic
+  (`owner_type=null`, `account_type='hotel_owner'`) → "Owner".
+- **Partner dashboard header** — new "🏨 Operated by StayBid" purple chip when
+  `hotel?.isOperator` (the lister reaches the hotel via unit-ownership, NOT
+  ownerId — the general signal covering both the legacy Circle pool AND the
+  Host Property-Listing pool). The v285 multi-property switcher's `isCircle`
+  per-item flag widened to also match `account_type==='staybid_operated'` /
+  `owner_type==='host_circle'` (previously only `circle_operator`), so a
+  host-circle property shows "· Circle" in the switcher too.
+
+**Verified end-to-end (live round-trip, cleaned up):** inserted a
+`hcp_v310test` hotel (`owner_type='host_circle'`, `account_type='staybid_operated'`,
+`isActive=false status='draft'`) + 3 `hotel_room_units` stamped
+`owner_user_id='v310-lister'`. Assert A: the exact `/api/admin/hotels` select
+returns `owner_type='host_circle'` → Type badge renders "🏨 Host Circle". Assert
+B: `SELECT DISTINCT "hotelId" FROM hotel_room_units WHERE owner_user_id='v310-lister'`
+returns `hcp_v310test` → `resolveOperatedHotelIds` surfaces the hotel →
+`hotel.isOperator=true` → "Operated by StayBid" chip. Test rows deleted (0 left).
+`tsc --noEmit` clean, `next build` exit 0. `SB_BUILD v309→v310`, badge v310,
+`HTML_CACHE v127→v128`.
+
+### Things to Avoid (Phase 5 / v310)
+- **Never** drive the partner-dashboard "Operated by StayBid" chip off
+  `owner_type==='host_circle'` alone — use `hotel.isOperator` (unit-ownership),
+  the general signal that also covers the legacy Circle pool. The `owner_type`
+  discriminator is for the ADMIN Type badge (where the raw column is meaningful);
+  the partner sees "am I the operator or the owner", which is `isOperator`.
+- **Never** narrow the `/api/partner/hotel` GET off `select=*` — the partner
+  dashboard reads `hotel.owner_type` / `hotel.account_type` / `hotel.isOperator`
+  and the switcher reads per-item `account_type` / `owner_type`. `select=*` keeps
+  them flowing without code change.
+- **Never** collapse the three Type states into two. `host_circle` (per-property
+  listing provision) and legacy `circle`/`circle_operator` are separate operated
+  pools with different owner-id models (`hco_<propId>` vs shared sentinel); the
+  admin needs to tell them apart, hence the distinct purple "Host Circle" label.
+
+### Host Property-Listing Redesign — COMPLETE (v306 → v310)
+All of Sachin's A–G asks shipped: A (photo bug, v306), B+C (hospitality form +
+location, v307), D (admin create/edit, v308), E+F data layer (approve→provision
+operated hotel with per-property `hco_<propId>` owner + lister dashboard access,
+v309), F visible labels (admin Type badge + partner Operated chip, v310).
+Branch `claude/property-listing-features-8m1v6g` / PR #311.
