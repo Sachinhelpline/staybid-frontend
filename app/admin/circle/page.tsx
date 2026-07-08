@@ -373,6 +373,8 @@ function EditorModal({
             monthly_rate: Number(rt.monthly_rate) || 0, total_units: Number(rt.total_units) || 1,
             locked_units: Number(rt.locked_units) || 0, capacity: Number(rt.capacity) || 2,
             bed_type: rt.bed_type || "", view_label: rt.view_label || "", description: rt.description || "",
+            amenities: Array.isArray(rt.amenities) ? rt.amenities : [],
+            images: Array.isArray(rt.images) ? rt.images : [],
           })),
       }
     : undefined;

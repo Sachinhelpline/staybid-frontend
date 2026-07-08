@@ -45,6 +45,8 @@ const ROOM_TYPE_FIELDS = new Set([
   "active", "sort_order",
   // v312 — richer per-room detail (surfaces in the /circle room-tour reel)
   "capacity", "bed_type", "view_label", "description",
+  // v313 — per-room amenities + photos (separate from property-level)
+  "amenities", "images",
 ]);
 const PAYOUT_FIELDS = new Set(["bundle_id", "user_id", "month_label", "amount", "note", "status"]);
 
@@ -74,6 +76,8 @@ function normalizeRoom(r: any, propertyId: string, idx: number): Record<string, 
     bed_type: String(r?.bed_type || "").trim().slice(0, 60),
     view_label: String(r?.view_label || "").trim().slice(0, 60),
     description: String(r?.description || "").trim().slice(0, 400),
+    amenities: Array.isArray(r?.amenities) ? r.amenities.map((x: any) => String(x)).slice(0, 40) : [],
+    images: Array.isArray(r?.images) ? r.images.map((x: any) => String(x)).slice(0, 20) : [],
     active: true,
     sort_order: (idx + 1) * 10,
   };
