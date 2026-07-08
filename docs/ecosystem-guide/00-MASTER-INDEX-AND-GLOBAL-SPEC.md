@@ -74,7 +74,7 @@ other space with beautiful on-brand illustration/photography, not paragraphs of 
 
 ## 📖 PART C — COMPLETE BOOK INDEX (with page numbers)
 
-The book is **9 chapters + front/back matter**. Total ≈ **96 pages**. Each chapter lives in its own file in this folder. Build them in this order.
+The book is **9 chapters + front/back matter**. Total ≈ **119 pages** (Chapter 9 is the big feature-by-feature benefits guide). Each chapter lives in its own file in this folder. Build them in this order.
 
 ### Front Matter — *(in this master file, Chapter file 01 also restates)*
 | Page | Title |
@@ -194,27 +194,50 @@ The book is **9 chapters + front/back matter**. Total ≈ **96 pages**. Each cha
 | 81 | Host Hub & Catalog |
 | 82 | Fraud, Feedback & Settings |
 
-### Chapter 9 — Every User's Benefits → `09-USER-BENEFITS.md`
+### Chapter 9 — Every User's Benefits (feature-by-feature) → `09-USER-BENEFITS.md`
 | Page | Title |
 |---|---|
 | 83 | Chapter cover — What's in it for everyone |
-| 84 | The Traveller |
-| 85 | The Content Creator |
-| 86 | The Hotel Owner |
-| 87 | The Property Owner (Lessor) |
-| 88 | The Investor (Lessee / Host) |
-| 89 | The Workforce |
-| 90 | The Value Loop — how everyone wins together |
+| 84 | How to read the benefits (the 6 users) |
+| 85 | Traveller · Getting started (sign-in 4 ways + resume-after-login) |
+| 86 | Traveller · Home & the reel feed |
+| 87 | Traveller · Flash-deal stories & the deals wall |
+| 88 | Traveller · Browsing hotels (search, filter, scorecards) |
+| 89 | Traveller · Hotel detail (gallery, availability, rooms) |
+| 90 | Traveller · Why StayBid is cheaper & trusted (OTA + scorecard) |
+| 91 | Traveller · Book Now (instant booking) |
+| 92 | Traveller · Name your price (the reverse auction) |
+| 93 | Traveller · The bid game & winning |
+| 94 | Traveller · Flexible payment (Pay Full · Hold · Pay at Hotel) |
+| 95 | Traveller · After you book (chat, stay, feedback) |
+| 96 | Traveller · Reels, creators & saved |
+| 97 | Traveller · The "You" profile & everything drawer |
+| 98 | Traveller · Passport, rewards, wallet & points |
+| 99 | Traveller · Level up, stay safe, go offline (+ full feature checklist 99a/99b) |
+| 100 | Creator · Become a creator (three ways in) |
+| 101 | Creator · Create & post (the composer) |
+| 102 | Creator · Earn, grow & get paid |
+| 103 | Hotel Owner · List & go live |
+| 104 | Hotel Owner · Run it on autopilot |
+| 105 | Hotel Owner · Grow & get ranked |
+| 106 | Lessor · Lease it out (hands-off) |
+| 107 | Lessor · Earn passive income, transparently |
+| 108 | Host · Turn a budget into a property |
+| 109 | Host · Everything done for you (6 modules) |
+| 110 | Host · Track your portfolio |
+| 111 | Worker · Join & get hired |
+| 112 | Worker · Work flexibly & earn |
+| 113 | The Value Loop — how everyone wins together |
 
 ### Back Matter
 | Page | Title |
 |---|---|
-| 91 | Glossary of StayBid terms |
-| 92 | The tech backbone (simple, non-technical) |
-| 93 | Safety, trust & anti-bypass |
-| 94 | Money flows (who pays whom) |
-| 95 | Roadmap teaser |
-| 96 | Back cover |
+| 114 | Glossary of StayBid terms |
+| 115 | The tech backbone (simple, non-technical) |
+| 116 | Safety, trust & anti-bypass |
+| 117 | Money flows (who pays whom) |
+| 118 | Roadmap teaser |
+| 119 | Back cover |
 
 ---
 

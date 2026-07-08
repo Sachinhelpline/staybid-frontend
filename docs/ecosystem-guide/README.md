@@ -22,6 +22,6 @@ This folder is a **copy-paste kit** for building a premium visual book — *"Sta
 | 06 | `06-HOST-PANEL.md` | 51–63 | Managed-investment hosting (design, store, discovery, workforce, channels, configurator, worker panel) |
 | 07 | `07-OFFLINE-KIOSK.md` | 64–70 | Physical kiosk ecosystem |
 | 08 | `08-ADMIN-PANEL.md` | 71–82 | Mission control (dark theme) |
-| 09 | `09-USER-BENEFITS.md` | 83–96 | Every user's benefits + back matter |
+| 09 | `09-USER-BENEFITS.md` | 83–119 | Every user's benefits **feature-by-feature** (traveller A→Z, nothing left out) + back matter |
 
-**Total ≈ 96 pages.** Source of truth: the project `CLAUDE.md` architecture memory.
+**Total ≈ 119 pages.** Source of truth: the project `CLAUDE.md` architecture memory.
