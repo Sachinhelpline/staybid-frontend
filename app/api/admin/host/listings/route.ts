@@ -31,8 +31,59 @@ const flt = (v: any) => {
 };
 const bool = (v: any) => v === true || v === "true" || v === 1 || v === "1";
 const arr = (v: any) => (Array.isArray(v) ? v.slice(0, 40) : []);
+const cleanArr = (v: any, cap = 40) =>
+  Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, cap) : [];
+const clampInt = (v: any, lo: number, hi: number, dflt: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+};
+const numPos = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
 
 const STATUSES = new Set(["pending_review", "available", "shortlisted", "rented", "rejected", "inactive"]);
+
+// v307 — per-category hospitality room builder, mirroring the customer
+// submission route (app/api/host/list-property). Shape read by the
+// admin review UI + the Phase 4 approval→provision step.
+function normalizeRooms(input: any) {
+  const roomsIn = Array.isArray(input) ? input.slice(0, 12) : [];
+  return roomsIn
+    .map((r: any) => ({
+      category: String(r?.category || "").trim().slice(0, 40) || "standard",
+      name: String(r?.name || "").trim().slice(0, 80) || "Room",
+      count: clampInt(r?.count, 1, 500, 1),
+      price: numPos(r?.price),
+      capacity: clampInt(r?.capacity, 1, 30, 2),
+      amenities: cleanArr(r?.amenities, 40),
+      images: cleanArr(r?.images, 6),
+    }))
+    .filter((r: any) => r.category);
+}
+
+// v307 — hospitality detail bag: meal plans / add-ons / policies /
+// description / star rating all live in the `details` jsonb column.
+function normalizeDetails(d: any) {
+  if (!d || typeof d !== "object") return null;
+  const out: Record<string, any> = {};
+  const keepStr = (k: string, cap = 200) => {
+    const s = String(d[k] ?? "").trim().slice(0, cap);
+    if (s) out[k] = s;
+  };
+  keepStr("description", 1000);
+  keepStr("checkIn", 10);
+  keepStr("checkOut", 10);
+  keepStr("houseRules", 800);
+  keepStr("landmarks", 400);
+  const sr = Number(d?.starRating);
+  if (Number.isFinite(sr) && sr >= 1 && sr <= 5) out.starRating = Math.round(sr);
+  const mp = cleanArr(d?.mealPlans, 12);
+  if (mp.length) out.mealPlans = mp;
+  const ad = cleanArr(d?.addonServices, 24);
+  if (ad.length) out.addonServices = ad;
+  return Object.keys(out).length ? out : null;
+}
 
 function listingFields(body: any, partial = false) {
   const all: Record<string, any> = {
@@ -41,6 +92,7 @@ function listingFields(body: any, partial = false) {
     locality: str(body.locality),
     state: str(body.state),
     property_type: str(body.property_type),
+    // Legacy residential columns kept for backward compat (nullable).
     bhk: str(body.bhk),
     area_sqft: num(body.area_sqft),
     furnishing: str(body.furnishing),
@@ -48,7 +100,11 @@ function listingFields(body: any, partial = false) {
     deposit: num(body.deposit),
     score: num(body.score),
     images: arr(body.images),
-    amenities: arr(body.amenities),
+    amenities: arr(body.amenities), // property-level amenities
+    // v307 — hospitality additions
+    rooms: normalizeRooms(body.rooms),
+    details: normalizeDetails(body.details),
+    formatted_address: str(body.formatted_address),
     lat: flt(body.lat),
     lng: flt(body.lng),
     featured: bool(body.featured),

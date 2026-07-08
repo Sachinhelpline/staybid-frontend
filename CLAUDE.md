@@ -9977,3 +9977,211 @@ interlinks on both sides: partner-facing investor dashboard + admin oversight.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, partner pricing — host vertical stays
   fully isolated additive surface.
+
+---
+
+## Host Property-Listing Hospitality Redesign (v306 → v309, 2026-07-07)
+
+Sachin's A–G ask for `staybids.in/host/list-property`: fix the photo bug,
+turn the residential (BHK) form into a professional **hospitality** onboarding
+(hotel/resort/cottage/camp… with per-category rooms, room-vs-property
+amenities, meal plans, add-ons, policies), keep + strengthen the location
+picker, add an **admin** listing option, and (Phases 4–5) auto-provision a
+StayBid-Circle partner dashboard on approval with a **separate per-property
+owner id** (`owner_type='host_circle'`). Phased build; self-check "clean" after
+each phase; branch `claude/property-listing-features-8m1v6g` / PR #311.
+
+`/host/list-property` → `discovery_properties` is the **sourcing / lease-out**
+catalog (owner offers a property TO StayBid). It is DISTINCT from `/onboard`
+(a hotel partner running their OWN property live). Never cross the two.
+
+### Phase 1 (v306) — photo bug + honest errors
+Silent `catch {}` in `addPhotos` swallowed per-file failures; the publishable
+anon key could RLS-403 on `hotel-images`. Fix: new server route
+`app/api/host/list-property/upload/route.ts` uploads via **service-role**
+(`lib/onboard/storage.ts uploadBuffer` → `hotel-images`, `pathPrefix:
+"property-photos"`) with real per-file `{error}` + progress. Client resizes via
+`lib/image-resize.ts` before POST.
+
+### Phase 2 (v307) — hospitality form (B + C)
+`app/host/list-property/page.tsx` rebuilt: `PROPERTY_TYPES` chip picker,
+per-category `RoomDraft` builder (`{category,name,count,price,capacity,
+amenities[],images[]}`), property-level amenities + room-level amenities kept
+SEPARATE, meal plans + add-ons + policies. `HostLocationPicker` gained a
+`nameHint` "🔎 Find '{title}' on the map" shortcut (name-resolve already worked
+via `searchPlaces` — Google Geocoding when `GOOGLE_MAPS_API_KEY` set, else
+Nominatim). `app/api/host/list-property/route.ts` POST stores `property_type`,
+`amenities` (property-level), `rooms` jsonb, and a `details` bag
+(description/checkIn/checkOut/houseRules/landmarks/starRating/mealPlans/
+addonServices) + `formatted_address`. Migration
+`2026-07-07-v307-discovery-properties-rooms-hospitality.sql` (applied live)
+added `discovery_properties.rooms jsonb`. `details`, `formatted_address`,
+`amenities`, `property_type` columns already existed.
+
+### Phase 3 (v308) — admin can create + fully EDIT hospitality listings (D)
+`app/api/admin/host/listings/route.ts` `listingFields()` extended (mirrors the
+customer route validation): `normalizeRooms()` (same shape/clamps),
+`normalizeDetails()` (bag), `formatted_address`. Residential columns kept in
+the API for backward compat (nullable) but dropped from the admin UI. Admin
+rows still `source='platform'` (CHECK = owner|broker|agent|platform — NEVER
+`'admin'`), default `status='available'`.
+
+Admin catalog editor (`app/admin/host/catalog/page.tsx`, the config-driven
+`Field[]` modal shared by Products/Categories/Listings/Workers) extended:
+- Two new field types — `multiselect` (catalog chip toggles, value = `string[]`)
+  and `rooms` (dedicated `<RoomBuilder>` — category select + name + count +
+  price + max-guests + in-room amenity chips + photo-URL textarea; auto-fills
+  name + capacity from `ROOM_CATEGORY_*` on category change).
+- New `group:"details"` flag — fields nested into the `details` jsonb bag on
+  `save()`, read from `row.details` on `seed()`. Star rating, check-in/out,
+  description, house rules, landmarks, meal plans, add-ons all use it.
+- `LISTING_FIELDS` rebuilt: property-type `select` (from `PROPERTY_TYPES`),
+  property amenities `multiselect` (from `AMENITIES`), meal plans + add-ons
+  `multiselect`, room builder, images `list`, discovery `score`. Listings table
+  row shows property-type label + `🛏 N` room-type count + `N★`.
+
+Verified: `tsc --noEmit` exit 0, `npm run build` exit 0, live insert→delete
+round-trip with the exact admin hospitality shape (2 room types, 4★, 4
+amenities) accepted + cleaned up. `SB_BUILD v307→v308`, badge v308,
+`HTML_CACHE v125→v126`.
+
+### Phase 4 (v309) — approve → provision operated StayBid-Circle hotel (E + F)
+On admin **"🏨 Approve + Provision"** a `discovery_properties` listing becomes a
+REAL bookable `hotels` row that StayBid operates, with its rooms + physical
+`hotel_room_units`, and the original lister gets `/partner/dashboard` access.
+
+**Locked owner-model ("alag owner ID per property", with Sachin):**
+- `hotels.ownerId = "hco_<propId>"` — a **distinct per-property** host-circle
+  owner id. Never a real person's id, never the shared circle sentinel
+  (`STAYBID_CIRCLE_OPS`). Two host-circle properties never clash; the lister's
+  classic hotels (`ownerId = <user id>`) stay separate (item F).
+- `hotels.owner_type = 'host_circle'` — the discriminator admin sees.
+- `hotels.account_type = 'staybid_operated'`.
+- **Dashboard access via read-time scope union:** every provisioned
+  `hotel_room_units.owner_user_id = <submitted_by>`, so the EXISTING
+  `resolveOperatedHotelIds` (`lib/partner/operator-access.ts`) surfaces the hotel
+  on `/partner/dashboard` across all 22 partner routes with **zero read-path
+  changes**. Deterministic hotel id `hcp_<propId>` = same reuse mechanism as
+  `lib/circle/provision.ts`, but per-property owner instead of the sentinel.
+- Provisioned as a **DRAFT** hotel (`isActive=false`, `status='draft'`) — the
+  inventory + ownership exist and are dashboard-manageable, but it does NOT
+  enter the customer feed until ops flips it live.
+
+**Migration `2026-07-07-v309-host-circle-provisioning.sql`** (applied live):
+- `hotels.owner_type TEXT` (nullable → existing = classic owner).
+- `discovery_properties.provisioned_hotel_id TEXT` + `provisioned_at TIMESTAMPTZ`
+  (traceability + idempotency link-back).
+- `discovery_properties_status_check` extended with `'provisioned'`.
+- `idx_hotels_owner_type` partial index.
+
+**Files:** `lib/host/provision.ts` (`provisionListing(propertyId)` — best-effort,
+idempotent, deterministic ids; rooms from the `rooms` jsonb → v247 trigger
+auto-creates units; stamps units to the lister only when `submitted_by` present)
+· `app/api/admin/host/provision/route.ts` (POST `{propertyId}`, `adminFromReq`
++ `logAdminAction`, flips status→`provisioned` + records the hotel id) ·
+`app/admin/host/page.tsx` Property Listings tab (🏨 Approve + Provision button
++ Provisioned chip with hotel link + ↻ Re-sync for idempotent re-runs).
+
+**Idempotent:** re-running converges — `ensureHotel`/`ensureRooms` check
+deterministic ids, `stampUnitsToLister` only fills the still-unowned pool. Admin/
+platform-created listings (v308, `source='platform'`, `submitted_by=NULL`)
+provision fine — units stay unstamped (StayBid fully operates, leak-safe).
+
+Verified: `tsc` + `next build` clean (`/api/admin/host/provision` compiled);
+live round-trip mirroring `provisionListing` = 5 units auto-created (3+2 from
+`rooms.quantity` via the v247 trigger), 5 stamped to the lister,
+`owner_type=host_circle`, `owner_id=hco_v309test`, `account_type=staybid_operated`,
+and the exact `resolveOperatedHotelIds` query returns the hotel for the lister
+(`lister_scope_union_hit=1`); test rows deleted. `SB_BUILD v308→v309`, badge v309,
+`HTML_CACHE v126→v127`.
+
+**PostgREST gotcha (caught during verify):** `hotels`/`rooms`
+`amenities`/`images`/`meal_plans`/`addon_services` are `text[]`, NOT jsonb.
+PostgREST coerces a JSON-array request body into `text[]` automatically (so
+`lib/host/provision.ts` passing JS arrays is correct — same as `lib/circle/
+provision.ts`), but raw SQL needs `'{a,b}'::text[]` literals, not `::jsonb`.
+
+### Things to Avoid (Property-Listing Redesign)
+- **Never** give a host-circle hotel `ownerId = <lister user id>` OR the shared
+  `STAYBID_CIRCLE_OPS` sentinel — the locked model is a DISTINCT per-property
+  owner id `hco_<propId>`. A shared id would clash the lister's classic hotels
+  with their host-circle properties (item F).
+- **Never** grant the lister dashboard access by adding `hotels.ownerId` to
+  their scope — access is via `hotel_room_units.owner_user_id` (the existing
+  `resolveOperatedHotelIds` scope union). That path is zero-read-change across
+  all 22 partner routes; the `ownerId` path would surface a StayBid-operated
+  hotel in a real person's ownerId scope (wrong).
+- **Never** provision a hotel as `isActive=true` — it must stay DRAFT until ops
+  flips it live, or an un-ready operated hotel leaks into the customer feed.
+- **Never** pass `::jsonb` for `hotels`/`rooms` array columns in raw SQL — they
+  are `text[]`. `lib/host/provision.ts` is fine (PostgREST coerces JSON arrays).
+- **Never** set `discovery_properties.source='admin'` — the CHECK rejects it.
+  Admin/curated listings are `'platform'`; owner submissions are `'owner'`.
+- **Never** stamp `updated_at` on `discovery_properties` — no such column
+  (it's in the admin hub `NO_UPDATED_AT` set).
+- **Never** merge room-level amenities and property-level amenities into one
+  field — Sachin explicitly wants them separate (`rooms[].amenities` vs the
+  top-level `amenities` column).
+- **Never** point a `submitted_by` side-load at a PostgREST FK embed — no FK
+  exists; manual `users?id=in.(…)` + `attachUsers`.
+- Keep the admin editor's `listingFields()` validation in lock-step with the
+  customer `/api/host/list-property` route — both write the same
+  `discovery_properties` shape (rooms + details bag + property_type +
+  amenities). Phase 4 approval→provision reads `rooms` to create real hotel
+  rooms + `hotel_room_units`.
+- The stray Netlify project `willowy-mooncake-a50d6f` (no repo config) fails
+  its Pages/Header/Redirect checks on EVERY PR — not a deploy target. Ignore.
+
+### Phase 5 (v310) — surface the `host_circle` discriminator (E + F visible labels)
+Presentation-only, additive; no migration, no engine touch. Makes a
+StayBid-operated (`owner_type='host_circle'`) hotel visibly distinct from a
+classic owner-run one on the two surfaces that matter.
+
+- **`/api/admin/hotels` GET select** — added `owner_type,account_type` to the
+  column list (was: id,name,city,state,ownerId,status,approval_status,…). The
+  route otherwise unchanged; PATCH untouched.
+- **`/admin/hotels` page** — new **Type** column + modal Field driven by
+  `hotelTypeInfo(h)`: `owner_type==='host_circle'` → "🏨 Host Circle" (purple);
+  `owner_type==='circle'` / `account_type∈{circle_operator,staybid_operated}` →
+  "🏨 Operated" (blue); else "Owner" (grey). All 35 current hotels are classic
+  (`owner_type=null`, `account_type='hotel_owner'`) → "Owner".
+- **Partner dashboard header** — new "🏨 Operated by StayBid" purple chip when
+  `hotel?.isOperator` (the lister reaches the hotel via unit-ownership, NOT
+  ownerId — the general signal covering both the legacy Circle pool AND the
+  Host Property-Listing pool). The v285 multi-property switcher's `isCircle`
+  per-item flag widened to also match `account_type==='staybid_operated'` /
+  `owner_type==='host_circle'` (previously only `circle_operator`), so a
+  host-circle property shows "· Circle" in the switcher too.
+
+**Verified end-to-end (live round-trip, cleaned up):** inserted a
+`hcp_v310test` hotel (`owner_type='host_circle'`, `account_type='staybid_operated'`,
+`isActive=false status='draft'`) + 3 `hotel_room_units` stamped
+`owner_user_id='v310-lister'`. Assert A: the exact `/api/admin/hotels` select
+returns `owner_type='host_circle'` → Type badge renders "🏨 Host Circle". Assert
+B: `SELECT DISTINCT "hotelId" FROM hotel_room_units WHERE owner_user_id='v310-lister'`
+returns `hcp_v310test` → `resolveOperatedHotelIds` surfaces the hotel →
+`hotel.isOperator=true` → "Operated by StayBid" chip. Test rows deleted (0 left).
+`tsc --noEmit` clean, `next build` exit 0. `SB_BUILD v309→v310`, badge v310,
+`HTML_CACHE v127→v128`.
+
+### Things to Avoid (Phase 5 / v310)
+- **Never** drive the partner-dashboard "Operated by StayBid" chip off
+  `owner_type==='host_circle'` alone — use `hotel.isOperator` (unit-ownership),
+  the general signal that also covers the legacy Circle pool. The `owner_type`
+  discriminator is for the ADMIN Type badge (where the raw column is meaningful);
+  the partner sees "am I the operator or the owner", which is `isOperator`.
+- **Never** narrow the `/api/partner/hotel` GET off `select=*` — the partner
+  dashboard reads `hotel.owner_type` / `hotel.account_type` / `hotel.isOperator`
+  and the switcher reads per-item `account_type` / `owner_type`. `select=*` keeps
+  them flowing without code change.
+- **Never** collapse the three Type states into two. `host_circle` (per-property
+  listing provision) and legacy `circle`/`circle_operator` are separate operated
+  pools with different owner-id models (`hco_<propId>` vs shared sentinel); the
+  admin needs to tell them apart, hence the distinct purple "Host Circle" label.
+
+### Host Property-Listing Redesign — COMPLETE (v306 → v310)
+All of Sachin's A–G asks shipped: A (photo bug, v306), B+C (hospitality form +
+location, v307), D (admin create/edit, v308), E+F data layer (approve→provision
+operated hotel with per-property `hco_<propId>` owner + lister dashboard access,
+v309), F visible labels (admin Type badge + partner Operated chip, v310).
+Branch `claude/property-listing-features-8m1v6g` / PR #311.

@@ -5,14 +5,27 @@
 // Auth via x-admin-token. Backed by /api/admin/host/store + /listings.
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  PROPERTY_TYPES, PROPERTY_TYPE_MAP, ROOM_CATEGORIES, ROOM_CATEGORY_MAP,
+  ROOM_CATEGORY_CAPACITY, MEAL_PLANS, ADDON_SERVICES, AMENITIES,
+} from "@/lib/catalog";
 
 type Section = "products" | "categories" | "listings" | "workers";
 
 const inr = (n: any) => (n == null || n === "" ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
 
-// ── field spec: config-driven form so all three editors share one modal ────
-type FieldType = "text" | "num" | "bool" | "select" | "textarea" | "list" | "kv";
-type Field = { key: string; label: string; type: FieldType; opts?: { value: string; label: string }[]; ph?: string; half?: boolean };
+// ── field spec: config-driven form so all editors share one modal ────
+// v307 — added "multiselect" (catalog chip toggles) + "rooms" (per-category
+// hospitality room builder) + `group:"details"` (fields nested into the
+// discovery_properties.details jsonb bag on save / read on seed).
+type FieldType = "text" | "num" | "bool" | "select" | "textarea" | "list" | "kv" | "multiselect" | "rooms";
+type Field = {
+  key: string; label: string; type: FieldType;
+  opts?: { value: string; label: string }[];
+  ph?: string; half?: boolean;
+  group?: "details";
+  hint?: string;
+};
 
 const CATEGORY_FIELDS: Field[] = [
   { key: "name", label: "Name *", type: "text", half: true },
@@ -24,25 +37,39 @@ const CATEGORY_FIELDS: Field[] = [
 ];
 
 const LISTING_STATUSES = ["available", "pending_review", "shortlisted", "rented", "rejected", "inactive"];
+const STAR_OPTS = [
+  { value: "", label: "— unrated —" }, { value: "1", label: "1★" }, { value: "2", label: "2★" },
+  { value: "3", label: "3★" }, { value: "4", label: "4★" }, { value: "5", label: "5★" },
+];
 
+// v307 — hospitality listing editor. property_type, amenities, meal plans,
+// add-ons, rooms + policy details mirror the customer submission form
+// (/host/list-property). Residential fields (bhk/furnishing/area/rent/
+// deposit) are dropped from the UI; their columns stay nullable + the API
+// still accepts them for backward compat.
 const LISTING_FIELDS: Field[] = [
-  { key: "title", label: "Title *", type: "text" },
+  { key: "title", label: "Property name *", type: "text" },
+  { key: "property_type", label: "Property type", type: "select", opts: [{ value: "", label: "— select —" }, ...PROPERTY_TYPES.map((p) => ({ value: p.id, label: `${p.emoji} ${p.label}` }))], half: true },
+  { key: "starRating", label: "Star rating", type: "select", opts: STAR_OPTS, half: true, group: "details" },
   { key: "city", label: "City", type: "text", half: true },
-  { key: "locality", label: "Locality", type: "text", half: true },
+  { key: "locality", label: "Locality / area", type: "text", half: true },
   { key: "state", label: "State", type: "text", half: true },
-  { key: "property_type", label: "Property type", type: "text", half: true, ph: "villa / apartment …" },
-  { key: "bhk", label: "BHK", type: "text", half: true, ph: "2BHK" },
-  { key: "furnishing", label: "Furnishing", type: "text", half: true, ph: "furnished / semi …" },
-  { key: "area_sqft", label: "Area (sqft)", type: "num", half: true },
-  { key: "rent_monthly", label: "Rent / month ₹", type: "num", half: true },
-  { key: "deposit", label: "Deposit ₹", type: "num", half: true },
-  { key: "score", label: "Score", type: "num", half: true },
+  { key: "formatted_address", label: "Full address", type: "text" },
+  { key: "checkIn", label: "Check-in time", type: "text", half: true, ph: "13:00", group: "details" },
+  { key: "checkOut", label: "Check-out time", type: "text", half: true, ph: "11:00", group: "details" },
+  { key: "lat", label: "Latitude", type: "num", half: true },
+  { key: "lng", label: "Longitude", type: "num", half: true },
   { key: "status", label: "Status", type: "select", opts: LISTING_STATUSES.map((s) => ({ value: s, label: s })), half: true },
   { key: "featured", label: "Featured", type: "bool", half: true },
-  { key: "lat", label: "Lat", type: "num", half: true },
-  { key: "lng", label: "Lng", type: "num", half: true },
-  { key: "images", label: "Image URLs (one per line)", type: "list" },
-  { key: "amenities", label: "Amenities (one per line)", type: "list" },
+  { key: "description", label: "Description", type: "textarea", group: "details" },
+  { key: "houseRules", label: "House rules", type: "textarea", group: "details" },
+  { key: "landmarks", label: "Nearby landmarks", type: "text", group: "details" },
+  { key: "amenities", label: "Property amenities", type: "multiselect", opts: AMENITIES.map((a) => ({ value: a.id, label: `${a.emoji} ${a.label}` })) },
+  { key: "mealPlans", label: "Meal plans", type: "multiselect", opts: MEAL_PLANS.map((m) => ({ value: m.id, label: `${m.label} · ${m.code}` })), group: "details" },
+  { key: "addonServices", label: "Add-on services", type: "multiselect", opts: ADDON_SERVICES.map((a) => ({ value: a.id, label: `${a.emoji} ${a.label}` })), group: "details" },
+  { key: "rooms", label: "Rooms & cottages", type: "rooms", hint: "Add each room / cottage category with its count, price & in-room amenities." },
+  { key: "images", label: "Property photo URLs (one per line)", type: "list" },
+  { key: "score", label: "Discovery score (ranking)", type: "num", half: true },
 ];
 
 const WORKER_SKILLS = [
@@ -243,7 +270,7 @@ export default function AdminHostCatalog() {
                     <Th>Category</Th><Th>Slug</Th><Th>Kind</Th><Th>Sort</Th><Th>Flags</Th><Th>Actions</Th>
                   </>}
                   {section === "listings" && <>
-                    <Th>Listing</Th><Th>City</Th><Th>Type</Th><Th>Rent/mo</Th><Th>Status</Th><Th>Actions</Th>
+                    <Th>Listing</Th><Th>City</Th><Th>Type</Th><Th>Rooms</Th><Th>Status</Th><Th>Actions</Th>
                   </>}
                   {section === "workers" && <>
                     <Th>Worker</Th><Th>Skill</Th><Th>City</Th><Th>Rate</Th><Th>Status</Th><Th>Actions</Th>
@@ -268,10 +295,10 @@ export default function AdminHostCatalog() {
                       <Td><Flags row={r} keys={["active"]} /></Td>
                     </>}
                     {section === "listings" && <>
-                      <Td><b style={{ color: "#E8EAF0" }}>{r.title}</b>{r.bhk ? <span style={{ color: "#8A8FA8" }}> · {r.bhk}</span> : null}</Td>
+                      <Td><b style={{ color: "#E8EAF0" }}>{r.title}</b>{r.details?.starRating ? <span style={{ color: "#8A8FA8" }}> · {r.details.starRating}★</span> : null}</Td>
                       <Td>{r.city || "—"}</Td>
-                      <Td>{r.property_type || "—"}</Td>
-                      <Td>{inr(r.rent_monthly)}</Td>
+                      <Td>{r.property_type ? (PROPERTY_TYPE_MAP[r.property_type]?.label || r.property_type) : "—"}</Td>
+                      <Td>{Array.isArray(r.rooms) && r.rooms.length ? `🛏 ${r.rooms.length}` : "—"}</Td>
                       <Td><span style={statusPill(r.status)}>{r.status}</span>{r.featured ? <span style={{ ...chip, marginLeft: 6 }}>★</span> : null}</Td>
                     </>}
                     {section === "workers" && <>
@@ -340,21 +367,30 @@ function EditorModal({ section, row, fields, onClose, onSaved, headers }: {
     setSaving(true); setErr("");
     try {
       const body: any = {};
+      const details: Record<string, any> = {};
+      let hasDetails = false;
       for (const f of fields) {
         const v = form[f.key];
-        if (f.type === "list") body[f.key] = String(v || "").split("\n").map((s) => s.trim()).filter(Boolean);
+        let out: any;
+        if (f.type === "list") out = String(v || "").split("\n").map((s) => s.trim()).filter(Boolean);
         else if (f.type === "kv") {
           const o: Record<string, string> = {};
           String(v || "").split("\n").forEach((line) => {
             const i = line.indexOf(":");
             if (i > 0) { const k = line.slice(0, i).trim(); const val = line.slice(i + 1).trim(); if (k) o[k] = val; }
           });
-          body[f.key] = o;
+          out = o;
         }
-        else if (f.type === "bool") body[f.key] = !!v;
-        else if (f.type === "num") body[f.key] = v === "" || v == null ? null : Number(v);
-        else body[f.key] = v ?? "";
+        else if (f.type === "multiselect") out = Array.isArray(v) ? v : [];
+        else if (f.type === "rooms") out = Array.isArray(v) ? v : [];
+        else if (f.type === "bool") out = !!v;
+        else if (f.type === "num") out = v === "" || v == null ? null : Number(v);
+        else out = v ?? "";
+        // Fields flagged `group:"details"` nest into the details jsonb bag.
+        if (f.group === "details") { details[f.key] = out; hasDetails = true; }
+        else body[f.key] = out;
       }
+      if (hasDetails) body.details = details;
       if (isEdit) body.id = row.id;
 
       const isStore = section === "products" || section === "categories";
@@ -390,14 +426,29 @@ function EditorModal({ section, row, fields, onClose, onSaved, headers }: {
               {f.type === "bool" ? (
                 <button onClick={() => set(f.key, !form[f.key])} style={{ ...inputStyle, cursor: "pointer", textAlign: "left", color: form[f.key] ? "#22C55E" : "#8A8FA8" }}>{form[f.key] ? "✓ Yes" : "✕ No"}</button>
               ) : f.type === "select" ? (
-                <select value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} style={inputStyle}>
+                <select value={String(form[f.key] ?? "")} onChange={(e) => set(f.key, e.target.value)} style={inputStyle}>
                   {(f.opts || []).map((o) => <option key={o.value} value={o.value} style={{ background: "#151820" }}>{o.label}</option>)}
                 </select>
+              ) : f.type === "multiselect" ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {(f.opts || []).map((o) => {
+                    const cur: string[] = Array.isArray(form[f.key]) ? form[f.key] : [];
+                    const on = cur.includes(o.value);
+                    return (
+                      <button key={o.value} type="button"
+                        onClick={() => set(f.key, on ? cur.filter((x) => x !== o.value) : [...cur, o.value])}
+                        style={{ ...chipToggle, ...(on ? chipToggleOn : {}) }}>{o.label}</button>
+                    );
+                  })}
+                </div>
+              ) : f.type === "rooms" ? (
+                <RoomBuilder value={Array.isArray(form[f.key]) ? form[f.key] : []} onChange={(v) => set(f.key, v)} />
               ) : f.type === "textarea" || f.type === "list" || f.type === "kv" ? (
                 <textarea value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} placeholder={f.ph} rows={f.type === "textarea" ? 3 : 3} style={{ ...inputStyle, resize: "vertical", fontFamily: f.type === "kv" ? "monospace" : "inherit" }} />
               ) : (
                 <input value={form[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value)} placeholder={f.ph} inputMode={f.type === "num" ? "decimal" : undefined} style={inputStyle} />
               )}
+              {f.hint ? <div style={{ color: "#6E7288", fontSize: 10.5, marginTop: 4 }}>{f.hint}</div> : null}
             </div>
           ))}
         </div>
@@ -414,14 +465,103 @@ function EditorModal({ section, row, fields, onClose, onSaved, headers }: {
 function seed(row: any, fields: Field[]): Record<string, any> {
   const f: Record<string, any> = {};
   for (const fld of fields) {
-    const v = row[fld.key];
+    // Fields flagged `group:"details"` are seeded from the details jsonb bag.
+    const src = fld.group === "details" ? (row.details && typeof row.details === "object" ? row.details : {}) : row;
+    const v = src[fld.key];
     if (fld.type === "list") f[fld.key] = Array.isArray(v) ? v.join("\n") : "";
     else if (fld.type === "kv") f[fld.key] = v && typeof v === "object" ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join("\n") : "";
+    else if (fld.type === "multiselect") f[fld.key] = Array.isArray(v) ? v : [];
+    else if (fld.type === "rooms") f[fld.key] = Array.isArray(v) ? v : [];
     else if (fld.type === "bool") f[fld.key] = v == null ? (fld.key === "active" || fld.key === "in_stock") : !!v;
     else f[fld.key] = v ?? "";
   }
   return f;
 }
+
+// ── Room builder (hospitality listings) ──────────────────────────────────
+type RoomRow = { category: string; name: string; count: any; price: any; capacity: any; amenities: string[]; images: string[] };
+
+function RoomBuilder({ value, onChange }: { value: RoomRow[]; onChange: (v: RoomRow[]) => void }) {
+  const rows: RoomRow[] = Array.isArray(value) ? value : [];
+  const update = (i: number, patch: Partial<RoomRow>) => onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const add = () => onChange([...rows, { category: "deluxe", name: "", count: 1, price: "", capacity: ROOM_CATEGORY_CAPACITY["deluxe"] || 2, amenities: [], images: [] }]);
+  const remove = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
+
+  const onCat = (i: number, cat: string) => {
+    const r = rows[i];
+    const prevLabel = ROOM_CATEGORY_MAP[r.category]?.label || "";
+    const patch: Partial<RoomRow> = { category: cat };
+    // Auto-fill name from the new category label if untouched / matched old label.
+    if (!r.name || r.name === prevLabel) patch.name = cat === "custom" ? "" : (ROOM_CATEGORY_MAP[cat]?.label || "");
+    // Seed capacity from the category default if still empty.
+    if (r.capacity === "" || r.capacity == null) patch.capacity = ROOM_CATEGORY_CAPACITY[cat] || 2;
+    update(i, patch);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {rows.length === 0 && (
+        <div style={{ color: "#6E7288", fontSize: 12, padding: "10px 12px", border: "1px dashed rgba(255,255,255,0.14)", borderRadius: 10 }}>
+          No rooms added yet.
+        </div>
+      )}
+      {rows.map((r, i) => (
+        <div key={i} style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 12, background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column", gap: 9 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "#D4AF37", fontSize: 12, fontWeight: 700 }}>Room {i + 1}</span>
+            <button type="button" onClick={() => remove(i)} style={{ ...miniBtn, borderColor: "rgba(255,71,87,0.4)", color: "#FF9AA8" }}>🗑 Remove</button>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ width: "calc(50% - 4px)" }}>
+              <RbLabel>Category</RbLabel>
+              <select value={r.category} onChange={(e) => onCat(i, e.target.value)} style={inputStyle}>
+                {ROOM_CATEGORIES.map((c) => <option key={c.id} value={c.id} style={{ background: "#151820" }}>{c.label}</option>)}
+              </select>
+            </div>
+            <div style={{ width: "calc(50% - 4px)" }}>
+              <RbLabel>Room name</RbLabel>
+              <input value={r.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="e.g. Deluxe Valley View" style={inputStyle} />
+            </div>
+            <div style={{ width: "calc(33.33% - 6px)" }}>
+              <RbLabel>Count</RbLabel>
+              <input value={r.count ?? ""} onChange={(e) => update(i, { count: e.target.value })} inputMode="numeric" style={inputStyle} />
+            </div>
+            <div style={{ width: "calc(33.33% - 6px)" }}>
+              <RbLabel>Price ₹/night</RbLabel>
+              <input value={r.price ?? ""} onChange={(e) => update(i, { price: e.target.value })} inputMode="decimal" style={inputStyle} />
+            </div>
+            <div style={{ width: "calc(33.33% - 6px)" }}>
+              <RbLabel>Max guests</RbLabel>
+              <input value={r.capacity ?? ""} onChange={(e) => update(i, { capacity: e.target.value })} inputMode="numeric" style={inputStyle} />
+            </div>
+          </div>
+          <div>
+            <RbLabel>In-room amenities</RbLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {AMENITIES.map((a) => {
+                const cur = Array.isArray(r.amenities) ? r.amenities : [];
+                const on = cur.includes(a.id);
+                return (
+                  <button key={a.id} type="button"
+                    onClick={() => update(i, { amenities: on ? cur.filter((x) => x !== a.id) : [...cur, a.id] })}
+                    style={{ ...chipToggle, ...(on ? chipToggleOn : {}) }}>{a.emoji} {a.label}</button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <RbLabel>Room photo URLs (one per line)</RbLabel>
+            <textarea value={(Array.isArray(r.images) ? r.images : []).join("\n")}
+              onChange={(e) => update(i, { images: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
+              rows={2} style={{ ...inputStyle, resize: "vertical" }} />
+          </div>
+        </div>
+      ))}
+      <button type="button" onClick={add} style={{ ...btnGhost, alignSelf: "flex-start" }}>＋ Add room / cottage</button>
+    </div>
+  );
+}
+function RbLabel({ children }: { children: any }) { return <label style={{ display: "block", color: "#8A8FA8", fontSize: 10.5, fontWeight: 600, marginBottom: 4 }}>{children}</label>; }
 
 // ── bits ────────────────────────────────────────────────────────────────
 function Th({ children }: { children: any }) { return <th style={{ padding: "11px 14px", fontWeight: 600, whiteSpace: "nowrap" }}>{children}</th>; }
@@ -436,6 +576,8 @@ const btnPrimary: React.CSSProperties = { padding: "8px 16px", borderRadius: 10,
 const btnGhost: React.CSSProperties = { padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#E8EAF0" };
 const miniBtn: React.CSSProperties = { padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", color: "#C7CBD8" };
 const chip: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: "rgba(34,197,94,0.14)", color: "#7DE3A0", border: "1px solid rgba(34,197,94,0.3)" };
+const chipToggle: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: "5px 10px", borderRadius: 999, cursor: "pointer", background: "rgba(255,255,255,0.04)", color: "#8A8FA8", border: "1px solid rgba(255,255,255,0.12)" };
+const chipToggleOn: React.CSSProperties = { background: "rgba(212,175,55,0.16)", color: "#F0D060", borderColor: "rgba(212,175,55,0.5)" };
 const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 11px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.03)", color: "#E8EAF0", fontSize: 13, outline: "none", boxSizing: "border-box" };
 function statusPill(status: string): React.CSSProperties {
   const map: Record<string, [string, string]> = {

@@ -42,6 +42,29 @@ export default function AdminHotels() {
   const columns = [
     { key: "id", label: "ID", render: (h: any) => <code style={{ color: "#8A8FA8", fontSize: 12 }}>{h.id}</code> },
     { key: "name", label: "Hotel" },
+    {
+      key: "type",
+      label: "Type",
+      render: (h: any) => {
+        const t = hotelTypeInfo(h);
+        return (
+          <span
+            style={{
+              background: t.color + "22",
+              color: t.color,
+              padding: "3px 10px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+            title={t.hint}
+          >
+            {t.label}
+          </span>
+        );
+      },
+    },
     { key: "city", label: "City" },
     {
       key: "starRating",
@@ -198,6 +221,7 @@ export default function AdminHotels() {
           <Field label="ID" value={selected.id} />
           <Field label="City" value={selected.city || "—"} />
           <Field label="State" value={selected.state || "—"} />
+          <Field label="Type" value={hotelTypeInfo(selected).label} />
           <Field label="Owner" value={selected.ownerId?.slice(0, 12) + "…"} />
           <Field label="Approval" value={selected.approval_status || "approved"} />
           {selected.submitted_for_review_at && (
@@ -282,6 +306,18 @@ function approvalColor(a: string) {
   if (a === "pending") return "#F0D060";
   if (a === "rejected") return "#FF4757";
   return "#2ECC71";
+}
+// v310 (Phase 5) — StayBid-operated vs classic owner-run discriminator.
+// host_circle = per-property listing provisioned via /host/list-property;
+// circle = StayBid Circle managed pool; else a classic owner-run hotel.
+function hotelTypeInfo(h: any): { label: string; color: string; hint: string } {
+  const ot = h?.owner_type;
+  const at = h?.account_type;
+  if (ot === "host_circle")
+    return { label: "🏨 Host Circle", color: "#A855F7", hint: "StayBid-operated · provisioned from a host property listing" };
+  if (ot === "circle" || at === "circle_operator" || at === "staybid_operated")
+    return { label: "🏨 Operated", color: "#3D9CF5", hint: "StayBid-operated hotel" };
+  return { label: "Owner", color: "#8A8FA8", hint: "Classic owner-run hotel" };
 }
 const inputStyle: React.CSSProperties = { background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", color: "#E8EAF0", fontSize: 14, outline: "none", fontFamily: "DM Sans, sans-serif", minWidth: 220 };
 const selectStyle: React.CSSProperties = { ...inputStyle, minWidth: 140, cursor: "pointer" };

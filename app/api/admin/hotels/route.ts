@@ -22,7 +22,10 @@ export async function GET(req: NextRequest) {
     // v262 — surface approval_status + submitted_for_review_at so the admin
     // can run the verify-before-live review queue.
     const approval = searchParams.get("approval");
-    let query = "hotels?select=id,name,city,state,ownerId,status,approval_status,isVerified,submitted_for_review_at,published_at,images,starRating,createdAt&order=createdAt.desc&limit=200";
+    // v310 (Host Property-Listing, Phase 5) — surface owner_type + account_type
+    // so the admin can distinguish a StayBid-operated (host_circle / circle)
+    // hotel from a classic owner-run one.
+    let query = "hotels?select=id,name,city,state,ownerId,owner_type,account_type,status,approval_status,isVerified,submitted_for_review_at,published_at,images,starRating,createdAt&order=createdAt.desc&limit=200";
     if (city && city !== "all") query += `&city=eq.${city}`;
     if (status && status !== "all") query += `&status=eq.${status}`;
     if (approval && approval !== "all") query += `&approval_status=eq.${approval}`;

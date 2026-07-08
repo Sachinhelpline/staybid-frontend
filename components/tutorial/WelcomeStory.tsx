@@ -26,7 +26,7 @@ import { WELCOME_STORY } from "@/lib/tutorial/tutorial-content";
 import { LanguageToggle } from "./LanguageToggle";
 import { WelcomeScene } from "./WelcomeScenes";
 
-const SKIP_PREFIXES = ["/admin", "/partner", "/onboard", "/auth", "/circle"];
+const SKIP_PREFIXES = ["/admin", "/partner", "/onboard", "/auth", "/circle", "/host", "/worker"];
 const REVEAL_DELAY_MS = 1200;
 
 export function WelcomeStory() {

@@ -1096,7 +1096,11 @@ export default function PartnerDashboard() {
                       <div className="max-h-[60vh] overflow-y-auto py-1">
                         {hotelList.map((h) => {
                           const on = h.id === activeHotelId;
-                          const isCircle = h.account_type === "circle_operator";
+                          // v310 — StayBid-operated pools: legacy Circle
+                          // (circle_operator) + Host Property-Listing (host_circle).
+                          const isCircle = h.account_type === "circle_operator"
+                            || h.account_type === "staybid_operated"
+                            || h.owner_type === "host_circle";
                           return (
                             <button
                               key={h.id}
@@ -1119,6 +1123,15 @@ export default function PartnerDashboard() {
                   </>
                 )}
               </div>
+            )}
+            {/* v310 — StayBid-operated (Circle / Host Circle) property. The
+                partner reaches it via unit-ownership (isOperator), not ownerId,
+                so it's visibly distinct from a classic owner-run hotel. */}
+            {hotel?.isOperator && (
+              <span className="hidden sm:flex items-center gap-1 text-[0.58rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-2 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
+                title="This property is operated by StayBid — you manage your own rooms here">
+                🏨 Operated by StayBid
+              </span>
             )}
             {pUser?.staffRole && (
               <span className="text-[0.58rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2 py-1 rounded-full uppercase tracking-wide">

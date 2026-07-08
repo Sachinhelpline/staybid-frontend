@@ -40,15 +40,35 @@ export async function POST(req: Request) {
   const cleanArr = (v: any, cap = 30) =>
     Array.isArray(v) ? v.map((x) => String(x).slice(0, 120)).filter(Boolean).slice(0, cap) : [];
 
-  // v285 — flexible detail bag (floor / facing / lease terms / landmarks …).
+  const clampInt = (v: any, lo: number, hi: number, dflt: number) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+  };
+
+  // v307 — hospitality detail bag. Property-level amenities use the dedicated
+  // `amenities` column; meal plans / add-ons / policies / description live here.
   const d = body?.details && typeof body.details === "object" ? body.details : {};
   const details: Record<string, any> = {};
   const keepStr = (k: string, cap = 200) => { const s = String(d[k] ?? "").trim().slice(0, cap); if (s) details[k] = s; };
-  const keepNum = (k: string) => { const n = Number(d[k]); if (Number.isFinite(n) && n >= 0) details[k] = n; };
-  keepStr("floor", 40); keepNum("totalFloors"); keepStr("facing", 20); keepNum("ageYears");
-  keepStr("availableFrom", 20); keepStr("leaseType", 40); keepNum("maintenanceMonthly");
-  keepStr("tenantPref", 40); keepStr("landmarks", 400); keepNum("carpetArea"); keepStr("areaUnit", 10);
-  if (d?.negotiable === true) details.negotiable = true;
+  keepStr("description", 1000); keepStr("checkIn", 10); keepStr("checkOut", 10);
+  keepStr("houseRules", 800); keepStr("landmarks", 400);
+  { const n = Number(d?.starRating); if (Number.isFinite(n) && n >= 1 && n <= 5) details.starRating = Math.round(n); }
+  details.mealPlans = cleanArr(d?.mealPlans, 12);
+  details.addonServices = cleanArr(d?.addonServices, 24);
+
+  // v307 — per-category room builder. Read by admin review + Phase 4 provision.
+  const roomsIn = Array.isArray(body?.rooms) ? body.rooms.slice(0, 12) : [];
+  const rooms = roomsIn
+    .map((r: any) => ({
+      category: String(r?.category || "").trim().slice(0, 40) || "standard",
+      name: String(r?.name || "").trim().slice(0, 80) || "Room",
+      count: clampInt(r?.count, 1, 500, 1),
+      price: num(r?.price),
+      capacity: clampInt(r?.capacity, 1, 30, 2),
+      amenities: cleanArr(r?.amenities, 40),
+      images: cleanArr(r?.images, 6),
+    }))
+    .filter((r: any) => r.category);
 
   const row: any = {
     title,
@@ -56,12 +76,8 @@ export async function POST(req: Request) {
     locality: String(body?.locality || "").trim().slice(0, 120) || null,
     state: String(body?.state || "").trim().slice(0, 80) || null,
     property_type: String(body?.propertyType || "").trim().slice(0, 60) || null,
-    bhk: String(body?.bhk || "").trim().slice(0, 20) || null,
-    area_sqft: num(body?.areaSqft),
-    furnishing: String(body?.furnishing || "").trim().slice(0, 40) || null,
-    rent_monthly: num(body?.rentMonthly),
-    deposit: num(body?.deposit),
-    amenities: cleanArr(body?.amenities),
+    amenities: cleanArr(body?.amenities),        // property-level amenities
+    rooms,                                        // per-category room builder
     images: cleanArr(body?.images, 12),
     lat: coord(body?.lat),
     lng: coord(body?.lng),
