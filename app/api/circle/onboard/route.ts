@@ -38,6 +38,8 @@ function normalizeRoom(r: any, propertyId: string, idx: number): Record<string, 
     bed_type: String(r?.bed_type || "").trim().slice(0, 60),
     view_label: String(r?.view_label || "").trim().slice(0, 60),
     description: String(r?.description || "").trim().slice(0, 400),
+    amenities: Array.isArray(r?.amenities) ? r.amenities.map((x: any) => String(x)).slice(0, 40) : [],
+    images: Array.isArray(r?.images) ? r.images.map((x: any) => String(x)).slice(0, 20) : [],
     active: true,
     sort_order: (idx + 1) * 10,
   };

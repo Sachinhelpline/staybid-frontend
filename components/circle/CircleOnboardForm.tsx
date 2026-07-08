@@ -61,6 +61,8 @@ export type CircleRoomDraft = {
   bed_type: string;
   view_label: string;
   description: string;
+  amenities: string[];   // per-room amenities (separate from property-level)
+  images: string[];      // per-room photos (separate from property-level)
 };
 
 export type CircleFormValue = {
@@ -98,7 +100,7 @@ const OPERATION_MODELS = [
 ];
 
 function emptyRoom(): CircleRoomDraft {
-  return { category: "deluxe", name: "Deluxe Room", monthly_rate: 20000, total_units: 2, locked_units: 0, capacity: 2, bed_type: "", view_label: "", description: "" };
+  return { category: "deluxe", name: "Deluxe Room", monthly_rate: 20000, total_units: 2, locked_units: 0, capacity: 2, bed_type: "", view_label: "", description: "", amenities: [], images: [] };
 }
 
 export function makeInitialCircleForm(partial?: Partial<CircleFormValue>): CircleFormValue {
@@ -138,6 +140,19 @@ const PUBLIC_PAL: Pal = {
   hint: "var(--text-muted, #6E5430)", divider: "var(--border-soft, rgba(184,134,11,0.18))", danger: "#C0503E", ok: "#5E7C4E", roomCard: "var(--bg-input, #FBF6EC)",
 };
 
+// ── Section (module-scope: defining it inside the component gave it a new
+// identity on every keystroke → React remounted the subtree → every input
+// blurred after one character, i.e. the "ek hi letter add kar sakte hai" bug) ─
+function Section({ P, title, sub, children }: { P: Pal; title: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ borderTop: `1px solid ${P.divider}`, paddingTop: 14, marginTop: 4 }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase", color: P.accent }}>{title}</div>
+      {sub && <div style={{ fontSize: 11, color: P.hint, marginTop: 3, marginBottom: 8 }}>{sub}</div>}
+      <div style={{ display: "grid", gap: 12, marginTop: sub ? 0 : 10 }}>{children}</div>
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function CircleOnboardForm({
   variant, initial, submitting, submitLabel, onSubmit, onCancel,
@@ -164,6 +179,14 @@ export default function CircleOnboardForm({
     setForm((f) => ({ ...f, roomTypes: f.roomTypes.map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
   const addRoom = () => setForm((f) => ({ ...f, roomTypes: [...f.roomTypes, emptyRoom()] }));
   const removeRoom = (i: number) => setForm((f) => ({ ...f, roomTypes: f.roomTypes.length > 1 ? f.roomTypes.filter((_, j) => j !== i) : f.roomTypes }));
+  const toggleRoomAmenity = (i: number, id: string) => setForm((f) => ({
+    ...f,
+    roomTypes: f.roomTypes.map((r, j) => {
+      if (j !== i) return r;
+      const cur = Array.isArray(r.amenities) ? r.amenities : [];
+      return { ...r, amenities: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] };
+    }),
+  }));
   const pickCategory = (i: number, catId: string) => {
     const cat = ROOM_CATEGORIES.find((c) => c.id === catId);
     const cap = ROOM_CATEGORY_CAPACITY[catId] || 2;
@@ -209,6 +232,8 @@ export default function CircleOnboardForm({
         bed_type: (r.bed_type || "").trim(),
         view_label: (r.view_label || "").trim(),
         description: (r.description || "").trim(),
+        amenities: Array.isArray(r.amenities) ? r.amenities : [],
+        images: Array.isArray(r.images) ? r.images : [],
         sort_order: (idx + 1) * 10,
       })) as CircleRoomDraft[];
     onSubmit({
@@ -255,18 +280,10 @@ export default function CircleOnboardForm({
     borderRadius: 12, padding: "12px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer",
   };
 
-  const Section = ({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) => (
-    <div style={{ borderTop: `1px solid ${P.divider}`, paddingTop: 14, marginTop: 4 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase", color: P.accent }}>{title}</div>
-      {sub && <div style={{ fontSize: 11, color: P.hint, marginTop: 3, marginBottom: 8 }}>{sub}</div>}
-      <div style={{ display: "grid", gap: 12, marginTop: sub ? 0 : 10 }}>{children}</div>
-    </div>
-  );
-
   return (
     <div style={{ display: "grid", gap: 16, color: P.text }}>
       {/* Property basics */}
-      <Section title="Property basics">
+      <Section P={P} title="Property basics">
         <label style={labelS}>Property title
           <input style={inputS} value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Dhanaulti Village Resort" />
         </label>
@@ -296,7 +313,7 @@ export default function CircleOnboardForm({
       </Section>
 
       {/* Location + availability */}
-      <Section title="Location & availability">
+      <Section P={P} title="Location & availability">
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
           <label style={labelS}>City
             <input style={inputS} value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="e.g. Dhanaulti" />
@@ -315,7 +332,7 @@ export default function CircleOnboardForm({
       </Section>
 
       {/* Room categories — the piece that prevents false "Sold out" */}
-      <Section title="Room categories" sub="Add every room type and how many rooms of each are available for investment. At least one is required.">
+      <Section P={P} title="Room categories" sub="Add every room type and how many rooms of each are available for investment. At least one is required.">
         <div style={{ display: "grid", gap: 12 }}>
           {form.roomTypes.map((r, i) => (
             <div key={i} style={{ background: P.roomCard, border: `1px solid ${P.inputBorder}`, borderRadius: 12, padding: 12, display: "grid", gap: 10 }}>
@@ -357,6 +374,26 @@ export default function CircleOnboardForm({
               <label style={labelS}>Room description (optional)
                 <input style={inputS} value={r.description} onChange={(e) => setRoom(i, { description: e.target.value })} placeholder="Short note about this room" />
               </label>
+              {/* Per-room amenities (separate from property-level amenities) */}
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 11.5, color: P.sub, fontWeight: 600 }}>Room amenities</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {AMENITIES.map((a) => {
+                    const on = (r.amenities || []).includes(a.id);
+                    return (
+                      <button key={a.id} type="button" onClick={() => toggleRoomAmenity(i, a.id)} style={{ ...chipS(on), padding: "4px 10px", fontSize: 11 }}>
+                        {a.emoji} {a.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Per-room photos (separate from property-level photos) */}
+              <div style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 11.5, color: P.sub, fontWeight: 600 }}>Room photos</span>
+                <MediaBlock kind="image" pal={P} inputS={inputS} subdir="room-photos"
+                  value={r.images || []} onValue={(urls) => setRoom(i, { images: urls })} />
+              </div>
             </div>
           ))}
         </div>
@@ -368,7 +405,7 @@ export default function CircleOnboardForm({
       </Section>
 
       {/* Amenities */}
-      <Section title="Amenities">
+      <Section P={P} title="Amenities">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
           {AMENITIES.map((a) => (
             <button key={a.id} type="button" onClick={() => toggleAmenity(a.id)} style={chipS(form.amenities.includes(a.id))}>
@@ -379,7 +416,7 @@ export default function CircleOnboardForm({
       </Section>
 
       {/* Media */}
-      <Section title="Photos & reel" sub="Upload from device or paste URLs. A reel video makes the /circle feed much stronger.">
+      <Section P={P} title="Photos & reel" sub="Upload from device or paste URLs. A reel video makes the /circle feed much stronger.">
         <MediaBlock kind="image" pal={P} inputS={inputS}
           value={form.images} onValue={(urls) => set("images", urls)} />
         <MediaBlock kind="video" pal={P} inputS={inputS}
@@ -387,7 +424,7 @@ export default function CircleOnboardForm({
       </Section>
 
       {/* Investment & ops */}
-      <Section title="Investment & returns" sub="Drives the ROI panel + operating model on the /circle catalog.">
+      <Section P={P} title="Investment & returns" sub="Drives the ROI panel + operating model on the /circle catalog.">
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr 1fr" }}>
           <label style={labelS}>Starting ₹ / room / month
             <input type="number" style={inputS} value={form.monthly_rate} onChange={(e) => set("monthly_rate", Number(e.target.value))} placeholder={minRoomRate ? String(minRoomRate) : "25000"} />
@@ -430,14 +467,16 @@ export default function CircleOnboardForm({
 
 // ── Media uploader block (images multi / single video) ──────────────────────
 function MediaBlock({
-  kind, value, onValue, pal, inputS,
+  kind, value, onValue, pal, inputS, subdir,
 }: {
   kind: "image" | "video";
   value: string[];
   onValue: (urls: string[]) => void;
   pal: Pal;
   inputS: React.CSSProperties;
+  subdir?: string;
 }) {
+  const photoDir = subdir || "photos";
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [pct, setPct] = useState(0);
@@ -455,7 +494,7 @@ function MediaBlock({
           if (!f.type.startsWith("image/")) continue;
           let up: Blob = f;
           try { up = await resizeImageBeforeUpload(f, { maxDim: 1600, quality: 0.82 }); } catch { up = f; }
-          const url = await pushFileToStorage(up, "photos", extFromMime(up.type || "image/jpeg", "jpg"), up.type || "image/jpeg",
+          const url = await pushFileToStorage(up, photoDir, extFromMime(up.type || "image/jpeg", "jpg"), up.type || "image/jpeg",
             (p) => setPct(Math.round(((i + p / 100) / list.length) * 100)));
           urls.push(url);
         } else {
