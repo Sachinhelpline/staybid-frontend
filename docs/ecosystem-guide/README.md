@@ -25,3 +25,10 @@ This folder is a **copy-paste kit** for building a premium visual book — *"Sta
 | 09 | `09-USER-BENEFITS.md` | 83–119 | Every user's benefits **feature-by-feature** (traveller A→Z, nothing left out) + back matter |
 
 **Total ≈ 119 pages.** Source of truth: the project `CLAUDE.md` architecture memory.
+
+## Standalone deep-dive guides
+Separate self-contained ChatGPT books, each with their own page numbers (build the same way — paste the spec, feed page prompts, say `next`):
+
+| File | Pages | Covers |
+|---|---|---|
+| `10-CIRCLE-COMPLETE-GUIDE.md` | 1–40 | **StayBid Circle end-to-end** — Property Listing page · Property Owner Dashboard · Circle Admin Panel (dark) · Investor use case · money flows · benefits · value loop |
