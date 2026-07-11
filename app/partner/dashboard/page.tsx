@@ -43,6 +43,7 @@ import GuestsTab from "@/components/partner/GuestsTab";
 import StaffTab from "@/components/partner/StaffTab";
 // v170 — channel manager / OTA connections (Phase 3).
 import ChannelManagerTab from "@/components/partner/ChannelManagerTab";
+import OtaFeedManager from "@/components/partner/OtaFeedManager";
 // v129 — every counter price is a ₹100 multiple (matches the customer
 // Negotiate slider step). Same source of truth as /bid + /flash-deals.
 import { snap100, floor100, ceil100, snapClamp100, PRICE_STEP, PRICE_MIN } from "@/lib/price-snap";
@@ -730,7 +731,7 @@ export default function PartnerDashboard() {
   useEffect(() => {
     if (tab === "availability" && hotel?.id) {
       loadCalendar();
-      loadOtaFeeds();
+      // OTA feeds are now managed by the self-loading <OtaFeedManager> (v316)
     }
     if (tab === "complaints" && hotel?.id) {
       loadComplaints();
@@ -2181,131 +2182,21 @@ export default function PartnerDashboard() {
               onSubmit={submitBulkBlock}
             />
 
-            {/* OTA Feeds manager */}
+            {/* OTA Feeds manager — shared component (v316); the full Channel
+                Manager console lives in the Channels tab. */}
             <div className="card-p">
-              <h3 className="font-display text-xl text-luxury-900 mb-1">🌐 OTA Channel Sync</h3>
-              <p className="text-sm text-luxury-500 mb-4">
-                Paste iCal URLs from Booking.com, Airbnb, MakeMyTrip, Goibibo or Agoda. Their bookings will automatically block your availability.
-              </p>
-
-              {/* Existing feeds */}
-              <div className="space-y-2 mb-4">
-                {otaFeeds.length === 0 ? (
-                  <div className="text-sm text-luxury-400 italic py-2">No feeds added yet.</div>
-                ) : otaFeeds.map(f => {
-                  const room = rooms.find(r => r.id === f.roomId);
-                  return (
-                    <div key={f.id} className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-xl bg-luxury-50 border border-luxury-200">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm uppercase">{f.provider}</span>
-                          <span className="font-semibold text-luxury-800 text-sm">{f.label || f.provider}</span>
-                          <span className="text-xs text-luxury-400">· {room?.type || f.roomId}</span>
-                        </div>
-                        <div className="text-xs text-luxury-500 truncate mt-1" style={{ maxWidth: 420 }}>{f.icalUrl}</div>
-                        <div className="text-[0.65rem] text-luxury-400 mt-0.5">
-                          {f.lastSyncAt
-                            ? `Last sync: ${new Date(f.lastSyncAt).toLocaleString("en-IN")} · ${f.lastSyncStatus || ""} · ${f.lastEventCount || 0} events`
-                            : "Never synced"}
-                          {f.lastSyncError && <span className="text-red-500 ml-2">({f.lastSyncError})</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => syncFeed(f.id)} disabled={syncing === f.id}
-                          className="btn-gold text-xs px-3 py-1.5">
-                          {syncing === f.id ? "Syncing…" : "↻ Sync Now"}
-                        </button>
-                        <button onClick={() => deleteFeed(f.id)}
-                          className="text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-sm text-sm">🗑</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Add new feed — v132: visual room-card picker + provider pills */}
-              <div className="pt-4 border-t border-luxury-100 space-y-3">
-                {/* Step 1 — Room (visual cards) */}
-                <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
-                    Room {newFeed.roomId && <span className="text-luxury-600 normal-case">· {rooms.find(r => r.id === newFeed.roomId)?.type}</span>}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {rooms.length === 0 ? (
-                      <div className="text-xs text-luxury-400 italic">No rooms — add them in the Rooms tab first.</div>
-                    ) : rooms.map(r => {
-                      const active = newFeed.roomId === r.id;
-                      return (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => setNewFeed(p => ({ ...p, roomId: r.id }))}
-                          className={`group inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
-                            active
-                              ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
-                              : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"
-                          }`}
-                          aria-pressed={active}
-                        >
-                          <span className="text-base leading-none">🛏️</span>
-                          <span className="flex flex-col items-start leading-tight">
-                            <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
-                            {r.capacity != null && (
-                              <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>
-                            )}
-                          </span>
-                          {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Step 2 — Provider (visual pills) */}
-                <div>
-                  <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">Channel</label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: "booking", label: "Booking.com", icon: "🅱️" },
-                      { id: "airbnb",  label: "Airbnb",      icon: "🌐" },
-                      { id: "mmt",     label: "MakeMyTrip",  icon: "🅼"  },
-                      { id: "goibibo", label: "Goibibo",     icon: "🅶" },
-                      { id: "agoda",   label: "Agoda",       icon: "🅰️" },
-                      { id: "other",   label: "Other",       icon: "🔗" },
-                    ].map(p => {
-                      const active = newFeed.provider === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setNewFeed(prev => ({ ...prev, provider: p.id }))}
-                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all ${
-                            active
-                              ? "bg-luxury-900 text-amber-100 border-luxury-900 shadow-xs"
-                              : "bg-luxury-50 text-luxury-700 border-luxury-200 hover:border-luxury-400"
-                          }`}
-                          aria-pressed={active}
-                        >
-                          <span>{p.icon}</span>
-                          <span>{p.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Step 3 — URL + submit */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
-                  <div className="md:col-span-3">
-                    <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-1">iCal URL</label>
-                    <input className="inp-p" placeholder="https://…" value={newFeed.icalUrl}
-                      onChange={e=>setNewFeed(p=>({...p, icalUrl:e.target.value}))} />
-                  </div>
-                  <button onClick={addFeed} disabled={feedSaving || !newFeed.roomId || !newFeed.icalUrl} className="btn-gold text-xs py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {feedSaving ? "Adding…" : "+ Add Feed"}
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h3 className="font-display text-xl text-luxury-900">🌐 OTA Channel Sync</h3>
+                {tabAllowed(role, "channels") && (
+                  <button onClick={() => setTab("channels")} className="btn-ghost text-xs px-2.5! py-1! shrink-0">
+                    Full Channel Manager →
                   </button>
-                </div>
+                )}
               </div>
+              <p className="text-sm text-luxury-500 mb-4">
+                Paste iCal URLs from Booking.com, Airbnb, MakeMyTrip, Goibibo or Agoda. Their bookings automatically block your availability — and release when cancelled.
+              </p>
+              <OtaFeedManager hotelId={hotel.id} rooms={rooms} onChanged={loadCalendar} />
             </div>
           </div>
         )}

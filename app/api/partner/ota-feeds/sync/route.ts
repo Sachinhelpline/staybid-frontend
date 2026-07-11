@@ -1,127 +1,39 @@
-// Fetches an iCal feed (Booking.com / Airbnb / GoIbibo / MMT / Agoda)
-// and imports VEVENTs into room_blocks as source='ota_ical'.
-// Deduped by externalRef (VEVENT UID) + feedId, so repeated sync is idempotent.
+// v315 — Channel Manager Phase 1: manual "Sync now" (hardened).
+//
+// Thin wrapper over the shared engine in lib/channels/sync — the SAME code
+// path the cron uses, so manual + scheduled runs can never drift.
+// Pre-v315 this route accepted any JWT and never reconciled cancellations.
+// Response contract preserved for the dashboard ({ok,totalEvents,imported,
+// skipped}) + new `removed` count (OTA cancellations released).
+//
 import { NextRequest, NextResponse } from "next/server";
-import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt } from "@/lib/sb-server";
-import { parseICal, toISODate } from "@/lib/availability";
+import { sbSelect } from "@/lib/sb-server";
+import { partnerHotelScope } from "@/lib/partner/hotel-scope";
+import { syncFeed } from "@/lib/channels/sync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-function auth(req: NextRequest): { userId?: string } {
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  const p = token ? decodeJwt(token) : null;
-  return { userId: p?.id || p?.user_id || p?.sub };
-}
-
-async function markFeed(feedId: string, patch: any) {
-  await fetch(`${SB_URL}/rest/v1/ota_feeds?id=eq.${feedId}`, {
-    method: "PATCH",
-    headers: SB_H,
-    body: JSON.stringify(patch),
-  }).catch(() => {});
-}
-
 export async function POST(req: NextRequest) {
-  const { userId } = auth(req);
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const scope = await partnerHotelScope(req);
+  if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch {}
-  const { feedId } = body;
+  const feedId = String(body.feedId || "");
   if (!feedId) return NextResponse.json({ error: "feedId required" }, { status: 400 });
 
-  // 1. Load feed row
-  let feed: any = null;
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/ota_feeds?id=eq.${feedId}&select=*`, { headers: SB_H });
-    const j = await r.json();
-    feed = Array.isArray(j) ? j[0] : null;
-  } catch {}
+  const rows = await sbSelect(
+    `ota_feeds?id=eq.${encodeURIComponent(feedId)}&select=*`
+  ).catch(() => []);
+  const feed = rows?.[0];
   if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+  if (!scope.hotelIds.includes(feed.hotelId))
+    return NextResponse.json({ error: "Not your feed" }, { status: 403 });
 
-  // 2. Fetch iCal URL
-  let text = "";
-  try {
-    const r = await fetch(feed.icalUrl, {
-      headers: { "User-Agent": "StayBid-Sync/1.0" },
-      cache: "no-store",
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    text = await r.text();
-  } catch (e: any) {
-    await markFeed(feedId, {
-      lastSyncAt: new Date().toISOString(),
-      lastSyncStatus: "error",
-      lastSyncError: e?.message || "fetch failed",
-    });
-    return NextResponse.json({ error: "iCal fetch failed: " + (e?.message || "") }, { status: 502 });
+  const result = await syncFeed(feed, "manual");
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error || "Sync failed", ...result }, { status: 502 });
   }
-
-  // 3. Parse VEVENTs
-  const events = parseICal(text);
-  const valid = events.filter(e => e.start && e.end);
-
-  // 4. Load existing blocks for this feed (to skip existing UIDs)
-  let existingUids = new Set<string>();
-  try {
-    const r = await fetch(
-      `${SB_URL}/rest/v1/room_blocks?feedId=eq.${feedId}&select=externalRef`,
-      { headers: SB_H }
-    );
-    const rows = await r.json();
-    if (Array.isArray(rows)) rows.forEach((x: any) => x.externalRef && existingUids.add(x.externalRef));
-  } catch {}
-
-  // 5. Insert new events
-  const toInsert = valid
-    .filter(e => e.uid && !existingUids.has(e.uid))
-    .map(e => ({
-      hotelId: feed.hotelId,
-      roomId: feed.roomId,
-      fromDate: toISODate(e.start!),
-      toDate: toISODate(e.end!),
-      source: "ota_ical",
-      provider: feed.provider,
-      feedId: feed.id,
-      externalRef: e.uid,
-      note: e.summary || `${feed.provider} booking`,
-      guestName: e.summary || null,
-    }))
-    .filter(r => r.fromDate < r.toDate); // skip malformed
-
-  let imported = 0;
-  if (toInsert.length) {
-    try {
-      const r = await fetch(`${SB_URL}/rest/v1/room_blocks`, {
-        method: "POST",
-        headers: SB_H_REPRESENT,
-        body: JSON.stringify(toInsert),
-      });
-      if (!r.ok) throw new Error(await r.text());
-      const j = await r.json();
-      imported = Array.isArray(j) ? j.length : 0;
-    } catch (e: any) {
-      await markFeed(feedId, {
-        lastSyncAt: new Date().toISOString(),
-        lastSyncStatus: "error",
-        lastSyncError: "insert failed: " + (e?.message || ""),
-      });
-      return NextResponse.json({ error: "Import failed: " + (e?.message || "") }, { status: 500 });
-    }
-  }
-
-  await markFeed(feedId, {
-    lastSyncAt: new Date().toISOString(),
-    lastSyncStatus: valid.length ? "ok" : "empty",
-    lastSyncError: null,
-    lastEventCount: valid.length,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    totalEvents: valid.length,
-    imported,
-    skipped: valid.length - imported,
-  });
+  return NextResponse.json(result);
 }
