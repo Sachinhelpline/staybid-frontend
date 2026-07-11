@@ -233,6 +233,12 @@ export default function ChannelManagerTab({
         </div>
       )}
 
+      {/* ── room mapping + channel rates ── */}
+      <RoomMappingSection
+        hotelId={hotelId} rooms={rooms} connections={connections}
+        onToast={showToast}
+      />
+
       {/* ── OTA import feeds (shared component) ── */}
       <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">OTA → StayBid · import bookings</p>
       <p className="text-[0.66rem] text-luxury-500 mb-2.5">
@@ -326,6 +332,190 @@ export default function ChannelManagerTab({
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Room mapping + channel rates ───────────────────────────────────────────
+// Map each StayBid room to an OTA room/rate-plan ref + a per-channel markup%.
+// The channel price previews live: spine live_price × (1 + markup%). Mappings
+// need a connection (auto-created when you add an iCal feed, or via Connect API).
+function RoomMappingSection({
+  hotelId, rooms, connections, onToast,
+}: {
+  hotelId: string; rooms: any[]; connections: any[]; onToast: (m: string) => void;
+}) {
+  const [selConn, setSelConn] = useState("");
+  const [roomPrices, setRoomPrices] = useState<Record<string, { livePrice: number; source: string }>>({});
+  const [mapByRoom, setMapByRoom] = useState<Record<string, any>>({});
+  const [drafts, setDrafts] = useState<Record<string, { ref: string; markup: string }>>({});
+  const [savingRoom, setSavingRoom] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // keep a valid selected connection
+  useEffect(() => {
+    if (connections.length === 0) { setSelConn(""); return; }
+    setSelConn((prev) => (connections.some((c) => c.id === prev) ? prev : connections[0].id));
+  }, [connections]);
+
+  const loadPreview = useCallback(async () => {
+    if (!hotelId || !selConn) { setRoomPrices({}); setMapByRoom({}); return; }
+    setLoading(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const r = await fetch(
+        `/api/partner/channel-rate-preview?hotelId=${encodeURIComponent(hotelId)}&date=${today}`,
+        { headers: { Authorization: `Bearer ${partnerToken()}` }, cache: "no-store" },
+      );
+      const d = await r.json().catch(() => ({}));
+      setRoomPrices(d.roomPrices || {});
+      const byRoom: Record<string, any> = {};
+      (Array.isArray(d.previews) ? d.previews : [])
+        .filter((p: any) => p.connectionId === selConn)
+        .forEach((p: any) => { byRoom[p.roomId] = p; });
+      setMapByRoom(byRoom);
+      // seed drafts from existing mappings
+      setDrafts(() => {
+        const next: Record<string, { ref: string; markup: string }> = {};
+        rooms.forEach((rm) => {
+          const ex = byRoom[rm.id];
+          next[rm.id] = { ref: ex?.otaRoomRef || "", markup: ex ? String(ex.markupPct ?? 0) : "0" };
+        });
+        return next;
+      });
+    } catch { /* keep */ }
+    finally { setLoading(false); }
+  }, [hotelId, selConn, rooms]);
+
+  useEffect(() => { loadPreview(); }, [loadPreview]);
+
+  const setDraft = (roomId: string, k: "ref" | "markup", v: string) =>
+    setDrafts((p) => ({ ...p, [roomId]: { ...(p[roomId] || { ref: "", markup: "0" }), [k]: v } }));
+
+  async function saveRoom(roomId: string) {
+    if (!selConn) return;
+    const d = drafts[roomId] || { ref: "", markup: "0" };
+    setSavingRoom(roomId);
+    try {
+      const r = await fetch("/api/partner/channel-mappings", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${partnerToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hotelId, connectionId: selConn, roomId,
+          otaRoomRef: d.ref.trim(), markupPct: Number(d.markup) || 0,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || "Save failed");
+      onToast("Room mapping saved ✓");
+      loadPreview();
+    } catch (e: any) { onToast(e?.message || "Save failed"); }
+    finally { setSavingRoom(""); }
+  }
+
+  async function clearRoom(roomId: string) {
+    const ex = mapByRoom[roomId];
+    if (!ex) { setDraft(roomId, "ref", ""); setDraft(roomId, "markup", "0"); return; }
+    setSavingRoom(roomId);
+    try {
+      await fetch(`/api/partner/channel-mappings?id=${encodeURIComponent(ex.id)}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${partnerToken()}` },
+      });
+      onToast("Mapping removed");
+      loadPreview();
+    } catch { onToast("Remove failed"); }
+    finally { setSavingRoom(""); }
+  }
+
+  if (connections.length === 0) {
+    return (
+      <div className="mb-4">
+        <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">Room mapping &amp; channel rates</p>
+        <div className="card-p card-tight text-[0.7rem] text-luxury-500">
+          Pehle koi OTA channel connect karo — neeche apna iCal feed add karo (connection khud ban jayega) ya upar “API” se credentials daalo. Uske baad har room ko OTA room se map karke channel-wise markup laga sakte ho.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <p className="text-[0.78rem] font-bold text-luxury-900">Room mapping &amp; channel rates</p>
+        <select
+          value={selConn} onChange={(e) => setSelConn(e.target.value)}
+          className="text-[0.7rem] rounded-lg border border-luxury-200 bg-white px-2 py-1 text-luxury-700 max-w-[55%] truncate">
+          {connections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {(OTA_META[c.ota]?.label || c.ota)}{c.label ? ` · ${c.label}` : ""}{c.mode === "ical" ? " (iCal)" : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <p className="text-[0.66rem] text-luxury-500 mb-2.5">
+        Har room ka OTA room ID + markup% set karo. Channel rate = StayBid live price × (1 + markup%). Preview live update hota hai.
+      </p>
+      <div className="card-p card-tight">
+        {rooms.length === 0 ? (
+          <p className="text-[0.7rem] text-luxury-400 text-center py-3">Pehle Rooms tab me room category banao.</p>
+        ) : loading ? (
+          <p className="text-[0.7rem] text-luxury-400 text-center py-3">Loading rates…</p>
+        ) : (
+          <div className="space-y-2">
+            {rooms.map((rm) => {
+              const d = drafts[rm.id] || { ref: "", markup: "0" };
+              const live = roomPrices[rm.id]?.livePrice || 0;
+              const markupN = Number(d.markup) || 0;
+              const channel = live > 0 ? Math.round(live * (1 + markupN / 100)) : 0;
+              const mapped = Boolean(mapByRoom[rm.id]);
+              const dirty = mapped
+                ? (d.ref !== (mapByRoom[rm.id]?.otaRoomRef || "") || markupN !== Number(mapByRoom[rm.id]?.markupPct || 0))
+                : (d.ref.trim() !== "" || markupN !== 0);
+              return (
+                <div key={rm.id} className="rounded-xl border border-luxury-100 p-2.5">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <p className="text-[0.76rem] font-bold text-luxury-900 truncate">
+                      {rm.name || rm.type || rm.id}
+                      {mapped && <span className="ml-1.5 text-[0.58rem] font-semibold text-emerald-600">● mapped</span>}
+                    </p>
+                    <p className="text-[0.66rem] text-luxury-500 shrink-0">
+                      StayBid <b className="text-luxury-800">{live > 0 ? `₹${live.toLocaleString("en-IN")}` : "—"}</b>
+                      <span className="mx-1 text-luxury-300">→</span>
+                      OTA <b style={{ color: "#0f766e" }}>{channel > 0 ? `₹${channel.toLocaleString("en-IN")}` : "—"}</b>
+                    </p>
+                  </div>
+                  <div className="flex items-end gap-1.5">
+                    <div className="flex-1 min-w-0">
+                      <label className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">OTA room ID</label>
+                      <input
+                        value={d.ref} onChange={(e) => setDraft(rm.id, "ref", e.target.value)}
+                        placeholder="OTA room / listing ref"
+                        className="w-full text-[0.72rem] rounded-lg border border-luxury-200 bg-white px-2 py-1.5 text-luxury-700" />
+                    </div>
+                    <div className="w-20 shrink-0">
+                      <label className="text-[0.55rem] font-bold text-luxury-400 uppercase tracking-widest block mb-0.5">Markup %</label>
+                      <input
+                        value={d.markup} onChange={(e) => setDraft(rm.id, "markup", e.target.value)}
+                        type="number" step="0.5" inputMode="decimal"
+                        className="w-full text-[0.72rem] rounded-lg border border-luxury-200 bg-white px-2 py-1.5 text-luxury-700 text-center" />
+                    </div>
+                    <button
+                      onClick={() => saveRoom(rm.id)} disabled={savingRoom === rm.id || !dirty}
+                      className="btn-gold px-2.5! py-1.5! text-[0.68rem] shrink-0 disabled:opacity-40">
+                      {savingRoom === rm.id ? "…" : "Save"}
+                    </button>
+                    {mapped && (
+                      <button
+                        onClick={() => clearRoom(rm.id)} disabled={savingRoom === rm.id}
+                        className="btn-ghost px-2! py-1.5! text-[0.68rem] text-red-600! shrink-0" title="Remove mapping">🗑</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

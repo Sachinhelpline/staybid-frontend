@@ -165,14 +165,27 @@ The invisible-but-critical layer everything else stands on.
 - Auto-create/patch the `channel_connections` row (mode=`ical`,
   status=`active`) when a feed is added, so connections + feeds stay linked.
 
-### Phase 3 (v317) — Room mapping + rates layer (ARI foundation)
-- Room-mapping UI (local room ↔ OTA room/listing ref) on each connection.
-- Per-channel markup% on mappings; "channel rate preview" (spine `live_price`
-  × markup) so partners see what each OTA should charge.
-- `lib/channels/adapters/` — `ChannelAdapter` interface + iCal adapter
-  (availability-only) + credential `testConnection` stubs for API channels.
-- Restrictions data model (stop-sell / min-stay per room-date) as additive
-  columns on `room_date_overrides`.
+### ✅ Phase 3 (v317, SHIPPED) — Room mapping + rates layer (ARI foundation)
+- Room-mapping UI (local room ↔ OTA room/listing ref) per connection, inside
+  the console — `RoomMappingSection` in `ChannelManagerTab`. Channel selector +
+  per-room OTA-ref + markup% + live channel-rate preview.
+- Per-channel markup% on `channel_room_mappings`; "channel rate preview" =
+  spine `live_price` × (1 + markup%). `/api/partner/channel-rate-preview`
+  returns per-mapping previews + `roomPrices` (every room's spine live price so
+  the editor previews before the first save). Rate ← `resolveSpinePrices`.
+- `lib/channels/adapters/` — `ChannelAdapter` interface (`types.ts`) + iCal
+  adapter (availability-only; `testConnection` validates a feed URL /
+  BEGIN:VCALENDAR) + API-stub adapter (honest "configured · awaiting
+  connector") + manual adapter + `getAdapter(ota, mode)` registry.
+  `/api/partner/channel-test` runs the adapter's testConnection + best-effort
+  updates `channel_connections.health_status`.
+- `/api/partner/channel-mappings` GET/POST(upsert on conflict)/PATCH/DELETE —
+  owner∪operated scoped, room-belongs-to-hotel checked, markup clamped
+  −50…+200%.
+- Restrictions data model (stop-sell / min-stay / max-stay per room-date) added
+  as `"stopSell"`/`"minStay"`/`"maxStay"` columns on `room_date_overrides`
+  (`migrations/2026-07-11-v317-channel-manager-restrictions.sql`, applied live).
+  Locked for the Phase 6 ARI push; `AriCell` already carries them.
 
 ### Phase 4 (v318) — Reservation intelligence + alerts
 - OTA reservations inbox: imported blocks surfaced as "channel bookings"
