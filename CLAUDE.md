@@ -10459,3 +10459,95 @@ notifications + two console panels. Additive; no migration.
   `channel_reservation_cancelled`, `channel_feed_paused`, `channel_overbooking`)
   deliver in_app today; SMS/WhatsApp/email need the Railway drainer template
   handlers (docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md) + env flags.
+
+---
+
+## Unified Channel Manager — Phase 5: Admin Console + Merge Completion (v319, 2026-07-11)
+
+Phase 5 of `docs/CHANNEL-MANAGER-PLAN.md`. Two admin surfaces + the
+Circle/Host merge completion. Additive; no migration (all tables from
+Phases 1/3 already live).
+
+### What shipped
+- **`/api/admin/host/channel-setup`** (NEW) — POST `{channelRequestId, hotelId?}`,
+  `adminFromReq`. Turns a `/host/channels` lead (`host_channels` row) into a
+  REAL channel: resolves the requester's hotel(s) via `requesterHotels(userId)`
+  = `hotels.ownerId` (cross-pool) ∪ `resolveOperatedHotelIds` — returns
+  `{needsHotel:true, hotels}` when >1 so the admin picks. Then: creates a
+  `channel_connections` row (mode=ical if `isSafeFeedUrl(listing_url)` else
+  mode=api "configured · awaiting connector"; upsert on `hotel_id,ota`); if
+  iCal + the hotel has a room, creates an `ota_feeds` row on the first room +
+  runs `syncFeed(feed,"manual")`; **auto-grants the `channels` subscription
+  service** (`hotel_services` upsert on `hotel_id,service_key`,
+  `access_type=free`); flips `host_channels.status → connected`.
+  `logAdminAction` action `host_channel_setup`. Best-effort per step.
+- **`/api/admin/channels`** (NEW) — GET returns every `ota_feeds` +
+  `channel_connections` row across all hotels (hotel names manually
+  side-loaded, NO PostgREST FK embed) + a health rollup
+  (ok/error/paused/stale/idle; `stale` = active + no sync in > 90 min via
+  tz-defensive `parseTs`). POST `{feedId}` → force re-sync through the SAME
+  shared `syncFeed` engine (`lib/channels/sync.ts`) the partner + cron use.
+  `adminFromReq` + `logAdminAction` action `channel_feed_resync`.
+- **`/admin/channels` page** (NEW, dark-luxury) — 6-cell health rollup + feeds
+  table (hotel · channel · health pill · last sync · last result · fails ·
+  ↻ Re-sync). `sb_admin_token` / `sb_admin_user` headers (same pattern as
+  `/admin/content`).
+- **`components/admin/sidebar.tsx`** — "📡 Channel Health" entry after
+  "🧮 Host Wizard Pricing".
+- **`app/admin/host/page.tsx`** — Channels tab gets an **"⚡ Set up sync"**
+  button (hidden once `status === "connected"`, which shows "✓ Connected"
+  instead) + a hotel-picker modal for the `needsHotel` case. New `setupChannel`
+  handler + `channelPick` state + `onSetup` prop threaded through `TableProps`
+  and `ChannelsTable` (new Action column).
+- `SB_BUILD v318→v319`, badge v319, `HTML_CACHE v135→v136`.
+
+### Verified
+- `tsc --noEmit --skipLibCheck` clean (only pre-existing `_home-luxury-backup`) ·
+  `next build` green (`/admin/channels`, `/api/admin/channels`,
+  `/api/admin/host/channel-setup` all compiled). Live round-trip:
+  `channel_connections` / `hotel_services` / `ota_feeds` write shapes accepted;
+  the two upsert targets confirmed as real unique indexes (`uniq_channel` on
+  `(hotel_id,ota)`, `uniq_hotel_service` on `(hotel_id,service_key)`); all
+  test rows cleaned up (0 leftover).
+
+### Things to Avoid (Channel Manager Phase 5)
+- **Never** resolve the requester's hotel by `ownerId` alone — use
+  `requesterHotels` = owned ∪ operated (`resolveOperatedHotelIds`), or a
+  Circle/host-circle partner (whose access is via `hotel_room_units.owner_user_id`,
+  not `ownerId`) gets "no hotel yet" and the channel can't be set up.
+- **Never** upsert `channel_connections` / `hotel_services` without matching the
+  real conflict targets — `on_conflict=hotel_id,ota` (`uniq_channel`) and
+  `on_conflict=hotel_id,service_key` (`uniq_hotel_service`). Any other target
+  42P10s.
+- **Never** add a second re-sync code path in the admin console — it POSTs
+  `{feedId}` to `/api/admin/channels` which calls the shared `syncFeed`. Same
+  engine as partner + cron; that's the whole no-drift contract.
+- **Never** grant `channels` as `access_type=paid` from channel-setup — it's a
+  deliberate free admin grant. Paid grants come through the subscription
+  checkout only.
+- **Never** stamp `updated_at` on `host_channels` in a PATCH that also expects
+  the row unchanged — the table HAS `updated_at`, so channel-setup stamps it;
+  but the admin-hub generic PATCH keeps `host_channels` OUT of `NO_UPDATED_AT`
+  (it has the column). Keep the two write paths' column knowledge consistent.
+
+### Channel Manager — Phases 1–5 COMPLETE
+Phase 1 (sync engine + cron) · Phase 2 (unified console) · Phase 3 (room
+mapping + rates) · Phase 4 (reservation intelligence + overbooking alerts) ·
+Phase 5 (admin console + Host/Circle merge). **Phase 6 (certified OTA API
+connectors) is business-gated** — deferred until OTA partner sign-ups exist.
+
+### Updated production state (v319, 2026-07-11)
+- **Current version:** v319 · branch `claude/staybid-channel-manager-dashboard-e369rj`.
+- The unified Channel Manager is end-to-end: partner console (Phase 2) + room
+  mapping/rates (Phase 3) + reservation intelligence/overbooking (Phase 4) +
+  admin fulfillment/health (Phase 5). ONE sync engine, ONE scope rule
+  (`partnerHotelScope` owned ∪ operated), Circle/host-circle covered.
+- **Carry-forward (unchanged):** ⚠ cron-job.org registration for
+  `/api/cron/channel-sync` (`*/15 * * * *` →
+  `https://www.staybids.in/api/cron/channel-sync?token=staybid-cron-dev`) still
+  pending Sachin. The 4 channel `notification_queue` templates deliver in_app
+  today; SMS/WhatsApp/email need the Railway drainer handlers + env flags.
+  Phase 6 (certified OTA APIs) business-gated.
+- **NOT TOUCHED:** availability engine, scoring engine, bid lifecycle, tier
+  system, passport, reel-dedup chain, service billing (Channels stays a
+  subscription service), host vertical data model.

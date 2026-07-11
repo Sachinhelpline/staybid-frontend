@@ -222,14 +222,24 @@ The invisible-but-critical layer everything else stands on.
 - **Never** notify only `hotels.ownerId` — resolve owner ∪ `hotel_room_units.
   owner_user_id` so Circle/host-circle operators get channel alerts too.
 
-### Phase 5 (v319) — Circle/Host merge completion + admin console
-- `/admin/host` channel requests get "⚡ Set up sync" → creates
-  `channel_connections` (+ feeds if URLs provided) for the provisioned hotel,
-  flips `host_channels.status` → `connected`.
-- Optional auto-grant of the `channels` subscription service to
-  StayBid-operated hotels.
-- Admin channel-health overview page (all hotels: failing feeds, stale syncs,
-  paused channels) + manual re-sync.
+### ✅ Phase 5 (v319, SHIPPED) — Circle/Host merge completion + admin console
+- `/admin/host` Channels tab gets **"⚡ Set up sync"** → `/api/admin/host/channel-setup`
+  resolves the requester's hotel (owner ∪ operated; hotel-picker modal when >1),
+  creates a `channel_connections` row (mode=ical if the listing URL is a safe
+  iCal http(s) feed, else mode=api "awaiting connector"), creates an `ota_feeds`
+  row + runs first sync for iCal, **auto-grants the `channels` subscription
+  service** (access_type=free) so the partner's Channel Manager unlocks, and
+  flips `host_channels.status` → `connected`. `adminFromReq` + `logAdminAction`;
+  best-effort per step.
+- **Admin channel-health console** `/admin/channels` (sidebar "📡 Channel
+  Health") — `/api/admin/channels` GET returns every `ota_feeds` + `channel_connections`
+  row across all hotels (hotel names manually side-loaded, no FK embed) + a
+  health rollup (ok / error / paused / stale / idle; stale = active but no sync
+  in > 90 min). Per-feed **"↻ Re-sync"** POSTs `{feedId}` → the SAME shared
+  `syncFeed` engine the partner + cron use. Audit-logged.
+- Verified live: channel_connections/hotel_services/ota_feeds write shapes
+  accepted, `uniq_channel`/`uniq_hotel_service` upsert targets confirmed, round
+  trip cleaned. `tsc` clean, `next build` green.
 
 ### Phase 6 (future, business-gated) — Certified API connectors
 - Booking.com Connectivity, InGo-MMT, Agoda YCS, Expedia — each lands as an

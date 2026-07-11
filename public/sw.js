@@ -418,7 +418,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // builder gains per-room photo upload + per-room amenities (admin +
 // /circle/onboard, shared form); focus-loss "one letter at a time" bug fixed
 // by hoisting <Section> out of the render body. SWR HTML refresh.
-const HTML_CACHE = 'staybid-html-v135';
+const HTML_CACHE = 'staybid-html-v136';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

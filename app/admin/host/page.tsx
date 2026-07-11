@@ -136,10 +136,64 @@ export default function AdminHost() {
     }
   };
 
+  // v319 — Set up sync: turn a /host/channels request into a real
+  // channel_connections (+ ota_feed for iCal URLs) + auto-grant the `channels`
+  // service. If the requester owns >1 hotel, the route returns needsHotel so
+  // the admin picks which one, then we re-call with hotelId.
+  const [channelPick, setChannelPick] = useState<{ id: string; hotels: { id: string; name: string; city?: string }[] } | null>(null);
+
+  const setupChannel = async (id: string, hotelId?: string) => {
+    setBusy(id); setErr("");
+    try {
+      const tok = localStorage.getItem("sb_admin_token") || "";
+      const adminId = adminIdFromLS();
+      const r = await fetch("/api/admin/host/channel-setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": tok, "x-admin-id": adminId },
+        body: JSON.stringify({ channelRequestId: id, ...(hotelId ? { hotelId } : {}) }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "Set up failed");
+      if (d?.needsHotel) {
+        setChannelPick({ id, hotels: d.hotels || [] });
+        return;
+      }
+      setChannelPick(null);
+      load();
+    } catch (e: any) {
+      setErr(e?.message || "Set up failed");
+    } finally {
+      setBusy("");
+    }
+  };
+
   const k = data?.kpis;
 
   return (
     <div style={{ padding: "0 4px" }}>
+      {channelPick && (
+        <div onClick={() => setChannelPick(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 20, maxWidth: 440, width: "100%" }}>
+            <div style={{ color: "#E8EAF0", fontWeight: 700, fontSize: 16, marginBottom: 6 }}>Pick a hotel for this channel</div>
+            <div style={{ color: "#8A8FA8", fontSize: 12, marginBottom: 14 }}>This host owns / operates more than one hotel. Choose which one the channel connects to.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {channelPick.hotels.map((h) => (
+                <button key={h.id} disabled={busy === channelPick.id} onClick={() => setupChannel(channelPick.id, h.id)}
+                  style={{ textAlign: "left", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#E8EAF0", borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+                  <div style={{ fontWeight: 600 }}>{h.name}</div>
+                  {h.city && <div style={{ color: "#8A8FA8", fontSize: 11 }}>{h.city}</div>}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setChannelPick(null)}
+              style={{ marginTop: 14, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#8A8FA8", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
@@ -217,7 +271,7 @@ export default function AdminHost() {
             {tab === "projects" && <ProjectsTable rows={data?.projects || []} />}
             {tab === "orders" && <OrdersTable rows={data?.orders || []} busy={busy} onStatus={setStatus} />}
             {tab === "jobs" && <JobsTable rows={data?.jobs || []} busy={busy} onStatus={setStatus} />}
-            {tab === "channels" && <ChannelsTable rows={data?.channels || []} busy={busy} onStatus={setStatus} />}
+            {tab === "channels" && <ChannelsTable rows={data?.channels || []} busy={busy} onStatus={setStatus} onSetup={setupChannel} />}
           </div>
         )}
       </div>
@@ -506,11 +560,11 @@ function JobsTable({ rows, busy, onStatus }: TableProps) {
   );
 }
 
-function ChannelsTable({ rows, busy, onStatus }: TableProps) {
+function ChannelsTable({ rows, busy, onStatus, onSetup }: TableProps) {
   if (!rows.length) return <Empty label="No channel-connection requests yet." />;
   return (
     <table style={tbl}>
-      <thead><tr style={trHead}><Th>Channel</Th><Th>Host</Th><Th>Property · Listing</Th><Th>Status</Th><Th>When</Th></tr></thead>
+      <thead><tr style={trHead}><Th>Channel</Th><Th>Host</Th><Th>Property · Listing</Th><Th>Status</Th><Th>Action</Th><Th>When</Th></tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.id} style={trBody}>
@@ -522,6 +576,16 @@ function ChannelsTable({ rows, busy, onStatus }: TableProps) {
               {r.listing_url && <a href={r.listing_url} target="_blank" rel="noreferrer" style={{ color: "#3D9CF5", fontSize: 11, wordBreak: "break-all" }}>{r.listing_url.slice(0, 48)}</a>}
             </Td>
             <Td><StatusPicker source="channel" id={r.id} status={r.status} busy={busy} onStatus={onStatus} /></Td>
+            <Td>
+              {onSetup && r.status !== "connected" && (
+                <button disabled={busy === r.id} onClick={() => onSetup(r.id)}
+                  title="Create the channel_connections (+ iCal feed if a URL is given) for this host's hotel and grant the Channels service"
+                  style={{ background: "rgba(46,204,113,0.14)", border: "1px solid rgba(46,204,113,0.35)", color: "#2ECC71", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, cursor: busy === r.id ? "wait" : "pointer", fontFamily: "inherit" }}>
+                  {busy === r.id ? "…" : "⚡ Set up sync"}
+                </button>
+              )}
+              {r.status === "connected" && <span style={{ color: "#2ECC71", fontSize: 12, fontWeight: 600 }}>✓ Connected</span>}
+            </Td>
             <Td style={{ color: "#8A8FA8", fontSize: 12 }}>{when(r.created_at)}</Td>
           </tr>
         ))}
@@ -532,7 +596,7 @@ function ChannelsTable({ rows, busy, onStatus }: TableProps) {
 
 /* ── Shared bits ─────────────────────────────────────────────────────── */
 
-type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void; onProvision?: (id: string) => void };
+type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void; onProvision?: (id: string) => void; onSetup?: (id: string, hotelId?: string) => void };
 
 function StatusPicker({ source, id, status, busy, onStatus }:
   { source: string; id: string; status?: string; busy: string; onStatus: (s: string, id: string, st: string) => void }) {

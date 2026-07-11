@@ -10,6 +10,8 @@ const NAV = [
   { href: "/admin/bookings", label: "Bookings & Bids", icon: "📋" },
   { href: "/admin/host", label: "StayBid for Hosts", icon: "🏠" },
   { href: "/admin/host/pricing", label: "Host Wizard Pricing", icon: "🧮" },
+  // v319 — Channel Manager admin health console
+  { href: "/admin/channels", label: "Channel Health", icon: "📡" },
   // v288 — StayCircle™ Community Partner Platform (room-level investing)
   { href: "/admin/circle", label: "StayCircle", icon: "◎" },
   { href: "/admin/verification", label: "Verification", icon: "🎥" },
