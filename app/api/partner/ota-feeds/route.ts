@@ -96,6 +96,27 @@ export async function POST(req: NextRequest) {
   let firstSync: any = null;
   try { firstSync = await syncFeed(feed, "manual"); } catch { /* non-blocking */ }
 
+  // Auto-link a channel_connections row (mode=ical) so the Channel Manager
+  // console shows this OTA as an active iCal channel. Best-effort, additive.
+  try {
+    await fetch(`${SB_URL}/rest/v1/channel_connections?on_conflict=hotel_id,ota`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({
+        id: genId("chn"),
+        hotel_id: hotelId,
+        ota: provider,
+        mode: "ical",
+        label: label || provider,
+        status: "active",
+        health_status: firstSync?.ok ? (firstSync.status === "error" ? "error" : "ok") : "warning",
+        last_health_at: new Date().toISOString(),
+        updated_by: scope.userId,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch { /* table may be unprovisioned — fine */ }
+
   return NextResponse.json({ ok: true, feed, firstSync });
 }
 

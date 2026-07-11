@@ -10291,3 +10291,79 @@ Phases 2–6.
 - **NOT TOUCHED:** iCal export route + token, availability engine, scoring
   engine, bid lifecycle, tier system, passport, reel-dedup chain, service
   billing (Channels stays a subscription service), host vertical.
+
+---
+
+## Unified Channel Manager — Phase 2: The Console (v316, 2026-07-11)
+
+Phase 2 of the plan in `docs/CHANNEL-MANAGER-PLAN.md`. Rebuilt the partner
+Channels tab into ONE professional console + made OTA sync a shared component
+so nothing is paywalled away from the free Availability tab.
+
+### What shipped
+- **`components/partner/OtaFeedManager.tsx`** (NEW, shared) — self-contained
+  iCal feed manager (load / add-with-first-sync / **pause-resume** / rename /
+  delete / per-feed interval + live health dot per feed). Mounted in BOTH the
+  free Availability tab (zero-regression home for OTA sync) AND the premium
+  Channel Manager console — one component, one source of truth, no drift.
+  Exports `partnerToken()`, `OTA_PROVIDERS` (10 OTAs), `OTA_INSTRUCTIONS`
+  (per-OTA import+export extranet steps), `feedHealth()`.
+- **`components/partner/ChannelManagerTab.tsx`** (rewritten) — the console:
+  (1) health rollup strip (channels / synced / errors / paused, live),
+  (2) per-OTA connection cards with **honest status** (Active·N feeds / Sync
+  error / Awaiting first sync / Configured·awaiting connector / Not
+  connected), each with a "How?" toggle → per-OTA import+export instructions,
+  (3) embedded `<OtaFeedManager>`, (4) iCal export copy list, (5) **recent
+  sync activity** viewer (channel_sync_logs), (6) readiness checklist (now
+  includes "≥1 OTA feed connected"). API-credential vault modal kept, copy
+  made honest (iCal = instant; API creds = saved, awaiting certified
+  connector).
+- **`/api/partner/channel-logs`** (NEW) — owner∪operated-scoped recent
+  `channel_sync_logs` for the console; graceful `{logs:[]}` if unprovisioned.
+- **`/api/partner/ota-feeds` POST** — on feed add, **auto-links a
+  `channel_connections` row** (mode=ical, status=active, health from the first
+  sync) so connection cards reflect live iCal channels. Best-effort/additive.
+- **Availability tab** — the ~125-line inline OTA block replaced with
+  `<OtaFeedManager hotelId rooms onChanged={loadCalendar} />` + a "Full Channel
+  Manager →" shortcut (shown when the caller has the Channels service). The
+  dashboard's old feed state/handlers (`otaFeeds`/`newFeed`/`loadOtaFeeds`/
+  `addFeed`/`syncFeed`/`deleteFeed`) are now dead but harmless (no
+  `noUnusedLocals`); the redundant `loadOtaFeeds()` call was removed from the
+  availability effect.
+- `SB_BUILD v315→v316`, badge v316, `HTML_CACHE v132→v133`.
+
+### Verified
+- `tsc --noEmit` clean · `next build` green (`/api/partner/channel-logs`
+  compiled). Live round-trip: `channel_sync_logs` insert, `channel_connections`
+  ON CONFLICT upsert, and `ota_feeds` insert all accept the exact column shapes
+  the code writes (then cleaned up).
+
+### Things to Avoid (Channel Manager Phase 2)
+- **Never** duplicate the feed-management logic — `OtaFeedManager` is the ONE
+  component; render it in both tabs, don't fork it. Both tabs stay in sync
+  because it's literally the same code.
+- **Never** move OTA sync OFF the free Availability tab into the (subscription-
+  locked) Channels tab only — that silently paywalls a previously-free
+  feature. The shared component keeps it on Availability; the console is a
+  premium superset.
+- **Never** show a green "Active"/"connected" status for an API-mode channel
+  that has no live connector — honest status is `Configured · awaiting
+  connector` (purple). Green/Active is only for iCal feeds that actually
+  synced.
+- **Never** let the console's connection-card status diverge from real feed
+  state — `otaState(ota)` derives from live `feeds` + `connections`, not a
+  stored flag.
+- Keep the console's parallel lightweight `loadFeeds` in sync with the child
+  via the `onChanged` → `refreshAll` callback (feed add/sync/delete refreshes
+  connections + feeds + logs together).
+
+### Updated production state (v316, 2026-07-11)
+- **Current version:** v316 · branch `claude/staybid-channel-manager-dashboard-e369rj` · PR #317
+- Channel Manager console live; OTA sync unified + shared (free tab + premium
+  console), pause/resume + health + sync-log viewer + per-OTA instructions +
+  auto-linked connections.
+- **Carry-forward (per docs/CHANNEL-MANAGER-PLAN.md):** Phase 3 — room mapping
+  + channel markups + adapter interface · Phase 4 — reservations inbox +
+  overbooking alerts · Phase 5 — host_channels admin fulfillment + admin
+  health console · Phase 6 — certified OTA APIs (business-gated). ⚠
+  cron-job.org registration for `/api/cron/channel-sync` still pending (Sachin).
