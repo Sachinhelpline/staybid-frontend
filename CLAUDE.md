@@ -10551,3 +10551,76 @@ connectors) is business-gated** — deferred until OTA partner sign-ups exist.
 - **NOT TOUCHED:** availability engine, scoring engine, bid lifecycle, tier
   system, passport, reel-dedup chain, service billing (Channels stays a
   subscription service), host vertical data model.
+
+---
+
+## Unified Channel Manager — Phase 6 Groundwork: Booking.com Adapter Scaffold (v320, 2026-07-11)
+
+Phase 6 proper (live certified OTA connectors) is **business-gated** — it needs
+a signed Connectivity Partner agreement + certification per OTA, none of which
+exists yet. v320 lays the **inert scaffold** so the future fill-in is a
+fill-in-the-blanks job, not a from-scratch build. **Zero behaviour change today.**
+
+### What shipped (additive, env-gated inert)
+- **`lib/channels/adapters/booking-adapter.ts`** (NEW) — `bookingAdapter(ota)`
+  implementing the Phase-3 `ChannelAdapter` interface for Booking.com
+  Connectivity. `liveEnabled()` reads `process.env.BOOKING_COM_LIVE === "1"`.
+  Three paths on every method:
+  - **No creds** (username/password/hotelId missing) → `testConnection` returns
+    `{state:"error"}` asking for creds; `pushAri`/`pullReservations` no-op.
+  - **Creds but not live** (production TODAY) → `testConnection` returns
+    `{state:"configured"}` — **byte-identical** to `api-stub`'s honest
+    "awaiting connector" message. Push/pull no-op with "not certified yet · use
+    iCal / extranet for now".
+  - **Creds + `BOOKING_COM_LIVE=1`** (future) → real OTA_PingRQ POST via
+    `withTimeout` (10s) + Basic auth; `pushAri` sends `buildAvailNotifXml`
+    (documented OTA_HotelAvailNotifRQ envelope, exported for the fill-in);
+    `pullReservations` scaffold returns "response mapping pending certification".
+  - Endpoint = `ctx.endpointUrl || BOOKING_COM_ENDPOINT || https://supply-xml.booking.com/hotels/xml`.
+- **`lib/channels/adapters/index.ts`** — new `apiAdapterFor(ota)`: `case "booking"
+  → bookingAdapter(ota)`, `default → apiStubAdapter(ota)`. `getAdapter` case
+  `"api"` now routes through it. Since `BOOKING_COM_LIVE` is absent in prod,
+  `bookingAdapter` returns the SAME honest results as the stub — a zero-behaviour
+  fill-in for later.
+- `SB_BUILD v319→v320`, badge v320. **HTML_CACHE NOT bumped** — server-only
+  change, no SW fetch-handler logic touched (v93 discipline).
+
+### Verified
+- `tsc --noEmit --skipLibCheck` clean (only pre-existing `_home-luxury-backup`) ·
+  `next build` exit 0 (all routes compiled). Live-verify (post-merge, PR #317
+  console) PASS: production serves v319, all 3 Phase-5 admin routes 401-gate +
+  deployed, `/admin/channels` 200, all channel tables + v315/v317 columns +
+  unique indexes healthy.
+
+### Things to Avoid (Channel Manager Phase 6 groundwork)
+- **Never** make `bookingAdapter` fabricate a live-green connection without both
+  creds AND `BOOKING_COM_LIVE=1`. The whole point is that it stays honest
+  ("configured · awaiting connector") — identical to the stub — until a certified
+  machine account exists. A false "live" would mislead partners into thinking
+  ARI push works when it doesn't.
+- **Never** activate `BOOKING_COM_LIVE` before a signed Connectivity Partner
+  agreement + certified sandbox→production sign-off. The XML envelopes are
+  production-correct shapes but UNTESTED against the real endpoint; flipping the
+  flag sends real (possibly malformed) ARI to Booking.com.
+- **Never** diverge `apiAdapterFor`'s per-OTA branches from the honest stub
+  contract — a new OTA adapter must default to "configured · awaiting connector"
+  until its own certification lands, exactly like Booking.com does today.
+- **Never** route the `"api"` mode anywhere but `apiAdapterFor` — it's the single
+  registry point so a future certified connector is one `case` line.
+
+### Updated production state (v320, 2026-07-11)
+- **Current version:** v320 · branch `claude/staybid-channel-manager-dashboard-e369rj`.
+- Booking.com Connectivity adapter scaffold in place, inert in production
+  (no `BOOKING_COM_LIVE` flag / no creds → identical to `api-stub`). Anthropic-
+  style env-gated fill-in ready for the day certification lands.
+- **Channel Manager Phases 1–5 COMPLETE + Phase 6 groundwork shipped.** Phase 6
+  proper (live certified connectors) stays business-gated — no further code
+  possible until real OTA partner API specs + credentials exist.
+- **Carry-forward (unchanged, needs Sachin's hands):** (a) cron-job.org
+  registration for `/api/cron/channel-sync` (`*/15 * * * *` →
+  `https://www.staybids.in/api/cron/channel-sync?token=staybid-cron-dev`);
+  (b) Railway notification-drainer handlers for the 4 channel `notification_queue`
+  templates → SMS/WhatsApp/email delivery (in_app already works).
+- **NOT TOUCHED:** availability engine, scoring engine, bid lifecycle, tier
+  system, passport, reel-dedup chain, service billing, host vertical data model,
+  sync engine (`lib/channels/sync.ts`), scope rule (`partnerHotelScope`).
