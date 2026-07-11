@@ -18,7 +18,8 @@
 //     PATCH retries with the legacy column subset.
 //
 import { SB_URL, SB_H, SB_H_REPRESENT, genId } from "@/lib/sb-server";
-import { parseICal, toISODate } from "@/lib/availability";
+import { parseICal, toISODate, unitsFreeForRange } from "@/lib/availability";
+import { queueNotification } from "@/lib/notify-server";
 
 const FETCH_TIMEOUT_MS = 8_000;
 const AUTO_PAUSE_AFTER_FAILURES = 10;
@@ -108,6 +109,53 @@ async function writeLog(entry: Record<string, any>): Promise<void> {
   } catch { /* table may not exist yet — fine */ }
 }
 
+// ── Phase 4: partner notifications ─────────────────────────────────────────
+// Every OTA feed belongs to a hotel; notify whoever manages it — the classic
+// owner (hotels.ownerId) AND any unit-owner/operator (hotel_room_units.
+// owner_user_id) so Circle/host-circle partners get channel alerts too.
+// notification_queue rows are in_app-always (+ env-flagged sms/whatsapp/email);
+// entirely best-effort — never blocks or breaks a sync.
+
+/** Distinct user ids that manage this hotel (owner ∪ operator). */
+async function ownerUserIds(hotelId: string): Promise<string[]> {
+  const ids = new Set<string>();
+  if (!hotelId) return [];
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(hotelId)}&select=ownerId`,
+      { headers: SB_H }
+    );
+    const rows = await r.json().catch(() => []);
+    if (Array.isArray(rows) && rows[0]?.ownerId) ids.add(String(rows[0].ownerId));
+  } catch { /* ignore */ }
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(hotelId)}` +
+        `&owner_user_id=not.is.null&select=owner_user_id`,
+      { headers: SB_H }
+    );
+    const rows = await r.json().catch(() => []);
+    if (Array.isArray(rows)) rows.forEach((x: any) => { if (x.owner_user_id) ids.add(String(x.owner_user_id)); });
+  } catch { /* ignore */ }
+  return Array.from(ids);
+}
+
+/** Queue a channel notification to every manager of the hotel. Best-effort. */
+async function notifyOwners(
+  hotelId: string,
+  template: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    const owners = await ownerUserIds(hotelId);
+    for (const uid of owners) {
+      await queueNotification({ userId: uid, template, payload });
+    }
+  } catch { /* never break a sync on a notification failure */ }
+}
+
+const OVERBOOK_CHECK_CAP = 8; // bound the extra availability reads per sync
+
 /**
  * Sync one ota_feeds row: fetch → parse → insert new events → reconcile
  * (delete future-dated blocks whose UID vanished = OTA cancellations).
@@ -138,12 +186,22 @@ export async function syncFeed(
       lastSyncStatus: "error",
       consecutiveFailures: failures,
     };
+    let paused = false;
     if (failures >= AUTO_PAUSE_AFTER_FAILURES) {
       patch.autoSync = false;
+      paused = true;
       error = `${reason} · auto-sync paused after ${failures} straight failures — fix the URL and resume the feed`;
     }
     patch.lastSyncError = error;
     await markFeed(base.feedId, patch);
+    if (paused && feed?.hotelId) {
+      await notifyOwners(String(feed.hotelId), "channel_feed_paused", {
+        provider: feed?.provider || null,
+        hotelId: feed.hotelId,
+        feedId: base.feedId,
+        error,
+      });
+    }
     await writeLog({
       hotel_id: feed?.hotelId || "",
       feed_id: base.feedId,
@@ -309,6 +367,51 @@ export async function syncFeed(
     duration_ms: base.durationMs,
     triggered_by: triggeredBy,
   });
+
+  // ── Phase 4 notifications — only fire on a REAL change. Idempotent imports
+  //    mean a steady feed adds/removes 0 on repeat syncs, so this is naturally
+  //    debounced (no spam every 15-min cron tick). Best-effort, never throws. ──
+  if (feed.hotelId && base.imported > 0) {
+    await notifyOwners(String(feed.hotelId), "channel_reservation_imported", {
+      provider: feed.provider || null,
+      hotelId: feed.hotelId,
+      count: base.imported,
+    });
+    // Bounded overbooking check on the just-imported blocks — the exact moment
+    // an OTA booking can push a room past capacity. One aggregated alert per
+    // sync-with-conflict (not per block). Capped + best-effort.
+    try {
+      let overCount = 0;
+      let firstRoom = "";
+      for (const b of toInsert.slice(0, OVERBOOK_CHECK_CAP)) {
+        const cap = await unitsFreeForRange({
+          hotelId: String(feed.hotelId),
+          roomId: String(b.roomId),
+          from: String(b.fromDate),
+          to: String(b.toDate),
+        }).catch(() => null);
+        if (cap && cap.occupied > cap.capacity) {
+          overCount++;
+          if (!firstRoom) firstRoom = String(b.roomId);
+        }
+      }
+      if (overCount > 0) {
+        await notifyOwners(String(feed.hotelId), "channel_overbooking", {
+          provider: feed.provider || null,
+          hotelId: feed.hotelId,
+          conflicts: overCount,
+          roomId: firstRoom,
+        });
+      }
+    } catch { /* best-effort */ }
+  }
+  if (feed.hotelId && base.removed > 0) {
+    await notifyOwners(String(feed.hotelId), "channel_reservation_cancelled", {
+      provider: feed.provider || null,
+      hotelId: feed.hotelId,
+      count: base.removed,
+    });
+  }
 
   return base;
 }

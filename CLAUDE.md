@@ -10367,3 +10367,95 @@ so nothing is paywalled away from the free Availability tab.
   overbooking alerts · Phase 5 — host_channels admin fulfillment + admin
   health console · Phase 6 — certified OTA APIs (business-gated). ⚠
   cron-job.org registration for `/api/cron/channel-sync` still pending (Sachin).
+
+---
+
+## Unified Channel Manager — Phase 3: Room Mapping + Rates (v317, 2026-07-11)
+
+Phase 3 of `docs/CHANNEL-MANAGER-PLAN.md` (committed `3f08a17`; era note
+backfilled here). The ARI foundation: local room ↔ OTA room/rate ref + per-channel
+markup% + live channel-rate preview + the `ChannelAdapter` interface.
+
+- **`lib/channels/adapters/`** — `types.ts` (`ChannelMode`, `AdapterCtx`,
+  `TestResult` state live/configured/error, `AriCell` with minStay/stopSell,
+  `ChannelAdapter`), `ical.ts` (availability-only; `testConnection` = live if no
+  URL else validate feed + `BEGIN:VCALENDAR`), `api-stub.ts` (honest "configured
+  · awaiting connector") + `manualAdapter`, `index.ts` `getAdapter(ota,mode)`.
+- **`/api/partner/channel-mappings`** GET/POST(upsert on `connection_id,room_id`,
+  `id=genId("crm")`, room-belongs-to-hotel check, markup clamp −50…+200)/PATCH/
+  DELETE — all `partnerHotelScope`.
+- **`/api/partner/channel-rate-preview`** — per-mapping `channelPrice =
+  round(spine live × (1 + markup%))` + `roomPrices` for every room (preview before
+  first save). Rate from `resolveSpinePrices`.
+- **`/api/partner/channel-test`** — runs `getAdapter(ota,mode).testConnection`;
+  best-effort upserts `channel_connections` health (fixed TS2783 via
+  `NextResponse.json(result)`).
+- **`ChannelManagerTab` `RoomMappingSection`** — channel `<select>` + per-room
+  ref+markup inputs + live channel = round(live × (1+markup/100)) + Save/clear.
+- **Migration `2026-07-11-v317-channel-manager-restrictions.sql`** (applied live)
+  — `"stopSell"`/`"minStay"`/`"maxStay"` on `room_date_overrides` (locked for the
+  Phase 6 ARI push).
+- `SB_BUILD v316→v317`, badge v317, `HTML_CACHE v133→v134`.
+
+---
+
+## Unified Channel Manager — Phase 4: Reservation Intelligence + Alerts (v318, 2026-07-11)
+
+Phase 4 of `docs/CHANNEL-MANAGER-PLAN.md`. Two read-only endpoints + sync-engine
+notifications + two console panels. Additive; no migration.
+
+### What shipped
+- **`/api/partner/channel-reservations`** (NEW) — GET, `partnerHotelScope`
+  (owner∪operated). `room_blocks(source=ota_ical)` for the hotel surfaced as
+  channel reservations (guest/room/dates/nights + status in_house/upcoming/
+  checked_out) + per-channel stats (count/nights/upcoming). Keeps recently-past
+  (30-day floor) stays visible; cancelled OTA bookings vanish because the
+  reconciling sync engine deleted the block.
+- **`/api/partner/overbooking-check`** (NEW) — GET, scoped. For the nearest 40
+  future OTA blocks (180-day horizon) runs the SAME `unitsFreeForRange` the
+  booking flow uses; reports every window where `occupied > capacity`. Fail-open
+  when there's no capacity signal (`unitsFreeForRange` null) — never a false
+  alarm. Verified live (capacity 1, occupied 2 → `is_conflict=true`).
+- **`lib/channels/sync.ts` notifications** — `notifyOwners(hotelId, template,
+  payload)` resolves owner ∪ `hotel_room_units.owner_user_id` and queues via
+  `notify-server queueNotification` (in_app-always + env-flagged channels). Fired
+  ONLY on a real change (idempotent imports → natural debounce, no 15-min-cron
+  spam): `channel_reservation_imported` (imported>0), `channel_reservation_cancelled`
+  (removed>0), `channel_feed_paused` (auto-pause at 10 failures), `channel_overbooking`
+  (bounded check over just-imported blocks, cap 8 — the exact moment an OTA
+  booking can push a room past capacity; one aggregated alert per sync).
+- **`ChannelManagerTab`** — red urgent **Overbooking risk** banner high in the
+  console (only when conflicts>0) + **OTA reservations** panel under the import
+  feeds (per-channel chips + reservation list + show-all). Both loaders added to
+  `refreshAll`.
+- `SB_BUILD v317→v318`, badge v318, `HTML_CACHE v134→v135`.
+
+### Verified
+- `tsc --noEmit --skipLibCheck` clean (only pre-existing `_home-luxury-backup`) ·
+  `next build` green (both new routes compiled). Live round-trip: reservations
+  SELECT shape valid against live schema, overbooking math matches
+  `unitsFreeForRange`, notification_queue / hotel_room_units / hotels columns all
+  confirmed; test rows cleaned up (0 leftover).
+
+### Things to Avoid (Channel Manager Phase 4)
+- **Never** fire a channel notification unconditionally in the sync engine — only
+  on `imported>0` / `removed>0` / auto-pause. Idempotent-by-UID imports are what
+  debounce the 15-min cron; unconditional notify = spam.
+- **Never** raise the overbooking caps (`MAX_BLOCKS=40` endpoint / `OVERBOOK_CHECK_CAP=8`
+  sync) without a per-item timeout — `unitsFreeForRange` does 1–3 fetches each.
+- **Never** flag an overbooking when `unitsFreeForRange` returns null (no capacity
+  signal) — fail open, or hotels without configured units/quantity get false alarms.
+- **Never** notify only `hotels.ownerId` — resolve owner ∪ `hotel_room_units.
+  owner_user_id` so Circle/host-circle operators get channel alerts too.
+- The new panels are read-only; cancellations are handled by the sync engine's
+  reconciliation, NOT by any partner action here.
+
+### Carry-forward (per docs/CHANNEL-MANAGER-PLAN.md)
+- Phase 5 (v319) — `host_channels` admin fulfillment + admin health console +
+  overbooking admin surface · Phase 6 — certified OTA APIs (business-gated).
+- ⚠ cron-job.org registration for `/api/cron/channel-sync` still pending (Sachin):
+  `*/15 * * * *` → `https://www.staybids.in/api/cron/channel-sync?token=staybid-cron-dev`.
+- The 4 new `notification_queue` templates (`channel_reservation_imported`,
+  `channel_reservation_cancelled`, `channel_feed_paused`, `channel_overbooking`)
+  deliver in_app today; SMS/WhatsApp/email need the Railway drainer template
+  handlers (docs/RAILWAY_NOTIFICATION_TEMPLATES_PASTE.md) + env flags.

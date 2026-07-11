@@ -47,6 +47,11 @@ export default function ChannelManagerTab({
   const [icalExports, setIcalExports] = useState<any[]>([]);
   const [feeds, setFeeds] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [resByChannel, setResByChannel] = useState<any[]>([]);
+  const [resTotals, setResTotals] = useState<{ count: number; upcoming: number; nights: number }>({ count: 0, upcoming: 0, nights: 0 });
+  const [overbook, setOverbook] = useState<any[]>([]);
+  const [showAllRes, setShowAllRes] = useState(false);
   const [provisioned, setProvisioned] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<string | null>(null);
@@ -88,10 +93,34 @@ export default function ChannelManagerTab({
     } catch { /* keep */ }
   }, [hotelId]);
 
+  const loadReservations = useCallback(async () => {
+    if (!hotelId) return;
+    try {
+      const r = await fetch(`/api/partner/channel-reservations?hotelId=${encodeURIComponent(hotelId)}`, {
+        headers: { Authorization: `Bearer ${partnerToken()}` }, cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      setReservations(Array.isArray(d.reservations) ? d.reservations : []);
+      setResByChannel(Array.isArray(d.byChannel) ? d.byChannel : []);
+      setResTotals(d.totals || { count: 0, upcoming: 0, nights: 0 });
+    } catch { /* keep */ }
+  }, [hotelId]);
+
+  const loadOverbooking = useCallback(async () => {
+    if (!hotelId) return;
+    try {
+      const r = await fetch(`/api/partner/overbooking-check?hotelId=${encodeURIComponent(hotelId)}`, {
+        headers: { Authorization: `Bearer ${partnerToken()}` }, cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      setOverbook(Array.isArray(d.conflicts) ? d.conflicts : []);
+    } catch { /* keep */ }
+  }, [hotelId]);
+
   const refreshAll = useCallback(async () => {
-    await Promise.all([loadChannels(), loadFeeds(), loadLogs()]);
+    await Promise.all([loadChannels(), loadFeeds(), loadLogs(), loadReservations(), loadOverbooking()]);
     setLoading(false);
-  }, [loadChannels, loadFeeds, loadLogs]);
+  }, [loadChannels, loadFeeds, loadLogs, loadReservations, loadOverbooking]);
 
   useEffect(() => { refreshAll(); }, [refreshAll]);
 
@@ -186,6 +215,31 @@ export default function ChannelManagerTab({
         </div>
       </div>
 
+      {/* ── overbooking alerts (urgent — sits high) ── */}
+      {overbook.length > 0 && (
+        <div className="card-p card-tight mb-3.5" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
+          <p className="text-[0.78rem] font-bold text-red-700 mb-1.5">
+            ⚠ Overbooking risk — {overbook.length} conflict{overbook.length > 1 ? "s" : ""}
+          </p>
+          <p className="text-[0.64rem] text-red-500 mb-2">
+            In dates par ek OTA booking room ki capacity se zyada ho gayi hai. Turant check karke ek taraf cancel karo.
+          </p>
+          <div className="space-y-1.5">
+            {overbook.slice(0, 6).map((c, i) => (
+              <div key={i} className="flex items-center gap-2 text-[0.68rem] bg-white/70 rounded-lg px-2 py-1.5">
+                <span className="font-bold text-red-700 shrink-0 uppercase">{c.provider}</span>
+                <span className="font-semibold text-luxury-800 truncate flex-1">{c.roomName}</span>
+                <span className="text-luxury-500 shrink-0">{c.fromDate} → {c.toDate}</span>
+                <span className="font-bold text-red-600 shrink-0">{c.occupied}/{c.capacity}</span>
+              </div>
+            ))}
+            {overbook.length > 6 && (
+              <p className="text-[0.62rem] text-red-400">…aur {overbook.length - 6} aur</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── connection cards ── */}
       <p className="text-[0.78rem] font-bold text-luxury-900 mb-2">Your OTA channels</p>
       <div className="grid sm:grid-cols-2 gap-2.5 mb-4">
@@ -247,6 +301,62 @@ export default function ChannelManagerTab({
       <div className="card-p mb-4">
         <OtaFeedManager hotelId={hotelId} rooms={rooms} onChanged={refreshAll} />
       </div>
+
+      {/* ── OTA reservations inbox ── */}
+      {resTotals.count > 0 && (
+        <>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <p className="text-[0.78rem] font-bold text-luxury-900">OTA reservations</p>
+            <span className="text-[0.62rem] font-semibold text-luxury-400">
+              {resTotals.upcoming} upcoming · {resTotals.count} total
+            </span>
+          </div>
+          <p className="text-[0.66rem] text-luxury-500 mb-2.5">
+            Aapke connected OTAs se import hui bookings. Cancel hone par apne aap gayab ho jati hain.
+          </p>
+          <div className="card-p card-tight mb-4">
+            {/* per-channel production chips */}
+            {resByChannel.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2.5">
+                {resByChannel.map((c) => (
+                  <span key={c.provider} className="text-[0.62rem] font-semibold rounded-full px-2 py-0.5 bg-luxury-50 text-luxury-700 inline-flex items-center gap-1">
+                    <span>{OTA_META[c.provider]?.icon || "🔗"}</span>
+                    {OTA_META[c.provider]?.label || c.provider}
+                    <b className="text-luxury-900">{c.count}</b>
+                    <span className="text-luxury-400">· {c.nights}n</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              {(showAllRes ? reservations : reservations.slice(0, 10)).map((r) => {
+                const st =
+                  r.status === "in_house" ? { t: "In-house", c: "#15803d" }
+                  : r.status === "upcoming" ? { t: "Upcoming", c: "#b45309" }
+                  : { t: "Checked out", c: "#9ca3af" };
+                return (
+                  <div key={r.id} className="flex items-center gap-2 text-[0.68rem] py-1 border-b border-luxury-100 last:border-0">
+                    <span className="shrink-0">{OTA_META[r.provider]?.icon || "🔗"}</span>
+                    <span className="font-semibold text-luxury-800 truncate min-w-0" style={{ flex: "1 1 40%" }}>
+                      {r.guestName || "OTA guest"}
+                      <span className="text-luxury-400 font-normal"> · {r.roomName}</span>
+                    </span>
+                    <span className="text-luxury-500 shrink-0">{r.fromDate} → {r.toDate}</span>
+                    <span className="text-luxury-300 shrink-0">{r.nights}n</span>
+                    <span className="font-semibold shrink-0 w-16 text-right" style={{ color: st.c }}>{st.t}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {reservations.length > 10 && (
+              <button onClick={() => setShowAllRes((v) => !v)}
+                className="btn-ghost w-full mt-2 py-1! text-[0.68rem]">
+                {showAllRes ? "Show less" : `Show all ${reservations.length}`}
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       {/* ── iCal export ── */}
       <p className="text-[0.78rem] font-bold text-luxury-900 mb-1">StayBid → OTA · export availability</p>

@@ -187,15 +187,40 @@ The invisible-but-critical layer everything else stands on.
   (`migrations/2026-07-11-v317-channel-manager-restrictions.sql`, applied live).
   Locked for the Phase 6 ARI push; `AriCell` already carries them.
 
-### Phase 4 (v318) — Reservation intelligence + alerts
-- OTA reservations inbox: imported blocks surfaced as "channel bookings"
-  (guest name from SUMMARY where the OTA provides it) with per-channel
-  production stats.
-- Partner notifications (`notification_queue` + in-app) on: new OTA booking
-  imported, OTA cancellation released, feed auto-paused after failures,
-  overbooking conflict detected (OTA block overlapping a StayBid booking).
-- Overbooking guard: conflict detector comparing `room_blocks(ota_ical)`
-  against StayBid occupations, surfaced in console + admin.
+### ✅ Phase 4 (v318, SHIPPED) — Reservation intelligence + alerts
+- **OTA reservations inbox** — `/api/partner/channel-reservations` (owner∪operated
+  scoped, read-only): `room_blocks(source=ota_ical)` surfaced as channel bookings
+  (guest name from SUMMARY, dates, nights, status in_house/upcoming/checked_out)
+  + per-channel production stats (count/nights/upcoming). Rendered in
+  `ChannelManagerTab` under the import feeds (channel chips + reservation list +
+  show-all). Cancelled OTA bookings vanish automatically (the reconciling sync
+  engine deletes the block).
+- **Overbooking guard** — `/api/partner/overbooking-check`: for the nearest
+  future OTA blocks (cap 40, 180-day horizon) it runs the SAME `unitsFreeForRange`
+  the booking flow uses; flags every window where `occupied > capacity`
+  (fail-open on no-capacity-signal). Surfaced as a red urgent banner high in the
+  console (room, dates, provider, occupied/capacity). Same math verified live
+  (capacity 1, occupied 2 → conflict).
+- **Partner notifications** (`lib/channels/sync.ts` → `notify-server`
+  `queueNotification`, in_app-always + env-flagged sms/whatsapp/email) fired to
+  owner∪operator user ids on a REAL change only (idempotent imports = naturally
+  debounced): `channel_reservation_imported`, `channel_reservation_cancelled`,
+  `channel_feed_paused` (on auto-pause after 10 failures), and
+  `channel_overbooking` (bounded check over just-imported blocks, cap 8).
+
+### Phase 4 — Things to Avoid
+- **Never** fire a channel notification unconditionally in the sync engine —
+  only when `base.imported > 0` / `base.removed > 0` / an auto-pause happens.
+  Idempotent-by-UID imports mean a steady feed changes nothing on repeat syncs;
+  that natural debounce is what keeps the 15-min cron from spamming.
+- **Never** raise the overbooking `MAX_BLOCKS` (40) / `OVERBOOK_CHECK_CAP` (8)
+  without a per-item timeout — `unitsFreeForRange` does 1–3 fetches each; the caps
+  bound both the on-demand endpoint and the sync hot path.
+- **Never** flag an overbooking when `unitsFreeForRange` returns null (no
+  capacity signal) — fail open, or you raise false alarms on hotels that haven't
+  configured units/quantity.
+- **Never** notify only `hotels.ownerId` — resolve owner ∪ `hotel_room_units.
+  owner_user_id` so Circle/host-circle operators get channel alerts too.
 
 ### Phase 5 (v319) — Circle/Host merge completion + admin console
 - `/admin/host` channel requests get "⚡ Set up sync" → creates
