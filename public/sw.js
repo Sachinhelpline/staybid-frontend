@@ -418,7 +418,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // builder gains per-room photo upload + per-room amenities (admin +
 // /circle/onboard, shared form); focus-loss "one letter at a time" bug fixed
 // by hoisting <Section> out of the render body. SWR HTML refresh.
-const HTML_CACHE = 'staybid-html-v137';
+// v325 — one-time HTML_CACHE bump (v137 -> v138). Circle multi-investor Phase A:
+// the partner "My Rooms" tab (CircleUnitsTab) gains a per-unit auto-confirm
+// mode control. Bumping HTML_CACHE drops the stale cached partner-dashboard
+// HTML so operators see the new control on next visit.
+const HTML_CACHE = 'staybid-html-v138';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

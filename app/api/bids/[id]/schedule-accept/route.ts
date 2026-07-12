@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, userFromReq } from "@/lib/sb";
 import { resolveAutoAcceptMs } from "@/lib/autopilot";
-import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
+import { loadServerScore, loadEffectiveAutopilotMode } from "@/lib/autopilot-server";
 
 export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   try {
     // Read the bid (ownership + hotel) — never trust the body for these.
     const rRead = await fetch(
-      `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&customerId=eq.${encodeURIComponent(user.id)}&select=id,hotelId,status`,
+      `${SB_URL}/rest/v1/bids?id=eq.${encodeURIComponent(bidId)}&customerId=eq.${encodeURIComponent(user.id)}&select=id,hotelId,status,assignedUnitId`,
       { headers: SB_H, cache: "no-store" },
     );
     const rows = await rRead.json().catch(() => []);
@@ -36,8 +36,10 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     if (!theBid) return NextResponse.json({ error: "Bid not found" }, { status: 404 });
 
     // Recompute tier + mode server-side (tamper-proof) and resolve the window.
+    // Phase A — per-unit autopilot: an owned-room bid respects the unit-owner's
+    // mode; classic category bids (no assignedUnitId) use the hotel-level mode.
     const score = await loadServerScore(user.id);
-    const mode = await loadAutopilotMode(theBid.hotelId);
+    const mode = await loadEffectiveAutopilotMode(theBid.hotelId, theBid.assignedUnitId);
     const ms = resolveAutoAcceptMs(score.tier, score.autoAcceptMs, mode);
 
     const patch: Record<string, any> = { bidder_tier: score.tier };

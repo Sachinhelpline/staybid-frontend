@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authUserId, authPayload, ensureUser, sbSelect, sbInsert, genId } from "@/lib/sb-server";
 import { ACCEPTED_UNPAID_WINDOW_MS } from "@/lib/bid-expiry";
 import { resolveAutoAction, extractPreferredPrice, counterBandForVacancy, AUTO_COUNTER_WINDOW_MS, type AutoAction } from "@/lib/autopilot";
-import { loadServerScore, loadAutopilotMode } from "@/lib/autopilot-server";
+import { loadServerScore, loadEffectiveAutopilotMode } from "@/lib/autopilot-server";
 import { unitsFreeForRange, toISODate } from "@/lib/availability";
 import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 import { logPricingDecision } from "@/lib/pricing/decision-log";
@@ -408,7 +408,10 @@ export async function POST(req: NextRequest) {
       let action: AutoAction = { kind: "manual" };
       if (eligibleForAuto) {
         const score = await loadServerScore(customerId);
-        const mode = await loadAutopilotMode(hotelId);
+        // Phase A — per-unit autopilot. When the customer booked a SPECIFIC
+        // owned room (resolvedUnitId), that unit-owner's mode wins; else the
+        // hotel-level mode. Classic category bids have no unit → hotel-level.
+        const mode = await loadEffectiveAutopilotMode(hotelId, resolvedUnitId);
         const band = counterBandForVacancy(vacancyRatio);
         pd.tier = score.tier;
         pd.mode = mode;

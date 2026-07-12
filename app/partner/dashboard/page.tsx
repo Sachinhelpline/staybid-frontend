@@ -1264,6 +1264,7 @@ export default function PartnerDashboard() {
             hotelId={hotel.id}
             categories={rooms}
             initialUnits={hotel.ownedUnits || []}
+            hotelAutopilotMode={autopilotMode}
           />
         )}
 

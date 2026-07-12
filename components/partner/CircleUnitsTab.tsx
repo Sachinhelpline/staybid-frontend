@@ -13,6 +13,7 @@
 // surfaces when hotel.isOperator (mounted from the dashboard).
 
 import { useEffect, useMemo, useState } from "react";
+import { AUTOPILOT_MODE_LABEL, AUTOPILOT_MODE_DESC, type AutopilotMode } from "@/lib/autopilot";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -31,6 +32,8 @@ type Unit = {
   photos?: any[] | null;
   view_label?: string | null;
   is_listed?: boolean | null;
+  // Phase A — per-unit autopilot. null = inherit the hotel-level mode.
+  autopilot_mode?: AutopilotMode | null;
   host_rating?: number | null;
   host_reviews?: number | null;
 };
@@ -41,10 +44,13 @@ export default function CircleUnitsTab({
   hotelId,
   categories,
   initialUnits,
+  hotelAutopilotMode = "auto",
 }: {
   hotelId: string;
   categories: any[];
   initialUnits?: Unit[];
+  /** The hotel-level autopilot mode a room INHERITS when it has no override. */
+  hotelAutopilotMode?: AutopilotMode;
 }) {
   const [units, setUnits] = useState<Unit[]>(initialUnits || []);
   const [loading, setLoading] = useState(!initialUnits?.length);
@@ -128,7 +134,13 @@ export default function CircleUnitsTab({
       </div>
 
       {units.map((u) => (
-        <UnitCard key={u.id} unit={u} cat={catById[String(u.roomId)]} onSave={saveUnit} />
+        <UnitCard
+          key={u.id}
+          unit={u}
+          cat={catById[String(u.roomId)]}
+          hotelAutopilotMode={hotelAutopilotMode}
+          onSave={saveUnit}
+        />
       ))}
 
       {toast && (
@@ -140,15 +152,21 @@ export default function CircleUnitsTab({
   );
 }
 
+type UnitAutopilot = "inherit" | AutopilotMode;
+
 function UnitCard({
   unit,
   cat,
+  hotelAutopilotMode,
   onSave,
 }: {
   unit: Unit;
   cat: any;
+  hotelAutopilotMode: AutopilotMode;
   onSave: (unitId: string, patch: Record<string, any>) => Promise<boolean>;
 }) {
+  const [aMode, setAMode] = useState<UnitAutopilot>(unit.autopilot_mode || "inherit");
+  const [aSaving, setASaving] = useState(false);
   const [title, setTitle] = useState(unit.title || "");
   const [price, setPrice] = useState(unit.price_override != null ? String(unit.price_override) : "");
   const [mrp, setMrp] = useState(unit.mrp_override != null ? String(unit.mrp_override) : "");
@@ -186,6 +204,27 @@ function UnitCard({
     setListed(next);
     await onSave(unit.id, { is_listed: next });
   }
+
+  // Phase A — per-unit autopilot. "inherit" clears the override (null) → the
+  // room follows the hotel-level mode. Saves immediately on change.
+  async function changeMode(next: UnitAutopilot) {
+    if (next === aMode) return;
+    const prev = aMode;
+    setAMode(next);
+    setASaving(true);
+    const ok = await onSave(unit.id, { autopilot_mode: next === "inherit" ? null : next });
+    if (!ok) setAMode(prev); // revert on failure
+    setASaving(false);
+  }
+
+  // The mode that actually governs this room's auto-accept right now.
+  const effectiveMode: AutopilotMode = aMode === "inherit" ? hotelAutopilotMode : aMode;
+  const A_OPTIONS: { key: UnitAutopilot; label: string }[] = [
+    { key: "inherit", label: "Hotel default" },
+    { key: "auto",    label: "Auto" },
+    { key: "hybrid",  label: "Hybrid" },
+    { key: "manual",  label: "Manual" },
+  ];
 
   const effPrice = price.trim() !== "" ? Number(price) : baseFloor;
   const firstPhoto = photos.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0] || "";
@@ -253,6 +292,39 @@ function UnitCard({
             placeholder="https://…/room-1.jpg&#10;https://…/room-2.jpg"
             className="input-luxury w-full text-sm resize-y" />
         </Field>
+      </div>
+
+      {/* Phase A — per-unit auto-confirm mode (StayCircle owner control) */}
+      <div className="mt-3 pt-3 border-t border-luxury-100">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <label className="text-[11px] font-semibold text-luxury-600">
+            🤖 Auto-confirm mode for this room
+          </label>
+          {aSaving && <span className="text-[10px] text-luxury-400">saving…</span>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {A_OPTIONS.map((o) => {
+            const on = aMode === o.key;
+            return (
+              <button
+                key={o.key}
+                onClick={() => changeMode(o.key)}
+                disabled={aSaving}
+                className={`text-[11px] font-bold px-2.5 py-1.5 rounded-lg border transition disabled:opacity-60 ${
+                  on
+                    ? "bg-gold-500 text-white border-gold-500"
+                    : "bg-white text-luxury-600 border-luxury-200 hover:border-gold-300"
+                }`}
+              >{o.label}</button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-luxury-400 mt-1.5 leading-snug">
+          {aMode === "inherit"
+            ? `Following the hotel default (${AUTOPILOT_MODE_LABEL[hotelAutopilotMode]}). `
+            : `Overriding just this room (${AUTOPILOT_MODE_LABEL[effectiveMode]}). `}
+          {AUTOPILOT_MODE_DESC[effectiveMode]}
+        </p>
       </div>
 
       <div className="flex justify-end mt-3">

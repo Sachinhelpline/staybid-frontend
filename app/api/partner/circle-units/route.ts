@@ -12,7 +12,10 @@
 //
 //   PATCH /api/partner/circle-units
 //     Body: { hotelId, unitId, price_override?, mrp_override?, title?,
-//             view_label?, amenities?, photos?, is_listed? }
+//             view_label?, amenities?, photos?, is_listed?, autopilot_mode? }
+//     autopilot_mode (Phase A): 'auto'|'hybrid'|'manual' — this owner's per-room
+//       auto-accept mode; null|""|"inherit" clears it → inherit the hotel-level
+//       hotels.autopilot_mode. So one investor's mode never touches other rooms.
 //     Updates ONLY the whitelisted listing fields on ONE unit the caller owns.
 //     Ownership is re-verified against the unit's owner_user_id every write —
 //     an operator can never touch another owner's room.
@@ -111,6 +114,20 @@ export async function PATCH(req: NextRequest) {
   if ("title" in body) patch.title = body.title == null ? null : String(body.title).slice(0, 120);
   if ("view_label" in body) patch.view_label = body.view_label == null ? null : String(body.view_label).slice(0, 80);
   if ("is_listed" in body) patch.is_listed = !!body.is_listed;
+  // Phase A — per-unit autopilot. NULL / "" / "inherit" clears the override so
+  // the room inherits the hotel-level hotels.autopilot_mode; otherwise one of
+  // the 3 known modes. The DB CHECK (hru_autopilot_mode_chk) backstops this.
+  if ("autopilot_mode" in body) {
+    const v = body.autopilot_mode;
+    if (v === null || v === "" || v === "inherit") {
+      patch.autopilot_mode = null;
+    } else if (v === "auto" || v === "hybrid" || v === "manual") {
+      patch.autopilot_mode = v;
+    } else {
+      return NextResponse.json({ error: "autopilot_mode must be auto | hybrid | manual | inherit" }, { status: 400 });
+    }
+    patch.autopilot_updated_at = new Date().toISOString();
+  }
   if ("amenities" in body) {
     patch.amenities = Array.isArray(body.amenities)
       ? body.amenities.map((a: any) => String(a).slice(0, 60)).slice(0, 24)
