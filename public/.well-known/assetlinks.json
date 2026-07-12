@@ -3,13 +3,17 @@
     "_setup": "TWA Digital Asset Links — verifies that staybids.in trusts the Play Store app to handle its URLs without showing the Chrome Custom Tabs URL bar. The package_name + sha256_cert_fingerprints below MUST match the installed app exactly. Add MORE entries to sha256_cert_fingerprints when shipping to production (Play App Signing key SHA-256) so both internal-testing + production builds verify.",
     "_source": {
       "package_name": "Google Play Console → All apps → StayBid → Package name (verified 2026-05-17)",
-      "sha256_cert_fingerprints[0]": "Google Play Console → Internal app sharing → Internal test certificate → SHA-256 (provided by owner 2026-05-17). When the app graduates from Closed Testing to Production, also add the SHA-256 from Setup → App integrity → App signing key certificate."
+      "sha256_cert_fingerprints[0]": "Play App Signing key certificate SHA-256 (Console → Protected with Play → Play Store protection → App signing → App signing key certificate). THIS is the key Google re-signs the delivered app with in Production — it hides the Chrome URL bar in the TWA. Provided by owner 2026-07-12.",
+      "sha256_cert_fingerprints[1]": "Upload key certificate SHA-256 (same App signing page). Kept so builds signed with the upload key (e.g. internal-test / direct APK installs) also verify.",
+      "sha256_cert_fingerprints[2]": "Original internal-test certificate SHA-256 (added 2026-05-17). Retained for backward compatibility with any older installs."
     },
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
       "package_name": "com.staybid",
       "sha256_cert_fingerprints": [
+        "EA:F4:0F:47:A1:8F:00:8B:8D:D1:7B:80:9D:75:CE:D9:4A:F3:99:F8:15:D7:8A:BA:F2:4C:7B:05:B3:41:DF:49",
+        "AE:A5:BF:E1:B5:E9:07:29:17:44:34:23:27:30:3B:2E:5B:FE:41:ED:8F:FE:DA:D8:97:E3:4A:7C:84:A4:BE:81",
         "38:35:22:FE:97:A4:B4:CB:EA:C3:BD:C2:FF:CD:0C:01:47:F1:40:0F:DA:C9:7D:58:5B:D8:C4:32:9D:BD:C7:8C"
       ]
     }
