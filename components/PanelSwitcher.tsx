@@ -4,8 +4,9 @@
 //
 // One switcher, reachable from EVERY panel, that lets a signed-in user hop
 // between the StayBid surfaces LINKED from the customer frontend (Travelling /
-// List Your Hotel / Hotel Partner / StayCircle / StayBid Hosts / Creator Hub /
-// Worker / Admin). Standalone tools with no frontend link (e.g. /agent) are
+// List Your Hotel / Hotel Partner / StayCircle / List a Property / StayBid
+// Hosts / Creator Hub / Worker / Offline Kiosk / Admin). Kiosk + Admin are
+// admin-gated; standalone tools with no frontend link (e.g. /agent) are
 // intentionally excluded — see lib/panels.ts.
 //
 // Opened from the menu (v322.1 — no floating pill; it read as clutter over the
