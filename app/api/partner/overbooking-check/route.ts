@@ -1,19 +1,23 @@
 // v318 — Channel Manager Phase 4: overbooking conflict detector.
+// v326 — Channel Manager Phase B: per-unit collision detection + unit scope.
 //
 // GET ?hotelId=...  → date windows where an OTA-imported booking pushes a room
 // PAST its physical capacity (occupied > capacity), i.e. a genuine overbooking
-// risk between an OTA channel and StayBid's own bookings.
+// risk between an OTA channel and StayBid's own bookings. For a per-unit OTA
+// feed (room_blocks.assignedUnitId set), it ALSO flags the same physical unit
+// sold twice.
 //
-// Read-only, owner ∪ operated scoped. Uses the SAME availability engine the
-// booking flow uses (lib/availability), so the conflict math is identical to
-// what gates a customer booking. Capacity = active hotel_room_units, else
-// rooms.quantity virtual units; a room with no capacity signal is skipped
-// (fail-open — never a false alarm).
+// Read-only. Scoped through partnerUnitScope: a unit-scoped investor only sees
+// conflicts on the units they own; the classic full-hotel owner sees all.
+// Uses the SAME availability engine the booking flow uses (lib/availability),
+// so the conflict math is identical to what gates a customer booking. Capacity
+// = active hotel_room_units, else rooms.quantity virtual units; a room with no
+// capacity signal is skipped (fail-open — never a false alarm).
 //
 import { NextRequest, NextResponse } from "next/server";
 import { sbSelect } from "@/lib/sb-server";
-import { partnerHotelScope } from "@/lib/partner/hotel-scope";
-import { unitsFreeForRange, getOccupations } from "@/lib/availability";
+import { partnerUnitScope, canManageUnitRow } from "@/lib/partner/hotel-scope";
+import { unitsFreeForRange, getOccupations, unitDoubleBooked } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +30,7 @@ const MAX_BLOCKS = 40;
 const HORIZON_DAYS = 180;
 
 export async function GET(req: NextRequest) {
-  const scope = await partnerHotelScope(req);
+  const scope = await partnerUnitScope(req);
   if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
@@ -42,9 +46,12 @@ export async function GET(req: NextRequest) {
     const blocks = await sbSelect(
       `room_blocks?hotelId=eq.${encodeURIComponent(hotelId)}&source=eq.ota_ical` +
         `&toDate=gt.${today}&fromDate=lt.${horizon}` +
-        `&select=id,roomId,fromDate,toDate,provider,guestName,externalRef&order=fromDate.asc&limit=${MAX_BLOCKS}`
+        `&select=id,roomId,fromDate,toDate,provider,guestName,externalRef,assignedUnitId&order=fromDate.asc&limit=${MAX_BLOCKS}`
     );
-    const otaBlocks = Array.isArray(blocks) ? blocks : [];
+    // A unit-scoped investor only sees conflicts on blocks they can manage.
+    const otaBlocks = (Array.isArray(blocks) ? blocks : []).filter((b: any) =>
+      canManageUnitRow(scope, hotelId, b.assignedUnitId ?? null)
+    );
     if (otaBlocks.length === 0) return NextResponse.json({ conflicts: [], checked: 0 });
 
     // room names
@@ -63,6 +70,27 @@ export async function GET(req: NextRequest) {
     for (const b of otaBlocks) {
       const from = String(b.fromDate).slice(0, 10);
       const to = String(b.toDate).slice(0, 10);
+
+      // v326 — per-unit collision (same physical room sold twice).
+      if (b.assignedUnitId) {
+        const dbl = await unitDoubleBooked({ hotelId, unitId: String(b.assignedUnitId), from, to }).catch(() => false);
+        if (dbl) {
+          conflicts.push({
+            roomId: b.roomId,
+            roomName: nameOf[b.roomId] || b.roomId,
+            provider: (b.provider || "other").toLowerCase(),
+            fromDate: from,
+            toDate: to,
+            perUnit: true,
+            unitId: String(b.assignedUnitId),
+            otaGuest: b.guestName || null,
+            externalRef: b.externalRef || null,
+          });
+          continue; // one alert per block
+        }
+      }
+
+      // category-level capacity check (v318)
       const cap = await unitsFreeForRange({ hotelId, roomId: b.roomId, from, to }).catch(() => null);
       if (!cap) continue; // no capacity signal → fail open (no false alarm)
       if (cap.occupied > cap.capacity) {

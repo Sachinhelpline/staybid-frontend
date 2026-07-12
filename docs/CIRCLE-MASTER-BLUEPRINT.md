@@ -85,10 +85,11 @@ Recommended order: A + B + E first (small, high-value, the two dashboard asks),
 then C (clean-legal ownership), then D (most scale). F ongoing.
 
 - [x] **Phase A — Per-unit autopilot (v325, 2026-07-12).** DONE. See §4.
-- [ ] **Phase B — Per-unit OTA/Airbnb cross-listing.** `channel_connections
-  .unit_id` + `ota_feeds.unit_id` (NULL = hotel-level, zero regression) +
-  `partnerUnitScope`; per-unit iCal export already exists
-  (`/api/partner/ical/[roomId]`). Overbooking guard (v318) extended per-unit.
+- [x] **Phase B — Per-unit OTA/Airbnb cross-listing (v326, 2026-07-12).** DONE.
+  See §5. `ota_feeds."unitId"` + `channel_connections.unit_id` (NULL =
+  hotel-level, zero regression) + `partnerUnitScope` / `canManageUnitRow`;
+  per-unit iCal export already existed (`/api/partner/ical/[roomId]`).
+  Overbooking guard (v318) + reservations inbox extended per-unit.
 - [ ] **Phase C — Model 3 pre-buy inventory blocks.** `inventory_blocks`
   (owner, unit, date_from/to, buy_price from Pricing Spine, resale_price,
   status). Investor buys a date-range → sets resale → shows on the SAME
@@ -141,3 +142,89 @@ rooms. **Fix:** per-physical-unit override; NULL = inherit hotel-level.
   re-verifies `owner_user_id ∈ caller's cross-pool ids` on every write.
 - NULL is the inherit signal — keep it. A per-unit `'auto'` is an EXPLICIT
   override that ignores the hotel-level mode (matters if the hotel is 'manual').
+
+## 5. Phase B — Per-unit OTA/Airbnb cross-listing (v326, DONE)
+
+**Problem:** the Channel Manager (v315–v320) scopes feeds per HOTEL. On a
+multi-investor operated hotel every co-investor would see + manage EVERY
+owner's OTA feeds and guest reservations. **Fix:** an OTA feed can now be
+attached to a single physical unit; a unit-scoped investor manages only feeds
+on the units they own; a full-hotel owner keeps hotel-level access. NULL
+`unitId` = hotel-level (zero regression for every existing feed).
+
+- **Migration** `2026-07-12-v326-channel-manager-per-unit.sql` (applied live):
+  `ota_feeds."unitId" TEXT` (camelCase quoted) + `channel_connections.unit_id
+  TEXT` (snake_case) + 2 partial indexes `idx_ota_feeds_unit` /
+  `idx_channel_connections_unit` (WHERE ... IS NOT NULL). `channel_connections
+  .unit_id` is RESERVED for a future admin per-unit connector — the partner
+  flow keys off `ota_feeds."unitId"` only. Unit-scoped feeds do NOT auto-link a
+  `channel_connections` row (the `(hotel_id, ota)` unique index would collide
+  across two investors on the same hotel + OTA).
+- **THE UNIT RULE** (`lib/partner/hotel-scope.ts`): `resolveScopeParts(req)`
+  returns `{userId, ownerIds, ownedHotelIds, operatedHotelIds}`;
+  `partnerUnitScope(req)` adds `unitsByHotel` (per operated hotel: `null` =
+  full-hotel owner via `hotels.ownerId`, else `string[]` of owned active unit
+  ids batched from `hotel_room_units`). `canManageUnitRow(scope, hotelId,
+  unitId)`: not-in-scope → false; full-hotel(null) → true; unit-scoped → only
+  its OWN unitId, and NEVER a hotel-level (unitId null) feed → false.
+  `partnerHotelScope` kept byte-compatible for callers that don't need units.
+- **`/api/partner/ota-feeds`** — `partnerUnitScope`. GET returns `{feeds,
+  unitScoped, units}` (feeds filtered by `canManageUnitRow`; units = owned
+  units when unit-scoped, else all active hotel units). POST: if unit-scoped,
+  `unitId` REQUIRED + must be owned + `roomId` DERIVED from the owned unit
+  (never trusts a mismatched body roomId); else hotel-level with the
+  room-belongs-to-hotel check. Auto-links `channel_connections` ONLY when
+  `!unitId`. PATCH/DELETE re-check ownership via `canManageUnitRow(scope,
+  existing.hotelId, existing.unitId ?? null)`.
+- **`/api/partner/ota-feeds/sync`** — swapped to `partnerUnitScope` +
+  `canManageUnitRow`.
+- **Sync engine** (`lib/channels/sync.ts`): imported blocks now carry
+  `assignedUnitId = feed.unitId` when the feed is per-unit, so a per-unit iCal
+  import pins the hold to that physical room. `notifyForFeed(feed, …)` routes a
+  per-unit feed's notifications to just that unit's owner (else all managers).
+- **Availability** (`lib/availability.ts`): `Occupation.numRooms`;
+  `getOccupations` carries each bid's `numRooms`; NEW `unitDoubleBooked({
+  hotelId, unitId, from, to})` — filters occupations to `assignedUnitId ===
+  unitId`, per-night sums `numRooms`, returns true if any night > 1. Fail-safe
+  false.
+- **`/api/partner/overbooking-check`** — per-unit branch: an assigned-unit OTA
+  block runs `unitDoubleBooked` (same physical room sold twice, `perUnit:true`);
+  category blocks keep the v318 `unitsFreeForRange` capacity check.
+- **`/api/partner/channel-reservations`** — filters rows via `canManageUnitRow(
+  scope, hotelId, b.assignedUnitId ?? null)` so a unit-scoped investor never
+  sees a co-investor's OTA guest data.
+- **UI** (`components/partner/OtaFeedManager.tsx`): loads `unitScoped` + `units`
+  from GET; when unit-scoped the "Add feed" form shows a UNIT picker (sends
+  `unitId`) instead of the room picker (sends `roomId`); each per-unit feed row
+  gets an amber `🔑 #<roomNumber>` chip; Add button disabled uses
+  `!(unitScoped ? nf.unitId : nf.roomId)`.
+- `SB_BUILD v325→v326`, badge v326, `HTML_CACHE v139` (`public/sw.js`).
+
+### Verified (live round-trip, then cleaned up — 0 leftover)
+Seeded a synthetic host-circle hotel + one owned active `hotel_room_units`
+(`owner_user_id='v326-lister'`) + a per-unit `ota_feeds` (`unitId` set) + two
+overlapping unit-assigned `room_blocks`, then asserted against the real schema:
+**(A)** `partnerUnitScope`'s unit query returns the owned active unit for the
+lister (1); **(B)** `canManageUnitRow` admits the feed (feed.unitId ∈ owned
+set); **(C)** `unitDoubleBooked` mirror = true, per-night peak = 2 (>1 =
+double-booked). All test rows deleted. `tsc --noEmit` clean, `next build` green.
+
+### Things to Avoid (Phase B)
+- **Never** scope a channel route by `partnerHotelScope` (hotel-only) when it
+  touches feeds, reservations, or overbooking — use `partnerUnitScope` +
+  `canManageUnitRow`, or a unit-scoped investor sees/manages a co-investor's
+  feeds and OTA guest data.
+- **Never** auto-link a `channel_connections` row for a per-unit (`unitId` set)
+  feed — the `(hotel_id, ota)` unique index would 42P10-collide across two
+  investors' Booking.com feeds on the same hotel. Only hotel-level (`!unitId`)
+  feeds auto-link. `channel_connections.unit_id` exists but is reserved for a
+  future admin per-unit connector.
+- **Never** trust a body `roomId` on a unit-scoped POST — derive `roomId` from
+  the owned unit. A mismatched roomId would attach the feed's imported blocks to
+  the wrong physical room.
+- **Never** stamp `assignedUnitId` on an imported block from a hotel-level feed
+  — only per-unit feeds set it; a category feed's imports stay unit-agnostic so
+  `unitDoubleBooked` never false-positives on them.
+- Keep `unitDoubleBooked` fail-safe false — a per-unit availability hiccup must
+  never surface a phantom overbooking alert (same discipline as the v247
+  oversell guard failing open).

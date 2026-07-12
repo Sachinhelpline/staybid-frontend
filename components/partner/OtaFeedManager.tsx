@@ -38,6 +38,7 @@ function fmtWhen(iso: any): string {
 export interface FeedRow {
   id: string;
   roomId: string;
+  unitId?: string | null;   // v326 — per-unit feed (NULL = hotel-level)
   provider: string;
   icalUrl: string;
   label?: string;
@@ -52,6 +53,9 @@ export interface FeedRow {
   lastImportedCount?: number;
   lastRemovedCount?: number;
 }
+
+// v326 — a physical unit the caller can attach a feed to.
+interface UnitOpt { id: string; roomId: string; roomNumber?: string }
 
 export default function OtaFeedManager({
   hotelId,
@@ -69,7 +73,9 @@ export default function OtaFeedManager({
   const [busy, setBusy] = useState<string>(""); // feedId being acted on
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [nf, setNf] = useState({ roomId: "", provider: "booking", icalUrl: "", label: "" });
+  const [unitScoped, setUnitScoped] = useState(false); // v326
+  const [units, setUnits] = useState<UnitOpt[]>([]);    // v326 — attachable units
+  const [nf, setNf] = useState({ roomId: "", unitId: "", provider: "booking", icalUrl: "", label: "" });
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2600); };
 
@@ -81,6 +87,8 @@ export default function OtaFeedManager({
       });
       const d = await r.json().catch(() => ({}));
       setFeeds(Array.isArray(d.feeds) ? d.feeds : []);
+      setUnitScoped(!!d.unitScoped);
+      setUnits(Array.isArray(d.units) ? d.units : []);
     } catch { /* keep */ }
     finally { setLoading(false); }
   }, [hotelId]);
@@ -88,13 +96,20 @@ export default function OtaFeedManager({
   useEffect(() => { load(); }, [load]);
 
   async function addFeed() {
-    if (!nf.roomId || !nf.icalUrl.trim()) { showToast("Room aur iCal URL dono chahiye"); return; }
+    const picked = unitScoped ? nf.unitId : nf.roomId;
+    if (!picked || !nf.icalUrl.trim()) { showToast("Room aur iCal URL dono chahiye"); return; }
     setSaving(true);
     try {
+      // v326 — a unit-scoped investor sends unitId (server derives roomId);
+      // a full-hotel owner sends roomId (hotel-level feed, unitId stays NULL).
+      const payload: Record<string, any> = {
+        hotelId, provider: nf.provider, icalUrl: nf.icalUrl.trim(), label: nf.label,
+        ...(unitScoped ? { unitId: nf.unitId } : { roomId: nf.roomId }),
+      };
       const r = await fetch("/api/partner/ota-feeds", {
         method: "POST",
         headers: { Authorization: `Bearer ${partnerToken()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ hotelId, ...nf, icalUrl: nf.icalUrl.trim() }),
+        body: JSON.stringify(payload),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.ok) throw new Error(d.error || "Add failed");
@@ -102,7 +117,7 @@ export default function OtaFeedManager({
       if (fs?.ok) showToast(`✓ Added · ${fs.imported} blocked, ${fs.removed} released of ${fs.totalEvents}`);
       else if (fs?.error) showToast(`Added, but first sync failed: ${fs.error}`);
       else showToast("✓ Feed added");
-      setNf({ roomId: "", provider: "booking", icalUrl: "", label: "" });
+      setNf({ roomId: "", unitId: "", provider: "booking", icalUrl: "", label: "" });
       await load();
       onChanged?.();
     } catch (e: any) { showToast("❌ " + (e?.message || "Add failed")); }
@@ -159,6 +174,17 @@ export default function OtaFeedManager({
     return r?.type || r?.name || rid;
   };
 
+  // v326 — human label for a physical unit (for the picker + feed chip).
+  const unitLabel = (u: UnitOpt) => {
+    const rn = roomName(u.roomId);
+    return u.roomNumber ? `${rn} · #${u.roomNumber}` : rn;
+  };
+  const unitChip = (uid?: string | null) => {
+    if (!uid) return null;
+    const u = units.find((x) => x.id === uid);
+    return u?.roomNumber ? `#${u.roomNumber}` : "Unit";
+  };
+
   return (
     <div>
       {/* existing feeds */}
@@ -184,6 +210,11 @@ export default function OtaFeedManager({
                     <span className="text-[0.62rem] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm uppercase">
                       {PROVIDER_LABEL[f.provider] || f.provider}
                     </span>
+                    {f.unitId && (
+                      <span className="text-[0.62rem] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-sm">
+                        🔑 {unitChip(f.unitId)}
+                      </span>
+                    )}
                     <span className="font-semibold text-luxury-800 text-sm truncate">{f.label || roomName(f.roomId)}</span>
                     <span className="text-xs text-luxury-400">· {roomName(f.roomId)}</span>
                   </div>
@@ -217,32 +248,63 @@ export default function OtaFeedManager({
 
       {/* add new feed */}
       <div className="pt-3.5 border-t border-luxury-100 space-y-3">
-        <div>
-          <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
-            Room {nf.roomId && <span className="text-luxury-600 normal-case">· {roomName(nf.roomId)}</span>}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {rooms.length === 0 ? (
-              <div className="text-xs text-luxury-400 italic">No rooms — add them in the Rooms tab first.</div>
-            ) : rooms.map((r) => {
-              const active = nf.roomId === r.id;
-              return (
-                <button key={r.id} type="button" onClick={() => setNf((p) => ({ ...p, roomId: r.id }))}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
-                    active ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
-                           : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"}`}
-                  aria-pressed={active}>
-                  <span className="text-base leading-none">🛏️</span>
-                  <span className="flex flex-col items-start leading-tight">
-                    <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
-                    {r.capacity != null && <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>}
-                  </span>
-                  {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
-                </button>
-              );
-            })}
+        {unitScoped ? (
+          // v326 — StayBid Circle investor: pick which OWN physical unit this
+          // OTA feed is for. Server derives the roomId from the unit.
+          <div>
+            <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
+              Your room {nf.unitId && <span className="text-luxury-600 normal-case">· {unitLabel(units.find((u) => u.id === nf.unitId)!)}</span>}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {units.length === 0 ? (
+                <div className="text-xs text-luxury-400 italic">No rooms you own yet on this property.</div>
+              ) : units.map((u) => {
+                const active = nf.unitId === u.id;
+                return (
+                  <button key={u.id} type="button" onClick={() => setNf((p) => ({ ...p, unitId: u.id }))}
+                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                      active ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
+                             : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"}`}
+                    aria-pressed={active}>
+                    <span className="text-base leading-none">🔑</span>
+                    <span className="flex flex-col items-start leading-tight">
+                      <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{roomName(u.roomId)}</span>
+                      {u.roomNumber && <span className="text-[0.6rem] text-luxury-500">Unit #{u.roomNumber}</span>}
+                    </span>
+                    {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div>
+            <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">
+              Room {nf.roomId && <span className="text-luxury-600 normal-case">· {roomName(nf.roomId)}</span>}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {rooms.length === 0 ? (
+                <div className="text-xs text-luxury-400 italic">No rooms — add them in the Rooms tab first.</div>
+              ) : rooms.map((r) => {
+                const active = nf.roomId === r.id;
+                return (
+                  <button key={r.id} type="button" onClick={() => setNf((p) => ({ ...p, roomId: r.id }))}
+                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                      active ? "bg-linear-to-br from-amber-100 to-amber-200 border-amber-400 shadow-xs"
+                             : "bg-luxury-50 border-luxury-200 hover:border-amber-300 hover:bg-amber-50"}`}
+                    aria-pressed={active}>
+                    <span className="text-base leading-none">🛏️</span>
+                    <span className="flex flex-col items-start leading-tight">
+                      <span className={`text-xs font-bold ${active ? "text-amber-900" : "text-luxury-800"}`}>{r.type || r.name || "Room"}</span>
+                      {r.capacity != null && <span className="text-[0.6rem] text-luxury-500">cap {r.capacity}</span>}
+                    </span>
+                    {active && <span className="ml-1 text-amber-700 text-xs font-bold">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="text-[0.6rem] font-bold text-luxury-400 uppercase block mb-2">Channel</label>
@@ -270,7 +332,7 @@ export default function OtaFeedManager({
             <input className="inp-p" placeholder="https://…/calendar.ics" value={nf.icalUrl}
               onChange={(e) => setNf((p) => ({ ...p, icalUrl: e.target.value }))} />
           </div>
-          <button onClick={addFeed} disabled={saving || !nf.roomId || !nf.icalUrl.trim()}
+          <button onClick={addFeed} disabled={saving || !(unitScoped ? nf.unitId : nf.roomId) || !nf.icalUrl.trim()}
             className="btn-gold text-xs py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
             {saving ? "Adding…" : "+ Add & Sync"}
           </button>

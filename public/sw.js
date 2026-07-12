@@ -422,7 +422,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // the partner "My Rooms" tab (CircleUnitsTab) gains a per-unit auto-confirm
 // mode control. Bumping HTML_CACHE drops the stale cached partner-dashboard
 // HTML so operators see the new control on next visit.
-const HTML_CACHE = 'staybid-html-v138';
+// v326 — one-time HTML_CACHE bump (v138 -> v139). Circle multi-investor Phase B:
+// OtaFeedManager gains a per-unit picker (a StayBid Circle investor attaches an
+// OTA/Airbnb iCal feed to a specific room they own). Fresh HTML so the picker
+// + per-feed unit chip appear on the Availability / Channel Manager tabs.
+const HTML_CACHE = 'staybid-html-v139';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
