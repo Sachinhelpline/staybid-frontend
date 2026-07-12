@@ -29,6 +29,25 @@ import { WelcomeScene } from "./WelcomeScenes";
 const SKIP_PREFIXES = ["/admin", "/partner", "/onboard", "/auth", "/circle", "/host", "/worker"];
 const REVEAL_DELAY_MS = 1200;
 
+// v323 — "shown once per browser session" guard. The tutorial store's
+// session-dedup only fires from markSeen() (i.e. when the story is CLOSED).
+// A user who opens the panel switcher / navigates away BEFORE closing the
+// welcome never sets that flag, so a hard-nav back to `/` re-fires it — the
+// stuck cream "stay·bid" screen Sachin reported. This flag is set the moment
+// the story is SHOWN, so it can never re-pop within the same tab session,
+// regardless of whether the user completed it.
+const WELCOME_SHOWN_SESSION_KEY = "sb_welcome_shown";
+
+function welcomeAlreadyShownThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try { return sessionStorage.getItem(WELCOME_SHOWN_SESSION_KEY) === "1"; } catch { return false; }
+}
+
+function markWelcomeShownThisSession() {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.setItem(WELCOME_SHOWN_SESSION_KEY, "1"); } catch {}
+}
+
 export function WelcomeStory() {
   const pathname = usePathname() || "/";
   const router = useRouter();
@@ -50,9 +69,11 @@ export function WelcomeStory() {
     if (active === "welcome") return; // already open
     if (disabled) return;
     if (isSeen("welcome")) return;
+    if (welcomeAlreadyShownThisSession()) return; // v323 — never re-pop on back-from-panel
     if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return;
 
     revealTimerRef.current = setTimeout(() => {
+      markWelcomeShownThisSession(); // v323 — latch before showing, survives hard-nav within the tab
       setIdx(0);
       setExiting(false);
       setActive("welcome");

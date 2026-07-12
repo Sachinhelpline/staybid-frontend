@@ -43,6 +43,18 @@ function lsHas(key: string): boolean {
   try { return !!localStorage.getItem(key); } catch { return false; }
 }
 
+// v323 — The customer frontend surfaces (`/`, `/discover`, `/reels`, `/me`,
+// `/hotels`, etc.) already expose "Switch experience" from the Navbar dropdown
+// + the /me drawer, and the v322.1 rule explicitly REMOVED the floating pill
+// there because it read as clutter over the reel feed. Every OTHER panel
+// (admin / partner / circle / host / worker / creator hub / onboard / kiosk)
+// has its own chrome with no such entry — so the floating launcher lives ONLY
+// on those, giving every panel a way back to the frontend / any other panel.
+const NON_CUSTOMER_PANEL_PREFIXES = [
+  "/admin", "/partner", "/circle", "/host",
+  "/worker", "/influencer", "/onboard", "/kiosk",
+];
+
 export default function PanelSwitcher() {
   const pathname = usePathname() || "/";
   const { user } = useAuth();
@@ -95,6 +107,12 @@ export default function PanelSwitcher() {
 
   const panels = useMemo(() => visiblePanels(ctx), [ctx]);
 
+  // v323 — floating launcher only on non-customer panels (see prefix note).
+  const showLauncher = useMemo(
+    () => NON_CUSTOMER_PANEL_PREFIXES.some((p) => pathname.startsWith(p)),
+    [pathname],
+  );
+
   const go = useCallback((p: Panel, state: PanelState) => {
     if (state === "here") { setOpen(false); return; }
     // joined → auto-switch to home. join → the panel's own entry (auth intact).
@@ -109,6 +127,21 @@ export default function PanelSwitcher() {
   return (
     <>
       <SwitcherStyles />
+
+      {/* v323 — Global floating launcher. Non-customer panels only; hidden
+          while the sheet / splash is up so it never overlaps them. */}
+      {showLauncher && !open && !switching && (
+        <button
+          type="button"
+          className="sbps-launcher"
+          onClick={doOpen}
+          aria-label="Switch experience"
+          title="Switch experience"
+        >
+          <span className="sbps-launcher-ic" aria-hidden>⇄</span>
+          <span className="sbps-launcher-txt">Switch</span>
+        </button>
+      )}
 
       {/* Airbnb-style sheet */}
       {open && (
@@ -189,6 +222,33 @@ function SwitcherStyles() {
       // Fixed walnut/champagne palette — theme-independent so it reads on the
       // dark admin canvas AND the light/dark customer surface identically.
       dangerouslySetInnerHTML={{ __html: `
+.sbps-launcher{
+  position:fixed; z-index:9000;
+  left:max(14px, env(safe-area-inset-left,0px));
+  bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 14px 9px 12px; border-radius:999px; cursor:pointer;
+  font-size:12.5px; font-weight:800; letter-spacing:.02em; line-height:1;
+  color:#F5E9CE;
+  background:linear-gradient(135deg, rgba(43,36,21,0.92), rgba(26,21,12,0.92));
+  border:1px solid rgba(201,166,107,0.42);
+  box-shadow:0 10px 26px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter:blur(10px) saturate(140%);
+  -webkit-backdrop-filter:blur(10px) saturate(140%);
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+  animation:sbps-launch-in .3s cubic-bezier(.32,1.15,.4,1) both;
+}
+.sbps-launcher:hover{ transform:translateY(-2px);
+  border-color:rgba(201,166,107,0.7);
+  box-shadow:0 14px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12); }
+.sbps-launcher:active{ transform:translateY(0) scale(.97); }
+.sbps-launcher-ic{ font-size:15px; color:#E7CFA0; line-height:1;
+  display:inline-flex; }
+.sbps-launcher-txt{ padding-right:1px; }
+@keyframes sbps-launch-in{ from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
+@media (prefers-reduced-motion:reduce){ .sbps-launcher{ animation:none !important; } }
+
 .sbps-backdrop{
   position:fixed; inset:0; z-index:9998;
   background:rgba(7,6,4,0.62); backdrop-filter:blur(6px);
