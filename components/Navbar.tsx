@@ -511,6 +511,18 @@ export function Navbar() {
                         }}
                         role="menu"
                       >
+                        {/* v322 — Switch experience (opens the global panel
+                            switcher). Sits at the top of the menu. */}
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors"
+                          style={{ color: "var(--accent, #f0b429)", background: "rgba(240,180,41,0.06)", borderBottom: "1px solid rgba(240,180,41,0.14)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">⇅</span>
+                          Switch experience
+                        </button>
                         {userLinks.map((item: any) => {
                           const active = isActive(item.href);
                           return (
@@ -598,6 +610,20 @@ export function Navbar() {
             </div>
 
             <div className="px-4 py-4">
+              {/* v322 — Switch experience (opens the global panel switcher). */}
+              <button
+                type="button"
+                onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-switcher")); }}
+                className="w-full mb-3 flex items-center gap-3 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
+                style={{ background: "linear-gradient(135deg,rgba(201,166,107,0.16),rgba(240,180,41,0.10))", border: "1px solid rgba(240,180,41,0.3)" }}
+              >
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1F1A0F" }}>⇅</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white leading-none mb-0.5">Switch experience</p>
+                  <p className="text-xs text-white/50 truncate">Partner · Circle · Hosts · Creator</p>
+                </div>
+                <span className="text-xs font-bold text-gold-400 shrink-0">Open →</span>
+              </button>
               {user && (
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {moreLinks.map((item) => {

@@ -21,6 +21,7 @@ import { BackChip } from "@/components/BackChip";
 import { ServerStatus } from "@/components/ServerStatus";
 import NotificationToast from "@/components/NotificationToast";
 import PushOptIn from "@/components/PushOptIn";
+import PanelSwitcher from "@/components/PanelSwitcher";
 import SupportWidget from "@/components/support/SupportWidget";
 // v122.3 — installs the global auto-next-scroll delegate so EVERY
 // CTA carrying `data-autonext-target="<key>"` smoothly scrolls the
@@ -201,6 +202,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 supported browser + never-asked + not on reel/admin/partner
                 surfaces. Also refreshes the FCM token for opted-in users. */}
             <PushOptIn />
+            {/* v322 — Global Airbnb-style panel switcher. Floating "⇅"
+                pill (hidden only on /auth /onboard /order /kiosk) + a
+                bottom sheet reachable from every panel via the
+                "sb:open-switcher" event (Navbar menu + /me drawer). */}
+            <PanelSwitcher />
             {/* v146 — Hybrid AI + agent support widget. Floating bubble,
                 self-hides on admin/partner/onboard/auth + reel-app surfaces. */}
             <SupportWidget />
@@ -215,7 +221,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v321</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v322</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -236,7 +242,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v321-web-push-fcm-opt-in";
+var SB_BUILD="v322-global-panel-switcher";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
