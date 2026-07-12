@@ -1144,10 +1144,16 @@ export default function PartnerDashboard() {
               style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
               {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
             </div>
+            {/* v324.1 — visible on mobile too (was hidden sm:inline).
+                Compact icon-only chip on the smallest screens, icon + label from sm up,
+                shrink-0 so the crowded partner header never squeezes it out. */}
             <SwitchExperienceButton
-              className="hidden sm:inline text-[0.68rem] text-white/70 hover:text-amber-200 bg-white/10 hover:bg-white/15 border border-amber-400/25 px-2.5 py-1.5 rounded-lg transition-all"
-              label="Switch"
-            />
+              className="shrink-0 flex items-center gap-1 text-[0.68rem] text-white/70 hover:text-amber-200 bg-white/10 hover:bg-white/15 border border-amber-400/25 px-2 sm:px-2.5 py-1.5 rounded-lg transition-all"
+              title="Switch to another StayBid panel"
+            >
+              <span aria-hidden>⇄</span>
+              <span className="hidden sm:inline">Switch</span>
+            </SwitchExperienceButton>
             <button onClick={logout}
               className="text-[0.68rem] text-white/55 hover:text-red-300 border border-white/10 hover:border-red-400/40 px-2.5 py-1.5 rounded-lg transition-all">
               Sign Out
