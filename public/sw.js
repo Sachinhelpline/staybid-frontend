@@ -554,3 +554,50 @@ self.addEventListener('fetch', (event) => {
     return cached || networkPromise;
   })());
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// v321 — Web Push (FCM) handlers.
+// FCM delivers messages to THIS service worker's `push` event (the client
+// passes this registration to getToken). We render the notification here
+// so we control the icon/title/body/click-through. The Railway sender
+// SHOULD send data-only payloads ({ data: { title, body, url, icon } }) so
+// Chrome does not auto-display a second notification. We also read a
+// top-level `notification` block defensively.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (e) {
+    try { payload = { data: { body: event.data && event.data.text() } }; } catch (e2) { payload = {}; }
+  }
+  const d = payload.data || {};
+  const n = payload.notification || {};
+  const title = d.title || n.title || 'StayBid';
+  const body  = d.body  || n.body  || '';
+  const url   = d.url   || (d.click_action) || '/';
+  const options = {
+    body: body,
+    icon: d.icon || n.icon || '/icons/icon-192x192.png',
+    badge: '/icons/icon-96x96.png',
+    tag: d.tag || n.tag || undefined,       // same tag replaces, not stacks
+    data: { url: url },
+    vibrate: [80, 40, 80],
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tap on the notification → focus an open StayBid tab (and navigate it) or
+// open a new one at the target URL.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      // Reuse any existing StayBid window.
+      if ('focus' in client) {
+        try { if ('navigate' in client && target) await client.navigate(target); } catch (e) {}
+        return client.focus();
+      }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(target);
+  })());
+});
