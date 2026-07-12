@@ -8,6 +8,7 @@
 //
 import { useState } from "react";
 import Link from "next/link";
+import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { KIOSK_LOCATIONS, DEFAULT_KIOSK_LOC } from "@/lib/kiosk";
 
 export default function KioskHubPage() {
@@ -16,7 +17,10 @@ export default function KioskHubPage() {
 
   return (
     <div className="kh-screen">
-      <div className="kh-tag">StayBid · Offline Kiosk</div>
+      <div className="kh-topbar">
+        <div className="kh-tag">StayBid · Offline Kiosk</div>
+        <SwitchExperienceButton className="kh-switch" label="Switch experience" />
+      </div>
       <h1 className="kh-title">Offline Kiosk <span>Control</span></h1>
       <p className="kh-sub">Same-day flash deals · live from hotels &amp; admin · zero staff</p>
 
@@ -67,7 +71,10 @@ export default function KioskHubPage() {
             linear-gradient(180deg,#FFFCF6 0%,#F5EFE0 55%,#FAF5EB 100%);
           color:#1F1A0F; font-family:'Inter',system-ui,sans-serif; max-width:920px; margin:0 auto;
         }
+        .kh-topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
         .kh-tag { display:inline-block; background:#F2EAD8; color:#9C7E33; font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; padding:6px 14px; border-radius:999px; }
+        .kh-switch { background:#FFFCF6; border:1px solid #E0D2B4; color:#9C7E33; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer; transition:background .12s,box-shadow .12s; }
+        .kh-switch:active { box-shadow:0 6px 18px rgba(201,166,107,.22); }
         .kh-title { font-family:'Cormorant Garamond',Georgia,serif; font-size:52px; font-weight:700; margin:18px 0 4px; line-height:1; }
         .kh-title span { color:#9C7E33; font-style:italic; }
         .kh-sub { font-size:15px; color:#6E5430; margin:0 0 30px; }

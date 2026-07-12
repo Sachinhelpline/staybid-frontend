@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "⊞" },
@@ -178,6 +179,33 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
               </Link>
             );
           })}
+          {/* v324 — Switch experience (opens the global panel switcher).
+              In-nav entry, styled like a nav item — NO floating pill. */}
+          <SwitchExperienceButton
+            title={effectiveCollapsed ? "Switch experience" : undefined}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 11,
+              width: "100%",
+              padding: effectiveCollapsed ? "8px 18px" : "8px 20px",
+              marginTop: 4,
+              color: "#8A8FA8",
+              background: "transparent",
+              border: "none",
+              borderTop: "1px solid rgba(255,255,255,0.07)",
+              borderLeft: "2px solid transparent",
+              cursor: "pointer",
+              fontSize: 13,
+              lineHeight: 1.25,
+              fontFamily: "DM Sans, sans-serif",
+              whiteSpace: "nowrap",
+              textAlign: "left",
+            }}
+          >
+            <span style={{ fontSize: 15, flexShrink: 0 }}>⇄</span>
+            {!effectiveCollapsed && <span>Switch experience</span>}
+          </SwitchExperienceButton>
         </nav>
 
         {!effectiveCollapsed && (

@@ -11,7 +11,7 @@
 //   • StayBid Hosts  — managed portfolio ownership          → /host
 //   • Creator Hub    — creator earnings + referrals         → /influencer
 //   • Worker         — on-demand hospitality staff          → /worker
-//   • Offline Kiosk  — physical-unit launcher (admin-only)  → /kiosk
+//   • Offline Kiosk  — customer offline-booking kiosk       → /kiosk
 //   • Admin          — god-mode control panel               → /admin
 //
 // Only panels that are LINKED from the customer frontend belong here (the
@@ -29,7 +29,10 @@
 //      (hard nav to `home`, no re-login) because the credential already
 //      lives in localStorage and each panel re-reads it on boot.
 //   3. Admin is only advertised when an admin credential is present — we
-//      never surface the admin door to a random signed-in user.
+//      never surface the admin (god-mode) door to a random signed-in user.
+//      The Offline Kiosk, by contrast, is a CUSTOMER-facing offline-booking
+//      surface (touchscreen booking on a physical kiosk), so it is shown to
+//      everyone — only the internal admin door stays gated.
 //
 // This module is PURE (no React, no side effects) so it can be unit-reasoned
 // and shared by the switcher UI + any future deep-link builder.
@@ -246,11 +249,10 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
 }
 
 /** The panels to show in the switcher for this context.
- *  Admin (god-mode door) + the Offline Kiosk launcher (an ops surface whose
- *  only frontend link is the admin sidebar) are shown only when an admin
- *  credential is present — we never surface an ops door to a random user. */
+ *  Only Admin (the god-mode door) is gated — advertised solely when an admin
+ *  credential is present, so we never surface it to a random signed-in user.
+ *  The Offline Kiosk is a customer-facing offline-booking surface and is shown
+ *  to everyone (like the offline kiosk machine offers booking to walk-ins). */
 export function visiblePanels(ctx: SwitchCtx): Panel[] {
-  return PANELS.filter((p) =>
-    p.key === "admin" || p.key === "kiosk" ? ctx.hasAdminToken : true,
-  );
+  return PANELS.filter((p) => (p.key === "admin" ? ctx.hasAdminToken : true));
 }
