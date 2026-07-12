@@ -90,11 +90,24 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
   hotel-level, zero regression) + `partnerUnitScope` / `canManageUnitRow`;
   per-unit iCal export already existed (`/api/partner/ical/[roomId]`).
   Overbooking guard (v318) + reservations inbox extended per-unit.
-- [ ] **Phase C — Model 3 pre-buy inventory blocks.** `inventory_blocks`
+- [~] **Phase C — Model 3 pre-buy inventory blocks.** `inventory_blocks`
   (owner, unit, date_from/to, buy_price from Pricing Spine, resale_price,
   status). Investor buys a date-range → sets resale → shows on the SAME
   consumer feed + OTA + B2B. Settlement: customer pays resale → StayBid fee →
   investor. Dynamic-discount / expiry / optional buyback on top.
+  - [x] **C1 — inert foundation (v327, 2026-07-12).** DONE. See §6. Schema
+    (`inventory_blocks`) + pure engine (`lib/inventory/engine.ts`) + Spine
+    quote (`lib/inventory/quote.ts`) + owner-scoped read/quote/draft-list API
+    + investor `CircleInventoryTab` (quote builder + draft blocks). NO
+    Razorpay, NO inventory hold, NO consumer exposure, NO settlement.
+  - [ ] **C2 — purchase flow.** Razorpay checkout (tamper-safe, server
+    re-quotes the Spine, freezes buy at pay time) → `owned`. Hold the
+    room-nights so the block can't double-book.
+  - [ ] **C3 — resale listing + consumer feed + settlement.** `listed` block
+    on the SAME customer feed at resale price; customer pays → StayBid fee →
+    investor net (`resaleMargin`).
+  - [ ] **C4 — dynamic discount / expiry / buyback + admin.** Auto-markdown
+    near check-in, expiry sweep, optional platform buyback, admin oversight.
 - [ ] **Phase D — Model 4 B2B exchange.** `b2b_listings` / `b2b_trades` /
   `settlement_ledger`. Fees via `service_pricing` reuse. B2B-only (SEBI-safe).
 - [ ] **Phase E — Model 1 "expected income" language.** UI/legal migration to
@@ -228,3 +241,104 @@ double-booked). All test rows deleted. `tsc --noEmit` clean, `next build` green.
 - Keep `unitDoubleBooked` fail-safe false — a per-unit availability hiccup must
   never surface a phantom overbooking alert (same discipline as the v247
   oversell guard failing open).
+
+---
+
+## 6. Phase C1 — Model 3 pre-buy foundation (v327, 2026-07-12)
+
+The additive, **inert** first sub-phase of Model 3. An investor who already
+OWNS a physical unit (`hotel_room_units.owner_user_id`) can take commercial
+control of a DATE RANGE of that unit: get a live Pricing-Spine quote (wholesale
+buy + suggested retail + their margin) and save it as a **DRAFT** block. No
+money moves, no inventory is held, nothing is exposed to customers — purchase
+(C2), resale + settlement (C3), and dynamic-discount/buyback (C4) land next and
+are shown in the UI as clearly-labelled "coming next".
+
+### The commerce model (Model 3)
+The investor buys room-nights WHOLESALE from StayBid (Pricing-Spine floor),
+sets a RETAIL resale price, resells on StayBid surfaces, keeps the margin, and
+bears the unsold risk (which is why the buy is paid upfront in C2). Wholesale =
+Spine `bidFloor` (the lowest StayBid would sell), retail suggestion = Spine
+`livePrice`. Platform takes a % fee on the resale at settlement.
+
+### Migration `2026-07-12-v327-phase-c1-inventory-blocks.sql` (applied live)
+`inventory_blocks` (22 cols): `id` PK (`inv_`+uuid), `investor_user_id`,
+`hotel_id`, `unit_id`, `room_id`, `date_from`/`date_to` (DATE), `nights`,
+`buy_price_per_night`/`buy_total` (frozen at draft), `resale_price_per_night`,
+`platform_fee_pct`, `status` CHECK ∈ {draft, quoted, pending_payment, owned,
+listed, sold, expired, cancelled, refunded} DEFAULT `'draft'`, `buyback_enabled`,
+`razorpay_order_id`/`payment_id`, `purchased_at`/`listed_at`/`sold_at`,
+`metadata` JSONB, timestamps. `CONSTRAINT inventory_blocks_range_chk CHECK
+(date_to > date_from AND nights > 0)`. 5 indexes (investor+status,
+unit+date-range, hotel+status, partial WHERE status='listed'). RLS permissive
+`inventory_blocks_all_anon` (project baseline).
+
+### Files (all NEW, additive)
+- **`lib/inventory/engine.ts`** — PURE, no fetch. Shared by the quote endpoint,
+  the (future C2) checkout, and the client UI so the numbers NEVER drift.
+  `INVENTORY_STATUSES` / `ACTIVE_INVENTORY_STATUSES` / `TERMINAL_INVENTORY_STATUSES`,
+  `PLATFORM_RESALE_FEE_PCT_DEFAULT = 12` (⚠ flagged default — wire to
+  `service_pricing` later), `MAX_BLOCK_NIGHTS = 90`, `nightsBetween`,
+  `computeBlockQuote` (per-night Spine arrays → nights/buyTotal/avgBuyPerNight/
+  suggestedResaleTotal/avgResalePerNight/feePct/estFeeOnSuggested/
+  estInvestorNetOnSuggested), `resaleMargin`.
+- **`lib/inventory/quote.ts`** — server. `quoteInventoryBlock({roomId,from,to,
+  feePct?})`: one `room_date_price` range read + per-missing-night
+  `resolveSpinePrices` fallback. `wholesaleOf` = bidFloor → flashFloor →
+  round(live×0.7); `retailOf` = livePrice → flashPrice → baseRate. Caps
+  `MAX_BLOCK_NIGHTS`; returns null if no price signal.
+- **`app/api/circle/inventory/quote/route.ts`** — POST `{unitId,from,to,
+  resalePricePerNight?}`. Auth → `resolveOwnerIdsCrossPool` → `ownedUnit`
+  (verify caller owns the physical unit) → derive roomId/hotelId →
+  `quoteInventoryBlock` + optional `atResale` (`resaleMargin`). READ-ONLY, no
+  write, no charge.
+- **`app/api/circle/inventory/route.ts`** — GET (caller's blocks, side-load
+  unit# + hotel name, NO FK embed) · POST (create DRAFT: ownership + date
+  validation + overlap guard against non-terminal blocks + **re-quote to FREEZE**
+  buy_price/buy_total/fee, client never sets ₹) · DELETE (only draft|quoted the
+  caller owns).
+- **`components/partner/CircleInventoryTab.tsx`** — investor UI under "My Rooms"
+  (below `CircleUnitsTab`, operator-only): quote builder (unit picker → dates →
+  optional resale/night → "Get quote") + "Save as draft" + draft-blocks list
+  with status chips + delete. Honest "purchase & resale-listing arrive next".
+
+### Wiring
+`app/partner/dashboard/page.tsx` — `{tab === "myrooms" && hotel?.isOperator}`
+now renders `<CircleUnitsTab/>` **and** `<CircleInventoryTab hotelId
+initialUnits={hotel.ownedUnits}/>`. Same operator gate as Phase A.
+
+### Verified (live round-trip, then cleaned up — 0 leftover)
+Seeded a synthetic owned `hotel_room_units` (`owner_user_id='v327-tester'`) on
+real room `ris04-r1` (75 days of Spine data) and mirrored the route against the
+live schema: **(A)** ownership query resolves the owned unit; **(B)** overlap
+guard empty (no clash); **(C)** quote mirror over 2026-07-15..18 =
+nights 3 / buy_total 12,600 (3×₹4,200 floor) / suggested_resale 13,000;
+**(D)** DRAFT insert accepted with the exact frozen field shape + range CHECK
+held + JSONB metadata; **(E)** GET-list side-load (block + unit# + hotel name,
+no FK embed); **(F)** DELETE guard removes only draft|quoted. Then deleted the
+block + unit → `blocks_left=0, units_left=0`. `tsc --noEmit` clean,
+`next build` green (both `/api/circle/inventory` routes compiled).
+
+### Things to Avoid (Phase C1)
+- **Never** let the client set the buy/resale ₹ on the DRAFT — POST re-quotes
+  the Spine server-side and FREEZES `buy_price_per_night`/`buy_total`/`fee`.
+  This is the C2 tamper-safe checkout pattern, established early.
+- **Never** create an inventory block on a unit the caller doesn't own — every
+  quote + POST goes through `resolveOwnerIdsCrossPool` + `ownedUnit`.
+- **Never** skip the overlap guard on POST — two non-terminal blocks on the
+  same unit over the same nights would double-sell in C2/C3.
+- **Never** compute the quote anywhere but `lib/inventory/engine.ts` — the UI,
+  the quote endpoint, and the future C2 checkout MUST share it so preview ==
+  charge (same discipline as the host wizard's single-source `computeBundle`).
+- **Never** delete a block that isn't draft|quoted — once money moves (C2) the
+  lifecycle owns the transition; the DELETE route filters `status IN
+  (draft,quoted)` belt-and-braces.
+- `PLATFORM_RESALE_FEE_PCT_DEFAULT = 12` is a flagged default — wire it to the
+  admin-editable `service_pricing` infra (same as host wizard + subscriptions)
+  before C3 settlement goes live.
+
+### C1 boundary — STOP
+C1 is the inert data + pricing-quote foundation. **Do NOT start C2 (Razorpay
+purchase + inventory hold) without Sachin's "continue".** C2 → C3 → C4 each
+verify live + stop at their own sub-phase boundary, same as the Channel Manager
+phases.

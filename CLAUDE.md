@@ -10734,3 +10734,87 @@ test rows deleted. `tsc --noEmit` clean, `next build` green.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, per-unit autopilot (Phase A), the shared
   sync engine's import/reconciliation logic, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C1: Model 3 Pre-Buy Foundation (v327, 2026-07-12)
+
+Part of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §6).
+Model 3 = commerce (money): investor pre-buys room-nights wholesale + resells.
+Built as verified sub-phases C1..C4 (like Channel Manager 1–6). **C1 is the
+inert additive foundation ONLY** — schema + pure engine + Spine quote +
+owner-scoped read/quote/draft-list API + investor UI. **NO Razorpay, NO
+inventory hold, NO consumer-feed exposure, NO settlement** — those are C2/C3/C4.
+
+### The model
+An investor who already OWNS a physical unit (`hotel_room_units.owner_user_id`)
+takes commercial control of a DATE RANGE of that unit. Wholesale (buy) = Spine
+`bidFloor`; retail suggestion = Spine `livePrice`; platform fee % on the resale
+at settlement; investor margin = resale − fee − buy; investor bears unsold risk
+(why buy is paid upfront in C2).
+
+### Migration `2026-07-12-v327-phase-c1-inventory-blocks.sql` (applied live)
+`inventory_blocks` (22 cols): `investor_user_id`, `hotel_id`, `unit_id`,
+`room_id`, `date_from`/`date_to` DATE, `nights`, `buy_price_per_night`/
+`buy_total` (frozen at draft), `resale_price_per_night`, `platform_fee_pct`,
+`status` CHECK ∈ {draft,quoted,pending_payment,owned,listed,sold,expired,
+cancelled,refunded} DEFAULT draft, `buyback_enabled`, razorpay ids, ts cols,
+`metadata` JSONB. `inventory_blocks_range_chk CHECK (date_to > date_from AND
+nights > 0)`. 5 indexes (investor+status, unit+range, hotel+status, partial
+WHERE status='listed'). RLS permissive `inventory_blocks_all_anon`.
+
+### Files (all NEW, additive)
+- `lib/inventory/engine.ts` — PURE (no fetch). Shared by quote endpoint +
+  future C2 checkout + client UI so numbers never drift. `computeBlockQuote`,
+  `resaleMargin`, `nightsBetween`, `MAX_BLOCK_NIGHTS=90`,
+  `PLATFORM_RESALE_FEE_PCT_DEFAULT=12` (⚠ flagged — wire to `service_pricing`).
+- `lib/inventory/quote.ts` — `quoteInventoryBlock`: one `room_date_price` range
+  read + per-missing-night `resolveSpinePrices` fallback. wholesale=bidFloor→
+  flashFloor→round(live×0.7); retail=livePrice→flashPrice→baseRate.
+- `app/api/circle/inventory/quote/route.ts` — POST, owner-verified, READ-ONLY
+  (no write/charge). Returns quote + optional `atResale`.
+- `app/api/circle/inventory/route.ts` — GET (caller's blocks, side-load unit#/
+  hotel name, no FK embed) · POST (DRAFT: ownership + date + overlap guard +
+  re-quote to FREEZE buy/fee, client never sets ₹) · DELETE (draft|quoted only).
+- `components/partner/CircleInventoryTab.tsx` — investor UI under "My Rooms"
+  (operator-only, below `CircleUnitsTab`): quote builder + draft blocks.
+- `app/partner/dashboard/page.tsx` — `myrooms && isOperator` renders both tabs.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic owned unit on real room `ris04-r1` (75 days Spine data): (A) ownership
+resolves; (B) overlap guard empty; (C) quote mirror 2026-07-15..18 = 3 nights /
+buy ₹12,600 (3×₹4,200 floor) / suggested resale ₹13,000; (D) DRAFT insert
+accepted, range CHECK held, JSONB metadata ok; (E) GET side-load (no FK embed);
+(F) DELETE guard (draft|quoted). `blocks_left=0, units_left=0`. `tsc` clean,
+`next build` green (both `/api/circle/inventory` routes compiled).
+`SB_BUILD v326→v327`, badge v327, `HTML_CACHE v139→v140`.
+
+### Things to Avoid (Circle Phase C1)
+- **Never** let the client set the buy/resale ₹ on the DRAFT — POST re-quotes
+  the Spine server-side + FREEZES buy/total/fee (the C2 tamper-safe pattern
+  established early). Same discipline as host-wizard `computeBundle` +
+  service-subscription checkout.
+- **Never** quote/create a block on a unit the caller doesn't own — every path
+  goes through `resolveOwnerIdsCrossPool` + `ownedUnit`.
+- **Never** skip the POST overlap guard (`status NOT IN (expired,cancelled,
+  refunded) AND date_from<to AND date_to>from`) — two non-terminal blocks on
+  the same unit/nights would double-sell in C2/C3.
+- **Never** compute the block quote outside `lib/inventory/engine.ts` — UI,
+  quote endpoint, and future C2 checkout MUST share it (preview == charge).
+- **Never** delete a block that isn't draft|quoted — once money moves (C2) the
+  lifecycle owns transitions; DELETE filters `status IN (draft,quoted)`.
+- `PLATFORM_RESALE_FEE_PCT_DEFAULT=12` is a flagged default — wire to
+  `service_pricing` before C3 settlement.
+
+### Updated production state (v327, 2026-07-12)
+- **Current version:** v327 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration applied live + verified. `tsc` clean, `next build` green, C1 live
+  round-trip passed (6 assertions, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA
+  (v326) ✅ · **C1 pre-buy foundation (v327) ✅** · C2 purchase/Razorpay/hold ·
+  C3 resale listing + consumer feed + settlement · C4 dynamic discount/expiry/
+  buyback + admin · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **STOP at C1 — do NOT start C2 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model.
