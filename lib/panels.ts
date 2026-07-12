@@ -7,15 +7,18 @@
 //   • List Your Hotel— hotel property onboarding wizard     → /onboard
 //   • Hotel Partner  — property owner dashboard             → /partner
 //   • StayCircle     — room-level investing                 → /circle
+//   • List a Property— lease your rooms to StayCircle        → /circle/onboard
 //   • StayBid Hosts  — managed portfolio ownership          → /host
 //   • Creator Hub    — creator earnings + referrals         → /influencer
 //   • Worker         — on-demand hospitality staff          → /worker
+//   • Offline Kiosk  — physical-unit launcher (admin-only)  → /kiosk
 //   • Admin          — god-mode control panel               → /admin
 //
 // Only panels that are LINKED from the customer frontend belong here (the
 // Host vertical links to /onboard + /worker; user-links links to /partner
-// /circle /host /influencer). Standalone internal tools with no frontend
-// link (e.g. the /agent support inbox) are intentionally NOT listed.
+// /circle /host /influencer; the Circle discover feed links to /circle/onboard;
+// the admin sidebar links to /kiosk). Standalone internal tools with no
+// frontend link (e.g. the /agent support inbox) are intentionally NOT listed.
 //
 // LOCKED RULES (Sachin, v322):
 //   1. Each panel's OWN sign-in / authorization rule is UNCHANGED. The
@@ -33,8 +36,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type PanelKey =
-  | "travel" | "onboard" | "partner" | "circle" | "host"
-  | "creator" | "worker" | "admin";
+  | "travel" | "onboard" | "partner" | "circle" | "circle_list" | "host"
+  | "creator" | "worker" | "kiosk" | "admin";
 
 /** here = the panel the user is currently viewing.
  *  joined = the user already has access → tapping auto-switches (no re-login).
@@ -106,6 +109,17 @@ export const PANELS: Panel[] = [
     prefix: "/circle",
   },
   {
+    key: "circle_list",
+    label: "List a Property",
+    tagline: "Lease your rooms to StayCircle",
+    icon: "🏡",
+    accent: "#D49583",
+    home: "/circle/onboard",
+    joinRoute: "/circle/onboard",
+    joinCta: "List a property",
+    prefix: "/circle/onboard",
+  },
+  {
     key: "host",
     label: "StayBid for Hosts",
     tagline: "Own a managed BnB portfolio",
@@ -139,6 +153,17 @@ export const PANELS: Panel[] = [
     prefix: "/worker",
   },
   {
+    key: "kiosk",
+    label: "Offline Kiosk",
+    tagline: "Big display + touchscreen booking",
+    icon: "🖥️",
+    accent: "#8FA1B0",
+    home: "/kiosk",
+    joinRoute: "/kiosk",
+    joinCta: "Open kiosk",
+    prefix: "/kiosk",
+  },
+  {
     key: "admin",
     label: "Admin",
     tagline: "God-mode control panel",
@@ -162,15 +187,26 @@ export type SwitchCtx = {
   hasAdminToken: boolean;    // sb_admin_token in localStorage
 };
 
-/** Is the current pathname inside this panel? */
+/** Is the current pathname inside this panel?
+ *  Longest matching prefix wins — so /circle/onboard resolves to the
+ *  "List a Property" panel, not its parent StayCircle (/circle) panel. */
 export function isCurrentPanel(p: Panel, pathname: string): boolean {
-  if (p.prefix === null) {
-    // Traveling = anything NOT owned by another panel.
-    return !PANELS.some(
-      (o) => o.prefix !== null && (pathname === o.prefix || pathname.startsWith(o.prefix + "/")),
-    );
+  let bestKey: PanelKey | null = null;
+  let bestLen = -1;
+  for (const o of PANELS) {
+    if (o.prefix === null) continue;
+    if (
+      (pathname === o.prefix || pathname.startsWith(o.prefix + "/")) &&
+      o.prefix.length > bestLen
+    ) {
+      bestLen = o.prefix.length;
+      bestKey = o.key;
+    }
   }
-  return pathname === p.prefix || pathname.startsWith(p.prefix + "/");
+  // A prefixed panel owns this path → only it is "here".
+  if (bestKey) return p.key === bestKey;
+  // Nothing else owns it → the Traveling (customer) surface does.
+  return p.prefix === null;
 }
 
 /** Resolve here / joined / join for a panel given the auth context. */
@@ -191,10 +227,16 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
     case "host":
       // Open verticals — any visitor can enter; the panel gates internally.
       return "joined";
+    case "circle_list":
+      // A signed-in customer can list a property; else the page gates sign-in.
+      return ctx.signedIn ? "joined" : "join";
     case "creator":
       return ctx.isCreator ? "joined" : "join";
     case "worker":
       return ctx.hasWorkerToken ? "joined" : "join";
+    case "kiosk":
+      // Public launcher (no auth); only ever reached when its card is visible.
+      return "joined";
     case "admin":
       // Only ever reached when the admin card is visible (has token).
       return "joined";
@@ -204,8 +246,11 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
 }
 
 /** The panels to show in the switcher for this context.
- *  Admin is hidden unless an admin credential is present — we never surface
- *  the god-mode door to a random signed-in user. */
+ *  Admin (god-mode door) + the Offline Kiosk launcher (an ops surface whose
+ *  only frontend link is the admin sidebar) are shown only when an admin
+ *  credential is present — we never surface an ops door to a random user. */
 export function visiblePanels(ctx: SwitchCtx): Panel[] {
-  return PANELS.filter((p) => (p.key === "admin" ? ctx.hasAdminToken : true));
+  return PANELS.filter((p) =>
+    p.key === "admin" || p.key === "kiosk" ? ctx.hasAdminToken : true,
+  );
 }
