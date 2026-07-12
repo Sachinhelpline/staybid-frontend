@@ -100,9 +100,10 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
     quote (`lib/inventory/quote.ts`) + owner-scoped read/quote/draft-list API
     + investor `CircleInventoryTab` (quote builder + draft blocks). NO
     Razorpay, NO inventory hold, NO consumer exposure, NO settlement.
-  - [ ] **C2 — purchase flow.** Razorpay checkout (tamper-safe, server
-    re-quotes the Spine, freezes buy at pay time) → `owned`. Hold the
-    room-nights so the block can't double-book.
+  - [x] **C2 — purchase flow (v328, 2026-07-12).** DONE. See §7. Razorpay
+    checkout (tamper-safe: server re-quotes the Spine + overlap re-guard,
+    freezes buy at pay time) → `owned` on HMAC-verified payment. Writes an
+    idempotent `room_blocks` inventory HOLD so the block can't double-book.
   - [ ] **C3 — resale listing + consumer feed + settlement.** `listed` block
     on the SAME customer feed at resale price; customer pays → StayBid fee →
     investor net (`resaleMargin`).
@@ -341,4 +342,93 @@ block + unit → `blocks_left=0, units_left=0`. `tsc --noEmit` clean,
 C1 is the inert data + pricing-quote foundation. **Do NOT start C2 (Razorpay
 purchase + inventory hold) without Sachin's "continue".** C2 → C3 → C4 each
 verify live + stop at their own sub-phase boundary, same as the Channel Manager
+phases.
+
+---
+
+## §7 — Phase C2: Purchase Flow + Inventory Hold (v328, 2026-07-12)
+
+C2 turns a C1 DRAFT/QUOTED inventory block into an `owned` block via a
+tamper-safe Razorpay checkout, then writes an idempotent `room_blocks`
+inventory HOLD so the bought room-nights can't be double-sold. **NO consumer
+feed exposure, NO resale listing, NO settlement — those are C3/C4.** No
+migration (C1's `inventory_blocks` + its razorpay columns already exist).
+
+### The two routes (both owner-verified, both share `lib/inventory`)
+- **`POST /api/circle/inventory/[id]/checkout`** — loads the block (must be
+  `draft|quoted`, owned by caller via `resolveOwnerIdsCrossPool` + `ownedUnit`).
+  Overlap re-guard EXCLUDING self (`unit_id=eq & id=neq.self & status=not.in.
+  (expired,cancelled,refunded) & date_from<to & date_to>from` → 409 on clash).
+  Re-quotes the Spine via `quoteInventoryBlock` (422 if null/≤0). Creates a
+  Razorpay order via `${origin}/api/razorpay/order` with `amount: quote.buyTotal`,
+  `receipt: cinv_<id>`, `notes:{kind:"circle_inventory",blockId,unitId}`. PATCH
+  guarded `status=in.(draft,quoted) & investor_user_id=in.(ownerIds)` → sets
+  `status:"pending_payment", buy_price_per_night, buy_total, platform_fee_pct,
+  razorpay_order_id, metadata:{…,repricedAt,suggestedResaleTotal}`. Returns
+  `{ok, keyId:PUBLIC_KEY_ID, order, buyTotal, block}`. **The client never sets
+  the ₹** — the server re-quotes + FREEZES buy at pay time (C1 discipline).
+- **`POST /api/circle/inventory/[id]/verify`** — validates razorpay_* fields,
+  auth → ownerIds, HMAC via `${origin}/api/razorpay/verify` (reads `.verified`;
+  400 mismatch / 502 unreachable). PATCH `id=eq & razorpay_order_id=eq &
+  status=eq.pending_payment & investor_user_id=in.(ids)` → `status:"owned",
+  razorpay_payment_id, purchased_at, updated_at`. **Anti-tamper + idempotent:**
+  matched on `id + razorpay_order_id + status=pending_payment + ownership`, so a
+  replay/tampered-configId flips 0 rows → re-fetch the owned block for the
+  caller, `writeHold` if found, return `{ok:true, alreadyProcessed:true}`. On a
+  real flip → `writeHold(block)` and return `{ok:true, block, held}`.
+
+### The inventory hold (`writeHold`, best-effort, never throws)
+`getOccupations`/`unitsFreeForRange` (`lib/availability.ts`) count ALL
+`room_blocks` rows, so writing one row auto-holds the nights. Hold id is
+DETERMINISTIC `invhold_<blockId>` → idempotent upsert
+(`on_conflict=id, Prefer: resolution=merge-duplicates,return=minimal`) so
+re-verify never duplicates it, and C4 expiry/refund can find + release it.
+Body: `{id:'invhold_'+block.id, hotelId, roomId, fromDate:date_from,
+toDate:date_to, source:"inventory", assignedUnitId:unit_id,
+assignedUnitNumber, note:"StayBid Circle pre-buy hold",
+createdBy:investor_user_id}`. `room_blocks` has NO `source` CHECK (only the
+`toDate>fromDate` range check); `source` defaults to `'manual'`. `writeHold`
+is best-effort — a hold hiccup must never fail a payment that already succeeded.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+`buyNights(b)`: POST checkout → `openRazorpayForOrder(order)` → POST verify →
+flash + `loadBlocks()`. `draft|quoted` rows show "Buy nights · {inr(buy_total)}";
+`pending_payment` rows show "Complete payment". Razorpay client via
+`openRazorpayForOrder` (cancellation = `RazorpayError("__CANCELLED__")`).
+
+### Verified (live round-trip, cleaned up — 0 leftover, twice)
+Self-contained synthetic host-circle hotel + a v247-trigger-provisioned owned
+unit on a real room + a C1 DRAFT block. **All 6 asserts PASSED:**
+overlap_guard_empty=0 · pending_after_checkout=1 (checkout PATCH →
+pending_payment + order id) · owned_after_verify=1 (verify PATCH matched on
+id+order+pending+ownership) · hold_written=1 (`room_blocks invhold_<id>`,
+`source='inventory'`) · hold_idempotent_no_dup=1 (re-run `writeHold` via
+on_conflict merge → still exactly 1 row) · units_free_after_hold=0 (the hold
+consumes the unit → a customer booking for the range is blocked). Test rows
+deleted both runs. `tsc --noEmit` clean, `next build` green (both routes
+compiled). `SB_BUILD v327→v328`, badge v328, `HTML_CACHE v140→v141`.
+
+### Things to Avoid (Phase C2)
+- **Never** let the client set the buy ₹ at checkout — the checkout route
+  re-quotes the Spine + freezes `buy_total` server-side; verify never trusts a
+  client amount (same tamper-safe pattern as host-wizard + subscriptions).
+- **Never** flip a block to `owned` without matching on `razorpay_order_id` AND
+  `status=pending_payment` AND `investor_user_id ownership` — that 4-key PATCH
+  filter is the anti-tamper + idempotency guard. A 0-row flip means
+  already-processed OR not-yours → return `alreadyProcessed`, do NOT re-charge.
+- **Never** write the inventory hold with a random id — it MUST be the
+  deterministic `invhold_<blockId>` upsert, or a re-verify duplicates the hold
+  and C4 can't find/release it.
+- **Never** let `writeHold` throw or block the verify response — it's
+  best-effort; a hold hiccup must not fail a payment that already verified.
+- **Never** skip the self-excluding overlap re-guard at checkout — a second
+  block on the same unit/nights could reach `owned` and double-sell the room.
+- **Never** narrow the verify PATCH's ownership set — always
+  `investor_user_id=in.(resolveOwnerIdsCrossPool ids)`, or a cross-pool
+  identity can't complete its own purchase.
+
+### C2 boundary — STOP
+C2 is purchase + hold only. **Do NOT start C3 (resale listing + consumer-feed
+exposure + settlement) without Sachin's "continue".** C3 → C4 each verify live
++ stop at their own sub-phase boundary, same as C1/C2 + the Channel Manager
 phases.

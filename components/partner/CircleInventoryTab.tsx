@@ -12,6 +12,7 @@
 // the "My Rooms" operator tab, below CircleUnitsTab.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -118,6 +119,51 @@ export default function CircleInventoryTab({
     finally { setBusy(false); }
   }
 
+  // v328 — C2: buy the room-nights. Server re-quotes + freezes the buy, creates
+  // a Razorpay order (client never sets the amount), we open checkout, then
+  // verify flips the block to `owned` + writes the inventory hold.
+  async function buyNights(b: Block) {
+    setBusy(true);
+    try {
+      const token = getToken();
+      const cr = await fetch(`/api/circle/inventory/${encodeURIComponent(b.id)}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const cd = await cr.json().catch(() => ({}));
+      if (!cr.ok || !cd?.order?.id) { flash(cd?.error || "Couldn't start payment"); return; }
+
+      let pay: any;
+      try {
+        pay = await openRazorpayForOrder({
+          keyId: cd.keyId,
+          orderId: cd.order.id,
+          amountPaise: cd.order.amount,
+          description: `Pre-buy ${b.nights} night${b.nights === 1 ? "" : "s"} · ${b.date_from}→${b.date_to}`,
+        });
+      } catch (e) {
+        if (e instanceof RazorpayError && e.message === "__CANCELLED__") { flash("Payment cancelled"); return; }
+        flash(e instanceof Error ? e.message : "Payment failed");
+        return;
+      }
+
+      const vr = await fetch(`/api/circle/inventory/${encodeURIComponent(b.id)}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          razorpay_order_id: cd.order.id,
+          razorpay_payment_id: pay?.razorpay_payment_id,
+          razorpay_signature: pay?.razorpay_signature,
+        }),
+      });
+      const vd = await vr.json().catch(() => ({}));
+      if (!vr.ok || !vd?.ok) { flash(vd?.error || "Payment verify failed — contact support"); return; }
+      flash(vd.held === false ? "Bought — hold syncing…" : "Room-nights secured ✓");
+      loadBlocks();
+    } catch { flash("Purchase failed"); }
+    finally { setBusy(false); }
+  }
+
   async function del(id: string) {
     setBusy(true);
     try {
@@ -147,8 +193,8 @@ export default function CircleInventoryTab({
           🧾 Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 3</span>
         </h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-          Buy specific room-nights wholesale, set your own resale price, keep the margin. Draft &amp; quote
-          now — <b>purchase &amp; resale-listing arrive next</b>.
+          Buy specific room-nights wholesale, set your own resale price, keep the margin. Quote &amp; buy
+          now — <b>resale-listing on the guest feed arrives next</b>.
         </p>
       </div>
 
@@ -233,9 +279,23 @@ export default function CircleInventoryTab({
                 </span>
                 <div className="ml-auto flex gap-2">
                   {["draft", "quoted"].includes(b.status) && (
-                    <button disabled={busy} onClick={() => del(b.id)}
-                      className="text-xs px-2 py-1 rounded-lg border" style={{ borderColor: "var(--border-soft)" }}>
-                      Delete
+                    <>
+                      <button disabled={busy} onClick={() => buyNights(b)}
+                        className="text-xs px-2.5 py-1 rounded-lg font-semibold text-white"
+                        style={{ background: "var(--accent)" }}>
+                        Buy nights · {inr(b.buy_total)}
+                      </button>
+                      <button disabled={busy} onClick={() => del(b.id)}
+                        className="text-xs px-2 py-1 rounded-lg border" style={{ borderColor: "var(--border-soft)" }}>
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {b.status === "pending_payment" && (
+                    <button disabled={busy} onClick={() => buyNights(b)}
+                      className="text-xs px-2.5 py-1 rounded-lg font-semibold text-white"
+                      style={{ background: "var(--accent)" }}>
+                      Complete payment
                     </button>
                   )}
                 </div>

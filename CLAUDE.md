@@ -10818,3 +10818,94 @@ accepted, range CHECK held, JSONB metadata ok; (E) GET side-load (no FK embed);
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C2: Purchase Flow + Inventory Hold (v328, 2026-07-12)
+
+Sub-phase C2 of Model 3 pre-buy (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§7). Turns a C1 DRAFT/QUOTED `inventory_blocks` row into an `owned` block via a
+tamper-safe Razorpay checkout, then writes an idempotent `room_blocks`
+inventory HOLD so the bought room-nights can't be double-sold. **NO consumer
+feed exposure, NO resale listing, NO settlement — those are C3/C4.** No
+migration (C1's `inventory_blocks` + razorpay columns already exist).
+
+### Two routes (both owner-verified, both share `lib/inventory`)
+- **`POST /api/circle/inventory/[id]/checkout`** — loads the block (must be
+  `draft|quoted`, owned via `resolveOwnerIdsCrossPool` + `ownedUnit`), runs a
+  self-excluding overlap re-guard (`unit_id=eq & id=neq.self & status=not.in.
+  (expired,cancelled,refunded) & date_from<to & date_to>from` → 409), re-quotes
+  the Spine via `quoteInventoryBlock` (422 if null/≤0), creates a Razorpay
+  order via `${origin}/api/razorpay/order` (`amount: quote.buyTotal`,
+  `receipt: cinv_<id>`, `notes:{kind:"circle_inventory",blockId,unitId}`), then
+  PATCH-guards `status=in.(draft,quoted) & investor_user_id=in.(ownerIds)` →
+  `status:"pending_payment", buy_price_per_night, buy_total, platform_fee_pct,
+  razorpay_order_id, metadata:{…,repricedAt,suggestedResaleTotal}`. Returns
+  `{ok, keyId:PUBLIC_KEY_ID, order, buyTotal, block}`. **Client never sets ₹.**
+- **`POST /api/circle/inventory/[id]/verify`** — validates razorpay_* fields,
+  auth → ownerIds, HMAC via `${origin}/api/razorpay/verify` (reads `.verified`;
+  400 mismatch / 502 unreachable). PATCH `id=eq & razorpay_order_id=eq &
+  status=eq.pending_payment & investor_user_id=in.(ids)` → `status:"owned",
+  razorpay_payment_id, purchased_at, updated_at`. **Anti-tamper + idempotent:**
+  4-key match, so a replay/tampered-configId flips 0 rows → re-fetch owned block
+  → `writeHold` if found → `{ok:true, alreadyProcessed:true}`. On a real flip →
+  `writeHold(block)` → `{ok:true, block, held}`.
+
+### Inventory hold (`writeHold`, best-effort, never throws)
+`getOccupations`/`unitsFreeForRange` (`lib/availability.ts`) count ALL
+`room_blocks` rows → writing one auto-holds the nights. Hold id is DETERMINISTIC
+`invhold_<blockId>` → idempotent upsert (`on_conflict=id, Prefer: resolution=
+merge-duplicates,return=minimal`) so re-verify never duplicates it + C4
+expiry/refund can find/release it. Body: `{id:'invhold_'+block.id, hotelId,
+roomId, fromDate:date_from, toDate:date_to, source:"inventory",
+assignedUnitId:unit_id, assignedUnitNumber, note:"StayBid Circle pre-buy hold",
+createdBy:investor_user_id}`. `room_blocks` has NO `source` CHECK (only
+`toDate>fromDate` range check); `source` defaults `'manual'`. A hold hiccup must
+never fail a payment that already succeeded.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+`buyNights(b)`: POST checkout → `openRazorpayForOrder(order)` (from
+`lib/razorpay.ts`; cancellation = `RazorpayError("__CANCELLED__")`) → POST
+verify → flash + `loadBlocks()`. `draft|quoted` rows show "Buy nights ·
+{inr(buy_total)}"; `pending_payment` rows show "Complete payment".
+
+### Verified (live round-trip, cleaned up — 0 leftover, twice)
+Synthetic host-circle hotel + v247-trigger-provisioned owned unit on a real
+room + a C1 DRAFT block. All 6 asserts PASSED: overlap_guard_empty=0 ·
+pending_after_checkout=1 · owned_after_verify=1 (matched on id+order+pending+
+ownership) · hold_written=1 (`room_blocks invhold_<id>`, `source='inventory'`) ·
+hold_idempotent_no_dup=1 (re-run writeHold via on_conflict merge → 1 row) ·
+units_free_after_hold=0 (hold consumes the unit → customer booking blocked).
+`tsc --noEmit` clean, `next build` green (both routes compiled).
+`SB_BUILD v327→v328`, badge v328, `HTML_CACHE v140→v141`.
+
+### Things to Avoid (Circle Phase C2)
+- **Never** let the client set the buy ₹ at checkout — the checkout route
+  re-quotes the Spine + freezes `buy_total`; verify never trusts a client
+  amount (host-wizard + subscription tamper-safe discipline).
+- **Never** flip a block to `owned` without the 4-key PATCH filter
+  (`razorpay_order_id` + `status=pending_payment` + `investor_user_id ownership`).
+  A 0-row flip = already-processed OR not-yours → return `alreadyProcessed`,
+  do NOT re-charge.
+- **Never** write the inventory hold with a random id — MUST be deterministic
+  `invhold_<blockId>` upsert, or a re-verify duplicates it and C4 can't
+  find/release it.
+- **Never** let `writeHold` throw/block the verify response — best-effort; a
+  hold hiccup must not fail a payment that already verified.
+- **Never** skip the self-excluding overlap re-guard at checkout — a second
+  block on the same unit/nights could reach `owned` and double-sell.
+- **Never** narrow the verify PATCH's ownership set below
+  `resolveOwnerIdsCrossPool` — a cross-pool identity must complete its own buy.
+
+### Updated production state (v328, 2026-07-12)
+- **Current version:** v328 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (C1 schema reused). `tsc` clean, `next build` green, C2 live
+  round-trip passed (6 asserts, 0 leftover, twice).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1 pre-buy foundation (v327) ✅ · **C2 purchase + hold (v328) ✅** · C3
+  resale listing + consumer feed + settlement · C4 dynamic discount/expiry/
+  buyback + admin · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **STOP at C2 — do NOT start C3 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model.
