@@ -171,6 +171,9 @@ export default function PartnerDashboard() {
   const [hotelList, setHotelList]   = useState<any[]>([]);
   const [activeHotelId, setActiveHotelId] = useState<string>("");
   const [switcherOpen, setSwitcherOpen]   = useState(false);
+  // v324.3 — account menu behind the avatar (holds Switch experience + Sign out
+  // so the mobile header never overflows past the right edge).
+  const [acctOpen, setAcctOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms">("overview");
 
@@ -1140,25 +1143,62 @@ export default function PartnerDashboard() {
                 {pUser.staffRole === "front_desk" ? "Front Desk" : pUser.staffRole === "housekeeping" ? "Housekeeping" : "Manager"}
               </span>
             )}
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0"
-              style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
-              {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
+            {/* v324.3 — account menu. Switch experience + Sign out now live
+                behind the avatar so the mobile header can never overflow past
+                the right edge (right side is just [property switcher] + [avatar]).
+                Desktop keeps the same one-tap access via the same menu. */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setAcctOpen((o) => !o)}
+                aria-label="Account menu"
+                title="Account"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[0.62rem] font-bold shrink-0 border border-amber-400/40 hover:border-amber-300/70 transition-all"
+                style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
+                {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
+              </button>
+              {acctOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setAcctOpen(false)} />
+                  <div className="absolute right-0 mt-1.5 z-50 w-60 rounded-xl overflow-hidden shadow-2xl"
+                    style={{ background: "#1c140a", border: "1px solid rgba(240,180,41,0.22)" }}>
+                    <div className="px-3 py-2.5 border-b border-white/8">
+                      <div className="text-sm font-semibold text-white truncate">
+                        {pUser?.name || "Partner"}
+                      </div>
+                      {pUser?.phone && (
+                        <div className="text-[0.62rem] text-white/45 truncate">{pUser.phone}</div>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {hotel?.isOperator && (
+                          <span className="text-[0.5rem] font-bold text-purple-200 bg-purple-500/15 border border-purple-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                            🏨 Operated
+                          </span>
+                        )}
+                        {pUser?.staffRole && (
+                          <span className="text-[0.5rem] font-bold text-amber-300 bg-amber-400/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                            {pUser.staffRole === "front_desk" ? "Front Desk" : pUser.staffRole === "housekeeping" ? "Housekeeping" : "Manager"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <SwitchExperienceButton
+                      onClick={() => setAcctOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
+                      title="Switch to another StayBid panel"
+                    >
+                      <span aria-hidden className="text-amber-300">⇄</span>
+                      <span>Switch experience</span>
+                    </SwitchExperienceButton>
+                    <button
+                      onClick={() => { setAcctOpen(false); logout(); }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-white/70 hover:text-red-300 hover:bg-red-500/8 border-t border-white/8 transition-all text-left">
+                      <span aria-hidden>↶</span>
+                      <span>Sign out</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            {/* v324.2 — labelled on mobile too. The bare ⇄ glyph wasn't
-                recognisable as "switch panel" (esp. next to the 🏨 property
-                switcher), so the label is now always shown. shrink-0 so the
-                crowded partner header never squeezes it out. */}
-            <SwitchExperienceButton
-              className="shrink-0 flex items-center gap-1 text-[0.68rem] font-semibold text-amber-100 hover:text-white bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap"
-              title="Switch to another StayBid panel"
-            >
-              <span aria-hidden>⇄</span>
-              <span>Switch</span>
-            </SwitchExperienceButton>
-            <button onClick={logout}
-              className="text-[0.68rem] text-white/55 hover:text-red-300 border border-white/10 hover:border-red-400/40 px-2.5 py-1.5 rounded-lg transition-all">
-              Sign Out
-            </button>
           </div>
         </div>
       </nav>

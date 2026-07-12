@@ -26,6 +26,7 @@ export default function SwitchExperienceButton({
   label = "Switch experience",
   title = "Switch to another StayBid panel",
   children,
+  onClick,
 }: {
   className?: string;
   style?: CSSProperties;
@@ -34,11 +35,14 @@ export default function SwitchExperienceButton({
   title?: string;
   /** Fully custom inner content (overrides the default ⇄ + label). */
   children?: ReactNode;
+  /** Optional side-effect fired alongside opening the switcher (e.g. close a
+      parent dropdown). The switcher still opens regardless. */
+  onClick?: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={openSwitcher}
+      onClick={() => { onClick?.(); openSwitcher(); }}
       className={className}
       style={style}
       title={title}
