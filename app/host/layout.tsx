@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import "./host-premium.css";
 
 export const metadata = {
@@ -35,6 +36,11 @@ export default function HostLayout({ children }: { children: ReactNode }) {
             <Link href="/host/workforce" className="hidden md:inline px-3 py-2 rounded-full hover:opacity-80" style={{ color: "var(--text-soft)" }}>Workforce</Link>
             <Link href="/host/properties" className="hidden lg:inline px-3 py-2 rounded-full hover:opacity-80" style={{ color: "var(--text-soft)" }}>Properties</Link>
             <Link href="/partner" className="hidden sm:inline px-3 py-2 rounded-full hover:opacity-80" style={{ color: "var(--text-soft)" }}>Host login</Link>
+            <SwitchExperienceButton
+              className="hidden lg:inline px-3 py-2 rounded-full hover:opacity-80"
+              style={{ color: "var(--text-soft)" }}
+              label="Switch"
+            />
             <Link
               href="/onboard"
               className="px-4 py-2 rounded-full text-white font-medium shadow"

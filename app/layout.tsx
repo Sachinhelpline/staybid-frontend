@@ -202,13 +202,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 supported browser + never-asked + not on reel/admin/partner
                 surfaces. Also refreshes the FCM token for opted-in users. */}
             <PushOptIn />
-            {/* v322.1 — Global Airbnb-style panel switcher. No floating pill
-                (it read as clutter over the reel feed); opened from the menu
-                only — the "Switch experience" entry in the Navbar dropdown +
-                /me drawer fires "sb:open-switcher". Covers the panels linked
-                from the customer frontend (Travel / List Your Hotel / Partner
-                / Circle / List a Property / Hosts / Creator / Worker / Offline
-                Kiosk / Admin — kiosk + admin admin-gated). */}
+            {/* v324 — Global Airbnb-style panel switcher (sheet + splash only,
+                NO floating pill anywhere). Opened from each panel's OWN
+                nav/menu via "sb:open-switcher": customer Navbar dropdown +
+                /me drawer, Host / Partner / Worker / Onboard / Admin / Kiosk
+                in-nav entries, and StayCircle's upgraded inline section.
+                Covers Travel / List Your Hotel / Partner / Circle / List a
+                Property / Hosts / Creator / Worker / Offline Kiosk / Admin.
+                The Offline Kiosk is customer-facing (shown to everyone); only
+                the Admin god-mode door is credential-gated. */}
             <PanelSwitcher />
             {/* v146 — Hybrid AI + agent support widget. Floating bubble,
                 self-hides on admin/partner/onboard/auth + reel-app surfaces. */}
@@ -224,7 +226,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v323</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v324</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -245,7 +247,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v323-panel-switch-everywhere-welcome-session-guard";
+var SB_BUILD="v324-switch-in-nav-no-floating-kiosk-in-switcher";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete

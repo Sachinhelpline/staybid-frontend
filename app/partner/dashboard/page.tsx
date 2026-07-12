@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } from "@/lib/ai-pricing";
 import { ImageUpload } from "@/components/ImageUpload";
 import BookingChat from "@/components/BookingChat";
+import SwitchExperienceButton from "@/components/SwitchExperienceButton";
 import { api } from "@/lib/api";
 // v113 — premium availability calendar + bulk block-dates sheet.
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
@@ -1143,6 +1144,10 @@ export default function PartnerDashboard() {
               style={{background:"linear-gradient(135deg,#c9911a,#f0b429)"}}>
               {(pUser?.name || pUser?.phone || "P").slice(0,2).toUpperCase()}
             </div>
+            <SwitchExperienceButton
+              className="hidden sm:inline text-[0.68rem] text-white/70 hover:text-amber-200 bg-white/10 hover:bg-white/15 border border-amber-400/25 px-2.5 py-1.5 rounded-lg transition-all"
+              label="Switch"
+            />
             <button onClick={logout}
               className="text-[0.68rem] text-white/55 hover:text-red-300 border border-white/10 hover:border-red-400/40 px-2.5 py-1.5 rounded-lg transition-all">
               Sign Out

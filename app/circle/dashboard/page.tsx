@@ -61,8 +61,6 @@ function readRoomSel(): Record<string, number> {
   } catch { return {}; }
 }
 
-const HOST_PANEL = "https://staybid-hotel-panel.vercel.app";
-
 export default function CircleDashboardPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -76,7 +74,6 @@ export default function CircleDashboardPage() {
   // unless the user is actually a partner / host. The dashboard is Circle's
   // own hub — the Switch cards exist only so one app reaches every panel.
   const [hasPartner, setHasPartner] = useState(false);
-  const [isHost, setIsHost] = useState(false);
   // Phase 3d — does this investor own any provisioned physical rooms yet?
   // Drives the "Manage your rooms →" handoff into the partner dashboard's
   // operator "My Rooms" tab.
@@ -107,12 +104,6 @@ export default function CircleDashboardPage() {
         const ids = (Array.isArray(d?.locks) ? d.locks : []).map((l: any) => String(l.property_id));
         if (ids.length) setLocks((prev) => Array.from(new Set([...prev, ...ids])));
       })
-      .catch(() => {});
-    // Host unlock signal: any activity across the StayBid-for-Hosts modules
-    // (a lead, inquiry, portfolio, order, workforce job, channel request…).
-    fetch("/api/host/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((d) => setIsHost(Number(d?.summary?.total || 0) > 0))
       .catch(() => {});
     // Owned-rooms signal — same cross-pool id resolver the partner dashboard
     // uses, so the count here matches what the operator sees after signing in.
@@ -229,55 +220,24 @@ export default function CircleDashboardPage() {
         </Link>
       )}
 
-      {/* ───────── mode switch (Airbnb-style) ───────── */}
+      {/* ───────── switch experience (v324 — opens the global panel switcher) ─────────
+          Upgraded from the old hand-maintained 4-card grid (which drifted —
+          missing Kiosk / Worker / Creator / List-a-Property) to the single
+          always-complete Airbnb-style switcher shared by every panel. */}
       <section className="sbc-dash-sec">
         <div className="sbc-dash-sec-h">Switch experience</div>
-        <div className="sbc-mode-grid">
-          <div className="sbc-mode-card active">
-            <span className="sbc-mode-ic">◎</span>
-            <b>StayCircle</b>
-            <span className="sbc-mode-sub">Invest &amp; earn — you&apos;re here</span>
-            <span className="sbc-mode-badge">Active</span>
+        <button
+          type="button"
+          className="sbc-dash-strip"
+          style={{ width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
+          onClick={() => window.dispatchEvent(new Event("sb:open-switcher"))}
+        >
+          <div>
+            <span className="sbc-dash-strip-k">⇅ All of StayBid · one account</span>
+            <b className="sbc-dash-strip-v">Travelling · Partner · Hosts · Creator · Kiosk</b>
           </div>
-          <Link href="/" className="sbc-mode-card">
-            <span className="sbc-mode-ic">🧳</span>
-            <b>Travelling</b>
-            <span className="sbc-mode-sub">Bid &amp; book stays on StayBid</span>
-            <span className="sbc-mode-go">Switch →</span>
-          </Link>
-          {hasPartner ? (
-            <a href={HOST_PANEL} target="_blank" rel="noopener noreferrer" className="sbc-mode-card">
-              <span className="sbc-mode-ic">🏨</span>
-              <b>Hotel Partner</b>
-              <span className="sbc-mode-sub">Manage your hotel &amp; bids ↗</span>
-              <span className="sbc-mode-go">Open →</span>
-            </a>
-          ) : (
-            <Link href="/onboard" className="sbc-mode-card locked">
-              <span className="sbc-mode-ic">🏨</span>
-              <b>Hotel Partner</b>
-              <span className="sbc-mode-sub">List your hotel to unlock this panel</span>
-              <span className="sbc-mode-badge locked">🔒 Locked</span>
-              <span className="sbc-mode-go locked">Become a partner →</span>
-            </Link>
-          )}
-          {isHost ? (
-            <Link href="/host/me" className="sbc-mode-card">
-              <span className="sbc-mode-ic">🏠</span>
-              <b>For Hosts</b>
-              <span className="sbc-mode-sub">Managed portfolio ownership</span>
-              <span className="sbc-mode-go">Open →</span>
-            </Link>
-          ) : (
-            <Link href="/host" className="sbc-mode-card locked">
-              <span className="sbc-mode-ic">🏠</span>
-              <b>For Hosts</b>
-              <span className="sbc-mode-sub">Start a managed portfolio to unlock</span>
-              <span className="sbc-mode-badge locked">🔒 Locked</span>
-              <span className="sbc-mode-go locked">Explore hosting →</span>
-            </Link>
-          )}
-        </div>
+          <span className="sbc-dash-strip-go">Switch →</span>
+        </button>
       </section>
 
       {/* ───────── dashboard tiles ───────── */}
