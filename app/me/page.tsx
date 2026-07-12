@@ -1234,6 +1234,16 @@ function MoreDrawer({
           <ModalCloseButton onClose={onClose} tone="light" ariaLabel="Close menu" className="me-drawer-close-btn" />
         </div>
         <ul className="me-drawer-list">
+          {/* v322 — Switch experience (opens the global panel switcher). */}
+          <li>
+            <button
+              type="button"
+              className="me-drawer-link"
+              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-switcher")); }}
+            >
+              <DrawerRow icon="⇅" label="Switch experience" sub="Partner · Circle · Hosts · Creator" />
+            </button>
+          </li>
           {links.map((it) => (
             <li key={it.href}>
               {it.external ? (
