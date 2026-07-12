@@ -4,12 +4,18 @@
 //
 // StayBid is one app with many panels that share (or separate) auth:
 //   • Traveling      — the customer app (sb_token)          → /
+//   • List Your Hotel— hotel property onboarding wizard     → /onboard
 //   • Hotel Partner  — property owner dashboard             → /partner
 //   • StayCircle     — room-level investing                 → /circle
 //   • StayBid Hosts  — managed portfolio ownership          → /host
 //   • Creator Hub    — creator earnings + referrals         → /influencer
 //   • Worker         — on-demand hospitality staff          → /worker
 //   • Admin          — god-mode control panel               → /admin
+//
+// Only panels that are LINKED from the customer frontend belong here (the
+// Host vertical links to /onboard + /worker; user-links links to /partner
+// /circle /host /influencer). Standalone internal tools with no frontend
+// link (e.g. the /agent support inbox) are intentionally NOT listed.
 //
 // LOCKED RULES (Sachin, v322):
 //   1. Each panel's OWN sign-in / authorization rule is UNCHANGED. The
@@ -27,7 +33,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type PanelKey =
-  | "travel" | "partner" | "circle" | "host" | "creator" | "worker" | "admin";
+  | "travel" | "onboard" | "partner" | "circle" | "host"
+  | "creator" | "worker" | "admin";
 
 /** here = the panel the user is currently viewing.
  *  joined = the user already has access → tapping auto-switches (no re-login).
@@ -64,6 +71,17 @@ export const PANELS: Panel[] = [
     joinRoute: "/auth",
     joinCta: "Sign in",
     prefix: null,
+  },
+  {
+    key: "onboard",
+    label: "List Your Hotel",
+    tagline: "Onboard your property in minutes",
+    icon: "🪧",
+    accent: "#B8894B",
+    home: "/onboard/wizard",
+    joinRoute: "/onboard",
+    joinCta: "List your hotel",
+    prefix: "/onboard",
   },
   {
     key: "partner",
@@ -140,6 +158,7 @@ export type SwitchCtx = {
   isHotelOwner: boolean;     // useTier — /api/partner/hotel resolved a hotel
   hasPartnerToken: boolean;  // sb_partner_token in localStorage
   hasWorkerToken: boolean;   // sb_worker_token in localStorage
+  hasOnboardToken: boolean;  // sb_onboard_token in localStorage
   hasAdminToken: boolean;    // sb_admin_token in localStorage
 };
 
@@ -162,6 +181,9 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
     case "travel":
       // The customer app is joined the moment the user is signed in.
       return ctx.signedIn ? "joined" : "join";
+    case "onboard":
+      // A returning onboarder resumes the wizard; else start the flow.
+      return ctx.hasOnboardToken ? "joined" : "join";
     case "partner":
       // A returning owner has a partner token OR resolves a hotel via useTier.
       return ctx.hasPartnerToken || ctx.isHotelOwner ? "joined" : "join";
@@ -182,7 +204,8 @@ export function panelState(p: Panel, ctx: SwitchCtx): PanelState {
 }
 
 /** The panels to show in the switcher for this context.
- *  Admin is hidden unless an admin credential is present. */
+ *  Admin is hidden unless an admin credential is present — we never surface
+ *  the god-mode door to a random signed-in user. */
 export function visiblePanels(ctx: SwitchCtx): Panel[] {
   return PANELS.filter((p) => (p.key === "admin" ? ctx.hasAdminToken : true));
 }

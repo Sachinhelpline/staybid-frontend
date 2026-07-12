@@ -202,10 +202,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 supported browser + never-asked + not on reel/admin/partner
                 surfaces. Also refreshes the FCM token for opted-in users. */}
             <PushOptIn />
-            {/* v322 — Global Airbnb-style panel switcher. Floating "⇅"
-                pill (hidden only on /auth /onboard /order /kiosk) + a
-                bottom sheet reachable from every panel via the
-                "sb:open-switcher" event (Navbar menu + /me drawer). */}
+            {/* v322.1 — Global Airbnb-style panel switcher. No floating pill
+                (it read as clutter over the reel feed); opened from the menu
+                only — the "Switch experience" entry in the Navbar dropdown +
+                /me drawer fires "sb:open-switcher". Covers the panels linked
+                from the customer frontend (Travel / List Your Hotel / Partner
+                / Circle / Hosts / Creator / Worker / Admin). */}
             <PanelSwitcher />
             {/* v146 — Hybrid AI + agent support widget. Floating bubble,
                 self-hides on admin/partner/onboard/auth + reel-app surfaces. */}
@@ -221,7 +223,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v322</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v322.1</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>

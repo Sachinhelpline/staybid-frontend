@@ -3,14 +3,15 @@
 // PanelSwitcher — global Airbnb-style "Switch experience" (v322)
 //
 // One switcher, reachable from EVERY panel, that lets a signed-in user hop
-// between all StayBid surfaces (Travelling / Hotel Partner / StayCircle /
-// StayBid Hosts / Creator Hub / Worker / Admin).
+// between the StayBid surfaces LINKED from the customer frontend (Travelling /
+// List Your Hotel / Hotel Partner / StayCircle / StayBid Hosts / Creator Hub /
+// Worker / Admin). Standalone tools with no frontend link (e.g. /agent) are
+// intentionally excluded — see lib/panels.ts.
 //
-// Two ways to open it:
-//   • the floating "⇅" pill (mounted globally; self-hides only on chrome-free
-//     routes: /auth /onboard /order /kiosk), and
-//   • a "Switch experience" entry in the Navbar menu + /me drawer, which fire
-//     `window.dispatchEvent(new Event("sb:open-switcher"))`.
+// Opened from the menu (v322.1 — no floating pill; it read as clutter over the
+// reel feed). A "Switch experience" entry lives in the Navbar dropdown + the
+// mobile /me drawer, both firing `window.dispatchEvent(new Event("sb:open-switcher"))`.
+// The sheet + "Switching to X…" splash render globally so any route can open it.
 //
 // Behaviour (locked, see lib/panels.ts):
 //   • joined panel → "Switching to X…" splash → hard nav to its home. Hard nav
@@ -36,10 +37,6 @@ import {
   type SwitchCtx,
 } from "@/lib/panels";
 
-// Routes where the floating pill must not appear (own chrome / chrome-free).
-// The SHEET can still be opened on these via the `sb:open-switcher` event.
-const PILL_HIDE = ["/auth", "/onboard", "/order", "/kiosk"];
-
 function lsHas(key: string): boolean {
   if (typeof window === "undefined") return false;
   try { return !!localStorage.getItem(key); } catch { return false; }
@@ -54,12 +51,15 @@ export default function PanelSwitcher() {
   const [switching, setSwitching] = useState<Panel | null>(null);
   // Token flags are read fresh each time the sheet opens (they can change in
   // another panel/tab). Kept in state so the card list re-renders on open.
-  const [tokens, setTokens] = useState({ partner: false, worker: false, admin: false });
+  const [tokens, setTokens] = useState({
+    partner: false, worker: false, onboard: false, admin: false,
+  });
 
   const readTokens = useCallback(() => {
     setTokens({
       partner: lsHas("sb_partner_token"),
       worker:  lsHas("sb_worker_token"),
+      onboard: lsHas("sb_onboard_token"),
       admin:   lsHas("sb_admin_token"),
     });
   }, []);
@@ -88,6 +88,7 @@ export default function PanelSwitcher() {
     isHotelOwner,
     hasPartnerToken: tokens.partner,
     hasWorkerToken: tokens.worker,
+    hasOnboardToken: tokens.onboard,
     hasAdminToken: tokens.admin,
   }), [pathname, user, isCreator, isHotelOwner, tokens]);
 
@@ -104,26 +105,9 @@ export default function PanelSwitcher() {
     window.setTimeout(() => { window.location.assign(dest); }, 620);
   }, []);
 
-  const pillHidden = PILL_HIDE.some((r) => pathname === r || pathname.startsWith(r + "/"));
-
   return (
     <>
       <SwitcherStyles />
-
-      {/* Floating pill — bottom-left, above the BottomDock, clear of the
-          reel action rail (right) + SupportWidget (bottom-right). */}
-      {!pillHidden && (
-        <button
-          type="button"
-          className="sbps-pill"
-          onClick={doOpen}
-          aria-label="Switch experience"
-          title="Switch experience"
-        >
-          <span className="sbps-pill-ic" aria-hidden>⇅</span>
-          <span className="sbps-pill-txt">Switch</span>
-        </button>
-      )}
 
       {/* Airbnb-style sheet */}
       {open && (
@@ -204,24 +188,6 @@ function SwitcherStyles() {
       // Fixed walnut/champagne palette — theme-independent so it reads on the
       // dark admin canvas AND the light/dark customer surface identically.
       dangerouslySetInnerHTML={{ __html: `
-.sbps-pill{
-  position:fixed; left:14px; z-index:70;
-  bottom:calc(72px + env(safe-area-inset-bottom,0px));
-  display:inline-flex; align-items:center; gap:7px;
-  padding:9px 14px 9px 11px; border-radius:999px;
-  background:linear-gradient(135deg,#2A2417,#1F1A0F);
-  border:1px solid rgba(201,166,107,0.42);
-  color:#F5E9CE; font-size:12.5px; font-weight:700; letter-spacing:.2px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.06);
-  cursor:pointer; -webkit-tap-highlight-color:transparent;
-  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
-}
-.sbps-pill:hover{ transform:translateY(-2px); border-color:rgba(201,166,107,0.7);
-  box-shadow:0 14px 36px rgba(0,0,0,0.5); }
-.sbps-pill:active{ transform:translateY(0) scale(.97); }
-.sbps-pill-ic{ font-size:15px; color:#D9BE82; line-height:1; }
-@media (max-width:520px){ .sbps-pill-txt{ display:none; } .sbps-pill{ padding:11px; } }
-
 .sbps-backdrop{
   position:fixed; inset:0; z-index:9998;
   background:rgba(7,6,4,0.62); backdrop-filter:blur(6px);
