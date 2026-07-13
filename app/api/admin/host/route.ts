@@ -132,6 +132,21 @@ export async function GET(req: NextRequest) {
       itemsByOrder.set(it.order_id, arr);
     }
 
+    // v336 (Circle Phase F) — side-load the provisioned operated hotel's
+    // approval_status so the admin sees whether a provisioned listing is still a
+    // DRAFT (needs "Go Live") or already published to customers. Operated supply
+    // is provisioned as a DRAFT (approval_status='pending') by v309 and only
+    // enters the customer feed once an admin publishes it.
+    const provIds = Array.from(new Set(propSubsU.map((p) => p.provisioned_hotel_id).filter(Boolean)));
+    const provHotels = provIds.length
+      ? await sbGet(`hotels?id=in.(${provIds.map((x) => `"${x}"`).join(",")})&select=id,approval_status,status`).catch(() => [])
+      : [];
+    const provHotelById = Object.fromEntries(provHotels.map((h: any) => [h.id, h]));
+    const propSubsOut = propSubsU.map((p) => ({
+      ...p,
+      _provisionedHotel: p.provisioned_hotel_id ? (provHotelById[p.provisioned_hotel_id] || null) : null,
+    }));
+
     const projectsOut = projectsU.map((p) => ({ ...p, _optionCount: optCount.get(p.id) || 0 }));
     const jobsOut = jobsU.map((j) => ({ ...j, _worker: workerById[j.worker_id] || null }));
     const inquiriesOut = inquiries.map((i) => ({ ...i, _property: propById[i.property_id] || null }));
@@ -183,7 +198,7 @@ export async function GET(req: NextRequest) {
       inquiries: inquiriesOut,
       jobs: jobsOut,
       channels: channelsU,
-      propertySubmissions: propSubsU,
+      propertySubmissions: propSubsOut,
       portfolios: portfoliosU,
     });
   } catch (e: any) {

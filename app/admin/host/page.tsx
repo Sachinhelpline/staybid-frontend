@@ -136,6 +136,30 @@ export default function AdminHost() {
     }
   };
 
+  // v336 (Circle Phase F) — Go Live: publish an already-provisioned operated
+  // host-circle hotel so it enters every customer feed (the single gate is
+  // approval_status='approved'). This is the ops "flip it live" step; the hotel
+  // was provisioned as a DRAFT by v309 and stays owner-invisible.
+  const goLive = async (hotelId: string) => {
+    setBusy(hotelId); setErr("");
+    try {
+      const tok = localStorage.getItem("sb_admin_token") || "";
+      const adminId = adminIdFromLS();
+      const r = await fetch("/api/admin/host/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-token": tok, "x-admin-id": adminId },
+        body: JSON.stringify({ action: "go_live", hotelId }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || "Publish failed");
+      load();
+    } catch (e: any) {
+      setErr(e?.message || "Publish failed");
+    } finally {
+      setBusy("");
+    }
+  };
+
   // v319 — Set up sync: turn a /host/channels request into a real
   // channel_connections (+ ota_feed for iCal URLs) + auto-grant the `channels`
   // service. If the requester owns >1 hotel, the route returns needsHotel so
@@ -266,7 +290,7 @@ export default function AdminHost() {
           <div style={{ overflowX: "auto" }}>
             {tab === "leads" && <LeadsTable rows={data?.leads || []} busy={busy} onStatus={setStatus} />}
             {tab === "portfolios" && <PortfoliosTable rows={data?.portfolios || []} />}
-            {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} onProvision={provision} />}
+            {tab === "properties" && <PropertiesTable rows={data?.propertySubmissions || []} busy={busy} onStatus={setStatus} onProvision={provision} onGoLive={goLive} />}
             {tab === "inquiries" && <InquiriesTable rows={data?.inquiries || []} busy={busy} onStatus={setStatus} />}
             {tab === "projects" && <ProjectsTable rows={data?.projects || []} />}
             {tab === "orders" && <OrdersTable rows={data?.orders || []} busy={busy} onStatus={setStatus} />}
@@ -373,7 +397,7 @@ function PortfoliosTable({ rows }: { rows: any[] }) {
   );
 }
 
-function PropertiesTable({ rows, busy, onStatus, onProvision }: TableProps) {
+function PropertiesTable({ rows, busy, onStatus, onProvision, onGoLive }: TableProps) {
   if (!rows.length) return <Empty label="No property listings submitted yet." />;
   // Pending-review first, then everything else — newest within each group.
   const sorted = [...rows].sort((a, b) => {
@@ -419,14 +443,38 @@ function PropertiesTable({ rows, busy, onStatus, onProvision }: TableProps) {
               <Td><StatusPicker source="property" id={r.id} status={r.status} busy={busy} onStatus={onStatus} /></Td>
               <Td>
                 {r.provisioned_hotel_id ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    <span style={{ ...pill, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
-                    <a href={`/hotels/${r.provisioned_hotel_id}`} target="_blank" rel="noreferrer" style={{ color: "#8A8FA8", fontSize: 10, textDecoration: "none" }}>{r.provisioned_hotel_id} ↗</a>
-                    {onProvision && (
-                      <button disabled={busy === r.id} onClick={() => onProvision(r.id)} title="Re-run provisioning (idempotent — syncs rooms/units)"
-                        style={{ ...miniBtn, background: "transparent", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.18)", fontSize: 10 }}>↻ Re-sync</button>
-                    )}
-                  </div>
+                  (() => {
+                    // v336 (Circle Phase F) — a provisioned listing is a DRAFT
+                    // operated hotel until an admin publishes it. Show "Go Live"
+                    // while pending, a green "Live on StayBid" chip once approved.
+                    const live = r._provisionedHotel?.approval_status === "approved";
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <span style={{ ...pill, background: "rgba(212,175,55,0.15)", color: "#D4AF37", borderColor: "rgba(212,175,55,0.4)", whiteSpace: "nowrap" }}>🏨 Provisioned</span>
+                        {live ? (
+                          <>
+                            <span style={{ ...pill, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)", whiteSpace: "nowrap" }}>✓ Live on StayBid</span>
+                            <a href={`/hotels/${r.provisioned_hotel_id}`} target="_blank" rel="noreferrer" style={{ color: "#8A8FA8", fontSize: 10, textDecoration: "none" }}>{r.provisioned_hotel_id} ↗</a>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ color: "#8A8FA8", fontSize: 10, whiteSpace: "nowrap" }}>Draft · not live yet</span>
+                            {onGoLive && (
+                              <button disabled={busy === r.provisioned_hotel_id} onClick={() => onGoLive(r.provisioned_hotel_id)}
+                                title="Publish the operated hotel to customers (approval — enters every customer feed)"
+                                style={{ ...miniBtn, background: "rgba(34,197,94,0.15)", color: "#22C55E", borderColor: "rgba(34,197,94,0.4)" }}>
+                                {busy === r.provisioned_hotel_id ? "…" : "🚀 Go Live"}
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {onProvision && (
+                          <button disabled={busy === r.id} onClick={() => onProvision(r.id)} title="Re-run provisioning (idempotent — syncs rooms/units)"
+                            style={{ ...miniBtn, background: "transparent", color: "#8A8FA8", borderColor: "rgba(255,255,255,0.18)", fontSize: 10 }}>↻ Re-sync</button>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {isPending && (
@@ -596,7 +644,7 @@ function ChannelsTable({ rows, busy, onStatus, onSetup }: TableProps) {
 
 /* ── Shared bits ─────────────────────────────────────────────────────── */
 
-type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void; onProvision?: (id: string) => void; onSetup?: (id: string, hotelId?: string) => void };
+type TableProps = { rows: any[]; busy: string; onStatus: (s: string, id: string, st: string) => void; onProvision?: (id: string) => void; onGoLive?: (hotelId: string) => void; onSetup?: (id: string, hotelId?: string) => void };
 
 function StatusPicker({ source, id, status, busy, onStatus }:
   { source: string; id: string; status?: string; busy: string; onStatus: (s: string, id: string, st: string) => void }) {

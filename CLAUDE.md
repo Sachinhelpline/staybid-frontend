@@ -11617,3 +11617,106 @@ exactly what must never exist):
   channel sync engine, availability engine, host vertical data model, revenue
   ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic (E is
   additive copy/disclosure on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase F: Operated-Only Supply Growth "Go Live" (v336, 2026-07-13)
+
+FINAL phase of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§F). §F is intentionally light — most infra landed at **v309** (Host
+Property-Listing Phase 4): admin **"🏨 Approve + Provision"** turns a
+`discovery_properties` listing into a REAL operated `hotels` row
+(`owner_type='host_circle'`, per-property `hco_<propId>` owner id,
+`account_type='staybid_operated'`, rooms + `hotel_room_units` stamped to the
+lister → `/partner/dashboard` access via the `resolveOperatedHotelIds` scope
+union). Provisioned as a **DRAFT** (`isActive=false`, `status='draft'`,
+`approval_status='pending'`). **No migration** — v336 reuses everything v309
+built.
+
+### The gap v336 closes (the two-disconnected-admin-pages seam)
+The provisioned hotel is a DRAFT hidden from customers. Publishing it lived on a
+DIFFERENT page (`/admin/hotels` v262 "Approve & Go Live") from where it was
+provisioned (`/admin/host`). An admin who provisioned a listing had no in-page
+path to flip it live — they had to hunt for the hotel on `/admin/hotels`. v336
+adds a one-tap **"🏨 Go Live"** on the `/admin/host` provisioned row.
+
+### CRITICAL VERIFIED FACT (grep across every customer-feed route)
+**`approval_status='approved'` is the SINGLE customer-feed gate** on
+`/api/hotels`, `/api/discover/feed`, `/api/flash/near`, `/api/circle/resale`.
+`hotels.isActive` / `status` / `isVerified` / `published_at` are NOT feed gates.
+(`/api/flash/near`'s `isActive=eq.true` filter is on the `flash_deals` table,
+not `hotels`.) So the v262 approve already publishes host-circle hotels — v336
+only surfaces that action from the provisioning page.
+
+### What shipped (all additive, 3 edits, no migration)
+- **`app/api/admin/host/provision/route.ts`** — new `go_live` action branch at
+  the top of POST (before the existing `propertyId` provision flow):
+  `{action:"go_live", hotelId}` → loads the hotel (`id,owner_type,approval_status`),
+  404 if missing, **400 if `owner_type !== 'host_circle'`** (the guard — can
+  NEVER publish an arbitrary classic hotel), then PATCHes
+  `approval_status='approved'` + `status='active'` + `isVerified=true` +
+  `published_at=now()` — byte-identical fields to the v262 `/admin/hotels`
+  approve. Never touches `ownerId`/`owner_type` (owner-invisible preserved).
+  `logAdminAction` action `host_hotel_go_live`.
+- **`app/api/admin/host/route.ts` GET** — side-loads the provisioned hotel's
+  `approval_status`/`status` (`provIds` from `propertySubmissions.provisioned_hotel_id`
+  → `hotels?id=in.(…)&select=id,approval_status,status`, NO FK embed) → attaches
+  `_provisionedHotel` to each row so the admin UI knows DRAFT vs published. KPIs
+  still use `propSubsU` (status-based, unaffected).
+- **`app/admin/host/page.tsx`** — `goLive(hotelId)` handler (POSTs `go_live`,
+  `setBusy(hotelId)`, `load()` on success); `onGoLive` prop threaded through
+  `TableProps` + `PropertiesTable`. Provisioned-row block is now an IIFE: if
+  `_provisionedHotel.approval_status==='approved'` → "✓ Live on StayBid" chip +
+  hotel link; else → "Draft · not live yet" + **🚀 Go Live** button (+ ↻ Re-sync
+  for the idempotent re-provision).
+- `SB_BUILD v335→v336`, badge v336, `HTML_CACHE v148→v149`.
+
+### Verified (live round-trip against `uxxhbdqedazpmvbvaosh`, cleaned up — 0 leftover)
+Seeded `hcp_v336test` (host-circle DRAFT hotel, `approval_status='pending'`,
+`account_type='staybid_operated'`, `owner_id='hco_v336test'`) +
+`clsc_v336test` (classic hotel, for the guard test) + `dp_v336test`
+(discovery_properties listing linked via `provisioned_hotel_id`). **All 10
+asserts PASSED:** `a_before_status:"pending"` · `b_classic_owner_type:null` ·
+`c_sideload_hit:1` (the `/api/admin/host` GET side-load surfaces the DRAFT) ·
+`d_after_status:"approved"` (go_live PATCH) · `e_feed_hit:1` (the exact
+`/api/hotels` approved-gate SELECT now returns it) · `f_classic_unchanged:"pending"`
+(the `owner_type='host_circle'` guard BLOCKED publishing the classic hotel) ·
+`g_owner_type_kept:"host_circle"` · `h_ownerid_kept:"hco_v336test"`
+(owner-invisible preserved) · `leftover_hotels:0` · `leftover_props:0`. Test rows
+deleted. `tsc --noEmit --skipLibCheck` exit 0, `npm run build` exit 0
+(`/api/admin/host/provision` + `/api/admin/host` + `/admin/host` compiled).
+
+### Things to Avoid (Circle Phase F)
+- **Never** let `go_live` publish a hotel that isn't `owner_type='host_circle'`
+  — the 400 guard is the ONLY thing stopping a `/admin/host` action from
+  approving an arbitrary classic hotel (which belongs on `/admin/hotels`).
+- **Never** touch `ownerId`/`owner_type` in the go_live PATCH — publishing must
+  preserve the per-property `hco_<propId>` owner id + the `host_circle`
+  discriminator (owner-invisible; the lister keeps dashboard access via the
+  `hotel_room_units.owner_user_id` scope union, not ownerId).
+- **Never** add a feed gate other than `approval_status='approved'` and expect
+  it to hide a provisioned hotel — verified: `isActive`/`status`/`isVerified`/
+  `published_at` are NOT customer-feed gates. The DRAFT stays hidden ONLY
+  because `approval_status='pending'`; go_live flips it to `approved`.
+- **Never** point the `_provisionedHotel` side-load at a PostgREST FK embed —
+  no FK exists; manual `hotels?id=in.(…)&select=id,approval_status,status`.
+- **Never** provision a hotel as `isActive=true` / `approval_status='approved'`
+  at v309 provision time — it must stay DRAFT until an admin explicitly taps Go
+  Live, or an un-ready operated hotel leaks into the customer feed.
+
+### Updated production state (v336, 2026-07-13)
+- **Current version:** v336 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (reuses v309's `hotels.owner_type` + `discovery_properties.
+  provisioned_hotel_id`). `tsc` clean, `next build` green, F live round-trip
+  passed (10 asserts, 0 leftover).
+- **Circle phase plan — COMPLETE:** A per-unit autopilot (v325) ✅ · B per-unit
+  OTA (v326) ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1–D4 Model-4 B2B
+  exchange (v331–v334) ✅ · E Model-1 expected-income language (v335) ✅ ·
+  **F operated-only supply growth Go Live (v336) ✅**. The entire StayBid Circle
+  Multi-Investor expansion (blueprint A–F) is delivered.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, revenue
+  ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic, the
+  v309 `provisionListing` flow (F is additive publish-action + admin-UI surface
+  on top).

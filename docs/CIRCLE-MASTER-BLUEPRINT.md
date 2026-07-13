@@ -130,9 +130,16 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
   shared constant; Model-3 resale risk note added to `CircleInventoryTab`.
   Copy + disclosure only; no new table, no engine/route change. `tsc` + `next
   build` clean.
-- [ ] **Phase F — Operated-only supply growth.** Already ready via v309
-  host-circle provisioning; investors list their own property → admin approve →
-  operated, owner-invisible.
+- [x] **Phase F — Operated-only supply growth (v336).** Provisioning landed at
+  v309 (approve → operated host-circle hotel + lister dashboard access); v336
+  closes the two-disconnected-admin-pages seam by adding a one-tap **"🏨 Go
+  Live"** on the `/admin/host` provisioned listing that publishes the DRAFT
+  operated hotel to customers (`approval_status='approved'` + `status='active'`
+  + `isVerified` + `published_at` — byte-identical to the v262 `/admin/hotels`
+  approve). Guarded to `owner_type='host_circle'`; never touches ownerId/
+  owner_type (owner-invisible preserved). `approval_status` is the SINGLE
+  customer-feed gate across `/api/hotels`, `/api/discover/feed`,
+  `/api/flash/near`, `/api/circle/resale`. **Circle expansion COMPLETE.**
 
 ### Legal framing (biggest blocker, not code)
 Order chosen for legal safety: Model 3 (commerce) → Model 4 (intermediary) →

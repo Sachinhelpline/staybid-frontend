@@ -438,7 +438,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // surface now reads "expected, based on actual bookings, never guaranteed"
 // (the "guaranteed monthly inflow" copy is gone). Drops stale cached
 // partner-dashboard + /circle HTML that still shows the old wording.
-const HTML_CACHE = 'staybid-html-v148';
+// v336 — one-time HTML_CACHE bump (v148 -> v149). Circle Phase F: operated
+// supply growth — the /admin/host Property Listings tab gains a one-tap
+// "🚀 Go Live" on a provisioned (DRAFT) host-circle hotel, so the list →
+// provision → publish journey completes from one admin surface. Drops stale
+// cached /admin/host HTML that lacks the Go Live control.
+const HTML_CACHE = 'staybid-html-v149';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
