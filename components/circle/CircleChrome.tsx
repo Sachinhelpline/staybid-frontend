@@ -15,6 +15,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
 // Dark app-shell routes carry the dark glass topbar (desktop) + no footer.
 // v294.15 — the dashboard is now a LIGHT cream + sage "account" surface (ss3
@@ -128,7 +129,7 @@ export function CircleFooter() {
         </div>
       </div>
       <div className="sbc-footer-bar">
-        Returns shown are indicative projections based on property performance bands — not guaranteed. © StayBid.
+        {CIRCLE_INCOME_DISCLOSURE} © StayBid.
       </div>
     </footer>
   );

@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
+import { CIRCLE_RESALE_RISK_NOTE } from "@/lib/circle/disclosure";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -435,6 +436,9 @@ export default function CircleInventoryTab({
           price and keep the margin. Bought nights stay held until a guest reserves. Listed nights
           <b> auto-mark-down</b> as check-in nears (never below your cost); opt into <b>platform buyback</b>
           to recover your wholesale cost if a block stays unsold.
+        </p>
+        <p className="text-[11px] mt-1.5 leading-snug" style={{ color: "var(--text-muted)" }}>
+          ⚠ {CIRCLE_RESALE_RISK_NOTE}
         </p>
       </div>
 

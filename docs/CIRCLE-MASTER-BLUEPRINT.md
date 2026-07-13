@@ -120,9 +120,16 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
     both obligations (`inventory_sales.payout_status` owed→paid + buyback owed→paid).
 - [ ] **Phase D — Model 4 B2B exchange.** `b2b_listings` / `b2b_trades` /
   `settlement_ledger`. Fees via `service_pricing` reuse. B2B-only (SEBI-safe).
-- [ ] **Phase E — Model 1 "expected income" language.** UI/legal migration to
-  "expected, no guarantee" (ledger already actual-performance-based). Copy +
-  disclosure only; no new table.
+- [x] **Phase E — Model 1 "expected income" language (v335).** UI/legal
+  migration to "expected, no guarantee" DONE. New `lib/circle/disclosure.ts`
+  (4 canonical constants: `CIRCLE_INCOME_DISCLOSURE` / `CIRCLE_INCOME_SHORT` /
+  `CIRCLE_RESALE_RISK_NOTE` / `CIRCLE_PAYOUTS_LABEL`). Killed the one genuine
+  "guaranteed monthly inflow" violation (`PartnerCircleTab`); `/circle/me`
+  heading "Monthly Returns" → "Monthly Payouts" + disclosure; layout metadata +
+  onboard sub softened; CircleChrome/build/support footers consolidated to the
+  shared constant; Model-3 resale risk note added to `CircleInventoryTab`.
+  Copy + disclosure only; no new table, no engine/route change. `tsc` + `next
+  build` clean.
 - [ ] **Phase F — Operated-only supply growth.** Already ready via v309
   host-circle provisioning; investors list their own property → admin approve →
   operated, owner-invisible.

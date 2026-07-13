@@ -433,7 +433,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // v334 — one-time HTML_CACHE bump (v146 -> v147). Circle multi-investor Phase D4:
 // dynamic B2B markdown badge on listed exchange listings + admin exchange
 // oversight (expire/cancel listings). Drops stale cached partner + admin HTML.
-const HTML_CACHE = 'staybid-html-v147';
+// v335 — one-time HTML_CACHE bump (v147 -> v148). Circle Phase E: Model-1
+// "expected income" legal language — every StayCircle income/return/payout
+// surface now reads "expected, based on actual bookings, never guaranteed"
+// (the "guaranteed monthly inflow" copy is gone). Drops stale cached
+// partner-dashboard + /circle HTML that still shows the old wording.
+const HTML_CACHE = 'staybid-html-v148';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

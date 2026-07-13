@@ -13,6 +13,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
 const WA = "https://wa.me/918881555188?text=";
 const wa = (msg: string) => `${WA}${encodeURIComponent(msg)}`;
@@ -101,7 +102,7 @@ export default function CircleSupportPage() {
       </section>
 
       <p className="sbc-set-foot" style={{ textAlign: "center" }}>
-        Returns shown across StayCircle are indicative projections based on property performance bands — not guaranteed.
+        {CIRCLE_INCOME_DISCLOSURE}
       </p>
 
       <div style={{ height: "calc(84px + env(safe-area-inset-bottom, 0px))" }} />

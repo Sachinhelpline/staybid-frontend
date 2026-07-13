@@ -11520,3 +11520,100 @@ compiled: `/admin/circle-inventory`, `/api/admin/circle-inventory`,
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model, Model-3
   C1–C4 + D1–D3 logic (D4 is additive lifecycle/admin on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase E: Model 1 "Expected Income" Legal Language (v335, 2026-07-13)
+
+Phase E of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§E). **COPY + DISCLOSURE ONLY — no new table, no engine change, no route
+change.** The revenue ledger was already actual-performance-based
+(`/api/circle/me` payouts, `computeBundle` projections); Phase E migrates the
+UI language everywhere to "expected / based on actual bookings / never
+guaranteed" so no StayCircle surface ever reads as a promised return.
+
+**The locked rule (blueprint §"Legal framing"):** NEVER "guaranteed / assured
+/ fixed / risk-free" returns. ALWAYS "expected / based on actual bookings /
+indicative projection / not guaranteed".
+
+### The one genuine violation (fixed)
+`components/partner/PartnerCircleTab.tsx` empty-state read **"you get
+guaranteed monthly inflow per invested room"** — the exact banned phrase.
+Rewritten to *"earn from actual bookings — expected monthly inflow per
+invested room, based on real bookings and property performance"* + a
+`CIRCLE_INCOME_DISCLOSURE` footnote. The KPI tile label **"Monthly inflow" →
+"Expected inflow"**, and the disclosure footnote also renders under the KPI
+strip (covers the populated state, which shows the number + "projected ROI").
+
+### The canonical source of truth (NEW)
+`lib/circle/disclosure.ts` — four exported constants so no surface ever writes
+a disclosure string inline again (a hardcoded "guaranteed monthly inflow" is
+exactly what must never exist):
+- `CIRCLE_INCOME_DISCLOSURE` — full footer/panel-length Model-1 disclosure.
+- `CIRCLE_INCOME_SHORT` — short inline qualifier after any income/ROI number.
+- `CIRCLE_RESALE_RISK_NOTE` — Model-3 pre-buy "unsold-inventory risk is yours"
+  note (goods trade, not an investment scheme).
+- `CIRCLE_PAYOUTS_LABEL = "Monthly Payouts"` — canonical ledger heading
+  (never "Returns").
+
+### Surfaces updated (all additive, copy-only)
+- **`components/partner/PartnerCircleTab.tsx`** — the violation fix above +
+  disclosure footnotes (empty + populated states).
+- **`app/circle/me/page.tsx`** — payout ledger heading **"Monthly Returns" →
+  `CIRCLE_PAYOUTS_LABEL` ("Monthly Payouts")** + `CIRCLE_INCOME_DISCLOSURE`
+  sub-line.
+- **`app/circle/layout.tsx`** — page `metadata.description` "earn monthly
+  returns" → "earn expected monthly income from real bookings (never
+  guaranteed)".
+- **`app/circle/onboard/page.tsx`** — form sub "monthly returns" → "expected
+  monthly income".
+- **`components/circle/CircleChrome.tsx`** · **`app/circle/build/page.tsx`** ·
+  **`app/circle/support/page.tsx`** — the ad-hoc "indicative projections … not
+  guaranteed" footers (ALREADY compliant) consolidated to the shared
+  `CIRCLE_INCOME_DISCLOSURE` constant (DRY; prevents future drift). The support
+  FAQ inline answer (line 23) left inline — already compliant, mid-sentence
+  `<b>` context.
+- **`components/partner/CircleInventoryTab.tsx`** (Model-3) — added the
+  `CIRCLE_RESALE_RISK_NOTE` under the "Pre-buy Inventory · Model 3" intro so
+  the investor sees "unsold-inventory risk is yours" plainly.
+- `SB_BUILD v334→v335`, badge v335, `HTML_CACHE v147→v148`.
+
+### Audited-and-left (NOT violations)
+- `lib/user-links.ts` / `lib/panels.ts` nav sub-labels ("earn monthly
+  returns"/"earn monthly") — industry-neutral, not a guarantee; left.
+- Host vertical (`app/host/build/page.tsx`, `lib/host/journey-data.ts`) already
+  reads "indicative, not guaranteed" — compliant, separate vertical, untouched.
+- "Best Price Guaranteed" / "cheapest guaranteed" (hotel page, /bid, tutorial,
+  kiosk) — those are LOWEST-PRICE promises, unrelated to investment returns;
+  left. Same for "guaranteed JSON"/"guaranteed unique" code comments.
+
+### Verified
+- `tsc --noEmit --skipLibCheck` clean (only pre-existing `_home-luxury-backup`)
+  · `next build` exit 0 (all `/circle/*` + partner surfaces compile).
+- No DB migration, no route change, no engine change — pure copy + a new pure
+  constants lib.
+
+### Things to Avoid (Circle Phase E)
+- **Never** write "guaranteed / assured / fixed / risk-free" alongside a
+  StayCircle income/return/payout number — the banned framing. Import from
+  `lib/circle/disclosure.ts` instead of writing a disclosure inline.
+- **Never** relabel the payout ledger as "Returns" — it's `CIRCLE_PAYOUTS_LABEL`
+  ("Monthly Payouts"); payouts reflect real revenue only.
+- **Never** treat Phase E as a data/engine change — the ledger was already
+  actual-performance-based; Phase E is the LANGUAGE migration only.
+- **Never** drop the `CIRCLE_RESALE_RISK_NOTE` from the Model-3 pre-buy surface
+  — pre-buying to resell carries unsold-inventory risk that must be stated.
+
+### Updated production state (v335, 2026-07-13)
+- **Current version:** v335 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration. `tsc` clean, `next build` green.
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1–D4 Model-4 B2B exchange
+  (v331–v334) ✅ · **E Model-1 expected-income language (v335) ✅** · F operated
+  supply growth. **Model 1 + Model 3 + Model 4 legal framing all locked. STOP
+  at Phase E — do NOT start Phase F without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, revenue
+  ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic (E is
+  additive copy/disclosure on top).

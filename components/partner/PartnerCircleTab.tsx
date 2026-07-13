@@ -6,6 +6,7 @@
 // contact + user_id) — the partner sees rooms + inflow, never personal data.
 import { useEffect, useState } from "react";
 import { fmtINR, type PaymentPlanKey, CIRCLE_PLANS } from "@/lib/circle/engine";
+import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
 type RoomType = {
   id: string;
@@ -102,7 +103,7 @@ export default function PartnerCircleTab() {
             { label: "Linked properties", value: String(kpis.linked ?? 0) },
             { label: "Investor bundles", value: String(kpis.investorBundles ?? 0) },
             { label: "Rooms invested", value: String(kpis.investedRooms ?? 0) },
-            { label: "Monthly inflow", value: fmtINR(kpis.monthlyInflow || 0) },
+            { label: "Expected inflow", value: fmtINR(kpis.monthlyInflow || 0) },
           ].map((k) => (
             <div key={k.label} className="rounded-2xl border border-luxury-100 bg-white px-4 py-3 shadow-sm">
               <div className="text-lg font-bold text-luxury-900" style={{ fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
@@ -112,15 +113,23 @@ export default function PartnerCircleTab() {
         </div>
       )}
 
+      {kpis && (
+        <p className="text-[10px] leading-snug text-luxury-400">{CIRCLE_INCOME_DISCLOSURE}</p>
+      )}
+
       {/* Empty state — no circle property linked to this hotel yet */}
       {properties.length === 0 ? (
         <div className="rounded-2xl border border-luxury-100 bg-white p-8 text-center shadow-sm">
           <div className="text-3xl">◎</div>
           <h3 className="mt-2 font-display text-lg font-semibold text-luxury-900">Not on StayCircle yet</h3>
           <p className="mx-auto mt-1 max-w-md text-xs text-luxury-500">
-            StayCircle lets community partners invest in your rooms and earn monthly returns —
-            you get guaranteed monthly inflow per invested room. The StayBid team curates the
-            listings; contact support to get your property listed.
+            StayCircle lets community partners invest in your rooms and earn from actual
+            bookings — you get expected monthly inflow per invested room, based on real
+            bookings and property performance. The StayBid team curates the listings; contact
+            support to get your property listed.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-[10px] leading-snug text-luxury-400">
+            {CIRCLE_INCOME_DISCLOSURE}
           </p>
         </div>
       ) : (

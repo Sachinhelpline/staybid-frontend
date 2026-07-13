@@ -108,7 +108,7 @@ export default function CircleOnboardPage() {
         <div className="sbc-onb-eyebrow">🏡 StayCircle™ · List your property</div>
         <h1 className="sbc-onb-title">Put your property in front of investors</h1>
         <p className="sbc-onb-sub">
-          Add your property, its room categories and monthly returns. Our team
+          Add your property, its room categories and expected monthly income. Our team
           reviews every listing before it goes live in the StayCircle investment
           feed — usually within 1–2 working days.
         </p>
