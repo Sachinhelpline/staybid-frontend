@@ -42,6 +42,16 @@ type Quote = {
   avgResalePerNight: number; feePct: number; estFeeOnSuggested: number; estInvestorNetOnSuggested: number;
 };
 type AtResale = { resaleTotal: number; feeTotal: number; buyTotal: number; investorNet: number };
+// v331 (D1) — Model 4 B2B exchange: a listing of an OWNED block for another investor.
+type B2bSplit = {
+  nights: number; askPerNight: number; askTotal: number; platformFeePct: number;
+  platformFee: number; sellerNet: number; buyTotal: number; sellerMargin: number;
+};
+type B2bListing = {
+  id: string; block_id: string; unit_id: string; date_from: string; date_to: string;
+  nights: number; ask_per_night: number; ask_total: number; platform_fee_pct: number;
+  status: string; unit_number?: string | null; hotel_name?: string | null; split?: B2bSplit;
+};
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -53,6 +63,7 @@ const STATUS_STYLE: Record<string, string> = {
   expired: "bg-slate-100 text-slate-400",
   cancelled: "bg-rose-100 text-rose-600",
   refunded: "bg-rose-100 text-rose-600",
+  withdrawn: "bg-slate-100 text-slate-400",
 };
 
 export default function CircleInventoryTab({
@@ -77,6 +88,9 @@ export default function CircleInventoryTab({
   const [toast, setToast] = useState("");
   // v329 — C3: per-block resale-price draft for the "List for resale" input.
   const [listDraft, setListDraft] = useState<Record<string, string>>({});
+  // v331 — D1: Model 4 B2B exchange — my listings + per-block ask/night draft.
+  const [b2bListings, setB2bListings] = useState<B2bListing[]>([]);
+  const [b2bDraft, setB2bDraft] = useState<Record<string, string>>({});
 
   useEffect(() => { if (!unitId && units[0]) setUnitId(units[0].id); }, [units, unitId]);
 
@@ -95,6 +109,67 @@ export default function CircleInventoryTab({
   }, [hotelId]);
 
   useEffect(() => { loadBlocks(); }, [loadBlocks]);
+
+  // v331 — D1: load the caller's B2B exchange listings for this hotel.
+  const loadB2b = useCallback(async () => {
+    const token = getToken();
+    if (!token || !hotelId) return;
+    try {
+      const r = await fetch(`/api/b2b/listings?hotelId=${encodeURIComponent(hotelId)}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      if (Array.isArray(d.listings)) setB2bListings(d.listings);
+    } catch { /* ignore */ }
+  }, [hotelId]);
+
+  useEffect(() => { loadB2b(); }, [loadB2b]);
+
+  // v331 — D1: list an OWNED block on the B2B exchange at the seller's ask.
+  async function listB2b(b: Block) {
+    const raw = b2bDraft[b.id] ?? "";
+    const ask = Math.round(Number(raw));
+    if (!Number.isFinite(ask) || ask <= 0) { flash("Enter a B2B ask price per night."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/b2b/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ blockId: b.id, askPerNight: ask }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { flash(d?.error || "List failed"); return; }
+      flash("Listed on the B2B exchange ✓");
+      setB2bDraft((s) => ({ ...s, [b.id]: "" }));
+      loadB2b();
+    } catch { flash("List failed"); }
+    finally { setBusy(false); }
+  }
+
+  // v331 — D1: withdraw an active B2B listing (frees the block to re-list).
+  async function withdrawB2b(id: string) {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/b2b/listings?id=${encodeURIComponent(id)}`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { flash(d?.error || "Withdraw failed"); return; }
+      flash("Withdrawn from exchange");
+      loadB2b();
+    } catch { flash("Withdraw failed"); }
+    finally { setBusy(false); }
+  }
+
+  // Block ids that already have an active (listed/draft) B2B listing — used to
+  // show "already on exchange" instead of the list input on an owned block.
+  const activeB2bByBlock = useMemo(() => {
+    const m: Record<string, B2bListing> = {};
+    for (const l of b2bListings) {
+      if (["draft", "listed"].includes(String(l.status))) m[l.block_id] = l;
+    }
+    return m;
+  }, [b2bListings]);
 
   async function getQuote() {
     if (!unitId || !from || !to || to <= from) { flash("Pick a room and a valid date range."); return; }
@@ -394,16 +469,39 @@ export default function CircleInventoryTab({
                     </button>
                   )}
                   {b.status === "owned" && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] opacity-60">₹</span>
-                      <input type="number" min={0} placeholder="resale/night"
-                        value={listDraft[b.id] ?? (b.resale_price_per_night ? String(b.resale_price_per_night) : "")}
-                        onChange={(e) => setListDraft((s) => ({ ...s, [b.id]: e.target.value }))}
-                        className="w-24 rounded-lg border px-2 py-1 text-xs" style={{ borderColor: "var(--border-soft)" }} />
-                      <button disabled={busy} onClick={() => listResale(b)}
-                        className="text-xs px-2.5 py-1 rounded-lg font-semibold text-white" style={{ background: "var(--accent)" }}>
-                        List for resale
-                      </button>
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] opacity-60">₹</span>
+                        <input type="number" min={0} placeholder="resale/night"
+                          value={listDraft[b.id] ?? (b.resale_price_per_night ? String(b.resale_price_per_night) : "")}
+                          onChange={(e) => setListDraft((s) => ({ ...s, [b.id]: e.target.value }))}
+                          className="w-24 rounded-lg border px-2 py-1 text-xs" style={{ borderColor: "var(--border-soft)" }} />
+                        <button disabled={busy} onClick={() => listResale(b)}
+                          className="text-xs px-2.5 py-1 rounded-lg font-semibold text-white" style={{ background: "var(--accent)" }}>
+                          List for resale
+                        </button>
+                      </div>
+                      {/* v331 — D1: OR trade to another investor on the B2B exchange. */}
+                      {activeB2bByBlock[b.id] ? (
+                        <span className="text-[11px] px-2 py-1 rounded-lg font-medium bg-indigo-50 text-indigo-600"
+                          title={`On the B2B exchange at ${inr(activeB2bByBlock[b.id].ask_per_night)}/night`}>
+                          ⇄ On exchange · {inr(activeB2bByBlock[b.id].ask_total)}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1.5"
+                          title="Sell this owned block to another investor at your own B2B price (StayBid takes a small fee).">
+                          <span className="text-[10px] opacity-60">⇄ ₹</span>
+                          <input type="number" min={0} placeholder="B2B ask/night"
+                            value={b2bDraft[b.id] ?? ""}
+                            onChange={(e) => setB2bDraft((s) => ({ ...s, [b.id]: e.target.value }))}
+                            className="w-24 rounded-lg border px-2 py-1 text-xs" style={{ borderColor: "var(--border-soft)" }} />
+                          <button disabled={busy} onClick={() => listB2b(b)}
+                            className="text-xs px-2.5 py-1 rounded-lg font-semibold border"
+                            style={{ borderColor: "var(--border-strong)", color: "var(--text-base)" }}>
+                            List on exchange
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   {b.status === "listed" && (
@@ -413,6 +511,62 @@ export default function CircleInventoryTab({
                     </button>
                   )}
                   {b.status === "sold" && (
+                    <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Sold ✓</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* v331 — D1: Model 4 B2B exchange listings (this investor's offers). */}
+      <div className="mt-7">
+        <div className="mb-2">
+          <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
+            ⇄ B2B Exchange <span className="text-xs font-normal opacity-60">· Model 4</span>
+          </div>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+            Sell an <b>owned</b> block to another investor at your own B2B price — a faster exit than waiting
+            for a guest. StayBid takes a small platform fee; you keep the rest.
+          </p>
+        </div>
+        {b2bListings.length === 0 ? (
+          <div className="text-sm opacity-60">
+            No exchange listings yet. Use <b>List on exchange</b> on an owned block above.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {b2bListings.map((l) => (
+              <div key={l.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
+                style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
+                <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[l.status] || "bg-slate-100 text-slate-600"}`}>
+                  {l.status.replace(/_/g, " ")}
+                </span>
+                <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
+                  #{l.unit_number || l.unit_id}
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {l.date_from} → {l.date_to} · {l.nights}n
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-soft)" }}>
+                  ask {inr(l.ask_total)} ({inr(l.ask_per_night)}/n)
+                </span>
+                {l.split && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600"
+                    title={`Buyer pays ${inr(l.split.askTotal)} · StayBid fee ${l.split.platformFeePct}% = ${inr(l.split.platformFee)} · you receive ${inr(l.split.sellerNet)}`}>
+                    you get {inr(l.split.sellerNet)}
+                    {l.split.buyTotal > 0 ? ` · margin ${inr(l.split.sellerMargin)}` : ""}
+                  </span>
+                )}
+                <div className="ml-auto flex gap-2">
+                  {["draft", "listed"].includes(l.status) && (
+                    <button disabled={busy} onClick={() => withdrawB2b(l.id)}
+                      className="text-xs px-2.5 py-1 rounded-lg border font-medium" style={{ borderColor: "var(--border-soft)" }}>
+                      Withdraw
+                    </button>
+                  )}
+                  {l.status === "sold" && (
                     <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Sold ✓</span>
                   )}
                 </div>

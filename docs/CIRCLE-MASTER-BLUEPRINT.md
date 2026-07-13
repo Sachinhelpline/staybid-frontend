@@ -628,3 +628,99 @@ routes compiled). `SB_BUILD v329→v330`, badge v330, `HTML_CACHE v142→v143`.
 C4 completes Model 3 (pre-buy commerce). **Do NOT start Phase D (Model 4 B2B
 exchange) without Sachin's "continue".** Same discipline as C1/C2/C3 + the
 Channel Manager phases.
+
+---
+
+## Phase D1 — Model 4 B2B Exchange Foundation (v331, 2026-07-13)
+
+Model 4 = intermediary commerce (a B2B exchange). An investor who OWNS Model-3
+inventory (an `inventory_blocks` row in `owned` status — bounded date-range
+goods, SEBI-safe) LISTS it at their own B2B ask; ANOTHER investor buys it.
+StayBid is the platform + takes a fee. B2B-only (no retail) → far from SEBI/CIS.
+
+**D1 is the INERT ADDITIVE FOUNDATION only** (mirrors C1): schema (3 tables) +
+pure fee engine + owner-scoped listing CRUD + investor UI. **NO trade
+execution, NO Razorpay, NO ownership transfer, NO settlement, NO marketplace
+browse** — those are D2/D3/D4.
+
+### Migration `2026-07-13-v331-phase-d1-b2b-exchange.sql` (applied live)
+Three tables — only `b2b_listings` is written by D1; the other two are
+created-but-unused (future-proof, mirrors C1's unused razorpay columns):
+- **`b2b_listings`** (`b2bl_` ids) — the offer. `block_id`, `seller_user_id`
+  (= block's `investor_user_id`), hotel/unit/room, date range, `nights`,
+  `ask_per_night`/`ask_total`, `buy_total` (cost snapshot), `platform_fee_pct`
+  (FROZEN server-side), `status` ∈ {draft,listed,sold,cancelled,withdrawn,
+  expired} DEFAULT listed, `metadata`. `b2b_listings_range_chk` (date_to >
+  date_from AND nights > 0). 4 indexes + **`uniq_b2b_listing_active_block`
+  UNIQUE (block_id) WHERE status IN (draft,listed)** — at most ONE active
+  listing per owned block.
+- **`b2b_trades`** (`b2bt_` ids, D2/D3) — buyer purchase; `uniq_b2b_trade_
+  listing_completed` UNIQUE (listing_id) WHERE status='completed' (a listing
+  sells once) + 4 indexes.
+- **`settlement_ledger`** (`setl_` ids, D3) — generic money-routing record
+  (generalises `inventory_sales.payout_status`); `uniq_settlement_kind_ref`
+  UNIQUE (kind, ref_id) — double-settle guard.
+All 3 RLS-enabled with permissive `*_all_anon` policies (project baseline).
+
+### Fee convention (locked at D1)
+Buyer pays the ask total; the platform fee is StayBid's cut OUT of that; the
+seller receives the remainder. `b2bTradeSplit(lib/b2b/engine.ts)`:
+`askTotal = round(askPerNight × nights)` · `platformFee = round(askTotal ×
+feePct/100)` · `sellerNet = askTotal − platformFee` · `sellerMargin = sellerNet
+− buyTotal`. `B2B_FEE_PCT_DEFAULT = 8` (⚠ flagged — LOWER than the 12% consumer
+resale fee because it's wholesale B2B; wire to `service_pricing` before D3).
+The ask is **seller-set** (their own goods — unlike Model 3 where the wholesale
+BUY is Spine-frozen); the platform fee % is **server-frozen** (tamper-safe).
+Pure engine shared by the listing endpoint + future D3 checkout + client UI so
+preview == charge == settlement.
+
+### Files (all NEW, additive)
+- `lib/b2b/engine.ts` — pure fee math (no I/O). `b2bTradeSplit`,
+  `isValidAskPerNight`, status/fee constants.
+- `app/api/b2b/listings/route.ts` — owner-scoped. GET (caller's listings,
+  side-load unit#/hotel name — NO FK embed, + live split) · POST (`{blockId,
+  askPerNight}`: ownership via `resolveOwnerIdsCrossPool` + `ownedBlock`;
+  requires block `status='owned'`; rejects past-dated; freezes fee % via
+  `b2bTradeSplit(..., B2B_FEE_PCT_DEFAULT)`; unique index is the final
+  one-active-listing gate, 23505 → 409) · DELETE (soft-withdraw an active
+  listing → `status='withdrawn'`).
+- `components/partner/CircleInventoryTab.tsx` — B2B Exchange section under
+  "My Rooms" (operator-only): per-owned-block "List on exchange" ask input +
+  "⇄ On exchange" pill / withdraw.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle hotel + owned unit (`v331-seller`) + an `owned`
+`inventory_blocks` block (3n, buy ₹12,600). **All 4 asserts PASSED:**
+**(A)** POST split frozen correct — ask 6000/n × 3 = ask_total ₹18,000, fee 8%
+= ₹1,440, sellerNet ₹16,560, sellerMargin ₹3,960 (net − buy). **(B)** a 2nd
+active listing on the same block rejected by `uniq_b2b_listing_active_block`
+(0 leaked). **(C)** DELETE soft-withdraws (`status='withdrawn'`). **(D)** a
+fresh listing on the now-inactive block is allowed (index only guards
+draft|listed). Test rows deleted (0 leftover). `tsc --noEmit` clean, `next
+build` green (`/api/b2b/listings` compiled). `SB_BUILD v330→v331`, badge v331,
+`HTML_CACHE v143→v144`.
+
+### Things to Avoid (Phase D1)
+- **Never** compute the B2B split outside `lib/b2b/engine.ts` — the listing
+  endpoint, the D3 checkout, and the client preview MUST share it so
+  preview == charge == settlement.
+- **Never** let the client set `platform_fee_pct` — the POST freezes it from
+  `B2B_FEE_PCT_DEFAULT` server-side. (The ask IS seller-set — the seller's own
+  goods — but the platform fee is StayBid's, so it's server-frozen.)
+- **Never** list a block that isn't `status='owned'` — the owner must have
+  bought it (C2) first; the POST 409s otherwise. `owned` blocks are naturally
+  mutually-exclusive with consumer-`listed` blocks (different status), so a
+  stale-listing cross-guard (consumer-list ↔ B2B-list) is a D2/D3 concern,
+  harmless in inert D1.
+- **Never** drop `uniq_b2b_listing_active_block` — it's the one-active-listing-
+  per-block gate; the route pre-checks for a friendly error, but the index is
+  the final race-safe gate (23505 → 409).
+- **Never** write to `b2b_trades` / `settlement_ledger` in D1 — they are
+  created-but-unused until D2/D3. D1 writes ONLY `b2b_listings`.
+- **Never** point a `seller_user_id` / unit / hotel side-load at a PostgREST FK
+  embed — no FK exists; manual `?id=in.(…)`.
+
+### D1 boundary — STOP
+D1 is the inert B2B foundation. **Do NOT start D2 (trade checkout + Razorpay +
+ownership transfer) without Sachin's "continue".** Same discipline as C1–C4 +
+the Channel Manager phases.
