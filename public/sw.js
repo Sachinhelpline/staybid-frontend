@@ -430,7 +430,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // Model 4 B2B marketplace (buy other investors' listings) + admin settlement
 // payout execution. Bumping HTML_CACHE drops the stale cached partner-dashboard
 // + admin HTML so the new marketplace panel + payout table ship on next visit.
-const HTML_CACHE = 'staybid-html-v146';
+// v334 — one-time HTML_CACHE bump (v146 -> v147). Circle multi-investor Phase D4:
+// dynamic B2B markdown badge on listed exchange listings + admin exchange
+// oversight (expire/cancel listings). Drops stale cached partner + admin HTML.
+const HTML_CACHE = 'staybid-html-v147';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

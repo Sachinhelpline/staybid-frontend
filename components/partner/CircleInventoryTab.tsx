@@ -51,6 +51,7 @@ type B2bListing = {
   id: string; block_id: string; unit_id: string; date_from: string; date_to: string;
   nights: number; ask_per_night: number; ask_total: number; platform_fee_pct: number;
   status: string; unit_number?: string | null; hotel_name?: string | null; split?: B2bSplit;
+  metadata?: { markdownPct?: number; listAskPerNight?: number; [k: string]: any } | null;
 };
 // v332 (D2) — a completed/pending B2B trade (as buyer or seller).
 type B2bTrade = {
@@ -639,7 +640,22 @@ export default function CircleInventoryTab({
                   {l.date_from} → {l.date_to} · {l.nights}n
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-soft)" }}>
-                  ask {inr(l.ask_total)} ({inr(l.ask_per_night)}/n)
+                  {(() => {
+                    const md = Number(l.metadata?.markdownPct) || 0;
+                    const orig = Number(l.metadata?.listAskPerNight) || 0;
+                    if (l.status === "listed" && md > 0 && orig > l.ask_per_night) {
+                      return (
+                        <>
+                          ask <s style={{ color: "var(--text-muted)" }}>{inr(orig)}/n</s>{" "}
+                          <b style={{ color: "var(--text-base)" }}>{inr(l.ask_per_night)}/n</b>{" "}
+                          <span className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold bg-rose-50 text-rose-600">
+                            −{md}% auto
+                          </span>
+                        </>
+                      );
+                    }
+                    return <>ask {inr(l.ask_total)} ({inr(l.ask_per_night)}/n)</>;
+                  })()}
                 </span>
                 {l.split && (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600"

@@ -19,7 +19,7 @@
 // client UI so the numbers NEVER drift. No Supabase, no I/O.
 // ════════════════════════════════════════════════════════════════════════
 
-import { nightsBetween } from "@/lib/inventory/engine";
+import { nightsBetween, markdownResalePerNight, daysUntil } from "@/lib/inventory/engine";
 
 export const B2B_LISTING_STATUSES = [
   "draft", "listed", "sold", "cancelled", "withdrawn", "expired",
@@ -107,5 +107,41 @@ export function b2bTradeSplit(input: B2bTradeSplitInput): B2bTradeSplit {
   };
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// v334 — Circle Phase D4: dynamic auto-markdown on LISTED B2B listings.
+//
+// A B2B listing is inter-investor wholesale; as its stay's check-in nears an
+// unsold listing loses value, so the lifecycle cron marks the seller's ask
+// DOWN in the same tiers as Model-3 resale (`markdownResalePerNight`), computed
+// from a FROZEN original (`metadata.listAskPerNight`, stamped on the first
+// markdown) so re-running is idempotent + NON-compounding, and NEVER below the
+// seller's own per-night cost (`buy_total / nights` — they'd rather hold than
+// sell at a loss). Pure — the cron + client share it.
+//
+// Same tier table + floor discipline as C4; the only B2B twist is the buy floor
+// is derived from the listing's `buy_total` (a whole-block snapshot) ÷ nights,
+// because a B2B listing stores the aggregate cost, not a per-night array.
+// ════════════════════════════════════════════════════════════════════════
+
+/**
+ * Marked-down ask/night for a B2B listing from the FROZEN original, floored at
+ * the seller's per-night buy cost. Idempotent + non-compounding: always
+ * recomputes from `originalAskPerNight`, never from the already-marked price.
+ */
+export function markdownB2bAskPerNight(args: {
+  originalAskPerNight: number;
+  buyTotal: number;
+  nights: number;
+  daysOut: number;
+}): { perNight: number; pct: number } {
+  const nights = Math.max(1, Math.floor(Number(args.nights) || 1));
+  const buyPerNight = Math.max(0, round0(Number(args.buyTotal) || 0) / nights);
+  return markdownResalePerNight({
+    originalPerNight: args.originalAskPerNight,
+    buyPerNight,
+    daysOut: args.daysOut,
+  });
+}
+
 /** Re-export so callers building a B2B listing don't also import the inventory engine. */
-export { nightsBetween };
+export { nightsBetween, daysUntil };

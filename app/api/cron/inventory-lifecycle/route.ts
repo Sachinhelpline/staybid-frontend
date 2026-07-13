@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { markdownResalePerNight, daysUntil } from "@/lib/inventory/engine";
+import { markdownB2bAskPerNight } from "@/lib/b2b/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -142,14 +143,113 @@ async function expiryPass(startedAt: number): Promise<{ expired: number; holdsRe
   return { expired, holdsReleased };
 }
 
+// ── Pass 3 (v334 · D4): auto-markdown LISTED B2B listings near check-in ────
+// Same tier discipline as Pass 1, on `b2b_listings.ask_per_night`. Frozen
+// baseline `metadata.listAskPerNight`; floored at the seller's per-night buy
+// cost (`buy_total / nights`); ask_total recomputed. Idempotent no-op skip.
+async function b2bMarkdownPass(startedAt: number): Promise<{ marked: number; scanned: number }> {
+  const today = isoDatePlus(0);
+  const horizon = isoDatePlus(MARKDOWN_HORIZON_DAYS);
+  let scanned = 0, marked = 0;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_listings?status=eq.listed` +
+        `&date_from=gte.${today}&date_from=lte.${horizon}` +
+        `&select=id,date_from,nights,ask_per_night,ask_total,buy_total,metadata` +
+        `&order=date_from.asc&limit=${MAX_PER_PASS}`,
+      { headers: SB_H },
+    );
+    const rows: any[] = r.ok ? await r.json().catch(() => []) : [];
+    for (const b of rows) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+      scanned++;
+      const meta = (b.metadata && typeof b.metadata === "object") ? b.metadata : {};
+      const nights = Math.max(1, round0(b.nights));
+      // Frozen original — backfill from the current ask for pre-D4 listings.
+      const original = round0(meta.listAskPerNight ?? b.ask_per_night);
+      if (original <= 0) continue;
+      const daysOut = daysUntil(String(b.date_from));
+      const { perNight, pct } = markdownB2bAskPerNight({
+        originalAskPerNight: original,
+        buyTotal: round0(b.buy_total),
+        nights,
+        daysOut,
+      });
+      if (perNight === round0(b.ask_per_night) && round0(meta.markdownPct) === pct
+          && meta.listAskPerNight != null) {
+        continue; // already at the right marked-down ask (idempotent no-op)
+      }
+      try {
+        const pr = await fetch(
+          `${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(String(b.id))}&status=eq.listed`,
+          {
+            method: "PATCH",
+            headers: { ...SB_H, Prefer: "return=minimal" },
+            body: JSON.stringify({
+              ask_per_night: perNight,
+              ask_total: round0(perNight * nights),
+              metadata: { ...meta, listAskPerNight: original, markdownPct: pct, markedDownAt: new Date().toISOString() },
+              updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (pr.ok) marked++;
+      } catch { /* skip this listing */ }
+    }
+  } catch { /* pass is best-effort */ }
+  return { marked, scanned };
+}
+
+// ── Pass 4 (v334 · D4): expire started-but-unsold B2B listings ──────────────
+// A B2B listing whose stay has started (date_from < today) can no longer sell.
+// It flips `draft|listed → expired`. The underlying `inventory_block` STAYS
+// `owned` (the seller keeps their pre-bought right — only the LISTING dies) and
+// NO room_blocks hold is touched (Pass 2 owns block expiry + hold release).
+async function b2bExpiryPass(startedAt: number): Promise<{ expired: number }> {
+  const today = isoDatePlus(0);
+  let expired = 0;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_listings?status=in.(draft,listed)&date_from=lt.${today}` +
+        `&select=id,metadata&order=date_from.asc&limit=${MAX_PER_PASS}`,
+      { headers: SB_H },
+    );
+    const rows: any[] = r.ok ? await r.json().catch(() => []) : [];
+    for (const b of rows) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) break;
+      const meta = (b.metadata && typeof b.metadata === "object") ? b.metadata : {};
+      try {
+        const pr = await fetch(
+          `${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(String(b.id))}&status=in.(draft,listed)`,
+          {
+            method: "PATCH",
+            headers: { ...SB_H, Prefer: "return=minimal" },
+            body: JSON.stringify({
+              status: "expired",
+              metadata: { ...meta, expiredAt: new Date().toISOString(), expiredReason: "stay_started_unsold" },
+              updated_at: new Date().toISOString(),
+            }),
+          },
+        );
+        if (pr.ok) expired++;
+      } catch { /* skip this listing */ }
+    }
+  } catch { /* pass is best-effort */ }
+  return { expired };
+}
+
 async function runAll(req: NextRequest) {
   const startedAt = Date.now();
   const md = await markdownPass(startedAt);
   const ex = await expiryPass(startedAt);
+  const b2bMd = await b2bMarkdownPass(startedAt);
+  const b2bEx = await b2bExpiryPass(startedAt);
   return {
     ok: true,
     markdown: md,
     expiry: ex,
+    b2bMarkdown: b2bMd,
+    b2bExpiry: b2bEx,
     ranMs: Date.now() - startedAt,
     budgetHit: Date.now() - startedAt > TIME_BUDGET_MS,
   };

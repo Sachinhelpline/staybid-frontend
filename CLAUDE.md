@@ -11407,3 +11407,116 @@ compiled). `SB_BUILD v332→v333`, badge v333, `HTML_CACHE v145→v146`.
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model, Model-3
   C1–C4 + D1 + D2 logic (D3 is additive marketplace/payout surface on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D4: Dynamic B2B Markdown + Expiry + Admin Oversight (v334, 2026-07-13)
+
+Final sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D4).
+Mirrors C4 (Model-3 lifecycle) applied to `b2b_listings`: (a) the shared
+inventory-lifecycle cron auto-marks-down a listed B2B ask as check-in nears +
+expires the stale, and (b) admin `/admin/circle-inventory` gains view/force-
+expire/cancel B2B listings + exchange KPIs. **NO migration** — reuses D1's
+`b2b_listings.metadata` JSONB + existing `expired`/`cancelled` statuses; D4 is
+code-only.
+
+### D4a — pure B2B markdown engine (`lib/b2b/engine.ts`)
+`markdownB2bAskPerNight({originalAskPerNight, buyTotal, nights, daysOut})` →
+`{perNight, pct}`. Derives `buyPerNight = round0(buyTotal)/nights` (a B2B listing
+stores an aggregate cost snapshot, not a per-night array — the only B2B twist),
+then delegates to C4's `markdownResalePerNight` so the tier table
+(`markdownPctForDaysOut`: ≥15→0 · ≥8→10 · ≥4→20 · ≥2→30 · else 40) + buy-cost
+floor is **byte-identical** to Model-3 resale markdown. Re-exports `nightsBetween`,
+`daysUntil`.
+
+### D4b — cron passes 3 + 4 (`/api/cron/inventory-lifecycle`)
+Two new idempotent passes after the C4 markdown/expiry passes; same budget
+(`TIME_BUDGET_MS=24s`) + `MAX_PER_PASS=200` + `MARKDOWN_HORIZON_DAYS=14`:
+- **`b2bMarkdownPass`** — `b2b_listings status=eq.listed & date_from ∈
+  [today, today+14]`. `original = round0(metadata.listAskPerNight ??
+  ask_per_night)` (FROZEN baseline, backfilled from current ask for pre-D4
+  listings); `markdownB2bAskPerNight` (floored at seller's per-night buy cost —
+  never below `buy_total/nights`); PATCH guarded `status=eq.listed` sets
+  `ask_per_night`, `ask_total=round0(perNight×nights)`, metadata
+  `{listAskPerNight, markdownPct, markedDownAt}`. Idempotent no-op skip when
+  `perNight===round0(ask_per_night) && round0(metadata.markdownPct)===pct &&
+  metadata.listAskPerNight != null`.
+- **`b2bExpiryPass`** — `status=in.(draft,listed) & date_from < today` → PATCH
+  guarded `status=in.(draft,listed)` → `status:'expired'` + metadata
+  `expiredAt/expiredReason='stay_started_unsold'`. **The underlying
+  `inventory_block` STAYS `owned`** (only the LISTING dies — the seller keeps
+  their pre-bought right) and **NO room_blocks hold is touched** (Pass 2 owns
+  block expiry + hold release; a B2B listing expiring must not release the
+  block's inventory hold).
+
+`runAll` returns `{ok, markdown, expiry, b2bMarkdown, b2bExpiry, ranMs,
+budgetHit}`.
+
+### D4c — admin B2B oversight (`/api/admin/circle-inventory` + `/admin/circle-inventory`)
+`adminFromReq` + `logAdminAction`. **GET** adds B2B listing KPIs +
+`b2bListings`/`b2bTrades` enriched rows (on top of D3's settlement KPIs). **POST**
+`expire_listing` / `cancel_listing` — loads `b2b_listings?id=eq.X`, 404 if
+missing, 409 if status not in `draft|listed`, `newStatus = expire_listing ?
+'expired' : 'cancelled'`, PATCH guarded `status=in.(draft,listed)` with metadata
+`[${newStatus}At]/Reason='admin_action'/By=admin.id`. Page: Exchange listings
+panel with status pills + Expire/Cancel actions + a `−N% auto` markdown badge on
+marked-down rows.
+
+### D4d — investor UI (`components/partner/CircleInventoryTab.tsx`)
+`B2bListing` type gets `metadata`; a markdown badge IIFE shows the struck-through
+original ask + `−N% auto` chip when a listing is `listed` and has been marked
+down by the cron.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded 5 synthetic `b2b_listings` + mirrored all four D4 code paths in SQL
+(faithful to the read source, re-read first). **All asserts PASSED:**
+`rows_seeded=5` · `C_admin_expire=true` · `A1_floor_md_4200=true` (20% off
+₹5000=₹4000 → FLOORED at ₹4200 buy cost — the investor-protection floor) ·
+`B_expiry_listing=true` (date_from<today → `expired`; the `inventory_block`
+STAYS `owned` — a code-structure fact: Pass 4 has zero `inventory_blocks`
+writes) · `A2_nofloor_md2_6400=true` (₹8000 @ 20% → ₹6400, above floor) ·
+`C_guard_sold_untouched=true` (expire/cancel guarded `status=in.(draft,listed)`
+→ a `sold` listing is a 0-row no-op) · `A3_idempotent_would_skip=true`. Cleanup
+`leftover=0`. `tsc --noEmit` clean, `next build` green (all 3 D4 routes
+compiled: `/admin/circle-inventory`, `/api/admin/circle-inventory`,
+`/api/cron/inventory-lifecycle`). `SB_BUILD v333→v334`, badge v334,
+`HTML_CACHE v146→v147`.
+
+### Things to Avoid (Circle Phase D4)
+- **Never** mark a listed B2B ask below its buy cost — the `max(buyPerNight,
+  marked)` floor (inside `markdownResalePerNight`, shared with C4) is the
+  seller's protection. `buyPerNight = buy_total / nights` for B2B.
+- **Never** recompute markdown from the CURRENT `ask_per_night` — always from
+  the FROZEN `metadata.listAskPerNight`, or successive 15-min cron runs compound
+  the discount into oblivion. Backfill it from the current ask exactly once (on
+  the first markdown), then read it forever.
+- **Never** drop the idempotent no-op skip in `b2bMarkdownPass` — the cron runs
+  every 15 min; without the skip it rewrites every listed row every tick.
+- **Never** release the block's `room_blocks` hold OR touch the `inventory_block`
+  when a B2B LISTING expires — only the listing dies (`b2b_listings.status →
+  expired`); the block stays `owned` (Pass 2 owns block expiry + hold release).
+- **Never** compute the B2B markdown outside `lib/b2b/engine.ts`
+  (`markdownB2bAskPerNight`) — the cron + client badge share it, and it delegates
+  to C4's `markdownResalePerNight` so the tier table stays single-source.
+- **Never** expire/cancel a B2B listing that isn't `draft|listed` — the admin
+  POST is guarded `status=in.(draft,listed)`; a `sold`/`withdrawn`/`expired` row
+  is a 0-row no-op (409 on the friendly pre-check).
+
+### Updated production state (v334, 2026-07-13)
+- **Current version:** v334 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D4 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · D2 trade/transfer/settlement (v332) ✅ · D3 marketplace/payout (v333) ✅ ·
+  **D4 dynamic markdown/expiry/admin (v334) ✅** · E Model-1 expected-only ·
+  F operated supply. **Model 3 + Model 4 are BOTH COMPLETE. STOP at D4 — do NOT
+  start Phase E / F without Sachin's "continue".**
+- ⚠ **SACHIN ACTION (unchanged from C4):** the shared inventory-lifecycle cron
+  now runs the B2B passes too — the SAME cron-job.org registration covers both:
+  `*/15 * * * *` →
+  `https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev`.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1–D3 logic (D4 is additive lifecycle/admin on top).

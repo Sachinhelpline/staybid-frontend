@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   let blockQ = `select=*&order=created_at.desc&limit=200`;
   if (status && status !== "all") blockQ += `&status=eq.${encodeURIComponent(status)}`;
 
-  const [blocks, sales, statusRows, paidSales, settlements, settleAgg] = await Promise.all([
+  const [blocks, sales, statusRows, paidSales, settlements, settleAgg, b2bListingsRaw, b2bTradesRaw, b2bListingStatusRows] = await Promise.all([
     sb(`inventory_blocks?${blockQ}`),
     sb(`inventory_sales?select=*&order=created_at.desc&limit=200`),
     sb(`inventory_blocks?select=status&limit=2000`),
@@ -67,6 +67,10 @@ export async function GET(req: NextRequest) {
     // v333 (D3) — Model 4 B2B trade settlements owed to sellers.
     sb(`settlement_ledger?kind=eq.b2b_trade&select=*&order=created_at.desc&limit=200`),
     sb(`settlement_ledger?kind=eq.b2b_trade&select=gross_amount,platform_fee,net_amount,payout_status&limit=2000`),
+    // v334 (D4) — Model 4 B2B exchange oversight: listings + trades + status counts.
+    sb(`b2b_listings?select=*&order=created_at.desc&limit=200`),
+    sb(`b2b_trades?select=*&order=created_at.desc&limit=200`),
+    sb(`b2b_listings?select=status&limit=2000`),
   ]);
 
   // v333 (D3) — side-load the B2B trades behind each settlement (ref_id → trade)
@@ -77,13 +81,15 @@ export async function GET(req: NextRequest) {
     : [];
   const tradeBy: Record<string, any> = {}; trades.forEach((t: any) => { tradeBy[t.id] = t; });
 
-  // Enrich blocks + sales with hotel name / unit # / investor name.
-  const hotelIds = Array.from(new Set([...blocks, ...sales, ...trades].map((x) => String(x.hotel_id)).filter(Boolean)));
-  const unitIds = Array.from(new Set([...blocks, ...sales, ...trades].map((x) => String(x.unit_id)).filter(Boolean)));
+  // Enrich blocks + sales + B2B listings/trades with hotel name / unit # / investor name.
+  const hotelIds = Array.from(new Set([...blocks, ...sales, ...trades, ...b2bListingsRaw, ...b2bTradesRaw].map((x) => String(x.hotel_id)).filter(Boolean)));
+  const unitIds = Array.from(new Set([...blocks, ...sales, ...trades, ...b2bListingsRaw, ...b2bTradesRaw].map((x) => String(x.unit_id)).filter(Boolean)));
   const userIds = Array.from(new Set([
     ...blocks.map((x) => String(x.investor_user_id)),
     ...sales.map((x) => String(x.investor_user_id)),
     ...settlements.map((x: any) => String(x.payee_user_id)),
+    ...b2bListingsRaw.map((x: any) => String(x.seller_user_id)),
+    ...b2bTradesRaw.flatMap((x: any) => [String(x.seller_user_id), String(x.buyer_user_id)]),
   ].filter(Boolean)));
 
   const [hotels, unitsRows, usersRows] = await Promise.all([
@@ -107,6 +113,22 @@ export async function GET(req: NextRequest) {
     ...s,
     hotel_name: hotelBy[s.hotel_id]?.name || null,
     investor_name: userBy[s.investor_user_id]?.name || null,
+  });
+  // v334 (D4) — B2B listing / trade enrichment.
+  const enrichListing = (l: any) => ({
+    ...l,
+    hotel_name: hotelBy[l.hotel_id]?.name || null,
+    hotel_city: hotelBy[l.hotel_id]?.city || null,
+    unit_number: unitBy[l.unit_id]?.roomNumber || null,
+    seller_name: userBy[l.seller_user_id]?.name || null,
+    seller_phone: userBy[l.seller_user_id]?.phone || null,
+  });
+  const enrichTrade = (t: any) => ({
+    ...t,
+    hotel_name: hotelBy[t.hotel_id]?.name || null,
+    unit_number: unitBy[t.unit_id]?.roomNumber || null,
+    seller_name: userBy[t.seller_user_id]?.name || null,
+    buyer_name: userBy[t.buyer_user_id]?.name || null,
   });
   // v333 (D3) — a B2B settlement: pull unit/hotel/dates from its trade.
   const enrichSettlement = (s: any) => {
@@ -149,6 +171,14 @@ export async function GET(req: NextRequest) {
     else b2bOwed += num(s.net_amount);
   });
 
+  // v334 (D4) — B2B exchange listing KPIs.
+  const b2bListingsByStatus: Record<string, number> = {};
+  b2bListingStatusRows.forEach((r: any) => { b2bListingsByStatus[r.status] = (b2bListingsByStatus[r.status] || 0) + 1; });
+  const b2bListingsActive = (b2bListingsByStatus.draft || 0) + (b2bListingsByStatus.listed || 0);
+  const b2bListedGmv = Math.round(
+    b2bListingsRaw.filter((l: any) => l.status === "listed").reduce((s: number, l: any) => s + num(l.ask_total), 0),
+  );
+
   return NextResponse.json({
     ok: true,
     kpis: {
@@ -164,10 +194,17 @@ export async function GET(req: NextRequest) {
       b2bPaid: Math.round(b2bPaid),
       b2bFees: Math.round(b2bFees),
       b2bGmv: Math.round(b2bGmv),
+      // v334 (D4) — Model 4 exchange listings.
+      b2bListingsByStatus,
+      b2bListingsActive,
+      b2bListedGmv,
+      b2bListingsTotal: b2bListingStatusRows.length,
     },
     blocks: blocks.map(enrichBlock),
     sales: sales.map(enrichSale),
     settlements: settlements.map(enrichSettlement),
+    b2bListings: b2bListingsRaw.map(enrichListing),
+    b2bTrades: b2bTradesRaw.map(enrichTrade),
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -335,6 +372,45 @@ export async function POST(req: NextRequest) {
     }
     logAdminAction({ admin, action: "circle_inventory.settlement_paid", targetType: "settlement_ledger", targetId: settlementId, details: { net_amount: num(s.net_amount) } });
     return NextResponse.json({ ok: true, settlement: rows[0] });
+  }
+
+  // ── expire_listing / cancel_listing: retire a live B2B listing (D4) ──────
+  // draft|listed → expired|cancelled. The underlying inventory_block STAYS
+  // `owned` (seller keeps their right) — no hold is touched.
+  if (action === "expire_listing" || action === "cancel_listing") {
+    const listingId = String(body?.listingId || "").trim();
+    if (!listingId) return NextResponse.json({ error: "listingId required" }, { status: 400 });
+    const rows0 = await sb(`b2b_listings?id=eq.${encodeURIComponent(listingId)}&select=*`);
+    const listing = rows0[0];
+    if (!listing) return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    if (!["draft", "listed"].includes(String(listing.status))) {
+      return NextResponse.json({ error: `A ${String(listing.status).replace(/_/g, " ")} listing can't be retired.` }, { status: 409 });
+    }
+    const newStatus = action === "expire_listing" ? "expired" : "cancelled";
+    const meta = (listing.metadata && typeof listing.metadata === "object") ? listing.metadata : {};
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(listingId)}&status=in.(draft,listed)`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({
+          status: newStatus,
+          metadata: {
+            ...meta,
+            [`${newStatus}At`]: nowIso,
+            [`${newStatus}Reason`]: "admin_action",
+            [`${newStatus}By`]: admin.id || null,
+          },
+          updated_at: nowIso,
+        }),
+      },
+    );
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return NextResponse.json({ error: "Listing changed — refresh and try again." }, { status: 409 });
+    }
+    logAdminAction({ admin, action: `circle_inventory.${action}`, targetType: "b2b_listing", targetId: listingId, details: { newStatus } });
+    return NextResponse.json({ ok: true, listing: rows[0] });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

@@ -28,6 +28,7 @@ function ago(ts: any): string {
 }
 
 const FILTERS = ["all", "owned", "listed", "sold", "expired", "refunded", "draft"] as const;
+const B2B_FILTERS = ["all", "listed", "sold", "expired", "cancelled", "withdrawn"] as const;
 
 export default function AdminCircleInventory() {
   const [data, setData] = useState<any>(null);
@@ -36,6 +37,7 @@ export default function AdminCircleInventory() {
   const [flash, setFlash] = useState("");
   const [busy, setBusy] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const [b2bFilter, setB2bFilter] = useState<(typeof B2B_FILTERS)[number]>("all");
 
   const headers = useCallback((): HeadersInit => ({
     "x-admin-token": typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "",
@@ -68,13 +70,16 @@ export default function AdminCircleInventory() {
     finally { setBusy(""); }
   };
 
-  const k = data?.kpis || { investorOwed: 0, investorPaid: 0, platformFees: 0, gmv: 0, byStatus: {}, totalBlocks: 0, buybackOwed: 0, b2bOwed: 0, b2bPaid: 0, b2bFees: 0, b2bGmv: 0 };
+  const k = data?.kpis || { investorOwed: 0, investorPaid: 0, platformFees: 0, gmv: 0, byStatus: {}, totalBlocks: 0, buybackOwed: 0, b2bOwed: 0, b2bPaid: 0, b2bFees: 0, b2bGmv: 0, b2bListingsByStatus: {}, b2bListingsActive: 0, b2bListedGmv: 0, b2bListingsTotal: 0 };
   const blocks: any[] = data?.blocks || [];
   const sales: any[] = data?.sales || [];
   const owedSales = sales.filter((s) => s.status === "paid" && s.payout_status === "owed");
   // v333 — D3: Model 4 B2B trade settlements owed to sellers.
   const settlements: any[] = data?.settlements || [];
   const owedSettlements = settlements.filter((s) => s.payout_status === "owed");
+  // v334 — D4: Model 4 B2B exchange listings oversight.
+  const b2bListings: any[] = data?.b2bListings || [];
+  const shownListings = b2bFilter === "all" ? b2bListings : b2bListings.filter((l) => l.status === b2bFilter);
 
   const th: React.CSSProperties = { textAlign: "left", color: "#8A8FA8", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, padding: "10px 12px" };
   const td: React.CSSProperties = { padding: "11px 12px", color: "#E8EAF0", fontSize: 12.5, borderTop: "1px solid rgba(255,255,255,0.05)" };
@@ -107,6 +112,8 @@ export default function AdminCircleInventory() {
           { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#A855F7" },
           { v: inr(k.b2bOwed), label: "Exchange seller owed", color: "#F0B429" },
           { v: inr(k.b2bPaid), label: "Exchange settled", color: "#2ECC71" },
+          { v: String(k.b2bListingsActive || 0), label: "Exchange live listings", color: "#A855F7" },
+          { v: inr(k.b2bListedGmv), label: "Exchange listed GMV", color: "#3D9CF5" },
         ].map((c, i) => (
           <div key={i} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
             <div style={{ color: c.color, fontSize: 22, fontWeight: 800, fontFamily: "Syne, sans-serif" }}>{c.v}</div>
@@ -183,6 +190,66 @@ export default function AdminCircleInventory() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* v334 — D4: Model 4 B2B exchange listings oversight */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ Exchange listings <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 4 · seller-to-seller</span></div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
+            {B2B_FILTERS.map((f) => (
+              <button key={f} onClick={() => setB2bFilter(f)}
+                style={{ background: b2bFilter === f ? "rgba(168,85,247,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${b2bFilter === f ? "rgba(168,85,247,0.4)" : "rgba(255,255,255,0.1)"}`, color: b2bFilter === f ? "#A855F7" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
+                {f}{f !== "all" && k.b2bListingsByStatus?.[f] != null ? ` ${k.b2bListingsByStatus[f]}` : ""}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {shownListings.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No exchange listings."}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Hotel · Unit", "Seller", "Dates", "Status", "Ask", "Cost", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {shownListings.map((l) => {
+                    const md = Number(l?.metadata?.markdownPct) || 0;
+                    const c = STATUS_COLOR[l.status] || "#8A8FA8";
+                    return (
+                      <tr key={l.id}>
+                        <td style={td}>
+                          <div style={{ fontWeight: 600 }}>{l.hotel_name || l.hotel_id}</div>
+                          <div style={{ color: "#8A8FA8", fontSize: 11 }}>#{l.unit_number || l.unit_id} · {l.nights}n</div>
+                        </td>
+                        <td style={td}>{l.seller_name || <span style={{ color: "#8A8FA8" }}>{String(l.seller_user_id).slice(-6)}</span>}</td>
+                        <td style={{ ...td, color: "#8A8FA8" }}>{l.date_from} → {l.date_to}</td>
+                        <td style={td}>
+                          <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${c}22`, color: c, border: `1px solid ${c}44`, textTransform: "capitalize" }}>{String(l.status).replace(/_/g, " ")}</span>
+                        </td>
+                        <td style={td}>
+                          {inr(l.ask_total)}
+                          {md > 0 && <span style={{ color: "#FF4757", fontSize: 11, marginLeft: 4, fontWeight: 700 }}>−{md}%</span>}
+                        </td>
+                        <td style={{ ...td, color: "#8A8FA8" }}>{inr(l.buy_total)}</td>
+                        <td style={td}>
+                          {["draft", "listed"].includes(l.status) ? (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <button disabled={busy === l.id} onClick={() => act({ action: "expire_listing", listingId: l.id }, l.id, "Retire this listing (mark expired)? The seller keeps their pre-bought block.")} style={btn("#8A8FA8")}>{busy === l.id ? "…" : "Expire"}</button>
+                              <button disabled={busy === l.id} onClick={() => act({ action: "cancel_listing", listingId: l.id }, l.id, "Cancel this listing? The seller keeps their pre-bought block.")} style={btn("#FF4757")}>{busy === l.id ? "…" : "Cancel"}</button>
+                            </div>
+                          ) : <span style={{ color: "#8A8FA8" }}>—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
