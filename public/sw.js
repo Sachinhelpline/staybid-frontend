@@ -448,7 +448,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // Deals · Model 4 Investor Exchange) + a live member pre-buy strip. Bumping
 // HTML_CACHE drops the stale cached /circle markup so the hub shows on first
 // warm visit.
-const HTML_CACHE = 'staybid-html-v150';
+// v338 — one-time HTML_CACHE bump (v150 -> v151). The Model 3 "Pre-Buy Deals"
+// card now routes to the investor pre-buy inventory (/partner/dashboard) instead
+// of the customer /flash-deals page — it's an investor path, not a same-day
+// customer deal. Bumping HTML_CACHE drops the stale cached /circle markup so the
+// corrected link shows on first warm visit.
+const HTML_CACHE = 'staybid-html-v151';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

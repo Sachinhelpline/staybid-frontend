@@ -22,7 +22,7 @@ import {
   fmtINR, computeBundle, type BundleItem,
   DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
-import { CIRCLE_INCOME_SHORT } from "@/lib/circle/disclosure";
+import { CIRCLE_INCOME_SHORT, CIRCLE_RESALE_RISK_NOTE } from "@/lib/circle/disclosure";
 import ResaleOffers from "@/components/circle/ResaleOffers";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
@@ -318,20 +318,19 @@ export default function CircleHomePage() {
             <p className="sbc-model-fine">{CIRCLE_INCOME_SHORT}</p>
           </Link>
 
-          {/* Model 3 — Pre-Buy Deals */}
-          <div className="sbc-model has-sub">
+          {/* Model 3 — Pre-Buy Deals (investor pre-buy + resell) */}
+          <Link href="/partner/dashboard" className="sbc-model">
             <span className="sbc-model-glow" aria-hidden />
             <div className="sbc-model-top">
               <span className="sbc-model-ic">🔑</span>
-              <span className="sbc-model-tag sage">Live deals</span>
+              <span className="sbc-model-tag sage">For investors</span>
             </div>
             <div className="sbc-model-num">Model 3</div>
             <div className="sbc-model-title">Pre-Buy Deals</div>
-            <p className="sbc-model-desc">Grab exclusive <b>below-market nights</b> that Circle investors pre-bought — a members-only resale marketplace.</p>
-            <span className="sbc-model-cta">Browse deals →</span>
-            <Link href="/partner/dashboard" className="sbc-model-sub">💼 Investor? Pre-buy &amp; resell rooms →</Link>
-            <Link href="/flash-deals" className="sbc-model-stretch" aria-label="Browse member pre-buy deals" />
-          </div>
+            <p className="sbc-model-desc">Pre-buy room-nights <b>wholesale</b> on your operated rooms, then resell for a margin — a members-only inventory marketplace.</p>
+            <span className="sbc-model-cta">Open pre-buy inventory →</span>
+            <p className="sbc-model-fine">{CIRCLE_RESALE_RISK_NOTE}</p>
+          </Link>
 
           {/* Model 4 — Investor Exchange */}
           <Link href="/partner/dashboard" className="sbc-model">
