@@ -1,7 +1,9 @@
 "use client";
 // v330 — Circle Phase C4: admin oversight for Model 3 pre-buy inventory.
-// Investor blocks + resale settlement ledger, with force-expire / buyback /
-// mark-payout-paid actions. Dark-luxury, mirrors /admin/channels.
+// v333 — Circle Phase D3: + Model 4 B2B exchange settlement payouts.
+// Investor blocks + resale settlement ledger + B2B trade settlements, with
+// force-expire / buyback / mark-payout-paid / mark-settlement-paid actions.
+// Dark-luxury, mirrors /admin/channels.
 import { useCallback, useEffect, useState } from "react";
 
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
@@ -66,10 +68,13 @@ export default function AdminCircleInventory() {
     finally { setBusy(""); }
   };
 
-  const k = data?.kpis || { investorOwed: 0, investorPaid: 0, platformFees: 0, gmv: 0, byStatus: {}, totalBlocks: 0, buybackOwed: 0 };
+  const k = data?.kpis || { investorOwed: 0, investorPaid: 0, platformFees: 0, gmv: 0, byStatus: {}, totalBlocks: 0, buybackOwed: 0, b2bOwed: 0, b2bPaid: 0, b2bFees: 0, b2bGmv: 0 };
   const blocks: any[] = data?.blocks || [];
   const sales: any[] = data?.sales || [];
   const owedSales = sales.filter((s) => s.status === "paid" && s.payout_status === "owed");
+  // v333 — D3: Model 4 B2B trade settlements owed to sellers.
+  const settlements: any[] = data?.settlements || [];
+  const owedSettlements = settlements.filter((s) => s.payout_status === "owed");
 
   const th: React.CSSProperties = { textAlign: "left", color: "#8A8FA8", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, padding: "10px 12px" };
   const td: React.CSSProperties = { padding: "11px 12px", color: "#E8EAF0", fontSize: 12.5, borderTop: "1px solid rgba(255,255,255,0.05)" };
@@ -80,7 +85,7 @@ export default function AdminCircleInventory() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
           <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>🧾 Circle Inventory</h1>
-          <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 3 pre-buy blocks + resale settlement · investor payouts</div>
+          <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 3 pre-buy blocks + resale settlement · Model 4 exchange payouts</div>
         </div>
         <button onClick={load} disabled={loading}
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
@@ -100,6 +105,8 @@ export default function AdminCircleInventory() {
           { v: inr(k.gmv), label: "Resale GMV", color: "#3D9CF5" },
           { v: String(k.totalBlocks || 0), label: "Total blocks", color: "#E8EAF0" },
           { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#A855F7" },
+          { v: inr(k.b2bOwed), label: "Exchange seller owed", color: "#F0B429" },
+          { v: inr(k.b2bPaid), label: "Exchange settled", color: "#2ECC71" },
         ].map((c, i) => (
           <div key={i} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
             <div style={{ color: c.color, fontSize: 22, fontWeight: 800, fontFamily: "Syne, sans-serif" }}>{c.v}</div>
@@ -132,6 +139,45 @@ export default function AdminCircleInventory() {
                       <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.paid_at)} ago</td>
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_payout_paid", saleId: s.id }, s.id, `Mark ${inr(s.investor_net)} paid to investor?`)} style={btn("#2ECC71")}>
+                          {busy === s.id ? "…" : "Mark paid"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* v333 — D3: Model 4 B2B exchange settlements owed to sellers */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>⇄ Exchange payouts owed to sellers <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 4</span></div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {owedSettlements.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding exchange payouts."}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Hotel · Unit", "Seller", "Dates", "Buyer paid", "Fee", "Seller net", "When", "Action"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {owedSettlements.map((s) => (
+                    <tr key={s.id}>
+                      <td style={td}>
+                        <div style={{ fontWeight: 600 }}>{s.hotel_name || "—"}</div>
+                        <div style={{ color: "#8A8FA8", fontSize: 11 }}>#{s.unit_number || "—"}{s.nights != null ? ` · ${s.nights}n` : ""}</div>
+                      </td>
+                      <td style={td}>{s.seller_name || <span style={{ color: "#8A8FA8" }}>{String(s.payee_user_id).slice(-6)}</span>}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{s.date_from ? `${s.date_from} → ${s.date_to}` : "—"}</td>
+                      <td style={td}>{inr(s.gross_amount)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
+                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.net_amount)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.created_at)} ago</td>
+                      <td style={td}>
+                        <button disabled={busy === s.id} onClick={() => act({ action: "mark_settlement_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to seller?`)} style={btn("#2ECC71")}>
                           {busy === s.id ? "…" : "Mark paid"}
                         </button>
                       </td>

@@ -11310,3 +11310,100 @@ compiled). `SB_BUILD v331→v332`, badge v332, `HTML_CACHE v144→v145`.
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model, Model-3
   C1–C4 + D1 logic (D2 is additive trade-execution on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D3: B2B Marketplace Browse + Buy Button + Payout Execution (v333, 2026-07-13)
+
+Third sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D3).
+D1 built the listing foundation, D2 built the trade checkout + ownership transfer
++ settlement obligation; **D3 surfaces the marketplace so an investor can DISCOVER
++ buy another investor's listing, and gives the admin a payout-execution surface
+to clear the `settlement_ledger` obligations D2 records.** No migration (D1's
+`b2b_listings`/`b2b_trades`/`settlement_ledger` cover everything); additive UI +
+one new read route + one admin payout action.
+
+### The marketplace read route (`GET /api/b2b/marketplace`, NEW)
+Investor-facing browse, owner-scoped via `resolveOwnerIdsCrossPool`; empty
+ownerIds → `{listings:[]}`. Query
+`status=eq.listed & date_to=gt.<todayISO> & seller_user_id=not.in.(<ownerIds>)`
+(other investors' live, future-dated listings; caller's OWN excluded), ordered
+`ask_total.asc`, cap 120, side-load unit# (`hotel_room_units?id=in.(…)`) + hotel
+name/city (`hotels?id=in.(…)`, NO FK embed), map each with `b2bTradeSplit`
+(buyer sees ask_total + fee split preview), optional in-memory `city` filter,
+`slice(0, 60)`.
+
+### The buy button (`components/partner/CircleInventoryTab.tsx`)
+New **"🛒 Buy from the exchange · Model 4"** section (renders only when
+`market.length > 0`), BEFORE the D2 "Exchange trades" subsection. `loadMarket()`
+fetches `/api/b2b/marketplace?hotelId=`; `buyExchange(l)` → POST D2
+`/api/b2b/listings/[id]/checkout` → `openRazorpayForOrder(order)`
+(`RazorpayError('__CANCELLED__')` catch) → POST D2 `/api/b2b/listings/[id]/verify`
+→ flash "Block acquired ✓" + refresh `loadBlocks/loadTrades/loadMarket/loadB2b`.
+The whole checkout+verify+transfer chain is **D2's** — D3 adds only discovery +
+the button.
+
+### Payout execution (`/api/admin/circle-inventory` + `/admin/circle-inventory`)
+D2 recorded `settlement_ledger` rows (`kind='b2b_trade'`, `payout_status='owed'`)
+but nothing cleared them. D3 adds:
+- **GET** extended — parallel-fetch now includes `settlements`
+  (`kind=eq.b2b_trade&order=created_at.desc&limit=200`) + `settleAgg`
+  (`limit=2000`) → 4 KPIs (`b2bOwed/b2bPaid/b2bFees/b2bGmv`). Settlements
+  side-load their trade via `b2b_trades?id=in.(<ref_ids>)` (ref_id join, NO FK
+  embed) → `enrichSettlement` (hotel_name / unit_number / dates / nights /
+  seller_name / seller_phone).
+- **POST `mark_settlement_paid { settlementId }`** — PATCH
+  `id=eq.X & kind=eq.b2b_trade & payout_status=eq.owed` →
+  `{payout_status:'paid', paid_at, metadata:{…,payoutPaidAt,payoutPaidBy}, updated_at}`;
+  0-row → 409 "already paid" (idempotent); `logAdminAction`
+  `circle_inventory.settlement_paid`.
+- **Page** — 2 KPI cards ("Exchange seller owed" gold / "Exchange settled" green)
+  + "⇄ Exchange payouts owed to sellers · Model 4" table (Hotel·Unit / Seller /
+  Dates / Buyer paid / Fee / Seller net / When / Mark paid).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `lst_v333test` (listed, seller `v333-seller`, date_to +23d, ask 6000/n × 3,
+fee 8%) + `trd_v333test` (completed, buyer `v333-buyer`) + `setl_v333test`
+(b2b_trade, owed, net 16560). **All asserts PASSED:** `a_buyer_sees=1` ·
+`b_seller_excluded=0` (`seller_user_id NOT IN (v333-seller)` hides own listing) ·
+`c_trade_buyer=v333-buyer` (settlement→trade via ref_id side-load) ·
+`d_status_before=owed`. Payout PATCH run as two sequential statements (faithful
+two-click mirror): first flipped `owed→paid` + `paid_at` set +
+`payoutPaidBy=v333-admin`; idempotent re-run (guard `payout_status=eq.owed`)
+matched 0 rows (route 409 "already paid"). Test rows deleted (settle/trade/
+listing all 0). `tsc --noEmit` clean, `next build` green (`/api/b2b/marketplace`
+compiled). `SB_BUILD v332→v333`, badge v333, `HTML_CACHE v145→v146`.
+
+### Things to Avoid (Circle Phase D3)
+- **Never** show the caller's OWN listings on the marketplace — the query MUST
+  keep `seller_user_id=not.in.(<ownerIds>)`. Buy others' inventory on the
+  marketplace; sell yours in the B2B Exchange section.
+- **Never** re-implement the buy chain in D3 — `buyExchange` calls the D2
+  checkout + verify routes verbatim (server re-quotes the frozen ask, transfers
+  the block, records the settlement). D3 adds only the discovery card + button.
+- **Never** compute the payout amount at settlement — `mark_settlement_paid`
+  only flips `owed→paid`; the ₹ was frozen by D2 into
+  `settlement_ledger.net_amount`. Admin never edits amounts.
+- **Never** drop the `payout_status=eq.owed` guard on the payout PATCH — it is
+  the idempotency gate (0-row flip = already-paid → 409). Same discipline as
+  C4's `mark_payout_paid` / `mark_buyback_paid`.
+- **Never** point the settlement→trade side-load at a PostgREST FK embed — no FK
+  exists; manual `b2b_trades?id=in.(<ref_ids>)` keyed on
+  `settlement_ledger.ref_id`.
+- **Never** surface a payout as executed money movement — it's a record-keeping
+  flip; actual bank transfer is an ops action outside the app.
+
+### Updated production state (v333, 2026-07-13)
+- **Current version:** v333 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D3 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · D2 trade checkout + ownership transfer + settlement (v332) ✅ · **D3 B2B
+  marketplace browse + buy button + payout execution (v333) ✅** · D4 dynamic
+  B2B pricing / admin B2B oversight · E Model-1 expected-only · F operated
+  supply. **STOP at D3 — do NOT start D4 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1 + D2 logic (D3 is additive marketplace/payout surface on top).

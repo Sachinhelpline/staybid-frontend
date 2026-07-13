@@ -426,7 +426,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // OtaFeedManager gains a per-unit picker (a StayBid Circle investor attaches an
 // OTA/Airbnb iCal feed to a specific room they own). Fresh HTML so the picker
 // + per-feed unit chip appear on the Availability / Channel Manager tabs.
-const HTML_CACHE = 'staybid-html-v145';
+// v333 — one-time HTML_CACHE bump (v145 -> v146). Circle multi-investor Phase D3:
+// Model 4 B2B marketplace (buy other investors' listings) + admin settlement
+// payout execution. Bumping HTML_CACHE drops the stale cached partner-dashboard
+// + admin HTML so the new marketplace panel + payout table ship on next visit.
+const HTML_CACHE = 'staybid-html-v146';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

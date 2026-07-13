@@ -832,3 +832,98 @@ compiled). `SB_BUILD v331→v332`, badge v332, `HTML_CACHE v144→v145`.
 D2 completes the B2B trade + ownership transfer + settlement obligation. **Do
 NOT start D3 (B2B marketplace browse + buy button + payout execution) without
 Sachin's "continue".** Same discipline as C1–C4 + the Channel Manager phases.
+
+---
+
+## Phase D3 — B2B Marketplace Browse + Buy Button + Payout Execution (v333)
+
+Third sub-phase of Model 4. D1 built the listing foundation, D2 built the trade
+checkout + ownership transfer + settlement obligation. **D3 surfaces the
+marketplace so investors can DISCOVER + buy another investor's listing, and
+gives the admin a payout-execution surface to clear the `settlement_ledger`
+obligations recorded by D2.** No migration (D1's three tables cover everything);
+additive UI + one new read route + admin payout action.
+
+### The marketplace read route (`GET /api/b2b/marketplace`)
+Investor-facing browse. Owner-scoped via `resolveOwnerIdsCrossPool` (the caller
+must be a real investor identity). Query:
+`status=eq.listed & date_to=gt.<todayISO> & seller_user_id=not.in.(<ownerIds>)`
+— shows every OTHER investor's live, future-dated listing; the caller's own
+listings are excluded (you buy on the marketplace, you sell in your own B2B
+Exchange section). Ordered `ask_total.asc` (cheapest first), cap 120 → side-load
+unit# (`hotel_room_units?id=in.(…)`) + hotel name/city (`hotels?id=in.(…)`, NO
+FK embed), map each with `b2bTradeSplit` (so the buyer sees ask_total + the fee
+split preview), optional in-memory `city` filter, `slice(0, 60)`. Empty
+`ownerIds` → `{listings:[]}` (a non-investor sees nothing).
+
+### The buy button (`components/partner/CircleInventoryTab.tsx`)
+New **"🛒 Buy from the exchange · Model 4"** section (renders only when
+`market.length > 0`), placed BEFORE the D2 "Exchange trades" subsection.
+`loadMarket()` fetches `/api/b2b/marketplace?hotelId=`; each card shows unit# +
+dates + per-night + ask_total + a "Buy block" button → `buyExchange(l)`:
+POST `/api/b2b/listings/[id]/checkout` (D2 route) → `openRazorpayForOrder(order)`
+(`RazorpayError('__CANCELLED__')` catch) → POST `/api/b2b/listings/[id]/verify`
+(D2 route) → flash "Block acquired ✓" + refresh `loadBlocks() / loadTrades() /
+loadMarket() / loadB2b()`. The whole checkout+verify+transfer chain is D2's — D3
+only adds the discovery surface + the button that drives it.
+
+### Payout execution (admin — `/admin/circle-inventory` + `/api/admin/circle-inventory`)
+D2 recorded `settlement_ledger` rows (`kind='b2b_trade'`, `payout_status='owed'`)
+but nothing cleared them. D3 adds the admin payout surface:
+- **GET** — the existing parallel-fetch extended with `settlements`
+  (`kind=eq.b2b_trade&order=created_at.desc&limit=200`) + `settleAgg`
+  (`kind=eq.b2b_trade` amounts, `limit=2000`) → derives 4 KPIs
+  (`b2bOwed / b2bPaid / b2bFees / b2bGmv`). Settlements side-load their trade via
+  `b2b_trades?id=in.(<ref_ids>)` (ref_id join, NO FK embed) → `enrichSettlement`
+  resolves hotel_name / unit_number / dates / nights / seller_name / seller_phone.
+- **POST `mark_settlement_paid { settlementId }`** — loads
+  `settlement_ledger?id=eq.X&kind=eq.b2b_trade`, PATCHes
+  `id=eq.X & kind=eq.b2b_trade & payout_status=eq.owed` →
+  `{payout_status:'paid', paid_at, metadata:{…,payoutPaidAt,payoutPaidBy}, updated_at}`.
+  A 0-row flip → 409 "already paid" (idempotent). `logAdminAction`
+  `circle_inventory.settlement_paid`.
+- **`/admin/circle-inventory` page** — 2 new KPI cards ("Exchange seller owed" ₹
+  gold / "Exchange settled" ₹ green) + a "⇄ Exchange payouts owed to sellers ·
+  Model 4" table (Hotel·Unit / Seller / Dates / Buyer paid / Fee / Seller net /
+  When / Mark paid → `act({action:'mark_settlement_paid', settlementId})`).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `b2b_listings lst_v333test` (status=listed, seller=`v333-seller`,
+date_to=+23d, ask 6000/n × 3, fee 8%) + `b2b_trades trd_v333test` (completed,
+buyer=`v333-buyer`) + `settlement_ledger setl_v333test` (b2b_trade, owed,
+net 16560). **All asserts PASSED:** `a_buyer_sees=1` (marketplace filter surfaces
+the listing to `v333-buyer`) · `b_seller_excluded=0` (`seller_user_id NOT IN
+(v333-seller)` correctly hides the seller's own listing) · `c_trade_buyer=
+v333-buyer` (settlement→trade resolves via ref_id side-load) · `d_status_before=
+owed`. Payout PATCH as two sequential statements (faithful two-click mirror):
+first run flipped `owed→paid` + `paid_at` set + `payoutPaidBy=v333-admin`;
+idempotent re-run (guard `payout_status=eq.owed`) matched 0 rows (route 409
+"already paid"). Test rows deleted (settle/trade/listing all 0). `tsc --noEmit`
+clean, `next build` green (`/api/b2b/marketplace` compiled). `SB_BUILD v332→v333`,
+badge v333, `HTML_CACHE v145→v146`.
+
+### Things to Avoid (Phase D3)
+- **Never** show the caller's OWN listings on the marketplace — the query MUST
+  keep `seller_user_id=not.in.(<ownerIds>)`. You buy others' inventory on the
+  marketplace; you sell yours in the B2B Exchange section.
+- **Never** re-implement the buy chain in D3 — `buyExchange` calls the D2
+  checkout + verify routes verbatim (server re-quotes the frozen ask, transfers
+  the block, records the settlement). D3 adds only the discovery card + button.
+- **Never** compute the payout amount at settlement time — the admin
+  `mark_settlement_paid` action only flips `owed→paid`; the ₹ was frozen by D2
+  into `settlement_ledger.net_amount`. Admin never edits amounts.
+- **Never** drop the `payout_status=eq.owed` guard on the payout PATCH — it is
+  the idempotency gate. A 0-row flip means already-paid → 409, do NOT re-pay.
+- **Never** point the settlement→trade side-load at a PostgREST FK embed — no FK
+  exists; manual `b2b_trades?id=in.(<ref_ids>)` keyed on `settlement_ledger.ref_id`.
+- **Never** surface a payout as executed money movement — `mark_settlement_paid`
+  is a RECORD-KEEPING flip (like C4's `mark_payout_paid`). Actual bank transfer
+  is an ops action outside the app; the ledger tracks the obligation + its
+  cleared state.
+
+### D3 boundary — STOP
+D3 completes the B2B marketplace + buy button + payout-execution record-keeping.
+**Do NOT start D4 (dynamic B2B pricing / admin B2B oversight) — or Phase E
+(Model-1 expected-only language) / Phase F (operated supply growth) — without
+Sachin's "continue".** Same discipline as C1–C4 + D1–D2 + the Channel Manager
+phases.

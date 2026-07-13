@@ -1,16 +1,19 @@
 // v330 — Circle Phase C4: admin oversight for Model 3 pre-buy inventory.
 //
 //   GET  /api/admin/circle-inventory[?status=]
-//     → blocks (enriched hotel/unit/investor) + recent sales + KPIs:
-//        investor-net owed/paid, platform fees, GMV, block counts, buyback
-//        obligations. Owed = what StayBid still has to pay investors for
-//        settled resales (inventory_sales.payout_status='owed').
+//     → blocks (enriched hotel/unit/investor) + recent sales + B2B trade
+//        settlements + KPIs: investor-net owed/paid, platform fees, GMV, block
+//        counts, buyback obligations, and Model-4 exchange owed/paid/fees/GMV.
+//        Owed = what StayBid still has to pay investors for settled resales
+//        (inventory_sales.payout_status='owed') and sellers for completed B2B
+//        trades (settlement_ledger.kind='b2b_trade', payout_status='owed').
 //   POST /api/admin/circle-inventory  { action, ... }
-//     force_expire      { blockId }            owned|listed → expired + release hold
-//     buyback           { blockId, amount? }   buyback_enabled + owned|listed|expired
+//     force_expire         { blockId }         owned|listed → expired + release hold
+//     buyback              { blockId, amount? } buyback_enabled + owned|listed|expired
 //                                              → refunded + release hold + record obligation
-//     mark_payout_paid  { saleId }             inventory_sales owed → paid
-//     mark_buyback_paid { blockId }            block buyback obligation owed → paid
+//     mark_payout_paid     { saleId }          inventory_sales owed → paid
+//     mark_buyback_paid    { blockId }          block buyback obligation owed → paid
+//     mark_settlement_paid { settlementId }    settlement_ledger b2b_trade owed → paid
 //
 // Auth: adminFromReq (Bearer / x-admin-token). Every mutation logAdminAction'd.
 
@@ -55,20 +58,32 @@ export async function GET(req: NextRequest) {
   let blockQ = `select=*&order=created_at.desc&limit=200`;
   if (status && status !== "all") blockQ += `&status=eq.${encodeURIComponent(status)}`;
 
-  const [blocks, sales, statusRows, paidSales] = await Promise.all([
+  const [blocks, sales, statusRows, paidSales, settlements, settleAgg] = await Promise.all([
     sb(`inventory_blocks?${blockQ}`),
     sb(`inventory_sales?select=*&order=created_at.desc&limit=200`),
     sb(`inventory_blocks?select=status&limit=2000`),
     // Lightweight aggregate for accurate KPI totals (numeric cols only).
     sb(`inventory_sales?status=eq.paid&select=investor_net,platform_fee,resale_total,payout_status&limit=2000`),
+    // v333 (D3) — Model 4 B2B trade settlements owed to sellers.
+    sb(`settlement_ledger?kind=eq.b2b_trade&select=*&order=created_at.desc&limit=200`),
+    sb(`settlement_ledger?kind=eq.b2b_trade&select=gross_amount,platform_fee,net_amount,payout_status&limit=2000`),
   ]);
 
+  // v333 (D3) — side-load the B2B trades behind each settlement (ref_id → trade)
+  // so a settlement row can show unit # / hotel / dates.
+  const settleTradeIds = Array.from(new Set(settlements.map((s: any) => String(s.ref_id)).filter(Boolean)));
+  const trades = settleTradeIds.length
+    ? await sb(`b2b_trades?id=in.(${idList(settleTradeIds)})&select=id,unit_id,hotel_id,date_from,date_to,nights,seller_user_id,buyer_user_id`)
+    : [];
+  const tradeBy: Record<string, any> = {}; trades.forEach((t: any) => { tradeBy[t.id] = t; });
+
   // Enrich blocks + sales with hotel name / unit # / investor name.
-  const hotelIds = Array.from(new Set([...blocks, ...sales].map((x) => String(x.hotel_id)).filter(Boolean)));
-  const unitIds = Array.from(new Set([...blocks, ...sales].map((x) => String(x.unit_id)).filter(Boolean)));
+  const hotelIds = Array.from(new Set([...blocks, ...sales, ...trades].map((x) => String(x.hotel_id)).filter(Boolean)));
+  const unitIds = Array.from(new Set([...blocks, ...sales, ...trades].map((x) => String(x.unit_id)).filter(Boolean)));
   const userIds = Array.from(new Set([
     ...blocks.map((x) => String(x.investor_user_id)),
     ...sales.map((x) => String(x.investor_user_id)),
+    ...settlements.map((x: any) => String(x.payee_user_id)),
   ].filter(Boolean)));
 
   const [hotels, unitsRows, usersRows] = await Promise.all([
@@ -93,6 +108,20 @@ export async function GET(req: NextRequest) {
     hotel_name: hotelBy[s.hotel_id]?.name || null,
     investor_name: userBy[s.investor_user_id]?.name || null,
   });
+  // v333 (D3) — a B2B settlement: pull unit/hotel/dates from its trade.
+  const enrichSettlement = (s: any) => {
+    const t = tradeBy[s.ref_id] || {};
+    return {
+      ...s,
+      hotel_name: hotelBy[t.hotel_id]?.name || null,
+      unit_number: unitBy[t.unit_id]?.roomNumber || null,
+      date_from: t.date_from || null,
+      date_to: t.date_to || null,
+      nights: t.nights ?? null,
+      seller_name: userBy[s.payee_user_id]?.name || null,
+      seller_phone: userBy[s.payee_user_id]?.phone || null,
+    };
+  };
 
   // KPIs.
   const byStatus: Record<string, number> = {};
@@ -111,6 +140,15 @@ export async function GET(req: NextRequest) {
     (b: any) => b.status === "refunded" && b?.metadata?.buybackPayoutStatus === "owed",
   ).length;
 
+  // v333 (D3) — B2B trade settlement KPIs (seller net owed / paid, StayBid fees, GMV).
+  let b2bOwed = 0, b2bPaid = 0, b2bFees = 0, b2bGmv = 0;
+  settleAgg.forEach((s: any) => {
+    b2bFees += num(s.platform_fee);
+    b2bGmv += num(s.gross_amount);
+    if (s.payout_status === "paid") b2bPaid += num(s.net_amount);
+    else b2bOwed += num(s.net_amount);
+  });
+
   return NextResponse.json({
     ok: true,
     kpis: {
@@ -121,9 +159,15 @@ export async function GET(req: NextRequest) {
       byStatus,
       totalBlocks: statusRows.length,
       buybackOwed,
+      // v333 (D3) — Model 4 exchange settlements.
+      b2bOwed: Math.round(b2bOwed),
+      b2bPaid: Math.round(b2bPaid),
+      b2bFees: Math.round(b2bFees),
+      b2bGmv: Math.round(b2bGmv),
     },
     blocks: blocks.map(enrichBlock),
     sales: sales.map(enrichSale),
+    settlements: settlements.map(enrichSettlement),
   }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -262,6 +306,35 @@ export async function POST(req: NextRequest) {
     }
     logAdminAction({ admin, action: "circle_inventory.buyback_paid", targetType: "inventory_block", targetId: blockId, details: { amount: num(meta?.buyback?.amount) } });
     return NextResponse.json({ ok: true, block: rows[0] });
+  }
+
+  // ── mark_settlement_paid: settle a B2B trade's seller-net obligation (D3) ─
+  if (action === "mark_settlement_paid") {
+    const settlementId = String(body?.settlementId || "").trim();
+    if (!settlementId) return NextResponse.json({ error: "settlementId required" }, { status: 400 });
+    const rows0 = await sb(`settlement_ledger?id=eq.${encodeURIComponent(settlementId)}&kind=eq.b2b_trade&select=*`);
+    const s = rows0[0];
+    if (!s) return NextResponse.json({ error: "Settlement not found" }, { status: 404 });
+    const meta = (s.metadata && typeof s.metadata === "object") ? s.metadata : {};
+    const r = await fetch(
+      `${SB_URL}/rest/v1/settlement_ledger?id=eq.${encodeURIComponent(settlementId)}&kind=eq.b2b_trade&payout_status=eq.owed`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({
+          payout_status: "paid",
+          paid_at: nowIso,
+          metadata: { ...meta, payoutPaidAt: nowIso, payoutPaidBy: admin.id || null },
+          updated_at: nowIso,
+        }),
+      },
+    );
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return NextResponse.json({ error: "Settlement already paid or not payable." }, { status: 409 });
+    }
+    logAdminAction({ admin, action: "circle_inventory.settlement_paid", targetType: "settlement_ledger", targetId: settlementId, details: { net_amount: num(s.net_amount) } });
+    return NextResponse.json({ ok: true, settlement: rows[0] });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

@@ -59,6 +59,8 @@ type B2bTrade = {
   ask_total: number; platform_fee: number; seller_net: number; status: string;
   unit_number?: string | null; hotel_name?: string | null;
 };
+// v333 (D3) — an OTHER investor's active listing on the marketplace (browse + buy).
+type MarketListing = B2bListing & { hotel_city?: string | null };
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -100,6 +102,8 @@ export default function CircleInventoryTab({
   const [b2bDraft, setB2bDraft] = useState<Record<string, string>>({});
   // v332 — D2: my B2B trades (as buyer / as seller).
   const [b2bTrades, setB2bTrades] = useState<{ asBuyer: B2bTrade[]; asSeller: B2bTrade[] }>({ asBuyer: [], asSeller: [] });
+  // v333 — D3: OTHER investors' active listings I can buy (this hotel).
+  const [market, setMarket] = useState<MarketListing[]>([]);
 
   useEffect(() => { if (!unitId && units[0]) setUnitId(units[0].id); }, [units, unitId]);
 
@@ -148,6 +152,67 @@ export default function CircleInventoryTab({
   }, [hotelId]);
 
   useEffect(() => { loadTrades(); }, [loadTrades]);
+
+  // v333 — D3: load OTHER investors' active listings on this hotel (buy-side).
+  const loadMarket = useCallback(async () => {
+    const token = getToken();
+    if (!token || !hotelId) return;
+    try {
+      const r = await fetch(`/api/b2b/marketplace?hotelId=${encodeURIComponent(hotelId)}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      setMarket(Array.isArray(d.listings) ? d.listings : []);
+    } catch { /* ignore */ }
+  }, [hotelId]);
+
+  useEffect(() => { loadMarket(); }, [loadMarket]);
+
+  // v333 — D3: buy another investor's listing. Server re-validates listing/block
+  // + freezes the split, creates a Razorpay order (client never sets the amount),
+  // we open checkout, then verify completes the trade + transfers the block.
+  async function buyExchange(l: MarketListing) {
+    setBusy(true);
+    try {
+      const token = getToken();
+      const cr = await fetch(`/api/b2b/listings/${encodeURIComponent(l.id)}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const cd = await cr.json().catch(() => ({}));
+      if (!cr.ok || !cd?.order?.id) { flash(cd?.error || "Couldn't start payment"); loadMarket(); return; }
+
+      let pay: any;
+      try {
+        pay = await openRazorpayForOrder({
+          keyId: cd.keyId,
+          orderId: cd.order.id,
+          amountPaise: cd.order.amount,
+          description: `Buy ${l.nights} night${l.nights === 1 ? "" : "s"} · #${l.unit_number || l.unit_id} · ${l.date_from}→${l.date_to}`,
+        });
+      } catch (e) {
+        if (e instanceof RazorpayError && e.message === "__CANCELLED__") { flash("Payment cancelled"); return; }
+        flash(e instanceof Error ? e.message : "Payment failed");
+        return;
+      }
+
+      const vr = await fetch(`/api/b2b/listings/${encodeURIComponent(l.id)}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          razorpay_order_id: cd.order.id,
+          razorpay_payment_id: pay?.razorpay_payment_id,
+          razorpay_signature: pay?.razorpay_signature,
+        }),
+      });
+      const vd = await vr.json().catch(() => ({}));
+      if (!vr.ok || !vd?.ok) { flash(vd?.error || "Payment verify failed — contact support"); loadMarket(); return; }
+      flash("Block acquired ✓ — it's yours to manage");
+      // The bought block is now owned by the caller → refresh every panel.
+      loadBlocks(); loadTrades(); loadMarket(); loadB2b();
+    } catch { flash("Purchase failed"); }
+    finally { setBusy(false); }
+  }
 
   // v331 — D1: list an OWNED block on the B2B exchange at the seller's ask.
   async function listB2b(b: Block) {
@@ -599,6 +664,47 @@ export default function CircleInventoryTab({
           </div>
         )}
       </div>
+
+      {/* v333 — D3: Model 4 B2B marketplace (buy OTHER investors' listings). */}
+      {market.length > 0 && (
+        <div className="mt-7">
+          <div className="mb-2">
+            <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
+              🛒 Buy from the exchange <span className="text-xs font-normal opacity-60">· Model 4</span>
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Owned blocks other investors on this hotel have put up for sale — cheapest first. Buy one and it
+              becomes yours to resell on the guest feed or manage. Payment is secure; StayBid pays the seller.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {market.map((l) => (
+              <div key={l.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
+                style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
+                  #{l.unit_number || l.unit_id}
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {l.date_from} → {l.date_to} · {l.nights}n
+                </span>
+                <span className="text-xs" style={{ color: "var(--text-soft)" }}>
+                  {inr(l.ask_per_night)}/night
+                </span>
+                <div className="ml-auto flex items-center gap-3">
+                  <span className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
+                    {inr(l.ask_total)}
+                  </span>
+                  <button disabled={busy} onClick={() => buyExchange(l)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white"
+                    style={{ background: "var(--accent)" }}>
+                    Buy block
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* v332 — D2: Model 4 B2B trade history (as buyer / as seller). */}
       {(b2bTrades.asBuyer.length > 0 || b2bTrades.asSeller.length > 0) && (
