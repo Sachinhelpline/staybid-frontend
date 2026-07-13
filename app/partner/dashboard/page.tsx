@@ -34,6 +34,7 @@ import ServiceLockModal from "@/components/partner/ServiceLockModal";
 import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
 import SubscriptionBillingModal from "@/components/partner/SubscriptionBillingModal";
 import CircleUnitsTab from "@/components/partner/CircleUnitsTab";
+import CircleInventoryTab from "@/components/partner/CircleInventoryTab";
 import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — shared platform catalog: property types, meal plans, add-on
 // services. The hotel declares here what the /bid auction targets.
@@ -1260,11 +1261,19 @@ export default function PartnerDashboard() {
 
         {/* ══════════════ MY ROOMS (StayCircle operator) ══════════════ */}
         {tab === "myrooms" && hotel?.isOperator && (
-          <CircleUnitsTab
-            hotelId={hotel.id}
-            categories={rooms}
-            initialUnits={hotel.ownedUnits || []}
-          />
+          <>
+            <CircleUnitsTab
+              hotelId={hotel.id}
+              categories={rooms}
+              initialUnits={hotel.ownedUnits || []}
+              hotelAutopilotMode={autopilotMode}
+            />
+            {/* v327 — Circle Phase C1: Model 3 pre-buy inventory (foundation) */}
+            <CircleInventoryTab
+              hotelId={hotel.id}
+              initialUnits={hotel.ownedUnits || []}
+            />
+          </>
         )}
 
         {/* ══════════════ OVERVIEW ══════════════ */}

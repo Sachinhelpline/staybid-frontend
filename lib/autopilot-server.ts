@@ -27,6 +27,41 @@ export async function loadAutopilotMode(hotelId: string): Promise<AutopilotMode>
   return "auto";
 }
 
+/**
+ * Circle multi-investor blueprint — Phase A: per-unit-aware autopilot mode.
+ *
+ * On a StayBid-operated hotel each physical room (`hotel_room_units`) can be
+ * owned by a DIFFERENT investor. Each investor may set their OWN room's
+ * `hotel_room_units.autopilot_mode` (see /api/partner/circle-units). A NULL there
+ * means "inherit the hotel-level `hotels.autopilot_mode`" — every existing unit
+ * today, zero regression. So one investor's mode never changes another owner's
+ * rooms, and the classic single-owner hotel is untouched (its bids carry no
+ * assignedUnitId, so this always falls straight through to the hotel-level mode).
+ *
+ * Fails SAFE at every layer: a bad/missing unit lookup falls back to the
+ * hotel-level mode, which itself falls back to 'auto'. A bid is NEVER blocked by
+ * an autopilot lookup.
+ *
+ * @param unitId  the specific owned unit the bid is assigned to (bids.assignedUnitId),
+ *                or null/undefined for a classic category bid → hotel-level mode.
+ */
+export async function loadEffectiveAutopilotMode(
+  hotelId: string,
+  unitId?: string | null,
+): Promise<AutopilotMode> {
+  if (unitId) {
+    try {
+      const rows = await sbSelect(
+        `hotel_room_units?id=eq.${encodeURIComponent(unitId)}&select=autopilot_mode&limit=1`,
+      );
+      const m = String(rows[0]?.autopilot_mode || "");
+      if (m === "auto" || m === "hybrid" || m === "manual") return m;
+      // NULL / missing override → inherit the hotel-level mode below.
+    } catch { /* column missing / unreachable → hotel-level mode below */ }
+  }
+  return loadAutopilotMode(hotelId);
+}
+
 /** Compute the customer's bidder score from their last 10 bids (DB-backed,
  *  same query shape the place route already uses). NEW-tier fallback on any
  *  error or empty history so the caller always gets a usable score. */

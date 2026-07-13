@@ -11,7 +11,7 @@
 //
 import { NextRequest, NextResponse } from "next/server";
 import { sbSelect } from "@/lib/sb-server";
-import { partnerHotelScope } from "@/lib/partner/hotel-scope";
+import { partnerUnitScope, canManageUnitRow } from "@/lib/partner/hotel-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,10 @@ function nightsBetween(from: string, to: string): number {
 }
 
 export async function GET(req: NextRequest) {
-  const scope = await partnerHotelScope(req);
+  // v326 — per-unit scope: a unit-scoped investor only sees OTA reservations on
+  // the units they own (never a co-investor's guest data); the full-hotel owner
+  // sees all.
+  const scope = await partnerUnitScope(req);
   if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
@@ -46,7 +49,9 @@ export async function GET(req: NextRequest) {
       `room_blocks?hotelId=eq.${encodeURIComponent(hotelId)}&source=eq.ota_ical` +
         `&toDate=gte.${backFloor}&select=*&order=fromDate.asc&limit=500`
     );
-    const rows = Array.isArray(blocks) ? blocks : [];
+    const rows = (Array.isArray(blocks) ? blocks : []).filter((b: any) =>
+      canManageUnitRow(scope, hotelId, b.assignedUnitId ?? null)
+    );
     if (rows.length === 0) return NextResponse.json(empty);
 
     // room names

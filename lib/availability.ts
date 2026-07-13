@@ -257,6 +257,41 @@ export async function unitsFreeForRange(params: {
   return { capacity, occupied: peakOccupied, free: Math.max(0, capacity - peakOccupied) };
 }
 
+/**
+ * v326 — Channel Manager Phase B: per-unit double-booking detector.
+ *
+ * Is the ONE physical unit `unitId` sold to more than one source on any night
+ * in [from, to)? This is the real StayBid-Circle risk: an investor lists their
+ * single room on Airbnb + Booking.com + StayBid, and two of them sell the same
+ * night. It only counts occupations explicitly ASSIGNED to this unit
+ * (assignedUnitId) — an OTA feed with ota_feeds."unitId" set now stamps its
+ * imported room_blocks with assignedUnitId, and an accepted bid carries its
+ * bid_unit_assignment. Unassigned category-level demand is handled separately
+ * by unitsFreeForRange (v318) — not here.
+ *
+ * Returns false (never a false alarm) on any gap. Never throws to the caller
+ * beyond a rejected fetch which the caller should .catch(() => false).
+ */
+export async function unitDoubleBooked(params: {
+  hotelId: string;
+  unitId:  string;
+  from:    string;   // YYYY-MM-DD inclusive
+  to:      string;   // YYYY-MM-DD exclusive
+}): Promise<boolean> {
+  const { hotelId, unitId, from, to } = params;
+  if (!hotelId || !unitId || !from || !to || from >= to) return false;
+  const occs = await getOccupations({ hotelId, from, to });
+  const mine = occs.filter((o) => o.assignedUnitId && String(o.assignedUnitId) === String(unitId));
+  for (const night of enumerateDates(from, to)) {
+    let c = 0;
+    for (const o of mine) {
+      if (o.fromDate <= night && night < o.toDate) c += Math.max(1, o.numRooms || 1);
+    }
+    if (c > 1) return true;
+  }
+  return false;
+}
+
 /** ═══ Minimal iCal parser (handles Booking.com/Airbnb/GoIbibo format) ═══ */
 export function parseICal(text: string): Array<{ uid?: string; start?: string; end?: string; summary?: string }> {
   if (!text || typeof text !== "string") return [];

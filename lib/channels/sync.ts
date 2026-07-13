@@ -18,7 +18,7 @@
 //     PATCH retries with the legacy column subset.
 //
 import { SB_URL, SB_H, SB_H_REPRESENT, genId } from "@/lib/sb-server";
-import { parseICal, toISODate, unitsFreeForRange } from "@/lib/availability";
+import { parseICal, toISODate, unitsFreeForRange, unitDoubleBooked } from "@/lib/availability";
 import { queueNotification } from "@/lib/notify-server";
 
 const FETCH_TIMEOUT_MS = 8_000;
@@ -154,6 +154,39 @@ async function notifyOwners(
   } catch { /* never break a sync on a notification failure */ }
 }
 
+/** The specific owner of a physical unit (v326 per-unit targeting). */
+async function unitOwnerId(unitId: string): Promise<string | null> {
+  if (!unitId) return null;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(unitId)}&select=owner_user_id`,
+      { headers: SB_H }
+    );
+    const rows = await r.json().catch(() => []);
+    const o = Array.isArray(rows) && rows[0]?.owner_user_id ? String(rows[0].owner_user_id) : null;
+    return o;
+  } catch { return null; }
+}
+
+/**
+ * v326 — notify the right people for a feed event.
+ * A per-unit feed (feed.unitId) notifies just that unit's owner (the investor);
+ * a hotel-level feed notifies every manager (owner ∪ operators). Best-effort.
+ */
+async function notifyForFeed(
+  feed: any,
+  template: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  try {
+    if (feed?.unitId) {
+      const owner = await unitOwnerId(String(feed.unitId));
+      if (owner) { await queueNotification({ userId: owner, template, payload }); return; }
+    }
+    await notifyOwners(String(feed?.hotelId || ""), template, payload);
+  } catch { /* never break a sync on a notification failure */ }
+}
+
 const OVERBOOK_CHECK_CAP = 8; // bound the extra availability reads per sync
 
 /**
@@ -195,10 +228,11 @@ export async function syncFeed(
     patch.lastSyncError = error;
     await markFeed(base.feedId, patch);
     if (paused && feed?.hotelId) {
-      await notifyOwners(String(feed.hotelId), "channel_feed_paused", {
+      await notifyForFeed(feed, "channel_feed_paused", {
         provider: feed?.provider || null,
         hotelId: feed.hotelId,
         feedId: base.feedId,
+        unitId: feed?.unitId || null,
         error,
       });
     }
@@ -285,6 +319,10 @@ export async function syncFeed(
       externalRef: e.uid,
       note: e.summary || `${feed.provider} booking`,
       guestName: e.summary || null,
+      // v326 — a per-unit feed pins its imported holds to the exact physical
+      // unit, so unitDoubleBooked can catch the same room sold on two OTAs.
+      // Hotel-level feeds omit it (category-level, unchanged).
+      ...(feed.unitId ? { assignedUnitId: String(feed.unitId) } : {}),
     }))
     .filter((r) => r.fromDate < r.toDate);
 
@@ -372,43 +410,62 @@ export async function syncFeed(
   //    mean a steady feed adds/removes 0 on repeat syncs, so this is naturally
   //    debounced (no spam every 15-min cron tick). Best-effort, never throws. ──
   if (feed.hotelId && base.imported > 0) {
-    await notifyOwners(String(feed.hotelId), "channel_reservation_imported", {
+    await notifyForFeed(feed, "channel_reservation_imported", {
       provider: feed.provider || null,
       hotelId: feed.hotelId,
+      unitId: feed.unitId || null,
       count: base.imported,
     });
     // Bounded overbooking check on the just-imported blocks — the exact moment
     // an OTA booking can push a room past capacity. One aggregated alert per
     // sync-with-conflict (not per block). Capped + best-effort.
+    //
+    // v326 — a per-unit feed (feed.unitId) checks whether the SAME physical
+    // unit is now sold twice (unitDoubleBooked); a hotel-level feed keeps the
+    // category-capacity check (unitsFreeForRange).
     try {
       let overCount = 0;
       let firstRoom = "";
       for (const b of toInsert.slice(0, OVERBOOK_CHECK_CAP)) {
-        const cap = await unitsFreeForRange({
-          hotelId: String(feed.hotelId),
-          roomId: String(b.roomId),
-          from: String(b.fromDate),
-          to: String(b.toDate),
-        }).catch(() => null);
-        if (cap && cap.occupied > cap.capacity) {
+        let conflict = false;
+        if (feed.unitId) {
+          conflict = await unitDoubleBooked({
+            hotelId: String(feed.hotelId),
+            unitId: String(feed.unitId),
+            from: String(b.fromDate),
+            to: String(b.toDate),
+          }).catch(() => false);
+        } else {
+          const cap = await unitsFreeForRange({
+            hotelId: String(feed.hotelId),
+            roomId: String(b.roomId),
+            from: String(b.fromDate),
+            to: String(b.toDate),
+          }).catch(() => null);
+          conflict = !!(cap && cap.occupied > cap.capacity);
+        }
+        if (conflict) {
           overCount++;
           if (!firstRoom) firstRoom = String(b.roomId);
         }
       }
       if (overCount > 0) {
-        await notifyOwners(String(feed.hotelId), "channel_overbooking", {
+        await notifyForFeed(feed, "channel_overbooking", {
           provider: feed.provider || null,
           hotelId: feed.hotelId,
           conflicts: overCount,
           roomId: firstRoom,
+          unitId: feed.unitId || null,
+          perUnit: !!feed.unitId,
         });
       }
     } catch { /* best-effort */ }
   }
   if (feed.hotelId && base.removed > 0) {
-    await notifyOwners(String(feed.hotelId), "channel_reservation_cancelled", {
+    await notifyForFeed(feed, "channel_reservation_cancelled", {
       provider: feed.provider || null,
       hotelId: feed.hotelId,
+      unitId: feed.unitId || null,
       count: base.removed,
     });
   }

@@ -21,6 +21,7 @@ import {
   DEFAULT_CIRCLE_REVENUE, HOLD_FRACTION,
   type BundleItem, type PaymentPlanKey, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
+import { CIRCLE_INCOME_DISCLOSURE } from "@/lib/circle/disclosure";
 
 type PayOption = "full" | "hold" | "emi";
 
@@ -732,7 +733,7 @@ export default function CircleBuildPage() {
                     : `⚡ Proceed & Pay ${bundle.ok ? fmtINR(chargeNow) : ""}`}
             </button>
             <p style={{ marginTop: 10, fontSize: ".68rem", color: "var(--sbc-c-ink-faint)", textAlign: "center" }}>
-              Secure Razorpay payment · Returns are indicative projections, not guaranteed.
+              Secure Razorpay payment · {CIRCLE_INCOME_DISCLOSURE}
             </p>
           </div>
         </div>

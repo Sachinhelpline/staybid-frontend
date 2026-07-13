@@ -6,7 +6,7 @@ import "./circle-premium.css";
 export const metadata = {
   title: "StayCircle™ — Build Wealth with Hospitality | StayBid Community Partner",
   description:
-    "Discover. Lock. Invest. Earn. India's community partner platform for hospitality — lock handpicked properties, build your room bundle and earn monthly returns.",
+    "Discover. Lock. Invest. Earn. India's community partner platform for hospitality — lock handpicked properties, build your room bundle and earn expected monthly income from real bookings (never guaranteed).",
 };
 
 // StayCircle™ — the Community Partner Platform. Renders its own chrome

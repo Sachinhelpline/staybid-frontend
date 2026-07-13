@@ -8,14 +8,16 @@
 //
 import { NextRequest, NextResponse } from "next/server";
 import { sbSelect } from "@/lib/sb-server";
-import { partnerHotelScope } from "@/lib/partner/hotel-scope";
+import { partnerUnitScope, canManageUnitRow } from "@/lib/partner/hotel-scope";
 import { syncFeed } from "@/lib/channels/sync";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const scope = await partnerHotelScope(req);
+  // v326 — per-unit scope: a unit-scoped investor can only sync feeds on a
+  // unit they own; the classic full-hotel owner syncs everything.
+  const scope = await partnerUnitScope(req);
   if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: any = {};
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
   ).catch(() => []);
   const feed = rows?.[0];
   if (!feed) return NextResponse.json({ error: "Feed not found" }, { status: 404 });
-  if (!scope.hotelIds.includes(feed.hotelId))
+  if (!canManageUnitRow(scope, feed.hotelId, feed.unitId ?? null))
     return NextResponse.json({ error: "Not your feed" }, { status: 403 });
 
   const result = await syncFeed(feed, "manual");

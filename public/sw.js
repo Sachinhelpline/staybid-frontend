@@ -418,7 +418,32 @@ const CACHE_NAME = 'staybid-static-v2';
 // builder gains per-room photo upload + per-room amenities (admin +
 // /circle/onboard, shared form); focus-loss "one letter at a time" bug fixed
 // by hoisting <Section> out of the render body. SWR HTML refresh.
-const HTML_CACHE = 'staybid-html-v137';
+// v325 — one-time HTML_CACHE bump (v137 -> v138). Circle multi-investor Phase A:
+// the partner "My Rooms" tab (CircleUnitsTab) gains a per-unit auto-confirm
+// mode control. Bumping HTML_CACHE drops the stale cached partner-dashboard
+// HTML so operators see the new control on next visit.
+// v326 — one-time HTML_CACHE bump (v138 -> v139). Circle multi-investor Phase B:
+// OtaFeedManager gains a per-unit picker (a StayBid Circle investor attaches an
+// OTA/Airbnb iCal feed to a specific room they own). Fresh HTML so the picker
+// + per-feed unit chip appear on the Availability / Channel Manager tabs.
+// v333 — one-time HTML_CACHE bump (v145 -> v146). Circle multi-investor Phase D3:
+// Model 4 B2B marketplace (buy other investors' listings) + admin settlement
+// payout execution. Bumping HTML_CACHE drops the stale cached partner-dashboard
+// + admin HTML so the new marketplace panel + payout table ship on next visit.
+// v334 — one-time HTML_CACHE bump (v146 -> v147). Circle multi-investor Phase D4:
+// dynamic B2B markdown badge on listed exchange listings + admin exchange
+// oversight (expire/cancel listings). Drops stale cached partner + admin HTML.
+// v335 — one-time HTML_CACHE bump (v147 -> v148). Circle Phase E: Model-1
+// "expected income" legal language — every StayCircle income/return/payout
+// surface now reads "expected, based on actual bookings, never guaranteed"
+// (the "guaranteed monthly inflow" copy is gone). Drops stale cached
+// partner-dashboard + /circle HTML that still shows the old wording.
+// v336 — one-time HTML_CACHE bump (v148 -> v149). Circle Phase F: operated
+// supply growth — the /admin/host Property Listings tab gains a one-tap
+// "🚀 Go Live" on a provisioned (DRAFT) host-circle hotel, so the list →
+// provision → publish journey completes from one admin surface. Drops stale
+// cached /admin/host HTML that lacks the Go Live control.
+const HTML_CACHE = 'staybid-html-v149';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

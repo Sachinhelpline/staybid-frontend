@@ -10624,3 +10624,1099 @@ fill-in-the-blanks job, not a from-scratch build. **Zero behaviour change today.
 - **NOT TOUCHED:** availability engine, scoring engine, bid lifecycle, tier
   system, passport, reel-dedup chain, service billing, host vertical data model,
   sync engine (`lib/channels/sync.ts`), scope rule (`partnerHotelScope`).
+
+---
+
+## StayBid Circle Multi-Investor — Phase B: Per-Unit OTA/Airbnb Cross-Listing (v326, 2026-07-12)
+
+Part of the "StayBid Circle multi-investor" expansion (blueprint:
+`docs/CIRCLE-MASTER-BLUEPRINT.md`, which is the source of truth for the phase
+plan A–F). Operated-only + owner-invisible is LOCKED (`owner_type='host_circle'`,
+per-property `hco_<propId>` owner id). Legal framing LOCKED: never
+"guaranteed/assured/fixed" returns — always "expected/based on actual bookings".
+Phase A (per-unit autopilot) shipped v325; **Phase B (this note) ships per-unit
+OTA/Airbnb cross-listing** on top of the unified Channel Manager (v315–v320).
+
+### The problem
+The Channel Manager scopes feeds per HOTEL (`partnerHotelScope`). On a
+multi-investor operated hotel, every co-investor would see + manage EVERY
+owner's OTA feeds and guest reservations. Phase B makes an OTA feed
+attachable to a single physical unit; a unit-scoped investor manages ONLY
+feeds on the units they own, a full-hotel owner keeps hotel-level access.
+`ota_feeds."unitId"` NULL = hotel-level → zero regression for every existing feed.
+
+### Migration `2026-07-12-v326-channel-manager-per-unit.sql` (applied live)
+`ota_feeds."unitId" TEXT` (camelCase quoted) + `channel_connections.unit_id
+TEXT` (snake_case) + 2 partial indexes `idx_ota_feeds_unit` /
+`idx_channel_connections_unit` (WHERE ... IS NOT NULL). `channel_connections
+.unit_id` is RESERVED for a future admin per-unit connector; the partner flow
+keys off `ota_feeds."unitId"` only. Unit-scoped feeds do NOT auto-link a
+`channel_connections` row (the `(hotel_id, ota)` unique index would collide
+across two investors on the same hotel + OTA).
+
+### THE UNIT RULE — `lib/partner/hotel-scope.ts`
+- `resolveScopeParts(req)` → `{userId, ownerIds, ownedHotelIds, operatedHotelIds}`
+  (owned∖operated de-dup). `partnerHotelScope` kept byte-compatible.
+- `partnerUnitScope(req)` → `{hotelIds, userId, ownerIds, unitsByHotel,
+  ownedUnitsByHotel}`. `unitsByHotel[h]` = `null` (full-hotel owner via
+  `hotels.ownerId`) OR `string[]` (owned active unit ids, batched from
+  `hotel_room_units?hotelId=in.(operated)&owner_user_id=in.(ownerIds)&status=eq
+  .active`). `isUnitScoped(scope, hotelId)` = `Array.isArray(unitsByHotel[h])`.
+- `canManageUnitRow(scope, hotelId, unitId)`: not-in-scope → false; full-hotel
+  (null) → true; unit-scoped → only its OWN unitId, and NEVER a hotel-level
+  (unitId null) feed → false.
+
+### Routes / engine / UI (all additive)
+- **`/api/partner/ota-feeds`** — `partnerUnitScope`. GET returns `{feeds,
+  unitScoped, units}`. POST: unit-scoped → `unitId` REQUIRED + must be owned +
+  `roomId` DERIVED from the owned unit (never trusts a mismatched body roomId);
+  hotel-level → room-belongs-to-hotel check. Auto-links `channel_connections`
+  ONLY when `!unitId`. PATCH/DELETE re-check via `canManageUnitRow(scope,
+  existing.hotelId, existing.unitId ?? null)`.
+- **`/api/partner/ota-feeds/sync`** — swapped to `partnerUnitScope` +
+  `canManageUnitRow`.
+- **`lib/channels/sync.ts`** — imported blocks carry `assignedUnitId =
+  feed.unitId` for per-unit feeds (pins the hold to that physical room);
+  `notifyForFeed(feed, …)` routes a per-unit feed's notifications to just that
+  unit's owner (else all managers).
+- **`lib/availability.ts`** — `Occupation.numRooms`; `getOccupations` carries
+  each bid's `numRooms`; NEW `unitDoubleBooked({hotelId, unitId, from, to})` —
+  filters occupations to `assignedUnitId === unitId`, per-night sums `numRooms`,
+  returns true if any night > 1. Fail-safe false.
+- **`/api/partner/overbooking-check`** — per-unit branch runs `unitDoubleBooked`
+  (`perUnit:true`); category blocks keep the v318 `unitsFreeForRange` check.
+- **`/api/partner/channel-reservations`** — rows filtered via `canManageUnitRow(
+  scope, hotelId, b.assignedUnitId ?? null)` → no co-investor guest-data leak.
+- **`components/partner/OtaFeedManager.tsx`** — loads `unitScoped` + `units`;
+  unit-scoped "Add feed" shows a UNIT picker (sends `unitId`) instead of the
+  room picker; per-unit feed rows get an amber `🔑 #<roomNumber>` chip; Add
+  disabled uses `!(unitScoped ? nf.unitId : nf.roomId)`.
+- `SB_BUILD v325→v326`, badge v326, `public/sw.js HTML_CACHE v139`.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded a synthetic host-circle hotel + one owned active `hotel_room_units`
+(`owner_user_id='v326-lister'`) + a per-unit `ota_feeds` (`unitId` set) + two
+overlapping unit-assigned `room_blocks`, then asserted against the real schema:
+**(A)** `partnerUnitScope`'s unit query returns the owned active unit for the
+lister (1); **(B)** `canManageUnitRow` admits the feed (feed.unitId ∈ owned
+set); **(C)** `unitDoubleBooked` mirror = true, per-night peak = 2 (>1). All
+test rows deleted. `tsc --noEmit` clean, `next build` green.
+
+### Things to Avoid (Circle Phase B)
+- **Never** scope a channel route by `partnerHotelScope` (hotel-only) when it
+  touches feeds / reservations / overbooking — use `partnerUnitScope` +
+  `canManageUnitRow`, or a unit-scoped investor sees/manages a co-investor's
+  feeds + OTA guest data.
+- **Never** auto-link a `channel_connections` row for a per-unit (`unitId` set)
+  feed — the `(hotel_id, ota)` unique index would 42P10-collide across two
+  investors' feeds on the same hotel + OTA. Only hotel-level (`!unitId`) feeds
+  auto-link. `channel_connections.unit_id` is reserved for a future admin
+  per-unit connector.
+- **Never** trust a body `roomId` on a unit-scoped POST — derive it from the
+  owned unit, or the feed's imported blocks attach to the wrong physical room.
+- **Never** stamp `assignedUnitId` on an imported block from a hotel-level feed
+  — only per-unit feeds set it, so `unitDoubleBooked` never false-positives on
+  category feeds.
+- Keep `unitDoubleBooked` fail-safe false — a per-unit availability hiccup must
+  never surface a phantom overbooking alert (v247 oversell-guard discipline).
+- `NULL "unitId"` = hotel-level. That's the zero-regression signal — every
+  pre-v326 feed reads as hotel-level with no backfill.
+
+### Updated production state (v326, 2026-07-12)
+- **Current version:** v326 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration applied live + verified (both columns + 2 partial indexes present).
+  `tsc --noEmit` clean, `next build` green, live per-unit round-trip passed.
+- **Circle phase plan (docs/CIRCLE-MASTER-BLUEPRINT.md):** Phase A per-unit
+  autopilot (v325) ✅ · **Phase B per-unit OTA (v326) ✅** · Phase C Model-3
+  pre-buy · Phase D Model-4 B2B · Phase E Model-1 expected-only language ·
+  Phase F operated supply growth. **STOP at Phase B — do NOT start Phase C
+  without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (Phase A), the shared
+  sync engine's import/reconciliation logic, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C1: Model 3 Pre-Buy Foundation (v327, 2026-07-12)
+
+Part of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §6).
+Model 3 = commerce (money): investor pre-buys room-nights wholesale + resells.
+Built as verified sub-phases C1..C4 (like Channel Manager 1–6). **C1 is the
+inert additive foundation ONLY** — schema + pure engine + Spine quote +
+owner-scoped read/quote/draft-list API + investor UI. **NO Razorpay, NO
+inventory hold, NO consumer-feed exposure, NO settlement** — those are C2/C3/C4.
+
+### The model
+An investor who already OWNS a physical unit (`hotel_room_units.owner_user_id`)
+takes commercial control of a DATE RANGE of that unit. Wholesale (buy) = Spine
+`bidFloor`; retail suggestion = Spine `livePrice`; platform fee % on the resale
+at settlement; investor margin = resale − fee − buy; investor bears unsold risk
+(why buy is paid upfront in C2).
+
+### Migration `2026-07-12-v327-phase-c1-inventory-blocks.sql` (applied live)
+`inventory_blocks` (22 cols): `investor_user_id`, `hotel_id`, `unit_id`,
+`room_id`, `date_from`/`date_to` DATE, `nights`, `buy_price_per_night`/
+`buy_total` (frozen at draft), `resale_price_per_night`, `platform_fee_pct`,
+`status` CHECK ∈ {draft,quoted,pending_payment,owned,listed,sold,expired,
+cancelled,refunded} DEFAULT draft, `buyback_enabled`, razorpay ids, ts cols,
+`metadata` JSONB. `inventory_blocks_range_chk CHECK (date_to > date_from AND
+nights > 0)`. 5 indexes (investor+status, unit+range, hotel+status, partial
+WHERE status='listed'). RLS permissive `inventory_blocks_all_anon`.
+
+### Files (all NEW, additive)
+- `lib/inventory/engine.ts` — PURE (no fetch). Shared by quote endpoint +
+  future C2 checkout + client UI so numbers never drift. `computeBlockQuote`,
+  `resaleMargin`, `nightsBetween`, `MAX_BLOCK_NIGHTS=90`,
+  `PLATFORM_RESALE_FEE_PCT_DEFAULT=12` (⚠ flagged — wire to `service_pricing`).
+- `lib/inventory/quote.ts` — `quoteInventoryBlock`: one `room_date_price` range
+  read + per-missing-night `resolveSpinePrices` fallback. wholesale=bidFloor→
+  flashFloor→round(live×0.7); retail=livePrice→flashPrice→baseRate.
+- `app/api/circle/inventory/quote/route.ts` — POST, owner-verified, READ-ONLY
+  (no write/charge). Returns quote + optional `atResale`.
+- `app/api/circle/inventory/route.ts` — GET (caller's blocks, side-load unit#/
+  hotel name, no FK embed) · POST (DRAFT: ownership + date + overlap guard +
+  re-quote to FREEZE buy/fee, client never sets ₹) · DELETE (draft|quoted only).
+- `components/partner/CircleInventoryTab.tsx` — investor UI under "My Rooms"
+  (operator-only, below `CircleUnitsTab`): quote builder + draft blocks.
+- `app/partner/dashboard/page.tsx` — `myrooms && isOperator` renders both tabs.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic owned unit on real room `ris04-r1` (75 days Spine data): (A) ownership
+resolves; (B) overlap guard empty; (C) quote mirror 2026-07-15..18 = 3 nights /
+buy ₹12,600 (3×₹4,200 floor) / suggested resale ₹13,000; (D) DRAFT insert
+accepted, range CHECK held, JSONB metadata ok; (E) GET side-load (no FK embed);
+(F) DELETE guard (draft|quoted). `blocks_left=0, units_left=0`. `tsc` clean,
+`next build` green (both `/api/circle/inventory` routes compiled).
+`SB_BUILD v326→v327`, badge v327, `HTML_CACHE v139→v140`.
+
+### Things to Avoid (Circle Phase C1)
+- **Never** let the client set the buy/resale ₹ on the DRAFT — POST re-quotes
+  the Spine server-side + FREEZES buy/total/fee (the C2 tamper-safe pattern
+  established early). Same discipline as host-wizard `computeBundle` +
+  service-subscription checkout.
+- **Never** quote/create a block on a unit the caller doesn't own — every path
+  goes through `resolveOwnerIdsCrossPool` + `ownedUnit`.
+- **Never** skip the POST overlap guard (`status NOT IN (expired,cancelled,
+  refunded) AND date_from<to AND date_to>from`) — two non-terminal blocks on
+  the same unit/nights would double-sell in C2/C3.
+- **Never** compute the block quote outside `lib/inventory/engine.ts` — UI,
+  quote endpoint, and future C2 checkout MUST share it (preview == charge).
+- **Never** delete a block that isn't draft|quoted — once money moves (C2) the
+  lifecycle owns transitions; DELETE filters `status IN (draft,quoted)`.
+- `PLATFORM_RESALE_FEE_PCT_DEFAULT=12` is a flagged default — wire to
+  `service_pricing` before C3 settlement.
+
+### Updated production state (v327, 2026-07-12)
+- **Current version:** v327 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration applied live + verified. `tsc` clean, `next build` green, C1 live
+  round-trip passed (6 assertions, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA
+  (v326) ✅ · **C1 pre-buy foundation (v327) ✅** · C2 purchase/Razorpay/hold ·
+  C3 resale listing + consumer feed + settlement · C4 dynamic discount/expiry/
+  buyback + admin · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **STOP at C1 — do NOT start C2 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C2: Purchase Flow + Inventory Hold (v328, 2026-07-12)
+
+Sub-phase C2 of Model 3 pre-buy (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§7). Turns a C1 DRAFT/QUOTED `inventory_blocks` row into an `owned` block via a
+tamper-safe Razorpay checkout, then writes an idempotent `room_blocks`
+inventory HOLD so the bought room-nights can't be double-sold. **NO consumer
+feed exposure, NO resale listing, NO settlement — those are C3/C4.** No
+migration (C1's `inventory_blocks` + razorpay columns already exist).
+
+### Two routes (both owner-verified, both share `lib/inventory`)
+- **`POST /api/circle/inventory/[id]/checkout`** — loads the block (must be
+  `draft|quoted`, owned via `resolveOwnerIdsCrossPool` + `ownedUnit`), runs a
+  self-excluding overlap re-guard (`unit_id=eq & id=neq.self & status=not.in.
+  (expired,cancelled,refunded) & date_from<to & date_to>from` → 409), re-quotes
+  the Spine via `quoteInventoryBlock` (422 if null/≤0), creates a Razorpay
+  order via `${origin}/api/razorpay/order` (`amount: quote.buyTotal`,
+  `receipt: cinv_<id>`, `notes:{kind:"circle_inventory",blockId,unitId}`), then
+  PATCH-guards `status=in.(draft,quoted) & investor_user_id=in.(ownerIds)` →
+  `status:"pending_payment", buy_price_per_night, buy_total, platform_fee_pct,
+  razorpay_order_id, metadata:{…,repricedAt,suggestedResaleTotal}`. Returns
+  `{ok, keyId:PUBLIC_KEY_ID, order, buyTotal, block}`. **Client never sets ₹.**
+- **`POST /api/circle/inventory/[id]/verify`** — validates razorpay_* fields,
+  auth → ownerIds, HMAC via `${origin}/api/razorpay/verify` (reads `.verified`;
+  400 mismatch / 502 unreachable). PATCH `id=eq & razorpay_order_id=eq &
+  status=eq.pending_payment & investor_user_id=in.(ids)` → `status:"owned",
+  razorpay_payment_id, purchased_at, updated_at`. **Anti-tamper + idempotent:**
+  4-key match, so a replay/tampered-configId flips 0 rows → re-fetch owned block
+  → `writeHold` if found → `{ok:true, alreadyProcessed:true}`. On a real flip →
+  `writeHold(block)` → `{ok:true, block, held}`.
+
+### Inventory hold (`writeHold`, best-effort, never throws)
+`getOccupations`/`unitsFreeForRange` (`lib/availability.ts`) count ALL
+`room_blocks` rows → writing one auto-holds the nights. Hold id is DETERMINISTIC
+`invhold_<blockId>` → idempotent upsert (`on_conflict=id, Prefer: resolution=
+merge-duplicates,return=minimal`) so re-verify never duplicates it + C4
+expiry/refund can find/release it. Body: `{id:'invhold_'+block.id, hotelId,
+roomId, fromDate:date_from, toDate:date_to, source:"inventory",
+assignedUnitId:unit_id, assignedUnitNumber, note:"StayBid Circle pre-buy hold",
+createdBy:investor_user_id}`. `room_blocks` has NO `source` CHECK (only
+`toDate>fromDate` range check); `source` defaults `'manual'`. A hold hiccup must
+never fail a payment that already succeeded.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+`buyNights(b)`: POST checkout → `openRazorpayForOrder(order)` (from
+`lib/razorpay.ts`; cancellation = `RazorpayError("__CANCELLED__")`) → POST
+verify → flash + `loadBlocks()`. `draft|quoted` rows show "Buy nights ·
+{inr(buy_total)}"; `pending_payment` rows show "Complete payment".
+
+### Verified (live round-trip, cleaned up — 0 leftover, twice)
+Synthetic host-circle hotel + v247-trigger-provisioned owned unit on a real
+room + a C1 DRAFT block. All 6 asserts PASSED: overlap_guard_empty=0 ·
+pending_after_checkout=1 · owned_after_verify=1 (matched on id+order+pending+
+ownership) · hold_written=1 (`room_blocks invhold_<id>`, `source='inventory'`) ·
+hold_idempotent_no_dup=1 (re-run writeHold via on_conflict merge → 1 row) ·
+units_free_after_hold=0 (hold consumes the unit → customer booking blocked).
+`tsc --noEmit` clean, `next build` green (both routes compiled).
+`SB_BUILD v327→v328`, badge v328, `HTML_CACHE v140→v141`.
+
+### Things to Avoid (Circle Phase C2)
+- **Never** let the client set the buy ₹ at checkout — the checkout route
+  re-quotes the Spine + freezes `buy_total`; verify never trusts a client
+  amount (host-wizard + subscription tamper-safe discipline).
+- **Never** flip a block to `owned` without the 4-key PATCH filter
+  (`razorpay_order_id` + `status=pending_payment` + `investor_user_id ownership`).
+  A 0-row flip = already-processed OR not-yours → return `alreadyProcessed`,
+  do NOT re-charge.
+- **Never** write the inventory hold with a random id — MUST be deterministic
+  `invhold_<blockId>` upsert, or a re-verify duplicates it and C4 can't
+  find/release it.
+- **Never** let `writeHold` throw/block the verify response — best-effort; a
+  hold hiccup must not fail a payment that already verified.
+- **Never** skip the self-excluding overlap re-guard at checkout — a second
+  block on the same unit/nights could reach `owned` and double-sell.
+- **Never** narrow the verify PATCH's ownership set below
+  `resolveOwnerIdsCrossPool` — a cross-pool identity must complete its own buy.
+
+### Updated production state (v328, 2026-07-12)
+- **Current version:** v328 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (C1 schema reused). `tsc` clean, `next build` green, C2 live
+  round-trip passed (6 asserts, 0 leftover, twice).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1 pre-buy foundation (v327) ✅ · **C2 purchase + hold (v328) ✅** · C3
+  resale listing + consumer feed + settlement · C4 dynamic discount/expiry/
+  buyback + admin · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **STOP at C2 — do NOT start C3 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C3: Resale Listing + Consumer Feed + Settlement (v329, 2026-07-12)
+
+Sub-phase C3 of Model 3 pre-buy (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§8). An investor takes a C2 `owned` block, **lists** it at a resale price on the
+SAME customer feed as flash deals; a customer pays the resale total → block
+`sold` → an `inventory_sales` ledger row freezes the StayBid fee + investor net.
+StayBid holds the resale total and **owes** the investor their net
+(`payout_status='owed'`); actual payout execution is C4.
+
+### Migration `2026-07-12-v329-phase-c3-inventory-sales.sql` (applied live)
+NEW `inventory_sales` settlement ledger: `id` (`invs_`+uuid), `block_id`,
+`hotel_id`, `unit_id`, `room_id`, `investor_user_id` (NOT NULL — who gets the
+net), `buyer_user_id`/`buyer_name`/`buyer_phone`, `date_from`/`date_to` DATE,
+`nights`, `resale_per_night`/`resale_total` (NOT NULL — what the customer pays),
+`buy_total` (cost snapshot), `platform_fee_pct`/`platform_fee` (NOT NULL —
+StayBid's cut), `investor_net` (NOT NULL — resale − fee − buy), razorpay ids,
+`status` ∈ {pending_payment, paid, refunded, cancelled} DEFAULT pending_payment,
+`payout_status` ∈ {owed, paid} DEFAULT owed, `paid_at`, `metadata`, timestamps.
+Indexes: `idx_inv_sales_block`, `idx_inv_sales_investor (investor_user_id,status)`,
+`idx_inv_sales_buyer`, `idx_inv_sales_order`; **UNIQUE partial
+`uniq_inv_sales_block_paid` on (block_id) WHERE status='paid'** (a block sells
+once). RLS permissive `inventory_sales_all_anon`. `inventory_blocks` already
+carries `listed_at`/`sold_at`/`resale_price_per_night`/`platform_fee_pct` (C1) →
+**no block-schema change** for the listing state machine.
+
+### Routes (4 files, all NEW, additive)
+- **`POST/DELETE /api/circle/inventory/[id]/list`** — investor lists / re-prices
+  (`owned|listed → listed`, resale > 0 ≤ 1,000,000, `date_to` future) / unlists
+  (`listed → owned`). Owner-verified via `resolveOwnerIdsCrossPool` + `ownedUnit`.
+- **`GET /api/circle/resale`** — PUBLIC consumer feed. `status=eq.listed &
+  resale_price_per_night=gt.0 & date_to=gt.today`, ordered cheapest-first, cap 60,
+  optional `?city=&hotelId=`. Enriched with hotels
+  (**`approval_status=eq.approved` ONLY** — a pending hotel can't surface) + rooms
+  via manual `?id=in.(…)` side-loads (NO PostgREST FK embed). Discount vs
+  `metadata.suggestedResaleTotal`. `Cache-Control: no-store`.
+- **`POST /api/circle/resale/[id]/checkout`** — customer (`userFromReq`) buys a
+  `listed`, future-dated block. Computes the resale total **SERVER-SIDE** via
+  `resaleMargin` (client NEVER sets ₹), creates a Razorpay order via the shared
+  `/api/razorpay/order` (`notes.kind='circle_resale'`), writes an
+  `inventory_sales` **pending** row freezing the split (fee + investor net).
+  Block stays `listed` until verify (only the first paid customer wins).
+- **`POST /api/circle/resale/[id]/verify`** — HMAC-verifies (shared
+  `/api/razorpay/verify`), then (1) flips the sale `pending_payment → paid`
+  matched on `razorpay_order_id + block_id + buyer + status=eq.pending_payment`
+  (stamps payment id + paid_at); (2) flips the block `listed → sold` guarded on
+  `status=eq.listed` (anti-double-sell + idempotent, stamps sold_at); (3)
+  best-effort refreshes the pre-buy `room_blocks` hold note. Leaves the hold —
+  the room is now a paid resale guest.
+
+### Client UI (all NEW / additive)
+- **`components/circle/ResaleOffers.tsx`** — one-line mount on `/flash-deals`;
+  `/api/circle/resale?city=` → horizontal cards + reserve modal + Razorpay flow
+  (`openRazorpayForOrder` / `RazorpayError`) + success modal. Uses `sb_token`.
+  Renders `null` when `!loaded || offers.length===0` (zero-regression).
+- **`components/partner/CircleInventoryTab.tsx`** — `listResale`/`unlist`
+  handlers + owned/listed/sold block-row UI.
+- `app/flash-deals/page.tsx` mounts `<ResaleOffers city={city} />`.
+
+### Settlement math (`resaleMargin`, `lib/inventory/engine.ts` — shared)
+`resaleTotal = resalePerNight × nights` · `feeTotal = round(resaleTotal ×
+feePct/100)` · `buyTotal = buyPerNight × nights` · `investorNet = resaleTotal −
+feeTotal − buyTotal`. `PLATFORM_RESALE_FEE_PCT_DEFAULT = 12` (⚠ flagged —
+wire to `service_pricing` with C4). The SAME function powers the checkout freeze
++ the client preview → preview == charge.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle **approved** hotel + owned unit on real room `ris04-r1` +
+a `listed` block (3n, buy ₹4,200/n, resale ₹5,000/n, fee 12%). **All 5 asserts
+PASSED:** (A) resale feed SELECT surfaces the block (`feed_hit=1`) only because
+the hotel is approved; (B) checkout writes a pending `inventory_sales` row with
+`split_frozen_ok` — resale ₹15,000 / fee ₹1,800 / buy ₹12,600 / net ₹600, and
+`investor_net = resale − fee − buy`; (C) verify flips sale → `paid` + block →
+`sold` (`verify_ok=true`), StayBid keeps ₹1,800, `payout_status='owed'` owes
+investor ₹600; (D) a second `paid` row for the block is rejected by
+`uniq_inv_sales_block_paid` (`dup_row_landed=0`, `paid_rows_for_block=1`) and a
+re-verify block-flip is a no-op (`reverify_would_flip=0`, idempotent). All test
+rows deleted (0 leftover). `tsc --noEmit` clean, `next build` green (all 4 routes
+compiled). `SB_BUILD v328→v329`, badge v329, `HTML_CACHE v141→v142`.
+
+### Things to Avoid (Circle Phase C3)
+- **Never** let the client set the resale ₹ at checkout — the checkout route
+  re-computes `resaleTotal` from the block via `resaleMargin` and freezes the
+  split; verify never trusts a client amount (C1/C2 tamper-safe discipline).
+- **Never** flip a block to `sold` without the `status=eq.listed` guard — it's
+  the anti-double-sell + idempotency gate. A 0-row flip means already-sold (a
+  re-verify) → do NOT re-settle.
+- **Never** mark a sale `paid` without matching on `razorpay_order_id + block_id
+  + buyer + status=eq.pending_payment` — that 4-key filter + the
+  `uniq_inv_sales_block_paid` unique index are the anti-tamper + one-sale-per-
+  block guarantees. On a 0-row match, re-fetch the paid row for the summary.
+- **Never** surface a resale offer from a NON-approved hotel — the feed joins
+  `hotels?…&approval_status=eq.approved`; an unapproved hotel's block must not
+  reach the customer.
+- **Never** compute the resale split outside `resaleMargin` — the checkout freeze
+  and the client preview MUST share it so preview == charge.
+- **Never** delete/release the pre-buy `room_blocks` hold on sale — the room is
+  now a paid resale guest; verify only refreshes the hold note.
+- **Never** execute a payout in C3 — C3 only RECORDS the obligation
+  (`payout_status='owed'`); actual payout + reconciliation is C4.
+
+### Updated production state (v329, 2026-07-12)
+- **Current version:** v329 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration `inventory_sales` applied live + verified (table + 5 indexes + unique
+  partial index + RLS policy). `tsc` clean, `next build` green, C3 live round-trip
+  passed (5 asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1 pre-buy foundation (v327) ✅ · C2 purchase + hold (v328) ✅ ·
+  **C3 resale listing + consumer feed + settlement (v329) ✅** · C4 dynamic
+  discount/expiry/buyback + admin · D Model-4 B2B · E Model-1 expected-only ·
+  F operated supply. **STOP at C3 — do NOT start C4 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C4: Dynamic Markdown + Expiry + Buyback + Admin (v330, 2026-07-13)
+
+Final sub-phase of Model 3 pre-buy (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§9). Closes the lifecycle: a cron auto-discounts listed blocks as check-in nears
++ expires the unsold, an investor opt-in **platform buyback**, and a full admin
+oversight surface for both settlement obligations. **NO migration** — C1's
+`inventory_blocks.buyback_enabled` + `metadata` JSONB + `expired`/`refunded`
+statuses already exist; C4 is code-only.
+
+### Lifecycle cron `/api/cron/inventory-lifecycle` (GET+POST, two idempotent passes)
+Auth mirrors `/api/cron/expire-holds` (`?token=` / Bearer `CRON_SECRET` / `adm_`
+x-admin token). Budget 24s, ≤200 rows/pass.
+- **Markdown pass** — `status=eq.listed & date_from` in `[today, today+14]`.
+  `original = round(metadata.listResalePerNight ?? resale_price_per_night)`
+  (frozen baseline, backfilled from current price for pre-C4 listings); tiers via
+  `markdownPctForDaysOut` (≥15→0 · ≥8→10 · ≥4→20 · ≥2→30 · else 40); `perNight =
+  max(round(buy_price_per_night), round(original × (1−pct/100)))` — **NEVER below
+  buy cost**. Recomputed from the FROZEN baseline → re-runs converge + never
+  compound; idempotent no-op skip when price+pct already match. PATCH guarded
+  `status=eq.listed`.
+- **Expiry pass** — `status=in.(owned,listed) & date_from < today` → `expired` +
+  `metadata.expiredAt/expiredReason='stay_started_unsold'` + `releaseHold`
+  (`DELETE room_blocks?id=eq.invhold_<blockId>`).
+
+### Pure engine (`lib/inventory/engine.ts`, shared by cron + client)
+`MARKDOWN_TIERS`, `markdownPctForDaysOut(daysOut)`, `markdownResalePerNight({
+originalPerNight, buyPerNight, daysOut })` → `{perNight, pct}` (floored at buy),
+`daysUntil(dateISO)` (UTC-day math; `Date.now()`-based but the cron reads
+today via `isoDatePlus(0)`).
+
+### Investor buyback toggle (`PATCH /api/circle/inventory`)
+`{ id, buybackEnabled }` — owner-verified (`resolveOwnerIdsCrossPool`), guarded
+`status=in.(owned,listed) & investor_user_id ownership`. `CircleInventoryTab`:
+optimistic checkbox on owned/listed rows + `−N% auto` badge (struck-through
+original) on listed rows once the cron marks one down.
+
+### Admin oversight (`/admin/circle-inventory` + `/api/admin/circle-inventory`)
+`adminFromReq` + `logAdminAction`. Sidebar "🧾 Circle Inventory" after StayCircle.
+- **GET** — blocks + sales + KPIs (`investorOwed`/`investorPaid`/`platformFees`/
+  `gmv`/`byStatus`/`buybackOwed`), hotels/units/users side-loaded (NO FK embed).
+- **POST** — `force_expire` (owned|listed→expired+releaseHold) · `buyback`
+  (requires `buyback_enabled`; owned|listed|expired→refunded, amount defaults
+  `buy_total`, +`metadata.buyback` +`buybackPayoutStatus='owed'` + releaseHold) ·
+  `mark_payout_paid` (`inventory_sales` status=paid & payout_status=owed→paid) ·
+  `mark_buyback_paid` (block refunded & `metadata.buybackPayoutStatus` owed→paid).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle hotel + owned unit on a real room + a listed block 5 days
+out (20% tier), original ₹5000/n, buy ₹4200/n. **All asserts PASSED:** (A) 20%
+off ₹5000=₹4000 → floored at ₹4200 buy cost, pct+original frozen, non-floored
+math (6000@20%→4800) correct, idempotent-skip TRUE. (B) date_from<today →
+`expired` + reason + hold released. (C) `buyback_enabled=true`. (D) admin buyback
+→ `refunded` + `metadata.buyback.amount=buy_total` + `buybackPayoutStatus='owed'`
++ hold released. (E) `mark_buyback_paid`→paid + `mark_payout_paid`→
+`inventory_sales.payout_status='paid'`. `tsc` clean, `next build` green (all 3
+C4 routes compiled). `SB_BUILD v329→v330`, badge v330, `HTML_CACHE v142→v143`.
+
+### Things to Avoid (Circle Phase C4)
+- **Never** mark a listed block below its buy cost — the `max(buyPerNight,
+  marked)` floor is the investor's protection.
+- **Never** recompute markdown from the CURRENT `resale_price_per_night` — always
+  from the frozen `metadata.listResalePerNight`, or successive cron runs compound
+  the discount into oblivion.
+- **Never** drop the idempotent no-op skip in the markdown pass — the cron runs
+  every 15 min.
+- **Never** run a platform buyback without `buyback_enabled=true` — investor
+  opt-in; both the admin action + cron check the flag.
+- **Never** let `releaseHold` failure block a status flip — flip first, best-effort
+  release (C2 discipline).
+- **Never** invent settlement amounts — admin actions only flip `owed→paid`;
+  `inventory_sales` (resale) + `metadata.buyback` (buyback) are the two records.
+- ⚠ **SACHIN ACTION:** register cron-job.org — `*/15 * * * *` →
+  `https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev`.
+
+### Updated production state (v330, 2026-07-13)
+- **Current version:** v330 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (C1 schema reused). `tsc` clean, `next build` green, C4 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1 pre-buy foundation (v327) ✅ · C2 purchase + hold (v328) ✅ · C3 resale
+  + consumer feed + settlement (v329) ✅ · **C4 markdown/expiry/buyback + admin
+  (v330) ✅** · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **Model 3 COMPLETE. STOP at C4 — do NOT start Phase D without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, C1/C2/C3
+  purchase + resale + settlement logic (only additive C4 lifecycle/admin on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D1: Model 4 B2B Exchange Foundation (v331, 2026-07-13)
+
+First sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D1).
+Model 4 = a B2B exchange (intermediary commerce): an investor who OWNS Model-3
+inventory lists it at their own B2B ask; ANOTHER investor buys it; StayBid takes
+a fee. B2B-only (no retail) → far from SEBI/CIS. **D1 is the INERT ADDITIVE
+FOUNDATION only** (mirrors C1) — schema + pure fee engine + owner-scoped listing
+CRUD + investor UI. **NO trade execution, NO Razorpay, NO ownership transfer,
+NO settlement, NO marketplace browse** — those are D2/D3/D4.
+
+### Migration `2026-07-13-v331-phase-d1-b2b-exchange.sql` (applied live)
+Three tables — only `b2b_listings` is WRITTEN by D1; `b2b_trades` +
+`settlement_ledger` are created-but-unused (future-proof, mirrors C1's unused
+razorpay columns):
+- **`b2b_listings`** (`b2bl_` ids) — `block_id`, `seller_user_id`
+  (= block `investor_user_id`), hotel/unit/room, date range, `nights`,
+  `ask_per_night`/`ask_total`, `buy_total` (cost snapshot), `platform_fee_pct`
+  (FROZEN server-side), `status` ∈ {draft,listed,sold,cancelled,withdrawn,
+  expired} DEFAULT listed, `metadata`. `range_chk` (date_to>date_from AND
+  nights>0). 4 indexes + **`uniq_b2b_listing_active_block` UNIQUE (block_id)
+  WHERE status IN (draft,listed)** — one active listing per owned block.
+- **`b2b_trades`** (`b2bt_`, D2/D3) — `uniq_b2b_trade_listing_completed` UNIQUE
+  (listing_id) WHERE status='completed' + 4 indexes.
+- **`settlement_ledger`** (`setl_`, D3) — generic money-routing;
+  `uniq_settlement_kind_ref` UNIQUE (kind, ref_id).
+All 3 RLS-enabled with permissive `*_all_anon` policies.
+
+### Fee convention (locked)
+Buyer pays the ask total; platform fee is StayBid's cut OUT of it; seller gets
+the rest. `b2bTradeSplit`: `askTotal = round(askPerNight × nights)` ·
+`platformFee = round(askTotal × feePct/100)` · `sellerNet = askTotal −
+platformFee` · `sellerMargin = sellerNet − buyTotal`. `B2B_FEE_PCT_DEFAULT = 8`
+(⚠ flagged — LOWER than the 12% consumer resale fee since it's wholesale B2B;
+wire to `service_pricing` before D3). The ask is **seller-set** (their own
+goods); the fee % is **server-frozen** (tamper-safe). Pure engine shared by the
+listing endpoint + future D3 checkout + client UI → preview == charge ==
+settlement.
+
+### Files (all NEW, additive)
+- `lib/b2b/engine.ts` — pure fee math (no I/O). `b2bTradeSplit`,
+  `isValidAskPerNight`, status/fee constants.
+- `app/api/b2b/listings/route.ts` — owner-scoped (`resolveOwnerIdsCrossPool` +
+  `ownedBlock`). GET (caller's listings, side-load unit#/hotel name — NO FK
+  embed, + live split) · POST (`{blockId, askPerNight}`: requires block
+  `status='owned'`; rejects past-dated; freezes fee % via `b2bTradeSplit`;
+  unique index → 23505 → 409) · DELETE (soft-withdraw active → `withdrawn`).
+- `components/partner/CircleInventoryTab.tsx` — B2B Exchange section under
+  "My Rooms" (operator-only): per-owned-block list/withdraw.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle hotel + owned unit (`v331-seller`) + `owned` block
+(3n, buy ₹12,600). **All 4 asserts PASSED:** (A) POST split frozen — ask 6000/n
+× 3 = ask_total ₹18,000, fee 8% = ₹1,440, sellerNet ₹16,560, sellerMargin ₹3,960;
+(B) 2nd active listing rejected by `uniq_b2b_listing_active_block` (0 leaked);
+(C) DELETE → `withdrawn`; (D) re-list on now-inactive block allowed. Test rows
+deleted (0 leftover). `tsc --noEmit` clean, `next build` green
+(`/api/b2b/listings` compiled). `SB_BUILD v330→v331`, badge v331,
+`HTML_CACHE v143→v144`.
+
+### Things to Avoid (Circle Phase D1)
+- **Never** compute the B2B split outside `lib/b2b/engine.ts` — the listing
+  endpoint, the D3 checkout, and the client preview MUST share it so
+  preview == charge == settlement.
+- **Never** let the client set `platform_fee_pct` — POST freezes it from
+  `B2B_FEE_PCT_DEFAULT` server-side. The ask IS seller-set (their own goods);
+  the fee is StayBid's, so it's server-frozen.
+- **Never** list a block that isn't `status='owned'` — the owner must have
+  bought it (C2) first; POST 409s otherwise.
+- **Never** drop `uniq_b2b_listing_active_block` — it's the race-safe
+  one-active-listing gate (the route pre-check is only the friendly error).
+- **Never** write to `b2b_trades` / `settlement_ledger` in D1 — created-but-
+  unused until D2/D3. D1 writes ONLY `b2b_listings`.
+- **Never** point a `seller_user_id` / unit / hotel side-load at a PostgREST FK
+  embed — no FK exists; manual `?id=in.(…)`.
+
+### Updated production state (v331, 2026-07-13)
+- **Current version:** v331 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration applied live + verified. `tsc` clean, `next build` green, D1 live
+  round-trip passed (4 asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · **D1 Model-4 B2B foundation
+  (v331) ✅** · D2 trade checkout + Razorpay + ownership transfer · D3 B2B
+  marketplace browse + settlement · D4 dynamic/admin · E Model-1 expected-only ·
+  F operated supply. **STOP at D1 — do NOT start D2 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 purchase/resale/settlement logic (D1 is additive B2B foundation only).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D2: B2B Trade Checkout + Ownership Transfer + Settlement (v332, 2026-07-13)
+
+Second sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D2).
+Turns a D1 `listed` `b2b_listings` row into a COMPLETED `b2b_trades` row via a
+tamper-safe Razorpay checkout, TRANSFERS the commercial right
+(`inventory_blocks.investor_user_id` seller → buyer), and records the seller's
+owed net in `settlement_ledger`. **NO marketplace browse + buy UI (D3), NO
+payout execution (D3), NO dynamic/admin (D4).** No migration (D1's `b2b_trades`
++ `settlement_ledger` tables already exist).
+
+### The ownership-transfer model (locked)
+ONLY `inventory_blocks.investor_user_id` moves seller → buyer — the date-range
+COMMERCIAL right. `hotel_room_units.owner_user_id` does NOT change (keeps the
+SEBI-safe bounded-goods model; the buyer never becomes the physical-unit owner).
+Buyer id = the caller's PRIMARY JWT userId (always inside their
+`resolveOwnerIdsCrossPool` set, so cross-identity lookups still resolve the
+block). The buyer can then C3-resell / C4-buyback the block exactly as if they
+had C2-bought it.
+
+### Fee convention (D1's `b2bTradeSplit`, unchanged)
+Buyer pays `askTotal`; `platformFee = round(askTotal × feePct/100)` is StayBid's
+cut OUT of the ask; `sellerNet = askTotal − platformFee`. Verify settles on the
+listing's FROZEN `platform_fee_pct` (set at D1 list time) — never re-read from
+config, so preview == charge == settlement even if the default changes later.
+
+### Routes (all NEW, additive)
+- **`POST /api/b2b/listings/[id]/checkout`** — buyer-side. `auth → buyerIds`;
+  load listing (must be `status='listed'`); reject own listing (409) + past-dated
+  (`date_to <= today`); load block (must be `status='owned'` AND
+  `investor_user_id === listing.seller_user_id`); `b2bTradeSplit` from the
+  listing's frozen fields; Razorpay order via `${origin}/api/razorpay/order`
+  (`amount: split.askTotal`, `receipt: cb2b_<listingId>`,
+  `notes.kind="circle_b2b"`); INSERT `b2b_trades` (`id: genId("b2bt")`,
+  `buyer_user_id: primary userId`, `pending_payment`). Returns
+  `{ok, keyId, order, tradeId, askTotal}`. **Client never sets ₹.**
+- **`POST /api/b2b/listings/[id]/verify`** — HMAC → five steps: (1) PATCH trade
+  → `completed` matched on `razorpay_order_id + listing_id + buyer_user_id
+  IN(ids) + status=eq.pending_payment` (4-key anti-tamper + idempotent; re-verify
+  falls back to fetch the completed row; 502 only if no trade found);
+  (2) TRANSFER `inventory_blocks.investor_user_id` seller → buyer guarded
+  `investor_user_id=eq.sellerId` (re-verify/race = 0-row no-op; `transferred`
+  captured); (3) flip listing `listed → sold` guarded `status=eq.listed`;
+  (4) INSERT `settlement_ledger` (`kind='b2b_trade'`, `ref_id=trade.id`,
+  `payee=sellerId`, `net=seller_net`, `payout_status='owed'`) with
+  `ignore-duplicates`; (5) best-effort refresh the `room_blocks
+  invhold_<blockId>` note + `createdBy=buyerId`. Returns `{ok, transferred,
+  trade}`.
+- **`GET /api/b2b/trades[?hotelId=X]`** — caller's trades as BUYER + SELLER
+  (`status in.(pending_payment,completed)`, cross-pool, side-load unit#/hotel,
+  no FK embed). Returns `{asBuyer, asSeller}`.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+Read-only **"⇄ Exchange trades · Model 4"** subsection (renders only when trades
+exist) — `asSeller` then `asBuyer` → `<TradeRow>` (Sold/Bought pill + status +
+`#unit` + dates + "you get {sellerNet}" / "paid {askTotal}"). The buy-side
+marketplace browse + Razorpay flow is D3.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `blk_v332test` (owned, `v332-seller`) + `lst_v332test` (listed, ask 6000/n
+× 3, fee 8%) + `trd_v332test` (pending), mirrored checkout+verify. **All 13
+asserts PASSED:** `trade_completed=1 · ask_total=18000 · fee=1440 ·
+seller_net=16560 · block_owner_after=v332-buyer · block_status=owned ·
+listing_status=sold · settle_rows=1 · settle_net=16560 · payout=owed ·
+transfer_rows=1 · reverify_transfer_rows=0 · dup_completed_landed=0`. Test rows
+deleted (0 leftover). `tsc --noEmit` clean, `next build` green (all 3 routes
+compiled). `SB_BUILD v331→v332`, badge v332, `HTML_CACHE v144→v145`.
+
+### Things to Avoid (Circle Phase D2)
+- **Never** let the client set the ask ₹ at checkout — reads the listing's
+  frozen `ask_per_night`/`platform_fee_pct` + `b2bTradeSplit` server-side;
+  verify never trusts a client amount.
+- **Never** mark a trade `completed` without the 4-key PATCH filter
+  (`razorpay_order_id + listing_id + buyer ownership + status=eq.pending_payment`).
+  A 0-row flip = already-processed OR not-yours → re-fetch the completed row;
+  do NOT re-charge / re-transfer.
+- **Never** transfer `hotel_room_units.owner_user_id` — ONLY
+  `inventory_blocks.investor_user_id` moves (the commercial right). Physical unit
+  owner untouched (SEBI-safe bounded goods).
+- **Never** transfer the block without the `investor_user_id=eq.sellerId` guard
+  — it makes a re-verify / race a 0-row no-op.
+- **Never** compute the split from config at settlement — use the listing's
+  FROZEN `platform_fee_pct` so preview == charge == settlement.
+- **Never** drop `uniq_b2b_trade_listing_completed` / `uniq_settlement_kind_ref`
+  — the one-completed-per-listing + one-ledger-row-per-trade idempotency guards.
+- **Never** point a `seller`/`buyer`/unit/hotel side-load at a PostgREST FK embed
+  — no FK exists; manual `?id=in.(…)`.
+
+### Updated production state (v332, 2026-07-13)
+- **Current version:** v332 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D2 live
+  round-trip passed (13 asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · **D2 trade checkout + ownership transfer + settlement (v332) ✅** · D3 B2B
+  marketplace browse + buy button + payout execution · D4 dynamic/admin ·
+  E Model-1 expected-only · F operated supply. **STOP at D2 — do NOT start D3
+  without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1 logic (D2 is additive trade-execution on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D3: B2B Marketplace Browse + Buy Button + Payout Execution (v333, 2026-07-13)
+
+Third sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D3).
+D1 built the listing foundation, D2 built the trade checkout + ownership transfer
++ settlement obligation; **D3 surfaces the marketplace so an investor can DISCOVER
++ buy another investor's listing, and gives the admin a payout-execution surface
+to clear the `settlement_ledger` obligations D2 records.** No migration (D1's
+`b2b_listings`/`b2b_trades`/`settlement_ledger` cover everything); additive UI +
+one new read route + one admin payout action.
+
+### The marketplace read route (`GET /api/b2b/marketplace`, NEW)
+Investor-facing browse, owner-scoped via `resolveOwnerIdsCrossPool`; empty
+ownerIds → `{listings:[]}`. Query
+`status=eq.listed & date_to=gt.<todayISO> & seller_user_id=not.in.(<ownerIds>)`
+(other investors' live, future-dated listings; caller's OWN excluded), ordered
+`ask_total.asc`, cap 120, side-load unit# (`hotel_room_units?id=in.(…)`) + hotel
+name/city (`hotels?id=in.(…)`, NO FK embed), map each with `b2bTradeSplit`
+(buyer sees ask_total + fee split preview), optional in-memory `city` filter,
+`slice(0, 60)`.
+
+### The buy button (`components/partner/CircleInventoryTab.tsx`)
+New **"🛒 Buy from the exchange · Model 4"** section (renders only when
+`market.length > 0`), BEFORE the D2 "Exchange trades" subsection. `loadMarket()`
+fetches `/api/b2b/marketplace?hotelId=`; `buyExchange(l)` → POST D2
+`/api/b2b/listings/[id]/checkout` → `openRazorpayForOrder(order)`
+(`RazorpayError('__CANCELLED__')` catch) → POST D2 `/api/b2b/listings/[id]/verify`
+→ flash "Block acquired ✓" + refresh `loadBlocks/loadTrades/loadMarket/loadB2b`.
+The whole checkout+verify+transfer chain is **D2's** — D3 adds only discovery +
+the button.
+
+### Payout execution (`/api/admin/circle-inventory` + `/admin/circle-inventory`)
+D2 recorded `settlement_ledger` rows (`kind='b2b_trade'`, `payout_status='owed'`)
+but nothing cleared them. D3 adds:
+- **GET** extended — parallel-fetch now includes `settlements`
+  (`kind=eq.b2b_trade&order=created_at.desc&limit=200`) + `settleAgg`
+  (`limit=2000`) → 4 KPIs (`b2bOwed/b2bPaid/b2bFees/b2bGmv`). Settlements
+  side-load their trade via `b2b_trades?id=in.(<ref_ids>)` (ref_id join, NO FK
+  embed) → `enrichSettlement` (hotel_name / unit_number / dates / nights /
+  seller_name / seller_phone).
+- **POST `mark_settlement_paid { settlementId }`** — PATCH
+  `id=eq.X & kind=eq.b2b_trade & payout_status=eq.owed` →
+  `{payout_status:'paid', paid_at, metadata:{…,payoutPaidAt,payoutPaidBy}, updated_at}`;
+  0-row → 409 "already paid" (idempotent); `logAdminAction`
+  `circle_inventory.settlement_paid`.
+- **Page** — 2 KPI cards ("Exchange seller owed" gold / "Exchange settled" green)
+  + "⇄ Exchange payouts owed to sellers · Model 4" table (Hotel·Unit / Seller /
+  Dates / Buyer paid / Fee / Seller net / When / Mark paid).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `lst_v333test` (listed, seller `v333-seller`, date_to +23d, ask 6000/n × 3,
+fee 8%) + `trd_v333test` (completed, buyer `v333-buyer`) + `setl_v333test`
+(b2b_trade, owed, net 16560). **All asserts PASSED:** `a_buyer_sees=1` ·
+`b_seller_excluded=0` (`seller_user_id NOT IN (v333-seller)` hides own listing) ·
+`c_trade_buyer=v333-buyer` (settlement→trade via ref_id side-load) ·
+`d_status_before=owed`. Payout PATCH run as two sequential statements (faithful
+two-click mirror): first flipped `owed→paid` + `paid_at` set +
+`payoutPaidBy=v333-admin`; idempotent re-run (guard `payout_status=eq.owed`)
+matched 0 rows (route 409 "already paid"). Test rows deleted (settle/trade/
+listing all 0). `tsc --noEmit` clean, `next build` green (`/api/b2b/marketplace`
+compiled). `SB_BUILD v332→v333`, badge v333, `HTML_CACHE v145→v146`.
+
+### Things to Avoid (Circle Phase D3)
+- **Never** show the caller's OWN listings on the marketplace — the query MUST
+  keep `seller_user_id=not.in.(<ownerIds>)`. Buy others' inventory on the
+  marketplace; sell yours in the B2B Exchange section.
+- **Never** re-implement the buy chain in D3 — `buyExchange` calls the D2
+  checkout + verify routes verbatim (server re-quotes the frozen ask, transfers
+  the block, records the settlement). D3 adds only the discovery card + button.
+- **Never** compute the payout amount at settlement — `mark_settlement_paid`
+  only flips `owed→paid`; the ₹ was frozen by D2 into
+  `settlement_ledger.net_amount`. Admin never edits amounts.
+- **Never** drop the `payout_status=eq.owed` guard on the payout PATCH — it is
+  the idempotency gate (0-row flip = already-paid → 409). Same discipline as
+  C4's `mark_payout_paid` / `mark_buyback_paid`.
+- **Never** point the settlement→trade side-load at a PostgREST FK embed — no FK
+  exists; manual `b2b_trades?id=in.(<ref_ids>)` keyed on
+  `settlement_ledger.ref_id`.
+- **Never** surface a payout as executed money movement — it's a record-keeping
+  flip; actual bank transfer is an ops action outside the app.
+
+### Updated production state (v333, 2026-07-13)
+- **Current version:** v333 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D3 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · D2 trade checkout + ownership transfer + settlement (v332) ✅ · **D3 B2B
+  marketplace browse + buy button + payout execution (v333) ✅** · D4 dynamic
+  B2B pricing / admin B2B oversight · E Model-1 expected-only · F operated
+  supply. **STOP at D3 — do NOT start D4 without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1 + D2 logic (D3 is additive marketplace/payout surface on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D4: Dynamic B2B Markdown + Expiry + Admin Oversight (v334, 2026-07-13)
+
+Final sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D4).
+Mirrors C4 (Model-3 lifecycle) applied to `b2b_listings`: (a) the shared
+inventory-lifecycle cron auto-marks-down a listed B2B ask as check-in nears +
+expires the stale, and (b) admin `/admin/circle-inventory` gains view/force-
+expire/cancel B2B listings + exchange KPIs. **NO migration** — reuses D1's
+`b2b_listings.metadata` JSONB + existing `expired`/`cancelled` statuses; D4 is
+code-only.
+
+### D4a — pure B2B markdown engine (`lib/b2b/engine.ts`)
+`markdownB2bAskPerNight({originalAskPerNight, buyTotal, nights, daysOut})` →
+`{perNight, pct}`. Derives `buyPerNight = round0(buyTotal)/nights` (a B2B listing
+stores an aggregate cost snapshot, not a per-night array — the only B2B twist),
+then delegates to C4's `markdownResalePerNight` so the tier table
+(`markdownPctForDaysOut`: ≥15→0 · ≥8→10 · ≥4→20 · ≥2→30 · else 40) + buy-cost
+floor is **byte-identical** to Model-3 resale markdown. Re-exports `nightsBetween`,
+`daysUntil`.
+
+### D4b — cron passes 3 + 4 (`/api/cron/inventory-lifecycle`)
+Two new idempotent passes after the C4 markdown/expiry passes; same budget
+(`TIME_BUDGET_MS=24s`) + `MAX_PER_PASS=200` + `MARKDOWN_HORIZON_DAYS=14`:
+- **`b2bMarkdownPass`** — `b2b_listings status=eq.listed & date_from ∈
+  [today, today+14]`. `original = round0(metadata.listAskPerNight ??
+  ask_per_night)` (FROZEN baseline, backfilled from current ask for pre-D4
+  listings); `markdownB2bAskPerNight` (floored at seller's per-night buy cost —
+  never below `buy_total/nights`); PATCH guarded `status=eq.listed` sets
+  `ask_per_night`, `ask_total=round0(perNight×nights)`, metadata
+  `{listAskPerNight, markdownPct, markedDownAt}`. Idempotent no-op skip when
+  `perNight===round0(ask_per_night) && round0(metadata.markdownPct)===pct &&
+  metadata.listAskPerNight != null`.
+- **`b2bExpiryPass`** — `status=in.(draft,listed) & date_from < today` → PATCH
+  guarded `status=in.(draft,listed)` → `status:'expired'` + metadata
+  `expiredAt/expiredReason='stay_started_unsold'`. **The underlying
+  `inventory_block` STAYS `owned`** (only the LISTING dies — the seller keeps
+  their pre-bought right) and **NO room_blocks hold is touched** (Pass 2 owns
+  block expiry + hold release; a B2B listing expiring must not release the
+  block's inventory hold).
+
+`runAll` returns `{ok, markdown, expiry, b2bMarkdown, b2bExpiry, ranMs,
+budgetHit}`.
+
+### D4c — admin B2B oversight (`/api/admin/circle-inventory` + `/admin/circle-inventory`)
+`adminFromReq` + `logAdminAction`. **GET** adds B2B listing KPIs +
+`b2bListings`/`b2bTrades` enriched rows (on top of D3's settlement KPIs). **POST**
+`expire_listing` / `cancel_listing` — loads `b2b_listings?id=eq.X`, 404 if
+missing, 409 if status not in `draft|listed`, `newStatus = expire_listing ?
+'expired' : 'cancelled'`, PATCH guarded `status=in.(draft,listed)` with metadata
+`[${newStatus}At]/Reason='admin_action'/By=admin.id`. Page: Exchange listings
+panel with status pills + Expire/Cancel actions + a `−N% auto` markdown badge on
+marked-down rows.
+
+### D4d — investor UI (`components/partner/CircleInventoryTab.tsx`)
+`B2bListing` type gets `metadata`; a markdown badge IIFE shows the struck-through
+original ask + `−N% auto` chip when a listing is `listed` and has been marked
+down by the cron.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded 5 synthetic `b2b_listings` + mirrored all four D4 code paths in SQL
+(faithful to the read source, re-read first). **All asserts PASSED:**
+`rows_seeded=5` · `C_admin_expire=true` · `A1_floor_md_4200=true` (20% off
+₹5000=₹4000 → FLOORED at ₹4200 buy cost — the investor-protection floor) ·
+`B_expiry_listing=true` (date_from<today → `expired`; the `inventory_block`
+STAYS `owned` — a code-structure fact: Pass 4 has zero `inventory_blocks`
+writes) · `A2_nofloor_md2_6400=true` (₹8000 @ 20% → ₹6400, above floor) ·
+`C_guard_sold_untouched=true` (expire/cancel guarded `status=in.(draft,listed)`
+→ a `sold` listing is a 0-row no-op) · `A3_idempotent_would_skip=true`. Cleanup
+`leftover=0`. `tsc --noEmit` clean, `next build` green (all 3 D4 routes
+compiled: `/admin/circle-inventory`, `/api/admin/circle-inventory`,
+`/api/cron/inventory-lifecycle`). `SB_BUILD v333→v334`, badge v334,
+`HTML_CACHE v146→v147`.
+
+### Things to Avoid (Circle Phase D4)
+- **Never** mark a listed B2B ask below its buy cost — the `max(buyPerNight,
+  marked)` floor (inside `markdownResalePerNight`, shared with C4) is the
+  seller's protection. `buyPerNight = buy_total / nights` for B2B.
+- **Never** recompute markdown from the CURRENT `ask_per_night` — always from
+  the FROZEN `metadata.listAskPerNight`, or successive 15-min cron runs compound
+  the discount into oblivion. Backfill it from the current ask exactly once (on
+  the first markdown), then read it forever.
+- **Never** drop the idempotent no-op skip in `b2bMarkdownPass` — the cron runs
+  every 15 min; without the skip it rewrites every listed row every tick.
+- **Never** release the block's `room_blocks` hold OR touch the `inventory_block`
+  when a B2B LISTING expires — only the listing dies (`b2b_listings.status →
+  expired`); the block stays `owned` (Pass 2 owns block expiry + hold release).
+- **Never** compute the B2B markdown outside `lib/b2b/engine.ts`
+  (`markdownB2bAskPerNight`) — the cron + client badge share it, and it delegates
+  to C4's `markdownResalePerNight` so the tier table stays single-source.
+- **Never** expire/cancel a B2B listing that isn't `draft|listed` — the admin
+  POST is guarded `status=in.(draft,listed)`; a `sold`/`withdrawn`/`expired` row
+  is a 0-row no-op (409 on the friendly pre-check).
+
+### Updated production state (v334, 2026-07-13)
+- **Current version:** v334 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D4 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · D2 trade/transfer/settlement (v332) ✅ · D3 marketplace/payout (v333) ✅ ·
+  **D4 dynamic markdown/expiry/admin (v334) ✅** · E Model-1 expected-only ·
+  F operated supply. **Model 3 + Model 4 are BOTH COMPLETE. STOP at D4 — do NOT
+  start Phase E / F without Sachin's "continue".**
+- ⚠ **SACHIN ACTION (unchanged from C4):** the shared inventory-lifecycle cron
+  now runs the B2B passes too — the SAME cron-job.org registration covers both:
+  `*/15 * * * *` →
+  `https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev`.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1–D3 logic (D4 is additive lifecycle/admin on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase E: Model 1 "Expected Income" Legal Language (v335, 2026-07-13)
+
+Phase E of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§E). **COPY + DISCLOSURE ONLY — no new table, no engine change, no route
+change.** The revenue ledger was already actual-performance-based
+(`/api/circle/me` payouts, `computeBundle` projections); Phase E migrates the
+UI language everywhere to "expected / based on actual bookings / never
+guaranteed" so no StayCircle surface ever reads as a promised return.
+
+**The locked rule (blueprint §"Legal framing"):** NEVER "guaranteed / assured
+/ fixed / risk-free" returns. ALWAYS "expected / based on actual bookings /
+indicative projection / not guaranteed".
+
+### The one genuine violation (fixed)
+`components/partner/PartnerCircleTab.tsx` empty-state read **"you get
+guaranteed monthly inflow per invested room"** — the exact banned phrase.
+Rewritten to *"earn from actual bookings — expected monthly inflow per
+invested room, based on real bookings and property performance"* + a
+`CIRCLE_INCOME_DISCLOSURE` footnote. The KPI tile label **"Monthly inflow" →
+"Expected inflow"**, and the disclosure footnote also renders under the KPI
+strip (covers the populated state, which shows the number + "projected ROI").
+
+### The canonical source of truth (NEW)
+`lib/circle/disclosure.ts` — four exported constants so no surface ever writes
+a disclosure string inline again (a hardcoded "guaranteed monthly inflow" is
+exactly what must never exist):
+- `CIRCLE_INCOME_DISCLOSURE` — full footer/panel-length Model-1 disclosure.
+- `CIRCLE_INCOME_SHORT` — short inline qualifier after any income/ROI number.
+- `CIRCLE_RESALE_RISK_NOTE` — Model-3 pre-buy "unsold-inventory risk is yours"
+  note (goods trade, not an investment scheme).
+- `CIRCLE_PAYOUTS_LABEL = "Monthly Payouts"` — canonical ledger heading
+  (never "Returns").
+
+### Surfaces updated (all additive, copy-only)
+- **`components/partner/PartnerCircleTab.tsx`** — the violation fix above +
+  disclosure footnotes (empty + populated states).
+- **`app/circle/me/page.tsx`** — payout ledger heading **"Monthly Returns" →
+  `CIRCLE_PAYOUTS_LABEL` ("Monthly Payouts")** + `CIRCLE_INCOME_DISCLOSURE`
+  sub-line.
+- **`app/circle/layout.tsx`** — page `metadata.description` "earn monthly
+  returns" → "earn expected monthly income from real bookings (never
+  guaranteed)".
+- **`app/circle/onboard/page.tsx`** — form sub "monthly returns" → "expected
+  monthly income".
+- **`components/circle/CircleChrome.tsx`** · **`app/circle/build/page.tsx`** ·
+  **`app/circle/support/page.tsx`** — the ad-hoc "indicative projections … not
+  guaranteed" footers (ALREADY compliant) consolidated to the shared
+  `CIRCLE_INCOME_DISCLOSURE` constant (DRY; prevents future drift). The support
+  FAQ inline answer (line 23) left inline — already compliant, mid-sentence
+  `<b>` context.
+- **`components/partner/CircleInventoryTab.tsx`** (Model-3) — added the
+  `CIRCLE_RESALE_RISK_NOTE` under the "Pre-buy Inventory · Model 3" intro so
+  the investor sees "unsold-inventory risk is yours" plainly.
+- `SB_BUILD v334→v335`, badge v335, `HTML_CACHE v147→v148`.
+
+### Audited-and-left (NOT violations)
+- `lib/user-links.ts` / `lib/panels.ts` nav sub-labels ("earn monthly
+  returns"/"earn monthly") — industry-neutral, not a guarantee; left.
+- Host vertical (`app/host/build/page.tsx`, `lib/host/journey-data.ts`) already
+  reads "indicative, not guaranteed" — compliant, separate vertical, untouched.
+- "Best Price Guaranteed" / "cheapest guaranteed" (hotel page, /bid, tutorial,
+  kiosk) — those are LOWEST-PRICE promises, unrelated to investment returns;
+  left. Same for "guaranteed JSON"/"guaranteed unique" code comments.
+
+### Verified
+- `tsc --noEmit --skipLibCheck` clean (only pre-existing `_home-luxury-backup`)
+  · `next build` exit 0 (all `/circle/*` + partner surfaces compile).
+- No DB migration, no route change, no engine change — pure copy + a new pure
+  constants lib.
+
+### Things to Avoid (Circle Phase E)
+- **Never** write "guaranteed / assured / fixed / risk-free" alongside a
+  StayCircle income/return/payout number — the banned framing. Import from
+  `lib/circle/disclosure.ts` instead of writing a disclosure inline.
+- **Never** relabel the payout ledger as "Returns" — it's `CIRCLE_PAYOUTS_LABEL`
+  ("Monthly Payouts"); payouts reflect real revenue only.
+- **Never** treat Phase E as a data/engine change — the ledger was already
+  actual-performance-based; Phase E is the LANGUAGE migration only.
+- **Never** drop the `CIRCLE_RESALE_RISK_NOTE` from the Model-3 pre-buy surface
+  — pre-buying to resell carries unsold-inventory risk that must be stated.
+
+### Updated production state (v335, 2026-07-13)
+- **Current version:** v335 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration. `tsc` clean, `next build` green.
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1–D4 Model-4 B2B exchange
+  (v331–v334) ✅ · **E Model-1 expected-income language (v335) ✅** · F operated
+  supply growth. **Model 1 + Model 3 + Model 4 legal framing all locked. STOP
+  at Phase E — do NOT start Phase F without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, revenue
+  ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic (E is
+  additive copy/disclosure on top).
+
+---
+
+## StayBid Circle Multi-Investor — Phase F: Operated-Only Supply Growth "Go Live" (v336, 2026-07-13)
+
+FINAL phase of the Circle expansion (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§F). §F is intentionally light — most infra landed at **v309** (Host
+Property-Listing Phase 4): admin **"🏨 Approve + Provision"** turns a
+`discovery_properties` listing into a REAL operated `hotels` row
+(`owner_type='host_circle'`, per-property `hco_<propId>` owner id,
+`account_type='staybid_operated'`, rooms + `hotel_room_units` stamped to the
+lister → `/partner/dashboard` access via the `resolveOperatedHotelIds` scope
+union). Provisioned as a **DRAFT** (`isActive=false`, `status='draft'`,
+`approval_status='pending'`). **No migration** — v336 reuses everything v309
+built.
+
+### The gap v336 closes (the two-disconnected-admin-pages seam)
+The provisioned hotel is a DRAFT hidden from customers. Publishing it lived on a
+DIFFERENT page (`/admin/hotels` v262 "Approve & Go Live") from where it was
+provisioned (`/admin/host`). An admin who provisioned a listing had no in-page
+path to flip it live — they had to hunt for the hotel on `/admin/hotels`. v336
+adds a one-tap **"🏨 Go Live"** on the `/admin/host` provisioned row.
+
+### CRITICAL VERIFIED FACT (grep across every customer-feed route)
+**`approval_status='approved'` is the SINGLE customer-feed gate** on
+`/api/hotels`, `/api/discover/feed`, `/api/flash/near`, `/api/circle/resale`.
+`hotels.isActive` / `status` / `isVerified` / `published_at` are NOT feed gates.
+(`/api/flash/near`'s `isActive=eq.true` filter is on the `flash_deals` table,
+not `hotels`.) So the v262 approve already publishes host-circle hotels — v336
+only surfaces that action from the provisioning page.
+
+### What shipped (all additive, 3 edits, no migration)
+- **`app/api/admin/host/provision/route.ts`** — new `go_live` action branch at
+  the top of POST (before the existing `propertyId` provision flow):
+  `{action:"go_live", hotelId}` → loads the hotel (`id,owner_type,approval_status`),
+  404 if missing, **400 if `owner_type !== 'host_circle'`** (the guard — can
+  NEVER publish an arbitrary classic hotel), then PATCHes
+  `approval_status='approved'` + `status='active'` + `isVerified=true` +
+  `published_at=now()` — byte-identical fields to the v262 `/admin/hotels`
+  approve. Never touches `ownerId`/`owner_type` (owner-invisible preserved).
+  `logAdminAction` action `host_hotel_go_live`.
+- **`app/api/admin/host/route.ts` GET** — side-loads the provisioned hotel's
+  `approval_status`/`status` (`provIds` from `propertySubmissions.provisioned_hotel_id`
+  → `hotels?id=in.(…)&select=id,approval_status,status`, NO FK embed) → attaches
+  `_provisionedHotel` to each row so the admin UI knows DRAFT vs published. KPIs
+  still use `propSubsU` (status-based, unaffected).
+- **`app/admin/host/page.tsx`** — `goLive(hotelId)` handler (POSTs `go_live`,
+  `setBusy(hotelId)`, `load()` on success); `onGoLive` prop threaded through
+  `TableProps` + `PropertiesTable`. Provisioned-row block is now an IIFE: if
+  `_provisionedHotel.approval_status==='approved'` → "✓ Live on StayBid" chip +
+  hotel link; else → "Draft · not live yet" + **🚀 Go Live** button (+ ↻ Re-sync
+  for the idempotent re-provision).
+- `SB_BUILD v335→v336`, badge v336, `HTML_CACHE v148→v149`.
+
+### Verified (live round-trip against `uxxhbdqedazpmvbvaosh`, cleaned up — 0 leftover)
+Seeded `hcp_v336test` (host-circle DRAFT hotel, `approval_status='pending'`,
+`account_type='staybid_operated'`, `owner_id='hco_v336test'`) +
+`clsc_v336test` (classic hotel, for the guard test) + `dp_v336test`
+(discovery_properties listing linked via `provisioned_hotel_id`). **All 10
+asserts PASSED:** `a_before_status:"pending"` · `b_classic_owner_type:null` ·
+`c_sideload_hit:1` (the `/api/admin/host` GET side-load surfaces the DRAFT) ·
+`d_after_status:"approved"` (go_live PATCH) · `e_feed_hit:1` (the exact
+`/api/hotels` approved-gate SELECT now returns it) · `f_classic_unchanged:"pending"`
+(the `owner_type='host_circle'` guard BLOCKED publishing the classic hotel) ·
+`g_owner_type_kept:"host_circle"` · `h_ownerid_kept:"hco_v336test"`
+(owner-invisible preserved) · `leftover_hotels:0` · `leftover_props:0`. Test rows
+deleted. `tsc --noEmit --skipLibCheck` exit 0, `npm run build` exit 0
+(`/api/admin/host/provision` + `/api/admin/host` + `/admin/host` compiled).
+
+### Things to Avoid (Circle Phase F)
+- **Never** let `go_live` publish a hotel that isn't `owner_type='host_circle'`
+  — the 400 guard is the ONLY thing stopping a `/admin/host` action from
+  approving an arbitrary classic hotel (which belongs on `/admin/hotels`).
+- **Never** touch `ownerId`/`owner_type` in the go_live PATCH — publishing must
+  preserve the per-property `hco_<propId>` owner id + the `host_circle`
+  discriminator (owner-invisible; the lister keeps dashboard access via the
+  `hotel_room_units.owner_user_id` scope union, not ownerId).
+- **Never** add a feed gate other than `approval_status='approved'` and expect
+  it to hide a provisioned hotel — verified: `isActive`/`status`/`isVerified`/
+  `published_at` are NOT customer-feed gates. The DRAFT stays hidden ONLY
+  because `approval_status='pending'`; go_live flips it to `approved`.
+- **Never** point the `_provisionedHotel` side-load at a PostgREST FK embed —
+  no FK exists; manual `hotels?id=in.(…)&select=id,approval_status,status`.
+- **Never** provision a hotel as `isActive=true` / `approval_status='approved'`
+  at v309 provision time — it must stay DRAFT until an admin explicitly taps Go
+  Live, or an un-ready operated hotel leaks into the customer feed.
+
+### Updated production state (v336, 2026-07-13)
+- **Current version:** v336 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (reuses v309's `hotels.owner_type` + `discovery_properties.
+  provisioned_hotel_id`). `tsc` clean, `next build` green, F live round-trip
+  passed (10 asserts, 0 leftover).
+- **Circle phase plan — COMPLETE:** A per-unit autopilot (v325) ✅ · B per-unit
+  OTA (v326) ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1–D4 Model-4 B2B
+  exchange (v331–v334) ✅ · E Model-1 expected-income language (v335) ✅ ·
+  **F operated-only supply growth Go Live (v336) ✅**. The entire StayBid Circle
+  Multi-Investor expansion (blueprint A–F) is delivered.
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, revenue
+  ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic, the
+  v309 `provisionListing` flow (F is additive publish-action + admin-UI surface
+  on top).
