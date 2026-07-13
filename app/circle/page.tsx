@@ -22,6 +22,8 @@ import {
   fmtINR, computeBundle, type BundleItem,
   DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
+import { CIRCLE_INCOME_SHORT } from "@/lib/circle/disclosure";
+import ResaleOffers from "@/components/circle/ResaleOffers";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
 type CircleProperty = {
@@ -297,6 +299,58 @@ export default function CircleHomePage() {
         </div>
       </section>
       </div>{/* /sbc-home-hero */}
+
+      {/* ───────── 3 ways to grow (Model 1 / 3 / 4) ───────── */}
+      <section className="sbc-home-sec">
+        <div className="sbc-home-sec-h">3 ways to grow with StayCircle</div>
+        <div className="sbc-models">
+          {/* Model 1 — Managed Income */}
+          <Link href="/circle/discover" className="sbc-model">
+            <span className="sbc-model-glow" aria-hidden />
+            <div className="sbc-model-top">
+              <span className="sbc-model-ic">🏠</span>
+              <span className="sbc-model-tag hot">Most popular</span>
+            </div>
+            <div className="sbc-model-num">Model 1</div>
+            <div className="sbc-model-title">Managed Income</div>
+            <p className="sbc-model-desc">Own hotel rooms — StayBid finds, designs &amp; runs them. Earn <b>expected monthly income</b> from real bookings, fully hands-off.</p>
+            <span className="sbc-model-cta">Start investing →</span>
+            <p className="sbc-model-fine">{CIRCLE_INCOME_SHORT}</p>
+          </Link>
+
+          {/* Model 3 — Pre-Buy Deals */}
+          <div className="sbc-model has-sub">
+            <span className="sbc-model-glow" aria-hidden />
+            <div className="sbc-model-top">
+              <span className="sbc-model-ic">🔑</span>
+              <span className="sbc-model-tag sage">Live deals</span>
+            </div>
+            <div className="sbc-model-num">Model 3</div>
+            <div className="sbc-model-title">Pre-Buy Deals</div>
+            <p className="sbc-model-desc">Grab exclusive <b>below-market nights</b> that Circle investors pre-bought — a members-only resale marketplace.</p>
+            <span className="sbc-model-cta">Browse deals →</span>
+            <Link href="/partner/dashboard" className="sbc-model-sub">💼 Investor? Pre-buy &amp; resell rooms →</Link>
+            <Link href="/flash-deals" className="sbc-model-stretch" aria-label="Browse member pre-buy deals" />
+          </div>
+
+          {/* Model 4 — Investor Exchange */}
+          <Link href="/partner/dashboard" className="sbc-model">
+            <span className="sbc-model-glow" aria-hidden />
+            <div className="sbc-model-top">
+              <span className="sbc-model-ic">⇄</span>
+              <span className="sbc-model-tag sage">For investors</span>
+            </div>
+            <div className="sbc-model-num">Model 4</div>
+            <div className="sbc-model-title">Investor Exchange</div>
+            <p className="sbc-model-desc">Trade your pre-bought room-nights with other investors on the <b>B2B exchange</b> — list, sell or buy inventory.</p>
+            <span className="sbc-model-cta">Open exchange →</span>
+            <p className="sbc-model-fine">Operated-property investors · in your partner dashboard</p>
+          </Link>
+        </div>
+      </section>
+
+      {/* ───────── live member pre-buy strip (self-hides when empty) ───────── */}
+      <ResaleOffers city="" />
 
       {/* ───────── the 3-step journey (traditional explainer) ───────── */}
       <section className="sbc-home-sec" id="how">

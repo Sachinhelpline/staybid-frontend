@@ -443,7 +443,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // "🚀 Go Live" on a provisioned (DRAFT) host-circle hotel, so the list →
 // provision → publish journey completes from one admin surface. Drops stale
 // cached /admin/host HTML that lacks the Go Live control.
-const HTML_CACHE = 'staybid-html-v149';
+// v337 — one-time HTML_CACHE bump (v149 -> v150). Customer /circle home gains
+// the premium "3 Ways to Grow" hub (Model 1 Managed Income · Model 3 Pre-Buy
+// Deals · Model 4 Investor Exchange) + a live member pre-buy strip. Bumping
+// HTML_CACHE drops the stale cached /circle markup so the hub shows on first
+// warm visit.
+const HTML_CACHE = 'staybid-html-v150';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

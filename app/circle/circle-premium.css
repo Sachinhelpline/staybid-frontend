@@ -2346,3 +2346,72 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 .sbc-step.fab .sbc-step-num {
   width: 40px; height: 40px; margin-top: -8px; font-size: .96rem;
 }
+
+/* ============================================================================
+   HOME · "3 Ways to Grow" — Model 1 / 3 / 4 investor hub  (v337)
+   Cream/sage canvas cards (mirror .sbc-home .sbc-* premium tokens).
+   ============================================================================ */
+.sbc-models { display: grid; gap: 12px; }
+@media (min-width: 720px) { .sbc-models { grid-template-columns: repeat(3, 1fr); } }
+
+.sbc-model {
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  padding: 16px 16px 15px; border-radius: 20px; text-decoration: none;
+  background: linear-gradient(150deg, var(--sbc-c-surface), var(--sbc-c-surface-2));
+  border: 1px solid var(--sbc-c-line); box-shadow: var(--sbc-c-shadow);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.sbc-model:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--sbc-gold) 42%, transparent);
+  box-shadow: 0 20px 42px -22px rgba(60,52,32,.4);
+}
+.sbc-model:active { transform: translateY(-1px) scale(.995); }
+
+.sbc-model-glow {
+  position: absolute; inset: -50% 45% auto -25%; height: 130px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,166,107,.22), transparent 70%);
+  filter: blur(22px); pointer-events: none;
+}
+.sbc-model-top {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.sbc-model-ic {
+  width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+  font-size: 1.34rem; line-height: 1;
+  background:
+    radial-gradient(120% 120% at 30% 22%, rgba(255,246,228,.5), transparent 55%),
+    linear-gradient(150deg, var(--sbc-gold-2), var(--sbc-gold) 55%, var(--sbc-gold-deep));
+  border: 1px solid rgba(255,246,228,.45);
+  box-shadow: 0 10px 20px -8px rgba(139,105,20,.6),
+    inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 6px rgba(120,88,20,.5);
+  text-shadow: 0 1px 2px rgba(80,55,10,.4);
+}
+.sbc-model-tag {
+  font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+}
+.sbc-model-tag.hot  { color: var(--sbc-walnut); background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold)); }
+.sbc-model-tag.sage {
+  color: var(--sbc-c-sage-deep); background: var(--sbc-c-sage-tint);
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 28%, transparent);
+}
+.sbc-model-num   { position: relative; margin-top: 12px; font-size: .6rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--sbc-gold-deep); }
+.sbc-model-title { position: relative; margin-top: 3px; font-size: 1.06rem; font-weight: 800; color: var(--sbc-c-ink); font-family: var(--font-display, serif); }
+.sbc-model-desc  { position: relative; margin-top: 6px; font-size: .78rem; line-height: 1.5; color: var(--sbc-c-ink-soft); flex: 1; }
+.sbc-model-desc b { color: var(--sbc-gold-deep); font-weight: 800; }
+.sbc-model-cta   { position: relative; margin-top: 13px; display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 800; color: var(--sbc-gold-deep); }
+.sbc-model-fine  { position: relative; margin-top: 10px; font-size: .6rem; line-height: 1.45; color: var(--sbc-c-ink-faint); }
+
+/* Model-3 card is a div (has a nested secondary link) → full-card stretch link */
+.sbc-model-sub {
+  position: relative; z-index: 2; margin-top: 10px; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+  font-size: .68rem; font-weight: 800; color: var(--sbc-c-sage-deep);
+  padding: 6px 11px; border-radius: 999px;
+  background: var(--sbc-c-sage-tint);
+  border: 1px solid color-mix(in srgb, var(--sbc-c-sage) 26%, transparent);
+  transition: transform .16s ease, background .16s ease;
+}
+.sbc-model-sub:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--sbc-c-sage) 22%, transparent); }
+.sbc-model-stretch { position: absolute; inset: 0; z-index: 1; }
