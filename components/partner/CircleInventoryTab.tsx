@@ -1,12 +1,14 @@
 "use client";
 
 // v327 — Circle Phase C1: Model 3 "Pre-buy Inventory" (foundation UI).
+// v328 — C2: buy the room-nights (Razorpay) → owned + inventory hold.
+// v329 — C3: list/unlist an owned block on the guest feed at a resale price;
+//        a guest reserve settles (StayBid fee + investor net) via
+//        <ResaleOffers/> on the flash-deals surface.
 //
-// A Circle investor who owns physical rooms can take commercial control of a
-// DATE RANGE of an owned room: get a live Pricing-Spine quote (wholesale buy +
-// suggested retail + their margin) and save it as a DRAFT block. Purchase +
-// resale-listing land in C2/C3 — shown here as clearly-labelled "coming next"
-// so the surface is honest and inert.
+// A Circle investor who owns physical rooms takes commercial control of a DATE
+// RANGE of an owned room: get a live Pricing-Spine quote (wholesale buy +
+// suggested retail + their margin), buy the nights, then list them for resale.
 //
 // Reads/writes /api/circle/inventory (owner-scoped server-side). Mounted under
 // the "My Rooms" operator tab, below CircleUnitsTab.
@@ -65,6 +67,8 @@ export default function CircleInventoryTab({
   const [atResale, setAtResale] = useState<AtResale | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  // v329 — C3: per-block resale-price draft for the "List for resale" input.
+  const [listDraft, setListDraft] = useState<Record<string, string>>({});
 
   useEffect(() => { if (!unitId && units[0]) setUnitId(units[0].id); }, [units, unitId]);
 
@@ -164,6 +168,41 @@ export default function CircleInventoryTab({
     finally { setBusy(false); }
   }
 
+  // v329 — C3: list an OWNED block on the guest feed at the investor's price.
+  async function listResale(b: Block) {
+    const raw = listDraft[b.id] ?? String(b.resale_price_per_night || "");
+    const price = Math.round(Number(raw));
+    if (!Number.isFinite(price) || price <= 0) { flash("Enter a resale price per night."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/circle/inventory/${encodeURIComponent(b.id)}/list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ resalePricePerNight: price }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { flash(d?.error || "List failed"); return; }
+      flash("Listed on the guest feed ✓");
+      loadBlocks();
+    } catch { flash("List failed"); }
+    finally { setBusy(false); }
+  }
+
+  // v329 — C3: pull a listed block back off the market (stays owned + held).
+  async function unlist(b: Block) {
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/circle/inventory/${encodeURIComponent(b.id)}/list`, {
+        method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { flash(d?.error || "Unlist failed"); return; }
+      flash("Unlisted");
+      loadBlocks();
+    } catch { flash("Unlist failed"); }
+    finally { setBusy(false); }
+  }
+
   async function del(id: string) {
     setBusy(true);
     try {
@@ -193,8 +232,8 @@ export default function CircleInventoryTab({
           🧾 Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 3</span>
         </h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-          Buy specific room-nights wholesale, set your own resale price, keep the margin. Quote &amp; buy
-          now — <b>resale-listing on the guest feed arrives next</b>.
+          Buy specific room-nights wholesale, then <b>list them on the guest feed</b> at your own resale
+          price and keep the margin. Bought nights stay held until a guest reserves.
         </p>
       </div>
 
@@ -297,6 +336,28 @@ export default function CircleInventoryTab({
                       style={{ background: "var(--accent)" }}>
                       Complete payment
                     </button>
+                  )}
+                  {b.status === "owned" && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] opacity-60">₹</span>
+                      <input type="number" min={0} placeholder="resale/night"
+                        value={listDraft[b.id] ?? (b.resale_price_per_night ? String(b.resale_price_per_night) : "")}
+                        onChange={(e) => setListDraft((s) => ({ ...s, [b.id]: e.target.value }))}
+                        className="w-24 rounded-lg border px-2 py-1 text-xs" style={{ borderColor: "var(--border-soft)" }} />
+                      <button disabled={busy} onClick={() => listResale(b)}
+                        className="text-xs px-2.5 py-1 rounded-lg font-semibold text-white" style={{ background: "var(--accent)" }}>
+                        List for resale
+                      </button>
+                    </div>
+                  )}
+                  {b.status === "listed" && (
+                    <button disabled={busy} onClick={() => unlist(b)}
+                      className="text-xs px-2.5 py-1 rounded-lg border font-medium" style={{ borderColor: "var(--border-soft)" }}>
+                      Unlist
+                    </button>
+                  )}
+                  {b.status === "sold" && (
+                    <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Sold ✓</span>
                   )}
                 </div>
               </div>

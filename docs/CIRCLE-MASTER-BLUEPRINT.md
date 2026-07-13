@@ -104,9 +104,11 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
     checkout (tamper-safe: server re-quotes the Spine + overlap re-guard,
     freezes buy at pay time) → `owned` on HMAC-verified payment. Writes an
     idempotent `room_blocks` inventory HOLD so the block can't double-book.
-  - [ ] **C3 — resale listing + consumer feed + settlement.** `listed` block
-    on the SAME customer feed at resale price; customer pays → StayBid fee →
-    investor net (`resaleMargin`).
+  - [x] **C3 — resale listing + consumer feed + settlement (v329, 2026-07-12).**
+    DONE. See §8. `listed` block on the SAME customer feed at resale price;
+    customer pays → block `sold` → `inventory_sales` freezes StayBid fee +
+    investor net (`resaleMargin`); `payout_status='owed'` records what StayBid
+    owes the investor (payout execution is C4).
   - [ ] **C4 — dynamic discount / expiry / buyback + admin.** Auto-markdown
     near check-in, expiry sweep, optional platform buyback, admin oversight.
 - [ ] **Phase D — Model 4 B2B exchange.** `b2b_listings` / `b2b_trades` /
@@ -431,4 +433,108 @@ compiled). `SB_BUILD v327→v328`, badge v328, `HTML_CACHE v140→v141`.
 C2 is purchase + hold only. **Do NOT start C3 (resale listing + consumer-feed
 exposure + settlement) without Sachin's "continue".** C3 → C4 each verify live
 + stop at their own sub-phase boundary, same as C1/C2 + the Channel Manager
+phases.
+
+---
+
+## §8 — Phase C3: Resale Listing + Consumer Feed + Settlement (v329, 2026-07-12)
+
+C3 takes a C2 `owned` block, lets the investor **list** it at a resale price on
+the SAME customer feed as flash deals, and settles the sale: customer pays the
+resale total → block `sold` → an `inventory_sales` ledger row freezes the
+StayBid fee + investor net. StayBid holds the resale total and **owes** the
+investor their net (`payout_status='owed'`); actual payout execution is C4.
+
+### Migration `2026-07-12-v329-phase-c3-inventory-sales.sql` (applied live)
+NEW `inventory_sales` settlement ledger (one row per resale sale):
+`block_id`, `hotel_id`, `unit_id`, `room_id`, `investor_user_id` (who gets the
+net), `buyer_user_id`/`buyer_name`/`buyer_phone`, `date_from`/`date_to`/`nights`,
+`resale_per_night`/`resale_total` (what the customer pays), `buy_total` (cost
+snapshot), `platform_fee_pct`/`platform_fee` (StayBid's cut), `investor_net`
+(resale − fee − buy), razorpay ids, `status` ∈ {pending_payment, paid, refunded,
+cancelled}, `payout_status` ∈ {owed, paid}, `paid_at`, `metadata`, timestamps.
+5 indexes (block, investor+status, buyer, order) + a **UNIQUE partial index
+`uniq_inv_sales_block_paid` on (block_id) WHERE status='paid'** — one paid sale
+per block. RLS permissive `inventory_sales_all_anon`.
+`inventory_blocks` already carries `listed_at`/`sold_at`/`resale_price_per_night`/
+`platform_fee_pct` (C1) → **no block-schema change** for the listing state machine.
+
+### Routes (4 files, all NEW, additive)
+- **`POST/DELETE /api/circle/inventory/[id]/list`** — investor lists / re-prices
+  (`owned|listed → listed`, resale > 0 ≤ 1,000,000, `date_to` future) / unlists
+  (`listed → owned`). Owner-verified via `resolveOwnerIdsCrossPool` + `ownedUnit`.
+- **`GET /api/circle/resale`** — PUBLIC consumer feed. Every `status=eq.listed`
+  block with `resale_price_per_night=gt.0 & date_to=gt.today`, enriched with
+  hotels (**`approval_status=eq.approved` ONLY** — a pending hotel can't surface)
+  + rooms via manual `?id=in.(…)` side-loads (NO PostgREST FK embed). Discount
+  computed vs `metadata.suggestedResaleTotal`. `Cache-Control: no-store`.
+- **`POST /api/circle/resale/[id]/checkout`** — customer (`userFromReq`) buys a
+  listed block. Loads it (must be `listed`, future-dated), computes the resale
+  total **SERVER-SIDE** via `resaleMargin` (client NEVER sets ₹), creates a
+  Razorpay order (`notes.kind='circle_resale'`), writes an `inventory_sales`
+  **pending** row freezing the settlement split (fee + investor net). Block stays
+  `listed` until verify.
+- **`POST /api/circle/resale/[id]/verify`** — HMAC-verifies (shared
+  `/api/razorpay/verify`), then: (1) flips the sale `pending_payment → paid`
+  matched on `razorpay_order_id + block_id + buyer + status=eq.pending_payment`;
+  (2) flips the block `listed → sold` guarded on `status=eq.listed` (anti-
+  double-sell + idempotent); (3) best-effort refreshes the pre-buy `room_blocks`
+  hold note. Leaves the hold in place — the room is now a paid resale guest.
+
+### Client UI (all NEW / additive)
+- **`components/circle/ResaleOffers.tsx`** — one-line mount on `/flash-deals`;
+  fetches `/api/circle/resale?city=`, renders horizontal cards + reserve modal +
+  Razorpay flow (`openRazorpayForOrder` / `RazorpayError`), success modal.
+  Renders `null` when `!loaded || offers.length===0` (zero-regression).
+- **`components/partner/CircleInventoryTab.tsx`** — `listResale`/`unlist`
+  handlers + owned/listed/sold block-row UI.
+- `app/flash-deals/page.tsx` mounts `<ResaleOffers city={city} />`.
+
+### Settlement math (`resaleMargin`, `lib/inventory/engine.ts` — shared)
+`resaleTotal = resalePerNight × nights` · `feeTotal = round(resaleTotal ×
+feePct/100)` · `buyTotal = buyPerNight × nights` · `investorNet = resaleTotal −
+feeTotal − buyTotal`. `PLATFORM_RESALE_FEE_PCT_DEFAULT = 12` (⚠ flagged —
+wire to `service_pricing` with C4). The SAME function powers the checkout freeze
++ the client preview → preview == charge.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle **approved** hotel + owned unit on real room `ris04-r1` +
+a `listed` block (3n, buy ₹4,200/n, resale ₹5,000/n, fee 12%). **All 5 asserts
+PASSED:** (A) resale feed SELECT surfaces the block (`feed_hit=1`) only because
+the hotel is approved; (B) checkout writes an `inventory_sales` pending row with
+`split_frozen_ok` — resale ₹15,000 / fee ₹1,800 / buy ₹12,600 / net ₹600, and
+`investor_net = resale − fee − buy`; (C) verify flips sale → `paid` + block →
+`sold` (`verify_ok=true`), StayBid keeps ₹1,800, `payout_status='owed'` owes
+investor ₹600; (D) a second `paid` row for the block is rejected by
+`uniq_inv_sales_block_paid` (`dup_row_landed=0`, `paid_rows_for_block=1`) and a
+re-verify block-flip is a no-op (`reverify_would_flip=0`, idempotent). All test
+rows deleted. `tsc --noEmit` clean, `next build` green (all 4 routes compiled).
+`SB_BUILD v328→v329`, badge v329, `HTML_CACHE v141→v142`.
+
+### Things to Avoid (Phase C3)
+- **Never** let the client set the resale ₹ at checkout — the checkout route
+  re-computes `resaleTotal` from the block via `resaleMargin` and writes the
+  frozen split; verify never trusts a client amount (C1/C2 tamper-safe
+  discipline).
+- **Never** flip a block to `sold` without the `status=eq.listed` guard — it's
+  the anti-double-sell + idempotency gate. A 0-row flip means already-sold (a
+  re-verify) → do NOT re-settle.
+- **Never** mark a sale `paid` without matching on `razorpay_order_id + block_id
+  + buyer + status=eq.pending_payment` — that 4-key filter + the
+  `uniq_inv_sales_block_paid` unique index are the anti-tamper + one-sale-per-
+  block guarantees. On a 0-row match, re-fetch the paid row for the summary.
+- **Never** surface a resale offer from a NON-approved hotel — the feed joins
+  `hotels?…&approval_status=eq.approved`; an unapproved hotel's block must not
+  reach the customer.
+- **Never** compute the resale split outside `resaleMargin` — the checkout freeze
+  and the client preview MUST share it so preview == charge.
+- **Never** delete/release the pre-buy `room_blocks` hold on sale — the room is
+  now a paid resale guest; verify only refreshes the hold note.
+- **Never** execute a payout in C3 — C3 only RECORDS the obligation
+  (`payout_status='owed'`); actual payout + reconciliation is C4.
+
+### C3 boundary — STOP
+C3 is resale listing + consumer feed + settlement-ledger only. **Do NOT start C4
+(dynamic discount / expiry sweep / optional platform buyback + admin oversight)
+without Sachin's "continue".** Same discipline as C1/C2 + the Channel Manager
 phases.

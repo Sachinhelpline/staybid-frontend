@@ -14,6 +14,8 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 import { useTutorial } from "@/lib/tutorial/tutorial-store";
 // v160 — shared globe picker for the unified control bar.
 import { LocationGlobeModal } from "@/components/LocationGlobePicker";
+// v329 — Circle Phase C3: member-resale offers on the consumer feed.
+import ResaleOffers from "@/components/circle/ResaleOffers";
 
 // v160 — Sort options for the unified control-bar filter popover.
 const FD_SORT_OPTS: Array<{ v: "discount" | "price-asc" | "ending"; label: string }> = [
@@ -358,6 +360,9 @@ function FlashDealsContent() {
           </div>
         </div>
       </div>
+
+      {/* ── v329 — Circle member-resale offers (renders nothing when empty) ── */}
+      <ResaleOffers city={city} />
 
       {/* ── Deals grid — v122.3 auto-scroll target ──────────────────── */}
       <div className="fd-grid-wrap" data-autonext="fd-results">
