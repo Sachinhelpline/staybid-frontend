@@ -724,3 +724,111 @@ build` green (`/api/b2b/listings` compiled). `SB_BUILD v330→v331`, badge v331,
 D1 is the inert B2B foundation. **Do NOT start D2 (trade checkout + Razorpay +
 ownership transfer) without Sachin's "continue".** Same discipline as C1–C4 +
 the Channel Manager phases.
+
+---
+
+## Phase D2 — Model 4 B2B Trade Checkout + Ownership Transfer + Settlement (v332, 2026-07-13)
+
+Second sub-phase of Model 4. Turns a D1 `listed` `b2b_listings` row into a
+COMPLETED `b2b_trades` row via a tamper-safe Razorpay checkout, TRANSFERS the
+commercial right (`inventory_blocks.investor_user_id` seller → buyer), and
+records the seller's owed net in `settlement_ledger`. **NO marketplace browse
+UI (D3), NO dynamic/admin (D4).** No migration (D1's `b2b_trades` +
+`settlement_ledger` tables already exist).
+
+### The ownership-transfer model (locked)
+Only `inventory_blocks.investor_user_id` moves seller → buyer — the date-range
+COMMERCIAL right. `hotel_room_units.owner_user_id` does NOT change (keeps the
+SEBI-safe bounded-goods model + the buyer never becomes the physical-unit
+owner). Buyer id = the caller's PRIMARY JWT userId (always inside their
+`resolveOwnerIdsCrossPool` set, so cross-identity lookups still resolve the
+block). The buyer can then C3-resell / C4-buyback the block exactly as if they
+had C2-bought it.
+
+### Fee convention (D1's `b2bTradeSplit`, unchanged)
+Buyer pays `askTotal`; `platformFee = round(askTotal × feePct/100)` is StayBid's
+cut OUT of the ask; `sellerNet = askTotal − platformFee`. The listing's frozen
+`platform_fee_pct` (set at D1 list time) is what verify settles on — never
+re-read from config. `B2B_FEE_PCT_DEFAULT = 8` (⚠ flagged — wire to
+`service_pricing`).
+
+### Routes (all NEW, additive; both trade routes owner/buyer-verified)
+- **`POST /api/b2b/listings/[id]/checkout`** — buyer-side. `auth → buyerIds`
+  via `resolveOwnerIdsCrossPool`; load listing (must be `status='listed'`);
+  reject `isBuyer(seller_user_id)` (own listing → 409); reject `date_to <=
+  today`; load block (must be `status='owned'` AND `investor_user_id ===
+  listing.seller_user_id`); `split = b2bTradeSplit(...)` from the listing's
+  frozen fields; Razorpay order via `${origin}/api/razorpay/order`
+  (`amount: split.askTotal`, `receipt: cb2b_<listingId>`,
+  `notes:{kind:"circle_b2b",listingId,blockId,buyerId}`); INSERT `b2b_trades`
+  (`id: genId("b2bt")`, `buyer_user_id: primary userId`, `status
+  pending_payment`, `metadata:{checkoutAt,buyPhone}`). Returns
+  `{ok, keyId, order, tradeId, askTotal}`. **Client never sets ₹.**
+- **`POST /api/b2b/listings/[id]/verify`** — HMAC via `${origin}/api/razorpay/
+  verify` (400 mismatch / 502 unreachable), then five steps:
+  1. PATCH `b2b_trades` → `completed` matched on `razorpay_order_id +
+     listing_id + buyer_user_id IN (ids) + status=eq.pending_payment` (4-key
+     anti-tamper + idempotent; re-verify falls back to fetch the completed row;
+     502 only if no trade found). The `uniq_b2b_trade_listing_completed` UNIQUE
+     index keeps it one-per-listing.
+  2. TRANSFER — PATCH `inventory_blocks.investor_user_id` seller → buyer guarded
+     on `investor_user_id=eq.sellerId` (a re-verify / race flips 0 rows = no-op;
+     `transferred` captured). Only the block's commercial right moves.
+  3. Flip listing `listed → sold` guarded `status=eq.listed`.
+  4. INSERT `settlement_ledger` (`id: genId("setl")`, `kind='b2b_trade'`,
+     `ref_id=trade.id`, `payee=sellerId`, `gross=ask_total`, `platform_fee`,
+     `net=seller_net`, `payout_status='owed'`) with `Prefer: resolution=
+     ignore-duplicates,return=minimal` (`uniq_settlement_kind_ref` idempotency).
+  5. Best-effort refresh the pre-buy `room_blocks?id=eq.invhold_<blockId>` note
+     + `createdBy=buyerId` so ops see the new owner.
+  Returns `{ok, transferred, trade:{id,dateFrom,dateTo,nights,askTotal,sellerNet}}`.
+- **`GET /api/b2b/trades[?hotelId=X]`** — the caller's trades as BUYER (blocks
+  acquired) + as SELLER (blocks sold), `status in.(pending_payment,completed)`,
+  cross-pool scoped, side-load unit#/hotel name (NO FK embed). Returns
+  `{asBuyer, asSeller}`.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+Read-only **"⇄ Exchange trades · Model 4"** subsection (renders only when trades
+exist) — `asSeller` then `asBuyer` mapped to `<TradeRow>` (Sold/Bought pill +
+status pill + `#unit` + dates + "you get {sellerNet}" for seller / "paid
+{askTotal}" for buyer). The buy-side marketplace browse + Razorpay flow is D3.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `inventory_blocks blk_v332test` (status=owned, investor=`v332-seller`) +
+`b2b_listings lst_v332test` (status=listed, ask 6000/n × 3, fee 8%) +
+`b2b_trades trd_v332test` (pending), mirrored checkout+verify. **All 13 asserts
+PASSED:** `trade_completed=1 · trade_ask_total=18000 · trade_fee=1440 ·
+trade_seller_net=16560 · block_owner_after=v332-buyer · block_status=owned ·
+listing_status=sold · settle_rows=1 · settle_net=16560 · settle_payout=owed ·
+transfer_rows=1 · reverify_transfer_rows=0 (idempotent no-op) ·
+dup_completed_landed=0 (`uniq_b2b_trade_listing_completed` held)`. Test rows
+deleted (0 leftover). `tsc --noEmit` clean, `next build` green (all 3 routes
+compiled). `SB_BUILD v331→v332`, badge v332, `HTML_CACHE v144→v145`.
+
+### Things to Avoid (Phase D2)
+- **Never** let the client set the ask ₹ at checkout — the checkout route reads
+  the listing's frozen `ask_per_night`/`platform_fee_pct` and `b2bTradeSplit`s
+  server-side; verify never trusts a client amount.
+- **Never** mark a trade `completed` without the 4-key PATCH filter
+  (`razorpay_order_id + listing_id + buyer_user_id ownership +
+  status=eq.pending_payment`). A 0-row flip = already-processed OR not-yours →
+  re-fetch the completed row for the summary; do NOT re-charge / re-transfer.
+- **Never** transfer `hotel_room_units.owner_user_id` — ONLY
+  `inventory_blocks.investor_user_id` moves (the commercial right). The physical
+  unit owner is untouched (SEBI-safe bounded goods).
+- **Never** transfer the block without the `investor_user_id=eq.sellerId` guard
+  — it makes a re-verify / race a 0-row no-op. `transferred` reflects the real
+  flip.
+- **Never** compute the split from config at settlement — use the listing's
+  FROZEN `platform_fee_pct` (set at D1 list time) so preview == charge ==
+  settlement even if the default fee changes later.
+- **Never** drop `uniq_b2b_trade_listing_completed` / `uniq_settlement_kind_ref`
+  — they are the one-completed-per-listing + one-ledger-row-per-trade guards
+  that make verify idempotent.
+- **Never** point a `seller`/`buyer`/unit/hotel side-load at a PostgREST FK
+  embed — no FK exists; manual `?id=in.(…)`.
+
+### D2 boundary — STOP
+D2 completes the B2B trade + ownership transfer + settlement obligation. **Do
+NOT start D3 (B2B marketplace browse + buy button + payout execution) without
+Sachin's "continue".** Same discipline as C1–C4 + the Channel Manager phases.

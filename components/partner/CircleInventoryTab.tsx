@@ -52,6 +52,13 @@ type B2bListing = {
   nights: number; ask_per_night: number; ask_total: number; platform_fee_pct: number;
   status: string; unit_number?: string | null; hotel_name?: string | null; split?: B2bSplit;
 };
+// v332 (D2) — a completed/pending B2B trade (as buyer or seller).
+type B2bTrade = {
+  id: string; listing_id: string; block_id: string; unit_id: string;
+  date_from: string; date_to: string; nights: number;
+  ask_total: number; platform_fee: number; seller_net: number; status: string;
+  unit_number?: string | null; hotel_name?: string | null;
+};
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -91,6 +98,8 @@ export default function CircleInventoryTab({
   // v331 — D1: Model 4 B2B exchange — my listings + per-block ask/night draft.
   const [b2bListings, setB2bListings] = useState<B2bListing[]>([]);
   const [b2bDraft, setB2bDraft] = useState<Record<string, string>>({});
+  // v332 — D2: my B2B trades (as buyer / as seller).
+  const [b2bTrades, setB2bTrades] = useState<{ asBuyer: B2bTrade[]; asSeller: B2bTrade[] }>({ asBuyer: [], asSeller: [] });
 
   useEffect(() => { if (!unitId && units[0]) setUnitId(units[0].id); }, [units, unitId]);
 
@@ -124,6 +133,21 @@ export default function CircleInventoryTab({
   }, [hotelId]);
 
   useEffect(() => { loadB2b(); }, [loadB2b]);
+
+  // v332 — D2: load the caller's B2B trades (as buyer + as seller).
+  const loadTrades = useCallback(async () => {
+    const token = getToken();
+    if (!token || !hotelId) return;
+    try {
+      const r = await fetch(`/api/b2b/trades?hotelId=${encodeURIComponent(hotelId)}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      setB2bTrades({ asBuyer: Array.isArray(d.asBuyer) ? d.asBuyer : [], asSeller: Array.isArray(d.asSeller) ? d.asSeller : [] });
+    } catch { /* ignore */ }
+  }, [hotelId]);
+
+  useEffect(() => { loadTrades(); }, [loadTrades]);
 
   // v331 — D1: list an OWNED block on the B2B exchange at the seller's ask.
   async function listB2b(b: Block) {
@@ -576,12 +600,61 @@ export default function CircleInventoryTab({
         )}
       </div>
 
+      {/* v332 — D2: Model 4 B2B trade history (as buyer / as seller). */}
+      {(b2bTrades.asBuyer.length > 0 || b2bTrades.asSeller.length > 0) && (
+        <div className="mt-7">
+          <div className="mb-2">
+            <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
+              ⇄ Exchange trades <span className="text-xs font-normal opacity-60">· Model 4</span>
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Blocks you bought from or sold to other investors on the exchange. Sold blocks pay out to the seller
+              (StayBid fee deducted); bought blocks become yours to resell or manage.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {b2bTrades.asSeller.map((t) => (
+              <TradeRow key={`s-${t.id}`} t={t} role="seller" />
+            ))}
+            {b2bTrades.asBuyer.map((t) => (
+              <TradeRow key={`b-${t.id}`} t={t} role="buyer" />
+            ))}
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-sm text-white"
           style={{ background: "var(--text-base)" }}>
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+function TradeRow({ t, role }: { t: B2bTrade; role: "buyer" | "seller" }) {
+  const done = String(t.status) === "completed";
+  return (
+    <div className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
+      style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
+      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${role === "seller" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-600"}`}>
+        {role === "seller" ? "Sold" : "Bought"}
+      </span>
+      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${done ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+        {String(t.status).replace(/_/g, " ")}
+      </span>
+      <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
+        #{t.unit_number || t.unit_id}
+      </span>
+      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+        {t.date_from} → {t.date_to} · {t.nights}n
+      </span>
+      <span className="ml-auto text-xs" style={{ color: "var(--text-soft)" }}>
+        {role === "seller"
+          ? <>ask {inr(t.ask_total)} · <b>you get {inr(t.seller_net)}</b></>
+          : <>paid {inr(t.ask_total)}</>}
+      </span>
     </div>
   );
 }

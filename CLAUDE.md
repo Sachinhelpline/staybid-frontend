@@ -11206,3 +11206,107 @@ deleted (0 leftover). `tsc --noEmit` clean, `next build` green
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model, Model-3
   C1–C4 purchase/resale/settlement logic (D1 is additive B2B foundation only).
+
+---
+
+## StayBid Circle Multi-Investor — Phase D2: B2B Trade Checkout + Ownership Transfer + Settlement (v332, 2026-07-13)
+
+Second sub-phase of Model 4 (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`, §D2).
+Turns a D1 `listed` `b2b_listings` row into a COMPLETED `b2b_trades` row via a
+tamper-safe Razorpay checkout, TRANSFERS the commercial right
+(`inventory_blocks.investor_user_id` seller → buyer), and records the seller's
+owed net in `settlement_ledger`. **NO marketplace browse + buy UI (D3), NO
+payout execution (D3), NO dynamic/admin (D4).** No migration (D1's `b2b_trades`
++ `settlement_ledger` tables already exist).
+
+### The ownership-transfer model (locked)
+ONLY `inventory_blocks.investor_user_id` moves seller → buyer — the date-range
+COMMERCIAL right. `hotel_room_units.owner_user_id` does NOT change (keeps the
+SEBI-safe bounded-goods model; the buyer never becomes the physical-unit owner).
+Buyer id = the caller's PRIMARY JWT userId (always inside their
+`resolveOwnerIdsCrossPool` set, so cross-identity lookups still resolve the
+block). The buyer can then C3-resell / C4-buyback the block exactly as if they
+had C2-bought it.
+
+### Fee convention (D1's `b2bTradeSplit`, unchanged)
+Buyer pays `askTotal`; `platformFee = round(askTotal × feePct/100)` is StayBid's
+cut OUT of the ask; `sellerNet = askTotal − platformFee`. Verify settles on the
+listing's FROZEN `platform_fee_pct` (set at D1 list time) — never re-read from
+config, so preview == charge == settlement even if the default changes later.
+
+### Routes (all NEW, additive)
+- **`POST /api/b2b/listings/[id]/checkout`** — buyer-side. `auth → buyerIds`;
+  load listing (must be `status='listed'`); reject own listing (409) + past-dated
+  (`date_to <= today`); load block (must be `status='owned'` AND
+  `investor_user_id === listing.seller_user_id`); `b2bTradeSplit` from the
+  listing's frozen fields; Razorpay order via `${origin}/api/razorpay/order`
+  (`amount: split.askTotal`, `receipt: cb2b_<listingId>`,
+  `notes.kind="circle_b2b"`); INSERT `b2b_trades` (`id: genId("b2bt")`,
+  `buyer_user_id: primary userId`, `pending_payment`). Returns
+  `{ok, keyId, order, tradeId, askTotal}`. **Client never sets ₹.**
+- **`POST /api/b2b/listings/[id]/verify`** — HMAC → five steps: (1) PATCH trade
+  → `completed` matched on `razorpay_order_id + listing_id + buyer_user_id
+  IN(ids) + status=eq.pending_payment` (4-key anti-tamper + idempotent; re-verify
+  falls back to fetch the completed row; 502 only if no trade found);
+  (2) TRANSFER `inventory_blocks.investor_user_id` seller → buyer guarded
+  `investor_user_id=eq.sellerId` (re-verify/race = 0-row no-op; `transferred`
+  captured); (3) flip listing `listed → sold` guarded `status=eq.listed`;
+  (4) INSERT `settlement_ledger` (`kind='b2b_trade'`, `ref_id=trade.id`,
+  `payee=sellerId`, `net=seller_net`, `payout_status='owed'`) with
+  `ignore-duplicates`; (5) best-effort refresh the `room_blocks
+  invhold_<blockId>` note + `createdBy=buyerId`. Returns `{ok, transferred,
+  trade}`.
+- **`GET /api/b2b/trades[?hotelId=X]`** — caller's trades as BUYER + SELLER
+  (`status in.(pending_payment,completed)`, cross-pool, side-load unit#/hotel,
+  no FK embed). Returns `{asBuyer, asSeller}`.
+
+### Client UI (`components/partner/CircleInventoryTab.tsx`)
+Read-only **"⇄ Exchange trades · Model 4"** subsection (renders only when trades
+exist) — `asSeller` then `asBuyer` → `<TradeRow>` (Sold/Bought pill + status +
+`#unit` + dates + "you get {sellerNet}" / "paid {askTotal}"). The buy-side
+marketplace browse + Razorpay flow is D3.
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Seeded `blk_v332test` (owned, `v332-seller`) + `lst_v332test` (listed, ask 6000/n
+× 3, fee 8%) + `trd_v332test` (pending), mirrored checkout+verify. **All 13
+asserts PASSED:** `trade_completed=1 · ask_total=18000 · fee=1440 ·
+seller_net=16560 · block_owner_after=v332-buyer · block_status=owned ·
+listing_status=sold · settle_rows=1 · settle_net=16560 · payout=owed ·
+transfer_rows=1 · reverify_transfer_rows=0 · dup_completed_landed=0`. Test rows
+deleted (0 leftover). `tsc --noEmit` clean, `next build` green (all 3 routes
+compiled). `SB_BUILD v331→v332`, badge v332, `HTML_CACHE v144→v145`.
+
+### Things to Avoid (Circle Phase D2)
+- **Never** let the client set the ask ₹ at checkout — reads the listing's
+  frozen `ask_per_night`/`platform_fee_pct` + `b2bTradeSplit` server-side;
+  verify never trusts a client amount.
+- **Never** mark a trade `completed` without the 4-key PATCH filter
+  (`razorpay_order_id + listing_id + buyer ownership + status=eq.pending_payment`).
+  A 0-row flip = already-processed OR not-yours → re-fetch the completed row;
+  do NOT re-charge / re-transfer.
+- **Never** transfer `hotel_room_units.owner_user_id` — ONLY
+  `inventory_blocks.investor_user_id` moves (the commercial right). Physical unit
+  owner untouched (SEBI-safe bounded goods).
+- **Never** transfer the block without the `investor_user_id=eq.sellerId` guard
+  — it makes a re-verify / race a 0-row no-op.
+- **Never** compute the split from config at settlement — use the listing's
+  FROZEN `platform_fee_pct` so preview == charge == settlement.
+- **Never** drop `uniq_b2b_trade_listing_completed` / `uniq_settlement_kind_ref`
+  — the one-completed-per-listing + one-ledger-row-per-trade idempotency guards.
+- **Never** point a `seller`/`buyer`/unit/hotel side-load at a PostgREST FK embed
+  — no FK exists; manual `?id=in.(…)`.
+
+### Updated production state (v332, 2026-07-13)
+- **Current version:** v332 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (D1 schema reused). `tsc` clean, `next build` green, D2 live
+  round-trip passed (13 asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1–C4 Model-3 pre-buy (v327–v330) ✅ · D1 Model-4 B2B foundation (v331) ✅
+  · **D2 trade checkout + ownership transfer + settlement (v332) ✅** · D3 B2B
+  marketplace browse + buy button + payout execution · D4 dynamic/admin ·
+  E Model-1 expected-only · F operated supply. **STOP at D2 — do NOT start D3
+  without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, Model-3
+  C1–C4 + D1 logic (D2 is additive trade-execution on top).
