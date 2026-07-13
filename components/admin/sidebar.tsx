@@ -15,6 +15,8 @@ const NAV = [
   { href: "/admin/channels", label: "Channel Health", icon: "📡" },
   // v288 — StayCircle™ Community Partner Platform (room-level investing)
   { href: "/admin/circle", label: "StayCircle", icon: "◎" },
+  // v330 — Circle Model 3 pre-buy inventory oversight (blocks + payouts)
+  { href: "/admin/circle-inventory", label: "Circle Inventory", icon: "🧾" },
   { href: "/admin/verification", label: "Verification", icon: "🎥" },
   { href: "/admin/videos", label: "Hotel Videos", icon: "🎬" },
   { href: "/admin/complaints", label: "Complaints", icon: "🚨" },

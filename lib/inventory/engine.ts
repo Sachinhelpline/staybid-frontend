@@ -107,3 +107,59 @@ export function resaleMargin(args: {
   const feeTotal = round0((resaleTotal * feePct) / 100);
   return { resaleTotal, feeTotal, buyTotal, investorNet: round0(resaleTotal - feeTotal - buyTotal), feePct };
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// v330 — Circle Phase C4: dynamic auto-markdown as check-in approaches.
+//
+// Unsold room-nights lose value fast near the date. The lifecycle cron marks
+// a LISTED block's resale price DOWN in tiers, computed from a FROZEN original
+// (`metadata.listResalePerNight`, stamped on list) so re-running is idempotent
+// and NON-compounding, and NEVER below the investor's own buy cost (they'd
+// rather hold than sell at a loss). Pure — the cron + client share it.
+// ════════════════════════════════════════════════════════════════════════
+
+// Markdown % by whole days until check-in (`date_from`). Descending tiers.
+// > 14d → 0% · 8-14d → 10% · 4-7d → 20% · 2-3d → 30% · ≤ 1d → 40%.
+export const MARKDOWN_TIERS = [
+  { minDays: 15, pct: 0 },
+  { minDays: 8, pct: 10 },
+  { minDays: 4, pct: 20 },
+  { minDays: 2, pct: 30 },
+  { minDays: 0, pct: 40 },
+] as const;
+
+/** Markdown percentage for a given whole-days-until-check-in. Pure. */
+export function markdownPctForDaysOut(daysOut: number): number {
+  const d = Math.floor(Number(daysOut));
+  if (!Number.isFinite(d)) return 0;
+  if (d >= 15) return 0;
+  if (d >= 8) return 10;
+  if (d >= 4) return 20;
+  if (d >= 2) return 30;
+  return 40; // ≤ 1 day (incl. same-day / already-here but not yet passed)
+}
+
+/**
+ * Marked-down resale/night from the FROZEN original, floored at buy cost.
+ * Idempotent + non-compounding: always recomputes from `originalPerNight`,
+ * never from the already-marked-down current price.
+ */
+export function markdownResalePerNight(args: {
+  originalPerNight: number;
+  buyPerNight: number;
+  daysOut: number;
+}): { perNight: number; pct: number } {
+  const pct = markdownPctForDaysOut(args.daysOut);
+  const orig = Math.max(0, round0(args.originalPerNight));
+  const floor = Math.max(0, round0(args.buyPerNight)); // never sell below cost
+  const marked = round0(orig * (1 - pct / 100));
+  return { perNight: Math.max(floor, marked), pct };
+}
+
+/** Whole days from today (UTC midnight) until an ISO date. Can be negative (past). Pure-ish (reads clock). */
+export function daysUntil(dateISO: string, now: number = Date.now()): number {
+  const target = Date.parse(`${String(dateISO).slice(0, 10)}T00:00:00Z`);
+  if (!Number.isFinite(target)) return 0;
+  const todayUtc = Math.floor(now / 86_400_000) * 86_400_000;
+  return Math.round((target - todayUtc) / 86_400_000);
+}

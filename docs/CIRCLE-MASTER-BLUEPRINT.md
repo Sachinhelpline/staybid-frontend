@@ -109,8 +109,15 @@ then C (clean-legal ownership), then D (most scale). F ongoing.
     customer pays → block `sold` → `inventory_sales` freezes StayBid fee +
     investor net (`resaleMargin`); `payout_status='owed'` records what StayBid
     owes the investor (payout execution is C4).
-  - [ ] **C4 — dynamic discount / expiry / buyback + admin.** Auto-markdown
-    near check-in, expiry sweep, optional platform buyback, admin oversight.
+  - [x] **C4 — dynamic discount / expiry / buyback + admin (v330, 2026-07-13).**
+    DONE. See §9. Lifecycle cron `/api/cron/inventory-lifecycle` auto-marks-down
+    listed blocks in tiers as check-in nears (frozen `metadata.listResalePerNight`
+    baseline, floored at buy cost, idempotent) + expiry-sweeps started-but-unsold
+    owned/listed blocks → `expired` + releases the pre-buy hold. Investor buyback
+    toggle (`PATCH /api/circle/inventory`). Admin oversight `/admin/circle-inventory`
+    + `/api/admin/circle-inventory`: force-expire, buyback (owned|listed|expired →
+    refunded + `metadata.buybackPayoutStatus='owed'` + hold release), and settle
+    both obligations (`inventory_sales.payout_status` owed→paid + buyback owed→paid).
 - [ ] **Phase D — Model 4 B2B exchange.** `b2b_listings` / `b2b_trades` /
   `settlement_ledger`. Fees via `service_pricing` reuse. B2B-only (SEBI-safe).
 - [ ] **Phase E — Model 1 "expected income" language.** UI/legal migration to
@@ -538,3 +545,86 @@ C3 is resale listing + consumer feed + settlement-ledger only. **Do NOT start C4
 (dynamic discount / expiry sweep / optional platform buyback + admin oversight)
 without Sachin's "continue".** Same discipline as C1/C2 + the Channel Manager
 phases.
+
+---
+
+## §9 — Phase C4: Dynamic Markdown + Expiry Sweep + Buyback + Admin (v330, 2026-07-13)
+
+C4 closes Model 3: a lifecycle cron that auto-discounts listed blocks as
+check-in nears + expires the unsold, an investor opt-in platform buyback, and a
+full admin oversight surface for both settlement obligations. **NO migration** —
+the `buyback_enabled` column + `metadata` JSONB + `expired`/`refunded` statuses
+all already existed from C1; C4 is code-only.
+
+### The two lifecycle passes (`/api/cron/inventory-lifecycle`, GET+POST)
+Auth mirrors `/api/cron/expire-holds` (`?token=` / Bearer `CRON_SECRET` /
+`adm_` x-admin token). Budget 24s, ≤200 rows/pass, per-pass bounded.
+- **Markdown pass** — `status=eq.listed & date_from` in `[today, today+14]`.
+  For each block: `original = round(metadata.listResalePerNight ?? resale_price_per_night)`
+  (frozen baseline, backfilled from current price for pre-C4 listings);
+  `daysOut = daysUntil(date_from)`; tiers **≥15→0% · ≥8→10% · ≥4→20% · ≥2→30%
+  · else 40%**; `perNight = max(round(buy_price_per_night), round(original ×
+  (1−pct)))` — **NEVER below buy cost**. Recomputed from the frozen baseline so
+  re-runs converge + never compound; idempotent no-op skip when the price + pct
+  already match. PATCH guarded on `status=eq.listed`.
+- **Expiry pass** — `status=in.(owned,listed) & date_from < today` → `expired`
+  + `metadata.expiredAt/expiredReason='stay_started_unsold'` + `releaseHold`
+  (`DELETE room_blocks?id=eq.invhold_<blockId>` — deterministic C2 hold id).
+
+### Investor buyback toggle
+`PATCH /api/circle/inventory { id, buybackEnabled }` — owner-verified
+(`resolveOwnerIdsCrossPool`), guarded on `status=in.(owned,listed) &
+investor_user_id ownership`. When on, StayBid MAY buy the block back near
+check-in if it stays unsold — the investor recovers their wholesale cost instead
+of the block expiring worthless. UI: an optimistic checkbox on owned/listed rows
+in `CircleInventoryTab`; a `−N% auto` badge (with struck-through original) shows
+on listed rows once the cron has marked one down.
+
+### Admin oversight
+`/admin/circle-inventory` (sidebar "🧾 Circle Inventory") + `/api/admin/circle-inventory`
+(`adminFromReq` + `logAdminAction`):
+- **GET** — blocks + sales + KPIs (`investorOwed`, `investorPaid`, `platformFees`,
+  `gmv`, `byStatus`, `buybackOwed`), hotels/units/users side-loaded (NO PostgREST
+  FK embed).
+- **POST** — `force_expire` (owned|listed→expired+releaseHold) · `buyback`
+  (requires `buyback_enabled`; owned|listed|expired→refunded, amount defaults
+  `buy_total`, +`metadata.buyback` +`buybackPayoutStatus='owed'` + releaseHold) ·
+  `mark_payout_paid` (`inventory_sales` status=paid & payout_status=owed→paid) ·
+  `mark_buyback_paid` (block refunded & `metadata.buybackPayoutStatus` owed→paid).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle hotel + owned unit on a real room + a listed block 5 days
+out (→ 20% tier), original ₹5000/n, buy ₹4200/n. **All asserts PASSED:**
+**(A markdown)** 20% off ₹5000 = ₹4000 → floored at ₹4200 buy cost
+(`a1_floored_at_cost`), pct + original frozen, non-floored math (6000@20%→4800)
+correct, idempotent-skip TRUE. **(B expiry)** date_from<today → `expired` +
+reason set + hold released. **(C toggle)** `buyback_enabled=true` (fired D).
+**(D admin buyback)** → `refunded` + `metadata.buyback.amount=buy_total` +
+`buybackPayoutStatus='owed'` + hold released. **(E settle)** `mark_buyback_paid`
+→ `buybackPayoutStatus='paid'`; `mark_payout_paid` → `inventory_sales.payout_status='paid'`.
+All test rows deleted (0 leftover). `tsc` clean, `next build` green (all 3 C4
+routes compiled). `SB_BUILD v329→v330`, badge v330, `HTML_CACHE v142→v143`.
+
+### Things to Avoid (Phase C4)
+- **Never** mark a listed block down below its buy cost — the floor
+  (`max(buyPerNight, marked)`) is the investor's protection; a below-cost resale
+  would sell them into a loss they never agreed to.
+- **Never** recompute the markdown from the CURRENT `resale_price_per_night` —
+  always from the frozen `metadata.listResalePerNight` baseline, or successive
+  cron runs compound the discount (20% of 20% of …) into oblivion.
+- **Never** drop the idempotent no-op skip in the markdown pass — the cron runs
+  every 15 min; without the skip it PATCHes every listed block every run.
+- **Never** run a platform buyback without `buyback_enabled=true` — it's an
+  investor opt-in. The admin `buyback` action + the cron both check the flag.
+- **Never** let `releaseHold` failure block a status flip — expiry/buyback flip
+  the block first, then best-effort release the hold (C2 discipline).
+- **Never** compute settlement obligations outside the ledger — `inventory_sales`
+  (resale payout) + `metadata.buyback` (buyback payout) are the two records;
+  admin actions only flip `owed→paid`, never invent amounts.
+- ⚠ **SACHIN ACTION:** register the cron on cron-job.org —
+  `*/15 * * * *` → `https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev`.
+
+### C4 boundary — STOP
+C4 completes Model 3 (pre-buy commerce). **Do NOT start Phase D (Model 4 B2B
+exchange) without Sachin's "continue".** Same discipline as C1/C2/C3 + the
+Channel Manager phases.

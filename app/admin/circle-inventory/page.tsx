@@ -1,0 +1,220 @@
+"use client";
+// v330 — Circle Phase C4: admin oversight for Model 3 pre-buy inventory.
+// Investor blocks + resale settlement ledger, with force-expire / buyback /
+// mark-payout-paid actions. Dark-luxury, mirrors /admin/channels.
+import { useCallback, useEffect, useState } from "react";
+
+const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
+
+const STATUS_COLOR: Record<string, string> = {
+  draft: "#8A8FA8", quoted: "#8A8FA8", pending_payment: "#F0B429",
+  owned: "#3D9CF5", listed: "#2ECC71", sold: "#2ECC71",
+  expired: "#8A8FA8", cancelled: "#FF4757", refunded: "#A855F7",
+};
+
+function adminId(): string {
+  if (typeof window === "undefined") return "";
+  try { return JSON.parse(localStorage.getItem("sb_admin_user") || "null")?.id || ""; } catch { return ""; }
+}
+function ago(ts: any): string {
+  if (!ts) return "—";
+  let s = String(ts); if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += "Z";
+  const t = Date.parse(s); if (!Number.isFinite(t)) return "—";
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "now"; if (m < 60) return `${m}m`; const h = Math.round(m / 60);
+  if (h < 48) return `${h}h`; return `${Math.round(h / 24)}d`;
+}
+
+const FILTERS = ["all", "owned", "listed", "sold", "expired", "refunded", "draft"] as const;
+
+export default function AdminCircleInventory() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [flash, setFlash] = useState("");
+  const [busy, setBusy] = useState("");
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+
+  const headers = useCallback((): HeadersInit => ({
+    "x-admin-token": typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "",
+    "x-admin-id": adminId(),
+  }), []);
+
+  const load = useCallback(() => {
+    setLoading(true); setErr("");
+    fetch(`/api/admin/circle-inventory?status=${filter}`, { headers: headers(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (d?.error) setErr(String(d.error)); else setData(d); })
+      .catch((e) => setErr(e?.message || "Failed"))
+      .finally(() => setLoading(false));
+  }, [headers, filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (payload: any, key: string, confirmMsg?: string) => {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    setBusy(key); setFlash(""); setErr("");
+    try {
+      const r = await fetch("/api/admin/circle-inventory", {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers() }, body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error) throw new Error(d?.error || "Action failed");
+      setFlash("Done ✓");
+      load();
+    } catch (e: any) { setErr(e?.message || "Action failed"); }
+    finally { setBusy(""); }
+  };
+
+  const k = data?.kpis || { investorOwed: 0, investorPaid: 0, platformFees: 0, gmv: 0, byStatus: {}, totalBlocks: 0, buybackOwed: 0 };
+  const blocks: any[] = data?.blocks || [];
+  const sales: any[] = data?.sales || [];
+  const owedSales = sales.filter((s) => s.status === "paid" && s.payout_status === "owed");
+
+  const th: React.CSSProperties = { textAlign: "left", color: "#8A8FA8", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, padding: "10px 12px" };
+  const td: React.CSSProperties = { padding: "11px 12px", color: "#E8EAF0", fontSize: 12.5, borderTop: "1px solid rgba(255,255,255,0.05)" };
+  const btn = (color: string): React.CSSProperties => ({ background: `${color}22`, border: `1px solid ${color}55`, color, borderRadius: 8, padding: "5px 10px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" });
+
+  return (
+    <div style={{ padding: "0 4px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+        <div>
+          <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>🧾 Circle Inventory</h1>
+          <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 3 pre-buy blocks + resale settlement · investor payouts</div>
+        </div>
+        <button onClick={load} disabled={loading}
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+          {loading ? "…" : "↻ Refresh"}
+        </button>
+      </div>
+
+      {err && <div style={{ background: "rgba(255,71,87,0.12)", border: "1px solid rgba(255,71,87,0.3)", color: "#FF4757", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13 }}>{err}</div>}
+      {flash && <div style={{ background: "rgba(46,204,113,0.12)", border: "1px solid rgba(46,204,113,0.3)", color: "#2ECC71", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13 }}>{flash}</div>}
+
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
+        {[
+          { v: inr(k.investorOwed), label: "Investor payout owed", color: "#F0B429" },
+          { v: inr(k.investorPaid), label: "Investor payout paid", color: "#2ECC71" },
+          { v: inr(k.platformFees), label: "Platform fees", color: "#D4AF37" },
+          { v: inr(k.gmv), label: "Resale GMV", color: "#3D9CF5" },
+          { v: String(k.totalBlocks || 0), label: "Total blocks", color: "#E8EAF0" },
+          { v: String(k.buybackOwed || 0), label: "Buyback owed", color: "#A855F7" },
+        ].map((c, i) => (
+          <div key={i} style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ color: c.color, fontSize: 22, fontWeight: 800, fontFamily: "Syne, sans-serif" }}>{c.v}</div>
+            <div style={{ color: "#8A8FA8", fontSize: 12, marginTop: 2 }}>{c.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Payouts owed (settlement) */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payouts owed to investors</div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {owedSales.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding investor payouts."}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Hotel", "Investor", "Dates", "Resale", "Fee", "Investor net", "Paid", "Action"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {owedSales.map((s) => (
+                    <tr key={s.id}>
+                      <td style={td}>{s.hotel_name || s.hotel_id}</td>
+                      <td style={td}>{s.investor_name || <span style={{ color: "#8A8FA8" }}>{String(s.investor_user_id).slice(-6)}</span>}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{s.date_from} → {s.date_to}</td>
+                      <td style={td}>{inr(s.resale_total)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
+                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.investor_net)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.paid_at)} ago</td>
+                      <td style={td}>
+                        <button disabled={busy === s.id} onClick={() => act({ action: "mark_payout_paid", saleId: s.id }, s.id, `Mark ${inr(s.investor_net)} paid to investor?`)} style={btn("#2ECC71")}>
+                          {busy === s.id ? "…" : "Mark paid"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Blocks */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>📦 Inventory blocks</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
+            {FILTERS.map((f) => (
+              <button key={f} onClick={() => setFilter(f)}
+                style={{ background: filter === f ? "rgba(212,175,55,0.16)" : "rgba(255,255,255,0.04)", border: `1px solid ${filter === f ? "rgba(212,175,55,0.4)" : "rgba(255,255,255,0.1)"}`, color: filter === f ? "#D4AF37" : "#8A8FA8", borderRadius: 999, padding: "4px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize" }}>
+                {f}{f !== "all" && k.byStatus?.[f] != null ? ` ${k.byStatus[f]}` : ""}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {blocks.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No blocks."}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Hotel · Unit", "Investor", "Dates", "Status", "Buy", "Resale", "Buyback", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {blocks.map((b) => {
+                    const md = Number(b?.metadata?.markdownPct) || 0;
+                    const bbStatus = b?.metadata?.buybackPayoutStatus;
+                    const c = STATUS_COLOR[b.status] || "#8A8FA8";
+                    return (
+                      <tr key={b.id}>
+                        <td style={td}>
+                          <div style={{ fontWeight: 600 }}>{b.hotel_name || b.hotel_id}</div>
+                          <div style={{ color: "#8A8FA8", fontSize: 11 }}>#{b.unit_number || b.unit_id} · {b.nights}n</div>
+                        </td>
+                        <td style={td}>{b.investor_name || <span style={{ color: "#8A8FA8" }}>{String(b.investor_user_id).slice(-6)}</span>}</td>
+                        <td style={{ ...td, color: "#8A8FA8" }}>{b.date_from} → {b.date_to}</td>
+                        <td style={td}>
+                          <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${c}22`, color: c, border: `1px solid ${c}44`, textTransform: "capitalize" }}>{String(b.status).replace(/_/g, " ")}</span>
+                        </td>
+                        <td style={{ ...td, color: "#8A8FA8" }}>{inr(b.buy_total)}</td>
+                        <td style={td}>
+                          {b.resale_price_per_night ? (
+                            <>{inr(b.resale_price_per_night)}/n{md > 0 && <span style={{ color: "#FF4757", fontSize: 11, marginLeft: 4, fontWeight: 700 }}>−{md}%</span>}</>
+                          ) : <span style={{ color: "#8A8FA8" }}>—</span>}
+                        </td>
+                        <td style={td}>
+                          {b.buyback_enabled
+                            ? <span style={{ color: bbStatus === "owed" ? "#F0B429" : bbStatus === "paid" ? "#2ECC71" : "#A855F7", fontSize: 11.5, fontWeight: 700 }}>{bbStatus === "owed" ? "owed" : bbStatus === "paid" ? "paid" : "🛡 on"}</span>
+                            : <span style={{ color: "#8A8FA8" }}>—</span>}
+                        </td>
+                        <td style={td}>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {["owned", "listed"].includes(b.status) && (
+                              <button disabled={busy === b.id} onClick={() => act({ action: "force_expire", blockId: b.id }, b.id, "Force-expire this block + release its hold?")} style={btn("#8A8FA8")}>{busy === b.id ? "…" : "Expire"}</button>
+                            )}
+                            {b.buyback_enabled && bbStatus !== "owed" && bbStatus !== "paid" && ["owned", "listed", "expired"].includes(b.status) && (
+                              <button disabled={busy === b.id} onClick={() => act({ action: "buyback", blockId: b.id }, b.id, `Buy back ${inr(b.buy_total)} of unsold nights? StayBid takes the loss.`)} style={btn("#A855F7")}>{busy === b.id ? "…" : "Buyback"}</button>
+                            )}
+                            {b.status === "refunded" && bbStatus === "owed" && (
+                              <button disabled={busy === b.id} onClick={() => act({ action: "mark_buyback_paid", blockId: b.id }, b.id, `Mark ${inr(b?.metadata?.buyback?.amount)} buyback paid to investor?`)} style={btn("#2ECC71")}>{busy === b.id ? "…" : "Mark paid"}</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

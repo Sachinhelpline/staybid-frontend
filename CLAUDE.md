@@ -11025,3 +11025,93 @@ compiled). `SB_BUILD v328→v329`, badge v329, `HTML_CACHE v141→v142`.
 - **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
   reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
   channel sync engine, availability engine, host vertical data model.
+
+---
+
+## StayBid Circle Multi-Investor — Phase C4: Dynamic Markdown + Expiry + Buyback + Admin (v330, 2026-07-13)
+
+Final sub-phase of Model 3 pre-buy (blueprint: `docs/CIRCLE-MASTER-BLUEPRINT.md`,
+§9). Closes the lifecycle: a cron auto-discounts listed blocks as check-in nears
++ expires the unsold, an investor opt-in **platform buyback**, and a full admin
+oversight surface for both settlement obligations. **NO migration** — C1's
+`inventory_blocks.buyback_enabled` + `metadata` JSONB + `expired`/`refunded`
+statuses already exist; C4 is code-only.
+
+### Lifecycle cron `/api/cron/inventory-lifecycle` (GET+POST, two idempotent passes)
+Auth mirrors `/api/cron/expire-holds` (`?token=` / Bearer `CRON_SECRET` / `adm_`
+x-admin token). Budget 24s, ≤200 rows/pass.
+- **Markdown pass** — `status=eq.listed & date_from` in `[today, today+14]`.
+  `original = round(metadata.listResalePerNight ?? resale_price_per_night)`
+  (frozen baseline, backfilled from current price for pre-C4 listings); tiers via
+  `markdownPctForDaysOut` (≥15→0 · ≥8→10 · ≥4→20 · ≥2→30 · else 40); `perNight =
+  max(round(buy_price_per_night), round(original × (1−pct/100)))` — **NEVER below
+  buy cost**. Recomputed from the FROZEN baseline → re-runs converge + never
+  compound; idempotent no-op skip when price+pct already match. PATCH guarded
+  `status=eq.listed`.
+- **Expiry pass** — `status=in.(owned,listed) & date_from < today` → `expired` +
+  `metadata.expiredAt/expiredReason='stay_started_unsold'` + `releaseHold`
+  (`DELETE room_blocks?id=eq.invhold_<blockId>`).
+
+### Pure engine (`lib/inventory/engine.ts`, shared by cron + client)
+`MARKDOWN_TIERS`, `markdownPctForDaysOut(daysOut)`, `markdownResalePerNight({
+originalPerNight, buyPerNight, daysOut })` → `{perNight, pct}` (floored at buy),
+`daysUntil(dateISO)` (UTC-day math; `Date.now()`-based but the cron reads
+today via `isoDatePlus(0)`).
+
+### Investor buyback toggle (`PATCH /api/circle/inventory`)
+`{ id, buybackEnabled }` — owner-verified (`resolveOwnerIdsCrossPool`), guarded
+`status=in.(owned,listed) & investor_user_id ownership`. `CircleInventoryTab`:
+optimistic checkbox on owned/listed rows + `−N% auto` badge (struck-through
+original) on listed rows once the cron marks one down.
+
+### Admin oversight (`/admin/circle-inventory` + `/api/admin/circle-inventory`)
+`adminFromReq` + `logAdminAction`. Sidebar "🧾 Circle Inventory" after StayCircle.
+- **GET** — blocks + sales + KPIs (`investorOwed`/`investorPaid`/`platformFees`/
+  `gmv`/`byStatus`/`buybackOwed`), hotels/units/users side-loaded (NO FK embed).
+- **POST** — `force_expire` (owned|listed→expired+releaseHold) · `buyback`
+  (requires `buyback_enabled`; owned|listed|expired→refunded, amount defaults
+  `buy_total`, +`metadata.buyback` +`buybackPayoutStatus='owed'` + releaseHold) ·
+  `mark_payout_paid` (`inventory_sales` status=paid & payout_status=owed→paid) ·
+  `mark_buyback_paid` (block refunded & `metadata.buybackPayoutStatus` owed→paid).
+
+### Verified (live round-trip, cleaned up — 0 leftover)
+Synthetic host-circle hotel + owned unit on a real room + a listed block 5 days
+out (20% tier), original ₹5000/n, buy ₹4200/n. **All asserts PASSED:** (A) 20%
+off ₹5000=₹4000 → floored at ₹4200 buy cost, pct+original frozen, non-floored
+math (6000@20%→4800) correct, idempotent-skip TRUE. (B) date_from<today →
+`expired` + reason + hold released. (C) `buyback_enabled=true`. (D) admin buyback
+→ `refunded` + `metadata.buyback.amount=buy_total` + `buybackPayoutStatus='owed'`
++ hold released. (E) `mark_buyback_paid`→paid + `mark_payout_paid`→
+`inventory_sales.payout_status='paid'`. `tsc` clean, `next build` green (all 3
+C4 routes compiled). `SB_BUILD v329→v330`, badge v330, `HTML_CACHE v142→v143`.
+
+### Things to Avoid (Circle Phase C4)
+- **Never** mark a listed block below its buy cost — the `max(buyPerNight,
+  marked)` floor is the investor's protection.
+- **Never** recompute markdown from the CURRENT `resale_price_per_night` — always
+  from the frozen `metadata.listResalePerNight`, or successive cron runs compound
+  the discount into oblivion.
+- **Never** drop the idempotent no-op skip in the markdown pass — the cron runs
+  every 15 min.
+- **Never** run a platform buyback without `buyback_enabled=true` — investor
+  opt-in; both the admin action + cron check the flag.
+- **Never** let `releaseHold` failure block a status flip — flip first, best-effort
+  release (C2 discipline).
+- **Never** invent settlement amounts — admin actions only flip `owed→paid`;
+  `inventory_sales` (resale) + `metadata.buyback` (buyback) are the two records.
+- ⚠ **SACHIN ACTION:** register cron-job.org — `*/15 * * * *` →
+  `https://www.staybids.in/api/cron/inventory-lifecycle?token=staybid-cron-dev`.
+
+### Updated production state (v330, 2026-07-13)
+- **Current version:** v330 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (C1 schema reused). `tsc` clean, `next build` green, C4 live
+  round-trip passed (all asserts, 0 leftover).
+- **Circle phase plan:** A per-unit autopilot (v325) ✅ · B per-unit OTA (v326)
+  ✅ · C1 pre-buy foundation (v327) ✅ · C2 purchase + hold (v328) ✅ · C3 resale
+  + consumer feed + settlement (v329) ✅ · **C4 markdown/expiry/buyback + admin
+  (v330) ✅** · D Model-4 B2B · E Model-1 expected-only · F operated supply.
+  **Model 3 COMPLETE. STOP at C4 — do NOT start Phase D without Sachin's "continue".**
+- **NOT TOUCHED:** scoring engine, bid lifecycle, tier system, passport,
+  reel-dedup chain, service billing, per-unit autopilot (A), per-unit OTA (B),
+  channel sync engine, availability engine, host vertical data model, C1/C2/C3
+  purchase + resale + settlement logic (only additive C4 lifecycle/admin on top).

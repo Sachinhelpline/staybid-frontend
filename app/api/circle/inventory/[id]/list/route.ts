@@ -74,6 +74,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const idsCsv = ownerIds.map((x) => encodeURIComponent(x)).join(",");
+  // v330 (C4) — FREEZE the investor's chosen price as the markdown "original".
+  // Every (re-)list resets it, so the lifecycle cron marks down from a fresh
+  // baseline and a manual re-price is never treated as an auto-markdown.
+  const nextMeta = {
+    ...(block.metadata && typeof block.metadata === "object" ? block.metadata : {}),
+    listResalePerNight: resalePerNight,
+    markdownPct: 0,
+    markedDownAt: null,
+  };
   try {
     const res = await fetch(
       `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}` +
@@ -85,6 +94,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           status: "listed",
           resale_price_per_night: resalePerNight,
           listed_at: block.listed_at || new Date().toISOString(),
+          metadata: nextMeta,
           updated_at: new Date().toISOString(),
         }),
       },

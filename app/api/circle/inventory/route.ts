@@ -178,6 +178,47 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// v330 (C4) — PATCH: investor toggles PLATFORM BUYBACK protection on a block
+// they own. When enabled + unsold, an admin may buy the nights back (StayBid
+// takes the unsold-risk off the investor) via /api/admin/circle-inventory.
+// Owner-scoped; only meaningful while the block is still commercially live
+// (owned|listed) — a sold/expired/refunded block's flag is moot.
+export async function PATCH(req: NextRequest) {
+  const { userId, phone, email } = auth(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  let body: any = {};
+  try { body = await req.json(); } catch { /* empty */ }
+  const id = String(body?.id || "").trim();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  if (typeof body?.buybackEnabled !== "boolean") {
+    return NextResponse.json({ error: "buybackEnabled (boolean) required" }, { status: 400 });
+  }
+
+  const ownerIds = await resolveOwnerIdsCrossPool(userId, phone, email);
+  if (!ownerIds.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const idsCsv = idList(ownerIds);
+
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(id)}` +
+        `&status=in.(owned,listed)&investor_user_id=in.(${idsCsv})`,
+      {
+        method: "PATCH",
+        headers: SB_H_REPRESENT,
+        body: JSON.stringify({ buyback_enabled: body.buybackEnabled, updated_at: new Date().toISOString() }),
+      },
+    );
+    const rows = res.ok ? await res.json().catch(() => []) : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return NextResponse.json({ error: "Block changed — refresh and try again." }, { status: 409 });
+    }
+    return NextResponse.json({ ok: true, block: rows[0] });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Update failed" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const { userId, phone, email } = auth(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -23,11 +23,19 @@ const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 type Unit = { id: string; hotelId: string; roomId: string; roomNumber?: string | null; title?: string | null };
+type BlockMeta = {
+  // v330 (C4) — set on (re-)list; the lifecycle cron marks down from this frozen baseline.
+  listResalePerNight?: number | null;
+  markdownPct?: number | null;
+  markedDownAt?: string | null;
+} & Record<string, any>;
 type Block = {
   id: string; unit_id: string; room_id: string; date_from: string; date_to: string;
   nights: number; buy_price_per_night?: number | null; buy_total?: number | null;
   resale_price_per_night?: number | null; platform_fee_pct?: number | null; status: string;
   unit_number?: string | null; hotel_name?: string | null;
+  // v330 (C4) — auto-markdown + optional platform buyback.
+  buyback_enabled?: boolean | null; metadata?: BlockMeta | null;
 };
 type Quote = {
   nights: number; buyTotal: number; avgBuyPerNight: number; suggestedResaleTotal: number;
@@ -203,6 +211,32 @@ export default function CircleInventoryTab({
     finally { setBusy(false); }
   }
 
+  // v330 — C4: opt this owned/listed block into platform buyback. When on,
+  // StayBid may buy the block back (admin-triggered) if it goes unsold near
+  // check-in — the investor recovers their wholesale cost instead of expiring.
+  async function toggleBuyback(b: Block, next: boolean) {
+    setBusy(true);
+    // optimistic
+    setBlocks((cur) => cur.map((x) => (x.id === b.id ? { ...x, buyback_enabled: next } : x)));
+    try {
+      const r = await fetch(`/api/circle/inventory`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ id: b.id, buybackEnabled: next }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setBlocks((cur) => cur.map((x) => (x.id === b.id ? { ...x, buyback_enabled: !next } : x)));
+        flash(d?.error || "Couldn't update buyback");
+        return;
+      }
+      flash(next ? "Platform buyback on" : "Platform buyback off");
+    } catch {
+      setBlocks((cur) => cur.map((x) => (x.id === b.id ? { ...x, buyback_enabled: !next } : x)));
+      flash("Couldn't update buyback");
+    } finally { setBusy(false); }
+  }
+
   async function del(id: string) {
     setBusy(true);
     try {
@@ -233,7 +267,9 @@ export default function CircleInventoryTab({
         </h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
           Buy specific room-nights wholesale, then <b>list them on the guest feed</b> at your own resale
-          price and keep the margin. Bought nights stay held until a guest reserves.
+          price and keep the margin. Bought nights stay held until a guest reserves. Listed nights
+          <b> auto-mark-down</b> as check-in nears (never below your cost); opt into <b>platform buyback</b>
+          to recover your wholesale cost if a block stays unsold.
         </p>
       </div>
 
@@ -316,6 +352,26 @@ export default function CircleInventoryTab({
                 <span className="text-xs" style={{ color: "var(--text-soft)" }}>
                   buy {inr(b.buy_total)}{b.resale_price_per_night ? ` · resale ${inr(b.resale_price_per_night)}/n` : ""}
                 </span>
+                {/* v330 — C4: auto-markdown badge (only shows once the cron has discounted a listed block). */}
+                {b.status === "listed" && Number(b.metadata?.markdownPct) > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-600"
+                    title={`Auto-marked down as check-in nears · was ${inr(b.metadata?.listResalePerNight)}/n`}>
+                    −{Number(b.metadata?.markdownPct)}% auto
+                    {b.metadata?.listResalePerNight ? (
+                      <span className="ml-1 line-through opacity-60">{inr(b.metadata?.listResalePerNight)}</span>
+                    ) : null}
+                  </span>
+                )}
+                {/* v330 — C4: platform-buyback toggle (owned or listed blocks). */}
+                {["owned", "listed"].includes(b.status) && (
+                  <label className="text-[10px] flex items-center gap-1 cursor-pointer select-none"
+                    title="If on, StayBid may buy this block back near check-in if it stays unsold — you recover your wholesale cost."
+                    style={{ color: "var(--text-muted)" }}>
+                    <input type="checkbox" disabled={busy} checked={!!b.buyback_enabled}
+                      onChange={(e) => toggleBuyback(b, e.target.checked)} />
+                    buyback
+                  </label>
+                )}
                 <div className="ml-auto flex gap-2">
                   {["draft", "quoted"].includes(b.status) && (
                     <>

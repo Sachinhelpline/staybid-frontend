@@ -426,7 +426,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // OtaFeedManager gains a per-unit picker (a StayBid Circle investor attaches an
 // OTA/Airbnb iCal feed to a specific room they own). Fresh HTML so the picker
 // + per-feed unit chip appear on the Availability / Channel Manager tabs.
-const HTML_CACHE = 'staybid-html-v142';
+const HTML_CACHE = 'staybid-html-v143';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
