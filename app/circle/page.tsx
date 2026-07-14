@@ -319,7 +319,7 @@ export default function CircleHomePage() {
           </Link>
 
           {/* Model 3 — Pre-Buy Deals (investor pre-buy + resell) */}
-          <Link href="/partner/dashboard" className="sbc-model">
+          <Link href="/circle/model3" className="sbc-model">
             <span className="sbc-model-glow" aria-hidden />
             <div className="sbc-model-top">
               <span className="sbc-model-ic">🔑</span>
@@ -327,13 +327,13 @@ export default function CircleHomePage() {
             </div>
             <div className="sbc-model-num">Model 3</div>
             <div className="sbc-model-title">Pre-Buy Deals</div>
-            <p className="sbc-model-desc">Pre-buy room-nights <b>wholesale</b> on your operated rooms, then resell for a margin — a members-only inventory marketplace.</p>
-            <span className="sbc-model-cta">Open pre-buy inventory →</span>
+            <p className="sbc-model-desc">Pre-buy room-nights <b>wholesale</b> on operated rooms, then resell for a margin — a members-only inventory marketplace.</p>
+            <span className="sbc-model-cta">Open pre-buy marketplace →</span>
             <p className="sbc-model-fine">{CIRCLE_RESALE_RISK_NOTE}</p>
           </Link>
 
           {/* Model 4 — Investor Exchange */}
-          <Link href="/partner/dashboard" className="sbc-model">
+          <Link href="/circle/model4" className="sbc-model">
             <span className="sbc-model-glow" aria-hidden />
             <div className="sbc-model-top">
               <span className="sbc-model-ic">⇄</span>
@@ -343,7 +343,7 @@ export default function CircleHomePage() {
             <div className="sbc-model-title">Investor Exchange</div>
             <p className="sbc-model-desc">Trade your pre-bought room-nights with other investors on the <b>B2B exchange</b> — list, sell or buy inventory.</p>
             <span className="sbc-model-cta">Open exchange →</span>
-            <p className="sbc-model-fine">Operated-property investors · in your partner dashboard</p>
+            <p className="sbc-model-fine">Members-only B2B exchange · resale income never guaranteed.</p>
           </Link>
         </div>
       </section>

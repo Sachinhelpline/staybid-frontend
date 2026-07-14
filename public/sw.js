@@ -453,7 +453,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // of the customer /flash-deals page — it's an investor path, not a same-day
 // customer deal. Bumping HTML_CACHE drops the stale cached /circle markup so the
 // corrected link shows on first warm visit.
-const HTML_CACHE = 'staybid-html-v151';
+// v341 — one-time HTML_CACHE bump (v153 -> v154). Circle Marketplace M2:
+// Model-3 pre-buy supply admin (/admin/circle-supply) enable + optional pre-buy
+// window; the marketplace quote/checkout routes now gate the check-in date to
+// the hotel's window. Bumping HTML_CACHE drops the stale cached markup so the
+// new admin sidebar entry + window enforcement show on first warm visit.
+const HTML_CACHE = 'staybid-html-v155';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

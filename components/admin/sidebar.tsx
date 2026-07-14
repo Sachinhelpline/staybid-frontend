@@ -17,6 +17,8 @@ const NAV = [
   { href: "/admin/circle", label: "StayCircle", icon: "◎" },
   // v330 — Circle Model 3 pre-buy inventory oversight (blocks + payouts)
   { href: "/admin/circle-inventory", label: "Circle Inventory", icon: "🧾" },
+  // v341 — Circle Marketplace M2: Model-3 pre-buy supply admin (enable + window)
+  { href: "/admin/circle-supply", label: "Circle Supply", icon: "🏢" },
   { href: "/admin/verification", label: "Verification", icon: "🎥" },
   { href: "/admin/videos", label: "Hotel Videos", icon: "🎬" },
   { href: "/admin/complaints", label: "Complaints", icon: "🚨" },
