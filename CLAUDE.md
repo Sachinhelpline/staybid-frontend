@@ -11720,3 +11720,103 @@ deleted. `tsc --noEmit --skipLibCheck` exit 0, `npm run build` exit 0
   ledger + `computeBundle` engine, Model-3 C1–C4 + Model-4 D1–D4 logic, the
   v309 `provisionListing` flow (F is additive publish-action + admin-UI surface
   on top).
+
+---
+
+## Circle Marketplace Redesign — Phase M0: Hub Re-Route + Shared 3-Step Shell (v339, 2026-07-14)
+
+First phase of the "StayBid Circle multi-investor" MARKETPLACE redesign
+(blueprint: `docs/CIRCLE-MARKETPLACE-REDESIGN.md`, §4). Sachin's locked scope:
+Models 3 + 4 become proper 3-step marketplaces mirroring Model 1, all three
+investor journeys look IDENTICAL, seed supply provisioned first, then M0.
+
+**⚠ VERSION-NUMBER COLLISION (recorded so nobody re-does completed work):**
+the customer `/circle` premium 3-model hub itself was built in a PRIOR session
+at **git v338** (PRs #329/#330) but that v337/v338 era was never written into
+this changelog (the doc jumps v336 → this note). My seed-supply migration file
+is named `migrations/2026-07-14-v337-circle-prebuy-supply.sql` — a NAMING
+collision with git's v337; the actual M0 UI ship is **v339**. Don't be misled
+by the "v337" filename; the migration is applied live + separate from the hub
+commits.
+
+### Seed supply (applied live BEFORE M0, per Sachin's "seed batch pehle")
+`migrations/2026-07-14-v337-circle-prebuy-supply.sql`:
+- `hotels.prebuy_enabled boolean NOT NULL DEFAULT false` + partial index
+  `idx_hotels_prebuy (owner_type, prebuy_enabled) WHERE prebuy_enabled=true`.
+  **Separate from `approval_status`** — the SINGLE customer-feed gate stays
+  `approval_status='approved'` (v336). Pre-buy visibility is DECOUPLED: a seed
+  hotel is browsable in the Model-3 marketplace (`owner_type='host_circle' AND
+  prebuy_enabled=true`) WITHOUT being customer-bookable.
+- 4 seed host-circle hotels (`hco-seed-mus/man/ris/shi`, `owner_type=host_circle`,
+  `account_type=staybid_operated`, `ownerId=hco-seed-<x>`, `approval_status=pending`,
+  `status=draft`, `isActive=false`, `prebuy_enabled=true`, real Unsplash images)
+  + 8 rooms (2 each) → the v247 `trg_rooms_provision_units` trigger auto-created
+  25 `hotel_room_units`. Cities: Manali · Mussoorie · Rishikesh · Shimla.
+
+### What M0 shipped (shell + honest supply state ONLY — no browse grid)
+- **`components/circle/CircleStepShell.tsx`** (NEW) — THE shared 3-step shell.
+  Renders the dark-walnut `.sbc-home` surface + back link + model eyebrow +
+  a `1 Choose · 2 Select · 3 Build & Pay` step rail (active-step highlight,
+  done-step ✓) + title/subtitle + a `children` body slot. Model 1
+  (/circle/discover→/circle/build), Model 3, Model 4 all wrap their journey in
+  this so the three look identical. M0 fills `children` with an honest supply
+  state ONLY; the real browse→yearly-calendar→build flow is M1 (M3) / M3 (M4).
+- **`GET /api/circle/marketplace-summary`** (NEW) — read-only, no auth, fails
+  soft to zeros. `model3 = {prebuyHotels, cities[]}` (count + distinct cities of
+  `owner_type=host_circle & prebuy_enabled=true`); `model4 = {liveListings}`
+  (count of `b2b_listings status=listed`). Live-verified: `{prebuyHotels:4,
+  cities:[Manali,Mussoorie,Rishikesh,Shimla], liveListings:0}`.
+- **`app/circle/model3/page.tsx`** (NEW) — shell at Step 1 + honest state:
+  "4 operated properties ready for pre-buy across {city chips}" (or an
+  onboarding state at 0). CTA back to /circle.
+- **`app/circle/model4/page.tsx`** (NEW) — shell at Step 1 + honest "exchange
+  opening soon · 0 live listings" (or "N live listings" at >0). CTA → /circle/model3.
+- **`app/circle/page.tsx`** — the two hub cards **re-routed**: Model 3 card
+  `/partner/dashboard → /circle/model3`, Model 4 card `/partner/dashboard →
+  /circle/model4` (+ minor copy). Model 1 card unchanged (`/circle/discover`).
+- **`app/circle/circle-premium.css`** — `.sbc-ms-*` block appended at EOF
+  (wrap/back/eyebrow/model/tag/title/sub/steps/step/stepnum/steplabel/sep/
+  body/empty/empty-ic/empty-h/empty-p/chips/chip/cta/note). Matches the
+  `.sbc-model`/`.sbc-home` palette (`--sbc-gold`/`-2`/`-deep`, `--sbc-walnut`).
+- `SB_BUILD v338→v339`, badge v339, `public/sw.js HTML_CACHE v151→v152`.
+
+### Verified
+- `tsc --noEmit` clean (only pre-existing `_home-luxury-backup`). `next build`
+  green — `/circle/model3` + `/circle/model4` prerender static,
+  `/api/circle/marketplace-summary` compiled. Live summary counts confirmed.
+
+### Things to Avoid (Circle Marketplace Phase M0)
+- **Never** conflate `prebuy_enabled` with `approval_status` — the SINGLE
+  customer-feed gate is `approval_status='approved'` (v336). `prebuy_enabled`
+  is the DECOUPLED "browsable as Model-3 supply" flag; a seed hotel is pre-buy-
+  browsable but NOT customer-bookable until an admin Go-Lives it (v336).
+- **Never** build the Model-3 property BROWSE grid or the yearly-calendar in M0
+  — M0 is shell + honest supply-COUNT only. The browse → pick-dates → build flow
+  is Phase M1 (owns `lib/inventory/assign.ts assignFreeUnit` since
+  `inventory_blocks.unit_id`/`investor_user_id` are NOT NULL → M1 checkout must
+  AUTO-ASSIGN a free unit via `unitsFreeForRange`).
+- **Never** fork `CircleStepShell` per model — it's the ONE shell; all three
+  journeys render it so they stay identical. New shell styling goes in
+  `.sbc-ms-*` in circle-premium.css, not a second component.
+- **Never** re-point the hub Model 3/4 cards back to `/partner/dashboard` — the
+  investor journeys now live at `/circle/model3` + `/circle/model4`.
+- The `v337`-named seed migration is a filename collision with git's v337 hub
+  era — the UI ship is v339. Don't "fix" the filename or re-apply it.
+
+### Updated production state (v339, 2026-07-14)
+- **Current version:** v339 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Seed migration applied live (4 prebuy hotels / 25 units / cities
+  Manali·Mussoorie·Rishikesh·Shimla; 0 b2b listings). M0 shell + hub re-route
+  live. `tsc` clean, `next build` green, live summary verified.
+- **Marketplace phase plan (docs/CIRCLE-MARKETPLACE-REDESIGN.md):** **M0 hub
+  re-route + shared shell (v339) ✅** · M1 Model-3 marketplace (browse operated →
+  yearly calendar at Spine price → build+pay; `assignFreeUnit` + C2 checkout
+  auto-assigns free unit + verify stamps `owner_user_id` + grants
+  `circle_model3` service) · M2 Model-3 supply admin · M3 Model-4 marketplace ·
+  M4 hotel-owner B2B listing (`source='hotel_owner'`) · M5 per-model
+  subscription · M6 investor "My Circle" dashboard + legal sweep.
+  **STOP at M0 — do NOT start M1 without Sachin's "continue".**
+- **NOT TOUCHED:** Model 1 flow (/circle/discover → /circle/build), scoring
+  engine, bid lifecycle, tier system, passport, reel-dedup chain, service
+  billing, per-unit autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money
+  engine, channel sync engine, availability engine, host vertical data model.

@@ -453,7 +453,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // of the customer /flash-deals page — it's an investor path, not a same-day
 // customer deal. Bumping HTML_CACHE drops the stale cached /circle markup so the
 // corrected link shows on first warm visit.
-const HTML_CACHE = 'staybid-html-v151';
+const HTML_CACHE = 'staybid-html-v152';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
