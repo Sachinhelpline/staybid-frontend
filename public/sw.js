@@ -458,7 +458,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // window; the marketplace quote/checkout routes now gate the check-in date to
 // the hotel's window. Bumping HTML_CACHE drops the stale cached markup so the
 // new admin sidebar entry + window enforcement show on first warm visit.
-const HTML_CACHE = 'staybid-html-v154';
+const HTML_CACHE = 'staybid-html-v155';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

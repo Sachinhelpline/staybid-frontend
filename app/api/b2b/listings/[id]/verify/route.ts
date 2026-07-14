@@ -33,6 +33,31 @@ function auth(req: NextRequest): { userId?: string; phone?: string; email?: stri
   return { userId: p?.id || p?.user_id || p?.sub, phone: p?.phone, email: p?.email };
 }
 
+// Best-effort grant of the circle_model4 marker service to the operated hotel
+// for the exchange BUYER (they now hold the block's commercial right). Additive
+// future-proof marker (mirrors M1's grantModel3Service); real dashboard access is
+// the block's investor_user_id transfer + owner_user_id unit-stamp. Must never
+// break verify — the trade is already completed by the time this runs.
+async function grantModel4Service(hotelId: string, grantedBy: string): Promise<void> {
+  if (!hotelId) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/hotel_services?on_conflict=hotel_id,service_key`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        id: genId("svc"),
+        hotel_id: hotelId,
+        service_key: "circle_model4",
+        status: "active",
+        access_type: "free",
+        granted_by: grantedBy,
+        note: "Circle Model-4 B2B exchange buyer",
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch { /* best-effort */ }
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const listingId = String(id || "").trim();
@@ -154,6 +179,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }),
     });
   } catch { /* best-effort — the trade row already records the obligation */ }
+
+  // 4b) Grant the circle_model4 marker service to the buyer's operated hotel
+  //     (fires for both fresh-completed + re-verify, since both converge here).
+  await grantModel4Service(String(trade.hotel_id || ""), buyerId);
 
   // 5) Refresh the pre-buy hold note so ops see the new owner (best-effort).
   try {

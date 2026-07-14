@@ -12039,3 +12039,108 @@ Both `prebuy_window_start`/`prebuy_window_end` columns present + nullable. Seed 
   autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money engine, M1 marketplace
   checkout/verify/hold logic (M2 adds only the window gate + admin supply surface on
   top), channel sync engine, availability engine, host vertical data model.
+
+---
+
+## Circle Marketplace Redesign — Phase M3: Model-4 B2B Exchange DEMAND-Side Marketplace (v342, 2026-07-14)
+
+Phase M3 of the marketplace redesign (blueprint: `docs/CIRCLE-MARKETPLACE-REDESIGN.md`,
+§M3). Turns the M0 honest-supply-state shell at `/circle/model4` into a real
+3-step marketplace: **browse all live B2B exchange listings → review the fixed
+listing → confirm & pay** (Razorpay). All three investor journeys (Model 1/3/4)
+render the SAME `CircleStepShell`, so they look identical. **DEMAND-side only** —
+the hotel-owner B2B-sell path (`source='hotel_owner'`) is the LATER Phase M4.
+**No migration** — reuses the entire D1–D4 B2B engine (`b2b_listings` /
+`b2b_trades` / `settlement_ledger` + `lib/b2b/engine.ts`) + the D2 checkout /
+verify / transfer routes verbatim.
+
+### THE M3 KEY DIFFERENCE vs D3 (the whole point of this phase)
+D3's `/api/b2b/marketplace` browse requires auth + is owner-scoped (it hides the
+partner-dashboard buyer's own listings). M3's marketplace must show the exchange
+BEFORE sign-in (the investor browses first, then `/auth` on Buy) — so a NEW
+public/auth-optional browse route is needed. And the D2 verify route did NOT grant
+`circle_model4` — so a best-effort marker grant is added there (mirrors M1's
+grantModel3Service). The buy-execution chain (checkout → Razorpay → verify →
+ownership transfer → settlement) is D2's, reused verbatim; M3 adds only discovery +
+the button + the grant.
+
+### The three pieces (all additive)
+- **Piece 1 — `GET /api/circle/model4/listings[?city=]`** (NEW, public/auth-optional).
+  `status=eq.listed & date_to=gt.<todayISO> & select=* & order=ask_total.asc & limit=120`;
+  when a Bearer token IS present, the caller's OWN cross-pool listings are excluded
+  (`seller_user_id=not.in.(<ownerIds>)`) — you can't buy your own inventory; no token
+  → the full listed feed. Side-loads unit# (`hotel_room_units?id=in.(…)`) + hotel
+  name/city (`hotels?id=in.(…)`, NO PostgREST FK embed) + maps each with
+  `b2bTradeSplit` (buyer-facing askTotal / fee / sellerNet — the SAME split D2
+  checkout/verify/settlement use → preview == charge == settlement). Optional
+  in-memory `?city=` filter, `slice(0, 60)`, `Cache-Control: no-store`,
+  `export const dynamic = "force-dynamic"`.
+- **Piece 2 — `app/circle/model4/page.tsx`** (rewritten from M0 shell). Full 3-step
+  B2B-exchange marketplace inside `CircleStepShell` (`activeStep`): (1) browse grid
+  (each card shows hotel name/city, unit#, FIXED date range, ask/night, "You pay" =
+  `split.askTotal`, "Review →") + city chips; (2) review the fixed listing — **NO
+  date picker** (B2B date-range is fixed by the seller) showing dates/nights/ask/
+  pay/platform-fee; (3) confirm & pay: `pay()` → POST D2 `/api/b2b/listings/[id]/
+  checkout` → `openRazorpayForOrder({keyId, orderId, amountPaise, description})`
+  (`RazorpayError "__CANCELLED__"` catch) → POST D2 `/api/b2b/listings/[id]/verify`
+  → success modal ("Block acquired!", → `/partner/dashboard`). `!token()` → flash +
+  `/auth`. Legal copy: "resale income depends on actual bookings — never guaranteed."
+  Uses `.sbc-mkt-*` / `.sbc-ms-*` classes. Deliberately NO `useSearchParams` →
+  prerenders static.
+- **Piece 3 — `grantModel4Service` in `app/api/b2b/listings/[id]/verify/route.ts`**.
+  Best-effort `hotel_services` upsert (`on_conflict=hotel_id,service_key` →
+  `uniq_hotel_service`, `service_key:"circle_model4"`, `access_type:"free"`, granted
+  to `trade.hotel_id` for `buyerId`). In D2's structure the fresh-completed +
+  re-verify branches CONVERGE into a single `trade` variable + shared downstream
+  flow, so the grant call fires once (step 4b, after settlement, before the hold
+  refresh) and covers BOTH branches. Additive marker; real dashboard access is the
+  D2 `inventory_blocks.investor_user_id` transfer, not the marker service. Must never
+  break verify (the trade is already completed by the time this runs).
+
+`SB_BUILD v341→v342`, badge v342, `HTML_CACHE v154→v155`.
+
+### Verified (live SQL round-trip against `uxxhbdqedazpmvbvaosh`, cleaned up — 0 leftover)
+`uniq_hotel_service` unique index on `(hotel_id, service_key)` confirmed as the
+`on_conflict` target. Mirrored `grantModel4Service`'s upsert twice (different ids,
+same `(hotel_id, service_key)`): `grant_rows=1` (idempotent — no 2nd row),
+`access_type='free'`, `status='active'`; cleanup `leftover=0`. `tsc --noEmit`
+exit 0, `npm run build` exit 0 — `/circle/model4` prerenders STATIC (○),
+`/api/circle/model4/listings` + `/api/b2b/listings/[id]/verify` both compiled (ƒ).
+
+### Things to Avoid (Circle Marketplace Phase M3)
+- **Never** make the M3 browse route owner-scoped/auth-required like D3's
+  `/api/b2b/marketplace` — M3 must show the exchange BEFORE sign-in (browse first,
+  `/auth` on Buy). The `/api/circle/model4/listings` route is public/auth-optional;
+  it excludes the caller's OWN listings only when a Bearer token is present.
+- **Never** re-implement the buy chain in M3 — `pay()` calls the D2 checkout +
+  verify routes verbatim (server re-quotes the FROZEN ask, transfers the block,
+  records the settlement). M3 adds only the discovery grid + button + the grant.
+- **Never** add a date picker to the M3 review step — B2B listings have a FIXED
+  seller-set date range (`b2b_listings.date_from`/`date_to`). Unlike M1 (Model-3
+  pre-buy, where the buyer picks the range), the M4 buyer takes the listing as-is.
+- **Never** compute the buyer-facing split outside `lib/b2b/engine.ts`
+  (`b2bTradeSplit`) — the browse preview, the D2 checkout freeze, the D2 verify
+  settlement all share it so preview == charge == settlement.
+- **Never** let `grantModel4Service` throw / block the verify response — best-effort;
+  the trade is already `completed` by the time it runs, and real dashboard access is
+  the D2 `investor_user_id` transfer, not this marker. Upsert with the real
+  `on_conflict=hotel_id,service_key` target (`uniq_hotel_service`) or it 42P10s.
+- **Never** add `useSearchParams` to `/circle/model4` without a `<Suspense>` — it
+  currently prerenders static because it reads no search params.
+
+### Updated production state (v342, 2026-07-14)
+- **Current version:** v342 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (reuses D1–D4 B2B engine + tables). `tsc` clean, `next build` green,
+  M3 live SQL round-trip passed (grant idempotent, 0 leftover).
+- **Marketplace phase plan (docs/CIRCLE-MARKETPLACE-REDESIGN.md):** M0 hub re-route
+  + shared shell (v339) ✅ · M1 Model-3 marketplace (v340) ✅ · M2 Model-3 supply
+  admin + window (v341) ✅ · **M3 Model-4 marketplace (v342) ✅** · M4 hotel-owner
+  B2B listing (`source='hotel_owner'`) · M5 per-model subscription · M6 investor
+  "My Circle" dashboard + legal sweep. **STOP at M3 — do NOT start M4 without
+  Sachin's "continue".**
+- **NOT TOUCHED:** Model 1 flow (/circle/discover → /circle/build), scoring engine,
+  bid lifecycle, tier system, passport, reel-dedup chain, service billing, per-unit
+  autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money engine, D2 checkout/
+  verify/transfer/settlement logic (M3 adds only the public browse route + the
+  3-step page + the best-effort circle_model4 grant on top), channel sync engine,
+  availability engine, host vertical data model, M1/M2 Model-3 marketplace.
