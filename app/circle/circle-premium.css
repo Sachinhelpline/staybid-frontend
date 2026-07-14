@@ -2500,3 +2500,160 @@ body.is-reel-page .sbc { padding-bottom: 0; }
 }
 .sbc-ms-cta:active { transform: scale(.98); }
 .sbc-ms-note { font-size: .64rem; line-height: 1.5; color: rgba(245,236,216,.45); margin-top: 14px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v340 · Phase M1 — Model-3 Pre-Buy Marketplace (.sbc-mkt-*)
+   Browse operated pre-buy properties → pick dates (live Spine wholesale
+   quote) → review & pay. Renders inside CircleStepShell's dark walnut body.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Step 1 · city filter row ─────────────────────────────────────────────── */
+.sbc-mkt-cityrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.sbc-mkt-cityChip {
+  font-size: .74rem; font-weight: 700; color: rgba(231,207,160,.85);
+  padding: 6px 13px; border-radius: 999px; cursor: pointer;
+  background: rgba(201,166,107,.1); border: 1px solid rgba(231,207,160,.2);
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+.sbc-mkt-cityChip:hover { transform: translateY(-1px); }
+.sbc-mkt-cityChip.on {
+  color: var(--sbc-walnut); border-color: transparent;
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
+  box-shadow: 0 6px 16px -8px rgba(139,105,20,.7);
+}
+
+/* ── Step 1 · property grid + cards ───────────────────────────────────────── */
+.sbc-mkt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.sbc-mkt-skel {
+  height: 232px; border-radius: 20px;
+  background: linear-gradient(110deg, rgba(52,40,22,.7) 30%, rgba(74,57,32,.55) 50%, rgba(52,40,22,.7) 70%);
+  background-size: 200% 100%; animation: sbcMktSkel 1.3s ease-in-out infinite;
+  border: 1px solid rgba(231,207,160,.14);
+}
+@keyframes sbcMktSkel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.sbc-mkt-card {
+  overflow: hidden; border-radius: 20px;
+  background: linear-gradient(145deg, rgba(52,40,22,.92), rgba(30,22,11,.94));
+  border: 1px solid rgba(231,207,160,.2); box-shadow: 0 14px 36px -18px rgba(0,0,0,.6);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.sbc-mkt-card:hover { transform: translateY(-3px); border-color: rgba(231,207,160,.4); box-shadow: 0 22px 46px -18px rgba(0,0,0,.7); }
+.sbc-mkt-card-img { position: relative; height: 150px; background: rgba(20,14,6,.6); }
+.sbc-mkt-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbc-mkt-card-noimg { width: 100%; height: 100%; display: grid; place-items: center; font-size: 2.4rem; opacity: .4; }
+.sbc-mkt-star {
+  position: absolute; top: 10px; left: 10px; font-size: .68rem; font-weight: 800;
+  color: var(--sbc-walnut); padding: 3px 9px; border-radius: 999px;
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold));
+}
+.sbc-mkt-card-body { padding: 13px 14px 15px; }
+.sbc-mkt-card-name { font-family: var(--font-display, serif); font-size: 1.06rem; font-weight: 800; color: #FBF3E2; line-height: 1.2; }
+.sbc-mkt-card-meta { font-size: .76rem; color: rgba(245,236,216,.6); margin-top: 4px; }
+.sbc-mkt-card-from { font-size: .78rem; color: rgba(245,236,216,.72); margin-top: 9px; }
+.sbc-mkt-card-from b { color: var(--sbc-gold-2); font-weight: 800; font-size: .96rem; }
+.sbc-mkt-card-from span { color: rgba(245,236,216,.5); font-size: .7rem; margin-left: 3px; }
+
+.sbc-mkt-roomrow { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.sbc-mkt-roomChip {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 7px 11px; border-radius: 12px; text-align: left;
+  background: rgba(201,166,107,.1); border: 1px solid rgba(231,207,160,.22);
+  transition: background .16s ease, transform .16s ease, border-color .16s ease;
+}
+.sbc-mkt-roomChip:hover { transform: translateY(-1px); background: rgba(201,166,107,.18); border-color: rgba(231,207,160,.4); }
+.sbc-mkt-roomChip-name { font-size: .76rem; font-weight: 700; color: rgba(245,236,216,.9); }
+.sbc-mkt-roomChip-price { font-size: .74rem; font-weight: 800; color: var(--sbc-gold-2); }
+
+/* ── Step 2/3 · panels ────────────────────────────────────────────────────── */
+.sbc-mkt-panel {
+  border-radius: 18px; padding: 16px 16px 17px; margin-bottom: 14px;
+  background: linear-gradient(145deg, rgba(52,40,22,.9), rgba(30,22,11,.92));
+  border: 1px solid rgba(231,207,160,.2); box-shadow: 0 12px 30px -16px rgba(0,0,0,.55);
+}
+.sbc-mkt-selhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.sbc-mkt-dategrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.sbc-mkt-field { display: flex; flex-direction: column; gap: 6px; }
+.sbc-mkt-label { font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(231,207,160,.75); }
+.sbc-mkt-input {
+  height: 44px; padding: 0 12px; border-radius: 12px; font-size: .88rem; font-weight: 600;
+  color: #FBF3E2; background: rgba(20,14,6,.55); border: 1px solid rgba(231,207,160,.24);
+  color-scheme: dark; outline: none; transition: border-color .16s ease, box-shadow .16s ease;
+}
+.sbc-mkt-input:focus { border-color: var(--sbc-gold); box-shadow: 0 0 0 3px rgba(201,166,107,.18); }
+
+/* ── quote block ──────────────────────────────────────────────────────────── */
+.sbc-mkt-quote { display: flex; flex-direction: column; gap: 8px; }
+.sbc-mkt-qrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .84rem; color: rgba(245,236,216,.72); }
+.sbc-mkt-qtotal { font-size: 1.02rem; font-weight: 800; color: #FBF3E2; padding-top: 9px; border-top: 1px solid rgba(231,207,160,.16); }
+.sbc-mkt-qtotal span:last-child { color: var(--sbc-gold-2); }
+.sbc-mkt-qmuted { font-size: .74rem; color: rgba(245,236,216,.5); }
+.sbc-mkt-quoteloading { font-size: .84rem; color: rgba(245,236,216,.6); padding: 6px 0; }
+
+.sbc-mkt-avail {
+  margin-top: 12px; font-size: .8rem; font-weight: 700;
+  padding: 9px 12px; border-radius: 12px;
+  color: #C7E0A8; background: rgba(127,146,105,.14); border: 1px solid rgba(183,208,160,.3);
+}
+.sbc-mkt-avail.warn { color: #F0C4B4; background: rgba(212,149,131,.15); border-color: rgba(212,149,131,.4); }
+
+/* ── review breakdown ─────────────────────────────────────────────────────── */
+.sbc-mkt-rev { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(231,207,160,.16); }
+
+/* ── action row + buttons ─────────────────────────────────────────────────── */
+.sbc-mkt-actions { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.sbc-mkt-btn {
+  flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center;
+  height: 48px; padding: 0 18px; border-radius: 14px; cursor: pointer;
+  font-size: .9rem; font-weight: 800; color: var(--sbc-walnut);
+  background: linear-gradient(135deg, var(--sbc-gold-2), var(--sbc-gold), var(--sbc-gold-deep));
+  border: 1px solid rgba(255,246,228,.4); box-shadow: 0 12px 28px -12px rgba(139,105,20,.7);
+  transition: transform .16s ease, opacity .16s ease;
+}
+.sbc-mkt-btn:active { transform: scale(.98); }
+.sbc-mkt-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.sbc-mkt-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  height: 48px; padding: 0 16px; border-radius: 14px;
+  font-size: .84rem; font-weight: 700; color: rgba(231,207,160,.9);
+  background: rgba(201,166,107,.1); border: 1px solid rgba(231,207,160,.24);
+  transition: background .16s ease, transform .16s ease;
+}
+.sbc-mkt-btn-ghost:hover { background: rgba(201,166,107,.18); }
+.sbc-mkt-btn-ghost:active { transform: scale(.98); }
+.sbc-mkt-btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── success overlay ──────────────────────────────────────────────────────── */
+.sbc-mkt-success {
+  position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 22px;
+  background: rgba(10,7,3,.72); backdrop-filter: blur(6px);
+  animation: sbcMktFade .2s ease;
+}
+@keyframes sbcMktFade { from { opacity: 0; } to { opacity: 1; } }
+.sbc-mkt-success-card {
+  width: 100%; max-width: 380px; text-align: center; padding: 30px 24px 24px; border-radius: 24px;
+  background: linear-gradient(150deg, rgba(52,40,22,.98), rgba(26,19,10,.99));
+  border: 1px solid rgba(231,207,160,.28); box-shadow: 0 30px 70px -24px rgba(0,0,0,.8);
+  animation: sbcMktPop .28s cubic-bezier(.32,1.4,.4,1);
+}
+@keyframes sbcMktPop { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.sbc-mkt-success-ic { font-size: 2.6rem; line-height: 1; }
+.sbc-mkt-success-h { font-family: var(--font-display, serif); font-size: 1.4rem; font-weight: 800; color: #FFF6E4; margin-top: 12px; line-height: 1.2; }
+.sbc-mkt-success-p { font-size: .85rem; line-height: 1.55; color: rgba(245,236,216,.72); margin-top: 10px; margin-bottom: 18px; }
+
+/* ── toast ────────────────────────────────────────────────────────────────── */
+.sbc-mkt-toast {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 130;
+  max-width: 90vw; padding: 11px 18px; border-radius: 14px;
+  font-size: .82rem; font-weight: 700; color: #FBF3E2;
+  background: linear-gradient(135deg, rgba(52,40,22,.98), rgba(30,22,11,.98));
+  border: 1px solid rgba(231,207,160,.3); box-shadow: 0 16px 40px -14px rgba(0,0,0,.7);
+  animation: sbcMktToast .24s ease;
+}
+@keyframes sbcMktToast { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+@media (max-width: 480px) {
+  .sbc-mkt-grid { grid-template-columns: 1fr; }
+  .sbc-mkt-dategrid { grid-template-columns: 1fr; }
+}

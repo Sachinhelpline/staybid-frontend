@@ -11820,3 +11820,123 @@ commits.
   engine, bid lifecycle, tier system, passport, reel-dedup chain, service
   billing, per-unit autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money
   engine, channel sync engine, availability engine, host vertical data model.
+
+---
+
+## Circle Marketplace Redesign — Phase M1: Model-3 Pre-Buy DEMAND-Side Marketplace (v340, 2026-07-14)
+
+Phase M1 of the marketplace redesign (blueprint: `docs/CIRCLE-MARKETPLACE-REDESIGN.md`,
+§M1). Turns the M0 honest-supply-state shell at `/circle/model3` into a real
+3-step marketplace: **browse operated pre-buy properties → pick a date range at
+the live Spine wholesale price → build & pay** (Razorpay). All three investor
+journeys (Model 1/3/4) render the SAME `CircleStepShell`, so they look identical.
+**No migration** — reuses C1's `inventory_blocks` + v247's `hotel_room_units` +
+the Spine (`room_date_price` / `resolveSpinePrices`).
+
+### THE M1 KEY DIFFERENCE vs C1/C2 (the whole point of this phase)
+C1/C2 required the caller to **already OWN** the physical unit
+(`hotel_room_units.owner_user_id` + `ownedUnit`). M1's buyer owns **nothing** —
+seed units are `owner_user_id NULL`. So M1 checkout **AUTO-ASSIGNS a free unit**
+(`lib/inventory/assign.ts assignFreeUnit`), INSERTs a NEW `inventory_blocks` row
+(`status='pending_payment'`, `unit_id=assigned`, `investor_user_id=buyer primary`),
+and verify **STAMPS `hotel_room_units.owner_user_id = buyer`**. Once the buyer
+owns the unit, later date-range pre-buys reuse the plain C1/C2 owned-unit path.
+
+### Routes (5 files, all NEW, additive — mirror C1/C2 tamper-safe discipline)
+- **`GET /api/circle/marketplace[?city=]`** (browse) — every operated
+  `owner_type=eq.host_circle & prebuy_enabled=eq.true` hotel + its rooms + an
+  indicative "from" WHOLESALE price (`wholesaleFrom` = bidFloor→flashFloor→
+  round(live×0.7), one Spine read for a near date). Skips hotels with no rooms.
+  Read-only, no auth, `Cache-Control: no-store`. **`prebuy_enabled` is DECOUPLED
+  from `approval_status`** (v336) — browsable supply, NOT customer-bookable.
+- **`POST /api/circle/marketplace/quote`** (public, read-only) — prices a range
+  via the SAME `quoteInventoryBlock` (Spine) C1/C2 use → preview == charge.
+  Availability HINT via `unitsFreeForRange` (fail-open when null). No auth (the
+  calendar/price must show BEFORE sign-in). 404 if room not open for pre-buy.
+- **`POST /api/circle/marketplace/[id]/checkout`** — **auth REQUIRED** (customer
+  `sb_token` → `resolveOwnerIdsCrossPool`). `loadPrebuyRoom` gate → `assignFreeUnit`
+  (409 if none) → re-quote Spine to FREEZE buy (422 if null; **client NEVER sets
+  ₹**) → Razorpay order (`notes.kind="circle_marketplace"`) → INSERT
+  `pending_payment` block → post-insert self-excluding overlap re-guard (drops
+  the orphan + 409 on a concurrent-buyer race). Returns `{ok, keyId, order,
+  buyTotal, blockId, block}`.
+- **`POST /api/circle/marketplace/[id]/verify`** — HMAC via `/api/razorpay/verify`
+  → (1) 4-key PATCH `id + order + status=eq.pending_payment + investor ownership`
+  → `owned` (idempotent: 0-row flip re-fetches the owned block); (2)
+  `stampUnitOwner` (guarded `or=(owner_user_id.is.null, owner_user_id.in.(buyerIds))`
+  — a race can NEVER overwrite a co-investor's unit); (3) deterministic
+  `writeHold(invhold_<blockId>, source="inventory")` upsert; (4) best-effort
+  `grantModel3Service` (inert `circle_model3` marker on `hotel_services`
+  `on_conflict=hotel_id,service_key`). All 4 best-effort — a hiccup never fails
+  a verified payment. Real dashboard access = the `owner_user_id` unit-stamp
+  (the `resolveOperatedHotelIds` scope union), NOT the marker service.
+
+### Client UI (`app/circle/model3/page.tsx`, rewritten from M0 shell)
+Full 3-step flow inside `CircleStepShell` (`activeStep`): (1) browse city-filter
++ property/room grid; (2) date-range picker + live debounced (`250ms`, `quoteSeq`
+stale-guard) Spine quote + availability hint; (3) review bundle + Razorpay
+(`openRazorpayForOrder` / `RazorpayError "__CANCELLED__"`) → verify → success →
+`/partner/dashboard`. `!token()` → flash + `/auth`. Deliberately NO
+`useSearchParams` → prerenders static (no Suspense needed). Legal copy: "unsold-
+inventory risk is yours; income depends on actual resale — never guaranteed."
+`.sbc-mkt-*` CSS block appended to `app/circle/circle-premium.css` (~200 lines,
+matches the `.sbc-*` walnut/champagne palette). `SB_BUILD v339→v340`, badge v340,
+`HTML_CACHE v152→v153`.
+
+### Verified (live round-trip on seed `hco-seed-mus` / `hco-seed-mus-r1`, cleaned up — 0 leftover)
+Mirrored checkout→verify against the real seed hotel/room + a real free unit
+(`roomNumber 101`, 4 unowned-free), dates 2026-07-20→07-23 (3n), Spine
+bid_floor=4200. **All asserts PASSED:** `a_overlap_before=0` (assignFreeUnit
+picks a free unit) · `b_block_status=owned` + `b_buy_total=12600` (checkout INSERT
+pending → verify flip, frozen buy 3×4200) · `d_unit_owner=v340-buyer` (stampUnitOwner
+— the M1 twist) · `e_hold_written=1` (`room_blocks invhold_inv_v340test`,
+`source='inventory'`, `assignedUnitId` set) · `g_service_grant=1` (circle_model3
+upsert) · `f_reverify_rows=0` (re-verify idempotent no-op) · `f_unowned_free_after=3`
+(unit 101 now owned → one fewer free unit). Cleanup: block/hold/grant deleted,
+unit owner reverted to NULL, `unowned_free_restored=4`. `tsc --noEmit` clean,
+`next build` green (all 5 `/api/circle/marketplace*` routes compiled; `/circle/model3`
++ `/circle/model4` prerender static).
+
+### Things to Avoid (Circle Marketplace Phase M1)
+- **Never** require the caller to already own the unit in M1 — that's the C1/C2
+  path. M1 checkout AUTO-ASSIGNS a free unit (`assignFreeUnit`) + verify STAMPS
+  `owner_user_id`. A first-time pre-buyer owns nothing yet.
+- **Never** drop the `stampUnitOwner` `or=(owner_user_id.is.null,
+  owner_user_id.in.(<buyerIds>))` guard — it's the ONLY thing stopping a race
+  from overwriting a co-investor's unit ownership.
+- **Never** let the client set the buy ₹ at checkout — the checkout route
+  re-quotes the Spine (`quoteInventoryBlock`) + FREEZES `buy_total`; verify never
+  trusts a client amount (C1/C2/host-wizard/subscription tamper-safe discipline).
+- **Never** flip a block to `owned` without the 4-key PATCH filter
+  (`razorpay_order_id + status=eq.pending_payment + investor ownership`). A 0-row
+  flip = already-processed → re-fetch the owned block, do NOT re-charge.
+- **Never** write the hold with a random id — deterministic `invhold_<blockId>`
+  upsert (C2 discipline) so re-verify never dupes it + C4 expiry/refund can
+  find/release it.
+- **Never** skip the post-insert self-excluding overlap re-guard at checkout — a
+  second buyer could grab the same unit/nights in the race window; drop the orphan
+  pending block + 409.
+- **Never** add `useSearchParams` to `/circle/model3` without a `<Suspense>` — it
+  currently prerenders static because it reads no search params (Next 14/15
+  static-prerender bailout otherwise).
+- **Never** conflate `prebuy_enabled` (M0/M1 browsable-supply flag) with
+  `approval_status='approved'` (the SINGLE customer-feed gate, v336). A seed hotel
+  is pre-buy-browsable but NOT customer-bookable until an admin Go-Lives it.
+- `PLATFORM_RESALE_FEE_PCT_DEFAULT=12` in `lib/inventory/engine.ts` is still a
+  flagged default — wire to `service_pricing` (M5 per-model subscription).
+
+### Updated production state (v340, 2026-07-14)
+- **Current version:** v340 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- No migration (reuses C1 `inventory_blocks` + v247 `hotel_room_units` + Spine).
+  `tsc` clean, `next build` green, M1 live round-trip passed (7 asserts, 0 leftover).
+- **Marketplace phase plan (docs/CIRCLE-MARKETPLACE-REDESIGN.md):** M0 hub
+  re-route + shared shell (v339) ✅ · **M1 Model-3 marketplace (v340) ✅** ·
+  M2 Model-3 supply admin · M3 Model-4 marketplace · M4 hotel-owner B2B listing
+  (`source='hotel_owner'`) · M5 per-model subscription · M6 investor "My Circle"
+  dashboard + legal sweep. **STOP at M1 — do NOT start M2 without Sachin's "continue".**
+- **NOT TOUCHED:** Model 1 flow (/circle/discover → /circle/build), scoring
+  engine, bid lifecycle, tier system, passport, reel-dedup chain, service
+  billing, per-unit autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money
+  engine (M1 reuses the C1/C2 checkout/hold discipline, adds only the
+  auto-assign + owner-stamp on top), channel sync engine, availability engine,
+  host vertical data model.
