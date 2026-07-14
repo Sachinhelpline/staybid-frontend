@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 import { unitsFreeForRange } from "@/lib/availability";
+import { isCheckInWithinWindow, windowRejectReason } from "@/lib/inventory/prebuy-window";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,11 +25,16 @@ const SB_H = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type"
 // The room must belong to a host-circle hotel that is open for pre-buy
 // (owner_type='host_circle' AND prebuy_enabled=true). This is the marketplace's
 // supply gate — decoupled from the customer-feed gate (approval_status=approved).
-async function loadPrebuyRoom(hotelId: string, roomId: string): Promise<{ hotelId: string; roomId: string } | null> {
+// Also returns the optional pre-buy window (M2) so the caller can gate check-in.
+async function loadPrebuyRoom(
+  hotelId: string,
+  roomId: string,
+): Promise<{ hotelId: string; roomId: string; windowStart: string | null; windowEnd: string | null } | null> {
   try {
     const hr = await fetch(
       `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(hotelId)}` +
-        `&owner_type=eq.host_circle&prebuy_enabled=eq.true&select=id`,
+        `&owner_type=eq.host_circle&prebuy_enabled=eq.true` +
+        `&select=id,prebuy_window_start,prebuy_window_end`,
       { headers: SB_H, cache: "no-store" },
     );
     const hotel = (hr.ok ? await hr.json().catch(() => []) : [])?.[0];
@@ -40,7 +46,12 @@ async function loadPrebuyRoom(hotelId: string, roomId: string): Promise<{ hotelI
     );
     const room = (rr.ok ? await rr.json().catch(() => []) : [])?.[0];
     if (!room) return null;
-    return { hotelId, roomId };
+    return {
+      hotelId,
+      roomId,
+      windowStart: hotel.prebuy_window_start || null,
+      windowEnd: hotel.prebuy_window_end || null,
+    };
   } catch {
     return null;
   }
@@ -65,6 +76,14 @@ export async function POST(req: NextRequest) {
   const room = await loadPrebuyRoom(hotelId, roomId);
   if (!room) {
     return NextResponse.json({ error: "This room isn't open for pre-buy." }, { status: 404 });
+  }
+
+  // M2 — the check-in date must fall inside the hotel's pre-buy window (if any).
+  if (!isCheckInWithinWindow(from, room.windowStart, room.windowEnd)) {
+    return NextResponse.json(
+      { error: windowRejectReason(from, room.windowStart, room.windowEnd) || "Check-in date is outside the pre-buy window." },
+      { status: 400 },
+    );
   }
 
   const quote = await quoteInventoryBlock({ roomId, from, to });

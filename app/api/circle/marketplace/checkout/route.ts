@@ -21,6 +21,7 @@ import { userFromReq } from "@/lib/sb";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { assignFreeUnit } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
+import { isCheckInWithinWindow, windowRejectReason } from "@/lib/inventory/prebuy-window";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,25 +29,34 @@ export const dynamic = "force-dynamic";
 // Public LIVE key id (safe in client code) — same source as every checkout.
 const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
 
-// The room must belong to a host-circle hotel open for pre-buy.
-async function loadPrebuyRoom(hotelId: string, roomId: string): Promise<boolean> {
+// The room must belong to a host-circle hotel open for pre-buy. Also returns the
+// optional M2 pre-buy window so the caller can gate the requested check-in.
+async function loadPrebuyRoom(
+  hotelId: string,
+  roomId: string,
+): Promise<{ windowStart: string | null; windowEnd: string | null } | null> {
   try {
     const hr = await fetch(
       `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(hotelId)}` +
-        `&owner_type=eq.host_circle&prebuy_enabled=eq.true&select=id`,
+        `&owner_type=eq.host_circle&prebuy_enabled=eq.true` +
+        `&select=id,prebuy_window_start,prebuy_window_end`,
       { headers: SB_H },
     );
     const hotel = (hr.ok ? await hr.json().catch(() => []) : [])?.[0];
-    if (!hotel) return false;
+    if (!hotel) return null;
     const rr = await fetch(
       `${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(roomId)}` +
         `&hotelId=eq.${encodeURIComponent(hotelId)}&select=id`,
       { headers: SB_H },
     );
     const room = (rr.ok ? await rr.json().catch(() => []) : [])?.[0];
-    return !!room;
+    if (!room) return null;
+    return {
+      windowStart: hotel.prebuy_window_start || null,
+      windowEnd: hotel.prebuy_window_end || null,
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -72,8 +82,18 @@ export async function POST(req: NextRequest) {
   }
 
   // The supply gate — decoupled from the customer-feed gate.
-  if (!(await loadPrebuyRoom(hotelId, roomId))) {
+  const prebuy = await loadPrebuyRoom(hotelId, roomId);
+  if (!prebuy) {
     return NextResponse.json({ error: "This room isn't open for pre-buy." }, { status: 404 });
+  }
+
+  // M2 — the check-in date must fall inside the hotel's pre-buy window (if any).
+  // 409 here (payment gate) mirrors the overlap re-guard's conflict semantics.
+  if (!isCheckInWithinWindow(from, prebuy.windowStart, prebuy.windowEnd)) {
+    return NextResponse.json(
+      { error: windowRejectReason(from, prebuy.windowStart, prebuy.windowEnd) || "Check-in date is outside the pre-buy window." },
+      { status: 409 },
+    );
   }
 
   const buyerIds = await resolveOwnerIdsCrossPool(user.id, user.phone, user.email);

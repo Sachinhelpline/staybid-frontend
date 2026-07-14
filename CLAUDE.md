@@ -11940,3 +11940,102 @@ unit owner reverted to NULL, `unowned_free_restored=4`. `tsc --noEmit` clean,
   engine (M1 reuses the C1/C2 checkout/hold discipline, adds only the
   auto-assign + owner-stamp on top), channel sync engine, availability engine,
   host vertical data model.
+
+---
+
+## Circle Marketplace Redesign — Phase M2: Model-3 Pre-Buy Supply Admin + Optional Window (v341, 2026-07-14)
+
+Phase M2 of the marketplace redesign (blueprint: `docs/CIRCLE-MARKETPLACE-REDESIGN.md`,
+§M2). "Ensure ops has a clean path: host-circle provisioning (v309/v336) IS the
+supply. Add a Circle-admin surface to mark a provisioned hotel 'available for
+pre-buy' + set the pre-buy inventory window." **Additive** — one migration (two
+nullable DATE columns), one shared pure helper, two route gates, one new admin
+page + API + sidebar entry. No engine change, no marketplace-flow change.
+
+### The pre-buy window model (locked)
+`hotels.prebuy_window_start DATE` (INCLUSIVE lower bound) + `hotels.prebuy_window_end
+DATE` (EXCLUSIVE upper bound — check-in `date_from` must be `< this date`). NULL
+edge = unbounded; both NULL = "always open" = **byte-identical to v339/v340** (zero
+regression). The window bounds the **check-in date** (`date_from`) of an M1 pre-buy
+block — NOT the sale window, NOT the whole stay. It is DECOUPLED from `prebuy_enabled`
+(the v339 supply flag) AND from `approval_status` (the v336 SINGLE customer-feed
+gate). Three orthogonal signals: `prebuy_enabled` = "browsable as Model-3 supply",
+window = "which check-in nights an investor can pre-buy", `approval_status='approved'`
+= "customer-bookable".
+
+### Migration `2026-07-14-v341-prebuy-window.sql` (applied live)
+`hotels.prebuy_window_start DATE` + `hotels.prebuy_window_end DATE` (both nullable) +
+COMMENTs. Verified live via `information_schema.columns`: both columns present,
+`data_type=date`, `is_nullable=YES`. All 4 seed hotels + every existing hotel read
+NULL/NULL → always-open (no behaviour change).
+
+### Files (shared helper + gates + admin surface)
+- **`lib/inventory/prebuy-window.ts`** (NEW, PURE — no I/O). Shared by the quote +
+  checkout routes for DRY enforcement so they never drift. `isCheckInWithinWindow(from,
+  start, end)` — `isoDate()` normalises tz-less strings; lexicographic ISO compare;
+  `from < start` → false (before opens), `from >= end` → false (on/after exclusive
+  upper), else true. Both-NULL → true. `windowRejectReason(from, start, end)` — human
+  string ("Pre-buy for this property opens 2026-08-01." / "…only open before
+  2026-09-01.") or null when in-window.
+- **`app/api/circle/marketplace/quote/route.ts`** — `loadPrebuyRoom` return type
+  extended with `windowStart`/`windowEnd` (hotel SELECT adds
+  `prebuy_window_start,prebuy_window_end`). Enforcement **400** (validation-style)
+  after the `!room` 404, before `quoteInventoryBlock`.
+- **`app/api/circle/marketplace/checkout/route.ts`** — same `loadPrebuyRoom`
+  extension (return type `{windowStart, windowEnd} | null`). Enforcement **409**
+  (payment gate — mirrors the overlap re-guard's conflict semantics) after the
+  supply-gate 404, before `assignFreeUnit`.
+- **`app/api/admin/circle-supply/route.ts`** (NEW) — `adminFromReq`. GET lists
+  `owner_type=eq.host_circle` hotels enriched with room/unit/owned counts + window.
+  POST `{hotelId, prebuyEnabled?, windowStart?, windowEnd?}`: **400 guard if
+  `owner_type !== 'host_circle'`** (can never flip a classic hotel), `""`/null → NULL
+  clear, isoDate validation, **inverted-window rejection** (`finalStart >= finalEnd`),
+  PATCH guarded `&owner_type=eq.host_circle`, `logAdminAction` `circle_supply.set`.
+- **`app/admin/circle-supply/page.tsx`** (NEW, dark-luxury) — search, 3 KPI cards,
+  hotels table with Enable/Disable + Window buttons, window-editor modal (start
+  inclusive / end exclusive date inputs, "Clear both" / Cancel / "Save window").
+- **`components/admin/sidebar.tsx`** — "🏢 Circle Supply" entry after
+  "🧾 Circle Inventory".
+- `SB_BUILD v340→v341`, badge v341, `HTML_CACHE v153→v154`.
+
+### Verified (live SQL round-trip against `uxxhbdqedazpmvbvaosh`)
+Both `prebuy_window_start`/`prebuy_window_end` columns present + nullable. Seed hotel
+`hco-seed-man` mirrored all 6 boundary cases against `isCheckInWithinWindow`:
+`before_start_reject=false` (inclusive lower held), `on_start_inclusive_ok=true`,
+`inside_ok=true`, `on_end_exclusive_reject=false` (exclusive upper held),
+`after_end_reject=false`, `both_null_always_open_ok=true`. `tsc --noEmit` exit 0,
+`npm run build` exit 0 (all M2 routes compiled; `/admin/circle-supply` compiled).
+
+### Things to Avoid (Circle Marketplace Phase M2)
+- **Never** conflate the pre-buy window with `prebuy_enabled` OR `approval_status`.
+  Three orthogonal gates: window = check-in-date bound, `prebuy_enabled` = browsable
+  supply, `approval_status='approved'` = customer-bookable. A hotel can be
+  pre-buy-enabled with a window set and still NOT customer-bookable.
+- **Never** treat `prebuy_window_end` as inclusive — it is EXCLUSIVE (`from >= end`
+  → reject). A stay checking in ON the end date is out of window. Both routes + the
+  shared helper agree on this; don't diverge one.
+- **Never** compute the window check inline in either route — both go through
+  `lib/inventory/prebuy-window.ts isCheckInWithinWindow` so quote (400) + checkout
+  (409) never drift (same discipline as the shared inventory/b2b engines).
+- **Never** let the admin POST flip a hotel that isn't `owner_type='host_circle'` —
+  the 400 guard is the only thing stopping `/admin/circle-supply` from toggling a
+  classic hotel's window (`/admin/hotels` owns classic hotels).
+- **Never** accept an inverted window (`start >= end`) — the POST rejects it; an
+  inverted window would silently reject every check-in date.
+- **Never** narrow the marketplace `loadPrebuyRoom` hotel SELECT to drop the window
+  columns — the quote + checkout gates read `prebuy_window_start`/`prebuy_window_end`.
+
+### Updated production state (v341, 2026-07-14)
+- **Current version:** v341 · branch `claude/staybid-multi-investor-design-szfnl4`.
+- Migration applied live + verified (both nullable DATE columns present). `tsc`
+  clean, `next build` green, M2 live SQL round-trip passed (6 boundary cases).
+- **Marketplace phase plan (docs/CIRCLE-MARKETPLACE-REDESIGN.md):** M0 hub re-route
+  + shared shell (v339) ✅ · M1 Model-3 marketplace (v340) ✅ · **M2 Model-3 supply
+  admin + window (v341) ✅** · M3 Model-4 marketplace · M4 hotel-owner B2B listing
+  (`source='hotel_owner'`) · M5 per-model subscription · M6 investor "My Circle"
+  dashboard + legal sweep. **STOP at M2 — do NOT start M3 without Sachin's "continue".**
+- **NOT TOUCHED:** Model 1 flow (/circle/discover → /circle/build), scoring engine,
+  bid lifecycle, tier system, passport, reel-dedup chain, service billing, per-unit
+  autopilot/OTA (A/B), Model-3 C1–C4 + Model-4 D1–D4 money engine, M1 marketplace
+  checkout/verify/hold logic (M2 adds only the window gate + admin supply surface on
+  top), channel sync engine, availability engine, host vertical data model.
