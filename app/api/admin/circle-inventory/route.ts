@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
+import { resaleAskPerNight } from "@/lib/b2b/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -410,6 +411,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Listing changed — refresh and try again." }, { status: 409 });
     }
     logAdminAction({ admin, action: `circle_inventory.${action}`, targetType: "b2b_listing", targetId: listingId, details: { newStatus } });
+    return NextResponse.json({ ok: true, listing: rows[0] });
+  }
+
+  // ── set_listing_multiplier: per-room/per-listing resale multiplier ───────
+  // v355 — re-price ONE live (draft|listed) listing at its own multiplier so a
+  // specific room can differ from the global default. Recomputes the ask from
+  // the FROZEN own price/night × the new multiplier; own_per_night + buy_total +
+  // fees are untouched (tamper-safe). Sold/expired listings can't be re-priced.
+  if (action === "set_listing_multiplier") {
+    const listingId = String(body?.listingId || "").trim();
+    const multiplier = Number(body?.multiplier);
+    if (!listingId) return NextResponse.json({ error: "listingId required" }, { status: 400 });
+    if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 20) {
+      return NextResponse.json({ error: "multiplier must be 1–20." }, { status: 400 });
+    }
+    const rows0 = await sb(`b2b_listings?id=eq.${encodeURIComponent(listingId)}&select=*`);
+    const listing = rows0[0];
+    if (!listing) return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    if (!["draft", "listed"].includes(String(listing.status))) {
+      return NextResponse.json({ error: `A ${String(listing.status).replace(/_/g, " ")} listing can't be re-priced.` }, { status: 409 });
+    }
+    const nights = Math.max(1, num(listing.nights) || 1);
+    // own price/night — the frozen basis, or derived from buy_total for legacy rows.
+    const ownPerNight = num(listing.own_per_night) || Math.round(num(listing.buy_total) / nights);
+    if (ownPerNight <= 0) {
+      return NextResponse.json({ error: "This listing has no own-price basis to re-price from." }, { status: 422 });
+    }
+    const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
+    const askTotal = askPerNight * nights;
+    const meta = (listing.metadata && typeof listing.metadata === "object") ? listing.metadata : {};
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(listingId)}&status=in.(draft,listed)`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({
+          price_multiplier: multiplier,
+          own_per_night: ownPerNight,       // stamp it if it was a legacy null
+          ask_per_night: askPerNight,
+          ask_total: askTotal,
+          metadata: { ...meta, multiplier, ownPerNight, repricedAt: nowIso, repricedBy: admin.id || null },
+          updated_at: nowIso,
+        }),
+      },
+    );
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return NextResponse.json({ error: "Listing changed — refresh and try again." }, { status: 409 });
+    }
+    logAdminAction({ admin, action: "circle_inventory.set_listing_multiplier", targetType: "b2b_listing", targetId: listingId, details: { multiplier, ownPerNight, askPerNight, askTotal } });
     return NextResponse.json({ ok: true, listing: rows[0] });
   }
 

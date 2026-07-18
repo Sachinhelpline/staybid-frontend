@@ -114,8 +114,10 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   ?? per-listing `b2b_listings.price_multiplier` (a body `priceMultiplier` on the listing-create paths).
   Both listing branches + `/api/b2b/regulated-quote` freeze `own_per_night` + `price_multiplier` on the
   row (tamper-safe; preview == charge == settlement — the split still reads the frozen `ask`). Admin edits
-  the multiplier in the `/admin/circle-inventory` fee card ("Resale ×", 1–20; POST `resaleMultiplier`,
-  which also keeps `regulated_markup_pct` in sync). Migration `2026-07-18-v355-b2b-resale-multiplier.sql`
+  the GLOBAL multiplier in the `/admin/circle-inventory` fee card ("Resale ×", 1–20; POST `resaleMultiplier`,
+  which also keeps `regulated_markup_pct` in sync), AND a PER-LISTING multiplier inline in the B2B
+  listings table ("Resale ×" column → `set_listing_multiplier` action re-prices ONE draft|listed listing
+  from its frozen `own_per_night` × the new ×; own/buy/fees untouched). Migration `2026-07-18-v355-b2b-resale-multiplier.sql`
   (config `resale_multiplier` + listing `own_per_night`/`price_multiplier`) applied live. Round-trip
   verified (9 demo rows: ask=own×2, ask_total=ask×nights, all double).
 - **Premium browse + room/property TOUR (v355):** `/circle/model2/browse` rebuilt — **All Cities** default
