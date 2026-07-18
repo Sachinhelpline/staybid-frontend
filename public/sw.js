@@ -458,7 +458,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // window; the marketplace quote/checkout routes now gate the check-in date to
 // the hotel's window. Bumping HTML_CACHE drops the stale cached markup so the
 // new admin sidebar entry + window enforcement show on first warm visit.
-const HTML_CACHE = 'staybid-html-v155';
+// v343 — one-time HTML_CACHE bump (v155 -> v156). Circle Marketplace M4:
+// Model-4 B2B SUPPLY side — a hotel owner lists room-nights from their own
+// inventory on the exchange (partner "Pre-buy Inventory" tab gains a "List your
+// own inventory" form). Bumping HTML_CACHE drops the stale cached partner markup
+// so the new supply form shows on first warm visit.
+const HTML_CACHE = 'staybid-html-v156';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

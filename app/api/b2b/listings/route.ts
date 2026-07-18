@@ -22,6 +22,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit, isValidAskPerNight, B2B_FEE_PCT_DEFAULT } from "@/lib/b2b/engine";
+import { partnerHotelScope } from "@/lib/partner/hotel-scope";
+import { quoteInventoryBlock } from "@/lib/inventory/quote";
+import { unitsFreeForRange } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +112,128 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// v343 — Circle Marketplace Phase M4: hotel-owner B2B SUPPLY listing.
+//
+// A hotel owner (classic OR operated — anyone in `partnerHotelScope`) lists
+// room-nights of their OWN inventory on the B2B exchange WITHOUT a pre-bought
+// `inventory_blocks` row (block_id = NULL, unit_id = NULL). The buy_total is
+// the owner's Spine FLOOR (`quoteInventoryBlock`) — the wholesale cost basis —
+// so the seller-margin math still holds; the fee % is server-frozen. On BUY
+// (D2 checkout/verify, hotel_owner branch), a free unit is auto-assigned + a
+// NEW buyer `inventory_blocks` block is minted, exactly like the M1 marketplace.
+//
+// The `uniq_b2b_listing_active_block` partial unique index is on block_id;
+// NULLs are distinct in Postgres, so hotel_owner listings never collide there.
+// ════════════════════════════════════════════════════════════════════════
+async function createHotelOwnerListing(
+  req: NextRequest,
+  userId: string,
+  body: any,
+): Promise<NextResponse> {
+  const hotelId = String(body?.hotelId || "").trim();
+  const roomId = String(body?.roomId || "").trim();
+  const dateFrom = String(body?.dateFrom || "").slice(0, 10);
+  const dateTo = String(body?.dateTo || "").slice(0, 10);
+
+  if (!hotelId || !roomId || !/^\d{4}-\d{2}-\d{2}$/.test(dateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+    return NextResponse.json({ error: "hotelId, roomId, dateFrom, dateTo required" }, { status: 400 });
+  }
+  if (dateFrom >= dateTo) {
+    return NextResponse.json({ error: "Check-out must be after check-in." }, { status: 400 });
+  }
+  if (dateTo <= todayISO()) {
+    return NextResponse.json({ error: "These dates have passed." }, { status: 409 });
+  }
+  if (!isValidAskPerNight(body?.askPerNight)) {
+    return NextResponse.json({ error: "Enter a valid ask price per night." }, { status: 400 });
+  }
+  const askPerNight = Math.round(Number(body.askPerNight));
+
+  // Ownership — owned ∪ operated hotels (Circle/host-circle covered).
+  const scope = await partnerHotelScope(req);
+  if (!scope || !scope.hotelIds.includes(hotelId)) {
+    return NextResponse.json({ error: "Forbidden — not your hotel" }, { status: 403 });
+  }
+
+  // Room must belong to this hotel.
+  try {
+    const rr = await fetch(
+      `${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(roomId)}` +
+        `&hotelId=eq.${encodeURIComponent(hotelId)}&select=id&limit=1`,
+      { headers: SB_H },
+    );
+    const rooms = rr.ok ? await rr.json().catch(() => []) : [];
+    if (!Array.isArray(rooms) || !rooms.length) {
+      return NextResponse.json({ error: "Room not found for this hotel." }, { status: 404 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Could not verify the room." }, { status: 502 });
+  }
+
+  // At least one physical unit must be free for the range (so a buyer can be
+  // auto-assigned one at checkout). Fail-open only if the capacity signal is
+  // missing — a firm 0 free blocks the listing.
+  const avail = await unitsFreeForRange({ hotelId, roomId, from: dateFrom, to: dateTo });
+  if (avail && avail.free < 1) {
+    return NextResponse.json(
+      { error: "No rooms free for these nights — pick different dates." },
+      { status: 409 },
+    );
+  }
+
+  // buy_total = the owner's Spine FLOOR (wholesale cost basis). Client NEVER
+  // sets ₹; the seller only chooses the ASK.
+  const quote = await quoteInventoryBlock({ roomId, from: dateFrom, to: dateTo });
+  if (!quote || quote.buyTotal <= 0) {
+    return NextResponse.json({ error: "Couldn't price these nights right now — try again." }, { status: 422 });
+  }
+
+  // Freeze the platform fee % server-side. Ask is seller-set (own goods).
+  const split = b2bTradeSplit({
+    askPerNight,
+    nights: quote.nights,
+    feePct: B2B_FEE_PCT_DEFAULT,
+    buyTotal: quote.buyTotal,
+  });
+
+  const row = {
+    id: genId("b2bl"),
+    block_id: null,               // hotel-owner supply — no pre-bought block
+    seller_user_id: String(userId),
+    hotel_id: hotelId,
+    unit_id: null,                // a free unit is auto-assigned to the BUYER at checkout
+    room_id: roomId,
+    date_from: dateFrom,
+    date_to: dateTo,
+    nights: split.nights,
+    ask_per_night: split.askPerNight,
+    ask_total: split.askTotal,
+    buy_total: split.buyTotal,
+    platform_fee_pct: split.platformFeePct,
+    status: "listed",
+    source: "hotel_owner",
+    metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal },
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/b2b_listings`, {
+      method: "POST",
+      headers: SB_H_REPRESENT,
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      return NextResponse.json({ error: "List failed", detail: err.slice(0, 200) }, { status: 500 });
+    }
+    const saved = await res.json().catch(() => []);
+    return NextResponse.json({ ok: true, listing: Array.isArray(saved) ? saved[0] : saved, split });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "List failed" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { userId, phone, email } = auth(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -116,6 +241,13 @@ export async function POST(req: NextRequest) {
   let body: any;
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
+
+  // v343 — Model-4 SUPPLY side: a hotel owner lists their own inventory
+  // (no pre-bought block). Distinct branch; the D1 blockId path below is
+  // unchanged.
+  if (String(body?.source || "").trim() === "hotel_owner") {
+    return createHotelOwnerListing(req, userId, body);
+  }
 
   const blockId = String(body?.blockId || "").trim();
   if (!blockId) return NextResponse.json({ error: "blockId required" }, { status: 400 });

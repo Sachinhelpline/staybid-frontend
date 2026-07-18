@@ -17,6 +17,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
+import { assignFreeUnit } from "@/lib/inventory/assign";
+import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,25 +70,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "These nights have already passed." }, { status: 409 });
   }
 
-  // Integrity: the underlying block must STILL be owned by the seller. If the
-  // seller resold/expired/refunded it since listing, the listing is stale.
-  let block: any = null;
-  try {
-    const r = await fetch(
-      `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(String(listing.block_id))}&select=id,investor_user_id,status`,
-      { headers: SB_H },
-    );
-    const rows = r.ok ? await r.json().catch(() => []) : [];
-    block = Array.isArray(rows) ? rows[0] : null;
-  } catch { /* handled below */ }
+  const isHotelOwner = String(listing.source) === "hotel_owner";
 
-  if (!block || String(block.status) !== "owned" ||
-      String(block.investor_user_id) !== String(listing.seller_user_id)) {
-    return NextResponse.json({ error: "This block is no longer available to trade." }, { status: 409 });
+  // Integrity (investor_block path only): the underlying block must STILL be
+  // owned by the seller. If the seller resold/expired/refunded it since listing,
+  // the listing is stale. A hotel_owner listing has NO pre-bought block
+  // (block_id is NULL) — a free unit + a fresh buyer block are minted below.
+  if (!isHotelOwner) {
+    let block: any = null;
+    try {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(String(listing.block_id))}&select=id,investor_user_id,status`,
+        { headers: SB_H },
+      );
+      const rows = r.ok ? await r.json().catch(() => []) : [];
+      block = Array.isArray(rows) ? rows[0] : null;
+    } catch { /* handled below */ }
+
+    if (!block || String(block.status) !== "owned" ||
+        String(block.investor_user_id) !== String(listing.seller_user_id)) {
+      return NextResponse.json({ error: "This block is no longer available to trade." }, { status: 409 });
+    }
   }
 
   // Re-compute the split SERVER-SIDE — the buyer pays the seller's ask; the
-  // platform fee % was frozen at list time (tamper-safe).
+  // platform fee % + buy basis were frozen at list time (tamper-safe).
   const split = b2bTradeSplit({
     askPerNight: Number(listing.ask_per_night),
     nights: Number(listing.nights),
@@ -95,6 +103,42 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
   if (split.askTotal <= 0) {
     return NextResponse.json({ error: "This offer isn't priced correctly — try another." }, { status: 422 });
+  }
+
+  // ── M4 hotel_owner SUPPLY: the buyer owns nothing yet, so auto-assign a free
+  //    physical unit AND freeze the buyer's block cost basis at the Spine
+  //    wholesale floor (the SAME basis an M1/M3 pre-buy records; a D2 transfer
+  //    also keeps the original investor's basis — the ask flows to the seller
+  //    via the trade + settlement ledger, not the block). investor_block keeps
+  //    the listing's existing unit and transfers the block at verify.
+  const lFrom = String(listing.date_from).slice(0, 10);
+  const lTo = String(listing.date_to).slice(0, 10);
+  let assignedUnitId: string | null = listing.unit_id ? String(listing.unit_id) : null;
+  let buyerBlockBuyTotal = 0;
+  let buyerBlockBuyPerNight = 0;
+  let buyerBlockResalePerNight = 0;
+  let buyerRoomNumber: string | null = null;
+  if (isHotelOwner) {
+    const freeUnit = await assignFreeUnit({
+      hotelId: String(listing.hotel_id),
+      roomId: String(listing.room_id),
+      from: lFrom,
+      to: lTo,
+      buyerIds,
+    });
+    if (!freeUnit) {
+      return NextResponse.json(
+        { error: "No rooms free for these nights — try another offer." },
+        { status: 409 },
+      );
+    }
+    assignedUnitId = freeUnit.unitId;
+    buyerRoomNumber = freeUnit.roomNumber;
+
+    const quote = await quoteInventoryBlock({ roomId: String(listing.room_id), from: lFrom, to: lTo });
+    buyerBlockBuyTotal = quote && quote.buyTotal > 0 ? quote.buyTotal : Number(split.buyTotal) || 0;
+    buyerBlockBuyPerNight = split.nights > 0 ? Math.round(buyerBlockBuyTotal / split.nights) : buyerBlockBuyTotal;
+    buyerBlockResalePerNight = quote?.avgResalePerNight || 0;
   }
 
   // Razorpay order for the ask total (amount in rupees; route → paise).
@@ -107,7 +151,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       body: JSON.stringify({
         amount: split.askTotal,
         receipt: `cb2b_${listingId}`.slice(0, 40),
-        notes: { kind: "circle_b2b", listingId, blockId: String(listing.block_id), buyerId: String(userId) },
+        notes: { kind: "circle_b2b", listingId, source: String(listing.source || "investor_block"), buyerId: String(userId) },
       }),
     });
     rzp = await orderRes.json().catch(() => ({}));
@@ -121,9 +165,80 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Payment gateway unreachable." }, { status: 502 });
   }
 
+  // ── M4 hotel_owner: mint a NEW buyer pending_payment inventory_block (the
+  //    buyer owns nothing yet — mirror the M1 marketplace checkout), then a
+  //    self-excluding overlap re-guard drops the orphan on a concurrent race.
+  //    investor_block keeps the seller's existing block (transferred at verify).
+  let tradeBlockId: string | null = isHotelOwner ? null : String(listing.block_id);
+  if (isHotelOwner) {
+    const newBlockId = genId("inv");
+    try {
+      const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
+        method: "POST",
+        headers: SB_H_REPRESENT,
+        body: JSON.stringify({
+          id: newBlockId,
+          investor_user_id: String(userId),
+          hotel_id: String(listing.hotel_id),
+          unit_id: assignedUnitId,
+          room_id: String(listing.room_id),
+          date_from: lFrom,
+          date_to: lTo,
+          nights: split.nights,
+          buy_price_per_night: buyerBlockBuyPerNight,
+          buy_total: buyerBlockBuyTotal,
+          resale_price_per_night: buyerBlockResalePerNight,
+          platform_fee_pct: split.platformFeePct,
+          status: "pending_payment",
+          razorpay_order_id: rzp.id,
+          metadata: {
+            source: "circle_b2b_hotel_owner",
+            listingId,
+            roomNumber: buyerRoomNumber,
+            checkoutAt: new Date().toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      const rows = res.ok ? await res.json().catch(() => []) : [];
+      if (!Array.isArray(rows) || !rows.length) {
+        const err = await res.text().catch(() => "");
+        return NextResponse.json({ error: "Could not start the trade.", detail: err.slice(0, 160) }, { status: 500 });
+      }
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || "Checkout failed" }, { status: 500 });
+    }
+
+    // Self-excluding overlap re-guard — a DIFFERENT non-terminal block may have
+    // grabbed the same unit/nights in the race window. Drop our orphan + 409.
+    try {
+      const clashRes = await fetch(
+        `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(String(assignedUnitId))}` +
+          `&id=neq.${encodeURIComponent(newBlockId)}` +
+          `&status=not.in.(expired,cancelled,refunded)` +
+          `&date_from=lt.${lTo}&date_to=gt.${lFrom}&select=id&limit=1`,
+        { headers: SB_H },
+      );
+      const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
+      if (Array.isArray(clash) && clash.length) {
+        await fetch(
+          `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(newBlockId)}&status=eq.pending_payment`,
+          { method: "DELETE", headers: SB_H },
+        ).catch(() => {});
+        return NextResponse.json(
+          { error: "These nights were just taken — try another offer." },
+          { status: 409 },
+        );
+      }
+    } catch { /* non-fatal — verify + hold write is the final integrity gate */ }
+
+    tradeBlockId = newBlockId;
+  }
+
   // Write the trade row (pending). Frozen split; matched on razorpay_order_id
-  // at verify time. Buyer id = the caller's PRIMARY jwt id (the block will be
-  // transferred to it; their cross-pool set always includes it).
+  // at verify time. Buyer id = the caller's PRIMARY jwt id. block_id is the
+  // seller's block (investor_block, transferred at verify) OR the fresh buyer
+  // block just minted (hotel_owner). source carries the branch to verify.
   const tradeId = genId("b2bt");
   try {
     const res = await fetch(`${SB_URL}/rest/v1/b2b_trades`, {
@@ -132,14 +247,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       body: JSON.stringify({
         id: tradeId,
         listing_id: listingId,
-        block_id: String(listing.block_id),
+        block_id: tradeBlockId,
         seller_user_id: String(listing.seller_user_id),
         buyer_user_id: String(userId),
         hotel_id: String(listing.hotel_id),
-        unit_id: String(listing.unit_id),
+        unit_id: assignedUnitId,
         room_id: String(listing.room_id),
-        date_from: String(listing.date_from),
-        date_to: String(listing.date_to),
+        date_from: lFrom,
+        date_to: lTo,
         nights: split.nights,
         ask_total: split.askTotal,
         platform_fee_pct: split.platformFeePct,
@@ -147,6 +262,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         seller_net: split.sellerNet,
         razorpay_order_id: rzp.id,
         status: "pending_payment",
+        source: String(listing.source || "investor_block"),
         metadata: { checkoutAt: new Date().toISOString(), buyPhone: phone || null },
       }),
     });
@@ -163,6 +279,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     keyId: PUBLIC_KEY_ID,
     order: { id: rzp.id, amount: rzp.amount, currency: rzp.currency || "INR" },
     tradeId,
+    blockId: tradeBlockId,
     askTotal: split.askTotal,
   });
 }
