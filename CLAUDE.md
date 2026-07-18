@@ -102,7 +102,20 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v348, Circle "Model 2" — rename + dual fee + city access)
+## Current production state (v349, Circle "Model 2" — rename + dual fee + city access + regulated price)
+- **Regulated B2B pricing (v349):** the Model-2 B2B ask is NO LONGER a free seller input — it is
+  StayBid-REGULATED: `regulatedB2bAskPerNight(spineWholesalePerNight, markupPct)` = `round(wholesale ×
+  (1 + markup%))`, `lib/b2b/engine.ts`. Markup is admin-controlled (`b2b_fee_config.regulated_markup_pct`,
+  default 20, via `resolveB2bFeeConfig().regulatedMarkupPct` + `/api/admin/b2b-fee` + the
+  `/admin/circle-inventory` fee card "Reg. markup %"). Both listing-create paths compute the ask from
+  Spine cost (hotel_owner → `quote.avgBuyPerNight`; investor_block → `block.buy_total/nights`) and
+  IGNORE any client `askPerNight`. Preview endpoint `/api/b2b/regulated-quote?roomId&from&to` (partner
+  Bearer) returns the regulated ask + split so the seller sees the price BEFORE listing; the
+  CircleInventoryTab supply form + per-block "List on exchange" dropped their ask inputs (show the
+  regulated price / "List at regulated price"). Migration `2026-07-18-v349-b2b-regulated-markup.sql`
+  applied live. `isValidAskPerNight` retired from the listing paths. Verified (ask 3000→3600 @20%).
+
+## Legacy state (v348, Circle "Model 2" — rename + dual fee + city access)
 - **City access paywall (v348) — LIVE MONEY:** an investor unlocks a city ONCE (₹999, lifetime,
   admin-priced) to buy/resell Model-2 inventory there. Price = `b2b_fee_config.city_access_price`
   (default 999) resolved via `resolveB2bFeeConfig().cityAccessPrice`; admin edits it in the same
@@ -188,8 +201,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v160` (v348 city access).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v348. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v161` (v349 regulated price).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v349. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

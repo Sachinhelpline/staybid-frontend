@@ -39,8 +39,8 @@ export default function AdminCircleInventory() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const [b2bFilter, setB2bFilter] = useState<(typeof B2B_FILTERS)[number]>("all");
   // v347 — admin-controlled dual B2B commission (5% buyer + 5% seller default).
-  const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number; cityAccessPrice?: number } | null>(null);
-  const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string; city: string }>({ buyer: "", seller: "", city: "" });
+  const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number; cityAccessPrice?: number; regulatedMarkupPct?: number } | null>(null);
+  const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string; city: string; markup: string }>({ buyer: "", seller: "", city: "", markup: "" });
   const [feeBusy, setFeeBusy] = useState(false);
 
   const headers = useCallback((): HeadersInit => ({
@@ -70,6 +70,7 @@ export default function AdminCircleInventory() {
             buyer: String(d.config.buyerFeePct),
             seller: String(d.config.sellerFeePct),
             city: String(d.config.cityAccessPrice ?? 999),
+            markup: String(d.config.regulatedMarkupPct ?? 20),
           });
         }
       })
@@ -81,7 +82,7 @@ export default function AdminCircleInventory() {
     try {
       const r = await fetch("/api/admin/b2b-fee", {
         method: "POST", headers: { "Content-Type": "application/json", ...headers() },
-        body: JSON.stringify({ buyerFeePct: Number(feeDraft.buyer), sellerFeePct: Number(feeDraft.seller), cityAccessPrice: Number(feeDraft.city) }),
+        body: JSON.stringify({ buyerFeePct: Number(feeDraft.buyer), sellerFeePct: Number(feeDraft.seller), cityAccessPrice: Number(feeDraft.city), regulatedMarkupPct: Number(feeDraft.markup) }),
       });
       const d = await r.json();
       if (!r.ok || d?.error) throw new Error(d?.error || "Save failed");
@@ -158,13 +159,20 @@ export default function AdminCircleInventory() {
             onChange={(e) => setFeeDraft((s) => ({ ...s, city: e.target.value }))}
             style={{ width: 96, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
         </label>
+        <label style={{ color: "#8A8FA8", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}
+          title="Regulated B2B ask = Spine wholesale/night × (1 + this%). Applies to new listings.">
+          Reg. markup %
+          <input type="number" min={0} max={1000} value={feeDraft.markup}
+            onChange={(e) => setFeeDraft((s) => ({ ...s, markup: e.target.value }))}
+            style={{ width: 88, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
+        </label>
         <button onClick={saveFee} disabled={feeBusy}
           style={{ background: "#3D9CF522", border: "1px solid #3D9CF555", color: "#3D9CF5", borderRadius: 8, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-end" }}>
           {feeBusy ? "Saving…" : "Save commission"}
         </button>
         {feeCfg && (
           <span style={{ color: "#8A8FA8", fontSize: 11.5, alignSelf: "flex-end" }}>
-            live: {feeCfg.buyerFeePct}% + {feeCfg.sellerFeePct}% = {Number(feeCfg.buyerFeePct) + Number(feeCfg.sellerFeePct)}% · city ₹{feeCfg.cityAccessPrice ?? 999}
+            live: {feeCfg.buyerFeePct}% + {feeCfg.sellerFeePct}% · city ₹{feeCfg.cityAccessPrice ?? 999} · reg. markup {feeCfg.regulatedMarkupPct ?? 20}%
           </span>
         )}
       </div>

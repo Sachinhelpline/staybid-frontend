@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
-import { b2bTradeSplit, isValidAskPerNight } from "@/lib/b2b/engine";
+import { b2bTradeSplit, regulatedB2bAskPerNight } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
@@ -147,10 +147,8 @@ async function createHotelOwnerListing(
   if (dateTo <= todayISO()) {
     return NextResponse.json({ error: "These dates have passed." }, { status: 409 });
   }
-  if (!isValidAskPerNight(body?.askPerNight)) {
-    return NextResponse.json({ error: "Enter a valid ask price per night." }, { status: 400 });
-  }
-  const askPerNight = Math.round(Number(body.askPerNight));
+  // v349 — the ask is StayBid-REGULATED (Spine-derived below), NOT a seller
+  // input. Any body.askPerNight is ignored.
 
   // Ownership — owned ∪ operated hotels (Circle/host-circle covered).
   const scope = await partnerHotelScope(req);
@@ -185,14 +183,15 @@ async function createHotelOwnerListing(
   }
 
   // buy_total = the owner's Spine FLOOR (wholesale cost basis). Client NEVER
-  // sets ₹; the seller only chooses the ASK.
+  // sets ₹ — the ASK is StayBid-regulated (Spine wholesale × admin markup).
   const quote = await quoteInventoryBlock({ roomId, from: dateFrom, to: dateTo });
   if (!quote || quote.buyTotal <= 0) {
     return NextResponse.json({ error: "Couldn't price these nights right now — try again." }, { status: 422 });
   }
 
-  // Freeze BOTH commission % server-side (admin-controlled). Ask is seller-set.
+  // Regulated ask + frozen commission % (all admin-controlled, tamper-safe).
   const fee = await resolveB2bFeeConfig();
+  const askPerNight = regulatedB2bAskPerNight(quote.avgBuyPerNight, fee.regulatedMarkupPct);
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
@@ -257,10 +256,8 @@ export async function POST(req: NextRequest) {
 
   const blockId = String(body?.blockId || "").trim();
   if (!blockId) return NextResponse.json({ error: "blockId required" }, { status: 400 });
-  if (!isValidAskPerNight(body?.askPerNight)) {
-    return NextResponse.json({ error: "Enter a valid ask price per night." }, { status: 400 });
-  }
-  const askPerNight = Math.round(Number(body.askPerNight));
+  // v349 — the ask is StayBid-REGULATED (derived from the block's Spine cost
+  // below), NOT a seller input. Any body.askPerNight is ignored.
 
   const ownerIds = await resolveOwnerIdsCrossPool(userId, phone, email);
   const block = await ownedBlock(blockId, ownerIds);
@@ -292,8 +289,12 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* non-fatal — the unique index is the final gate */ }
 
-  // Freeze BOTH commission % server-side (tamper-safe). The ask is seller-set.
+  // Regulated ask (Spine cost basis × admin markup) + frozen commission %
+  // (all admin-controlled, tamper-safe).
   const fee = await resolveB2bFeeConfig();
+  const blockNights = Math.max(1, Number(block.nights) || 1);
+  const wholesalePerNight = Math.round((Number(block.buy_total) || 0) / blockNights);
+  const askPerNight = regulatedB2bAskPerNight(wholesalePerNight, fee.regulatedMarkupPct);
   const split = b2bTradeSplit({
     askPerNight,
     nights: Number(block.nights),
