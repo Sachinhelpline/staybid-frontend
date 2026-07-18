@@ -31,6 +31,11 @@ const clampMarkup = (v: any): number | null => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 1000 ? n : null;
 };
+// v355 — resale multiplier (2 = double the owner's own price). 1×–20×.
+const clampMult = (v: any): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 20 ? n : null;
+};
 
 export async function GET(req: NextRequest) {
   if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,10 +59,20 @@ export async function POST(req: NextRequest) {
   if (cityAccessPrice === null) {
     return NextResponse.json({ error: "cityAccessPrice must be ≥ 0." }, { status: 400 });
   }
-  const regulatedMarkupPct = body?.regulatedMarkupPct === undefined ? undefined : clampMarkup(body?.regulatedMarkupPct);
+  // v355 — the PRIMARY price knob is now the resale multiplier (2 = double the
+  // owner's own price). When provided we set it AND keep the legacy markup % in
+  // sync (multiplier 2 == markup 100). `regulatedMarkupPct` still accepted for
+  // back-compat callers.
+  const resaleMultiplier = body?.resaleMultiplier === undefined ? undefined : clampMult(body?.resaleMultiplier);
+  if (resaleMultiplier === null) {
+    return NextResponse.json({ error: "resaleMultiplier must be 1–20." }, { status: 400 });
+  }
+  let regulatedMarkupPct = body?.regulatedMarkupPct === undefined ? undefined : clampMarkup(body?.regulatedMarkupPct);
   if (regulatedMarkupPct === null) {
     return NextResponse.json({ error: "regulatedMarkupPct must be 0–1000." }, { status: 400 });
   }
+  // Keep them consistent: if a multiplier was sent, derive the markup from it.
+  if (resaleMultiplier !== undefined) regulatedMarkupPct = Math.round((resaleMultiplier - 1) * 100);
 
   try {
     const r = await fetch(`${SB_URL}/rest/v1/b2b_fee_config?on_conflict=id`, {
@@ -69,6 +84,7 @@ export async function POST(req: NextRequest) {
         seller_fee_pct: sellerFeePct,
         ...(cityAccessPrice === undefined ? {} : { city_access_price: cityAccessPrice }),
         ...(regulatedMarkupPct === undefined ? {} : { regulated_markup_pct: regulatedMarkupPct }),
+        ...(resaleMultiplier === undefined ? {} : { resale_multiplier: resaleMultiplier }),
         updated_at: new Date().toISOString(),
       }),
     });
@@ -87,7 +103,7 @@ export async function POST(req: NextRequest) {
       action: "b2b_fee.set",
       targetType: "config",
       targetId: B2B_FEE_CONFIG_ID,
-      details: { buyerFeePct, sellerFeePct, cityAccessPrice, regulatedMarkupPct },
+      details: { buyerFeePct, sellerFeePct, cityAccessPrice, regulatedMarkupPct, resaleMultiplier },
     });
   } catch { /* best-effort */ }
 

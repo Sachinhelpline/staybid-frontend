@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
-import { b2bTradeSplit, regulatedB2bAskPerNight } from "@/lib/b2b/engine";
+import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
@@ -189,9 +189,15 @@ async function createHotelOwnerListing(
     return NextResponse.json({ error: "Couldn't price these nights right now — try again." }, { status: 422 });
   }
 
-  // Regulated ask + frozen commission % (all admin-controlled, tamper-safe).
+  // v355 — the ask is the owner's OWN price/night × the resale multiplier
+  // (admin-global default, or a per-listing override in body.priceMultiplier).
+  // The owner's own price/night = the Spine wholesale cost (this is a hotel-owner
+  // supply listing, so their acquisition cost IS the Spine floor). Frozen fees.
   const fee = await resolveB2bFeeConfig();
-  const askPerNight = regulatedB2bAskPerNight(quote.avgBuyPerNight, fee.regulatedMarkupPct);
+  const ownPerNight = quote.avgBuyPerNight;
+  const multiplier = Number.isFinite(Number(body?.priceMultiplier)) && Number(body?.priceMultiplier) >= 1 && Number(body?.priceMultiplier) <= 20
+    ? Number(body.priceMultiplier) : fee.resaleMultiplier;
+  const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
@@ -213,12 +219,14 @@ async function createHotelOwnerListing(
     ask_per_night: split.askPerNight,
     ask_total: split.askTotal,
     buy_total: split.buyTotal,
+    own_per_night: ownPerNight,       // frozen basis (owner's own price/night)
+    price_multiplier: multiplier,     // frozen multiplier (per-listing)
     platform_fee_pct: split.platformFeePct,
     buyer_fee_pct: split.buyerFeePct,
     seller_fee_pct: split.sellerFeePct,
     status: "listed",
     source: "hotel_owner",
-    metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal },
+    metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal, ownPerNight, multiplier },
     updated_at: new Date().toISOString(),
   };
 
@@ -289,12 +297,15 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* non-fatal — the unique index is the final gate */ }
 
-  // Regulated ask (Spine cost basis × admin markup) + frozen commission %
-  // (all admin-controlled, tamper-safe).
+  // v355 — ask = the block's own cost/night × the resale multiplier (admin
+  // default, or a per-listing override). The owner's own price/night = the
+  // block's frozen buy cost ÷ nights. Frozen fees + basis (tamper-safe).
   const fee = await resolveB2bFeeConfig();
   const blockNights = Math.max(1, Number(block.nights) || 1);
-  const wholesalePerNight = Math.round((Number(block.buy_total) || 0) / blockNights);
-  const askPerNight = regulatedB2bAskPerNight(wholesalePerNight, fee.regulatedMarkupPct);
+  const ownPerNight = Math.round((Number(block.buy_total) || 0) / blockNights);
+  const multiplier = Number.isFinite(Number(body?.priceMultiplier)) && Number(body?.priceMultiplier) >= 1 && Number(body?.priceMultiplier) <= 20
+    ? Number(body.priceMultiplier) : fee.resaleMultiplier;
+  const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
   const split = b2bTradeSplit({
     askPerNight,
     nights: Number(block.nights),
@@ -316,11 +327,13 @@ export async function POST(req: NextRequest) {
     ask_per_night: split.askPerNight,
     ask_total: split.askTotal,
     buy_total: split.buyTotal,
+    own_per_night: ownPerNight,       // frozen basis (owner's own price/night)
+    price_multiplier: multiplier,     // frozen multiplier (per-listing)
     platform_fee_pct: split.platformFeePct,
     buyer_fee_pct: split.buyerFeePct,
     seller_fee_pct: split.sellerFeePct,
     status: "listed",
-    metadata: { listedAt: new Date().toISOString() },
+    metadata: { listedAt: new Date().toISOString(), ownPerNight, multiplier },
     updated_at: new Date().toISOString(),
   };
 

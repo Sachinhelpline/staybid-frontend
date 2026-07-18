@@ -102,7 +102,34 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v352, Circle "Model 2" — city fee at checkout, not pre-activation)
+## Current production state (v355, Circle "Model 2" — resale = own-price × multiplier + premium browse/tour)
+- **Resale price = the owner's OWN price/night × a multiplier (v355), NOT a Spine markup.** The rule:
+  an investor who owns a room at (e.g.) ₹30k/month owns it at ₹1,000/day → StayBid lists it for B2B
+  sale at **2× that own price** (₹2,000/day). `sell/night = round(ownPerNight × multiplier)`, where
+  ownPerNight = the owner's real per-night acquisition cost (Circle inventory = `monthly_rate ÷ 30`;
+  hotel-owner supply = Spine wholesale cost). NEW `resaleAskPerNight(ownPerNight, multiplier)` in
+  `lib/b2b/engine.ts` (`B2B_RESALE_MULTIPLIER_DEFAULT=2`); legacy `regulatedB2bAskPerNight` now delegates
+  to it (markup 100% == 2×). The multiplier is **admin-global + per-listing overridable + future-dynamic**:
+  `b2b_fee_config.resale_multiplier` (default 2, resolved via `resolveB2bFeeConfig().resaleMultiplier`)
+  ?? per-listing `b2b_listings.price_multiplier` (a body `priceMultiplier` on the listing-create paths).
+  Both listing branches + `/api/b2b/regulated-quote` freeze `own_per_night` + `price_multiplier` on the
+  row (tamper-safe; preview == charge == settlement — the split still reads the frozen `ask`). Admin edits
+  the multiplier in the `/admin/circle-inventory` fee card ("Resale ×", 1–20; POST `resaleMultiplier`,
+  which also keeps `regulated_markup_pct` in sync). Migration `2026-07-18-v355-b2b-resale-multiplier.sql`
+  (config `resale_multiplier` + listing `own_per_night`/`price_multiplier`) applied live. Round-trip
+  verified (9 demo rows: ask=own×2, ask_total=ask×nights, all double).
+- **Premium browse + room/property TOUR (v355):** `/circle/model2/browse` rebuilt — **All Cities** default
+  chip + per-city filter (counts), luxe image cards, a "how it works" step strip + KPI chips, and a full
+  **room/property tour** modal (image gallery from `metadata.room_images`+`prop_images`, amenities chips,
+  capacity/stars, description, dates, and a price breakdown: own/night → ×2 → sell/night → you pay). An
+  investor goes through the room like a guest before buying. Basket/checkout money path unchanged.
+- **Demo reseed (v355):** the 6 old Spine-priced demo listings replaced by 9 own-price×2 listings across
+  Dehradun/Dhanaulti/Manali/Mussoorie/Rishikesh on real StayBid hotels (purchasable via the hotel_owner
+  checkout), each frozen `own_per_night`/`price_multiplier=2` + rich tour metadata (real room images,
+  amenities, capacity, description). `metadata.demo=true`, `seller_user_id='demo_seller_circle'`.
+  `migrations/2026-07-18-v355-demo-b2b-resale-ownprice.sql`. e.g. Dhanaulti ₹1,000 own → ₹2,000 sell.
+
+## Legacy state (v352, Circle "Model 2" — city fee at checkout, not pre-activation)
 - **City access is now PAY-AT-CHECKOUT (v352), not a pre-gate:** the FULL inventory is browsable from
   the start (no "unlock a city first" block). `/circle/model2/browse` shows all supply cities + all
   listings; the per-city ₹access fee is ADDED to the basket/single-buy total ONLY for the cities the
@@ -245,8 +272,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v164` (v352 city fee at checkout).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v352. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v167` (v355 own-price×mult + tour).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v355. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
