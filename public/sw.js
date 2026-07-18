@@ -504,7 +504,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // journey: property browse → property/room tour with live availability calendar
 // (pick your own nights) + trading panel (buy price vs ADR/low/high market) →
 // build bundle → review → pay. Drops stale cached browse.
-const HTML_CACHE = 'staybid-html-v168';
+// v357 — HTML_CACHE bump (v168 -> v169). Model 2 rebuilt to Model-1 parity:
+// real routes (browse → /circle/model2/[id] full property tour → review page),
+// Model-2 step-dock, clean check-in→check-out range calendar (all released
+// nights available), no internal 2×/own-price shown to the buyer. Drops stale
+// cached Model-2 pages.
+const HTML_CACHE = 'staybid-html-v169';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
