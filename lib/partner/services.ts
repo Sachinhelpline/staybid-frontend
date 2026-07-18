@@ -24,7 +24,10 @@ export const SUBSCRIPTION_SERVICES = [
 // (grantModel1/3/4Service) purely as an enrollment marker — real Circle access
 // stays ownership-based (hotel_room_units.owner_user_id /
 // inventory_blocks.investor_user_id). Listed here only for recognition + labels.
-export const CIRCLE_SERVICES = ["circle_model1", "circle_model3", "circle_model4"] as const;
+// v346 — Model 3 + Model 4 merged into a single "Model 2" (Multi-City Inventory
+// Bundle). New grants write circle_model2; circle_model3/circle_model4 stay
+// recognized for any legacy rows (still free markers, never gate access).
+export const CIRCLE_SERVICES = ["circle_model1", "circle_model2", "circle_model3", "circle_model4"] as const;
 
 export const SERVICE_LABEL: Record<string, string> = {
   flash:        "Flash Deals",
@@ -40,9 +43,11 @@ export const SERVICE_LABEL: Record<string, string> = {
   staff:        "Staff & Roles",
   verification: "Verification",
   // v344 — M5: Circle per-model enrollment markers (free).
+  // v346 — Model 3 + 4 merged into Model 2; old keys relabelled as legacy.
   circle_model1: "Circle · Model 1 (Revenue Share)",
-  circle_model3: "Circle · Model 3 (Pre-buy Inventory)",
-  circle_model4: "Circle · Model 4 (B2B Exchange)",
+  circle_model2: "Circle · Model 2 (Inventory Bundle)",
+  circle_model3: "Circle · Model 2 (legacy pre-buy)",
+  circle_model4: "Circle · Model 2 (legacy exchange)",
 };
 
 export function isDefaultService(key: string): boolean {

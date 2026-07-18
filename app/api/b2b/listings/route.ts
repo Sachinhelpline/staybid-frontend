@@ -21,7 +21,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
-import { b2bTradeSplit, isValidAskPerNight, B2B_FEE_PCT_DEFAULT } from "@/lib/b2b/engine";
+import { b2bTradeSplit, isValidAskPerNight } from "@/lib/b2b/engine";
+import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 import { unitsFreeForRange } from "@/lib/availability";
@@ -99,7 +100,8 @@ export async function GET(req: NextRequest) {
       const split = b2bTradeSplit({
         askPerNight: Number(l.ask_per_night),
         nights: Number(l.nights),
-        feePct: Number(l.platform_fee_pct),
+        buyerFeePct: Number(l.buyer_fee_pct),
+        sellerFeePct: Number(l.seller_fee_pct),
         buyTotal: Number(l.buy_total),
       });
       return {
@@ -189,11 +191,13 @@ async function createHotelOwnerListing(
     return NextResponse.json({ error: "Couldn't price these nights right now — try again." }, { status: 422 });
   }
 
-  // Freeze the platform fee % server-side. Ask is seller-set (own goods).
+  // Freeze BOTH commission % server-side (admin-controlled). Ask is seller-set.
+  const fee = await resolveB2bFeeConfig();
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
-    feePct: B2B_FEE_PCT_DEFAULT,
+    buyerFeePct: fee.buyerFeePct,
+    sellerFeePct: fee.sellerFeePct,
     buyTotal: quote.buyTotal,
   });
 
@@ -211,6 +215,8 @@ async function createHotelOwnerListing(
     ask_total: split.askTotal,
     buy_total: split.buyTotal,
     platform_fee_pct: split.platformFeePct,
+    buyer_fee_pct: split.buyerFeePct,
+    seller_fee_pct: split.sellerFeePct,
     status: "listed",
     source: "hotel_owner",
     metadata: { listedAt: new Date().toISOString(), spineBuyTotal: quote.buyTotal },
@@ -286,11 +292,13 @@ export async function POST(req: NextRequest) {
     }
   } catch { /* non-fatal — the unique index is the final gate */ }
 
-  // Freeze the platform fee % server-side (tamper-safe). The ask is seller-set.
+  // Freeze BOTH commission % server-side (tamper-safe). The ask is seller-set.
+  const fee = await resolveB2bFeeConfig();
   const split = b2bTradeSplit({
     askPerNight,
     nights: Number(block.nights),
-    feePct: B2B_FEE_PCT_DEFAULT,
+    buyerFeePct: fee.buyerFeePct,
+    sellerFeePct: fee.sellerFeePct,
     buyTotal: Number(block.buy_total),
   });
 
@@ -308,6 +316,8 @@ export async function POST(req: NextRequest) {
     ask_total: split.askTotal,
     buy_total: split.buyTotal,
     platform_fee_pct: split.platformFeePct,
+    buyer_fee_pct: split.buyerFeePct,
+    seller_fee_pct: split.sellerFeePct,
     status: "listed",
     metadata: { listedAt: new Date().toISOString() },
     updated_at: new Date().toISOString(),

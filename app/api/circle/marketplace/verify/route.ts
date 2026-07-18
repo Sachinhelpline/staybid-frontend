@@ -90,11 +90,11 @@ async function grantModel3Service(hotelId: string, grantedBy: string): Promise<v
       body: JSON.stringify({
         id: genId("svc"),
         hotel_id: hotelId,
-        service_key: "circle_model3",
+        service_key: "circle_model2",
         status: "active",
         access_type: "free",
         granted_by: grantedBy,
-        note: "Circle Model-3 pre-buy investor",
+        note: "Circle Model-2 inventory investor (pre-buy)",
         updated_at: new Date().toISOString(),
       }),
     });

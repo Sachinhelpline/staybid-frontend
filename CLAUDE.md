@@ -102,7 +102,26 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v345, Circle Marketplace M6 shipped — redesign COMPLETE)
+## Current production state (v347, Circle "Model 2" rename + dual B2B fee)
+- **Model 2 rebrand (v346):** the old Model 3 (pre-buy) + Model 4 (B2B exchange) are now ONE
+  **"Model 2 — Multi-City Inventory Bundle"**. Hub shows 2 model cards (Model 1 + Model 2); canonical
+  `/circle/model2` route (re-exports the pre-buy flow); `/circle/model3` + `/circle/model4` stay live,
+  rebranded, cross-linking. Service key `circle_model2` (verify grants write it; `circle_model3/4`
+  kept as legacy labels). All user-visible "Model 3/4" → "Model 2"; internal phase-history comments
+  (C1/D2/M4/vNNN) left as the audit trail.
+- **Dual B2B commission (v347) — LIVE MONEY:** `b2bTradeSplit` is now DUAL-SIDED. Buyer is charged
+  `buyerPays = askTotal + buyerFee`; seller receives `sellerNet = askTotal − sellerFee`; StayBid keeps
+  `platformFee = buyerFee + sellerFee`. Both % are ADMIN-CONTROLLED via `b2b_fee_config` singleton
+  (`lib/b2b/fee-config-store.ts` `resolveB2bFeeConfig`, 60s cache; default 5%/5%), edited at
+  `/api/admin/b2b-fee` + the `/admin/circle-inventory` fee card. The two % are FROZEN onto each
+  `b2b_listings` row at list time (`buyer_fee_pct`/`seller_fee_pct`) — a later admin change only
+  re-prices NEW listings (tamper-safe). Checkout charges `split.buyerPays` (NOT askTotal) and stamps
+  `buyer_fee/seller_fee/buyer_pays` on `b2b_trades`; verify settlement `gross_amount = buyer_pays`.
+  Migration `2026-07-18-v347-b2b-dual-fee.sql` (config table + `b2b_listings`/`b2b_trades` fee columns)
+  applied live. Round-trip verified (0 leftover). Legacy `B2B_FEE_PCT_DEFAULT=8` retired in favour of
+  `B2B_BUYER_FEE_PCT_DEFAULT`/`B2B_SELLER_FEE_PCT_DEFAULT=5`.
+
+### Earlier — Circle Marketplace redesign M0–M6 (COMPLETE)
 - **Live version chain:** Circle Marketplace Redesign M0 (v339) → M1 (v340) → M2 (v341) →
   M3 (v342) → M4 (v343) → M5 (v344) → **M6 (v345) ✅ (redesign complete)**. Branch this session:
   `claude/circle-m4-hotel-owner-b2b-vaei3q`.
@@ -155,9 +174,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v157` (M6 bumped it for
-  the new `/circle/me` sections; M5 skipped — server + client-chunk only).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v345. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v159` (v347 dual-fee UI).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v347. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
