@@ -486,7 +486,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // new /circle/model2/browse (per-city released-inventory browse + multi-select
 // basket + multi-city bundle checkout in ONE payment). Hub Model 2 card now
 // routes here. Bump drops stale cached /circle markup.
-const HTML_CACHE = 'staybid-html-v162';
+// v351 — HTML_CACHE bump (v162 -> v163). Model 2 'My Selling Inventory' on
+// /circle/me: owned blocks + sell-through channels (StayBid feed / B2B exchange /
+// OTA Channel Manager / direct booking link). Drops stale cached /circle/me.
+const HTML_CACHE = 'staybid-html-v163';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

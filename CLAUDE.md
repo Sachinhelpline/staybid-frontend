@@ -102,7 +102,19 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v350, Circle "Model 2" — + multi-select basket / multi-city bundle)
+## Current production state (v351, Circle "Model 2" COMPLETE — 6 phases shipped)
+- **My Selling Inventory + sell-through channels (v351):** `/circle/me` "Inventory Blocks" section is
+  now **"My Selling Inventory"** — the buyer's owned room-nights with the ss3 sell-through channels per
+  owned/listed block: 🔗 **Direct** booking link (client-side copy of `/hotels/<id>?checkIn=&checkOut=`),
+  🏠 **StayBid** feed + ⇄ **B2B exchange** (→ `/partner/dashboard`), 🌐 **your OTA** (→
+  `/partner/dashboard?tab=channels` Channel Manager). UI-only — no migration, no new money path (the
+  actual list/sell actions live on the existing partner surfaces). Completes the deck's "Your inventory.
+  Your strategy. Your growth."
+- **Model 2 redesign COMPLETE (6 phases):** P1 rename/merge (v346) · P2 dual 5%+5% fee (v347) · P3
+  ₹999/city access (v348) · P4 regulated Spine pricing (v349) · P5 basket/multi-city bundle (v350) ·
+  P6 My Selling Inventory (v351). All merged to main.
+
+## Earlier state (v350, Circle "Model 2" — + multi-select basket / multi-city bundle)
 - **Basket / multi-city bundle (v350) — LIVE MONEY:** the buy side of ss3 — browse owner-released
   listings per city, multi-select into a basket (across cities), and buy them ALL in ONE payment.
   `/circle/model2/browse` (customer `sb_token`): city chips (unlocked ∪ supply cities; locked cities
@@ -217,8 +229,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v162` (v350 basket).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v350. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v163` (v351 selling inventory).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v351. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

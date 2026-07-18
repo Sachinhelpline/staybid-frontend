@@ -53,6 +53,8 @@ export default function CircleMePage() {
   const [newCity, setNewCity] = useState("");
   const [cityBusy, setCityBusy] = useState(false);
   const [cityMsg, setCityMsg] = useState("");
+  // v351 — My Selling Inventory: copy a direct booking link per block.
+  const [copiedId, setCopiedId] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -125,6 +127,16 @@ export default function CircleMePage() {
       .then((r) => r.json())
       .then((d) => { if (d && Array.isArray(d.cities)) setCityAccess({ cities: d.cities, price: Number(d.price) || 999 }); })
       .catch(() => {});
+  }
+
+  // v351 — Direct channel: copy a shareable booking link for a block's nights.
+  function copyDirect(b: any) {
+    try {
+      const from = String(b.date_from).slice(0, 10);
+      const to = String(b.date_to).slice(0, 10);
+      const url = `${window.location.origin}/hotels/${b.hotel_id}?checkIn=${from}&checkOut=${to}`;
+      navigator.clipboard?.writeText(url).then(() => { setCopiedId(b.id); setTimeout(() => setCopiedId(""), 1800); }).catch(() => {});
+    } catch { /* clipboard unavailable */ }
   }
 
   const serverKpis = data?.kpis || {};
@@ -360,27 +372,49 @@ export default function CircleMePage() {
                   </div>
                 </div>
 
-                {/* Inventory blocks (Model 3/4). */}
+                {/* v351 — My Selling Inventory (owned blocks) + sell-through channels. */}
                 {blocks.length > 0 && (
                   <div>
-                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Inventory Blocks <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
-                    <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_RESALE_RISK_NOTE}</p>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>My Selling Inventory <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
+                    <p style={{ fontSize: ".72rem", lineHeight: 1.5, color: "rgba(74,56,32,.6)", margin: "4px 0 0" }}>
+                      The room-nights you own — sell them <b>your way</b>: 🏠 on the StayBid guest feed, ⇄ on the B2B exchange, 🌐 through your own OTA listings (Channel Manager), or 🔗 a direct booking link you share.
+                    </p>
+                    <p style={{ fontSize: ".66rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "2px 0 0" }}>{CIRCLE_RESALE_RISK_NOTE}</p>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                       {blocks.map((b) => {
                         const t = tonePill(String(b.status));
+                        const sellable = ["owned", "listed"].includes(String(b.status));
                         return (
-                          <div key={b.id} className="sbc-panel" style={{ padding: 14, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                            <div style={{ minWidth: 0 }}>
-                              <span style={{ fontSize: ".62rem", fontWeight: 800, letterSpacing: ".06em", padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(b.status).replace(/_/g, " ")}</span>
-                              <div style={{ marginTop: 6, fontWeight: 700, color: "var(--sbc-coffee)", fontSize: ".9rem" }}>
-                                {b.hotel_name || "Property"} {b.unit_number ? `· #${b.unit_number}` : ""}
+                          <div key={b.id} className="sbc-panel" style={{ padding: 14 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                              <div style={{ minWidth: 0 }}>
+                                <span style={{ fontSize: ".62rem", fontWeight: 800, letterSpacing: ".06em", padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(b.status).replace(/_/g, " ")}</span>
+                                <div style={{ marginTop: 6, fontWeight: 700, color: "var(--sbc-coffee)", fontSize: ".9rem" }}>
+                                  {b.hotel_name || "Property"} {b.unit_number ? `· #${b.unit_number}` : ""}
+                                </div>
+                                <div style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{b.date_from} → {b.date_to} · {b.nights}n</div>
                               </div>
-                              <div style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{b.date_from} → {b.date_to} · {b.nights}n</div>
+                              <div style={{ textAlign: "right" }}>
+                                <b style={{ color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(b.buy_total)}</b>
+                                <div style={{ fontSize: ".66rem", color: "rgba(74,56,32,.55)" }}>at cost{b.resale_price_per_night ? ` · resale ${fmtINR(b.resale_price_per_night)}/n` : ""}</div>
+                              </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              <b style={{ color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(b.buy_total)}</b>
-                              <div style={{ fontSize: ".66rem", color: "rgba(74,56,32,.55)" }}>at cost{b.resale_price_per_night ? ` · resale ${fmtINR(b.resale_price_per_night)}/n` : ""}</div>
-                            </div>
+                            {sellable && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                                <button onClick={() => copyDirect(b)}
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
+                                  {copiedId === b.id ? "🔗 Copied!" : "🔗 Direct link"}
+                                </button>
+                                <Link href="/partner/dashboard"
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)" }}>
+                                  🏠 Sell on StayBid / ⇄ exchange
+                                </Link>
+                                <Link href="/partner/dashboard?tab=channels"
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)" }}>
+                                  🌐 Your OTA (Channel Manager)
+                                </Link>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
