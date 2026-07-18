@@ -121,7 +121,7 @@ export default function Model2BrowsePage() {
         <div className="sbc-ms-eyebrow"><span className="sbc-ms-model">Model 2</span><span className="sbc-ms-tag" style={{ color: coffee }}>Inventory Bundle · Browse</span></div>
         <h1 className="sbc-ms-title" style={{ color: coffee }}>Buy released inventory</h1>
         <p className="sbc-ms-sub" style={{ color: "rgba(74,56,32,.72)" }}>
-          Browse the full inventory, add owner-released room-nights to your basket across cities, and buy them together at StayBid-regulated prices. A one-time ₹{accessPrice} city-access fee is added at checkout only for the cities your basket touches (lifetime — you keep them).
+          Browse the full inventory, add owner-released room-nights to your basket across cities, and buy them together at StayBid-regulated prices (listed at ~2× the owner's buy cost — margin for the seller, a clear price for you). A one-time ₹{accessPrice} city-access fee is added at checkout only for the cities your basket touches (lifetime — you keep them).
         </p>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "6px 0 4px" }}>
           <Link href="/circle/model2" style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--sbc-gold-deep)" }}>Pre-buy StayBid-operated rooms →</Link>

@@ -55,9 +55,10 @@ export const MIN_B2B_ASK_PER_NIGHT = 1;
 export const MAX_B2B_ASK_PER_NIGHT = 1_000_000;
 
 // v349 — Model 2 is REGULATED: the B2B ask is NOT a free seller input, it's the
-// Spine wholesale floor + an admin-controlled markup. Default markup fallback
-// when the config table is unreachable.
-export const B2B_REGULATED_MARKUP_PCT_DEFAULT = 20;
+// Spine wholesale floor + an admin-controlled markup. v354 — the rule is now
+// "list at DOUBLE the purchase price" (owner paid 1k/day → sell at 2k/day), so
+// the default markup is 100% (= 2×). Admin-adjustable; this is the fallback.
+export const B2B_REGULATED_MARKUP_PCT_DEFAULT = 100;
 
 /**
  * The StayBid-regulated B2B ask/night = wholesale/night × (1 + markup%).
