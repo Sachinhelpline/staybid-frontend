@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { decodeJwt } from "@/lib/sb-server";
-import { b2bTradeSplit, regulatedB2bAskPerNight } from "@/lib/b2b/engine";
+import { b2bTradeSplit, resaleAskPerNight } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
@@ -33,8 +33,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Couldn't price these nights right now." }, { status: 422 });
   }
 
+  // v355 — preview the resale price = own price/night × multiplier, so the
+  // seller sees the exact listed price BEFORE listing (preview == listed price).
   const fee = await resolveB2bFeeConfig();
-  const askPerNight = regulatedB2bAskPerNight(quote.avgBuyPerNight, fee.regulatedMarkupPct);
+  const ownPerNight = quote.avgBuyPerNight;
+  const multiplier = Number.isFinite(Number(sp.get("mult"))) && Number(sp.get("mult")) >= 1 && Number(sp.get("mult")) <= 20
+    ? Number(sp.get("mult")) : fee.resaleMultiplier;
+  const askPerNight = resaleAskPerNight(ownPerNight, multiplier);
   const split = b2bTradeSplit({
     askPerNight,
     nights: quote.nights,
@@ -46,6 +51,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     regulatedMarkupPct: fee.regulatedMarkupPct,
+    resaleMultiplier: multiplier,
+    ownPerNight,
     askPerNight: split.askPerNight,
     askTotal: split.askTotal,
     nights: split.nights,

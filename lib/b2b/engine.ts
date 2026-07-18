@@ -54,22 +54,58 @@ export const B2B_FEE_PCT_DEFAULT = 8;
 export const MIN_B2B_ASK_PER_NIGHT = 1;
 export const MAX_B2B_ASK_PER_NIGHT = 1_000_000;
 
-// v349 — Model 2 is REGULATED: the B2B ask is NOT a free seller input, it's the
-// Spine wholesale floor + an admin-controlled markup. v354 — the rule is now
-// "list at DOUBLE the purchase price" (owner paid 1k/day → sell at 2k/day), so
-// the default markup is 100% (= 2×). Admin-adjustable; this is the fallback.
+// v355 — Model 2 is REGULATED and the price rule is now expressed as a clean
+// MULTIPLIER on the owner's OWN price (their acquisition cost), NOT a Spine
+// markup %. The rule the founder set: an investor who owns a room at (say)
+// ₹30k/month owns it at ₹1,000/day — so StayBid lists it for B2B sale at DOUBLE
+// that own price (₹2,000/day). "Double" is the default multiplier (2×), and it
+// is admin-controlled AND per-listing overridable AND future-dynamic:
+//   sell/night = round(ownPerNight × multiplier)
+// where ownPerNight is the owner's real per-night own price (for Circle
+// inventory = monthly_rate ÷ 30; for a hotel-owner supply listing = the Spine
+// wholesale cost). The multiplier resolves as: per-listing override ?? global
+// admin default (`b2b_fee_config.resale_multiplier`) ?? this fallback.
+export const B2B_RESALE_MULTIPLIER_DEFAULT = 2;
+// Legacy markup default kept only so back-compat callers of the old markup fn
+// still resolve to the same 2× price (markup 100% == multiplier 2).
 export const B2B_REGULATED_MARKUP_PCT_DEFAULT = 100;
 
+// A multiplier is bounded generously — 1× (list at cost, no margin) up to 20×.
+const clampMultiplier = (m: any, fallback: number) => {
+  const n = Number(m);
+  return Number.isFinite(n) && n >= 1 && n <= 20 ? n : fallback;
+};
+
 /**
- * The StayBid-regulated B2B ask/night = wholesale/night × (1 + markup%).
- * Bounded to the ask guardrails. Pure — the listing endpoint + the client
- * preview share it so the regulated price NEVER drifts.
+ * The StayBid-regulated B2B ask/night = ownPerNight × multiplier (default 2×).
+ * Bounded to the ask guardrails. Pure — the listing endpoint, the demo seed, and
+ * the client preview all share it so the regulated price NEVER drifts.
+ */
+export function resaleAskPerNight(ownPerNight: number, multiplier?: number): number {
+  const own = Math.max(0, Math.round(Number(ownPerNight) || 0));
+  const m = clampMultiplier(multiplier, B2B_RESALE_MULTIPLIER_DEFAULT);
+  const ask = Math.round(own * m);
+  return Math.min(MAX_B2B_ASK_PER_NIGHT, Math.max(MIN_B2B_ASK_PER_NIGHT, ask));
+}
+
+/** Convert an admin multiplier (2 = double) to the legacy markup % (100). */
+export function multiplierToMarkupPct(multiplier: number): number {
+  const m = clampMultiplier(multiplier, B2B_RESALE_MULTIPLIER_DEFAULT);
+  return Math.round((m - 1) * 100);
+}
+/** Convert a legacy markup % (100) back to a multiplier (2). */
+export function markupPctToMultiplier(markupPct: number): number {
+  const p = Number.isFinite(Number(markupPct)) && Number(markupPct) >= 0 ? Number(markupPct) : B2B_REGULATED_MARKUP_PCT_DEFAULT;
+  return clampMultiplier(1 + p / 100, B2B_RESALE_MULTIPLIER_DEFAULT);
+}
+
+/**
+ * LEGACY — the old markup-% form of the regulated ask. Delegates to
+ * `resaleAskPerNight` so a wholesale × (1 + markup%) call yields the exact same
+ * price as ownPerNight × multiplier. Kept for any un-migrated caller.
  */
 export function regulatedB2bAskPerNight(wholesalePerNight: number, markupPct: number): number {
-  const w = Math.max(0, Math.round(Number(wholesalePerNight) || 0));
-  const m = Number.isFinite(Number(markupPct)) && Number(markupPct) >= 0 ? Number(markupPct) : B2B_REGULATED_MARKUP_PCT_DEFAULT;
-  const ask = Math.round(w * (1 + m / 100));
-  return Math.min(MAX_B2B_ASK_PER_NIGHT, Math.max(MIN_B2B_ASK_PER_NIGHT, ask));
+  return resaleAskPerNight(wholesalePerNight, markupPctToMultiplier(markupPct));
 }
 
 const round0 = (n: number) => Math.round(Number(n) || 0);

@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
 
   let rows = listings.map((l) => {
     const meta = hotelMeta[l.hotel_id] || { name: null, city: "" };
+    const md = l.metadata && typeof l.metadata === "object" ? l.metadata : {};
     const split = b2bTradeSplit({
       askPerNight: Number(l.ask_per_night),
       nights: Number(l.nights),
@@ -87,11 +88,14 @@ export async function GET(req: NextRequest) {
       sellerFeePct: Number(l.seller_fee_pct),
       buyTotal: Number(l.buy_total),
     });
+    // Display name/city come from the hotels table; for Circle-sourced listings
+    // (synthetic hotel_id) they live in metadata (title/city). `...l` already
+    // spreads own_per_night, price_multiplier + the full tour metadata.
     return {
       ...l,
       unit_number: unitNo[l.unit_id] || null,
-      hotel_name: meta.name,
-      hotel_city: meta.city,
+      hotel_name: meta.name || md.title || md.hotel_name || null,
+      hotel_city: meta.city || md.city || "",
       split,
     };
   });

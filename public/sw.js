@@ -497,8 +497,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // + demo released inventory seeded. Drops stale cached /circle/model2/browse.
 // v354 — HTML_CACHE bump (v165 -> v166). Model 2 resale price is now DOUBLE the
 // buy price (regulated markup default 100%): owner paid 1k/day -> lists at 2k/day.
-// Drops stale cached markup so the 2x copy + prices show.
-const HTML_CACHE = 'staybid-html-v166';
+// v355 — HTML_CACHE bump (v166 -> v167). Model 2 resale price = owner's OWN price
+// (monthly/30) x multiplier; new premium browse UI + room/property tour; admin
+// resale-multiplier control. Drops stale cached browse so the tour + prices show.
+const HTML_CACHE = 'staybid-html-v167';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

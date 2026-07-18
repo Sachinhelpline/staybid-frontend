@@ -708,7 +708,7 @@ export default function CircleInventoryTab({
                   className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
               </label>
               <div className="text-xs">
-                <span className="block mb-1 opacity-70">StayBid-regulated price · 2× your buy</span>
+                <span className="block mb-1 opacity-70">StayBid-regulated price · 2× your own price</span>
                 <div className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)", background: "var(--accent-soft)" }}>
                   {ownQuote ? <><b>{inr(ownQuote.askPerNight)}</b>/night · {inr(ownQuote.askTotal)} total</> : <span className="opacity-50">pick dates…</span>}
                 </div>
