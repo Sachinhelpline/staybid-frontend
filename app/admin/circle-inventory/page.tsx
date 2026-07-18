@@ -42,6 +42,8 @@ export default function AdminCircleInventory() {
   const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number; cityAccessPrice?: number; regulatedMarkupPct?: number; resaleMultiplier?: number } | null>(null);
   const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string; city: string; mult: string }>({ buyer: "", seller: "", city: "", mult: "" });
   const [feeBusy, setFeeBusy] = useState(false);
+  // v355 — per-listing resale multiplier drafts (keyed by listing id).
+  const [multDraft, setMultDraft] = useState<Record<string, string>>({});
 
   const headers = useCallback((): HeadersInit => ({
     "x-admin-token": typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "",
@@ -296,12 +298,17 @@ export default function AdminCircleInventory() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
                 <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
-                  {["Hotel · Unit", "Seller", "Dates", "Status", "Ask", "Cost", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}
+                  {["Hotel · Unit", "Seller", "Dates", "Status", "Own/n", "Resale ×", "Ask", "Cost", "Actions"].map((h) => <th key={h} style={th}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {shownListings.map((l) => {
                     const md = Number(l?.metadata?.markdownPct) || 0;
                     const c = STATUS_COLOR[l.status] || "#8A8FA8";
+                    const editable = ["draft", "listed"].includes(l.status);
+                    const nights = Math.max(1, Number(l.nights) || 1);
+                    const own = Number(l.own_per_night) || Math.round(Number(l.buy_total) / nights);
+                    const curMult = Number(l.price_multiplier) || (own ? Number(l.ask_per_night) / own : 0);
+                    const draft = multDraft[l.id] ?? (curMult ? String(curMult) : "2");
                     return (
                       <tr key={l.id}>
                         <td style={td}>
@@ -313,13 +320,30 @@ export default function AdminCircleInventory() {
                         <td style={td}>
                           <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${c}22`, color: c, border: `1px solid ${c}44`, textTransform: "capitalize" }}>{String(l.status).replace(/_/g, " ")}</span>
                         </td>
+                        <td style={{ ...td, color: "#8A8FA8" }}>{own ? inr(own) : "—"}</td>
+                        <td style={td}>
+                          {editable && own ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <input type="number" min={1} max={20} step={0.1} value={draft}
+                                onChange={(e) => setMultDraft((s) => ({ ...s, [l.id]: e.target.value }))}
+                                style={{ width: 52, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 7, padding: "4px 6px", fontFamily: "inherit", fontSize: 12 }} />
+                              <button
+                                disabled={busy === l.id || Number(draft) === curMult || !(Number(draft) >= 1 && Number(draft) <= 20)}
+                                title="Re-price this one listing at its own multiplier (own price/night × ×)."
+                                onClick={() => act({ action: "set_listing_multiplier", listingId: l.id, multiplier: Number(draft) }, l.id)}
+                                style={{ ...btn("#3D9CF5"), opacity: Number(draft) === curMult ? 0.45 : 1 }}>
+                                {busy === l.id ? "…" : "Apply"}
+                              </button>
+                            </div>
+                          ) : <span style={{ color: "#8A8FA8" }}>{curMult ? `${(Math.round(curMult * 100) / 100)}×` : "—"}</span>}
+                        </td>
                         <td style={td}>
                           {inr(l.ask_total)}
                           {md > 0 && <span style={{ color: "#FF4757", fontSize: 11, marginLeft: 4, fontWeight: 700 }}>−{md}%</span>}
                         </td>
                         <td style={{ ...td, color: "#8A8FA8" }}>{inr(l.buy_total)}</td>
                         <td style={td}>
-                          {["draft", "listed"].includes(l.status) ? (
+                          {editable ? (
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                               <button disabled={busy === l.id} onClick={() => act({ action: "expire_listing", listingId: l.id }, l.id, "Retire this listing (mark expired)? The seller keeps their pre-bought block.")} style={btn("#8A8FA8")}>{busy === l.id ? "…" : "Expire"}</button>
                               <button disabled={busy === l.id} onClick={() => act({ action: "cancel_listing", listingId: l.id }, l.id, "Cancel this listing? The seller keeps their pre-bought block.")} style={btn("#FF4757")}>{busy === l.id ? "…" : "Cancel"}</button>
