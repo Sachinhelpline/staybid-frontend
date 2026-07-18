@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
-import { hasCityAccess, normalizeCity } from "@/lib/circle/city-access";
+import { resolveActiveCities, cityAccessId, normalizeCity } from "@/lib/circle/city-access";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { assignFreeUnit } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
@@ -75,13 +75,15 @@ export async function POST(req: NextRequest) {
     if (isBuyer(l.seller_user_id)) return NextResponse.json({ error: "Your basket includes your own listing." }, { status: 409 });
     if (String(l.date_to).slice(0, 10) <= todayISO()) return NextResponse.json({ error: "One of these has already passed." }, { status: 409 });
   }
+  // v352 — NO pre-activation gate. City-access fees are ADDED to the total for
+  // whichever basket cities the buyer hasn't unlocked yet (one-time, lifetime);
+  // those accesses activate on verify with the same payment.
   const cities = Array.from(new Set(hotelIds.map((h) => cityByHotel[h]).filter(Boolean)));
-  for (const c of cities) {
-    if (!(await hasCityAccess(buyerIds, c))) {
-      const cfg = await resolveB2bFeeConfig();
-      return NextResponse.json({ error: `Unlock ${c} to buy inventory there.`, needCityAccess: true, city: c, price: cfg.cityAccessPrice }, { status: 403 });
-    }
-  }
+  const activeCities = await resolveActiveCities(buyerIds);
+  const newCities = cities.filter((c) => !activeCities.has(c));
+  const feeCfg = await resolveB2bFeeConfig();
+  const cityFeeEach = feeCfg.cityAccessPrice;
+  const cityFeeTotal = newCities.length * cityFeeEach;
 
   // Reserve inventory + freeze each split. Blocks minted interleaved so the next
   // item's assign sees them. On any failure the minted pending blocks expire.
@@ -156,7 +158,8 @@ export async function POST(req: NextRequest) {
     items.push({ listing, split, unitId: freeUnit.unitId, blockId: newBlockId, source: "hotel_owner", newBlockId });
   }
 
-  const total = items.reduce((s, it) => s + Number(it.split.buyerPays || 0), 0);
+  const invTotal = items.reduce((s, it) => s + Number(it.split.buyerPays || 0), 0);
+  const total = invTotal + cityFeeTotal;
   if (total <= 0) return NextResponse.json({ error: "Basket total is empty." }, { status: 422 });
 
   // ONE Razorpay order for the whole basket.
@@ -170,6 +173,19 @@ export async function POST(req: NextRequest) {
     rzp = await orderRes.json().catch(() => ({}));
     if (!orderRes.ok || !rzp?.id) return NextResponse.json({ error: rzp?.error || "Could not start payment." }, { status: 502 });
   } catch { return NextResponse.json({ error: "Payment gateway unreachable." }, { status: 502 }); }
+
+  // v352 — pending city-access rows for the new cities in this basket (activated
+  // on verify with the same payment). Deterministic id → re-tries reuse the row.
+  for (const c of newCities) {
+    await fetch(`${SB_URL}/rest/v1/circle_city_access?on_conflict=id`, {
+      method: "POST", headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        id: cityAccessId(String(userId), c), user_id: String(userId), city: c,
+        status: "pending_payment", amount: cityFeeEach, razorpay_order_id: rzp.id,
+        updated_at: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+  }
 
   // Stamp the order onto the minted blocks + write all pending trades.
   const out: any[] = [];
@@ -205,6 +221,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true, keyId: PUBLIC_KEY_ID,
     order: { id: rzp.id, amount: rzp.amount, currency: rzp.currency || "INR" },
-    total, items: out,
+    total, inventoryTotal: invTotal, cityFeeTotal, newCities, items: out,
   });
 }

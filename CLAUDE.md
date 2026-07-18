@@ -102,7 +102,23 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v351, Circle "Model 2" COMPLETE — 6 phases shipped)
+## Current production state (v352, Circle "Model 2" — city fee at checkout, not pre-activation)
+- **City access is now PAY-AT-CHECKOUT (v352), not a pre-gate:** the FULL inventory is browsable from
+  the start (no "unlock a city first" block). `/circle/model2/browse` shows all supply cities + all
+  listings; the per-city ₹access fee is ADDED to the basket/single-buy total ONLY for the cities the
+  basket touches that the buyer hasn't unlocked yet, and those cities activate on VERIFY with the same
+  payment (lifetime). `basket/checkout` computes `newCities` (`resolveActiveCities` diff), adds
+  `newCities.length × cityAccessPrice` to the order + mints pending `circle_city_access` rows on the
+  order; `basket/verify` flips them active. The single `b2b/listings/[id]/checkout` no longer 403s
+  `needCityAccess` — it folds `cityFee` into `buyerPays` + mints a pending access row; its verify
+  activates it. `/circle/me` City Access card stays as OPTIONAL pre-unlock. Round-trip verified
+  (order = inventory + ₹999 city, city active on same payment; 0 leftover).
+- **Browse contrast fix (v352):** `.sbc-ms-title`/`.sbc-ms-sub`/`.sbc-ms-note` are cream (old dark
+  theme) but `.sbc-home` is now the light cozy canvas → the browse title/subtitle were invisible.
+  Fixed with explicit dark colors (`var(--sbc-coffee)` / `rgba(74,56,32,…)`) inline on that page.
+  (Same latent bug exists on `/circle/model3` + `/circle/model4` via CircleStepShell — not touched here.)
+
+## Earlier — Circle "Model 2" COMPLETE (6 phases: v346–v351)
 - **My Selling Inventory + sell-through channels (v351):** `/circle/me` "Inventory Blocks" section is
   now **"My Selling Inventory"** — the buyer's owned room-nights with the ss3 sell-through channels per
   owned/listed block: 🔗 **Direct** booking link (client-side copy of `/hotels/<id>?checkIn=&checkOut=`),
@@ -229,8 +245,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v163` (v351 selling inventory).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v351. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v164` (v352 city fee at checkout).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v352. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

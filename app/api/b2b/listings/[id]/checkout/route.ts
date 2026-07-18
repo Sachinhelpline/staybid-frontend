@@ -18,7 +18,7 @@ import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server"
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
-import { hasCityAccess } from "@/lib/circle/city-access";
+import { hasCityAccess, normalizeCity, cityAccessId } from "@/lib/circle/city-access";
 import { assignFreeUnit } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
@@ -72,22 +72,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "These nights have already passed." }, { status: 409 });
   }
 
-  // v348 — Model 2 city-access gate: the buyer must have unlocked the listing's
-  // city (₹999 one-time lifetime) before they can buy inventory there.
+  // v352 — Model 2 city access: NO pre-activation block. If the buyer hasn't
+  // unlocked the listing's city, the one-time access fee is ADDED to this
+  // payment and the city activates on verify (lifetime). No blocking.
+  let cityToUnlock = "";
+  let cityFee = 0;
   try {
     const hr = await fetch(
       `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(String(listing.hotel_id))}&select=city`,
       { headers: SB_H },
     );
-    const city = String(((hr.ok ? await hr.json().catch(() => []) : [])?.[0]?.city) || "");
+    const city = normalizeCity(((hr.ok ? await hr.json().catch(() => []) : [])?.[0]?.city) || "");
     if (city && !(await hasCityAccess(buyerIds, city))) {
       const cfg = await resolveB2bFeeConfig();
-      return NextResponse.json(
-        { error: `Unlock ${city} to buy inventory there.`, needCityAccess: true, city, price: cfg.cityAccessPrice },
-        { status: 403 },
-      );
+      cityToUnlock = city;
+      cityFee = cfg.cityAccessPrice;
     }
-  } catch { /* fail open on lookup error — never block a real buyer on a hiccup */ }
+  } catch { /* fail open — never block a real buyer on a lookup hiccup */ }
 
   const isHotelOwner = String(listing.source) === "hotel_owner";
 
@@ -170,9 +171,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: split.buyerPays,
+        amount: split.buyerPays + cityFee,
         receipt: `cb2b_${listingId}`.slice(0, 40),
-        notes: { kind: "circle_b2b", listingId, source: String(listing.source || "investor_block"), buyerId: String(userId) },
+        notes: { kind: "circle_b2b", listingId, source: String(listing.source || "investor_block"), buyerId: String(userId), cityFee: String(cityFee) },
       }),
     });
     rzp = await orderRes.json().catch(() => ({}));
@@ -184,6 +185,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   } catch {
     return NextResponse.json({ error: "Payment gateway unreachable." }, { status: 502 });
+  }
+
+  // v352 — if this city needs unlocking, mint a pending city-access row on the
+  // same order (activates on verify with this one payment; lifetime).
+  if (cityToUnlock && cityFee > 0) {
+    await fetch(`${SB_URL}/rest/v1/circle_city_access?on_conflict=id`, {
+      method: "POST", headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        id: cityAccessId(String(userId), cityToUnlock), user_id: String(userId), city: cityToUnlock,
+        status: "pending_payment", amount: cityFee, razorpay_order_id: rzp.id,
+        updated_at: new Date().toISOString(),
+      }),
+    }).catch(() => {});
   }
 
   // ── M4 hotel_owner: mint a NEW buyer pending_payment inventory_block (the
@@ -308,5 +322,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     blockId: tradeBlockId,
     askTotal: split.askTotal,
     buyerPays: split.buyerPays,
+    cityFee,
+    cityToUnlock: cityToUnlock || null,
   });
 }

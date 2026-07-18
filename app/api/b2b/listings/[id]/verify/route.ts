@@ -303,6 +303,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     } catch { /* optional */ }
   }
 
+  // 6) v352 — activate any city-access row paid for on this same order (lifetime).
+  try {
+    await fetch(
+      `${SB_URL}/rest/v1/circle_city_access?razorpay_order_id=eq.${encodeURIComponent(rzpOrderId)}&status=eq.pending_payment&user_id=in.(${idsCsv})`,
+      {
+        method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+        body: JSON.stringify({ status: "active", razorpay_payment_id: paymentId, activated_at: nowIso, updated_at: nowIso }),
+      },
+    );
+  } catch { /* best-effort — the trade already settled */ }
+
   return NextResponse.json({
     ok: true,
     transferred,

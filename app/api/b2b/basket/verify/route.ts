@@ -156,5 +156,19 @@ export async function POST(req: NextRequest) {
     if (done) settled++;
   }
 
-  return NextResponse.json({ ok: true, settled, total: trades.length });
+  // v352 — activate any city-access rows paid for in this same basket order.
+  let citiesUnlocked = 0;
+  try {
+    const cr = await fetch(
+      `${SB_URL}/rest/v1/circle_city_access?razorpay_order_id=eq.${encodeURIComponent(rzpOrderId)}&status=eq.pending_payment&user_id=in.(${idsCsv})`,
+      {
+        method: "PATCH", headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({ status: "active", razorpay_payment_id: paymentId, activated_at: nowIso, updated_at: nowIso }),
+      },
+    );
+    const rows = cr.ok ? await cr.json().catch(() => []) : [];
+    citiesUnlocked = Array.isArray(rows) ? rows.length : 0;
+  } catch { /* best-effort — the trade settlement already succeeded */ }
+
+  return NextResponse.json({ ok: true, settled, total: trades.length, citiesUnlocked });
 }

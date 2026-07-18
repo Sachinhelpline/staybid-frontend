@@ -489,7 +489,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v351 — HTML_CACHE bump (v162 -> v163). Model 2 'My Selling Inventory' on
 // /circle/me: owned blocks + sell-through channels (StayBid feed / B2B exchange /
 // OTA Channel Manager / direct booking link). Drops stale cached /circle/me.
-const HTML_CACHE = 'staybid-html-v163';
+// v352 — HTML_CACHE bump (v163 -> v164). Model 2 browse: full inventory shown
+// upfront (no pre-activation gate); city-access fee is added at basket/single
+// checkout for new cities + readable title/subtitle colors. Drops stale markup.
+const HTML_CACHE = 'staybid-html-v164';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
