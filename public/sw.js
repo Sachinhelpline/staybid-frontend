@@ -463,7 +463,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // inventory on the exchange (partner "Pre-buy Inventory" tab gains a "List your
 // own inventory" form). Bumping HTML_CACHE drops the stale cached partner markup
 // so the new supply form shows on first warm visit.
-const HTML_CACHE = 'staybid-html-v156';
+// v345 — one-time HTML_CACHE bump (v156 -> v157). Circle Marketplace M6: unified
+// investor "My Circle" dashboard (/circle/me now aggregates Model 3/4 blocks +
+// B2B listings/trades + operated-hotel dashboard access + resale KPIs, with the
+// disclosure sweep). Bumping HTML_CACHE drops the stale cached /circle/me markup.
+const HTML_CACHE = 'staybid-html-v157';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

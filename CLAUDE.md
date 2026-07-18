@@ -102,9 +102,24 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v344, Circle Marketplace M5 shipped)
+## Current production state (v345, Circle Marketplace M6 shipped — redesign COMPLETE)
 - **Live version chain:** Circle Marketplace Redesign M0 (v339) → M1 (v340) → M2 (v341) →
-  M3 (v342) → M4 (v343) → **M5 (v344) ✅**. Branch this session: `claude/circle-m4-hotel-owner-b2b-vaei3q`.
+  M3 (v342) → M4 (v343) → M5 (v344) → **M6 (v345) ✅ (redesign complete)**. Branch this session:
+  `claude/circle-m4-hotel-owner-b2b-vaei3q`.
+- **Phase M6 (unified investor "My Circle" dashboard + disclosure sweep) — SHIPPED:** `/circle/me`
+  (was Model-1 bundles/payouts/locks only) now ALSO aggregates cross-model holdings via a NEW
+  additive read-only aggregator `app/api/circle/portfolio/route.ts` (customer `sb_token` → `decodeJwt`
+  → `resolveOwnerIdsCrossPool` — cross-pool so twin-id holdings are never missed; the pre-existing
+  `/api/circle/me` raw-`user.id` route is UNTOUCHED). The route fans out to `inventory_blocks`
+  (`investor_user_id`), `b2b_listings` (`seller_user_id`), `b2b_trades` (buyer+seller),
+  `hotel_room_units` (`owner_user_id` → operated hotels), side-loads hotel names + unit numbers, and
+  derives ACTUAL-only resale KPIs (`ownedBlocks/activeListings/inventoryValue/b2bNetEarned` etc.). New
+  `/circle/me` sections (gated on `hasMarketplace`): Pre-buy & Exchange KPI strip, Inventory Blocks
+  (Model 3/4), B2B Exchange (my listings + sold/bought trades), Dashboard Access (operated hotels →
+  `/partner/dashboard`). **Disclosure sweep:** new `CIRCLE_B2B_RESALE_NOTE` in `lib/circle/disclosure.ts`
+  (Model-4 goods-trade risk), new sections import the constants (`CIRCLE_RESALE_RISK_NOTE` +
+  `CIRCLE_B2B_RESALE_NOTE`), and the hero KPI relabelled "Returns Paid Out" → "Payouts Received" (never
+  "returns"). Read-only, no migration, no money mutation. Round-trip verified (0 leftover).
 - **Phase M5 (per-model service enrollment markers) — SHIPPED:** `circle_model1/3/4` are now
   formalized in the service catalog (`lib/partner/services.ts`: `CIRCLE_SERVICES` + `isCircleService`
   + `SERVICE_LABEL` entries) as FREE enrollment markers — deliberately NOT in `SUBSCRIPTION_SERVICES`
@@ -140,9 +155,9 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v156` (M5 skipped it —
-  server grant + client label map only, no HTML doc change).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v344. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v157` (M6 bumped it for
+  the new `/circle/me` sections; M5 skipped — server + client-chunk only).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v345. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
