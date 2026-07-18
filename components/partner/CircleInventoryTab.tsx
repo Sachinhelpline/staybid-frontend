@@ -469,7 +469,7 @@ export default function CircleInventoryTab({
     return (
       <div className="mt-6 rounded-2xl border border-dashed p-6 text-sm text-slate-500"
            style={{ borderColor: "var(--border-soft)" }}>
-        Pre-buy Inventory (Model 3) becomes available once you own rooms on this hotel.
+        Pre-buy Inventory (Model 2) becomes available once you own rooms on this hotel.
       </div>
     );
   }
@@ -478,7 +478,7 @@ export default function CircleInventoryTab({
     <div className="mt-8">
       <div className="mb-3">
         <h3 className="text-base font-semibold" style={{ color: "var(--text-base)" }}>
-          🧾 Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 3</span>
+          🧾 Pre-buy Inventory <span className="text-xs font-normal opacity-60">· Model 2</span>
         </h3>
         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
           Buy specific room-nights wholesale, then <b>list them on the guest feed</b> at your own resale
@@ -667,7 +667,7 @@ export default function CircleInventoryTab({
       <div className="mt-7">
         <div className="mb-2">
           <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-            ⇄ B2B Exchange <span className="text-xs font-normal opacity-60">· Model 4</span>
+            ⇄ B2B Exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
           </div>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
             Sell an <b>owned</b> block to another investor at your own B2B price — a faster exit than waiting
@@ -783,7 +783,7 @@ export default function CircleInventoryTab({
         <div className="mt-7">
           <div className="mb-2">
             <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-              🛒 Buy from the exchange <span className="text-xs font-normal opacity-60">· Model 4</span>
+              🛒 Buy from the exchange <span className="text-xs font-normal opacity-60">· Model 2</span>
             </div>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               Owned blocks other investors on this hotel have put up for sale — cheapest first. Buy one and it
@@ -824,7 +824,7 @@ export default function CircleInventoryTab({
         <div className="mt-7">
           <div className="mb-2">
             <div className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-              ⇄ Exchange trades <span className="text-xs font-normal opacity-60">· Model 4</span>
+              ⇄ Exchange trades <span className="text-xs font-normal opacity-60">· Model 2</span>
             </div>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               Blocks you bought from or sold to other investors on the exchange. Sold blocks pay out to the seller

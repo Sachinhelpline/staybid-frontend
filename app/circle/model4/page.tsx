@@ -175,8 +175,8 @@ export default function Model4Page() {
 
   return (
     <CircleStepShell
-      model="Model 4"
-      tag="Investor Exchange"
+      model="Model 2"
+      tag="Inventory Bundle · Exchange"
       title={titles[step].t}
       subtitle={titles[step].s}
       activeStep={step}
@@ -193,10 +193,10 @@ export default function Model4Page() {
               <div className="sbc-ms-empty-ic">⇄</div>
               <div className="sbc-ms-empty-h">The exchange is opening soon</div>
               <p className="sbc-ms-empty-p">
-                No live listings yet. Once investors start pre-buying inventory (Model 3), they can list
+                No live listings yet. Once investors start pre-buying inventory, they can list
                 it here for other members to buy.
               </p>
-              <a href="/circle/model3" className="sbc-ms-cta">Explore Model 3 pre-buy →</a>
+              <a href="/circle/model2" className="sbc-ms-cta">Explore Model 2 pre-buy →</a>
             </div>
           ) : (
             <>

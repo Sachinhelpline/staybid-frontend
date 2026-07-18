@@ -90,7 +90,7 @@ export default function AdminCircleInventory() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div>
           <h1 style={{ color: "#E8EAF0", fontSize: 24, fontWeight: 800, margin: 0, fontFamily: "Syne, sans-serif" }}>🧾 Circle Inventory</h1>
-          <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 3 pre-buy blocks + resale settlement · Model 4 exchange payouts</div>
+          <div style={{ color: "#8A8FA8", fontSize: 13, marginTop: 4 }}>Model 2 pre-buy blocks + resale settlement · exchange payouts</div>
         </div>
         <button onClick={load} disabled={loading}
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
@@ -160,7 +160,7 @@ export default function AdminCircleInventory() {
 
       {/* v333 — D3: Model 4 B2B exchange settlements owed to sellers */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>⇄ Exchange payouts owed to sellers <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 4</span></div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>⇄ Exchange payouts owed to sellers <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2</span></div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {owedSettlements.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding exchange payouts."}</div>
@@ -200,7 +200,7 @@ export default function AdminCircleInventory() {
       {/* v334 — D4: Model 4 B2B exchange listings oversight */}
       <div style={{ marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ Exchange listings <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 4 · seller-to-seller</span></div>
+          <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ Exchange listings <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· Model 2 · seller-to-seller</span></div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: "auto" }}>
             {B2B_FILTERS.map((f) => (
               <button key={f} onClick={() => setB2bFilter(f)}

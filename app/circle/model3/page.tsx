@@ -221,8 +221,8 @@ export default function Model3Page() {
 
   return (
     <CircleStepShell
-      model="Model 3"
-      tag="Pre-Buy Marketplace"
+      model="Model 2"
+      tag="Inventory Bundle · Pre-Buy"
       title={titles[step].t}
       subtitle={titles[step].s}
       activeStep={step}

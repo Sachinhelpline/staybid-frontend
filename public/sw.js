@@ -467,7 +467,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // investor "My Circle" dashboard (/circle/me now aggregates Model 3/4 blocks +
 // B2B listings/trades + operated-hotel dashboard access + resale KPIs, with the
 // disclosure sweep). Bumping HTML_CACHE drops the stale cached /circle/me markup.
-const HTML_CACHE = 'staybid-html-v157';
+// v346 — one-time HTML_CACHE bump (v157 -> v158). Circle "Model 2" rename/merge:
+// the old Model 3 (pre-buy) + Model 4 (exchange) are now a single "Model 2 —
+// Multi-City Inventory Bundle" (hub shows 2 model cards; /circle/model2 canonical
+// route; all visible labels rebranded). Bump drops stale cached /circle markup.
+const HTML_CACHE = 'staybid-html-v158';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

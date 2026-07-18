@@ -278,7 +278,7 @@ export default function CircleMePage() {
                 {/* Inventory blocks (Model 3/4). */}
                 {blocks.length > 0 && (
                   <div>
-                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Inventory Blocks <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 3 / 4</span></h2>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Inventory Blocks <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
                     <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_RESALE_RISK_NOTE}</p>
                     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                       {blocks.map((b) => {
@@ -306,7 +306,7 @@ export default function CircleMePage() {
                 {/* B2B exchange — my listings + trades. */}
                 {(b2bListings.length > 0 || asSeller.length > 0 || asBuyer.length > 0) && (
                   <div>
-                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 4</span></h2>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
                     <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_B2B_RESALE_NOTE}</p>
                     <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                       {b2bListings.map((l) => {
