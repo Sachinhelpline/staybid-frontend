@@ -492,7 +492,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // v352 — HTML_CACHE bump (v163 -> v164). Model 2 browse: full inventory shown
 // upfront (no pre-activation gate); city-access fee is added at basket/single
 // checkout for new cities + readable title/subtitle colors. Drops stale markup.
-const HTML_CACHE = 'staybid-html-v164';
+// v353 — HTML_CACHE bump (v164 -> v165). Model 2 browse derives city chips from
+// the actual live B2B listings (marketplace-summary never returned model4.cities);
+// + demo released inventory seeded. Drops stale cached /circle/model2/browse.
+// v354 — HTML_CACHE bump (v165 -> v166). Model 2 resale price is now DOUBLE the
+// buy price (regulated markup default 100%): owner paid 1k/day -> lists at 2k/day.
+// Drops stale cached markup so the 2x copy + prices show.
+const HTML_CACHE = 'staybid-html-v166';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

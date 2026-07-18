@@ -30,13 +30,27 @@ export default function Model2BrowsePage() {
   const { user, loading: authLoading } = useAuth();
   const [unlocked, setUnlocked] = useState<string[]>([]);     // cities already unlocked
   const [accessPrice, setAccessPrice] = useState<number>(999);
-  const [supplyCities, setSupplyCities] = useState<string[]>([]);
+  const [allListings, setAllListings] = useState<Listing[]>([]); // ALL live supply
   const [city, setCity] = useState<string>("");
-  const [listings, setListings] = useState<Listing[]>([]);
   const [basket, setBasket] = useState<Record<string, Listing>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const loadListings = useCallback(() => {
+    setLoading(true);
+    // No city param → the marketplace returns ALL live listings; we derive the
+    // city chips + filter client-side (the full inventory is browsable upfront).
+    fetch(`/api/b2b/marketplace`, { headers: { Authorization: `Bearer ${token()}` }, cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        const rows: Listing[] = Array.isArray(d?.listings) ? d.listings : [];
+        setAllListings(rows);
+        setCity((c) => c || norm(rows[0]?.hotel_city) || "");
+      })
+      .catch(() => setAllListings([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -45,27 +59,11 @@ export default function Model2BrowsePage() {
       .then((r) => r.json())
       .then((d) => { if (Array.isArray(d?.cities)) setUnlocked(d.cities.map(norm)); if (d?.price) setAccessPrice(Number(d.price) || 999); })
       .catch(() => {});
-    fetch("/api/circle/marketplace-summary")
-      .then((r) => r.json())
-      .then((d) => {
-        const list: string[] = Array.isArray(d?.model4?.cities) ? d.model4.cities.map(norm) : [];
-        setSupplyCities(list);
-        setCity((c) => c || list[0] || "");
-      })
-      .catch(() => {});
-  }, [user, authLoading, router]);
+    loadListings();
+  }, [user, authLoading, router, loadListings]);
 
-  const loadListings = useCallback((c: string) => {
-    if (!c) { setListings([]); return; }
-    setLoading(true);
-    fetch(`/api/b2b/marketplace?city=${encodeURIComponent(c)}`, { headers: { Authorization: `Bearer ${token()}` }, cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setListings(Array.isArray(d?.listings) ? d.listings : []))
-      .catch(() => setListings([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => { if (city) loadListings(city); }, [city, loadListings]);
+  // listings shown for the selected city (client-side filter of the full supply).
+  const listings = useMemo(() => allListings.filter((l) => norm(l.hotel_city) === norm(city)), [allListings, city]);
 
   const isUnlocked = (c: string) => unlocked.includes(norm(c));
   const inBasket = (id: string) => !!basket[id];
@@ -87,7 +85,7 @@ export default function Model2BrowsePage() {
         body: JSON.stringify({ listingIds: basketList.map((l) => l.id) }),
       });
       const cd = await cr.json().catch(() => ({}));
-      if (!cr.ok || !cd?.order?.id) { setMsg(cd?.error || "Couldn't start payment"); loadListings(city); return; }
+      if (!cr.ok || !cd?.order?.id) { setMsg(cd?.error || "Couldn't start payment"); loadListings(); return; }
 
       let pay: any;
       try {
@@ -107,11 +105,12 @@ export default function Model2BrowsePage() {
       setBasket({});
       // refresh unlocked cities (new ones just activated) + listings.
       fetch("/api/circle/city-access", { headers: { Authorization: `Bearer ${token()}` } }).then((r) => r.json()).then((d) => { if (Array.isArray(d?.cities)) setUnlocked(d.cities.map(norm)); }).catch(() => {});
-      loadListings(city);
+      loadListings();
     } catch { setMsg("Something went wrong"); }
     finally { setBusy(false); }
   }
 
+  const supplyCities = useMemo(() => Array.from(new Set(allListings.map((l) => norm(l.hotel_city)).filter(Boolean))), [allListings]);
   const allCityChips = Array.from(new Set([...supplyCities, ...unlocked]));
   const coffee = "var(--sbc-coffee)";
 
@@ -122,7 +121,7 @@ export default function Model2BrowsePage() {
         <div className="sbc-ms-eyebrow"><span className="sbc-ms-model">Model 2</span><span className="sbc-ms-tag" style={{ color: coffee }}>Inventory Bundle · Browse</span></div>
         <h1 className="sbc-ms-title" style={{ color: coffee }}>Buy released inventory</h1>
         <p className="sbc-ms-sub" style={{ color: "rgba(74,56,32,.72)" }}>
-          Browse the full inventory, add owner-released room-nights to your basket across cities, and buy them together at StayBid-regulated prices. A one-time ₹{accessPrice} city-access fee is added at checkout only for the cities your basket touches (lifetime — you keep them).
+          Browse the full inventory, add owner-released room-nights to your basket across cities, and buy them together at StayBid-regulated prices (listed at ~2× the owner's buy cost — margin for the seller, a clear price for you). A one-time ₹{accessPrice} city-access fee is added at checkout only for the cities your basket touches (lifetime — you keep them).
         </p>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "6px 0 4px" }}>
           <Link href="/circle/model2" style={{ fontSize: ".8rem", fontWeight: 700, color: "var(--sbc-gold-deep)" }}>Pre-buy StayBid-operated rooms →</Link>
