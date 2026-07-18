@@ -14,12 +14,33 @@ import {
   CIRCLE_PLANS, computeBundle, fmtINR,
   DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig, type PaymentPlanKey,
 } from "@/lib/circle/engine";
-import { CIRCLE_INCOME_DISCLOSURE, CIRCLE_PAYOUTS_LABEL } from "@/lib/circle/disclosure";
+import {
+  CIRCLE_INCOME_DISCLOSURE, CIRCLE_PAYOUTS_LABEL,
+  CIRCLE_RESALE_RISK_NOTE, CIRCLE_B2B_RESALE_NOTE,
+} from "@/lib/circle/disclosure";
+
+// v345 — M6: block/listing/trade status → tone pill (matches the partner tab).
+const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
+  owned:           { bg: "rgba(90,120,180,.16)", fg: "#3a5a94" },
+  listed:          { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
+  sold:            { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
+  completed:       { bg: "rgba(127,146,105,.16)", fg: "#3F5233" },
+  pending_payment: { bg: "rgba(201,166,107,.16)", fg: "var(--sbc-gold-deep)" },
+  draft:           { bg: "rgba(74,56,32,.10)", fg: "var(--sbc-coffee)" },
+  quoted:          { bg: "rgba(74,56,32,.10)", fg: "var(--sbc-coffee)" },
+  withdrawn:       { bg: "rgba(74,56,32,.10)", fg: "rgba(74,56,32,.6)" },
+  expired:         { bg: "rgba(74,56,32,.10)", fg: "rgba(74,56,32,.6)" },
+  cancelled:       { bg: "rgba(212,149,131,.16)", fg: "#a85b4e" },
+  refunded:        { bg: "rgba(212,149,131,.16)", fg: "#a85b4e" },
+};
+const tonePill = (status: string) => STATUS_TONE[status] || { bg: "rgba(74,56,32,.10)", fg: "var(--sbc-coffee)" };
 
 export default function CircleMePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<any>(null);
+  // v345 — M6: cross-model holdings (blocks + B2B + operated hotels + resale KPIs).
+  const [portfolio, setPortfolio] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   // v297.5 — recompute every bundle's ROI/income/payback LIVE from the same
   // unified engine + revConfig used by /circle home + /circle/build, so stored
@@ -39,6 +60,11 @@ export default function CircleMePage() {
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));
+    // v345 — M6: cross-model holdings (best-effort; never blocks the Model-1 view).
+    fetch("/api/circle/portfolio", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(setPortfolio)
+      .catch(() => {});
     fetch("/api/circle/revenue-config")
       .then((r) => r.json())
       .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
@@ -49,6 +75,16 @@ export default function CircleMePage() {
   const bundlesRaw: any[] = Array.isArray(data?.bundles) ? data.bundles : [];
   const payouts: any[] = Array.isArray(data?.payouts) ? data.payouts : [];
   const locks: any[] = Array.isArray(data?.locks) ? data.locks : [];
+
+  // v345 — M6: cross-model holdings.
+  const pfKpis = portfolio?.kpis || {};
+  const blocks: any[] = Array.isArray(portfolio?.blocks) ? portfolio.blocks : [];
+  const b2bListings: any[] = Array.isArray(portfolio?.listings) ? portfolio.listings : [];
+  const asBuyer: any[] = Array.isArray(portfolio?.trades?.asBuyer) ? portfolio.trades.asBuyer : [];
+  const asSeller: any[] = Array.isArray(portfolio?.trades?.asSeller) ? portfolio.trades.asSeller : [];
+  const operatedHotels: any[] = Array.isArray(portfolio?.operatedHotels) ? portfolio.operatedHotels : [];
+  const hasMarketplace =
+    blocks.length > 0 || b2bListings.length > 0 || asBuyer.length > 0 || asSeller.length > 0 || operatedHotels.length > 0;
 
   // Live recompute per bundle — the SINGLE source of truth (computeBundle).
   const bundles = useMemo(
@@ -94,7 +130,7 @@ export default function CircleMePage() {
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.activeBundles || 0)} /></b><span>Active Bundles</span></div>
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.investedMonthly || 0)} prefix="₹" /></b><span>Monthly Investment</span></div>
             <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.expectedMonthlyIncome || 0)} prefix="₹" /></b><span>Expected Monthly Income</span></div>
-            <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.totalPaidOut || 0)} prefix="₹" /></b><span>Returns Paid Out</span></div>
+            <div className="sbc-hero-stat"><b><CountUp value={Number(kpis.totalPaidOut || 0)} prefix="₹" /></b><span>Payouts Received</span></div>
           </div>
         </div>
       </section>
@@ -212,6 +248,135 @@ export default function CircleMePage() {
                 <Link href="/circle/build" className="sbc-btn-gold">Build / Extend Bundle →</Link>
               </div>
             </div>
+
+            {/* ═══ v345 — M6: Model 3/4 pre-buy + B2B exchange holdings ═══ */}
+            {hasMarketplace && (
+              <>
+                {/* KPI strip — actuals only (never projected). */}
+                <div>
+                  <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Pre-buy &amp; Exchange</h2>
+                  <div className="sbc-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", marginTop: 12 }}>
+                    <div className="sbc-panel" style={{ padding: 14 }}>
+                      <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)" }}><CountUp value={Number(pfKpis.ownedBlocks || 0)} /></b>
+                      <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>Owned blocks</div>
+                    </div>
+                    <div className="sbc-panel" style={{ padding: 14 }}>
+                      <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)" }}><CountUp value={Number(pfKpis.activeListings || 0)} /></b>
+                      <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>On the exchange</div>
+                    </div>
+                    <div className="sbc-panel" style={{ padding: 14 }}>
+                      <b style={{ fontSize: "1.2rem", color: "var(--sbc-ink)" }}><CountUp value={Number(pfKpis.inventoryValue || 0)} prefix="₹" /></b>
+                      <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>Inventory at cost</div>
+                    </div>
+                    <div className="sbc-panel" style={{ padding: 14 }}>
+                      <b style={{ fontSize: "1.2rem", color: "#3F5233" }}><CountUp value={Number(pfKpis.b2bNetEarned || 0)} prefix="₹" /></b>
+                      <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>Earned on exchange</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inventory blocks (Model 3/4). */}
+                {blocks.length > 0 && (
+                  <div>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Inventory Blocks <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 3 / 4</span></h2>
+                    <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_RESALE_RISK_NOTE}</p>
+                    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                      {blocks.map((b) => {
+                        const t = tonePill(String(b.status));
+                        return (
+                          <div key={b.id} className="sbc-panel" style={{ padding: 14, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <span style={{ fontSize: ".62rem", fontWeight: 800, letterSpacing: ".06em", padding: "3px 9px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(b.status).replace(/_/g, " ")}</span>
+                              <div style={{ marginTop: 6, fontWeight: 700, color: "var(--sbc-coffee)", fontSize: ".9rem" }}>
+                                {b.hotel_name || "Property"} {b.unit_number ? `· #${b.unit_number}` : ""}
+                              </div>
+                              <div style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{b.date_from} → {b.date_to} · {b.nights}n</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <b style={{ color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(b.buy_total)}</b>
+                              <div style={{ fontSize: ".66rem", color: "rgba(74,56,32,.55)" }}>at cost{b.resale_price_per_night ? ` · resale ${fmtINR(b.resale_price_per_night)}/n` : ""}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* B2B exchange — my listings + trades. */}
+                {(b2bListings.length > 0 || asSeller.length > 0 || asBuyer.length > 0) && (
+                  <div>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 4</span></h2>
+                    <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_B2B_RESALE_NOTE}</p>
+                    <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                      {b2bListings.map((l) => {
+                        const t = tonePill(String(l.status));
+                        const unit = l.unit_number ? `#${l.unit_number}` : (String(l.source) === "hotel_owner" ? "Own inventory" : "");
+                        return (
+                          <div key={`l-${l.id}`} className="sbc-panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                              <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(201,166,107,.16)", color: "var(--sbc-gold-deep)" }}>LISTING</span>
+                              <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: t.bg, color: t.fg, textTransform: "uppercase" }}>{String(l.status).replace(/_/g, " ")}</span>
+                              <span style={{ fontSize: ".82rem", color: "var(--sbc-coffee)", fontWeight: 600 }}>{l.hotel_name || "Property"} {unit ? `· ${unit}` : ""}</span>
+                              <span style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{l.date_from}→{l.date_to} · {l.nights}n</span>
+                            </div>
+                            <b style={{ color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(l.ask_total)}</b>
+                          </div>
+                        );
+                      })}
+                      {asSeller.map((tr) => (
+                        <div key={`s-${tr.id}`} className="sbc-panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(127,146,105,.16)", color: "#3F5233" }}>SOLD</span>
+                            <span style={{ fontSize: ".82rem", color: "var(--sbc-coffee)", fontWeight: 600 }}>{tr.hotel_name || "Property"} {tr.unit_number ? `· #${tr.unit_number}` : ""}</span>
+                            <span style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{tr.date_from}→{tr.date_to} · {tr.nights}n</span>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <b style={{ color: "#3F5233", fontVariantNumeric: "tabular-nums" }}>+{fmtINR(tr.seller_net)}</b>
+                            <div style={{ fontSize: ".64rem", color: "rgba(74,56,32,.5)" }}>{tr.status === "completed" ? "you received" : "pending"}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {asBuyer.map((tr) => (
+                        <div key={`b-${tr.id}`} className="sbc-panel" style={{ padding: "10px 14px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: ".6rem", fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(90,120,180,.16)", color: "#3a5a94" }}>BOUGHT</span>
+                            <span style={{ fontSize: ".82rem", color: "var(--sbc-coffee)", fontWeight: 600 }}>{tr.hotel_name || "Property"} {tr.unit_number ? `· #${tr.unit_number}` : ""}</span>
+                            <span style={{ fontSize: ".72rem", color: "rgba(74,56,32,.6)" }}>{tr.date_from}→{tr.date_to} · {tr.nights}n</span>
+                          </div>
+                          <div style={{ textAlign: "right" }}>
+                            <b style={{ color: "var(--sbc-ink)", fontVariantNumeric: "tabular-nums" }}>{fmtINR(tr.ask_total)}</b>
+                            <div style={{ fontSize: ".64rem", color: "rgba(74,56,32,.5)" }}>{tr.status === "completed" ? "paid" : "pending"}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dashboard access — operated hotels the investor can manage. */}
+                {operatedHotels.length > 0 && (
+                  <div>
+                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Dashboard Access</h2>
+                    <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>
+                      Hotels where you hold rooms — manage inventory, pricing &amp; bookings from the partner panel.
+                    </p>
+                    <div className="sbc-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", marginTop: 12 }}>
+                      {operatedHotels.map((h) => (
+                        <Link key={h.id} href="/partner/dashboard" className="sbc-panel" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--sbc-coffee)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{h.name}</div>
+                            <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>{h.unitCount} room{h.unitCount === 1 ? "" : "s"}</div>
+                          </div>
+                          <span style={{ color: "var(--sbc-gold-deep)", fontWeight: 800, fontSize: ".82rem", flexShrink: 0 }}>Manage →</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
           </div>
         )}
       </section>

@@ -33,3 +33,11 @@ export const CIRCLE_RESALE_RISK_NOTE =
 
 /** Canonical short label for the paid-out ledger (never "returns"). */
 export const CIRCLE_PAYOUTS_LABEL = "Monthly Payouts";
+
+/**
+ * v345 — Model 4 B2B exchange note. Selling/reselling room-nights to another
+ * partner is a bounded-goods trade (SEBI/CIS distance), never a security. State
+ * the sell-through risk plainly and keep the "expected, not guaranteed" framing.
+ */
+export const CIRCLE_B2B_RESALE_NOTE =
+  "The B2B exchange lets partners trade room-nights with each other — a goods trade, not an investment. Sell-through and resale income are expected based on demand, never guaranteed; unsold-inventory risk stays with the holder.";
