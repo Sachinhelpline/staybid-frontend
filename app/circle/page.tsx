@@ -319,7 +319,7 @@ export default function CircleHomePage() {
           </Link>
 
           {/* Model 2 — Multi-City Inventory Bundle (buy owner-released rooms + resell) */}
-          <Link href="/circle/model2" className="sbc-model">
+          <Link href="/circle/model2/browse" className="sbc-model">
             <span className="sbc-model-glow" aria-hidden />
             <div className="sbc-model-top">
               <span className="sbc-model-ic">🔑</span>
