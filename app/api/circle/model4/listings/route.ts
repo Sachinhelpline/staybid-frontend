@@ -83,7 +83,8 @@ export async function GET(req: NextRequest) {
     const split = b2bTradeSplit({
       askPerNight: Number(l.ask_per_night),
       nights: Number(l.nights),
-      feePct: Number(l.platform_fee_pct),
+      buyerFeePct: Number(l.buyer_fee_pct),
+      sellerFeePct: Number(l.seller_fee_pct),
       buyTotal: Number(l.buy_total),
     });
     return {

@@ -37,11 +37,17 @@ export const B2B_TRADE_STATUSES = [
 ] as const;
 export type B2bTradeStatus = (typeof B2B_TRADE_STATUSES)[number];
 
-// ⚠️ FLAGGED DEFAULT — B2B platform fee %. StayBid's cut on an investor-to-
-// investor trade. Lower than the 12% consumer resale fee (`inventory_blocks`)
-// because it's wholesale B2B, not retail. Sensible default until Sachin wires
-// it to `service_pricing` (the same admin-editable fee infra the host wizard +
-// subscriptions use). Kept in ONE place so a future change is a single edit.
+// ⚠️ FLAGGED DEFAULTS — B2B commission is DUAL-SIDED (v347). StayBid takes a cut
+// from BOTH sides of an investor-to-investor trade: the buyer pays their fee ON
+// TOP of the ask, the seller's fee is deducted from their proceeds. Both % are
+// admin-controlled (lib/b2b/fee-config-store.ts → `b2b_fee_config`); these are
+// only the fallbacks when the config table is unreachable. Frozen onto each
+// listing at list time (tamper-safe) so a later admin change never re-prices a
+// live listing.
+export const B2B_BUYER_FEE_PCT_DEFAULT = 5;
+export const B2B_SELLER_FEE_PCT_DEFAULT = 5;
+// Legacy single-fee default — kept only so any un-migrated caller still resolves;
+// superseded by the dual buyer/seller fee above.
 export const B2B_FEE_PCT_DEFAULT = 8;
 
 // Guardrails on a seller-set ask (the seller prices their own goods freely,
@@ -50,9 +56,9 @@ export const MIN_B2B_ASK_PER_NIGHT = 1;
 export const MAX_B2B_ASK_PER_NIGHT = 1_000_000;
 
 const round0 = (n: number) => Math.round(Number(n) || 0);
-const clampPct = (p: any) => {
+const clampPct = (p: any, fallback: number) => {
   const n = Number(p);
-  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : B2B_FEE_PCT_DEFAULT;
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : fallback;
 };
 
 /** True if a seller-set ask/night is within the allowed bounds. */
@@ -62,45 +68,64 @@ export function isValidAskPerNight(ask: any): boolean {
 }
 
 export interface B2bTradeSplitInput {
-  askPerNight: number;   // seller's B2B ask/night
+  askPerNight: number;    // seller's B2B ask/night
   nights: number;
-  feePct?: number;       // defaults to B2B_FEE_PCT_DEFAULT
-  buyTotal?: number;     // seller's own cost snapshot (for margin display only)
+  buyerFeePct?: number;   // defaults to B2B_BUYER_FEE_PCT_DEFAULT
+  sellerFeePct?: number;  // defaults to B2B_SELLER_FEE_PCT_DEFAULT
+  feePct?: number;        // LEGACY — used as sellerFeePct if the dual ones are absent
+  buyTotal?: number;      // seller's own cost snapshot (for margin display only)
 }
 
 export interface B2bTradeSplit {
   nights: number;
   askPerNight: number;
-  askTotal: number;        // what the buyer pays (Σ ask)
-  platformFeePct: number;
-  platformFee: number;     // StayBid's cut (out of the ask)
-  sellerNet: number;       // askTotal − platformFee (what the seller receives)
+  askTotal: number;        // the seller's ask (Σ ask/night) — the trade base
+  buyerFeePct: number;
+  sellerFeePct: number;
+  buyerFee: number;        // buyer's commission, added ON TOP of the ask
+  sellerFee: number;       // seller's commission, deducted from the ask
+  buyerPays: number;       // askTotal + buyerFee  ← what the buyer is charged
+  platformFeePct: number;  // buyerFeePct + sellerFeePct (total — display/legacy)
+  platformFee: number;     // buyerFee + sellerFee (StayBid's total cut)
+  sellerNet: number;       // askTotal − sellerFee (what the seller receives)
   buyTotal: number;        // seller's cost snapshot
   sellerMargin: number;    // sellerNet − buyTotal (seller's profit vs their cost)
 }
 
 /**
- * The money split for a B2B trade. Pure — the listing endpoint (to freeze the
- * fee %), the D3 checkout (to freeze buyerPays/sellerNet/platformFee), and the
- * client preview ALL call this so preview == charge == settlement.
+ * The money split for a B2B trade — DUAL-SIDED commission (v347). Pure — the
+ * listing endpoint (freezes both fee %), the checkout (freezes
+ * buyerPays/sellerNet/fees), verify (settlement), and the client preview ALL
+ * call this so preview == charge == settlement.
  *
- * Convention: buyer pays the ask total; the platform fee is StayBid's cut OUT
- * of that total; the seller receives the remainder (ask − fee).
+ * Convention: the seller sets the ask. The BUYER is charged askTotal + buyerFee;
+ * the SELLER receives askTotal − sellerFee; StayBid keeps buyerFee + sellerFee.
  */
 export function b2bTradeSplit(input: B2bTradeSplitInput): B2bTradeSplit {
-  const feePct = clampPct(input.feePct);
+  const sellerFeePct = clampPct(
+    input.sellerFeePct ?? input.feePct ?? B2B_SELLER_FEE_PCT_DEFAULT,
+    B2B_SELLER_FEE_PCT_DEFAULT,
+  );
+  const buyerFeePct = clampPct(input.buyerFeePct ?? B2B_BUYER_FEE_PCT_DEFAULT, B2B_BUYER_FEE_PCT_DEFAULT);
   const nights = Math.max(0, Math.floor(Number(input.nights) || 0));
   const askPerNight = Math.max(0, round0(input.askPerNight));
   const askTotal = round0(askPerNight * nights);
-  const platformFee = round0((askTotal * feePct) / 100);
-  const sellerNet = round0(askTotal - platformFee);
+  const sellerFee = round0((askTotal * sellerFeePct) / 100);
+  const buyerFee = round0((askTotal * buyerFeePct) / 100);
+  const sellerNet = round0(askTotal - sellerFee);
+  const buyerPays = round0(askTotal + buyerFee);
   const buyTotal = Math.max(0, round0(input.buyTotal || 0));
   return {
     nights,
     askPerNight,
     askTotal,
-    platformFeePct: feePct,
-    platformFee,
+    buyerFeePct,
+    sellerFeePct,
+    buyerFee,
+    sellerFee,
+    buyerPays,
+    platformFeePct: round0(buyerFeePct + sellerFeePct),
+    platformFee: round0(buyerFee + sellerFee),
     sellerNet,
     buyTotal,
     sellerMargin: round0(sellerNet - buyTotal),

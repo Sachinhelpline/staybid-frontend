@@ -51,6 +51,8 @@ type AtResale = { resaleTotal: number; feeTotal: number; buyTotal: number; inves
 type B2bSplit = {
   nights: number; askPerNight: number; askTotal: number; platformFeePct: number;
   platformFee: number; sellerNet: number; buyTotal: number; sellerMargin: number;
+  // v347 — dual commission (5% buyer + 5% seller).
+  buyerFeePct?: number; sellerFeePct?: number; buyerFee?: number; sellerFee?: number; buyerPays?: number;
 };
 type B2bListing = {
   id: string; block_id: string | null; unit_id: string | null; date_from: string; date_to: string;
@@ -756,7 +758,7 @@ export default function CircleInventoryTab({
                 </span>
                 {l.split && (
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600"
-                    title={`Buyer pays ${inr(l.split.askTotal)} · StayBid fee ${l.split.platformFeePct}% = ${inr(l.split.platformFee)} · you receive ${inr(l.split.sellerNet)}`}>
+                    title={`Buyer pays ${inr(l.split.buyerPays ?? l.split.askTotal)} (ask ${inr(l.split.askTotal)} + ${l.split.buyerFeePct ?? 0}% buyer fee) · seller fee ${l.split.sellerFeePct ?? 0}% · you receive ${inr(l.split.sellerNet)}`}>
                     you get {inr(l.split.sellerNet)}
                     {l.split.buyTotal > 0 ? ` · margin ${inr(l.split.sellerMargin)}` : ""}
                   </span>
@@ -804,8 +806,10 @@ export default function CircleInventoryTab({
                   {inr(l.ask_per_night)}/night
                 </span>
                 <div className="ml-auto flex items-center gap-3">
-                  <span className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>
-                    {inr(l.ask_total)}
+                  <span className="text-sm font-semibold" style={{ color: "var(--text-base)" }}
+                    title={l.split ? `ask ${inr(l.split.askTotal)} + ${l.split.buyerFeePct ?? 0}% buyer fee` : undefined}>
+                    {inr(l.split?.buyerPays ?? l.ask_total)}
+                    {l.split?.buyerFee ? <span className="text-[10px] font-normal opacity-60"> incl. fee</span> : null}
                   </span>
                   <button disabled={busy} onClick={() => buyExchange(l)}
                     className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white"

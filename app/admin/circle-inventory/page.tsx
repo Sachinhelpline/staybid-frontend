@@ -38,6 +38,10 @@ export default function AdminCircleInventory() {
   const [busy, setBusy] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
   const [b2bFilter, setB2bFilter] = useState<(typeof B2B_FILTERS)[number]>("all");
+  // v347 — admin-controlled dual B2B commission (5% buyer + 5% seller default).
+  const [feeCfg, setFeeCfg] = useState<{ buyerFeePct: number; sellerFeePct: number } | null>(null);
+  const [feeDraft, setFeeDraft] = useState<{ buyer: string; seller: string }>({ buyer: "", seller: "" });
+  const [feeBusy, setFeeBusy] = useState(false);
 
   const headers = useCallback((): HeadersInit => ({
     "x-admin-token": typeof window !== "undefined" ? localStorage.getItem("sb_admin_token") || "" : "",
@@ -54,6 +58,34 @@ export default function AdminCircleInventory() {
   }, [headers, filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // v347 — load the current dual B2B commission %.
+  useEffect(() => {
+    fetch("/api/admin/b2b-fee", { headers: headers(), cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.config) {
+          setFeeCfg(d.config);
+          setFeeDraft({ buyer: String(d.config.buyerFeePct), seller: String(d.config.sellerFeePct) });
+        }
+      })
+      .catch(() => {});
+  }, [headers]);
+
+  const saveFee = async () => {
+    setFeeBusy(true); setFlash(""); setErr("");
+    try {
+      const r = await fetch("/api/admin/b2b-fee", {
+        method: "POST", headers: { "Content-Type": "application/json", ...headers() },
+        body: JSON.stringify({ buyerFeePct: Number(feeDraft.buyer), sellerFeePct: Number(feeDraft.seller) }),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error) throw new Error(d?.error || "Save failed");
+      setFeeCfg(d.config);
+      setFlash("B2B commission updated ✓ (applies to new listings)");
+    } catch (e: any) { setErr(e?.message || "Save failed"); }
+    finally { setFeeBusy(false); }
+  };
 
   const act = async (payload: any, key: string, confirmMsg?: string) => {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -96,6 +128,35 @@ export default function AdminCircleInventory() {
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#E8EAF0", borderRadius: 10, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
           {loading ? "…" : "↻ Refresh"}
         </button>
+      </div>
+
+      {/* v347 — dual B2B commission control (5% buyer + 5% seller default). */}
+      <div style={{ background: "rgba(61,156,245,0.06)", border: "1px solid rgba(61,156,245,0.22)", borderRadius: 12, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
+        <div style={{ minWidth: 190 }}>
+          <div style={{ color: "#E8EAF0", fontSize: 14, fontWeight: 700, fontFamily: "Syne, sans-serif" }}>⇄ B2B exchange commission</div>
+          <div style={{ color: "#8A8FA8", fontSize: 11.5, marginTop: 2 }}>Buyer pays ask + buyer %; seller receives ask − seller %. Applies to NEW listings only.</div>
+        </div>
+        <label style={{ color: "#8A8FA8", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}>
+          Buyer %
+          <input type="number" min={0} max={100} value={feeDraft.buyer}
+            onChange={(e) => setFeeDraft((s) => ({ ...s, buyer: e.target.value }))}
+            style={{ width: 78, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
+        </label>
+        <label style={{ color: "#8A8FA8", fontSize: 12, display: "flex", flexDirection: "column", gap: 3 }}>
+          Seller %
+          <input type="number" min={0} max={100} value={feeDraft.seller}
+            onChange={(e) => setFeeDraft((s) => ({ ...s, seller: e.target.value }))}
+            style={{ width: 78, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", color: "#E8EAF0", borderRadius: 8, padding: "6px 8px", fontFamily: "inherit" }} />
+        </label>
+        <button onClick={saveFee} disabled={feeBusy}
+          style={{ background: "#3D9CF522", border: "1px solid #3D9CF555", color: "#3D9CF5", borderRadius: 8, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", alignSelf: "flex-end" }}>
+          {feeBusy ? "Saving…" : "Save commission"}
+        </button>
+        {feeCfg && (
+          <span style={{ color: "#8A8FA8", fontSize: 11.5, alignSelf: "flex-end" }}>
+            live: {feeCfg.buyerFeePct}% + {feeCfg.sellerFeePct}% = {Number(feeCfg.buyerFeePct) + Number(feeCfg.sellerFeePct)}% total
+          </span>
+        )}
       </div>
 
       {err && <div style={{ background: "rgba(255,71,87,0.12)", border: "1px solid rgba(255,71,87,0.3)", color: "#FF4757", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13 }}>{err}</div>}

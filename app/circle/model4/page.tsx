@@ -32,6 +32,12 @@ type Split = {
   platformFee: number;
   sellerNet: number;
   sellerMargin: number;
+  // v347 — dual commission (5% buyer + 5% seller).
+  buyerFeePct?: number;
+  sellerFeePct?: number;
+  buyerFee?: number;
+  sellerFee?: number;
+  buyerPays?: number;
 };
 type Listing = {
   id: string;
@@ -158,7 +164,7 @@ export default function Model4Page() {
       });
       const vd = await vr.json().catch(() => ({}));
       if (!vr.ok || !vd?.ok) { flash(vd?.error || "Verify failed — contact support"); return; }
-      setDone({ from: sel.date_from, to: sel.date_to, askTotal: Number(cd.askTotal) || sel.split.askTotal });
+      setDone({ from: sel.date_from, to: sel.date_to, askTotal: Number(cd.buyerPays) || sel.split.buyerPays || sel.split.askTotal });
     } catch {
       flash("Trade failed — try again.");
     } finally {
@@ -232,7 +238,7 @@ export default function Model4Page() {
                         </div>
                         <div className="sbc-mkt-qrow sbc-mkt-qtotal">
                           <span>You pay</span>
-                          <span>{inr(l.split.askTotal)}</span>
+                          <span>{inr(l.split.buyerPays ?? l.split.askTotal)}</span>
                         </div>
                       </div>
 
@@ -272,11 +278,9 @@ export default function Model4Page() {
               <div className="sbc-mkt-qrow"><span>Dates</span><span>{sel.date_from} → {sel.date_to}</span></div>
               <div className="sbc-mkt-qrow"><span>Nights</span><span>{sel.nights}</span></div>
               <div className="sbc-mkt-qrow"><span>Ask / night</span><span>{inr(sel.ask_per_night)}</span></div>
-              <div className="sbc-mkt-qrow sbc-mkt-qtotal"><span>You pay</span><span>{inr(sel.split.askTotal)}</span></div>
-              <div className="sbc-mkt-qrow sbc-mkt-qmuted">
-                <span>Platform fee</span>
-                <span>{sel.split.platformFeePct}% (from the seller&apos;s side)</span>
-              </div>
+              <div className="sbc-mkt-qrow sbc-mkt-qmuted"><span>Ask total</span><span>{inr(sel.split.askTotal)}</span></div>
+              <div className="sbc-mkt-qrow sbc-mkt-qmuted"><span>Buyer fee ({sel.split.buyerFeePct ?? 0}%)</span><span>+{inr(sel.split.buyerFee ?? 0)}</span></div>
+              <div className="sbc-mkt-qrow sbc-mkt-qtotal"><span>You pay</span><span>{inr(sel.split.buyerPays ?? sel.split.askTotal)}</span></div>
             </div>
           </div>
 
@@ -303,14 +307,16 @@ export default function Model4Page() {
               <div className="sbc-mkt-qrow"><span>Dates</span><span>{sel.date_from} → {sel.date_to}</span></div>
               <div className="sbc-mkt-qrow"><span>Nights</span><span>{sel.nights}</span></div>
               <div className="sbc-mkt-qrow"><span>Ask / night</span><span>{inr(sel.ask_per_night)}</span></div>
-              <div className="sbc-mkt-qrow sbc-mkt-qtotal"><span>You pay now</span><span>{inr(sel.split.askTotal)}</span></div>
+              <div className="sbc-mkt-qrow sbc-mkt-qmuted"><span>Ask total</span><span>{inr(sel.split.askTotal)}</span></div>
+              <div className="sbc-mkt-qrow sbc-mkt-qmuted"><span>Buyer fee ({sel.split.buyerFeePct ?? 0}%)</span><span>+{inr(sel.split.buyerFee ?? 0)}</span></div>
+              <div className="sbc-mkt-qrow sbc-mkt-qtotal"><span>You pay now</span><span>{inr(sel.split.buyerPays ?? sel.split.askTotal)}</span></div>
             </div>
           </div>
 
           <div className="sbc-mkt-actions">
             <button className="sbc-mkt-btn-ghost" disabled={paying} onClick={() => setStep(2)}>← Back</button>
             <button className="sbc-mkt-btn" disabled={paying} onClick={pay}>
-              {paying ? "Processing…" : `Pay ${inr(sel.split.askTotal)} & take over`}
+              {paying ? "Processing…" : `Pay ${inr(sel.split.buyerPays ?? sel.split.askTotal)} & take over`}
             </button>
           </div>
           <p className="sbc-ms-note">

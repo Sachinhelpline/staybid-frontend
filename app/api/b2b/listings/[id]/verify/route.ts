@@ -275,7 +275,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         kind: "b2b_trade",
         ref_id: String(trade.id),
         payee_user_id: sellerId,
-        gross_amount: Number(trade.ask_total),
+        // Gross = what StayBid actually collected from the buyer (ask + buyer
+        // fee). platform_fee = buyer + seller fee. Seller is owed seller_net.
+        gross_amount: Number(trade.buyer_pays) || Number(trade.ask_total),
         platform_fee: Number(trade.platform_fee),
         net_amount: Number(trade.seller_net),
         payout_status: "owed",

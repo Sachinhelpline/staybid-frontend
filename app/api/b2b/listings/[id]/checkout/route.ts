@@ -93,15 +93,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   }
 
-  // Re-compute the split SERVER-SIDE — the buyer pays the seller's ask; the
-  // platform fee % + buy basis were frozen at list time (tamper-safe).
+  // Re-compute the split SERVER-SIDE from the listing's FROZEN dual fee % +
+  // buy basis (tamper-safe). The buyer is charged ask + buyer fee; the seller
+  // receives ask − seller fee; StayBid keeps both fees.
   const split = b2bTradeSplit({
     askPerNight: Number(listing.ask_per_night),
     nights: Number(listing.nights),
-    feePct: Number(listing.platform_fee_pct),
+    buyerFeePct: Number(listing.buyer_fee_pct),
+    sellerFeePct: Number(listing.seller_fee_pct),
     buyTotal: Number(listing.buy_total),
   });
-  if (split.askTotal <= 0) {
+  if (split.askTotal <= 0 || split.buyerPays <= 0) {
     return NextResponse.json({ error: "This offer isn't priced correctly — try another." }, { status: 422 });
   }
 
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     buyerBlockResalePerNight = quote?.avgResalePerNight || 0;
   }
 
-  // Razorpay order for the ask total (amount in rupees; route → paise).
+  // Razorpay order for the BUYER CHARGE = ask + buyer fee (rupees; route → paise).
   const origin = new URL(req.url).origin;
   let rzp: any = null;
   try {
@@ -149,7 +151,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: split.askTotal,
+        amount: split.buyerPays,
         receipt: `cb2b_${listingId}`.slice(0, 40),
         notes: { kind: "circle_b2b", listingId, source: String(listing.source || "investor_block"), buyerId: String(userId) },
       }),
@@ -257,8 +259,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         date_to: lTo,
         nights: split.nights,
         ask_total: split.askTotal,
-        platform_fee_pct: split.platformFeePct,
-        platform_fee: split.platformFee,
+        platform_fee_pct: split.platformFeePct,   // total (buyer + seller)
+        platform_fee: split.platformFee,          // buyerFee + sellerFee
+        buyer_fee_pct: split.buyerFeePct,
+        seller_fee_pct: split.sellerFeePct,
+        buyer_fee: split.buyerFee,
+        seller_fee: split.sellerFee,
+        buyer_pays: split.buyerPays,              // what the buyer is charged
         seller_net: split.sellerNet,
         razorpay_order_id: rzp.id,
         status: "pending_payment",
@@ -281,5 +288,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     tradeId,
     blockId: tradeBlockId,
     askTotal: split.askTotal,
+    buyerPays: split.buyerPays,
   });
 }

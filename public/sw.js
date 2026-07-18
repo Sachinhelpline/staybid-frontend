@@ -471,7 +471,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // the old Model 3 (pre-buy) + Model 4 (exchange) are now a single "Model 2 —
 // Multi-City Inventory Bundle" (hub shows 2 model cards; /circle/model2 canonical
 // route; all visible labels rebranded). Bump drops stale cached /circle markup.
-const HTML_CACHE = 'staybid-html-v158';
+// v347 — one-time HTML_CACHE bump (v158 -> v159). Circle Model 2 dual B2B
+// commission: buyer pays ask + buyer% and seller receives ask − seller% (both
+// admin-controlled, default 5/5). Buy/list/quote surfaces now show the buyer
+// charge + fee breakdown. Bump drops stale cached exchange markup.
+const HTML_CACHE = 'staybid-html-v159';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
