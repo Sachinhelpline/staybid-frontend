@@ -102,7 +102,23 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v349, Circle "Model 2" — rename + dual fee + city access + regulated price)
+## Current production state (v350, Circle "Model 2" — + multi-select basket / multi-city bundle)
+- **Basket / multi-city bundle (v350) — LIVE MONEY:** the buy side of ss3 — browse owner-released
+  listings per city, multi-select into a basket (across cities), and buy them ALL in ONE payment.
+  `/circle/model2/browse` (customer `sb_token`): city chips (unlocked ∪ supply cities; locked cities
+  show 🔒 + an unlock prompt → `/circle/me`), released listings via `/api/b2b/marketplace?city=`,
+  a sticky basket bar. NEW `app/api/b2b/basket/checkout` — loads every listing, gates each distinct
+  city on access, freezes each split from the listing's regulated ask + frozen fees, reserves
+  inventory (hotel_owner → `assignFreeUnit` + a fresh pending block minted INTERLEAVED so two basket
+  items never grab the same unit; investor_block → integrity check), creates ONE Razorpay order for
+  the SUM of `buyerPays`, writes N pending `b2b_trades` all tagged with that order id. NEW
+  `app/api/b2b/basket/verify` — HMAC-verifies the single payment, then settles EVERY pending trade on
+  that order (mark completed + per-source block flip/transfer + stampUnitOwner/hold + listing→sold +
+  settlement, all guarded/idempotent). The hub Model-2 card now routes to `/circle/model2/browse`
+  (the pre-buy operated flow is a secondary link). No migration (reuses `b2b_*` + `inventory_blocks`).
+  Round-trip verified (2 listings, one ₹15,120 order → both settle; 0 leftover).
+
+## Earlier state (v349, Circle "Model 2" — rename + dual fee + city access + regulated price)
 - **Regulated B2B pricing (v349):** the Model-2 B2B ask is NO LONGER a free seller input — it is
   StayBid-REGULATED: `regulatedB2bAskPerNight(spineWholesalePerNight, markupPct)` = `round(wholesale ×
   (1 + markup%))`, `lib/b2b/engine.ts`. Markup is admin-controlled (`b2b_fee_config.regulated_markup_pct`,
@@ -201,8 +217,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v161` (v349 regulated price).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v349. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v162` (v350 basket).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v350. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

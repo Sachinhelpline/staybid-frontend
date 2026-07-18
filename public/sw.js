@@ -482,7 +482,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // pricing: the B2B ask is now StayBid-regulated (Spine wholesale × admin markup),
 // not a free seller input — supply/list forms show the regulated price instead
 // of an ask field. Bump drops stale cached exchange markup.
-const HTML_CACHE = 'staybid-html-v161';
+// v350 — one-time HTML_CACHE bump (v161 -> v162). Circle Model 2 basket:
+// new /circle/model2/browse (per-city released-inventory browse + multi-select
+// basket + multi-city bundle checkout in ONE payment). Hub Model 2 card now
+// routes here. Bump drops stale cached /circle markup.
+const HTML_CACHE = 'staybid-html-v162';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
