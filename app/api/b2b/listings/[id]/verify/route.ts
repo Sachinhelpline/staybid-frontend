@@ -58,6 +58,65 @@ async function grantModel4Service(hotelId: string, grantedBy: string): Promise<v
   } catch { /* best-effort */ }
 }
 
+// ── M4 hotel_owner supply helpers (mirror the M1 marketplace verify) ──────────
+// Stamp the assigned physical unit to the buyer — only if still unowned OR
+// already the buyer's (idempotent + race-safe). Never takes a co-investor's unit.
+async function stampUnitOwner(unitId: string, buyerPrimary: string, buyerIds: string[]): Promise<boolean> {
+  if (!unitId) return false;
+  try {
+    const idsCsv = buyerIds.map((x) => encodeURIComponent(x)).join(",");
+    const res = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(unitId)}` +
+        `&or=(owner_user_id.is.null,owner_user_id.in.(${idsCsv}))`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=minimal" },
+        body: JSON.stringify({ owner_user_id: buyerPrimary }),
+      },
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Write (or refresh) the room-nights HOLD so availability subtracts them.
+// Deterministic invhold_<blockId> id → idempotent on re-verify. Best-effort:
+// a hold hiccup must NOT fail a succeeded payment.
+async function writeHold(block: any): Promise<boolean> {
+  try {
+    let unitNumber: string | null = block?.metadata?.roomNumber || null;
+    if (!unitNumber && block?.unit_id) {
+      try {
+        const ur = await fetch(
+          `${SB_URL}/rest/v1/hotel_room_units?id=eq.${encodeURIComponent(String(block.unit_id))}&select=roomNumber`,
+          { headers: SB_H },
+        );
+        unitNumber = (await ur.json().catch(() => []))?.[0]?.roomNumber || null;
+      } catch { /* optional */ }
+    }
+    const res = await fetch(`${SB_URL}/rest/v1/room_blocks?on_conflict=id`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        id: `invhold_${block.id}`,
+        hotelId: String(block.hotel_id),
+        roomId: String(block.room_id),
+        fromDate: String(block.date_from),
+        toDate: String(block.date_to),
+        source: "inventory",
+        assignedUnitId: String(block.unit_id),
+        assignedUnitNumber: unitNumber,
+        note: "StayBid Circle B2B pre-buy hold",
+        createdBy: String(block.investor_user_id),
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const listingId = String(id || "").trim();
@@ -129,24 +188,69 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const buyerId = String(trade.buyer_user_id);
   const sellerId = String(trade.seller_user_id);
   const blockId = String(trade.block_id);
+  const source = String(trade.source || "investor_block");
 
-  // 2) TRANSFER ownership — seller → buyer. Guarded on the seller id so a
-  //    re-verify / race is a no-op (0 rows). Only the block's commercial right
-  //    moves; the physical unit's owner_user_id is untouched.
+  // 2) OWNERSHIP — branch on the trade source.
+  //    • investor_block: transfer the seller's owned block commercial right →
+  //      buyer (guarded on the seller id so a re-verify/race is a no-op). Only
+  //      the commercial right moves; the physical unit owner is untouched.
+  //    • hotel_owner (M4): the buyer's OWN fresh block was minted pending at
+  //      checkout; flip it pending_payment → owned (4-key idempotent), STAMP the
+  //      assigned unit owner = buyer, and write the inventory hold — exactly the
+  //      M1 marketplace verify. There is no seller block to move.
   let transferred = false;
-  try {
-    const br = await fetch(
-      `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}` +
-        `&investor_user_id=eq.${encodeURIComponent(sellerId)}`,
-      {
-        method: "PATCH",
-        headers: { ...SB_H, Prefer: "return=representation" },
-        body: JSON.stringify({ investor_user_id: buyerId, updated_at: nowIso }),
-      },
-    );
-    const rows = br.ok ? await br.json().catch(() => []) : [];
-    transferred = Array.isArray(rows) && rows.length > 0;
-  } catch { /* block may already be transferred on a re-verify */ }
+  let stamped = false;
+  let held = false;
+  if (source === "hotel_owner") {
+    try {
+      const br = await fetch(
+        `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}` +
+          `&razorpay_order_id=eq.${encodeURIComponent(rzpOrderId)}` +
+          `&status=eq.pending_payment&investor_user_id=in.(${idsCsv})`,
+        {
+          method: "PATCH",
+          headers: { ...SB_H, Prefer: "return=representation" },
+          body: JSON.stringify({
+            status: "owned",
+            razorpay_payment_id: paymentId,
+            purchased_at: nowIso,
+            updated_at: nowIso,
+          }),
+        },
+      );
+      const rows = br.ok ? await br.json().catch(() => []) : [];
+      let block = Array.isArray(rows) ? rows[0] : null;
+      if (block) {
+        transferred = true;
+      } else {
+        // Already flipped on a re-verify — re-fetch the owned block for stamp/hold.
+        const gr = await fetch(
+          `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}` +
+            `&status=eq.owned&investor_user_id=in.(${idsCsv})&select=*`,
+          { headers: SB_H },
+        );
+        block = (gr.ok ? await gr.json().catch(() => []) : [])?.[0] || null;
+      }
+      if (block) {
+        stamped = await stampUnitOwner(String(block.unit_id), buyerId, buyerIds);
+        held = await writeHold(block);
+      }
+    } catch { /* block may already be owned on a re-verify */ }
+  } else {
+    try {
+      const br = await fetch(
+        `${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(blockId)}` +
+          `&investor_user_id=eq.${encodeURIComponent(sellerId)}`,
+        {
+          method: "PATCH",
+          headers: { ...SB_H, Prefer: "return=representation" },
+          body: JSON.stringify({ investor_user_id: buyerId, updated_at: nowIso }),
+        },
+      );
+      const rows = br.ok ? await br.json().catch(() => []) : [];
+      transferred = Array.isArray(rows) && rows.length > 0;
+    } catch { /* block may already be transferred on a re-verify */ }
+  }
 
   // 3) Flip the listing listed → sold (guarded; idempotent on re-verify).
   try {
@@ -184,18 +288,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   //     (fires for both fresh-completed + re-verify, since both converge here).
   await grantModel4Service(String(trade.hotel_id || ""), buyerId);
 
-  // 5) Refresh the pre-buy hold note so ops see the new owner (best-effort).
-  try {
-    await fetch(`${SB_URL}/rest/v1/room_blocks?id=eq.${encodeURIComponent(`invhold_${blockId}`)}`, {
-      method: "PATCH",
-      headers: { ...SB_H, Prefer: "return=minimal" },
-      body: JSON.stringify({ note: "StayBid Circle pre-buy hold · traded (new owner)", createdBy: buyerId }),
-    });
-  } catch { /* optional */ }
+  // 5) investor_block: refresh the transferred block's existing hold note so ops
+  //    see the new owner (best-effort). hotel_owner already wrote a fresh hold
+  //    (writeHold above) — nothing to relabel.
+  if (source !== "hotel_owner") {
+    try {
+      await fetch(`${SB_URL}/rest/v1/room_blocks?id=eq.${encodeURIComponent(`invhold_${blockId}`)}`, {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=minimal" },
+        body: JSON.stringify({ note: "StayBid Circle pre-buy hold · traded (new owner)", createdBy: buyerId }),
+      });
+    } catch { /* optional */ }
+  }
 
   return NextResponse.json({
     ok: true,
     transferred,
+    stamped,
+    held,
     trade: {
       id: trade.id,
       dateFrom: trade.date_from,

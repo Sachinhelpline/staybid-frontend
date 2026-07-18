@@ -22,6 +22,10 @@ function getToken() {
 }
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
 const todayISO = () => new Date().toISOString().slice(0, 10);
+// v343 (M4) — hotel_owner listings have no pre-assigned unit (unit_id NULL); a
+// free unit is auto-assigned to the BUYER at checkout. Show a friendly label.
+const unitLabel = (l: { unit_number?: string | null; unit_id?: string | null; source?: string | null }) =>
+  l.unit_number ? `#${l.unit_number}` : (String(l.source) === "hotel_owner" ? "Own inventory" : `#${l.unit_id}`);
 
 type Unit = { id: string; hotelId: string; roomId: string; roomNumber?: string | null; title?: string | null };
 type BlockMeta = {
@@ -49,9 +53,11 @@ type B2bSplit = {
   platformFee: number; sellerNet: number; buyTotal: number; sellerMargin: number;
 };
 type B2bListing = {
-  id: string; block_id: string; unit_id: string; date_from: string; date_to: string;
+  id: string; block_id: string | null; unit_id: string | null; date_from: string; date_to: string;
   nights: number; ask_per_night: number; ask_total: number; platform_fee_pct: number;
   status: string; unit_number?: string | null; hotel_name?: string | null; split?: B2bSplit;
+  // v343 (M4) — 'investor_block' (owned-block resale) | 'hotel_owner' (own-inventory supply).
+  source?: string | null; room_id?: string | null;
   metadata?: { markdownPct?: number; listAskPerNight?: number; [k: string]: any } | null;
 };
 // v332 (D2) — a completed/pending B2B trade (as buyer or seller).
@@ -102,12 +108,30 @@ export default function CircleInventoryTab({
   // v331 — D1: Model 4 B2B exchange — my listings + per-block ask/night draft.
   const [b2bListings, setB2bListings] = useState<B2bListing[]>([]);
   const [b2bDraft, setB2bDraft] = useState<Record<string, string>>({});
+  // v343 — M4: hotel-owner SUPPLY — list room-nights from OWN inventory (no
+  // pre-bought block; a free unit is auto-assigned to the buyer at checkout).
+  const [ownRoomId, setOwnRoomId] = useState<string>("");
+  const [ownFrom, setOwnFrom] = useState<string>(todayISO());
+  const [ownTo, setOwnTo] = useState<string>("");
+  const [ownAsk, setOwnAsk] = useState<string>("");
   // v332 — D2: my B2B trades (as buyer / as seller).
   const [b2bTrades, setB2bTrades] = useState<{ asBuyer: B2bTrade[]; asSeller: B2bTrade[] }>({ asBuyer: [], asSeller: [] });
   // v333 — D3: OTHER investors' active listings I can buy (this hotel).
   const [market, setMarket] = useState<MarketListing[]>([]);
 
   useEffect(() => { if (!unitId && units[0]) setUnitId(units[0].id); }, [units, unitId]);
+
+  // v343 — M4: distinct room CATEGORIES on this hotel (derived from the owner's
+  // physical units) — a hotel_owner listing is per room category, not per unit.
+  const roomOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const u of units) {
+      if (u.roomId && !seen.has(u.roomId)) seen.set(u.roomId, u.title || u.roomId);
+    }
+    return Array.from(seen.entries()).map(([roomId, title]) => ({ roomId, title }));
+  }, [units]);
+
+  useEffect(() => { if (!ownRoomId && roomOptions[0]) setOwnRoomId(roomOptions[0].roomId); }, [roomOptions, ownRoomId]);
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2600); };
 
@@ -190,7 +214,7 @@ export default function CircleInventoryTab({
           keyId: cd.keyId,
           orderId: cd.order.id,
           amountPaise: cd.order.amount,
-          description: `Buy ${l.nights} night${l.nights === 1 ? "" : "s"} · #${l.unit_number || l.unit_id} · ${l.date_from}→${l.date_to}`,
+          description: `Buy ${l.nights} night${l.nights === 1 ? "" : "s"} · ${unitLabel(l)} · ${l.date_from}→${l.date_to}`,
         });
       } catch (e) {
         if (e instanceof RazorpayError && e.message === "__CANCELLED__") { flash("Payment cancelled"); return; }
@@ -237,6 +261,29 @@ export default function CircleInventoryTab({
     finally { setBusy(false); }
   }
 
+  // v343 — M4: list room-nights from OWN inventory on the B2B exchange (supply
+  // side). No pre-bought block — server auto-assigns a free unit to the BUYER at
+  // checkout. buy_total = the owner's Spine floor (server-frozen); ask is theirs.
+  async function listOwnInventory() {
+    if (!ownRoomId || !ownFrom || !ownTo || ownTo <= ownFrom) { flash("Pick a room and a valid date range."); return; }
+    const ask = Math.round(Number(ownAsk));
+    if (!Number.isFinite(ask) || ask <= 0) { flash("Enter a B2B ask price per night."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`/api/b2b/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ source: "hotel_owner", hotelId, roomId: ownRoomId, dateFrom: ownFrom, dateTo: ownTo, askPerNight: ask }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { flash(d?.error || "List failed"); return; }
+      flash("Listed on the B2B exchange ✓");
+      setOwnAsk(""); setOwnTo("");
+      loadB2b();
+    } catch { flash("List failed"); }
+    finally { setBusy(false); }
+  }
+
   // v331 — D1: withdraw an active B2B listing (frees the block to re-list).
   async function withdrawB2b(id: string) {
     setBusy(true);
@@ -257,7 +304,9 @@ export default function CircleInventoryTab({
   const activeB2bByBlock = useMemo(() => {
     const m: Record<string, B2bListing> = {};
     for (const l of b2bListings) {
-      if (["draft", "listed"].includes(String(l.status))) m[l.block_id] = l;
+      // hotel_owner listings have no block_id (null) — they're not tied to an
+      // owned block row, so they never key this owned-block lookup.
+      if (l.block_id && ["draft", "listed"].includes(String(l.status))) m[l.block_id] = l;
     }
     return m;
   }, [b2bListings]);
@@ -622,9 +671,53 @@ export default function CircleInventoryTab({
           </div>
           <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
             Sell an <b>owned</b> block to another investor at your own B2B price — a faster exit than waiting
-            for a guest. StayBid takes a small platform fee; you keep the rest.
+            for a guest. Or <b>list room-nights straight from your own inventory</b> (no pre-buy needed).
+            StayBid takes a small platform fee; you keep the rest.
           </p>
         </div>
+
+        {/* v343 — M4: list room-nights from OWN inventory (supply side). No
+            pre-bought block — the buyer is auto-assigned a free unit at checkout. */}
+        {roomOptions.length > 0 && (
+          <div className="rounded-2xl border p-4 mb-3" style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
+            <div className="text-xs font-medium mb-2" style={{ color: "var(--text-base)" }}>
+              ➕ List your own inventory <span className="opacity-60 font-normal">· no pre-buy needed</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <label className="text-xs">
+                <span className="block mb-1 opacity-70">Room</span>
+                <select value={ownRoomId} onChange={(e) => setOwnRoomId(e.target.value)}
+                  className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }}>
+                  {roomOptions.map((r) => (
+                    <option key={r.roomId} value={r.roomId}>{r.title}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-xs">
+                <span className="block mb-1 opacity-70">From</span>
+                <input type="date" value={ownFrom} min={todayISO()} onChange={(e) => setOwnFrom(e.target.value)}
+                  className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
+              </label>
+              <label className="text-xs">
+                <span className="block mb-1 opacity-70">To</span>
+                <input type="date" value={ownTo} min={ownFrom || todayISO()} onChange={(e) => setOwnTo(e.target.value)}
+                  className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
+              </label>
+              <label className="text-xs">
+                <span className="block mb-1 opacity-70">Your ask /night</span>
+                <input type="number" min={0} value={ownAsk} onChange={(e) => setOwnAsk(e.target.value)}
+                  placeholder="₹/night" className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
+              </label>
+            </div>
+            <div className="mt-3">
+              <button disabled={busy} onClick={listOwnInventory}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
+                {busy ? "…" : "List on exchange"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {b2bListings.length === 0 ? (
           <div className="text-sm opacity-60">
             No exchange listings yet. Use <b>List on exchange</b> on an owned block above.
@@ -638,7 +731,7 @@ export default function CircleInventoryTab({
                   {l.status.replace(/_/g, " ")}
                 </span>
                 <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
-                  #{l.unit_number || l.unit_id}
+                  {unitLabel(l)}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {l.date_from} → {l.date_to} · {l.nights}n
@@ -702,7 +795,7 @@ export default function CircleInventoryTab({
               <div key={l.id} className="rounded-xl border p-3 flex items-center gap-3 flex-wrap"
                 style={{ borderColor: "var(--border-soft)", background: "var(--bg-card)" }}>
                 <span className="text-sm font-medium" style={{ color: "var(--text-base)" }}>
-                  #{l.unit_number || l.unit_id}
+                  {unitLabel(l)}
                 </span>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   {l.date_from} → {l.date_to} · {l.nights}n

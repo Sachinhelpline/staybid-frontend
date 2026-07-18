@@ -102,24 +102,34 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v342, Circle Marketplace M3 shipped; M4 in progress)
+## Current production state (v343, Circle Marketplace M4 shipped)
 - **Live version chain:** Circle Marketplace Redesign M0 (v339) → M1 (v340) → M2 (v341) →
-  **M3 (v342) ✅**. Branch this session: `claude/circle-m4-hotel-owner-b2b-vaei3q`.
-- **In progress — Phase M4 (Model-4 B2B SUPPLY side, `source='hotel_owner'`):** lets ANY hotel
-  owner list room-nights on the B2B exchange from their OWN inventory (no pre-bought
-  `inventory_blocks`), reusing `b2bTradeSplit` (`B2B_FEE_PCT_DEFAULT=8`) + the D2 checkout/verify
-  chain. `buy_total` = owner's Spine floor via `quoteInventoryBlock`. On BUY: `assignFreeUnit` at
-  checkout + a NEW buyer `inventory_blocks` pending block + a `room_blocks` hold + `stampUnitOwner`
-  on verify. Steps: (a) LISTING-CREATE done · (b) BUY-CHECKOUT in progress · (c) BUY-VERIFY not
-  started · (d) UI not started. Migration `migrations/2026-07-14-v343-phase-m4-hotel-owner-b2b.sql`
-  (`b2b_listings.source TEXT NOT NULL DEFAULT 'investor_block'` + `block_id`/`unit_id` DROP NOT NULL +
-  `idx_*_source`; NO CHECK — NULL block_ids are distinct so hotel_owner listings never collide the
-  `uniq_b2b_listing_active_block` partial index). `grantModel4Service` ALREADY exists in D2 verify.
+  M3 (v342) → **M4 (v343) ✅**. Branch this session: `claude/circle-m4-hotel-owner-b2b-vaei3q`.
+- **Phase M4 (Model-4 B2B SUPPLY side, `source='hotel_owner'`) — SHIPPED:** ANY hotel owner lists
+  room-nights on the B2B exchange from their OWN inventory (no pre-bought `inventory_blocks`),
+  reusing `b2bTradeSplit` (`B2B_FEE_PCT_DEFAULT=8`) + the D2 checkout/verify chain. Listing
+  `buy_total` = owner's Spine floor via `quoteInventoryBlock` (`app/api/b2b/listings` POST,
+  `source:'hotel_owner'` branch → `block_id`/`unit_id` NULL). On BUY (`.../[id]/checkout`
+  hotel_owner branch): SKIP the owned-block integrity check → `assignFreeUnit` (409 if none) →
+  freeze buyer's Spine buy basis via `quoteInventoryBlock` → mint a NEW buyer `inventory_blocks`
+  pending block (mirrors M1 marketplace checkout, unit_id NON-null) + overlap re-guard → `b2b_trades`
+  row carries `source='hotel_owner'` + the new `block_id`. On VERIFY (`.../[id]/verify` branch on
+  `trade.source`): flip the buyer's block pending→owned (4-key idempotent) + `stampUnitOwner`
+  (or-guard `owner_user_id.is.null,in.(buyerIds)`) + `writeHold(invhold_<blockId>, source=inventory)`;
+  settlement `payee=seller`; `grantModel4Service` already fires. The D2 investor_block
+  transfer branch is untouched. Buy-side browse (`/api/b2b/marketplace`) already surfaces
+  hotel_owner listings (no source filter — just `status=listed`), so buying works via the same
+  `buyExchange`→checkout→verify path. UI: partner "Pre-buy Inventory" tab
+  (`components/partner/CircleInventoryTab.tsx`) gained a "List your own inventory" supply form.
+  Migration `migrations/2026-07-14-v343-phase-m4-hotel-owner-b2b.sql` (`b2b_listings`+`b2b_trades`
+  `source TEXT NOT NULL DEFAULT 'investor_block'` + `block_id`/`unit_id` DROP NOT NULL + `idx_*_source`;
+  NO CHECK — NULL block_ids are distinct so hotel_owner listings never collide the
+  `uniq_b2b_listing_active_block` partial index) applied live. Round-trip verified (0 leftover).
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v155`.
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v342. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v156`.
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v343. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
