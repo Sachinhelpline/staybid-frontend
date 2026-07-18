@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { CountUp } from "@/components/CountUp";
+import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
 import {
   CIRCLE_PLANS, computeBundle, fmtINR,
   DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig, type PaymentPlanKey,
@@ -47,6 +48,11 @@ export default function CircleMePage() {
   // (possibly old-formula) snapshot columns never diverge from what the wizard
   // shows. Fetch the admin-editable revenue levers exactly like the other pages.
   const [revConfig, setRevConfig] = useState<CircleRevenueConfig>(DEFAULT_CIRCLE_REVENUE);
+  // v348 — Model 2 city access (₹999 one-time lifetime per city).
+  const [cityAccess, setCityAccess] = useState<{ cities: string[]; price: number }>({ cities: [], price: 999 });
+  const [newCity, setNewCity] = useState("");
+  const [cityBusy, setCityBusy] = useState(false);
+  const [cityMsg, setCityMsg] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -69,7 +75,57 @@ export default function CircleMePage() {
       .then((r) => r.json())
       .then((d) => { if (d?.config) setRevConfig(d.config as CircleRevenueConfig); })
       .catch(() => {});
+    fetch("/api/circle/city-access", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d && Array.isArray(d.cities)) setCityAccess({ cities: d.cities, price: Number(d.price) || 999 }); })
+      .catch(() => {});
   }, [user, authLoading, router]);
+
+  // v348 — unlock a city (₹999 one-time). Server sets the amount; we open
+  // Razorpay, then verify flips the access active (lifetime).
+  async function unlockCity() {
+    const city = newCity.trim();
+    if (!city) { setCityMsg("Type a city to unlock."); return; }
+    setCityBusy(true); setCityMsg("");
+    try {
+      const token = localStorage.getItem("sb_token") || "";
+      const cr = await fetch("/api/circle/city-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ city }),
+      });
+      const cd = await cr.json().catch(() => ({}));
+      if (cr.ok && cd?.free) { setCityMsg(`${city} unlocked ✓`); setNewCity(""); refreshCities(token); return; }
+      if (!cr.ok || !cd?.order?.id) { setCityMsg(cd?.error || "Couldn't start payment"); return; }
+
+      let pay: any;
+      try {
+        pay = await openRazorpayForOrder({
+          keyId: cd.keyId, orderId: cd.order.id, amountPaise: cd.order.amount,
+          description: `Unlock ${city} · StayCircle Model 2`,
+        });
+      } catch (e) {
+        if (e instanceof RazorpayError && e.message === "__CANCELLED__") { setCityMsg("Payment cancelled"); return; }
+        setCityMsg(e instanceof Error ? e.message : "Payment failed"); return;
+      }
+
+      const vr = await fetch("/api/circle/city-access/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ city, razorpay_order_id: cd.order.id, razorpay_payment_id: pay?.razorpay_payment_id, razorpay_signature: pay?.razorpay_signature }),
+      });
+      const vd = await vr.json().catch(() => ({}));
+      if (!vr.ok || !vd?.ok) { setCityMsg(vd?.error || "Verify failed — contact support"); return; }
+      setCityMsg(`${city} unlocked ✓`); setNewCity(""); refreshCities(token);
+    } catch { setCityMsg("Something went wrong"); }
+    finally { setCityBusy(false); }
+  }
+  function refreshCities(token: string) {
+    fetch("/api/circle/city-access", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d && Array.isArray(d.cities)) setCityAccess({ cities: d.cities, price: Number(d.price) || 999 }); })
+      .catch(() => {});
+  }
 
   const serverKpis = data?.kpis || {};
   const bundlesRaw: any[] = Array.isArray(data?.bundles) ? data.bundles : [];
@@ -140,6 +196,35 @@ export default function CircleMePage() {
           <div className="sbc-panel" style={{ padding: 40, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading your portfolio…</div>
         ) : (
           <div style={{ display: "grid", gap: 26 }}>
+
+            {/* -------- v348: Model 2 city access (₹999 one-time / city) -------- */}
+            <div>
+              <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>City Access <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
+              <p style={{ fontSize: ".72rem", lineHeight: 1.5, color: "rgba(74,56,32,.6)", margin: "4px 0 0" }}>
+                Unlock a city once (₹{cityAccess.price} · lifetime) to buy &amp; resell inventory there on the Model 2 marketplace.
+              </p>
+              <div className="sbc-panel" style={{ padding: 16, marginTop: 12 }}>
+                {cityAccess.cities.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {cityAccess.cities.map((c) => (
+                      <span key={c} style={{ textTransform: "capitalize", fontSize: ".8rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "rgba(127,146,105,.16)", color: "#3F5233" }}>
+                        ✓ {c}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: ".85rem", color: "rgba(74,56,32,.6)", marginBottom: 12 }}>No cities unlocked yet.</div>
+                )}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <input value={newCity} onChange={(e) => setNewCity(e.target.value)} placeholder="City to unlock (e.g. Manali)"
+                    style={{ flex: "1 1 200px", minWidth: 0, borderRadius: 10, border: "1px solid rgba(139,105,20,.25)", padding: "9px 12px", fontSize: ".9rem", background: "#fff", color: "var(--sbc-ink)" }} />
+                  <button disabled={cityBusy} onClick={unlockCity} className="sbc-btn-gold" style={{ whiteSpace: "nowrap" }}>
+                    {cityBusy ? "…" : `Unlock · ₹${cityAccess.price}`}
+                  </button>
+                </div>
+                {cityMsg && <div style={{ fontSize: ".78rem", marginTop: 8, color: "var(--sbc-gold-deep)" }}>{cityMsg}</div>}
+              </div>
+            </div>
 
             {/* -------- bundles -------- */}
             <div>
