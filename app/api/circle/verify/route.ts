@@ -2,9 +2,34 @@ import { NextResponse } from "next/server";
 import { SB_URL, SB_H } from "@/lib/sb";
 import { sbCacheInvalidate } from "@/lib/sb-cache";
 import { provisionBundle } from "@/lib/circle/provision";
+import { genId } from "@/lib/sb-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// v344 — M5: best-effort grant of the circle_model1 marker service to a
+// provisioned host hotel for the revenue-share INVESTOR (enrollment marker;
+// mirrors grantModel3/4Service). Real access is ownership-based (the stamped
+// owned units). Must never break verify — the payment is already recorded.
+async function grantModel1Service(hotelId: string, grantedBy: string): Promise<void> {
+  if (!hotelId) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/hotel_services?on_conflict=hotel_id,service_key`, {
+      method: "POST",
+      headers: { ...SB_H, Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        id: genId("svc"),
+        hotel_id: hotelId,
+        service_key: "circle_model1",
+        status: "active",
+        access_type: "free",
+        granted_by: grantedBy,
+        note: "Circle Model-1 revenue-share investor",
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch { /* best-effort */ }
+}
 
 // POST /api/circle/verify
 // Body: { bundleId, razorpay_order_id, razorpay_payment_id, razorpay_signature }
@@ -131,6 +156,13 @@ export async function POST(req: Request) {
   if (targetStatus === "active") {
     try {
       provision = await provisionBundle(bundle);
+    } catch { /* best-effort */ }
+    // v344 — M5: enroll the investor into the circle_model1 marker service on
+    // each provisioned hotel (idempotent upsert; never blocks the response).
+    try {
+      const hotels: string[] = Array.isArray(provision?.hotels) ? provision.hotels : [];
+      const grantedBy = String(bundle?.user_id || "");
+      for (const hid of hotels) await grantModel1Service(String(hid), grantedBy);
     } catch { /* best-effort */ }
   }
 

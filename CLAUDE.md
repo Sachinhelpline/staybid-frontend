@@ -102,9 +102,21 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v343, Circle Marketplace M4 shipped)
+## Current production state (v344, Circle Marketplace M5 shipped)
 - **Live version chain:** Circle Marketplace Redesign M0 (v339) → M1 (v340) → M2 (v341) →
-  M3 (v342) → **M4 (v343) ✅**. Branch this session: `claude/circle-m4-hotel-owner-b2b-vaei3q`.
+  M3 (v342) → M4 (v343) → **M5 (v344) ✅**. Branch this session: `claude/circle-m4-hotel-owner-b2b-vaei3q`.
+- **Phase M5 (per-model service enrollment markers) — SHIPPED:** `circle_model1/3/4` are now
+  formalized in the service catalog (`lib/partner/services.ts`: `CIRCLE_SERVICES` + `isCircleService`
+  + `SERVICE_LABEL` entries) as FREE enrollment markers — deliberately NOT in `SUBSCRIPTION_SERVICES`
+  (never tab-gate the dashboard nor hit the paid `service-checkout`/`isSubscriptionService` gates) and
+  NOT in `DEFAULT_SERVICES`. All 3 model journeys grant their marker free on verify: M3
+  `grantModel3Service` + M4 `grantModel4Service` (pre-existing) and NEW M1 `grantModel1Service`
+  (`app/api/circle/verify/route.ts`, fires per provisioned hotel from `provisionBundle().hotels` on
+  full activation, idempotent upsert on `hotel_id,service_key`). Real Circle access stays
+  ownership-based (`owner_user_id`/`investor_user_id`) — the markers are never read by any gate. NOTE:
+  the paid-subscription billing tables (`service_pricing`/`service_bundles`/`service_payments`, code +
+  `2026-05-21` migrations) were never applied live, so Circle stays free-marker only (M5 scope choice).
+  No migration, no new charge. Round-trip verified (0 leftover).
 - **Phase M4 (Model-4 B2B SUPPLY side, `source='hotel_owner'`) — SHIPPED:** ANY hotel owner lists
   room-nights on the B2B exchange from their OWN inventory (no pre-bought `inventory_blocks`),
   reusing `b2bTradeSplit` (`B2B_FEE_PCT_DEFAULT=8`) + the D2 checkout/verify chain. Listing
@@ -128,8 +140,9 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v156`.
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v343. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v156` (M5 skipped it —
+  server grant + client label map only, no HTML doc change).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v344. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
