@@ -132,12 +132,16 @@ export async function POST(req: NextRequest) {
       } catch { /* already transferred */ }
     }
 
-    // 3) flip listing sold (guarded).
-    try {
-      await fetch(`${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(String(t.listing_id))}&status=eq.listed`, {
-        method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" }, body: JSON.stringify({ status: "sold", updated_at: nowIso }),
-      });
-    } catch { /* already sold */ }
+    // 3) flip listing sold — ONLY for a fixed investor_block (its whole range is
+    // gone). A hotel_owner listing is a RELEASED WINDOW that other buyers can
+    // still buy other nights from, so it stays `listed` (v356).
+    if (source !== "hotel_owner") {
+      try {
+        await fetch(`${SB_URL}/rest/v1/b2b_listings?id=eq.${encodeURIComponent(String(t.listing_id))}&status=eq.listed`, {
+          method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" }, body: JSON.stringify({ status: "sold", updated_at: nowIso }),
+        });
+      } catch { /* already sold */ }
+    }
 
     // 4) settlement (idempotent via uniq_settlement_kind_ref).
     try {
