@@ -20,7 +20,7 @@ import { b2bTradeSplit } from "@/lib/b2b/engine";
 import { resolveActiveCities, cityAccessId, normalizeCity } from "@/lib/circle/city-access";
 import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
 import { assignFreeUnit } from "@/lib/inventory/assign";
-import { quoteInventoryBlock } from "@/lib/inventory/quote";
+import { enumerateDates } from "@/lib/availability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +28,7 @@ export const dynamic = "force-dynamic";
 const PUBLIC_KEY_ID = "rzp_live_SfFAsbYjbHfztd";
 const MAX_BASKET = 20;
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 function auth(req: NextRequest): { userId?: string; phone?: string; email?: string } {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -35,32 +36,47 @@ function auth(req: NextRequest): { userId?: string; phone?: string; email?: stri
   return { userId: p?.id || p?.user_id || p?.sub, phone: p?.phone, email: p?.email };
 }
 
+// v356 — each basket line is a listing PLUS the nights the buyer picked from
+// that room's released window. Back-compat: a bare `listingIds:[…]` array (no
+// dates) buys each listing's full window as-is.
+type Pick = { listingId: string; from?: string; to?: string };
+
 export async function POST(req: NextRequest) {
   const { userId, phone, email } = auth(req);
   if (!userId) return NextResponse.json({ error: "Please sign in to buy." }, { status: 401 });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
-  const listingIds: string[] = Array.from(new Set(
-    (Array.isArray(body?.listingIds) ? body.listingIds : []).map((x: any) => String(x)).filter((x: string) => !!x),
-  ));
-  if (!listingIds.length) return NextResponse.json({ error: "Your basket is empty." }, { status: 400 });
-  if (listingIds.length > MAX_BASKET) return NextResponse.json({ error: `At most ${MAX_BASKET} listings per basket.` }, { status: 400 });
+
+  let picks: Pick[] = [];
+  if (Array.isArray(body?.items) && body.items.length) {
+    picks = body.items
+      .map((x: any) => ({ listingId: String(x?.listingId || ""), from: String(x?.from || "").slice(0, 10), to: String(x?.to || "").slice(0, 10) }))
+      .filter((p: Pick) => !!p.listingId);
+  } else if (Array.isArray(body?.listingIds)) {
+    picks = Array.from(new Set(body.listingIds.map((x: any) => String(x)).filter(Boolean))).map((id) => ({ listingId: id as string }));
+  }
+  if (!picks.length) return NextResponse.json({ error: "Your basket is empty." }, { status: 400 });
+  if (picks.length > MAX_BASKET) return NextResponse.json({ error: `At most ${MAX_BASKET} rooms per basket.` }, { status: 400 });
 
   const buyerIds = await resolveOwnerIdsCrossPool(userId, phone, email);
   if (!buyerIds.length) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const isBuyer = (v: any) => buyerIds.map(String).includes(String(v));
 
-  // Load every requested listing.
-  let listings: any[] = [];
+  // Load every distinct listing referenced by the picks.
+  const listingIds = Array.from(new Set(picks.map((p) => p.listingId)));
+  let listingRows: any[] = [];
   try {
     const idsCsv = listingIds.map((x) => encodeURIComponent(x)).join(",");
     const r = await fetch(`${SB_URL}/rest/v1/b2b_listings?id=in.(${idsCsv})&select=*`, { headers: SB_H });
-    listings = r.ok ? await r.json().catch(() => []) : [];
+    listingRows = r.ok ? await r.json().catch(() => []) : [];
   } catch { /* handled below */ }
-  if (!Array.isArray(listings) || listings.length !== listingIds.length) {
+  const listingById: Record<string, any> = {};
+  listingRows.forEach((l) => { listingById[String(l.id)] = l; });
+  if (listingIds.some((id) => !listingById[id])) {
     return NextResponse.json({ error: "Some offers are no longer available — refresh your basket." }, { status: 409 });
   }
+  const listings = listingRows;
 
   // Validate each + gate distinct cities on the buyer's access.
   const hotelIds = Array.from(new Set(listings.map((l) => String(l.hotel_id)).filter(Boolean)));
@@ -87,24 +103,41 @@ export async function POST(req: NextRequest) {
 
   // Reserve inventory + freeze each split. Blocks minted interleaved so the next
   // item's assign sees them. On any failure the minted pending blocks expire.
-  type Item = { listing: any; split: any; unitId: string | null; blockId: string | null; source: string; newBlockId: string | null };
+  type Item = { listing: any; split: any; from: string; to: string; unitId: string | null; blockId: string | null; source: string; newBlockId: string | null };
   const items: Item[] = [];
-  for (const listing of listings) {
+  for (const pick of picks) {
+    const listing = listingById[pick.listingId];
     const isHotelOwner = String(listing.source) === "hotel_owner";
+    const winFrom = String(listing.date_from).slice(0, 10);
+    const winTo = String(listing.date_to).slice(0, 10);
+
+    // v356 — the nights the buyer picked from the released window (hotel_owner
+    // only; an investor_block is sold as its whole fixed range). Clamp + validate.
+    let useFrom = winFrom, useTo = winTo;
+    if (isHotelOwner && pick.from && pick.to && isDate(pick.from) && isDate(pick.to)) {
+      useFrom = pick.from < winFrom ? winFrom : pick.from;
+      useTo = pick.to > winTo ? winTo : pick.to;
+    }
+    if (useFrom >= useTo) return NextResponse.json({ error: "Pick a valid check-in / check-out." }, { status: 400 });
+    if (useTo <= todayISO()) return NextResponse.json({ error: "One of these dates has already passed." }, { status: 409 });
+    const nights = enumerateDates(useFrom, useTo).length;
+    if (nights < 1) return NextResponse.json({ error: "Pick at least one night." }, { status: 400 });
+
+    // v356 — price the CHOSEN nights: own price/night × the frozen resale
+    // multiplier (= the listing's per-night ask), × nights + the frozen fees.
+    const ownPerNight = Math.round(Number(listing.own_per_night) || (Number(listing.buy_total) / Math.max(1, Number(listing.nights)))) || 0;
+    const askPerNight = Math.round(Number(listing.ask_per_night)) || ownPerNight * (Number(listing.price_multiplier) || 2);
     const split = b2bTradeSplit({
-      askPerNight: Number(listing.ask_per_night),
-      nights: Number(listing.nights),
+      askPerNight,
+      nights,
       buyerFeePct: Number(listing.buyer_fee_pct),
       sellerFeePct: Number(listing.seller_fee_pct),
-      buyTotal: Number(listing.buy_total),
+      buyTotal: ownPerNight * nights,
     });
     if (split.buyerPays <= 0) return NextResponse.json({ error: "One offer isn't priced correctly." }, { status: 422 });
 
-    const lFrom = String(listing.date_from).slice(0, 10);
-    const lTo = String(listing.date_to).slice(0, 10);
-
     if (!isHotelOwner) {
-      // investor_block — the seller must still own the block.
+      // investor_block — the seller must still own the block (whole fixed range).
       let block: any = null;
       try {
         const r = await fetch(`${SB_URL}/rest/v1/inventory_blocks?id=eq.${encodeURIComponent(String(listing.block_id))}&select=id,investor_user_id,status`, { headers: SB_H });
@@ -113,16 +146,17 @@ export async function POST(req: NextRequest) {
       if (!block || String(block.status) !== "owned" || String(block.investor_user_id) !== String(listing.seller_user_id)) {
         return NextResponse.json({ error: "One block is no longer available to trade." }, { status: 409 });
       }
-      items.push({ listing, split, unitId: listing.unit_id ? String(listing.unit_id) : null, blockId: String(listing.block_id), source: "investor_block", newBlockId: null });
+      items.push({ listing, split, from: useFrom, to: useTo, unitId: listing.unit_id ? String(listing.unit_id) : null, blockId: String(listing.block_id), source: "investor_block", newBlockId: null });
       continue;
     }
 
-    // hotel_owner — assign a free unit + mint a fresh pending block NOW.
-    const freeUnit = await assignFreeUnit({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: lFrom, to: lTo, buyerIds });
-    if (!freeUnit) return NextResponse.json({ error: "One offer sold out — refresh your basket." }, { status: 409 });
-    const quote = await quoteInventoryBlock({ roomId: String(listing.room_id), from: lFrom, to: lTo });
-    const buyTotal = quote && quote.buyTotal > 0 ? quote.buyTotal : Number(split.buyTotal) || 0;
-    const perNight = split.nights > 0 ? Math.round(buyTotal / split.nights) : buyTotal;
+    // hotel_owner — assign a free unit for the CHOSEN nights + mint a fresh
+    // pending buyer block over exactly those nights NOW.
+    const freeUnit = await assignFreeUnit({ hotelId: String(listing.hotel_id), roomId: String(listing.room_id), from: useFrom, to: useTo, buyerIds });
+    if (!freeUnit) return NextResponse.json({ error: "One room is booked on those nights — pick different dates." }, { status: 409 });
+    // The buyer's acquisition cost basis = what they pay for the goods (the ask).
+    const buyTotal = split.askTotal;
+    const perNight = askPerNight;
     const newBlockId = genId("inv");
     try {
       const res = await fetch(`${SB_URL}/rest/v1/inventory_blocks`, {
@@ -130,9 +164,9 @@ export async function POST(req: NextRequest) {
         headers: SB_H_REPRESENT,
         body: JSON.stringify({
           id: newBlockId, investor_user_id: String(userId), hotel_id: String(listing.hotel_id),
-          unit_id: freeUnit.unitId, room_id: String(listing.room_id), date_from: lFrom, date_to: lTo,
-          nights: split.nights, buy_price_per_night: perNight, buy_total: buyTotal,
-          resale_price_per_night: quote?.avgResalePerNight || 0, platform_fee_pct: split.platformFeePct,
+          unit_id: freeUnit.unitId, room_id: String(listing.room_id), date_from: useFrom, date_to: useTo,
+          nights, buy_price_per_night: perNight, buy_total: buyTotal,
+          resale_price_per_night: 0, platform_fee_pct: split.platformFeePct,
           status: "pending_payment", metadata: { source: "circle_b2b_basket", listingId: String(listing.id), roomNumber: freeUnit.roomNumber, checkoutAt: new Date().toISOString() },
           updated_at: new Date().toISOString(),
         }),
@@ -145,7 +179,7 @@ export async function POST(req: NextRequest) {
     try {
       const clashRes = await fetch(
         `${SB_URL}/rest/v1/inventory_blocks?unit_id=eq.${encodeURIComponent(freeUnit.unitId)}&id=neq.${encodeURIComponent(newBlockId)}` +
-          `&status=not.in.(expired,cancelled,refunded)&date_from=lt.${lTo}&date_to=gt.${lFrom}&select=id&limit=1`,
+          `&status=not.in.(expired,cancelled,refunded)&date_from=lt.${useTo}&date_to=gt.${useFrom}&select=id&limit=1`,
         { headers: SB_H },
       );
       const clash = clashRes.ok ? await clashRes.json().catch(() => []) : [];
@@ -155,7 +189,7 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* non-fatal */ }
 
-    items.push({ listing, split, unitId: freeUnit.unitId, blockId: newBlockId, source: "hotel_owner", newBlockId });
+    items.push({ listing, split, from: useFrom, to: useTo, unitId: freeUnit.unitId, blockId: newBlockId, source: "hotel_owner", newBlockId });
   }
 
   const invTotal = items.reduce((s, it) => s + Number(it.split.buyerPays || 0), 0);
@@ -204,7 +238,7 @@ export async function POST(req: NextRequest) {
           id: tradeId, listing_id: String(it.listing.id), block_id: it.blockId,
           seller_user_id: String(it.listing.seller_user_id), buyer_user_id: String(userId),
           hotel_id: String(it.listing.hotel_id), unit_id: it.unitId, room_id: String(it.listing.room_id),
-          date_from: String(it.listing.date_from).slice(0, 10), date_to: String(it.listing.date_to).slice(0, 10),
+          date_from: it.from, date_to: it.to,
           nights: it.split.nights, ask_total: it.split.askTotal,
           platform_fee_pct: it.split.platformFeePct, platform_fee: it.split.platformFee,
           buyer_fee_pct: it.split.buyerFeePct, seller_fee_pct: it.split.sellerFeePct,

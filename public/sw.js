@@ -500,7 +500,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // v355 — HTML_CACHE bump (v166 -> v167). Model 2 resale price = owner's OWN price
 // (monthly/30) x multiplier; new premium browse UI + room/property tour; admin
 // resale-multiplier control. Drops stale cached browse so the tour + prices show.
-const HTML_CACHE = 'staybid-html-v167';
+// v356 — HTML_CACHE bump (v167 -> v168). Model 2 rebuilt into the Model-1-style
+// journey: property browse → property/room tour with live availability calendar
+// (pick your own nights) + trading panel (buy price vs ADR/low/high market) →
+// build bundle → review → pay. Drops stale cached browse.
+const HTML_CACHE = 'staybid-html-v168';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

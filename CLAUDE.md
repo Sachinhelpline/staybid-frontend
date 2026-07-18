@@ -102,7 +102,30 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v355, Circle "Model 2" — resale = own-price × multiplier + premium browse/tour)
+## Current production state (v356, Circle "Model 2" — full Model-1-style journey: calendar tour + trading + review)
+- **Model 2 browse REBUILT into the Model-1 journey** (`app/circle/model2/browse/page.tsx`): Step 1 browse
+  released inventory **grouped by PROPERTY** (property cards) → Step 2 full **property + room TOUR** (in-page
+  overlay: property gallery + per-room card) → Step 3 **build** (pick nights across cities into a bundle) →
+  Step 4 **review** overlay (per-city line items + city fees + totals) → ONE payment. Removed the two
+  secondary header links (pre-buy operated + City Access); City Access now lives in the investor dashboard
+  (`/circle/dashboard` tiles → `/circle/me?tab=city`).
+- **Calendar-driven date picking (deck ss2):** each demo listing is now a **released WINDOW** (Aug 1–Dec 1,
+  `metadata.window=true`, migration `2026-07-18-v356-demo-b2b-windows.sql`), not a fixed range. In the room
+  tour a **live availability MiniCalendar** shows the window minus blocked dates (from `/api/availability`
+  via the new quote route) and the buyer **picks their own nights**; price = own/night × multiplier × nights.
+- **Trading panel (guest/retail market):** NEW `app/api/b2b/market-quote/route.ts` (customer Bearer) →
+  `{ window, blocked[], ownPerNight, multiplier, buyPerNight, market:{adr,low,high}, selection? }`. Market =
+  `room_date_price.live_price` min/avg/max over the range (Spine `resolveSpinePrices` per-night fallback,
+  bounded 45). The tour shows "your buy price vs market ADR/low/high + resale upside" like a stock. e.g.
+  Cave View own ₹1,000 → buy ₹2,000 vs market ADR ₹2,852 (₹2,800–4,900).
+- **Buyer-picked-dates checkout:** `app/api/b2b/basket/checkout` now accepts `items:[{listingId,from,to}]`
+  (back-compat `listingIds`), validates each pick ⊆ the released window, prices the CHOSEN nights
+  (own×mult×nights + frozen fees), `assignFreeUnit` + mints a pending buyer block over exactly those nights,
+  writes the trade with the chosen dates. `basket/verify` settles per trade; a **hotel_owner window stays
+  `listed`** after a sale (other buyers can still buy other nights) — only a fixed `investor_block` flips
+  `sold`. Money path otherwise unchanged (b2bTradeSplit, 4-key idempotent verify, tamper-safe).
+
+## Earlier state (v355, Circle "Model 2" — resale = own-price × multiplier + premium browse/tour)
 - **Resale price = the owner's OWN price/night × a multiplier (v355), NOT a Spine markup.** The rule:
   an investor who owns a room at (e.g.) ₹30k/month owns it at ₹1,000/day → StayBid lists it for B2B
   sale at **2× that own price** (₹2,000/day). `sell/night = round(ownPerNight × multiplier)`, where
@@ -274,8 +297,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v167` (v355 own-price×mult + tour).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v355. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v168` (v356 calendar tour + trading).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v356. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
