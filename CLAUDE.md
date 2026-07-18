@@ -102,7 +102,21 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v347, Circle "Model 2" rename + dual B2B fee)
+## Current production state (v348, Circle "Model 2" — rename + dual fee + city access)
+- **City access paywall (v348) — LIVE MONEY:** an investor unlocks a city ONCE (₹999, lifetime,
+  admin-priced) to buy/resell Model-2 inventory there. Price = `b2b_fee_config.city_access_price`
+  (default 999) resolved via `resolveB2bFeeConfig().cityAccessPrice`; admin edits it in the same
+  `/admin/circle-inventory` fee card (+ `/api/admin/b2b-fee` accepts `cityAccessPrice`). Grants live in
+  `circle_city_access` (deterministic id `cca_<primaryId>_<citySlug>`, `uniq_city_access_active` on
+  `(user_id,city) WHERE status=active`). Flow: `/api/circle/city-access` GET (active cities + price) +
+  POST (checkout, tamper-safe amount) → `/api/circle/city-access/verify` (4-key idempotent
+  pending→active). Helpers `lib/circle/city-access.ts` (`normalizeCity`/`cityAccessId`/
+  `resolveActiveCities`/`hasCityAccess`, all cross-pool). GATE: `app/api/b2b/listings/[id]/checkout`
+  403s `needCityAccess` if the buyer hasn't unlocked the listing hotel's city (fails OPEN on lookup
+  error). UI: `/circle/me` "City Access" card (list unlocked + unlock a new city via Razorpay).
+  Migration `2026-07-18-v348-city-access.sql` applied live. Round-trip verified (0 leftover).
+
+
 - **Model 2 rebrand (v346):** the old Model 3 (pre-buy) + Model 4 (B2B exchange) are now ONE
   **"Model 2 — Multi-City Inventory Bundle"**. Hub shows 2 model cards (Model 1 + Model 2); canonical
   `/circle/model2` route (re-exports the pre-buy flow); `/circle/model3` + `/circle/model4` stay live,
@@ -174,8 +188,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v159` (v347 dual-fee UI).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v347. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v160` (v348 city access).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v348. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

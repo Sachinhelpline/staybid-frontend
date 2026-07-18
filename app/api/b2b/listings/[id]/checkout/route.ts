@@ -17,6 +17,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_H, SB_H_REPRESENT, decodeJwt, genId } from "@/lib/sb-server";
 import { resolveOwnerIdsCrossPool } from "@/lib/partner/owner-ids";
 import { b2bTradeSplit } from "@/lib/b2b/engine";
+import { resolveB2bFeeConfig } from "@/lib/b2b/fee-config-store";
+import { hasCityAccess } from "@/lib/circle/city-access";
 import { assignFreeUnit } from "@/lib/inventory/assign";
 import { quoteInventoryBlock } from "@/lib/inventory/quote";
 
@@ -69,6 +71,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (String(listing.date_to).slice(0, 10) <= todayISO()) {
     return NextResponse.json({ error: "These nights have already passed." }, { status: 409 });
   }
+
+  // v348 — Model 2 city-access gate: the buyer must have unlocked the listing's
+  // city (₹999 one-time lifetime) before they can buy inventory there.
+  try {
+    const hr = await fetch(
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(String(listing.hotel_id))}&select=city`,
+      { headers: SB_H },
+    );
+    const city = String(((hr.ok ? await hr.json().catch(() => []) : [])?.[0]?.city) || "");
+    if (city && !(await hasCityAccess(buyerIds, city))) {
+      const cfg = await resolveB2bFeeConfig();
+      return NextResponse.json(
+        { error: `Unlock ${city} to buy inventory there.`, needCityAccess: true, city, price: cfg.cityAccessPrice },
+        { status: 403 },
+      );
+    }
+  } catch { /* fail open on lookup error — never block a real buyer on a hiccup */ }
 
   const isHotelOwner = String(listing.source) === "hotel_owner";
 

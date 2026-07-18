@@ -23,6 +23,10 @@ const clampPct = (v: any): number | null => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
 };
+const clampMoney = (v: any): number | null => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 0 && n <= 10_000_000 ? n : null;
+};
 
 export async function GET(req: NextRequest) {
   if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,6 +45,11 @@ export async function POST(req: NextRequest) {
   if (buyerFeePct === null || sellerFeePct === null) {
     return NextResponse.json({ error: "buyerFeePct & sellerFeePct must each be 0–100." }, { status: 400 });
   }
+  // city access price optional — only update when provided.
+  const cityAccessPrice = body?.cityAccessPrice === undefined ? undefined : clampMoney(body?.cityAccessPrice);
+  if (cityAccessPrice === null) {
+    return NextResponse.json({ error: "cityAccessPrice must be ≥ 0." }, { status: 400 });
+  }
 
   try {
     const r = await fetch(`${SB_URL}/rest/v1/b2b_fee_config?on_conflict=id`, {
@@ -50,6 +59,7 @@ export async function POST(req: NextRequest) {
         id: B2B_FEE_CONFIG_ID,
         buyer_fee_pct: buyerFeePct,
         seller_fee_pct: sellerFeePct,
+        ...(cityAccessPrice === undefined ? {} : { city_access_price: cityAccessPrice }),
         updated_at: new Date().toISOString(),
       }),
     });
@@ -68,9 +78,10 @@ export async function POST(req: NextRequest) {
       action: "b2b_fee.set",
       targetType: "config",
       targetId: B2B_FEE_CONFIG_ID,
-      details: { buyerFeePct, sellerFeePct },
+      details: { buyerFeePct, sellerFeePct, cityAccessPrice },
     });
   } catch { /* best-effort */ }
 
-  return NextResponse.json({ ok: true, config: { buyerFeePct, sellerFeePct } });
+  const config = await resolveB2bFeeConfig();
+  return NextResponse.json({ ok: true, config });
 }

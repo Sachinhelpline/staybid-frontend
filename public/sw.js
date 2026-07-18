@@ -475,7 +475,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // commission: buyer pays ask + buyer% and seller receives ask − seller% (both
 // admin-controlled, default 5/5). Buy/list/quote surfaces now show the buyer
 // charge + fee breakdown. Bump drops stale cached exchange markup.
-const HTML_CACHE = 'staybid-html-v159';
+// v348 — one-time HTML_CACHE bump (v159 -> v160). Circle Model 2 city access:
+// investors unlock a city once (₹999 lifetime) from /circle/me to buy inventory
+// there; the buy-checkout is gated on it. Bump drops stale cached /circle/me.
+const HTML_CACHE = 'staybid-html-v160';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
