@@ -109,13 +109,13 @@ export default function CircleInventoryTab({
   const [listDraft, setListDraft] = useState<Record<string, string>>({});
   // v331 — D1: Model 4 B2B exchange — my listings + per-block ask/night draft.
   const [b2bListings, setB2bListings] = useState<B2bListing[]>([]);
-  const [b2bDraft, setB2bDraft] = useState<Record<string, string>>({});
   // v343 — M4: hotel-owner SUPPLY — list room-nights from OWN inventory (no
   // pre-bought block; a free unit is auto-assigned to the buyer at checkout).
   const [ownRoomId, setOwnRoomId] = useState<string>("");
   const [ownFrom, setOwnFrom] = useState<string>(todayISO());
   const [ownTo, setOwnTo] = useState<string>("");
-  const [ownAsk, setOwnAsk] = useState<string>("");
+  // v349 — regulated-price preview for the own-inventory supply form.
+  const [ownQuote, setOwnQuote] = useState<{ askPerNight: number; askTotal: number; nights: number; split?: B2bSplit } | null>(null);
   // v332 — D2: my B2B trades (as buyer / as seller).
   const [b2bTrades, setB2bTrades] = useState<{ asBuyer: B2bTrade[]; asSeller: B2bTrade[] }>({ asBuyer: [], asSeller: [] });
   // v333 — D3: OTHER investors' active listings I can buy (this hotel).
@@ -134,6 +134,19 @@ export default function CircleInventoryTab({
   }, [units]);
 
   useEffect(() => { if (!ownRoomId && roomOptions[0]) setOwnRoomId(roomOptions[0].roomId); }, [roomOptions, ownRoomId]);
+
+  // v349 — preview the StayBid-regulated price whenever room/dates are valid.
+  useEffect(() => {
+    if (!ownRoomId || !ownFrom || !ownTo || ownTo <= ownFrom) { setOwnQuote(null); return; }
+    let cancelled = false;
+    fetch(`/api/b2b/regulated-quote?roomId=${encodeURIComponent(ownRoomId)}&from=${ownFrom}&to=${ownTo}`, {
+      headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setOwnQuote(d?.ok ? d : null); })
+      .catch(() => { if (!cancelled) setOwnQuote(null); });
+    return () => { cancelled = true; };
+  }, [ownRoomId, ownFrom, ownTo]);
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2600); };
 
@@ -244,20 +257,17 @@ export default function CircleInventoryTab({
 
   // v331 — D1: list an OWNED block on the B2B exchange at the seller's ask.
   async function listB2b(b: Block) {
-    const raw = b2bDraft[b.id] ?? "";
-    const ask = Math.round(Number(raw));
-    if (!Number.isFinite(ask) || ask <= 0) { flash("Enter a B2B ask price per night."); return; }
     setBusy(true);
     try {
+      // Price is StayBid-regulated (Spine cost × admin markup) — server-computed.
       const r = await fetch(`/api/b2b/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ blockId: b.id, askPerNight: ask }),
+        body: JSON.stringify({ blockId: b.id }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { flash(d?.error || "List failed"); return; }
       flash("Listed on the B2B exchange ✓");
-      setB2bDraft((s) => ({ ...s, [b.id]: "" }));
       loadB2b();
     } catch { flash("List failed"); }
     finally { setBusy(false); }
@@ -268,19 +278,18 @@ export default function CircleInventoryTab({
   // checkout. buy_total = the owner's Spine floor (server-frozen); ask is theirs.
   async function listOwnInventory() {
     if (!ownRoomId || !ownFrom || !ownTo || ownTo <= ownFrom) { flash("Pick a room and a valid date range."); return; }
-    const ask = Math.round(Number(ownAsk));
-    if (!Number.isFinite(ask) || ask <= 0) { flash("Enter a B2B ask price per night."); return; }
     setBusy(true);
     try {
+      // Price is StayBid-regulated — computed server-side; no ask input.
       const r = await fetch(`/api/b2b/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ source: "hotel_owner", hotelId, roomId: ownRoomId, dateFrom: ownFrom, dateTo: ownTo, askPerNight: ask }),
+        body: JSON.stringify({ source: "hotel_owner", hotelId, roomId: ownRoomId, dateFrom: ownFrom, dateTo: ownTo }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { flash(d?.error || "List failed"); return; }
       flash("Listed on the B2B exchange ✓");
-      setOwnAsk(""); setOwnTo("");
+      setOwnTo(""); setOwnQuote(null);
       loadB2b();
     } catch { flash("List failed"); }
     finally { setBusy(false); }
@@ -633,19 +642,12 @@ export default function CircleInventoryTab({
                           ⇄ On exchange · {inr(activeB2bByBlock[b.id].ask_total)}
                         </span>
                       ) : (
-                        <div className="flex items-center gap-1.5"
-                          title="Sell this owned block to another investor at your own B2B price (StayBid takes a small fee).">
-                          <span className="text-[10px] opacity-60">⇄ ₹</span>
-                          <input type="number" min={0} placeholder="B2B ask/night"
-                            value={b2bDraft[b.id] ?? ""}
-                            onChange={(e) => setB2bDraft((s) => ({ ...s, [b.id]: e.target.value }))}
-                            className="w-24 rounded-lg border px-2 py-1 text-xs" style={{ borderColor: "var(--border-soft)" }} />
-                          <button disabled={busy} onClick={() => listB2b(b)}
-                            className="text-xs px-2.5 py-1 rounded-lg font-semibold border"
-                            style={{ borderColor: "var(--border-strong)", color: "var(--text-base)" }}>
-                            List on exchange
-                          </button>
-                        </div>
+                        <button disabled={busy} onClick={() => listB2b(b)}
+                          title="List this owned block on the B2B exchange at the StayBid-regulated price (Spine cost + markup; StayBid takes the commission)."
+                          className="text-xs px-2.5 py-1 rounded-lg font-semibold border"
+                          style={{ borderColor: "var(--border-strong)", color: "var(--text-base)" }}>
+                          ⇄ List on exchange
+                        </button>
                       )}
                     </div>
                   )}
@@ -705,16 +707,22 @@ export default function CircleInventoryTab({
                 <input type="date" value={ownTo} min={ownFrom || todayISO()} onChange={(e) => setOwnTo(e.target.value)}
                   className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
               </label>
-              <label className="text-xs">
-                <span className="block mb-1 opacity-70">Your ask /night</span>
-                <input type="number" min={0} value={ownAsk} onChange={(e) => setOwnAsk(e.target.value)}
-                  placeholder="₹/night" className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)" }} />
-              </label>
+              <div className="text-xs">
+                <span className="block mb-1 opacity-70">StayBid-regulated price</span>
+                <div className="w-full rounded-lg border px-2 py-1.5 text-sm" style={{ borderColor: "var(--border-soft)", background: "var(--accent-soft)" }}>
+                  {ownQuote ? <><b>{inr(ownQuote.askPerNight)}</b>/night · {inr(ownQuote.askTotal)} total</> : <span className="opacity-50">pick dates…</span>}
+                </div>
+              </div>
             </div>
+            {ownQuote?.split && (
+              <div className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                You receive <b style={{ color: "var(--text-base)" }}>{inr(ownQuote.split.sellerNet)}</b> after the {ownQuote.split.sellerFeePct ?? 0}% seller fee · buyer pays {inr(ownQuote.split.buyerPays ?? ownQuote.split.askTotal)}.
+              </div>
+            )}
             <div className="mt-3">
-              <button disabled={busy} onClick={listOwnInventory}
+              <button disabled={busy || !ownQuote} onClick={listOwnInventory}
                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-white" style={{ background: "var(--accent)" }}>
-                {busy ? "…" : "List on exchange"}
+                {busy ? "…" : "List at regulated price"}
               </button>
             </div>
           </div>

@@ -27,6 +27,10 @@ const clampMoney = (v: any): number | null => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= 0 && n <= 10_000_000 ? n : null;
 };
+const clampMarkup = (v: any): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 1000 ? n : null;
+};
 
 export async function GET(req: NextRequest) {
   if (!adminFromReq(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,10 +49,14 @@ export async function POST(req: NextRequest) {
   if (buyerFeePct === null || sellerFeePct === null) {
     return NextResponse.json({ error: "buyerFeePct & sellerFeePct must each be 0–100." }, { status: 400 });
   }
-  // city access price optional — only update when provided.
+  // city access price + regulated markup optional — only update when provided.
   const cityAccessPrice = body?.cityAccessPrice === undefined ? undefined : clampMoney(body?.cityAccessPrice);
   if (cityAccessPrice === null) {
     return NextResponse.json({ error: "cityAccessPrice must be ≥ 0." }, { status: 400 });
+  }
+  const regulatedMarkupPct = body?.regulatedMarkupPct === undefined ? undefined : clampMarkup(body?.regulatedMarkupPct);
+  if (regulatedMarkupPct === null) {
+    return NextResponse.json({ error: "regulatedMarkupPct must be 0–1000." }, { status: 400 });
   }
 
   try {
@@ -60,6 +68,7 @@ export async function POST(req: NextRequest) {
         buyer_fee_pct: buyerFeePct,
         seller_fee_pct: sellerFeePct,
         ...(cityAccessPrice === undefined ? {} : { city_access_price: cityAccessPrice }),
+        ...(regulatedMarkupPct === undefined ? {} : { regulated_markup_pct: regulatedMarkupPct }),
         updated_at: new Date().toISOString(),
       }),
     });
@@ -78,7 +87,7 @@ export async function POST(req: NextRequest) {
       action: "b2b_fee.set",
       targetType: "config",
       targetId: B2B_FEE_CONFIG_ID,
-      details: { buyerFeePct, sellerFeePct, cityAccessPrice },
+      details: { buyerFeePct, sellerFeePct, cityAccessPrice, regulatedMarkupPct },
     });
   } catch { /* best-effort */ }
 

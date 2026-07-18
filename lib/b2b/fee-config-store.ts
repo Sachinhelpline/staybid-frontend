@@ -12,7 +12,9 @@
 // ============================================================================
 
 import { SB_URL, SB_READ } from "@/lib/sb";
-import { B2B_BUYER_FEE_PCT_DEFAULT, B2B_SELLER_FEE_PCT_DEFAULT } from "./engine";
+import {
+  B2B_BUYER_FEE_PCT_DEFAULT, B2B_SELLER_FEE_PCT_DEFAULT, B2B_REGULATED_MARKUP_PCT_DEFAULT,
+} from "./engine";
 
 export const B2B_FEE_CONFIG_ID = "default";
 
@@ -21,13 +23,15 @@ export const CITY_ACCESS_PRICE_DEFAULT = 999;
 export interface B2bFeeConfig {
   buyerFeePct: number;
   sellerFeePct: number;
-  cityAccessPrice: number;   // ₹ one-time per city (v348)
+  cityAccessPrice: number;      // ₹ one-time per city (v348)
+  regulatedMarkupPct: number;   // Spine-wholesale markup for the regulated ask (v349)
 }
 
 const DEFAULT: B2bFeeConfig = {
   buyerFeePct: B2B_BUYER_FEE_PCT_DEFAULT,
   sellerFeePct: B2B_SELLER_FEE_PCT_DEFAULT,
   cityAccessPrice: CITY_ACCESS_PRICE_DEFAULT,
+  regulatedMarkupPct: B2B_REGULATED_MARKUP_PCT_DEFAULT,
 };
 
 const clampPct = (v: any, fallback: number) => {
@@ -38,6 +42,11 @@ const clampMoney = (v: any, fallback: number) => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= 0 && n <= 10_000_000 ? n : fallback;
 };
+// Markup % may exceed 100 (a 2× regulated price = 100%). Bound generously.
+const clampPctWide = (v: any, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 1000 ? n : fallback;
+};
 
 let _cache: { at: number; cfg: B2bFeeConfig } | null = null;
 const TTL_MS = 60_000;
@@ -46,7 +55,7 @@ export async function resolveB2bFeeConfig(): Promise<B2bFeeConfig> {
   if (_cache && Date.now() - _cache.at < TTL_MS) return _cache.cfg;
   try {
     const r = await fetch(
-      `${SB_URL}/rest/v1/b2b_fee_config?id=eq.${B2B_FEE_CONFIG_ID}&select=buyer_fee_pct,seller_fee_pct,city_access_price`,
+      `${SB_URL}/rest/v1/b2b_fee_config?id=eq.${B2B_FEE_CONFIG_ID}&select=buyer_fee_pct,seller_fee_pct,city_access_price,regulated_markup_pct`,
       { headers: SB_READ, cache: "no-store" },
     );
     if (r.ok) {
@@ -56,6 +65,7 @@ export async function resolveB2bFeeConfig(): Promise<B2bFeeConfig> {
         buyerFeePct: clampPct(row?.buyer_fee_pct, DEFAULT.buyerFeePct),
         sellerFeePct: clampPct(row?.seller_fee_pct, DEFAULT.sellerFeePct),
         cityAccessPrice: clampMoney(row?.city_access_price, DEFAULT.cityAccessPrice),
+        regulatedMarkupPct: clampPctWide(row?.regulated_markup_pct, DEFAULT.regulatedMarkupPct),
       };
       _cache = { at: Date.now(), cfg };
       return cfg;

@@ -50,10 +50,26 @@ export const B2B_SELLER_FEE_PCT_DEFAULT = 5;
 // superseded by the dual buyer/seller fee above.
 export const B2B_FEE_PCT_DEFAULT = 8;
 
-// Guardrails on a seller-set ask (the seller prices their own goods freely,
-// but the value is still bounded to catch fat-finger / abuse).
+// Guardrails on an ask/night (bounds catch fat-finger / abuse).
 export const MIN_B2B_ASK_PER_NIGHT = 1;
 export const MAX_B2B_ASK_PER_NIGHT = 1_000_000;
+
+// v349 — Model 2 is REGULATED: the B2B ask is NOT a free seller input, it's the
+// Spine wholesale floor + an admin-controlled markup. Default markup fallback
+// when the config table is unreachable.
+export const B2B_REGULATED_MARKUP_PCT_DEFAULT = 20;
+
+/**
+ * The StayBid-regulated B2B ask/night = wholesale/night × (1 + markup%).
+ * Bounded to the ask guardrails. Pure — the listing endpoint + the client
+ * preview share it so the regulated price NEVER drifts.
+ */
+export function regulatedB2bAskPerNight(wholesalePerNight: number, markupPct: number): number {
+  const w = Math.max(0, Math.round(Number(wholesalePerNight) || 0));
+  const m = Number.isFinite(Number(markupPct)) && Number(markupPct) >= 0 ? Number(markupPct) : B2B_REGULATED_MARKUP_PCT_DEFAULT;
+  const ask = Math.round(w * (1 + m / 100));
+  return Math.min(MAX_B2B_ASK_PER_NIGHT, Math.max(MIN_B2B_ASK_PER_NIGHT, ask));
+}
 
 const round0 = (n: number) => Math.round(Number(n) || 0);
 const clampPct = (p: any, fallback: number) => {
