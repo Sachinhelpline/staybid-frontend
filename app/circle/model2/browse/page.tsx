@@ -177,7 +177,7 @@ export default function Model2BrowsePage() {
         .sbc2b-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
         .sbc2b-card { background: #fff; border: 1px solid rgba(139,105,20,.16); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 18px rgba(74,56,32,.06); transition: transform .15s, box-shadow .15s; display: flex; flex-direction: column; text-align: left; }
         .sbc2b-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(74,56,32,.13); }
-        .sbc2b-card-img { position: relative; width: 100%; height: 150px; background: linear-gradient(135deg, #efe6d4, #e2d4bb); overflow: hidden; }
+        .sbc2b-card-img { position: relative; width: 100%; aspect-ratio: 4 / 3; background: linear-gradient(135deg, #efe6d4, #e2d4bb); overflow: hidden; }
         .sbc2b-card-img img { width: 100%; height: 100%; object-fit: cover; }
         .sbc2b-noimg { display: grid; place-items: center; font-size: 2.4rem; width: 100%; height: 100%; }
         .sbc2b-badge { position: absolute; font-size: .64rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(30,22,12,.72); color: #fff; }

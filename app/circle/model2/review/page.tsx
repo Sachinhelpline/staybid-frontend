@@ -171,7 +171,7 @@ export default function Model2ReviewPage() {
       </>)}
 
       <style jsx global>{`
-        .sbc2r { padding-bottom: 90px; }
+        .sbc2r { padding-bottom: 90px; max-width: 680px; margin: 0 auto; }
         .sbc2r-headrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .sbc2r-steppill { font-size: .68rem; font-weight: 800; letter-spacing: .04em; color: #fff; background: var(--sbc-coffee, #3a2c17); border-radius: 999px; padding: 6px 12px; }
         .sbc2r-title { font-size: 1.7rem; font-weight: 800; color: var(--sbc-coffee); margin: 0; font-family: var(--font-syne, inherit); }
