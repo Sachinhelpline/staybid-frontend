@@ -49,6 +49,42 @@ export default function TradeMyBidsPage() {
     load();
   }, [auth.loading, auth.status, load]);
 
+  const [sellBusy, setSellBusy] = useState("");
+  const [copied, setCopied] = useState("");
+
+  const directLink = (a: any) => {
+    const nights: string[] = Array.isArray(a.night_dates) ? [...a.night_dates].sort() : [];
+    if (!nights.length) return "";
+    const checkIn = nights[0];
+    const checkOut = new Date(new Date(nights[nights.length - 1] + "T00:00:00Z").getTime() + 86_400_000).toISOString().slice(0, 10);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `${origin}/hotels/${a.hotel_id}?checkIn=${checkIn}&checkOut=${checkOut}`;
+  };
+  const copyLink = async (a: any) => {
+    const link = directLink(a);
+    try { await navigator.clipboard.writeText(link); setCopied(a.id); setTimeout(() => setCopied(""), 2000); } catch {}
+  };
+  const enableSelling = useCallback(async (award: any) => {
+    setSellBusy(award.id); setMsg(null);
+    try {
+      const tok = getTradeToken();
+      const r = await fetch(`/api/trade/awards/${award.id}/enable-selling`, { method: "POST", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      const d = await r.json();
+      if (!r.ok) { setMsg({ ok: false, text: d.error || "Enable failed." }); setSellBusy(""); return; }
+      if (d.granted > 0) {
+        // Reuse the agent's Google token as the partner session so the dashboard
+        // resolves their newly-granted operator scope (My Rooms + OTA feeds).
+        try {
+          localStorage.setItem("sb_partner_token", tok);
+          localStorage.setItem("sb_partner_user", JSON.stringify({ id: auth.user?.id, name: auth.agent?.agency_name || "Agent" }));
+        } catch {}
+        window.location.href = "/partner/dashboard";
+      } else {
+        setMsg({ ok: false, text: d.message || "Self-listing not available for this property — use your own channel." });
+      }
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setSellBusy(""); }
+  }, [auth.user, auth.agent]);
+
   const payAward = useCallback(async (award: any) => {
     setPayingId(award.id); setMsg(null);
     try {
@@ -112,6 +148,22 @@ export default function TradeMyBidsPage() {
                           ) : <span className="text-[0.72rem] text-luxury-400">{a.status}</span>}
                         </div>
                       </div>
+                      {a.status === "voucher_issued" && (
+                        <div className="mt-3 pt-3 border-t border-green-100">
+                          <div className="text-[0.72rem] font-bold text-luxury-700 mb-1.5">Apni allotment becho:</div>
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => enableSelling(a)} disabled={sellBusy === a.id}
+                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "#33251a" }}>
+                              {sellBusy === a.id ? "…" : "🏠 StayBid + OTA pe becho"}
+                            </button>
+                            <button onClick={() => copyLink(a)}
+                              className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#fef3c7", color: "#92400e" }}>
+                              {copied === a.id ? "✓ Link copied" : "🔗 Apne channel ka link"}
+                            </button>
+                          </div>
+                          <div className="text-[0.68rem] text-luxury-400 mt-1.5">StayBid + OTA: partner dashboard me apne rooms list + OTA feeds set karo. Apna channel: direct booking link guests ko bhejo.</div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
