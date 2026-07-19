@@ -102,6 +102,25 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v383 — Agent coach: booking-price (MRP) profit ladder, high-interest + blind)
+- **Per owner direction, the agent bid coach is now BOOKING-PRICE (MRP) framed to maximise interest, and the
+  accept mechanics are hidden (the agent bids "blind").** `app/trade/[id]` `LiveBidBox`:
+  - **Profit is measured against the room's BOOKING PRICE (rack/MRP `market.rack`, e.g. ₹4,900)**, not the live
+    ADR — `profit/night = bookingPrice − bid×(1+premium)`, shown as **EST. PROFIT / ROOM** and **TOTAL PROFIT**.
+  - **Quick-picks are a profit ladder off the booking price**: 💰 Save Big (~40%), ⭐ Smart (~30%, default), ⚡ Max
+    (~20%). `bid(P) = round100(bookingPrice / ((1+premium)(1+P)))`. The slider spans the 40%→~0% price; the agent
+    is **not hard-capped** at 20% (they may bid higher for certainty — a higher bid pleases the owner).
+  - **Blind:** removed the "owner reviews / locks instantly / below-floor" chip, the coach tip, the pick outcome
+    sublabels, the exposed floor/min-offer text, and the mode name in the pill (now "⚡ Live · no deposit"). The
+    submit button is a neutral "Place bid". The server still enforces the real floor + instant-lock under the hood.
+  - Cells: **ROOM BOOKING PRICE** (was RACK RATE), **GUESTS PAY** (min–max, up to booking price), **EST. PROFIT /
+    ROOM**, **TOTAL PROFIT**. Market range folded into GUESTS PAY (up to MRP).
+  - `lib/trade/market.ts` `monthMarket` already returns `rack`. All base numbers 100% real Spine data. Verified
+    (Cave View, MRP ₹4,900): Smart ₹3,600 → ₹33,600 profit (30%); Save Big ₹3,300 (40%); Max ₹3,900 (20%).
+    Badge v382→**v383**, sw HTML_CACHE v194→v195.
+  - ⚠ Framing note: profit is vs the room's rack/booking price (the travel-agent resell-to-own-clients model),
+    not the live StayBid ADR — an intentional high-interest product choice by the owner.
+
 ## Current production state (v382 — Agent coach: Rack Rate + Est. Profit (hide internal floors))
 - **The agent AI coach hides the internal floor math and sells the OPPORTUNITY.** The `RETAIL FLOOR` +
   `YOUR WHOLESALE FLOOR` cells (confusing for an agent) are replaced with **RACK RATE** (the room's list/rack
