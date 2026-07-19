@@ -28,7 +28,7 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   windowOpenDay: 24,
   payWindowHours: 48,
   minBidFloorMode: "spine",
-  circleFloorMultiplier: 1.0,
+  circleFloorMultiplier: 1.2, // Circle-owner floor = purchase cost × 1.20 (cover + 20% profit)
 };
 
 const clampMult = (v: any, fallback: number) => {

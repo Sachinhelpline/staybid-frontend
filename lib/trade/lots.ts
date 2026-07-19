@@ -66,30 +66,35 @@ export function upcomingAuctionMonths(cfg: AuctionConfig, now: Date = new Date()
 // Min bid floor per room-night for a month = MAX Spine bidFloor across sampled
 // nights (conservative: owner never sells any night below cost), snapped up to
 // ₹100. Falls back to the room's floorPrice, then a hard ₹500 minimum.
+// Base min-bid floor per room-night = the room's NORMAL floor price (the owner's
+// stated minimum). This is the PROPERTY-OWNER floor. For CIRCLE-OWNER inventory
+// (host_circle) the publish route multiplies this by circle_floor_multiplier
+// (default 1.20 = cost + 20%) via effectiveFloor(), so a Circle owner covers
+// their purchase cost + a margin.
+//
+// NOTE: the SAME-DAY flash-deal floor (rooms.flashFloorPrice) is intentionally
+// NOT used — it's for last-minute liquidation, not a month-ahead bulk auction,
+// and is usually unset. The Spine bidFloor is only a fallback when floorPrice
+// is missing.
 export async function computeMinBidFloorPerNight(roomId: string, range: MonthRange): Promise<number> {
-  const [y, mo] = range.monthKey.split("-").map(Number);
-  // Sample the 1st, 15th and 25th (bounded to the month's nights).
-  const sampleDays = [1, 15, 25].filter((d) => d <= range.nights);
-  let maxFloor = 0;
-  for (const d of sampleDays) {
-    const day = `${y}-${pad2(mo)}-${pad2(d)}`;
+  let base = 0;
+  // 1) the room's own normal floor price (primary).
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(roomId)}&select=floorPrice&limit=1`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    if (r.ok) { const [row] = await r.json(); base = Number(row?.floorPrice) || 0; }
+  } catch { /* ignore */ }
+  // 2) fallback: Spine bidFloor (mid-month sample) if floorPrice is missing.
+  if (base <= 0) {
+    const [y, mo] = range.monthKey.split("-").map(Number);
     try {
-      const prices = await resolveSpinePrices([roomId], day);
-      const bf = Number(prices[roomId]?.bidFloor) || 0;
-      if (bf > maxFloor) maxFloor = bf;
-    } catch { /* ignore this sample */ }
-  }
-  if (maxFloor <= 0) {
-    // Spine gave nothing — fall back to the room's own floorPrice.
-    try {
-      const r = await fetch(
-        `${SB_URL}/rest/v1/rooms?id=eq.${encodeURIComponent(roomId)}&select=floorPrice&limit=1`,
-        { headers: SB_READ, cache: "no-store" },
-      );
-      if (r.ok) { const [row] = await r.json(); maxFloor = Number(row?.floorPrice) || 0; }
+      const prices = await resolveSpinePrices([roomId], `${y}-${pad2(mo)}-15`);
+      base = Number(prices[roomId]?.bidFloor) || 0;
     } catch { /* ignore */ }
   }
-  return Math.max(ceil100(maxFloor || 500), 500);
+  return Math.max(ceil100(base || 500), 500);
 }
 
 // Is this a Circle-operated (host_circle) property? Those are the only ones that
