@@ -5,7 +5,7 @@
 // then the sealed-bid form (segment → per-room-per-night bid → rooms → EMD).
 // Picked bids add to the localStorage bundle read by /trade/review. English copy.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
@@ -98,7 +98,7 @@ export default function TradeTourPage() {
           </p>
           {auth.status === "approved"
             ? (isLive
-                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} market={data.market} />
+                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} market={data.market} roomsAvailable={data.roomsAvailable} />
                 : <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />)
             : <BidGate auth={auth} city={lot.city} />}
         </div>
@@ -188,10 +188,11 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
   );
 }
 
-function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null }) {
+function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailable }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null; roomsAvailable?: number }) {
   const router = useRouter();
   const [segKey, setSegKey] = useState(segments[0] ? segId(segments[0]) : "");
   const [perNight, setPerNight] = useState<number>(lot.min_bid_per_room_night);
+  const didInitBid = useRef(false);
   const [rooms, setRooms] = useState(1);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -226,14 +227,24 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
   const marketPick = adr > floor ? adr : round100(floor * 1.25);
   const picks = [
     { key: "floor", label: "Floor", sub: mode === "auto" ? "Max margin · instant" : mode === "hybrid" ? "Max margin · owner reviews" : "Max margin", value: floor },
-    { key: "smart", label: "Smart", sub: "Recommended", value: Math.min(smartPick, sliderMax) },
+    { key: "smart", label: "Smart", sub: mode === "hybrid" ? "Locks instantly ✓" : mode === "auto" ? "Recommended" : "Stronger offer", value: Math.min(smartPick, sliderMax) },
     { key: "market", label: "Market", sub: adr > floor ? "Near market rate" : "Strong bid", value: Math.min(marketPick, sliderMax) },
   ];
+  const scarce = typeof roomsAvailable === "number" && roomsAvailable > 0 && roomsAvailable <= 3;
   const coachLine = mode === "auto"
-    ? `Floor auto-confirms instantly — the most resale margin.${adr > 0 ? ` You buy at ${inr(floor)}, market sells ~${inr(adr)}/night.` : ""}`
+    ? `Instant lot — any at-or-above-floor bid confirms immediately. Floor keeps the most resale margin.`
     : mode === "hybrid"
-      ? `Bid ${inr(hybridThreshold)}+/night to auto-confirm instantly; at the floor the owner reviews first.`
+      ? `Bid ${inr(hybridThreshold)}+/night to LOCK instantly & get priority on limited rooms. At the floor the owner decides (may counter or take a higher bid).`
       : `The owner reviews every bid — a stronger bid (toward the ${inr(adr || retailFloor || floor)} market rate) wins faster.`;
+
+  // Default the bid to the competitive "Smart" price (not the bare floor), so the
+  // agent starts where it locks. On a pure "Instant" lot the floor is optimal.
+  const defaultBid = mode === "auto" ? floor : Math.min(smartPick, sliderMax);
+  useEffect(() => {
+    if (!didInitBid.current && Number.isFinite(defaultBid) && defaultBid > 0) {
+      setPerNight(defaultBid); didInitBid.current = true;
+    }
+  }, [defaultBid]);
 
   const place = async () => {
     if (!seg || belowFloor) return;
@@ -278,10 +289,13 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
           <span className="sbt-coach-ai">✦ AI Bid Coach</span>
           {decision && !belowFloor && (
             <span className={`sbt-coach-outcome ${decision.kind === "accept" ? "on" : ""}`}>
-              {decision.kind === "accept" ? "✓ Auto-confirms" : "⧗ Owner reviews"}
+              {decision.kind === "accept" ? "✓ Locks instantly" : "⧗ Owner reviews"}
             </span>
           )}
         </div>
+        {scarce && (
+          <div className="sbt-scarce">🔥 Only {roomsAvailable} room{roomsAvailable === 1 ? "" : "s"} left — higher bids get priority.</div>
+        )}
 
         {/* Slidable price — drag between the wholesale floor and the live market */}
         <div className="sbt-slider-val">
@@ -420,6 +434,7 @@ function TourStyles() {
       .sbt-coach-ai { font-size: .78rem; font-weight: 800; color: #a9791f; letter-spacing: .02em; }
       .sbt-coach-outcome { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
       .sbt-coach-outcome.on { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+      .sbt-scarce { font-size: .72rem; font-weight: 800; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 9px; margin-bottom: 8px; }
       .sbt-slider-val { font-size: 1.5rem; font-weight: 800; color: #3a2c17; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
       .sbt-slider-val span { font-size: .7rem; font-weight: 600; color: rgba(74,56,32,.5); }
       .sbt-slider-margin { font-style: normal; font-size: .72rem; font-weight: 800; margin-left: auto; }

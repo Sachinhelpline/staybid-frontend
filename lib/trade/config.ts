@@ -37,7 +37,7 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   circleFloorMultiplier: 1.2, // Circle-owner floor = purchase cost × 1.20 (cover + 20% profit)
   livePayWindowHours: 24,     // accept → 24h to pay from the agent dashboard
   liveDefaultAutopilot: "hybrid",
-  liveHybridAcceptRatio: 1.1, // hybrid auto-accepts a bid ≥ floor × 1.10 (at-floor waits)
+  liveHybridAcceptRatio: 1.15, // Smart instant-lock: a bid ≥ floor × 1.15 locks instantly (at-floor → owner review)
   wholesaleDiscountPct: 20,   // property-owner wholesale discount off the reference price
   floorMode: "dynamic",       // Spine ADR-linked floor by default (tracks live demand)
   minFloorFraction: 0.6,      // dynamic floor never below retail floorPrice × 0.6

@@ -16,14 +16,14 @@
 export type LiveAutopilotMode = "auto" | "hybrid" | "manual";
 
 export const LIVE_AUTOPILOT_LABEL: Record<LiveAutopilotMode, string> = {
-  auto: "Full Autopilot",
-  hybrid: "Hybrid (strong bids auto-confirm)",
-  manual: "Manual Review",
+  hybrid: "Smart",
+  auto: "Instant (accepts at floor)",
+  manual: "Manual",
 };
 
 export const LIVE_AUTOPILOT_DESC: Record<LiveAutopilotMode, string> = {
-  auto: "Every bid at or above your floor confirms automatically. Fastest way to move inventory — you can still manage allotments afterward.",
-  hybrid: "Bids comfortably above your floor confirm automatically; at-floor bids wait for you to accept, counter, or decline. Balanced default.",
+  hybrid: "Bids at or above the instant-lock price confirm instantly; at-floor bids wait for you to accept, counter, or decline. Recommended — agents bid up to lock scarce rooms.",
+  auto: "⚠ Accepts ANY at-or-above-floor bid instantly — fastest sales but you take the lowest price. Opt in only if you want maximum liquidity over price.",
   manual: "Every bid waits for you to accept, counter, or decline. Full control over who gets your rooms.",
 };
 

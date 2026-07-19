@@ -239,7 +239,7 @@ export default function AgentAuctionTab({
           <label className="text-sm block">
             <span className="text-luxury-500 font-semibold">Autopilot — how bids get accepted</span>
             <div className="mt-1 grid sm:grid-cols-3 gap-2">
-              {(["auto", "hybrid", "manual"] as LiveAutopilotMode[]).map((m) => (
+              {(["hybrid", "auto", "manual"] as LiveAutopilotMode[]).map((m) => (
                 <button key={m} type="button" onClick={() => setAutopilotMode(m)}
                   className="text-left rounded-lg border-2 px-2.5 py-2 transition"
                   style={{ borderColor: autopilotMode === m ? "#c9911a" : "#e5e0d5", background: autopilotMode === m ? "#fffbef" : "#fff" }}>

@@ -44,10 +44,25 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   let market: { low: number; high: number; adr: number; samples: number } | null = null;
   try { market = await monthMarket(lot.room_id, range.monthStart, range.monthEnd); } catch { market = null; }
 
+  // Scarcity — rooms still available = num_rooms − rooms already awarded/won.
+  let roomsAvailable = Number(lot.num_rooms) || 0;
+  try {
+    const ar = await fetch(
+      `${SB_URL}/rest/v1/auction_awards?lot_id=eq.${encodeURIComponent(lot.id)}&status=in.(awarded,paid,voucher_issued)&select=rooms_awarded`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    if (ar.ok) {
+      const rows = await ar.json().catch(() => []);
+      const taken = (Array.isArray(rows) ? rows : []).reduce((s: number, x: any) => s + (Number(x.rooms_awarded) || 0), 0);
+      roomsAvailable = Math.max(0, (Number(lot.num_rooms) || 0) - taken);
+    }
+  } catch { /* best-effort */ }
+
   return NextResponse.json({
     lot, range, segments, depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct,
     live: { hybridAcceptRatio: cfg.liveHybridAcceptRatio, payWindowHours: cfg.livePayWindowHours },
     market,
+    roomsAvailable,
     hotel: hotel ? {
       id: hotel.id, name: hotel.name, city: hotel.city, star: Number(hotel.starRating) || 0,
       description: hotel.description || "", images: arr(hotel.images),
