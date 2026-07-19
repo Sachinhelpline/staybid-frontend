@@ -1126,6 +1126,11 @@ export default function HotelDetail() {
     action();
   };
 
+  // Phone OTP is gated by NEXT_PUBLIC_ENABLE_PHONE_OTP (default off). While it's
+  // off (the SMS provider isn't live), the "one quick step" collects the number
+  // WITHOUT an OTP round-trip so Google users aren't blocked from bidding/booking.
+  const phoneOtpEnabled = process.env.NEXT_PUBLIC_ENABLE_PHONE_OTP === "1";
+
   const sendVerifyOtp = async () => {
     if (verifyPhone.length < 10) return setVerifyError("Please enter a 10-digit number.");
     setVerifyLoading(true);
@@ -1135,6 +1140,35 @@ export default function HotelDetail() {
       setVerifyStep("otp");
     } catch (e: any) {
       setVerifyError(e.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  // No-OTP path: save the number to the profile (best-effort) + the local session,
+  // then run the queued action. Keeps the booking/bid carrying a reachable number.
+  const saveVerifyPhone = async () => {
+    if (verifyPhone.length < 10) return setVerifyError("Please enter a 10-digit number.");
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      const fullPhone = `+91${verifyPhone}`;
+      const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") || "" : "";
+      try {
+        await fetch("/api/user/phone", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: fullPhone }),
+        });
+      } catch { /* best-effort persist */ }
+      // Update the local session user so the booking/bid body carries the number.
+      authLogin(tok, { ...(user || {}), phone: fullPhone }, (tokenType as any) || "firebase");
+      setVerifyOpen(false);
+      setTimeout(() => {
+        if (pendingAction.current) { pendingAction.current(); pendingAction.current = null; }
+      }, 100);
+    } catch (e: any) {
+      setVerifyError(e.message || "Could not save your number. Please try again.");
     } finally {
       setVerifyLoading(false);
     }
@@ -4289,8 +4323,9 @@ export default function HotelDetail() {
               </div>
               <h3 className="font-display font-light text-luxury-900 text-2xl mb-1">One Quick Step</h3>
               <p className="text-sm text-luxury-500 leading-relaxed">
-                Verify your phone number to place bids and bookings.<br />
-                <span className="text-luxury-400 text-xs">One-time only — takes 30 seconds.</span>
+                {phoneOtpEnabled
+                  ? <>Verify your phone number to place bids and bookings.<br /><span className="text-luxury-400 text-xs">One-time only — takes 30 seconds.</span></>
+                  : <>Add your mobile number so the hotel can reach you about your bid or booking.<br /><span className="text-luxury-400 text-xs">One-time only — takes 10 seconds.</span></>}
               </p>
             </div>
 
@@ -4310,9 +4345,9 @@ export default function HotelDetail() {
                     autoFocus
                   />
                 </div>
-                <button onClick={sendVerifyOtp} disabled={verifyLoading || verifyPhone.length < 10}
+                <button onClick={phoneOtpEnabled ? sendVerifyOtp : saveVerifyPhone} disabled={verifyLoading || verifyPhone.length < 10}
                   className="btn-luxury w-full py-3.5 rounded-2xl text-sm font-semibold disabled:opacity-40">
-                  {verifyLoading ? "Sending OTP…" : "Send OTP"}
+                  {verifyLoading ? (phoneOtpEnabled ? "Sending OTP…" : "Saving…") : (phoneOtpEnabled ? "Send OTP" : "Save & Continue")}
                 </button>
               </>
             ) : (

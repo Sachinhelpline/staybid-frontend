@@ -6,10 +6,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
 import { resolveAuctionConfig } from "@/lib/trade/config";
 import { enumerateSegments } from "@/lib/trade/auction-engine";
+import { resolveSpinePrices } from "@/lib/pricing/read-spine";
 
 export const dynamic = "force-dynamic";
 
 const arr = (v: any): string[] => (Array.isArray(v) ? v.filter(Boolean) : []);
+
+// The room's REAL guest-facing selling price (Spine live_price) across the lot
+// month — so an agent sees, stock-style, what the room sells for in the market
+// (ADR + low/high) vs their wholesale floor → their resale headroom. Bounded so
+// the tour loads fast (room_date_price cache first, a few Spine fills for gaps).
+function enumerateMonth(from: string, to: string): string[] {
+  const out: string[] = [];
+  let d = new Date(from + "T00:00:00Z");
+  const end = new Date(to + "T00:00:00Z");
+  while (d < end) { out.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86_400_000); }
+  return out;
+}
+async function marketRange(roomId: string, from: string, to: string) {
+  const dates = enumerateMonth(from, to);
+  if (!dates.length) return null;
+  const price: Record<string, number> = {};
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/room_date_price?room_id=eq.${encodeURIComponent(roomId)}&date=gte.${from}&date=lt.${to}&select=date,live_price`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    (r.ok ? await r.json().catch(() => []) : []).forEach((x: any) => {
+      const d = String(x.date).slice(0, 10); const p = Math.round(Number(x.live_price) || 0);
+      if (p > 0) price[d] = p;
+    });
+  } catch { /* fall through to Spine */ }
+  const missing = dates.filter((d) => !price[d]).slice(0, 14); // bounded Spine fill
+  for (const d of missing) {
+    try { const sp = await resolveSpinePrices([roomId], d); const p = Math.round(Number(sp?.[roomId]?.livePrice) || 0); if (p > 0) price[d] = p; }
+    catch { /* skip */ }
+  }
+  const vals = dates.map((d) => price[d]).filter((v) => v > 0);
+  if (!vals.length) return null;
+  return { low: Math.min(...vals), high: Math.max(...vals), adr: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length), samples: vals.length };
+}
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -39,9 +75,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const segments = enumerateSegments(range).map((s) => ({ type: s.type, weekIndex: s.weekIndex, label: s.label, nights: s.nights }));
   const cfg = await resolveAuctionConfig();
 
+  // Market intelligence (best-effort; the tour still works if it's null).
+  let market: { low: number; high: number; adr: number; samples: number } | null = null;
+  try { market = await marketRange(lot.room_id, range.monthStart, range.monthEnd); } catch { market = null; }
+
   return NextResponse.json({
     lot, range, segments, depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct,
     live: { hybridAcceptRatio: cfg.liveHybridAcceptRatio, payWindowHours: cfg.livePayWindowHours },
+    market,
     hotel: hotel ? {
       id: hotel.id, name: hotel.name, city: hotel.city, star: Number(hotel.starRating) || 0,
       description: hotel.description || "", images: arr(hotel.images),

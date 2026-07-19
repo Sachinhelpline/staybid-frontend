@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
 import { addBid, bidItemKey, onBidBasketChange, bidBasketList } from "@/lib/trade/bid-basket";
 import { bidCostPreview } from "@/lib/trade/auction-engine";
-import { evaluateLiveBid, LIVE_AUTOPILOT_LABEL, type LiveAutopilotMode } from "@/lib/trade/live-auction";
+import { evaluateLiveBid, hybridAutoAcceptThreshold, LIVE_AUTOPILOT_LABEL, type LiveAutopilotMode } from "@/lib/trade/live-auction";
 
 const inr = (n: any) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
 const cap = (s: string) => String(s || "").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -98,7 +98,7 @@ export default function TradeTourPage() {
           </p>
           {auth.status === "approved"
             ? (isLive
-                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} />
+                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} market={data.market} />
                 : <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />)
             : <BidGate auth={auth} city={lot.city} />}
         </div>
@@ -188,7 +188,7 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
   );
 }
 
-function LiveBidBox({ lot, segments, live, buyerPremiumPct }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number }) {
+function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null }) {
   const router = useRouter();
   const [segKey, setSegKey] = useState(segments[0] ? segId(segments[0]) : "");
   const [perNight, setPerNight] = useState<number>(lot.min_bid_per_room_night);
@@ -204,6 +204,27 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct }: { lot: any; segmen
   const decision = !belowFloor ? evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: ratio }) : null;
   const base = seg && !belowFloor ? perNight * seg.nights * rooms : 0;
   const premium = Math.round((base * (Number(buyerPremiumPct) || 0)) / 100);
+
+  // ── AI bid coach (market intelligence + a suggested competitive bid) ──────
+  const adr = Math.round(Number(market?.adr) || 0);           // guest/retail selling price
+  const hybridThreshold = hybridAutoAcceptThreshold(floor, ratio);
+  // Resale headroom at the current bid: you BUY at perNight, resell at ~ADR.
+  const headroomPct = adr > 0 && perNight > 0 ? Math.round(((adr - perNight) / adr) * 100) : null;
+  // Where the current bid sits between floor (0) and market ADR (1).
+  const gaugePos = adr > floor ? Math.max(0, Math.min(1, (perNight - floor) / (adr - floor))) : (perNight >= floor ? 0.5 : 0);
+  // A suggested bid per autopilot mode (mirrors how the customer negotiate AI
+  // suggests a price that clears): auto → floor is optimal (max margin, instant);
+  // hybrid → the auto-confirm threshold; manual → a competitive bid toward market.
+  const suggested = mode === "auto"
+    ? floor
+    : mode === "hybrid"
+      ? hybridThreshold
+      : (adr > floor ? Math.min(adr, Math.round((floor + adr) / 2 / 100) * 100) : Math.round(floor * 1.15 / 100) * 100);
+  const coachLine = mode === "auto"
+    ? `Floor auto-confirms instantly — the most resale margin.${adr > 0 ? ` You buy at ₹${floor.toLocaleString("en-IN")}, market sells ~₹${adr.toLocaleString("en-IN")}.` : ""}`
+    : mode === "hybrid"
+      ? `Bid ₹${hybridThreshold.toLocaleString("en-IN")}+/night to auto-confirm instantly; at the floor the owner reviews first.`
+      : `The owner reviews every bid — a stronger bid (closer to the ₹${(adr || floor).toLocaleString("en-IN")} market rate) wins faster.`;
 
   const place = async () => {
     if (!seg || belowFloor) return;
@@ -241,6 +262,44 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct }: { lot: any; segmen
         </label>
       </div>
       {belowFloor && <div className="sbt-err">Your bid can't be below the floor.</div>}
+
+      {/* AI bid coach — market intelligence (stock-style) + a suggested bid */}
+      <div className="sbt-coach">
+        <div className="sbt-coach-head">
+          <span className="sbt-coach-ai">✦ AI Bid Coach</span>
+          {decision && !belowFloor && (
+            <span className={`sbt-coach-outcome ${decision.kind === "accept" ? "on" : ""}`}>
+              {decision.kind === "accept" ? "✓ Auto-confirms" : "⧗ Owner reviews"}
+            </span>
+          )}
+        </div>
+        {/* Floor → your bid → market gauge */}
+        <div className="sbt-gauge">
+          <div className="sbt-gauge-track"><div className="sbt-gauge-fill" style={{ width: `${Math.round(gaugePos * 100)}%` }} /><div className="sbt-gauge-dot" style={{ left: `${Math.round(gaugePos * 100)}%` }} /></div>
+          <div className="sbt-gauge-ends">
+            <span>Floor {inr(floor)}</span>
+            {adr > 0 && <span>Market {inr(adr)}</span>}
+          </div>
+        </div>
+        {/* Market intelligence numbers */}
+        <div className="sbt-mkt">
+          <div className="sbt-mkt-cell"><span>YOUR BID / NIGHT</span><b>{inr(perNight)}</b></div>
+          {adr > 0
+            ? <>
+                <div className="sbt-mkt-cell"><span>MARKET ADR</span><b>{inr(adr)}</b></div>
+                <div className="sbt-mkt-cell"><span>MARKET RANGE</span><b>{inr(market?.low)}–{inr(market?.high)}</b></div>
+                <div className="sbt-mkt-cell"><span>RESALE HEADROOM</span><b style={{ color: (headroomPct ?? 0) > 0 ? "#059669" : "#b45309" }}>{headroomPct != null ? `${headroomPct}%` : "—"}</b></div>
+              </>
+            : <div className="sbt-mkt-cell"><span>FLOOR (YOUR COST)</span><b>{inr(floor)}</b></div>}
+        </div>
+        <div className="sbt-coach-tip">{coachLine}</div>
+        {suggested > 0 && suggested !== perNight && (
+          <button type="button" className="sbt-coach-apply" onClick={() => setPerNight(suggested)}>
+            Use suggested bid · {inr(suggested)}/night
+          </button>
+        )}
+      </div>
+
       {seg && !belowFloor && (
         <div className="sbt-preview">
           <div className="sbt-preview-row"><span>Bid ({seg.nights} nights × {rooms} rooms)</span><b>{inr(base)}</b></div>
@@ -328,6 +387,24 @@ function TourStyles() {
       .sbt-bidbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
       .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
       .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
+      /* ── AI Bid Coach ── */
+      .sbt-coach { margin: 10px 0; border: 1px solid rgba(139,105,20,.22); border-radius: 14px; padding: 12px; background: linear-gradient(160deg,#fffdf7,#fbf4e6); }
+      .sbt-coach-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+      .sbt-coach-ai { font-size: .78rem; font-weight: 800; color: #a9791f; letter-spacing: .02em; }
+      .sbt-coach-outcome { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
+      .sbt-coach-outcome.on { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+      .sbt-gauge { margin: 4px 0 10px; }
+      .sbt-gauge-track { position: relative; height: 6px; border-radius: 999px; background: linear-gradient(90deg,#e7d9c2,#c9911a); }
+      .sbt-gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: rgba(201,145,26,.28); }
+      .sbt-gauge-dot { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; transform: translateY(-50%); border-radius: 50%; background: #fff; border: 3px solid #c9911a; box-shadow: 0 1px 4px rgba(74,56,32,.3); }
+      .sbt-gauge-ends { display: flex; justify-content: space-between; font-size: .66rem; color: rgba(74,56,32,.6); font-weight: 700; margin-top: 6px; }
+      .sbt-mkt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .sbt-mkt-cell { background: #fff; border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
+      .sbt-mkt-cell span { display: block; font-size: .54rem; letter-spacing: .05em; color: rgba(74,56,32,.5); font-weight: 800; }
+      .sbt-mkt-cell b { font-size: .92rem; color: #3a2c17; font-weight: 800; }
+      .sbt-coach-tip { font-size: .74rem; color: rgba(74,56,32,.78); line-height: 1.45; margin-top: 9px; }
+      .sbt-coach-apply { margin-top: 9px; width: 100%; padding: 8px; border-radius: 10px; border: 1px dashed #c9911a; background: #fff; color: #a9791f; font-size: .78rem; font-weight: 800; cursor: pointer; }
+      .sbt-coach-apply:hover { background: #fffbef; }
       .sbt-field { display: block; margin-bottom: 11px; }
       .sbt-field > span { font-size: .78rem; font-weight: 700; color: rgba(74,56,32,.7); display: block; margin-bottom: 4px; }
       .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: #fffdfa; color: #3a2c17; }
