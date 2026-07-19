@@ -77,6 +77,23 @@ export default function Model2SellingPage() {
     finally { setBusy(""); }
   };
   const isLive = (b: Block) => !!(b.metadata && b.metadata.publicListed);
+  const unlisted = useMemo(() => sellable.filter((b) => !isLive(b)), [sellable]);
+
+  // One-tap Option A — list EVERY owned/current room-night for public booking.
+  const listAll = async () => {
+    setBusy("__all__"); setFlash("");
+    try {
+      const r = await fetch("/api/circle/inventory/sell", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ action: "list_all" }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d?.ok) { setFlash(d?.error || "Couldn't list — try again."); return; }
+      setFlash(`Listed ${d.listed || unlisted.length} room-night set${(d.listed || unlisted.length) === 1 ? "" : "s"} for public booking ✓ — guests can now book them on StayBid.`);
+      load();
+    } catch { setFlash("Something went wrong."); }
+    finally { setBusy(""); }
+  };
 
   return (
     <div className="sbc-home">
@@ -98,6 +115,19 @@ export default function Model2SellingPage() {
         </div>
 
         {flash && <div className="sbc2s-flash">{flash}</div>}
+
+        {/* Post-purchase nudge — one-tap Option A (list everything for booking). */}
+        {!loading && unlisted.length > 0 && (
+          <div className="sbc2s-nudge">
+            <div>
+              <b>🎉 {unlisted.length} room-night set{unlisted.length === 1 ? "" : "s"} ready to sell</b>
+              <span>Your inventory is yours — open it to guests on StayBid in one tap (you can set a per-room price below, or use the default).</span>
+            </div>
+            <button className="sbc-btn-gold" disabled={busy === "__all__"} onClick={listAll}>
+              {busy === "__all__" ? "Listing…" : "List all for booking"}
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="sbc-panel" style={{ padding: 28, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading your inventory…</div>
@@ -135,10 +165,10 @@ export default function Model2SellingPage() {
 
               {/* sell-through channels */}
               <div className="sbc2s-chan">
-                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "myrooms")}><span>🏠</span><div><b>Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "myrooms")}><span>🏠</span><div><b>Option A · Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => copyDirect(b)}><span>🔗</span><div><b>Option B · Direct selling</b><small>{copied === b.id ? "Copied ✓" : "your own customers · copy link"}</small></div><span className="sbc2s-ch-go">⧉</span></button>
                 <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "agentauction")}><span>🏷️</span><div><b>Sell to travel agents</b><small>Model 3 · wholesale auction</small></div><span className="sbc2s-ch-go">→</span></button>
                 <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "channels")}><span>🌐</span><div><b>Your OTA listings</b><small>Channel Manager · Airbnb / Booking</small></div><span className="sbc2s-ch-go">→</span></button>
-                <button className="sbc2s-ch" onClick={() => copyDirect(b)}><span>🔗</span><div><b>Direct booking link</b><small>{copied === b.id ? "Copied ✓" : "share with your own customers"}</small></div><span className="sbc2s-ch-go">⧉</span></button>
               </div>
             </div>
           ))}
@@ -174,6 +204,10 @@ export default function Model2SellingPage() {
         .sbc2s-status.live { color: #4e7a2e; background: rgba(107,143,78,.14); }
         .sbc2s-status.held { color: #8a6914; background: rgba(139,105,20,.1); }
         .sbc2s-flash { font-size: .82rem; font-weight: 600; color: #4e7a2e; background: rgba(107,143,78,.12); border: 1px solid rgba(107,143,78,.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
+        .sbc2s-nudge { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg,#fff7e6,#fdeecb); border: 1px solid rgba(201,145,26,.35); border-radius: 14px; padding: 13px 15px; margin-bottom: 14px; }
+        .sbc2s-nudge b { display: block; color: var(--sbc-coffee); font-size: .92rem; }
+        .sbc2s-nudge span { display: block; font-size: .72rem; color: rgba(74,56,32,.7); margin-top: 2px; max-width: 520px; line-height: 1.45; }
+        .sbc2s-nudge .sbc-btn-gold { white-space: nowrap; }
         .sbc2s-sell { margin-top: 11px; padding-top: 11px; border-top: 1px dashed rgba(139,105,20,.2); }
         .sbc2s-sell-row { display: flex; gap: 8px; align-items: center; }
         .sbc2s-price { flex: 1; min-width: 0; background: #fff; border: 1px solid rgba(139,105,20,.25); border-radius: 10px; padding: 8px 11px; font-size: .82rem; font-family: inherit; color: var(--sbc-coffee); }

@@ -102,6 +102,27 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v387 — Circle Phase 2: B2C one-tap "list all" on purchase (owner decision 1a))
+- **Phase 2 of the cross-model selling audit — the new owner's inventory is one-tap B2C-available on purchase**
+  (owner picked option 1a: one-tap available, NOT force auto-list; and accepted the boundary that resale-buyer
+  guest PAYOUT stays a settlement-phase item — only AVAILABILITY is wired here).
+- **NEW bulk action `POST /api/circle/inventory/sell { action: "list_all" }`** — lists EVERY `owned`/`listed`,
+  current (`date_to ≥ today`) block the caller holds, in one tap. Refactored the per-block logic into
+  `listBlockPublic` / `pauseBlockPublic` helpers (single `list`/`pause` behaviour byte-identical). SEBI-safe by
+  construction: authorization is by BLOCK ownership (`inventory_blocks.investor_user_id`, cross-pool); the hold
+  release is block-level (opens exactly the caller's nights); the unit-level `is_listed`/`price_override` PATCH
+  stays guarded on `owner_user_id`, so a resale buyer never mutates a seller-owned unit's global config.
+  Idempotent (skips already-`publicListed`). Excludes `pending_payment`/past blocks. Live round-trip verified
+  (seed owned block+hold → list_all selects 1, releases hold, stamps publicListed=true → 0 leftover).
+- **`app/circle/model2/selling`** — a post-purchase **"🎉 N room-night sets ready to sell"** nudge + a **"List all
+  for booking"** one-tap button (Option A); channels relabelled **Option A · Sell on StayBid** / **Option B ·
+  Direct selling** (+ Model 3 agents / OTA) so a Model 2 buyer OR a Model 3 agent who bought on Model 2 sees the
+  same clear A/B module. `app/circle/model2/review` success copy points at the one-tap listing.
+- **Scope note:** this surface serves inventory-BLOCK holders (Model 2 buyers + Model 3 agents). Model 1
+  provisioned owners hold `owner_user_id` UNITS (not blocks) and manage B2C from the partner dashboard via the
+  v386 bridge — correct split, unchanged.
+- `tsc` + `next build` clean. Badge v386→**v387**, sw HTML_CACHE v198→v199.
+
 ## Current production state (v386 — Circle investor → partner-dashboard bridge (cross-model B2B sell reachability))
 - **Phase 1 of the cross-model selling audit: a pure Circle investor can now REACH the B2B sell surfaces.** The
   cross-model sell *APIs* already existed and are scope-permissive (`POST /api/b2b/listings` list-on-exchange,
