@@ -102,7 +102,26 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v358, Circle "Model 2" — multi-select calendar + detailed review + premium look)
+## Current production state (v359, Circle "Model 2" — Your Selling Inventory surface + honest sell-side map)
+- **NEW `/circle/model2/selling` "Your Selling Inventory" (deck step 5–6):** after a B2B purchase the buyer
+  holds the SELLING RIGHTS to those room-nights. This premium page reads `/api/circle/portfolio` and shows the
+  owned room-nights + KPIs + per-block **sell-through channels** (🏠 Sell on StayBid → `/partner/dashboard`,
+  🌐 Your OTA → `/partner/dashboard?tab=channels`, 🔗 Direct booking link copy) + a "Manage & sell in your owner
+  dashboard" CTA. Linked from the review success screen + a dashboard tile. CircleDock excludes `/selling` from
+  the "Tour" step. Additive, read-only-ish (no core-engine mutation, no money path).
+- **⚠ Honest sell-side architecture (VERIFIED, important):** a Model-2 buyer selling to the PUBLIC like a hotel
+  owner is only PARTIALLY frontend-buildable. What WORKS today: purchase stamps `hotel_room_units.owner_user_id`
+  = buyer → they become an OPERATOR on that hotel (`resolveOperatedHotelIds`/`partnerUnitScope`) → a "My Rooms"
+  tab in `/partner/dashboard` lets them set price/photos/availability/OTA feeds for THEIR units; a guest booking
+  a specific unit stamps `bids.assignedUnitId` → `owner_user_id` → shows in their dashboard (attribution key
+  exists end-to-end). GAPS: (1) the guest hotel page only renders individual-unit listings for
+  `account_type!='hotel_owner'` (Circle-operated/host_circle) hotels — on the CLASSIC demo hotels a guest can't
+  pick a specific owned unit yet (the clean home for Model-2 inventory is host_circle properties); (2) there is
+  NO automatic guest-payment→owner payout ANYWHERE in this repo — not even Model 1 (it uses a manual admin
+  `circle_payouts` ledger). The real money leg (capture-split + payout keyed on `assignedUnitId→owner_user_id`)
+  is a **Railway/settlement** phase. Do NOT claim auto-earn on guest bookings.
+
+## Earlier state (v358, Circle "Model 2" — multi-select calendar + detailed review + premium look)
 - **MULTI-SELECT availability calendar (deck ss3):** the room tour calendar (`app/circle/model2/[id]`) is now a
   **tap-any-nights** grid — the buyer selects individual nights (non-contiguous, ACROSS months), exactly like the
   deck's "owner-released dates". No check-in→checkout range. A bundle line = one room + its `dates:string[]`.
@@ -336,8 +355,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v170` (v358 multi-select calendar).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v358. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v171` (v359 selling inventory).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v359. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

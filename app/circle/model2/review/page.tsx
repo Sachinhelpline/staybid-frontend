@@ -107,7 +107,7 @@ export default function Model2ReviewPage() {
           <h1 className="sbc2r-done-h">Bundle bought</h1>
           <p className="sbc2r-done-p">{done.settled} room-night set{done.settled === 1 ? "" : "s"} are now in your selling inventory. Manage &amp; resell them from your dashboard.</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <Link href="/circle/me" className="sbc-btn-gold">My selling inventory →</Link>
+            <Link href="/circle/model2/selling" className="sbc-btn-gold">Your selling inventory →</Link>
             <Link href="/circle/model2/browse" className="sbc-btn-ghost">Buy more</Link>
           </div>
         </div>
