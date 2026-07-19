@@ -16,6 +16,7 @@ import { requireApprovedAgent } from "@/lib/trade/auth";
 import { resolveAuctionConfig } from "@/lib/trade/config";
 import { segmentNights, type SegmentType } from "@/lib/trade/auction-engine";
 import { evaluateLiveBid, livePayDeadline, normalizeAutopilotMode } from "@/lib/trade/live-auction";
+import { createLiveAward } from "@/lib/trade/live-award";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -115,14 +116,25 @@ export async function POST(req: NextRequest) {
   }
   const [saved] = await wr.json().catch(() => []);
 
+  // Autopilot-accepted → mint the award NOW so the agent can pay immediately via
+  // the existing awards/pay + awards/verify money path (idempotent).
+  let awardId: string | null = null;
+  if (accepted) {
+    try {
+      const award = await createLiveAward(saved || row, lot, cfg);
+      awardId = award?.id || null;
+    } catch { /* best-effort — the bid is accepted; award mint retried on pay-open */ }
+  }
+
   return NextResponse.json({
     ok: true,
     status: row.status,
     accepted,
     bid: saved || row,
+    awardId,
     payDeadlineAt: payDeadlineIso,
     message: accepted
-      ? `Accepted! Pay ${payDeadlineIso ? "before your window closes" : "soon"} to lock the inventory.`
+      ? "Accepted! Pay before your window closes to lock the inventory."
       : "Bid placed — the owner will accept, counter, or decline shortly.",
   });
 }
