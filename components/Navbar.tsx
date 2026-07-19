@@ -153,6 +153,7 @@ export function Navbar() {
   if (pathname?.startsWith("/onboard")) return null;
   if (pathname?.startsWith("/host")) return null;
   if (pathname?.startsWith("/circle")) return null; // v288 StayCircle — own chrome
+  if (pathname?.startsWith("/trade")) return null;  // v361 Model 3 travel-agent auction — own chrome
   if (pathname?.startsWith("/order")) return null;
   if (pathname?.startsWith("/kiosk")) return null;
 

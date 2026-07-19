@@ -1,0 +1,63 @@
+// v361 — Model 3 auction LIFECYCLE cron. Two idempotent passes:
+//   A) OPEN  — draft lots whose window has opened (open ≤ now < close) → 'open'.
+//   B) CLEAR — open lots whose window has CLOSED (close ≤ now) → run the
+//              clash-free clearing engine (award winners, mark losers, flip lot).
+// Auth mirrors the other crons (?token= / Bearer CRON_SECRET / adm_ token).
+// Register on cron-job.org: */15 * * * * → /api/cron/auction-lifecycle?token=…
+import { NextRequest, NextResponse } from "next/server";
+import { SB_URL, SB_KEY, SB_READ } from "@/lib/sb";
+import { clearLotDb } from "@/lib/trade/clear-run";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+const SB_W = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
+const MAX_CLEAR = 100;
+const TIME_BUDGET_MS = 24_000;
+
+async function authorized(req: NextRequest): Promise<boolean> {
+  const qToken = new URL(req.url).searchParams.get("token");
+  if (qToken && qToken === (process.env.CRON_TOKEN || "staybid-cron-dev")) return true;
+  const cronAuth = req.headers.get("authorization");
+  if (process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`) return true;
+  const adminTok = req.headers.get("x-admin-token");
+  if (adminTok && adminTok.startsWith("adm_")) return true;
+  return false;
+}
+
+export async function GET(req: NextRequest) { return run(req); }
+export async function POST(req: NextRequest) { return run(req); }
+
+async function run(req: NextRequest) {
+  if (!(await authorized(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const started = Date.now();
+  const nowIso = new Date().toISOString();
+
+  // Pass A — open scheduled lots whose window has begun.
+  let opened = 0;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/auction_lots?status=eq.draft&window_open_at=lte.${encodeURIComponent(nowIso)}&window_close_at=gt.${encodeURIComponent(nowIso)}`,
+      { method: "PATCH", headers: { ...SB_W, Prefer: "return=representation" }, body: JSON.stringify({ status: "open", updated_at: nowIso }) },
+    );
+    if (r.ok) { const rows = await r.json().catch(() => []); opened = Array.isArray(rows) ? rows.length : 0; }
+  } catch { /* non-fatal */ }
+
+  // Pass B — clear open lots whose window has closed.
+  let cleared = 0, awards = 0, losers = 0;
+  try {
+    const lr = await fetch(
+      `${SB_URL}/rest/v1/auction_lots?status=eq.open&window_close_at=lte.${encodeURIComponent(nowIso)}&select=*&order=window_close_at.asc&limit=${MAX_CLEAR}`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    const lots: any[] = lr.ok ? await lr.json().catch(() => []) : [];
+    for (const lot of lots) {
+      if (Date.now() - started > TIME_BUDGET_MS) break;
+      const res = await clearLotDb(lot);
+      cleared++; awards += res.awards; losers += res.losers;
+    }
+  } catch { /* non-fatal */ }
+
+  return NextResponse.json({ ok: true, opened, cleared, awards, losers, ms: Date.now() - started });
+}

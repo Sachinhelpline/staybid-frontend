@@ -102,7 +102,41 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v360, Circle "Model 2" — sell-to-public LIVE on Circle-operated hotels)
+## Current production state (v364, Circle "Model 3" — travel-agent MONTHLY INVENTORY AUCTION)
+- **NEW vertical: a sealed-bid B2B monthly auction where property owners sell spare inventory to approved
+  travel agents.** Distinct `sb_trade_*` namespace + `/trade/*` surface (the `/agent` + `sb_agent_*` panel is
+  customer SUPPORT — do NOT collide). Google (Firebase) sign-in only (phone OTP is off). **Browse is OPEN to
+  everyone; BIDDING needs an admin-approved `trade_agents` row.**
+- **Tables (migration `2026-07-19-v361-model3-auction-foundation.sql`, additive/no-FK/permissive-RLS):**
+  `trade_agents` (Google-auth agent account + admin approval), `auction_config` (admin singleton: buyer
+  premium %, seller fee %, EMD deposit %, window-open day, pay-window hrs), `auction_lots` (owner-published
+  monthly lot; `min_bid_per_room_night` = MAX Spine bidFloor across sampled nights — owner never sells below
+  cost; `uniq_auction_lot_live` = one live lot per hotel/room/month), `auction_bids` (sealed bid;
+  `per_room_per_night` = the frozen clearing comparator), `auction_awards` (clearing result + voucher +
+  frozen settlement figures; `uniq_auction_award_bid`). Demo seed `2026-07-19-v361-demo-model3-auction.sql`
+  (8 OPEN lots on real Dehradun/Dhanaulti/Manali hotels for Aug 2026 + 1 approved demo agent).
+- **Journey:** owner publishes from partner dashboard **"🏷️ Sell to Agents"** tab (`/api/trade/owner/{quote,lots}`,
+  min-bid Spine-floor clamped, window from config) → agent `/trade` browses live lots → bid modal picks a
+  **segment (full month / a week / weekends)** + per-room-per-night bid (≥ floor) + rooms → client bundle →
+  `/trade/review` pays ONE **refundable EMD deposit** (`/api/trade/bids/{checkout,verify}`, tamper-safe:
+  server re-prices every line, segment nights recomputed from the lot, 4-key idempotent activate) → at window
+  close the **clash-free clearing engine** (`lib/trade/clear.ts` — greedy ₹/room/night desc, per-slot night
+  calendars, partial rooms allowed, deterministic) awards winners (`/api/cron/auction-lifecycle` opens
+  scheduled + clears closed lots; admin force-clear `/api/admin/auction/clear`) → winner pays the balance
+  (`/api/trade/awards/{pay,verify}` → 4-key idempotent → `voucher_issued` + code + owner `settlement_ledger`
+  kind=`auction_award` owed) → `/trade/my-bids` shows won allotments + vouchers.
+- **Segment engine** `lib/trade/auction-engine.ts` (full-month/week/weekend nights + per-night normalization +
+  EMD math) backs the form, review AND server (preview == charge). **Admin** `/admin/auction` (agents
+  approve/reject/suspend, config, lots + force-clear, awards, EMD-refund-owed mark-paid). Circle hub shows a
+  **Model 3 card** → `/trade`. Disclosure `CIRCLE_AUCTION_NOTE` (wholesale goods trade, EMD refundable if you
+  don't win, winning not guaranteed). Cron to register on cron-job.org: `/api/cron/auction-lifecycle` `*/15`.
+- **⚠ Honest money boundary (same as everywhere):** loser EMD refunds (`auction_bids.metadata.emd_refund=owed`)
+  and owner payouts (`settlement_ledger` owed) are **manual admin/ops** — there is NO auto money-out anywhere
+  (Railway/settlement phase). Physical unit assignment/holds are NOT written at award (voucher = category
+  allotment); agent resells to their own guests offline (wholesale handoff). Clearing is greedy (transparent +
+  clash-free), NOT theoretically revenue-optimal.
+
+## Legacy state (v360, Circle "Model 2" — sell-to-public LIVE on Circle-operated hotels)
 - **Model-2 buyer now sells to the PUBLIC like an owner (deck steps 5–6), VERIFIED end-to-end.** Demo released
   inventory moved onto the 4 **host_circle** (Circle-operated) hotels (`hco-seed-man/mus/ris/shi`), which are now
   `approval_status='approved'` (guest-live) — migration `2026-07-19-v360-demo-b2b-host-circle.sql`. On host_circle

@@ -38,6 +38,7 @@ export function BackChip() {
     pathname.startsWith("/agent") ||
     pathname.startsWith("/onboard") ||
     pathname.startsWith("/circle") ||        // v288: StayCircle — own topbar chrome
+    pathname.startsWith("/trade") ||         // v361: Model 3 travel-agent auction — own chrome
     pathname.startsWith("/auth");
   if (hidden) return null;
 
