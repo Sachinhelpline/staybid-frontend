@@ -14,12 +14,22 @@ import { redirectToSignIn } from "@/lib/auth-intent";
 import { fmtINR } from "@/lib/circle/engine";
 import { CIRCLE_B2B_RESALE_NOTE } from "@/lib/circle/disclosure";
 import { openRazorpayForOrder, RazorpayError } from "@/lib/razorpay";
-import { basketList, removeItem, clearBasket, onBasketChange, type M2Item } from "@/lib/circle/model2-basket";
+import { basketList, removeItem, clearBasket, onBasketChange, groupRuns, type M2Item } from "@/lib/circle/model2-basket";
 
 const token = () => (typeof window !== "undefined" ? localStorage.getItem("sb_token") || "" : "");
 const norm = (c: any) => String(c || "").trim().toLowerCase();
 const cap = (s: string) => String(s || "").replace(/\b\w/g, (m) => m.toUpperCase());
 const inr = (n: number) => fmtINR(Math.round(n || 0));
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// "Aug 4, 7, 12 · Sep 3, 5" — the exact nights, grouped by month.
+function fmtDates(dates: string[]): { label: string; months: number }[] {
+  const by: Record<string, number[]> = {};
+  Array.from(new Set(dates)).sort().forEach((d) => {
+    const mk = `${d.slice(0, 4)}-${d.slice(5, 7)}`;
+    (by[mk] ||= []).push(Number(d.slice(8)));
+  });
+  return Object.entries(by).map(([mk, days]) => ({ label: `${MON[Number(mk.slice(5)) - 1]} ${mk.slice(0, 4)}: ${days.join(", ")}`, months: 1 }));
+}
 
 export default function Model2ReviewPage() {
   const router = useRouter();
@@ -64,7 +74,9 @@ export default function Model2ReviewPage() {
     try {
       const cr = await fetch("/api/b2b/basket/checkout", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ items: items.map((b) => ({ listingId: b.listingId, from: b.from, to: b.to })) }),
+        // Expand each room's picked nights into contiguous runs — the server
+        // prices each run (own × mult × nights + fee), same as the client preview.
+        body: JSON.stringify({ items: items.flatMap((b) => groupRuns(b.dates).map((r) => ({ listingId: b.listingId, from: r.from, to: r.to }))) }),
       });
       const cd = await cr.json().catch(() => ({}));
       if (!cr.ok || !cd?.order?.id) { setMsg(cd?.error || "Couldn't start payment"); return; }
@@ -127,7 +139,8 @@ export default function Model2ReviewPage() {
                 {it.image ? <img src={it.image} alt={it.room} /> : <div className="sbc2r-noimg">🛏</div>}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="sbc2r-itile">{it.title}</div>
-                  <div className="sbc2r-isub">{it.room} · {it.from} → {it.to} · {it.nights}n</div>
+                  <div className="sbc2r-isub">{it.room} · {it.nights} night{it.nights === 1 ? "" : "s"}</div>
+                  <div className="sbc2r-idates">{fmtDates(it.dates).map((g, i) => <span key={i} className="sbc2r-dchip">🗓 {g.label}</span>)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <b style={{ color: "var(--sbc-coffee)" }}>{inr(it.buyerPays)}</b>
@@ -170,22 +183,24 @@ export default function Model2ReviewPage() {
         .sbc2r-cityhead { font-size: .84rem; font-weight: 800; color: var(--sbc-coffee); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
         .sbc2r-newcity { font-size: .62rem; font-weight: 700; color: #8a6914; background: rgba(139,105,20,.1); border-radius: 999px; padding: 2px 8px; }
         .sbc2r-unlocked { font-size: .62rem; font-weight: 700; color: #6b8f4e; }
-        .sbc2r-item { display: flex; align-items: center; gap: 11px; padding: 9px 0; border-top: 1px solid rgba(139,105,20,.1); }
+        .sbc2r-item { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-top: 1px solid rgba(139,105,20,.1); }
         .sbc2r-item img { width: 50px; height: 50px; border-radius: 10px; object-fit: cover; flex: none; }
         .sbc2r-noimg { width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center; background: #efe6d4; font-size: 1.2rem; flex: none; }
         .sbc2r-itile { font-weight: 700; color: var(--sbc-coffee); font-size: .84rem; }
         .sbc2r-isub { font-size: .68rem; color: rgba(74,56,32,.6); }
+        .sbc2r-idates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+        .sbc2r-dchip { font-size: .64rem; font-weight: 600; color: #7a5c1e; background: rgba(212,162,74,.12); border: 1px solid rgba(212,162,74,.28); border-radius: 7px; padding: 3px 7px; }
         .sbc2r-rm { display: block; font-size: .6rem; color: #c96f4a; background: none; border: 0; cursor: pointer; margin-top: 2px; margin-left: auto; }
-        .sbc2r-panel { background: linear-gradient(135deg, #fffaf0, #f7eeda); border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px 16px; margin: 6px 0 14px; }
-        .sbc2r-panel-h { font-size: .68rem; font-weight: 800; letter-spacing: .08em; color: rgba(74,56,32,.5); margin-bottom: 8px; }
-        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(74,56,32,.72); padding: 4px 0; }
-        .sbc2r-prow b { color: var(--sbc-coffee); }
-        .sbc2r-prow.total { border-top: 1px dashed rgba(139,105,20,.3); margin-top: 4px; padding-top: 10px; font-size: 1rem; }
-        .sbc2r-prow.total b { font-size: 1.2rem; font-weight: 800; }
-        .sbc2r-value { border-top: 1px solid rgba(139,105,20,.15); margin-top: 8px; padding-top: 8px; }
-        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(74,56,32,.62); padding: 2px 0; }
-        .sbc2r-vrow b { color: var(--sbc-coffee); }
-        .sbc2r-vrow.up { color: #4e7a2e; } .sbc2r-vrow.up b { color: #4e7a2e; font-weight: 800; }
+        .sbc2r-panel { background: linear-gradient(150deg, #1f1710, #33251a); border: 1px solid rgba(212,162,74,.28); border-radius: 16px; padding: 16px 17px; margin: 6px 0 14px; color: #f3e7d0; box-shadow: 0 8px 26px rgba(40,26,12,.2); }
+        .sbc2r-panel-h { font-size: .66rem; font-weight: 800; letter-spacing: .1em; color: rgba(243,231,208,.55); margin-bottom: 10px; }
+        .sbc2r-prow { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; color: rgba(243,231,208,.85); padding: 4px 0; }
+        .sbc2r-prow b { color: #ffd98a; }
+        .sbc2r-prow.total { border-top: 1px dashed rgba(212,162,74,.35); margin-top: 5px; padding-top: 11px; font-size: 1rem; }
+        .sbc2r-prow.total b { font-size: 1.3rem; font-weight: 800; color: #ffcf6e; }
+        .sbc2r-value { border-top: 1px solid rgba(212,162,74,.18); margin-top: 9px; padding-top: 9px; }
+        .sbc2r-vrow { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(243,231,208,.62); padding: 2px 0; }
+        .sbc2r-vrow b { color: #f3e7d0; }
+        .sbc2r-vrow.up { color: #a6d17a; } .sbc2r-vrow.up b { color: #a6d17a; font-weight: 800; }
         .sbc2r-note { font-size: .66rem; color: rgba(74,56,32,.5); margin-top: 12px; line-height: 1.5; }
         .sbc2r-done { text-align: center; padding: 40px 10px; }
         .sbc2r-done-badge { width: 66px; height: 66px; border-radius: 50%; background: #6b8f4e; color: #fff; font-size: 2rem; display: grid; place-items: center; margin: 0 auto 16px; }

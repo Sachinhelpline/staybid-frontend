@@ -102,7 +102,27 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v357, Circle "Model 2" — Model-1 parity: real routes, clean calendar, no rule shown)
+## Current production state (v358, Circle "Model 2" — multi-select calendar + detailed review + premium look)
+- **MULTI-SELECT availability calendar (deck ss3):** the room tour calendar (`app/circle/model2/[id]`) is now a
+  **tap-any-nights** grid — the buyer selects individual nights (non-contiguous, ACROSS months), exactly like the
+  deck's "owner-released dates". No check-in→checkout range. A bundle line = one room + its `dates:string[]`.
+- **Basket model change:** `lib/circle/model2-basket.ts` `M2Item.dates:string[]` (was from/to); key = listingId
+  (one line per room). NEW `groupRuns(dates)` (contiguous runs) + `priceNights(buyPerNight,feePct,dates)` — prices
+  a picked set EXACTLY as the server (per-run `b2bTradeSplit` rounding). `market-quote` now returns `buyerFeePct`.
+- **Detailed review dates:** `/circle/model2/review` line item lists the exact nights grouped by month
+  (`fmtDates` → "Aug 2026: 4, 7, 12 · Sep 2026: 3, 5"). Checkout `flatMap(groupRuns)` → one `{listingId,from,to}`
+  pick per contiguous run; server prices each run (preview == charge, verified both contiguous + non-contiguous).
+- **Premium dark-gold look (deck):** the calendar, market panel, metric grid, hero, and the review COST & VALUE
+  panel are dark-walnut + gold (`#1f1710`→`#33251a`, `#ffd98a`/`#ffcf6e` accents) matching the deck's panels.
+- **⚠ Post-purchase resale is MANUAL, not auto (verified):** buying room-nights transfers ownership
+  (`inventory_blocks.status=owned`, `owner_user_id` stamped) + writes a protective `invhold` (source=inventory,
+  which BLOCKS those nights from guests) + grants partner/OTA management scope + portfolio visibility. It does
+  NOT auto-list anywhere and `owner_user_id` is never read by any booking/revenue path. Re-listing on the B2B
+  exchange, selling on the StayBid guest feed, and OTA distribution are all MANUAL buyer actions from
+  `/partner/dashboard` (the `/circle/me` "My Selling Inventory" channels are links, not auto-actions). An
+  auto-list-on-purchase flow is NOT built yet (a future money-path phase).
+
+## Earlier state (v357, Circle "Model 2" — Model-1 parity: real routes, clean calendar, no rule shown)
 - **Model 2 is now REAL PAGES (routes), mirroring Model 1** (not overlays): `/circle/model2/browse` (Step 1,
   property-grouped browse) → `/circle/model2/[id]` (Step 2, full property tour page — hero gallery + thumbs +
   badges + metric grid + "Choose your rooms") → `/circle/model2/review` (Step 4, full review + pay page like
@@ -316,8 +336,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v169` (v357 Model-1 parity routes).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v357. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v170` (v358 multi-select calendar).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v358. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4
