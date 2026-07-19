@@ -205,26 +205,35 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
   const base = seg && !belowFloor ? perNight * seg.nights * rooms : 0;
   const premium = Math.round((base * (Number(buyerPremiumPct) || 0)) / 100);
 
-  // ── AI bid coach (market intelligence + a suggested competitive bid) ──────
-  const adr = Math.round(Number(market?.adr) || 0);           // guest/retail selling price
+  // ── AI bid coach (real market intelligence + a slidable price + quick-picks) ──
+  const adr = Math.round(Number(market?.adr) || 0);           // real live guest ADR (Spine)
+  const mktLow = Math.round(Number(market?.low) || 0);
+  const mktHigh = Math.round(Number(market?.high) || 0);
+  // The retail floor the wholesale floor was cut from (property lots). Circle lots
+  // have none → fall back to the market low or the floor itself.
+  const retailFloor = Math.round(Number(lot.retail_floor_per_night) || Number(lot.metadata?.retail_floor) || 0) || (mktLow > floor ? mktLow : 0);
+  const round100 = (n: number) => Math.max(100, Math.round(n / 100) * 100);
   const hybridThreshold = hybridAutoAcceptThreshold(floor, ratio);
-  // Resale headroom at the current bid: you BUY at perNight, resell at ~ADR.
+  // Resale headroom at the current bid: you BUY wholesale at perNight, resell ~ADR.
   const headroomPct = adr > 0 && perNight > 0 ? Math.round(((adr - perNight) / adr) * 100) : null;
-  // Where the current bid sits between floor (0) and market ADR (1).
-  const gaugePos = adr > floor ? Math.max(0, Math.min(1, (perNight - floor) / (adr - floor))) : (perNight >= floor ? 0.5 : 0);
-  // A suggested bid per autopilot mode (mirrors how the customer negotiate AI
-  // suggests a price that clears): auto → floor is optimal (max margin, instant);
-  // hybrid → the auto-confirm threshold; manual → a competitive bid toward market.
-  const suggested = mode === "auto"
-    ? floor
-    : mode === "hybrid"
-      ? hybridThreshold
-      : (adr > floor ? Math.min(adr, Math.round((floor + adr) / 2 / 100) * 100) : Math.round(floor * 1.15 / 100) * 100);
+  // Slider ceiling: let the agent bid up toward (a little above) the live market.
+  const ceiling = round100(Math.max(mktHigh, adr > 0 ? adr * 1.15 : 0, floor * 1.6));
+  const sliderMax = Math.max(ceiling, floor + 100);
+  // Quick-pick tiers (mirror the customer arena's Save/Smart/Instant), all ≥ floor.
+  const smartPick = mode === "hybrid"
+    ? hybridThreshold
+    : adr > floor ? round100((floor + adr) / 2) : round100(floor * 1.12);
+  const marketPick = adr > floor ? adr : round100(floor * 1.25);
+  const picks = [
+    { key: "floor", label: "Floor", sub: mode === "auto" ? "Max margin · instant" : mode === "hybrid" ? "Max margin · owner reviews" : "Max margin", value: floor },
+    { key: "smart", label: "Smart", sub: "Recommended", value: Math.min(smartPick, sliderMax) },
+    { key: "market", label: "Market", sub: adr > floor ? "Near market rate" : "Strong bid", value: Math.min(marketPick, sliderMax) },
+  ];
   const coachLine = mode === "auto"
-    ? `Floor auto-confirms instantly — the most resale margin.${adr > 0 ? ` You buy at ₹${floor.toLocaleString("en-IN")}, market sells ~₹${adr.toLocaleString("en-IN")}.` : ""}`
+    ? `Floor auto-confirms instantly — the most resale margin.${adr > 0 ? ` You buy at ${inr(floor)}, market sells ~${inr(adr)}/night.` : ""}`
     : mode === "hybrid"
-      ? `Bid ₹${hybridThreshold.toLocaleString("en-IN")}+/night to auto-confirm instantly; at the floor the owner reviews first.`
-      : `The owner reviews every bid — a stronger bid (closer to the ₹${(adr || floor).toLocaleString("en-IN")} market rate) wins faster.`;
+      ? `Bid ${inr(hybridThreshold)}+/night to auto-confirm instantly; at the floor the owner reviews first.`
+      : `The owner reviews every bid — a stronger bid (toward the ${inr(adr || retailFloor || floor)} market rate) wins faster.`;
 
   const place = async () => {
     if (!seg || belowFloor) return;
@@ -263,7 +272,7 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
       </div>
       {belowFloor && <div className="sbt-err">Your bid can't be below the floor.</div>}
 
-      {/* AI bid coach — market intelligence (stock-style) + a suggested bid */}
+      {/* AI Bid Coach — real market intelligence + a slidable price + quick-picks */}
       <div className="sbt-coach">
         <div className="sbt-coach-head">
           <span className="sbt-coach-ai">✦ AI Bid Coach</span>
@@ -273,31 +282,49 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
             </span>
           )}
         </div>
-        {/* Floor → your bid → market gauge */}
-        <div className="sbt-gauge">
-          <div className="sbt-gauge-track"><div className="sbt-gauge-fill" style={{ width: `${Math.round(gaugePos * 100)}%` }} /><div className="sbt-gauge-dot" style={{ left: `${Math.round(gaugePos * 100)}%` }} /></div>
-          <div className="sbt-gauge-ends">
-            <span>Floor {inr(floor)}</span>
-            {adr > 0 && <span>Market {inr(adr)}</span>}
+
+        {/* Slidable price — drag between the wholesale floor and the live market */}
+        <div className="sbt-slider-val">
+          {inr(perNight)}<span>/room/night</span>
+          {headroomPct != null && perNight >= floor && (
+            <em className="sbt-slider-margin" style={{ color: headroomPct > 0 ? "#059669" : "#b45309" }}>{headroomPct > 0 ? `${headroomPct}% resale margin` : "at market"}</em>
+          )}
+        </div>
+        <input
+          type="range" className="sbt-range"
+          min={floor} max={sliderMax} step={100} value={Math.min(Math.max(perNight, floor), sliderMax)}
+          onChange={(e) => setPerNight(Number(e.target.value))}
+          style={{ ["--pct" as any]: `${Math.round(((Math.min(Math.max(perNight, floor), sliderMax) - floor) / Math.max(1, sliderMax - floor)) * 100)}%` }}
+        />
+        <div className="sbt-range-ends">
+          <span>Floor {inr(floor)}</span>
+          {adr > 0 ? <span>Market {inr(adr)}</span> : <span>Max {inr(sliderMax)}</span>}
+        </div>
+
+        {/* Quick-pick tiers (like the customer arena's Save / Smart / Instant) */}
+        <div className="sbt-picks">
+          {picks.map((p) => (
+            <button key={p.key} type="button" onClick={() => setPerNight(p.value)}
+              className={`sbt-pick${perNight === p.value ? " on" : ""}`}>
+              <span className="sbt-pick-label">{p.label}</span>
+              <b>{inr(p.value)}</b>
+              <span className="sbt-pick-sub">{p.sub}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Real market intelligence (100% live Spine data) */}
+        {adr > 0 ? (
+          <div className="sbt-mkt">
+            {retailFloor > floor && <div className="sbt-mkt-cell"><span>RETAIL FLOOR</span><b>{inr(retailFloor)}</b></div>}
+            <div className="sbt-mkt-cell"><span>YOUR WHOLESALE FLOOR</span><b>{inr(floor)}</b></div>
+            <div className="sbt-mkt-cell"><span>MARKET ADR (LIVE)</span><b>{inr(adr)}</b></div>
+            <div className="sbt-mkt-cell"><span>MARKET RANGE</span><b>{inr(mktLow)}–{inr(mktHigh)}</b></div>
           </div>
-        </div>
-        {/* Market intelligence numbers */}
-        <div className="sbt-mkt">
-          <div className="sbt-mkt-cell"><span>YOUR BID / NIGHT</span><b>{inr(perNight)}</b></div>
-          {adr > 0
-            ? <>
-                <div className="sbt-mkt-cell"><span>MARKET ADR</span><b>{inr(adr)}</b></div>
-                <div className="sbt-mkt-cell"><span>MARKET RANGE</span><b>{inr(market?.low)}–{inr(market?.high)}</b></div>
-                <div className="sbt-mkt-cell"><span>RESALE HEADROOM</span><b style={{ color: (headroomPct ?? 0) > 0 ? "#059669" : "#b45309" }}>{headroomPct != null ? `${headroomPct}%` : "—"}</b></div>
-              </>
-            : <div className="sbt-mkt-cell"><span>FLOOR (YOUR COST)</span><b>{inr(floor)}</b></div>}
-        </div>
-        <div className="sbt-coach-tip">{coachLine}</div>
-        {suggested > 0 && suggested !== perNight && (
-          <button type="button" className="sbt-coach-apply" onClick={() => setPerNight(suggested)}>
-            Use suggested bid · {inr(suggested)}/night
-          </button>
+        ) : (
+          <div className="sbt-mkt"><div className="sbt-mkt-cell"><span>YOUR WHOLESALE FLOOR</span><b>{inr(floor)}</b></div></div>
         )}
+        <div className="sbt-coach-tip">{coachLine}</div>
       </div>
 
       {seg && !belowFloor && (
@@ -393,18 +420,27 @@ function TourStyles() {
       .sbt-coach-ai { font-size: .78rem; font-weight: 800; color: #a9791f; letter-spacing: .02em; }
       .sbt-coach-outcome { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
       .sbt-coach-outcome.on { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-      .sbt-gauge { margin: 4px 0 10px; }
-      .sbt-gauge-track { position: relative; height: 6px; border-radius: 999px; background: linear-gradient(90deg,#e7d9c2,#c9911a); }
-      .sbt-gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: rgba(201,145,26,.28); }
-      .sbt-gauge-dot { position: absolute; top: 50%; width: 14px; height: 14px; margin-left: -7px; transform: translateY(-50%); border-radius: 50%; background: #fff; border: 3px solid #c9911a; box-shadow: 0 1px 4px rgba(74,56,32,.3); }
-      .sbt-gauge-ends { display: flex; justify-content: space-between; font-size: .66rem; color: rgba(74,56,32,.6); font-weight: 700; margin-top: 6px; }
+      .sbt-slider-val { font-size: 1.5rem; font-weight: 800; color: #3a2c17; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+      .sbt-slider-val span { font-size: .7rem; font-weight: 600; color: rgba(74,56,32,.5); }
+      .sbt-slider-margin { font-style: normal; font-size: .72rem; font-weight: 800; margin-left: auto; }
+      /* Slidable range — gradient track red(floor)→green(market), gold thumb */
+      .sbt-range { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 999px; margin: 12px 0 6px; outline: none; cursor: pointer;
+        background: linear-gradient(90deg, #ef4444 0%, #f0b429 var(--pct,50%), #10b981 100%); }
+      .sbt-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
+      .sbt-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
+      .sbt-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
+      .sbt-range-ends { display: flex; justify-content: space-between; font-size: .68rem; color: rgba(74,56,32,.6); font-weight: 800; margin-bottom: 12px; }
+      .sbt-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+      .sbt-pick { text-align: center; border: 2px solid #e5e0d5; border-radius: 12px; padding: 8px 4px; background: #fff; cursor: pointer; transition: border-color .12s, background .12s; }
+      .sbt-pick.on { border-color: #c9911a; background: #fffbef; }
+      .sbt-pick-label { display: block; font-size: .68rem; font-weight: 800; color: #a9791f; }
+      .sbt-pick b { display: block; font-size: .95rem; color: #3a2c17; margin: 1px 0; }
+      .sbt-pick-sub { display: block; font-size: .56rem; color: rgba(74,56,32,.5); font-weight: 700; line-height: 1.15; }
       .sbt-mkt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .sbt-mkt-cell { background: #fff; border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
       .sbt-mkt-cell span { display: block; font-size: .54rem; letter-spacing: .05em; color: rgba(74,56,32,.5); font-weight: 800; }
       .sbt-mkt-cell b { font-size: .92rem; color: #3a2c17; font-weight: 800; }
       .sbt-coach-tip { font-size: .74rem; color: rgba(74,56,32,.78); line-height: 1.45; margin-top: 9px; }
-      .sbt-coach-apply { margin-top: 9px; width: 100%; padding: 8px; border-radius: 10px; border: 1px dashed #c9911a; background: #fff; color: #a9791f; font-size: .78rem; font-weight: 800; cursor: pointer; }
-      .sbt-coach-apply:hover { background: #fffbef; }
       .sbt-field { display: block; margin-bottom: 11px; }
       .sbt-field > span { font-size: .78rem; font-weight: 700; color: rgba(74,56,32,.7); display: block; margin-bottom: 4px; }
       .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: #fffdfa; color: #3a2c17; }

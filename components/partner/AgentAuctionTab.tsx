@@ -52,6 +52,8 @@ export default function AgentAuctionTab({
   const [conflict, setConflict] = useState(false);
   const [circleOwner, setCircleOwner] = useState(false);
   const [circleMult, setCircleMult] = useState(1.2);
+  const [retailFloor, setRetailFloor] = useState<number | null>(null);
+  const [wholesaleDiscount, setWholesaleDiscount] = useState(20);
   const [monthlyRate, setMonthlyRate] = useState<number | "">(""); // Circle owner's monthly purchase rate
   const [quoting, setQuoting] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -133,6 +135,8 @@ export default function AgentAuctionTab({
           setConflict(!!d.model2Conflict);
           setCircleOwner(!!d.circleOperated);
           if (d.circleFloorMultiplier) setCircleMult(Number(d.circleFloorMultiplier) || 1.2);
+          setRetailFloor(d.retailFloor ?? null);
+          if (d.wholesaleDiscountPct != null) setWholesaleDiscount(Number(d.wholesaleDiscountPct) || 20);
           if (d.minBidPerRoomNight != null) setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
         } else { setMsg({ ok: false, text: d.error || "Quote failed." }); }
       } catch { /* ignore */ } finally { if (!cancelled) setQuoting(false); }
@@ -261,7 +265,9 @@ export default function AgentAuctionTab({
                 StayBid floor: <b>{inr(effFloor)}</b>/room/night — can't go below this.
                 {circleOwner
                   ? ` Circle inventory: floor = your purchase (${inr(purchasePerNight)}/night) × ${circleMult} = cost + ${Math.round((circleMult - 1) * 100)}% profit.`
-                  : " Property owner: floor = your room's floor price."}
+                  : retailFloor
+                    ? ` Wholesale floor = your retail floor ${inr(retailFloor)} − ${wholesaleDiscount}% (bulk, guaranteed) so agents have real resale margin.`
+                    : " Property owner: bulk wholesale floor (below your retail floor) so agents have resale margin."}
               </span>
             ) : circleOwner ? (
               <span className="text-[0.72rem] text-amber-600 mt-0.5 block">Enter your monthly purchase rate below to compute the floor.</span>
