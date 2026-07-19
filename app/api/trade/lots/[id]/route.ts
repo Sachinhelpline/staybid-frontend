@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const cfg = await resolveAuctionConfig();
 
   // Market intelligence (best-effort; the tour still works if it's null).
-  let market: { low: number; high: number; adr: number; samples: number } | null = null;
+  let market: { low: number; high: number; adr: number; samples: number; rack: number } | null = null;
   try { market = await monthMarket(lot.room_id, range.monthStart, range.monthEnd); } catch { market = null; }
 
   // Scarcity — rooms still available = num_rooms − rooms already awarded/won.
