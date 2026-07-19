@@ -102,7 +102,25 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v359, Circle "Model 2" — Your Selling Inventory surface + honest sell-side map)
+## Current production state (v360, Circle "Model 2" — sell-to-public LIVE on Circle-operated hotels)
+- **Model-2 buyer now sells to the PUBLIC like an owner (deck steps 5–6), VERIFIED end-to-end.** Demo released
+  inventory moved onto the 4 **host_circle** (Circle-operated) hotels (`hco-seed-man/mus/ris/shi`), which are now
+  `approval_status='approved'` (guest-live) — migration `2026-07-19-v360-demo-b2b-host-circle.sql`. On host_circle
+  hotels the guest hotel page renders individual UNIT listings (`account_type!='hotel_owner'` → `resolveRoomListings`),
+  so after purchase the buyer's stamped unit is a guest listing and a guest booking it carries `bids.assignedUnitId`
+  → `owner_user_id` (buyer) → shows in the buyer's owner dashboard. Own/night = room Spine floor ÷ 2, ask = floor
+  (below market ADR/MRP → resale upside), released window Aug 1–Dec 1.
+- **NEW `/api/circle/inventory/sell` (customer sb_token) + a real "List for public booking" control** on
+  `/circle/model2/selling`: `list` DELETEs the protective `invhold_<blockId>` (source=inventory) → opens the nights
+  to guests + sets the unit `is_listed` + optional guest `price_override`; `pause` re-writes the hold. Owner-guarded
+  (block `investor_user_id` ∈ cross-pool ids), additive — touches only the buyer's own block/unit, NO core
+  booking-engine change. Live SQL round-trip verified: HELD (invhold overlap=1, guest blocked) → release → LIVE
+  (overlap=0 free · owner=buyer · listed+active · approved non-hotel_owner hotel) → 0 leftover.
+- **⚠ Still Railway (the money):** the browse→pick→book→attributed-bid loop is fully wired, but there is STILL no
+  automatic guest-payment→owner payout in this repo (capture-split + payout keyed on `assignedUnitId→owner_user_id`
+  is a settlement/Railway phase). The sell page + endpoint control guest AVAILABILITY only, never money.
+
+## Earlier state (v359, Circle "Model 2" — Your Selling Inventory surface + honest sell-side map)
 - **NEW `/circle/model2/selling` "Your Selling Inventory" (deck step 5–6):** after a B2B purchase the buyer
   holds the SELLING RIGHTS to those room-nights. This premium page reads `/api/circle/portfolio` and shows the
   owned room-nights + KPIs + per-block **sell-through channels** (🏠 Sell on StayBid → `/partner/dashboard`,
@@ -355,8 +373,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v171` (v359 selling inventory).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v359. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v172` (v360 sell-to-public).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v360. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

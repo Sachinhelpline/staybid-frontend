@@ -35,6 +35,9 @@ export default function Model2SellingPage() {
   const [pf, setPf] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState("");
+  const [busy, setBusy] = useState("");
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
+  const [flash, setFlash] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -57,6 +60,23 @@ export default function Model2SellingPage() {
     try { navigator.clipboard.writeText(url); setCopied(b.id); setTimeout(() => setCopied(""), 1600); } catch { /* ignore */ }
   };
 
+  const sellAction = async (b: Block, action: "list" | "pause") => {
+    setBusy(b.id); setFlash("");
+    try {
+      const price = action === "list" && priceDraft[b.id] ? Number(priceDraft[b.id]) : undefined;
+      const r = await fetch("/api/circle/inventory/sell", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ blockId: b.id, action, ...(price ? { price } : {}) }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d?.ok) { setFlash(d?.error || "Couldn't update — try again."); return; }
+      setFlash(action === "list" ? "Listed for public booking ✓ — guests can now book these nights." : "Paused — nights held back from guests.");
+      load();
+    } catch { setFlash("Something went wrong."); }
+    finally { setBusy(""); }
+  };
+  const isLive = (b: Block) => !!(b.metadata && b.metadata.publicListed);
+
   return (
     <div className="sbc-home">
       <div className="sbc-ms-wrap sbc2s">
@@ -76,6 +96,8 @@ export default function Model2SellingPage() {
           <div className="sbc2s-kpi"><b>{pf?.kpis?.operatedHotelCount || 0}</b><span>PROPERTIES</span></div>
         </div>
 
+        {flash && <div className="sbc2s-flash">{flash}</div>}
+
         {loading ? (
           <div className="sbc-panel" style={{ padding: 28, textAlign: "center", color: "rgba(74,56,32,.6)" }}>Loading your inventory…</div>
         ) : sellable.length === 0 ? (
@@ -92,8 +114,24 @@ export default function Model2SellingPage() {
                   <div className="sbc2s-block-title">{b.hotel_name || b.hotel_id}</div>
                   <div className="sbc2s-block-sub">{b.unit_number ? `Room #${b.unit_number} · ` : ""}{b.date_from} → {b.date_to} · {b.nights}n</div>
                 </div>
-                <span className={`sbc2s-status ${b.status === "listed" ? "live" : "held"}`}>{b.status === "listed" ? "● listed" : "held"}</span>
+                <span className={`sbc2s-status ${isLive(b) ? "live" : "held"}`}>{isLive(b) ? "● live for guests" : "held"}</span>
               </div>
+
+              {/* list for PUBLIC booking (deck: sell to public like a hotel owner) */}
+              <div className="sbc2s-sell">
+                <div className="sbc2s-sell-row">
+                  <input type="number" min={0} inputMode="numeric" placeholder="your ₹/night (optional)"
+                    value={priceDraft[b.id] ?? ""} onChange={(e) => setPriceDraft((s) => ({ ...s, [b.id]: e.target.value }))}
+                    className="sbc2s-price" />
+                  {isLive(b) ? (
+                    <button disabled={busy === b.id} className="sbc-btn-ghost" onClick={() => sellAction(b, "pause")}>{busy === b.id ? "…" : "Pause"}</button>
+                  ) : (
+                    <button disabled={busy === b.id} className="sbc-btn-gold" onClick={() => sellAction(b, "list")}>{busy === b.id ? "…" : "List for public booking"}</button>
+                  )}
+                </div>
+                <div className="sbc2s-sell-note">{isLive(b) ? "Guests can book these nights on StayBid — bookings land in your owner dashboard." : "Open these nights to guests on StayBid (customer feed · bid · direct)."}</div>
+              </div>
+
               {/* sell-through channels */}
               <div className="sbc2s-chan">
                 <a className="sbc2s-ch" href="/partner/dashboard" target="_blank" rel="noreferrer"><span>🏠</span><div><b>Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></a>
@@ -133,6 +171,11 @@ export default function Model2SellingPage() {
         .sbc2s-status { font-size: .64rem; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
         .sbc2s-status.live { color: #4e7a2e; background: rgba(107,143,78,.14); }
         .sbc2s-status.held { color: #8a6914; background: rgba(139,105,20,.1); }
+        .sbc2s-flash { font-size: .82rem; font-weight: 600; color: #4e7a2e; background: rgba(107,143,78,.12); border: 1px solid rgba(107,143,78,.3); border-radius: 12px; padding: 10px 13px; margin-bottom: 12px; }
+        .sbc2s-sell { margin-top: 11px; padding-top: 11px; border-top: 1px dashed rgba(139,105,20,.2); }
+        .sbc2s-sell-row { display: flex; gap: 8px; align-items: center; }
+        .sbc2s-price { flex: 1; min-width: 0; background: #fff; border: 1px solid rgba(139,105,20,.25); border-radius: 10px; padding: 8px 11px; font-size: .82rem; font-family: inherit; color: var(--sbc-coffee); }
+        .sbc2s-sell-note { font-size: .66rem; color: rgba(74,56,32,.6); margin-top: 6px; }
         .sbc2s-chan { display: grid; gap: 7px; margin-top: 11px; }
         .sbc2s-ch { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: rgba(139,105,20,.05); border: 1px solid rgba(139,105,20,.14); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-family: inherit; }
         .sbc2s-ch > span:first-child { font-size: 1.1rem; }
