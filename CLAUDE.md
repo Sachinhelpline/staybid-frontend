@@ -102,6 +102,20 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v376 — Trade AI Bid Coach + phone step without OTP)
+- **Trade LIVE bid box now has an "AI Bid Coach" (stock-style market intelligence)** so agents don't just bid the
+  floor: `app/trade/[id]` `LiveBidBox` shows the room's REAL guest market price (ADR + low/high, from the new
+  `lots/[id]` `market` field = `room_date_price.live_price` / Spine over the lot month, `marketRange` bounded 14
+  Spine fills), a Floor→bid→Market gauge, resale-headroom %, an autopilot outcome chip (auto-confirms vs owner
+  reviews via `evaluateLiveBid`), and a per-mode **suggested bid** (auto→floor is optimal; hybrid→auto-confirm
+  threshold `floor×ratio`; manual→toward market ADR) with a tap-to-apply button. Pure/read; no money change.
+- **Phone step works WITHOUT the (dead) OTP:** the hotel-page "One Quick Step" gate (`withBackendAuth` →
+  Firebase/Google users) no longer blocks bids/bookings on the broken SMS OTP. When
+  `NEXT_PUBLIC_ENABLE_PHONE_OTP != 1` (default) the modal collects the number in one step and saves it —
+  `saveVerifyPhone` → NEW `POST /api/user/phone` (`socialUserFromReq`, no-clobber PATCH: only fills null/empty/
+  `unknown_*` phone) + updates the local session user so the booking/bid carries a reachable number. When the
+  flag is on, the full Send-OTP → Verify flow is unchanged. Badge v375→**v376**, sw HTML_CACHE v187→v188.
+
 ## Current production state (v374, Circle "Model 3" — LIVE always-open mode: no-EMD, autopilot, pay-on-accept)
 - **NEW launch-default sale mode for Model 3: an always-open LIVE bulk auction alongside the existing sealed
   monthly auction (both coexist; the sealed path is UNCHANGED).** `auction_lots.sale_mode` = `'live'` (new
