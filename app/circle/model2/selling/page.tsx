@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { redirectToSignIn } from "@/lib/auth-intent";
 import { fmtINR } from "@/lib/circle/engine";
 import { CIRCLE_B2B_RESALE_NOTE } from "@/lib/circle/disclosure";
+import { bridgeToPartnerDashboard } from "@/lib/circle/partner-bridge";
 
 type Block = {
   id: string; hotel_id: string; hotel_name: string | null; unit_id: string | null; unit_number: string | null;
@@ -134,17 +135,18 @@ export default function Model2SellingPage() {
 
               {/* sell-through channels */}
               <div className="sbc2s-chan">
-                <a className="sbc2s-ch" href="/partner/dashboard" target="_blank" rel="noreferrer"><span>🏠</span><div><b>Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></a>
-                <a className="sbc2s-ch" href="/partner/dashboard?tab=channels" target="_blank" rel="noreferrer"><span>🌐</span><div><b>Your OTA listings</b><small>Channel Manager · Airbnb / Booking</small></div><span className="sbc2s-ch-go">→</span></a>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "myrooms")}><span>🏠</span><div><b>Sell on StayBid</b><small>list to guests · set your price</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "agentauction")}><span>🏷️</span><div><b>Sell to travel agents</b><small>Model 3 · wholesale auction</small></div><span className="sbc2s-ch-go">→</span></button>
+                <button className="sbc2s-ch" onClick={() => bridgeToPartnerDashboard(user, "channels")}><span>🌐</span><div><b>Your OTA listings</b><small>Channel Manager · Airbnb / Booking</small></div><span className="sbc2s-ch-go">→</span></button>
                 <button className="sbc2s-ch" onClick={() => copyDirect(b)}><span>🔗</span><div><b>Direct booking link</b><small>{copied === b.id ? "Copied ✓" : "share with your own customers"}</small></div><span className="sbc2s-ch-go">⧉</span></button>
               </div>
             </div>
           ))}
 
           {/* manage CTA */}
-          <a href="/partner/dashboard" target="_blank" rel="noreferrer" className="sbc-btn-gold" style={{ display: "block", textAlign: "center", padding: 13, marginTop: 6 }}>
+          <button onClick={() => bridgeToPartnerDashboard(user)} className="sbc-btn-gold" style={{ display: "block", width: "100%", textAlign: "center", padding: 13, marginTop: 6, border: 0, cursor: "pointer", font: "inherit" }}>
             Manage &amp; sell in your owner dashboard →
-          </a>
+          </button>
           <p className="sbc2s-note">
             Your rooms already resolve in <b>Partner → My Rooms</b> (set price, photos, availability, OTA feeds). A guest
             booking your specific room shows in that dashboard. Automatic settlement of the guest’s payment to you is a

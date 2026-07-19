@@ -19,6 +19,7 @@ import {
   CIRCLE_INCOME_DISCLOSURE, CIRCLE_PAYOUTS_LABEL,
   CIRCLE_RESALE_RISK_NOTE, CIRCLE_B2B_RESALE_NOTE,
 } from "@/lib/circle/disclosure";
+import { bridgeToPartnerDashboard } from "@/lib/circle/partner-bridge";
 
 // v345 — M6: block/listing/trade status → tone pill (matches the partner tab).
 const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
@@ -405,14 +406,18 @@ export default function CircleMePage() {
                                   style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
                                   {copiedId === b.id ? "🔗 Copied!" : "🔗 Direct link"}
                                 </button>
-                                <Link href="/partner/dashboard"
-                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)" }}>
+                                <button onClick={() => bridgeToPartnerDashboard(user, "myrooms")}
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
                                   🏠 Sell on StayBid / ⇄ exchange
-                                </Link>
-                                <Link href="/partner/dashboard?tab=channels"
-                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)" }}>
+                                </button>
+                                <button onClick={() => bridgeToPartnerDashboard(user, "agentauction")}
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
+                                  🏷️ Sell to travel agents
+                                </button>
+                                <button onClick={() => bridgeToPartnerDashboard(user, "channels")}
+                                  style={{ fontSize: ".72rem", fontWeight: 700, padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
                                   🌐 Your OTA (Channel Manager)
-                                </Link>
+                                </button>
                               </div>
                             )}
                           </div>
@@ -425,7 +430,19 @@ export default function CircleMePage() {
                 {/* B2B exchange — my listings + trades. */}
                 {(b2bListings.length > 0 || asSeller.length > 0 || asBuyer.length > 0) && (
                   <div>
-                    <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                      <h2 className="sbc-h2" style={{ fontSize: "1.5rem", margin: 0 }}>B2B Exchange <span style={{ fontSize: ".8rem", fontWeight: 500, opacity: .6 }}>· Model 2</span></h2>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button onClick={() => bridgeToPartnerDashboard(user, "myrooms")}
+                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: 0, background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1f1710", cursor: "pointer" }}>
+                          ⇄ List on exchange
+                        </button>
+                        <button onClick={() => bridgeToPartnerDashboard(user, "agentauction")}
+                          style={{ fontSize: ".72rem", fontWeight: 800, padding: "6px 13px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>
+                          🏷️ Sell to agents (Model 3)
+                        </button>
+                      </div>
+                    </div>
                     <p style={{ fontSize: ".68rem", lineHeight: 1.5, color: "rgba(74,56,32,.5)", margin: "4px 0 0" }}>{CIRCLE_B2B_RESALE_NOTE}</p>
                     <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
                       {b2bListings.map((l) => {
@@ -482,13 +499,13 @@ export default function CircleMePage() {
                     </p>
                     <div className="sbc-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", marginTop: 12 }}>
                       {operatedHotels.map((h) => (
-                        <Link key={h.id} href="/partner/dashboard" className="sbc-panel" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none" }}>
+                        <button key={h.id} onClick={() => bridgeToPartnerDashboard(user)} className="sbc-panel" style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textDecoration: "none", cursor: "pointer", textAlign: "left", font: "inherit" }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--sbc-coffee)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{h.name}</div>
                             <div style={{ fontSize: ".7rem", color: "rgba(74,56,32,.6)" }}>{h.unitCount} room{h.unitCount === 1 ? "" : "s"}</div>
                           </div>
                           <span style={{ color: "var(--sbc-gold-deep)", fontWeight: 800, fontSize: ".82rem", flexShrink: 0 }}>Manage →</span>
-                        </Link>
+                        </button>
                       ))}
                     </div>
                   </div>

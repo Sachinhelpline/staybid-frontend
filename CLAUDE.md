@@ -102,6 +102,31 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v386 — Circle investor → partner-dashboard bridge (cross-model B2B sell reachability))
+- **Phase 1 of the cross-model selling audit: a pure Circle investor can now REACH the B2B sell surfaces.** The
+  cross-model sell *APIs* already existed and are scope-permissive (`POST /api/b2b/listings` list-on-exchange,
+  `POST /api/trade/owner/lots` publish-to-agents — both gated by `partnerHotelScope` = owned ∪ operated units),
+  but both live only inside `/partner/dashboard`, and `partner/google-login` admits only registered hotel owners
+  — so a pure Circle investor (role `customer`, operates units via `owner_user_id`) was locked out. A Model 1
+  provisioned owner DOES hold `owner_user_id` units (`lib/circle/provision.ts` `stampOwnedUnits` stamps
+  `owner_user_id` + `is_listed=true`), so operator scope is correct once they have a partner session.
+- **NEW `lib/circle/partner-bridge.ts` `bridgeToPartnerDashboard(user, tab?)`** — reuses the investor's Circle
+  `sb_token` as `sb_partner_token` (+ `sb_partner_user`) and opens `/partner/dashboard?tab=…`. Mirrors the proven
+  Model-3-winner bridge (`app/trade/my-bids` enable-selling); ADD-only (never touches the customer `sb_token`),
+  partner routes only `decodeJwt` + scope by `owner_user_id`.
+- **`app/partner/dashboard/page.tsx`** now honours a `?tab=` query on first mount (deep-link) so the bridge lands
+  on **My Rooms** (`myrooms` → B2B exchange list + StayBid B2C), **Sell to Agents** (`agentauction` → Model 3
+  auction publish), or **Channel Manager** (`channels` → OTA) instead of always Overview.
+- **`app/circle/me`** + **`app/circle/model2/selling`** — the plain `/partner/dashboard` links (which dropped a
+  pure investor on a blocked dashboard) are now token-bridging buttons, and both surfaces gained an explicit
+  🏷️ **Sell to travel agents (Model 3)** entry alongside 🏠 StayBid B2C · ⇄ Model 2 exchange · 🌐 OTA.
+- ⚠ **Phase 2 (pending owner decision, NOT built):** "B2C auto-opens on a Model 2 purchase" + resale-buyer
+  guest-payout. Blocked by two LOCKED contracts — `owner_user_id` never transfers between investors (SEBI-safe;
+  an `investor_block` resale moves only `inventory_blocks.investor_user_id`, so guest attribution still keys to
+  the seller's `owner_user_id`), and there is no auto guest→owner payout anywhere (settlement/Railway phase).
+  The B2C *availability* option (`/api/circle/inventory/sell` list/pause) exists; the money attribution does not.
+- `tsc` + `next build` clean. Badge v385→**v386**, sw HTML_CACHE v197→v198.
+
 ## Current production state (v385 — Trade: floor-consistent min bid (browse == tour) + browse sort/filters)
 - **Fixed the "browse says ₹1,200 min, bid page says ₹4,900 min" inconsistency (`app/trade/[id]` `LiveBidBox`).**
   Root cause: the v383 profit ladder computed the picks purely OFF the MRP (Save Big = 40% off rack) and set
