@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, hasActiveModel2Listing } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
   const win = computeAuctionWindow(range, cfg);
   if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
 
-  const floor = await computeMinBidFloorPerNight(roomId, range);
+  const rawFloor = await computeMinBidFloorPerNight(roomId, range);
+  const isCircle = await isCircleOperatedHotel(hotelId);
+  const floor = effectiveFloor(rawFloor, isCircle, cfg.circleFloorMultiplier);
+  const model2Conflict = await hasActiveModel2Listing(roomId, range.monthStart, range.monthEnd);
 
   // Units hint — count active physical units for this room (may be 0 on classic hotels).
   let unitsHint = 0;
@@ -55,6 +58,8 @@ export async function POST(req: NextRequest) {
     minBidPerRoomNight: floor,
     nights: range.nights,
     unitsHint,
+    circleOperated: isCircle,
+    model2Conflict,
     config: { depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct },
   });
 }

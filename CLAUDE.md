@@ -102,7 +102,35 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v364, Circle "Model 3" — travel-agent MONTHLY INVENTORY AUCTION)
+## Current production state (v367, Circle "Model 3 v2" — winner sell channels + agent↔Model-2 bridge + guardrails)
+- **Winner sell channels (Phase A):** a Model-3 auction winner sells their won allotment two ways from the
+  voucher card (`/trade/my-bids`). **StayBid + OTA:** `POST /api/trade/awards/[id]/enable-selling` grants
+  OPERATOR SCOPE over the won units for exactly the allotment nights — reuses the M1/M4 precedent
+  (`assignFreeUnit` per contiguous run × room → date-bounded `inventory_blocks` `investor_user_id`=agent →
+  `stampUnitOwner` guarded `or=(owner_user_id.is.null,in.(agentIds))` → `writeHold(invhold_<blockId>)`,
+  idempotent deterministic ids) → UI reuses the agent's Google token as `sb_partner_token` + opens
+  `/partner/dashboard` (My Rooms + per-unit OTA feeds). **Own channel:** copyable direct booking link
+  (`/hotels/<id>?checkIn=&checkOut=`) + voucher. No-units property → honest "use your own channel" fallback.
+- **Agent → Model-2 buy entry (Phase B):** approved agents see a "Model 2 — curated Circle inventory (fixed
+  price)" card on `/trade` → click bridges their Google identity into the customer session (`sb_token`/
+  `sb_user`/`sb_token_type`=firebase) → existing Model-2 flow. **Model 2 has NO room-ownership gate in code**
+  (only per-city ₹ access) — so this is pure surfacing + bridge, trade-buyer framing, no new gate, no M2 change.
+- **Concurrent channels, clash-free (Phase C, v367.1):** Model 2 = Circle-operated only; Model 3 = all StayBid
+  properties. A property CAN run on BOTH channels at once (so Circle owners who can't join the M3 auction still
+  get that inventory via M2). **No cross-channel block** — the shared physical layer (`assignFreeUnit` +
+  `inventory_blocks` + `room_blocks` holds) makes a double-booked unit-night impossible (proven: a unit held by
+  one channel drops out of the other's free-unit set). `hasActiveModel2Listing` is now INFO-only (owner tab
+  shows "also on Model 2, both run together" — never blocks). Publish enforces a **physical-capacity cap**
+  (`activeUnitCount` — a lot can't promise more rooms than units exist; 0-unit classic rooms self-regulate at
+  booking). (2) admin `auction_config.circle_floor_multiplier` (migration `2026-07-19-v366`, default 1.0) raises
+  the Model-3 min-bid floor to a MULTIPLE of Spine cost for `host_circle` hotels only (`effectiveFloor`), so the
+  auction can't undercut Model-2's fixed price. Edited in the `/admin/auction` config card ("Circle floor ×").
+- **⚠ Known follow-up:** `owner_user_id` is a permanent unit stamp; for recurring monthly auctions on the SAME
+  unit, `assignFreeUnit` prefers unowned units (per-month rotation/expiry is a documented refinement). Per-unit
+  GUEST listings only surface on `host_circle` hotels (`account_type!='hotel_owner'`); classic hotels get
+  dashboard + OTA distribution, not the StayBid per-unit guest feed. Still no auto money-out anywhere.
+
+## Earlier production state (v364, Circle "Model 3" — travel-agent MONTHLY INVENTORY AUCTION)
 - **NEW vertical: a sealed-bid B2B monthly auction where property owners sell spare inventory to approved
   travel agents.** Distinct `sb_trade_*` namespace + `/trade/*` surface (the `/agent` + `sb_agent_*` panel is
   customer SUPPORT — do NOT collide). Google (Firebase) sign-in only (phone OTP is off). **Browse is OPEN to

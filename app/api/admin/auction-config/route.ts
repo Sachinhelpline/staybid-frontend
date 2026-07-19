@@ -23,6 +23,10 @@ const clampInt = (v: any, fb: number, lo: number, hi: number) => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= lo && n <= hi ? n : fb;
 };
+const clampMult = (v: any, fb: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 20 ? n : fb;
+};
 
 export async function POST(req: Request) {
   const admin = adminFromReq(req);
@@ -38,6 +42,7 @@ export async function POST(req: Request) {
   if (body.depositPct !== undefined)      patch.deposit_pct       = clampPct(body.depositPct, cur.depositPct);
   if (body.windowOpenDay !== undefined)   patch.window_open_day   = clampInt(body.windowOpenDay, cur.windowOpenDay, 1, 28);
   if (body.payWindowHours !== undefined)  patch.pay_window_hours  = clampInt(body.payWindowHours, cur.payWindowHours, 1, 336);
+  if (body.circleFloorMultiplier !== undefined) patch.circle_floor_multiplier = clampMult(body.circleFloorMultiplier, cur.circleFloorMultiplier);
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,

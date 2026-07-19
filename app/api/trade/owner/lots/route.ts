@@ -9,7 +9,7 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, activeUnitCount } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +69,21 @@ export async function POST(req: NextRequest) {
   const win = computeAuctionWindow(range, cfg);
   if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
 
-  // TAMPER-SAFE: recompute the floor; clamp the owner's min bid UP to it.
-  const floor = await computeMinBidFloorPerNight(roomId, range);
+  // Model 2 & Model 3 may run CONCURRENTLY on the same property — the shared
+  // physical layer (assignFreeUnit + inventory_blocks + room_blocks holds)
+  // guarantees no unit-night is ever double-sold. So NO cross-channel block; we
+  // only guard PHYSICAL CAPACITY: the auction must not promise more rooms than
+  // units exist (classic category rooms with no per-unit rows self-regulate).
+  const unitCount = await activeUnitCount(hotelId, roomId);
+  if (unitCount > 0 && numRooms > unitCount) {
+    return NextResponse.json({ error: `Only ${unitCount} units exist in this room category — reduce the room count.` }, { status: 400 });
+  }
+
+  // TAMPER-SAFE: recompute the floor; for Circle-operated properties apply the
+  // admin floor multiplier (protects Model-2 pricing). Clamp the owner min bid UP.
+  const rawFloor = await computeMinBidFloorPerNight(roomId, range);
+  const isCircle = await isCircleOperatedHotel(hotelId);
+  const floor = effectiveFloor(rawFloor, isCircle, cfg.circleFloorMultiplier);
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
 

@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTradeAuth } from "@/lib/trade/use-trade-auth";
+import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
 import { addBid, bidItemKey, onBidBasketChange, bidBasketList } from "@/lib/trade/bid-basket";
 import { bidCostPreview } from "@/lib/trade/auction-engine";
 import { CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
@@ -69,6 +69,11 @@ export default function TradeBrowsePage() {
 
       {/* Account strip */}
       <AccountStrip auth={auth} />
+
+      {/* Model 2 cross-sell — approved agents can also buy curated Circle inventory
+          at a fixed guaranteed price (no auction risk). Bridges the agent's Google
+          session into the customer session the Model-2 flow uses. */}
+      <Model2Entry auth={auth} />
 
       {/* City chips */}
       <div className="max-w-6xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto">
@@ -138,6 +143,35 @@ function AccountStrip({ auth }: { auth: ReturnType<typeof useTradeAuth> }) {
             {busy ? "…" : "Google sign-in"}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function Model2Entry({ auth }: { auth: ReturnType<typeof useTradeAuth> }) {
+  if (auth.loading || auth.status !== "approved") return null; // only approved agents see the cross-sell
+  const goModel2 = () => {
+    const tok = getTradeToken();
+    try {
+      // Bridge the agent's Google identity into the customer session the Model-2
+      // flow reads (sb_token / sb_user / sb_token_type). Model 2 has no room-ownership
+      // gate — only a per-city ₹ access fee at checkout.
+      localStorage.setItem("sb_token", tok);
+      localStorage.setItem("sb_token_type", "firebase");
+      localStorage.setItem("sb_user", JSON.stringify({ id: auth.user?.id, name: auth.agent?.agency_name || auth.user?.name || "Agent", email: auth.user?.email || "", role: "customer" }));
+    } catch {}
+    window.location.href = "/circle/model2/browse";
+  };
+  return (
+    <div className="max-w-6xl mx-auto px-4 pt-3">
+      <div className="rounded-2xl p-4 flex items-center justify-between gap-3" style={{ background: "linear-gradient(135deg,#33251a,#4a3820)", color: "#ffe9c7" }}>
+        <div className="min-w-0">
+          <div className="font-bold" style={{ color: "#ffd98a" }}>🔑 Model 2 — curated Circle inventory (fixed price)</div>
+          <p className="text-[0.75rem] opacity-85 mt-0.5">Auction ke alawa: StayBid Circle-operated properties se <b>guaranteed fixed price</b> par room-nights kharido — koi bidding, koi risk nahi. Aap ek B2B trade buyer ki tarah kharidte ho.</p>
+        </div>
+        <button onClick={goModel2} className="shrink-0 px-4 py-2 rounded-xl font-bold text-[0.8rem]" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1f1710" }}>
+          Model 2 kholo →
+        </button>
       </div>
     </div>
   );

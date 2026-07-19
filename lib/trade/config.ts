@@ -18,6 +18,7 @@ export interface AuctionConfig {
   windowOpenDay: number;    // day of the PREVIOUS month the auction opens
   payWindowHours: number;   // winner's balance-pay window after clearing
   minBidFloorMode: string;  // 'spine' = Spine bidFloor is the hard floor
+  circleFloorMultiplier: number; // Model-3 floor × for host_circle lots (protects Model-2)
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -27,6 +28,12 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   windowOpenDay: 24,
   payWindowHours: 48,
   minBidFloorMode: "spine",
+  circleFloorMultiplier: 1.0,
+};
+
+const clampMult = (v: any, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 1 && n <= 20 ? n : fallback;
 };
 
 const clampPct = (v: any, fallback: number) => {
@@ -59,6 +66,7 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           windowOpenDay: clampInt(row.window_open_day, AUCTION_CONFIG_DEFAULT.windowOpenDay, 1, 28),
           payWindowHours: clampInt(row.pay_window_hours, AUCTION_CONFIG_DEFAULT.payWindowHours, 1, 336),
           minBidFloorMode: typeof row.min_bid_floor_mode === "string" ? row.min_bid_floor_mode : "spine",
+          circleFloorMultiplier: clampMult(row.circle_floor_multiplier, AUCTION_CONFIG_DEFAULT.circleFloorMultiplier),
         };
         _cache = { at: now, cfg };
         return cfg;

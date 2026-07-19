@@ -45,6 +45,7 @@ export default function AgentAuctionTab({
   const [minBid, setMinBid] = useState<number | "">("");
   const [floor, setFloor] = useState<number | null>(null);
   const [win, setWin] = useState<UpMonth | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [quoting, setQuoting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -90,6 +91,7 @@ export default function AgentAuctionTab({
         if (r.ok) {
           setFloor(d.minBidPerRoomNight ?? null);
           setWin(d.window ? { ...(d.range || {}), ...d.window } as any : null);
+          setConflict(!!d.model2Conflict);
           setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
         } else { setMsg({ ok: false, text: d.error || "Quote failed." }); }
       } catch { /* ignore */ } finally { if (!cancelled) setQuoting(false); }
@@ -190,6 +192,12 @@ export default function AgentAuctionTab({
             Bidding window: <b>{fmtDate(win.windowOpenAt)}</b> → <b>{fmtDate(win.windowCloseAt)}</b>
             {win.phase === "open" ? " · abhi LIVE" : ` · ${fmtDate(win.windowOpenAt)} ko khulega`} ·
             {" "}{win.nights} nights · agent EMD deposit {cfg?.depositPct ?? 10}%
+          </div>
+        )}
+
+        {conflict && (
+          <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-800 border border-blue-200">
+            ℹ️ Ye room <b>Model 2</b> pe bhi listed hai — koi dikkat nahi. Dono channels <b>saath chalenge</b>; physical availability shared hai (jo unit ek jagah bik gaya wo doosri jagah apne-aap block ho jaata hai — koi clash nahi).
           </div>
         )}
 
