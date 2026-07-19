@@ -19,7 +19,7 @@ const monthLabel = (mk: string) => {
 type Lot = {
   id: string; hotel_id: string; room_id: string; category?: string; city?: string;
   month_key: string; num_rooms: number; min_bid_per_room_night: number;
-  window_close_at: string; metadata?: any; image?: string;
+  window_close_at: string; metadata?: any; image?: string; sale_mode?: string;
 };
 
 export default function TradeBrowsePage() {
@@ -83,9 +83,15 @@ export default function TradeBrowsePage() {
           <div className="col-span-full text-center text-luxury-400 py-10">No live lots in this city right now.</div>
         ) : lots.map((l) => (
           <button key={l.id} onClick={() => router.push(`/trade/${l.id}`)} className="text-left rounded-2xl overflow-hidden bg-white border border-luxury-200 flex flex-col hover:shadow-lg transition-shadow">
-            {l.image
-              ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
-              : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
+            <div className="relative">
+              {l.image
+                ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
+                : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
+              <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2 py-0.5 rounded-full"
+                style={l.sale_mode === "live" ? { background: "#ecfdf5", color: "#047857" } : { background: "#f5f3ff", color: "#6d28d9" }}>
+                {l.sale_mode === "live" ? "⚡ Live · bid now" : "🔒 Sealed · month-end"}
+              </span>
+            </div>
             <div className="p-3 flex-1 flex flex-col">
               <div className="text-[0.72rem] text-luxury-400">{l.metadata?.hotel_name || l.hotel_id} · {l.city}</div>
               <div className="font-bold text-luxury-900">{l.category || l.room_id}</div>

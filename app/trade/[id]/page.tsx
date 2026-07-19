@@ -8,9 +8,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTradeAuth } from "@/lib/trade/use-trade-auth";
+import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
 import { addBid, bidItemKey, onBidBasketChange, bidBasketList } from "@/lib/trade/bid-basket";
 import { bidCostPreview } from "@/lib/trade/auction-engine";
+import { evaluateLiveBid, LIVE_AUTOPILOT_LABEL, type LiveAutopilotMode } from "@/lib/trade/live-auction";
 
 const inr = (n: any) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
 const cap = (s: string) => String(s || "").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -45,6 +46,7 @@ export default function TradeTourPage() {
   if (!data?.lot) return <div className="sbt-wrap"><Link href="/trade" className="sbt-back">← Back</Link><div className="sbt-load">This lot is no longer available.</div><TourStyles /></div>;
 
   const { lot, hotel, room, segments, depositPct } = data;
+  const isLive = lot.sale_mode === "live";
   const heroImgs: string[] = (hotel.images?.length ? hotel.images : room.images) || [];
 
   return (
@@ -89,9 +91,15 @@ export default function TradeTourPage() {
 
         <div className="sbt-right">
           <div className="sbt-h2">Place your bid</div>
-          <p className="sbt-h2sub">Pick a segment (the whole month, a single week, or just weekends), set your price per room per night, then add it to your bundle. Highest bids win at the month-end close.</p>
+          <p className="sbt-h2sub">
+            {isLive
+              ? "Pick a segment, set your price per room per night, and bid — no deposit. The owner's autopilot accepts strong bids instantly; you then pay from your dashboard to lock the rooms."
+              : "Pick a segment (the whole month, a single week, or just weekends), set your price per room per night, then add it to your bundle. Highest bids win at the month-end close."}
+          </p>
           {auth.status === "approved"
-            ? <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />
+            ? (isLive
+                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} />
+                : <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />)
             : <BidGate auth={auth} city={lot.city} />}
         </div>
       </div>
@@ -180,6 +188,81 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
   );
 }
 
+function LiveBidBox({ lot, segments, live, buyerPremiumPct }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number }) {
+  const router = useRouter();
+  const [segKey, setSegKey] = useState(segments[0] ? segId(segments[0]) : "");
+  const [perNight, setPerNight] = useState<number>(lot.min_bid_per_room_night);
+  const [rooms, setRooms] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const seg = useMemo(() => segments.find((s) => segId(s) === segKey) || null, [segments, segKey]);
+  const floor = Number(lot.min_bid_per_room_night) || 0;
+  const belowFloor = perNight < floor;
+  const mode = (lot.autopilot_mode as LiveAutopilotMode) || "hybrid";
+  const ratio = live?.hybridAcceptRatio || 1.1;
+  const decision = !belowFloor ? evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: ratio }) : null;
+  const base = seg && !belowFloor ? perNight * seg.nights * rooms : 0;
+  const premium = Math.round((base * (Number(buyerPremiumPct) || 0)) / 100);
+
+  const place = async () => {
+    if (!seg || belowFloor) return;
+    setBusy(true); setMsg(null);
+    try {
+      const r = await fetch("/api/trade/bids/place-live", {
+        method: "POST", headers: { Authorization: `Bearer ${getTradeToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ lotId: lot.id, segmentType: seg.type, weekIndex: seg.weekIndex, perRoomPerNight: perNight, roomsWanted: rooms }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setMsg({ ok: false, text: d.error || "Could not place the bid." }); return; }
+      setMsg({ ok: true, text: d.accepted ? "Accepted! Taking you to pay & lock your rooms…" : "Bid placed — the owner will review it. Track it in My Bids." });
+      setTimeout(() => router.push("/trade/my-bids"), 1100);
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="sbt-bidbox">
+      <div className="sbt-live-pill">⚡ Live · {LIVE_AUTOPILOT_LABEL[mode]}</div>
+      <label className="sbt-field">
+        <span>Segment</span>
+        <select value={segKey} onChange={(e) => setSegKey(e.target.value)}>
+          {segments.map((s) => <option key={segId(s)} value={segId(s)}>{s.label} · {s.nights} nights</option>)}
+        </select>
+      </label>
+      <div className="sbt-field-row">
+        <label className="sbt-field">
+          <span>Bid / room / night</span>
+          <input type="number" min={floor} value={perNight} onChange={(e) => setPerNight(Number(e.target.value) || 0)} />
+          <small>Minimum {inr(floor)}</small>
+        </label>
+        <label className="sbt-field">
+          <span>Rooms (max {lot.num_rooms})</span>
+          <input type="number" min={1} max={lot.num_rooms} value={rooms} onChange={(e) => setRooms(Math.max(1, Math.min(lot.num_rooms, Number(e.target.value) || 1)))} />
+        </label>
+      </div>
+      {belowFloor && <div className="sbt-err">Your bid can't be below the floor.</div>}
+      {seg && !belowFloor && (
+        <div className="sbt-preview">
+          <div className="sbt-preview-row"><span>Bid ({seg.nights} nights × {rooms} rooms)</span><b>{inr(base)}</b></div>
+          <div className="sbt-preview-row"><span>Buyer premium ({buyerPremiumPct}%) on accept</span><b>{inr(premium)}</b></div>
+          <div className="sbt-preview-row"><span>You pay on accept</span><b>{inr(base + premium)}</b></div>
+          <div className="sbt-preview-note">
+            {decision?.kind === "accept"
+              ? "✓ This bid auto-confirms instantly — no deposit. Pay from your dashboard to lock the rooms."
+              : mode === "manual"
+                ? "The owner reviews every bid. No deposit — you only pay if they accept."
+                : `At-floor bids wait for the owner; bid ${inr(Math.round(floor * ratio))}+/night to auto-confirm. No deposit.`}
+          </div>
+        </div>
+      )}
+      {msg && <div className={msg.ok ? "sbt-live-ok" : "sbt-err"}>{msg.text}</div>}
+      <button className="sbt-btn-gold full" onClick={place} disabled={!seg || belowFloor || busy}>
+        {busy ? "Placing…" : decision?.kind === "accept" ? "Place bid — auto-confirms" : "Place bid"}
+      </button>
+    </div>
+  );
+}
+
 function BidGate({ auth, city }: { auth: ReturnType<typeof useTradeAuth>; city: string }) {
   const [agencyName, setAgencyName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -243,6 +326,8 @@ function TourStyles() {
       .sbt-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 4px; }
       .sbt-amen-chip { font-size: .68rem; font-weight: 600; color: rgba(74,56,32,.8); background: rgba(139,105,20,.09); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
       .sbt-bidbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
+      .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
+      .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
       .sbt-field { display: block; margin-bottom: 11px; }
       .sbt-field > span { font-size: .78rem; font-weight: 700; color: rgba(74,56,32,.7); display: block; margin-bottom: 4px; }
       .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: #fffdfa; color: #3a2c17; }

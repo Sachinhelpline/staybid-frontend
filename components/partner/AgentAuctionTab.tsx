@@ -7,6 +7,7 @@
 // raise it. Reads/writes /api/trade/owner/* (partner-scoped server-side).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { LIVE_AUTOPILOT_LABEL, LIVE_AUTOPILOT_DESC, type LiveAutopilotMode } from "@/lib/trade/live-auction";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("sb_partner_token") || "" : "";
@@ -22,6 +23,7 @@ type Lot = {
   id: string; hotel_id: string; room_id: string; category?: string | null; city?: string | null;
   month_key: string; num_rooms: number; min_bid_per_room_night: number;
   window_open_at: string; window_close_at: string; status: string; bid_count?: number;
+  sale_mode?: string; autopilot_mode?: string;
 };
 
 const STATUS_STYLE: Record<string, { bg: string; c: string; label: string }> = {
@@ -39,6 +41,8 @@ export default function AgentAuctionTab({
   const [upcoming, setUpcoming] = useState<UpMonth[]>([]);
   const [cfg, setCfg] = useState<{ depositPct: number; buyerPremiumPct: number } | null>(null);
 
+  const [saleMode, setSaleMode] = useState<"live" | "sealed">("live");
+  const [autopilotMode, setAutopilotMode] = useState<LiveAutopilotMode>("hybrid");
   const [roomId, setRoomId] = useState("");
   const [monthKey, setMonthKey] = useState("");
   const [numRooms, setNumRooms] = useState(2);
@@ -61,6 +65,10 @@ export default function AgentAuctionTab({
     ? (purchasePerNight > 0 ? Math.max(Math.ceil((purchasePerNight * circleMult) / 100) * 100, 100) : null)
     : floor;
 
+  const [pending, setPending] = useState<any[]>([]);
+  const [bidBusy, setBidBusy] = useState("");
+  const [counterVal, setCounterVal] = useState<Record<string, number | "">>({});
+
   const loadLots = useCallback(async () => {
     try {
       const r = await fetch("/api/trade/owner/lots", { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" });
@@ -68,6 +76,27 @@ export default function AgentAuctionTab({
       if (r.ok) setLots(Array.isArray(d.lots) ? d.lots : []);
     } catch { /* ignore */ }
   }, []);
+
+  const loadPending = useCallback(async () => {
+    try {
+      const r = await fetch("/api/trade/owner/live-bids", { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" });
+      const d = await r.json();
+      if (r.ok) setPending(Array.isArray(d.bids) ? d.bids : []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const actOnBid = useCallback(async (bidId: string, action: "accept" | "reject" | "counter", counterPerRoomPerNight?: number) => {
+    setBidBusy(bidId); setMsg(null);
+    try {
+      const r = await fetch("/api/trade/owner/live-bids", {
+        method: "POST", headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ bidId, action, counterPerRoomPerNight }),
+      });
+      const d = await r.json();
+      if (r.ok) { setMsg({ ok: true, text: action === "accept" ? "Bid accepted — the agent will pay to lock the rooms." : action === "reject" ? "Bid declined." : "Counter sent to the agent." }); loadPending(); loadLots(); }
+      else setMsg({ ok: false, text: d.error || "Action failed." });
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setBidBusy(""); }
+  }, [loadPending, loadLots]);
 
   // Initial: config + upcoming months + existing lots.
   useEffect(() => {
@@ -82,7 +111,8 @@ export default function AgentAuctionTab({
       } catch { /* ignore */ }
     })();
     loadLots();
-  }, [loadLots]);
+    loadPending();
+  }, [loadLots, loadPending]);
 
   // (Re)quote the floor whenever room + month are chosen.
   useEffect(() => {
@@ -118,6 +148,7 @@ export default function AgentAuctionTab({
         method: "POST", headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           hotelId, roomId, monthKey, numRooms,
+          saleMode, autopilotMode,
           minBidPerRoomNight: minBid === "" ? effFloor : Number(minBid),
           monthlyRate: circleOwner && monthlyRate !== "" ? Number(monthlyRate) : undefined,
           category: selectedRoom?.name || null, city: city || null,
@@ -125,7 +156,9 @@ export default function AgentAuctionTab({
       });
       const d = await r.json();
       if (r.ok) {
-        setMsg({ ok: true, text: d.phase === "open" ? "Lot is LIVE — agents can bid now." : `Lot scheduled — the window opens on ${fmtDate(d.scheduledOpensAt)}.` });
+        setMsg({ ok: true, text: d.saleMode === "live"
+          ? "Lot is LIVE — agents can bid now, and your autopilot handles acceptance."
+          : d.phase === "open" ? "Lot is LIVE — agents can bid now." : `Lot scheduled — the window opens on ${fmtDate(d.scheduledOpensAt)}.` });
         setRoomId(""); setMinBid(""); setFloor(null); setWin(null);
         loadLots();
       } else { setMsg({ ok: false, text: d.error || "Publish failed." }); }
@@ -152,17 +185,49 @@ export default function AgentAuctionTab({
     <div className="space-y-5">
       {/* Intro */}
       <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
-        <div className="text-lg font-bold" style={{ color: "#ffd98a" }}>🏷️ Sell to Travel Agents — Monthly Auction</div>
+        <div className="text-lg font-bold" style={{ color: "#ffd98a" }}>🏷️ Sell to Travel Agents</div>
         <p className="text-sm mt-1 opacity-90">
-          Auction your spare inventory to travel agents for the <b>upcoming whole month</b>. Approved agents bid per
-          room — the <b>highest bid wins</b>. StayBid computes the minimum price from your cost (Spine floor); you can
-          only raise it. Your inventory never sells below cost.
+          Offer your spare inventory to travel agents by the <b>month</b>. StayBid computes the minimum price from your
+          cost (never sells below it); you can only raise it. Choose <b>Live</b> — always-open bidding your autopilot
+          handles automatically — or a <b>Sealed</b> month-end auction where the highest bids win.
         </p>
       </div>
 
       {/* Publish form */}
       <div className="rounded-2xl border border-luxury-200 bg-white p-5 space-y-4">
         <div className="font-bold text-luxury-900">Publish a new lot</div>
+
+        {/* Sale mode toggle */}
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            { k: "live", t: "⚡ Live (always open)", d: "Agents bid anytime — no deposit. Your autopilot accepts." },
+            { k: "sealed", t: "🔒 Sealed month-end", d: "Agents bid with a deposit; highest bids win at close." },
+          ] as const).map((o) => (
+            <button key={o.k} type="button" onClick={() => setSaleMode(o.k)}
+              className="text-left rounded-xl border-2 px-3 py-2.5 transition"
+              style={{ borderColor: saleMode === o.k ? "#c9911a" : "#e5e0d5", background: saleMode === o.k ? "#fffbef" : "#fff" }}>
+              <div className="text-sm font-bold text-luxury-900">{o.t}</div>
+              <div className="text-[0.72rem] text-luxury-500 mt-0.5">{o.d}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Autopilot picker (LIVE mode only) */}
+        {saleMode === "live" && (
+          <label className="text-sm block">
+            <span className="text-luxury-500 font-semibold">Autopilot — how bids get accepted</span>
+            <div className="mt-1 grid sm:grid-cols-3 gap-2">
+              {(["auto", "hybrid", "manual"] as LiveAutopilotMode[]).map((m) => (
+                <button key={m} type="button" onClick={() => setAutopilotMode(m)}
+                  className="text-left rounded-lg border-2 px-2.5 py-2 transition"
+                  style={{ borderColor: autopilotMode === m ? "#c9911a" : "#e5e0d5", background: autopilotMode === m ? "#fffbef" : "#fff" }}>
+                  <div className="text-[0.8rem] font-bold text-luxury-900">{LIVE_AUTOPILOT_LABEL[m]}</div>
+                  <div className="text-[0.68rem] text-luxury-500 mt-0.5 leading-snug">{LIVE_AUTOPILOT_DESC[m]}</div>
+                </button>
+              ))}
+            </div>
+          </label>
+        )}
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-sm">
             <span className="text-luxury-500 font-semibold">Room category</span>
@@ -218,13 +283,20 @@ export default function AgentAuctionTab({
           </label>
         )}
 
-        {win && (
+        {saleMode === "live" ? (
+          monthKey && (
+            <div className="text-[0.78rem] text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+              ⚡ <b>Always open</b> — agents can bid now through <b>{monthLabel(monthKey)}</b>. <b>No deposit.</b>{" "}
+              Accepted agents pay within {cfg ? "the pay window" : "24h"} from their dashboard, then get the inventory.
+            </div>
+          )
+        ) : win ? (
           <div className="text-[0.78rem] text-luxury-500 bg-luxury-50 rounded-lg px-3 py-2">
             Bidding window: <b>{fmtDate(win.windowOpenAt)}</b> → <b>{fmtDate(win.windowCloseAt)}</b>
             {win.phase === "open" ? " · LIVE now" : ` · opens ${fmtDate(win.windowOpenAt)}`} ·
             {" "}{win.nights} nights · agent EMD deposit {cfg?.depositPct ?? 10}%
           </div>
-        )}
+        ) : null}
 
         {conflict && (
           <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-800 border border-blue-200">
@@ -243,6 +315,49 @@ export default function AgentAuctionTab({
         </button>
       </div>
 
+      {/* Pending LIVE bids to review (manual + hybrid-at-floor) */}
+      {pending.length > 0 && (
+        <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5">
+          <div className="font-bold text-luxury-900 mb-1">⚡ Live bids to review</div>
+          <p className="text-[0.78rem] text-luxury-500 mb-3">Agents bidding on your always-open lots. Accept to lock the sale (they pay next), decline, or counter with a different price.</p>
+          <div className="space-y-2">
+            {pending.map((b) => {
+              const floor = Number(b.lot?.min_bid_per_room_night) || 0;
+              const cv = counterVal[b.id];
+              return (
+                <div key={b.id} className="border border-amber-200 rounded-xl px-3 py-2.5 bg-white">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-luxury-900 truncate">
+                        {b.lot?.category || b.lot?.room_id} · {monthLabel(b.lot?.month_key || "")}
+                        {b.status === "countered" && <span className="ml-1 text-[0.7rem] text-purple-700 font-bold">· countered</span>}
+                      </div>
+                      <div className="text-[0.75rem] text-luxury-500">
+                        {b.segment_label} · <b>{inr(b.per_room_per_night)}</b>/room/night × {b.rooms_wanted} rooms · floor {inr(floor)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => actOnBid(b.id, "accept")} disabled={bidBusy === b.id}
+                        className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#059669,#10b981)" }}>Accept</button>
+                      <button onClick={() => actOnBid(b.id, "reject")} disabled={bidBusy === b.id}
+                        className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-red-600 border border-red-200 disabled:opacity-50">Decline</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="number" min={floor} placeholder={`Counter ≥ ${floor}`} value={cv ?? ""}
+                      onChange={(e) => setCounterVal((m) => ({ ...m, [b.id]: e.target.value === "" ? "" : Number(e.target.value) }))}
+                      className="w-36 border border-luxury-200 rounded-lg px-2.5 py-1.5 text-[0.8rem]" />
+                    <button onClick={() => cv && Number(cv) >= floor && actOnBid(b.id, "counter", Number(cv))}
+                      disabled={bidBusy === b.id || !cv || Number(cv) < floor}
+                      className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-40" style={{ background: "#6d28d9" }}>Counter</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Existing lots */}
       <div className="rounded-2xl border border-luxury-200 bg-white p-5">
         <div className="font-bold text-luxury-900 mb-3">Your lots</div>
@@ -260,6 +375,9 @@ export default function AgentAuctionTab({
                     </div>
                     <div className="text-[0.75rem] text-luxury-500">
                       {l.num_rooms} rooms · min {inr(l.min_bid_per_room_night)}/night · {l.bid_count || 0} bids
+                      {l.sale_mode === "live" && (
+                        <> · <span className="font-semibold text-emerald-700">⚡ Live · {LIVE_AUTOPILOT_LABEL[(l.autopilot_mode as LiveAutopilotMode) || "hybrid"]}</span></>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

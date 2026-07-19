@@ -47,8 +47,10 @@ async function run(req: NextRequest) {
   // Pass B — clear open lots whose window has closed.
   let cleared = 0, awards = 0, losers = 0;
   try {
+    // SEALED lots only — a LIVE lot has no clearing (its bids resolve live via
+    // autopilot + pay-on-accept); it just stops accepting bids at window_close_at.
     const lr = await fetch(
-      `${SB_URL}/rest/v1/auction_lots?status=eq.open&window_close_at=lte.${encodeURIComponent(nowIso)}&select=*&order=window_close_at.asc&limit=${MAX_CLEAR}`,
+      `${SB_URL}/rest/v1/auction_lots?status=eq.open&sale_mode=neq.live&window_close_at=lte.${encodeURIComponent(nowIso)}&select=*&order=window_close_at.asc&limit=${MAX_CLEAR}`,
       { headers: SB_READ, cache: "no-store" },
     );
     const lots: any[] = lr.ok ? await lr.json().catch(() => []) : [];
@@ -59,5 +61,25 @@ async function run(req: NextRequest) {
     }
   } catch { /* non-fatal */ }
 
-  return NextResponse.json({ ok: true, opened, cleared, awards, losers, ms: Date.now() - started });
+  // Pass C — LIVE mode expiry. An accepted-but-unpaid live bid past its pay
+  // deadline is expired (no units were held — enable-selling assigns at pay —
+  // so there's nothing to release, just mark it). The matching live award is
+  // expired too (scoped to sale_mode='live' so sealed awards are untouched).
+  let liveBidsExpired = 0, liveAwardsExpired = 0;
+  try {
+    const br = await fetch(
+      `${SB_URL}/rest/v1/auction_bids?status=eq.accepted&pay_deadline_at=lte.${encodeURIComponent(nowIso)}`,
+      { method: "PATCH", headers: { ...SB_W, Prefer: "return=representation" }, body: JSON.stringify({ status: "expired", updated_at: nowIso }) },
+    );
+    if (br.ok) { const rows = await br.json().catch(() => []); liveBidsExpired = Array.isArray(rows) ? rows.length : 0; }
+  } catch { /* non-fatal */ }
+  try {
+    const ar = await fetch(
+      `${SB_URL}/rest/v1/auction_awards?status=eq.awarded&metadata->>sale_mode=eq.live&pay_window_close_at=lte.${encodeURIComponent(nowIso)}`,
+      { method: "PATCH", headers: { ...SB_W, Prefer: "return=representation" }, body: JSON.stringify({ status: "expired", updated_at: nowIso }) },
+    );
+    if (ar.ok) { const rows = await ar.json().catch(() => []); liveAwardsExpired = Array.isArray(rows) ? rows.length : 0; }
+  } catch { /* non-fatal */ }
+
+  return NextResponse.json({ ok: true, opened, cleared, awards, losers, liveBidsExpired, liveAwardsExpired, ms: Date.now() - started });
 }

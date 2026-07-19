@@ -14,11 +14,15 @@ const monthLabel = (mk: string) => {
   catch { return mk; }
 };
 const ST: Record<string, { bg: string; c: string; label: string }> = {
-  active:   { bg: "#eff6ff", c: "#1d4ed8", label: "Live" },
-  won:      { bg: "#ecfdf5", c: "#047857", label: "Won" },
-  partial:  { bg: "#f0fdf4", c: "#15803d", label: "Won (partial)" },
-  lost:     { bg: "#f3f4f6", c: "#6b7280", label: "Lost" },
-  refunded: { bg: "#fef2f2", c: "#b91c1c", label: "Refunded" },
+  active:    { bg: "#eff6ff", c: "#1d4ed8", label: "Live" },
+  accepted:  { bg: "#fffbeb", c: "#b45309", label: "Accepted · pay above" },
+  countered: { bg: "#f5f3ff", c: "#6d28d9", label: "Counter offer" },
+  won:       { bg: "#ecfdf5", c: "#047857", label: "Won" },
+  partial:   { bg: "#f0fdf4", c: "#15803d", label: "Won (partial)" },
+  lost:      { bg: "#f3f4f6", c: "#6b7280", label: "Lost" },
+  rejected:  { bg: "#f3f4f6", c: "#6b7280", label: "Declined" },
+  expired:   { bg: "#f3f4f6", c: "#6b7280", label: "Expired" },
+  refunded:  { bg: "#fef2f2", c: "#b91c1c", label: "Refunded" },
 };
 
 export default function TradeMyBidsPage() {
@@ -51,6 +55,18 @@ export default function TradeMyBidsPage() {
 
   const [sellBusy, setSellBusy] = useState("");
   const [copied, setCopied] = useState("");
+  const [counterBusy, setCounterBusy] = useState("");
+
+  const acceptCounter = useCallback(async (b: any) => {
+    setCounterBusy(b.id); setMsg(null);
+    try {
+      const tok = getTradeToken();
+      const r = await fetch("/api/trade/bids/accept-counter", { method: "POST", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: JSON.stringify({ bidId: b.id }) });
+      const d = await r.json();
+      if (!r.ok) { setMsg({ ok: false, text: d.error || "Could not accept the counter." }); }
+      else { setMsg({ ok: true, text: "Counter accepted — pay above in Won allotments to lock your rooms." }); load(); }
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setCounterBusy(""); }
+  }, [load]);
 
   const directLink = (a: any) => {
     const nights: string[] = Array.isArray(a.night_dates) ? [...a.night_dates].sort() : [];
@@ -135,7 +151,7 @@ export default function TradeMyBidsPage() {
                         <div className="min-w-0">
                           <div className="font-bold text-luxury-900 truncate">{a.metadata?.hotel_name || a.hotel_id} · {a.city}</div>
                           <div className="text-[0.75rem] text-luxury-500">{a.segment_label} · {monthLabel(a.month_key)} · {a.rooms_awarded} rooms</div>
-                          <div className="text-[0.75rem] mt-0.5">Bid {inr(a.base_total)} + premium {inr(a.buyer_fee)} − EMD {inr(a.deposit_applied)}</div>
+                          <div className="text-[0.75rem] mt-0.5">Bid {inr(a.base_total)} + premium {inr(a.buyer_fee)}{Number(a.deposit_applied) > 0 ? ` − EMD ${inr(a.deposit_applied)}` : ""}</div>
                         </div>
                         <div className="text-right shrink-0">
                           {a.status === "voucher_issued" ? (
@@ -186,7 +202,17 @@ export default function TradeMyBidsPage() {
                           <div className="font-bold text-luxury-900 truncate">{b.lot?.category || b.metadata?.room_id || b.lot_id}</div>
                           <div className="text-[0.72rem] text-luxury-400">{b.lot?.metadata?.hotel_name || ""} · {b.lot?.city || b.metadata?.city} · {monthLabel(b.lot?.month_key || b.metadata?.month_key || "")}</div>
                           <div className="text-[0.75rem] text-luxury-600 mt-0.5">{b.segment_label} · {inr(b.per_room_per_night)}/night × {b.rooms_wanted} rooms</div>
-                          <div className="text-[0.72rem] text-amber-700 mt-0.5">EMD {inr(b.deposit_amount)}{b.status === "lost" ? " · refund owed" : ""}</div>
+                          <div className="text-[0.72rem] text-amber-700 mt-0.5">
+                            {b.metadata?.sale_mode === "live" || Number(b.deposit_amount) === 0
+                              ? "⚡ Live · no deposit"
+                              : `EMD ${inr(b.deposit_amount)}${b.status === "lost" ? " · refund owed" : ""}`}
+                          </div>
+                          {b.status === "countered" && Number(b.counter_per_room_per_night) > 0 && (
+                            <button onClick={() => acceptCounter(b)} disabled={counterBusy === b.id}
+                              className="mt-1.5 px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-white disabled:opacity-50" style={{ background: "#6d28d9" }}>
+                              {counterBusy === b.id ? "…" : `Accept counter ${inr(b.counter_per_room_per_night)}/night`}
+                            </button>
+                          )}
                         </div>
                         <span className="text-[0.7rem] font-bold px-2 py-1 rounded-full self-start" style={{ background: st.bg, color: st.c }}>{st.label}</span>
                       </div>

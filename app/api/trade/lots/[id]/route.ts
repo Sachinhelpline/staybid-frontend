@@ -41,6 +41,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   return NextResponse.json({
     lot, range, segments, depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct,
+    live: { hybridAcceptRatio: cfg.liveHybridAcceptRatio, payWindowHours: cfg.livePayWindowHours },
     hotel: hotel ? {
       id: hotel.id, name: hotel.name, city: hotel.city, star: Number(hotel.starRating) || 0,
       description: hotel.description || "", images: arr(hotel.images),
