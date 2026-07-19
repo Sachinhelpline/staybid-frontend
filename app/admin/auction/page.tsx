@@ -82,9 +82,9 @@ export default function AdminAuctionPage() {
               <div style={card}>
                 <div style={{ fontWeight: 700, marginBottom: 10 }}>⚙️ Auction config</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 10 }}>
-                  {[["buyerPremiumPct", "Buyer premium %"], ["sellerFeePct", "Seller fee %"], ["depositPct", "EMD deposit % (sealed)"], ["windowOpenDay", "Window open day (sealed)"], ["payWindowHours", "Pay window hrs (sealed)"], ["circleFloorMultiplier", "Circle floor ×"], ["wholesaleDiscountPct", "Wholesale discount %"], ["minFloorFraction", "Dyn. floor anchor ×"], ["livePayWindowHours", "⚡ Live pay window hrs"], ["liveHybridAcceptRatio", "⚡ Live hybrid ×"]].map(([k, label]) => (
+                  {[["buyerPremiumPct", "Buyer premium %"], ["sellerFeePct", "Seller fee %"], ["depositPct", "EMD deposit % (sealed)"], ["windowOpenDay", "Window open day (sealed)"], ["payWindowHours", "Pay window hrs (sealed)"], ["circleFloorMultiplier", "Circle floor ×"], ["wholesaleDiscountPct", "Wholesale discount %"], ["minFloorFraction", "Dyn. floor anchor ×"], ["belowFloorMinRatio", "Below-floor min ×"], ["livePayWindowHours", "⚡ Live pay window hrs"], ["liveHybridAcceptRatio", "⚡ Live instant-lock ×"]].map(([k, label]) => (
                     <label key={k} style={{ fontSize: 12, color: "#8A8FA8" }}>{label}
-                      <input type="number" step={k === "liveHybridAcceptRatio" || k === "circleFloorMultiplier" || k === "minFloorFraction" ? "0.05" : "1"} value={cfg[k as string] ?? 0} onChange={(e) => setCfg({ ...cfg, [k as string]: Number(e.target.value) })}
+                      <input type="number" step={["liveHybridAcceptRatio", "circleFloorMultiplier", "minFloorFraction", "belowFloorMinRatio"].includes(k as string) ? "0.05" : "1"} value={cfg[k as string] ?? 0} onChange={(e) => setCfg({ ...cfg, [k as string]: Number(e.target.value) })}
                         style={{ width: "100%", marginTop: 4, background: "#0E1120", border: "1px solid #2A3050", borderRadius: 8, color: "#fff", padding: "6px 8px", fontSize: 13 }} />
                     </label>
                   ))}

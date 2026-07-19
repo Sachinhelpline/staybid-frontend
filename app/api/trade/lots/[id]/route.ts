@@ -60,7 +60,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   return NextResponse.json({
     lot, range, segments, depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct,
-    live: { hybridAcceptRatio: cfg.liveHybridAcceptRatio, payWindowHours: cfg.livePayWindowHours },
+    live: { hybridAcceptRatio: cfg.liveHybridAcceptRatio, payWindowHours: cfg.livePayWindowHours, belowFloorMinRatio: cfg.belowFloorMinRatio },
     market,
     roomsAvailable,
     hotel: hotel ? {

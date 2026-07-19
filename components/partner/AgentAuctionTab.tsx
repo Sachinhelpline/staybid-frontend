@@ -392,6 +392,9 @@ export default function AgentAuctionTab({
                       </div>
                       <div className="text-[0.75rem] text-luxury-500">
                         {b.segment_label} · <b>{inr(b.per_room_per_night)}</b>/room/night × {b.rooms_wanted} rooms · floor {inr(floor)}
+                        {(b.metadata?.below_floor || Number(b.per_room_per_night) < floor) && (
+                          <span className="ml-1 text-[0.68rem] font-bold text-amber-700">· below floor offer</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

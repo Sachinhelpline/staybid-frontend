@@ -102,6 +102,22 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v380 — Below-floor offers forwarded (customer-parity) + quick-pick tiers)
+- **Below-floor bids are now FORWARDED to the owner (not rejected)** — mirroring the customer negotiation panel
+  (a guest can bid below the room floor and the hotel reviews/counters). Bounded: an agent may bid down to
+  `floor × below_floor_min_ratio` (config, default **0.85**, clamp 0.5–1); anything lower is rejected ("too low").
+  A below-floor bid is NEVER auto-accepted (any mode) — it always becomes an OFFER the owner can accept /
+  counter / decline. `lib/trade/live-auction.ts` `evaluateLiveBid` now returns `pending{belowFloor}` /
+  `reject{too_low}`; `bids/place-live` allows `[floor×0.85, floor)` as a forwarded offer (metadata
+  `below_floor`), rejects below `floor×0.85`. Owner "Live bids to review" tags below-floor offers.
+- **Quick-picks mirror the customer arena** (Save Big / Smart / Instant): `LiveBidBox` picks are 💰 **Save Big**
+  (below floor → "owner reviews", best margin), ⭐ **Smart** (instant-lock threshold → "locks instantly ✓",
+  recommended default), ⚡ **Market** (near the live ADR → priority lock). The slider now spans `floor×0.85` →
+  market ceiling with Offer/Floor/Market marks; the outcome chip reads "⧗ Owner reviews · below floor" in that
+  band. Config `below_floor_min_ratio` admin-tunable in `/admin/auction`. Migration
+  `2026-07-19-v380-below-floor-forward.sql`. Verified (Cave View floor ₹2,300): reject <₹1,955, below-floor
+  offer ₹1,955–2,299, owner-review ₹2,300–2,644, instant-lock ≥₹2,645. Badge v379→**v380**, sw HTML_CACHE v191→v192.
+
 ## Current production state (v379 — Live: no bare-floor auto-accept (Smart instant-lock) + scarcity)
 - **The bare floor no longer auto-confirms by default** (fixes "agents always bid the minimum"). The default mode
   is now **Smart** (`autopilot='hybrid'`, relabelled): a bid **instant-LOCKS only at/above floor ×

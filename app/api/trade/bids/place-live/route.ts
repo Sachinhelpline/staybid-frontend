@@ -51,8 +51,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Rooms must be 1–${lot.num_rooms}.` }, { status: 400 });
   }
   const floor = Number(lot.min_bid_per_room_night) || 0;
-  if (perNight < floor) {
-    return NextResponse.json({ error: `Bid below the floor (₹${floor}/room/night).` }, { status: 400 });
+  // Below-floor bids are allowed (forwarded to the owner) down to a bounded
+  // minimum; anything lower is rejected (mirrors the customer negotiation panel).
+  const bidFloorMin = Math.round(floor * cfg.belowFloorMinRatio);
+  if (perNight < bidFloorMin) {
+    return NextResponse.json({ error: `Bid too low — minimum ₹${bidFloorMin}/room/night.` }, { status: 400 });
   }
 
   // One live bid per agent per lot at a time (no stacking while one is pending
@@ -81,11 +84,12 @@ export async function POST(req: NextRequest) {
 
   // Autopilot decision (same engine the client previewed).
   const mode = normalizeAutopilotMode(lot.autopilot_mode);
-  const decision = evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: cfg.liveHybridAcceptRatio });
+  const decision = evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: cfg.liveHybridAcceptRatio, belowFloorMinRatio: cfg.belowFloorMinRatio });
   if (decision.kind === "reject") {
-    return NextResponse.json({ error: `Bid below the floor (₹${floor}/room/night).` }, { status: 400 });
+    return NextResponse.json({ error: `Bid too low — minimum ₹${bidFloorMin}/room/night.` }, { status: 400 });
   }
 
+  const belowFloor = decision.kind === "pending" && decision.belowFloor;
   const accepted = decision.kind === "accept";
   const acceptedAtIso = accepted ? new Date(nowMs).toISOString() : null;
   const payDeadlineIso = accepted ? livePayDeadline(nowMs, cfg.livePayWindowHours) : null;
@@ -104,6 +108,7 @@ export async function POST(req: NextRequest) {
     decided_by: accepted ? "autopilot" : null,
     metadata: {
       sale_mode: "live", base_total: baseTotal, autopilot_mode: mode,
+      below_floor: belowFloor, floor_at_bid: floor,
       hotel_id: lot.hotel_id, room_id: lot.room_id, city: lot.city, month_key: lot.month_key,
     },
   };
@@ -135,6 +140,8 @@ export async function POST(req: NextRequest) {
     payDeadlineAt: payDeadlineIso,
     message: accepted
       ? "Accepted! Pay before your window closes to lock the inventory."
-      : "Bid placed — the owner will accept, counter, or decline shortly.",
+      : belowFloor
+        ? "Below-floor offer sent — the owner will accept, counter, or decline. No guarantee."
+        : "Bid placed — the owner will accept, counter, or decline shortly.",
   });
 }

@@ -25,6 +25,7 @@ export interface AuctionConfig {
   wholesaleDiscountPct: number;  // property-owner discount off the reference price
   floorMode: string;             // 'dynamic' (Spine ADR-linked) | 'static' (floorPrice-linked)
   minFloorFraction: number;      // hard anchor: floor never below retail floorPrice × this
+  belowFloorMinRatio: number;    // agents may bid down to floor × this (owner-reviewed); below = rejected
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -41,6 +42,7 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   wholesaleDiscountPct: 20,   // property-owner wholesale discount off the reference price
   floorMode: "dynamic",       // Spine ADR-linked floor by default (tracks live demand)
   minFloorFraction: 0.6,      // dynamic floor never below retail floorPrice × 0.6
+  belowFloorMinRatio: 0.85,   // a below-floor bid is allowed down to floor × 0.85 (owner reviews)
 };
 
 // Discounts are bounded 0–40% (never gut the owner's price); returns fallback otherwise.
@@ -96,6 +98,7 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           wholesaleDiscountPct: clampDiscount(row.wholesale_discount_pct, AUCTION_CONFIG_DEFAULT.wholesaleDiscountPct),
           floorMode: row.floor_mode === "static" ? "static" : "dynamic",
           minFloorFraction: clampFraction(row.min_floor_fraction, AUCTION_CONFIG_DEFAULT.minFloorFraction),
+          belowFloorMinRatio: (() => { const n = Number(row.below_floor_min_ratio); return Number.isFinite(n) && n >= 0.5 && n <= 1 ? n : AUCTION_CONFIG_DEFAULT.belowFloorMinRatio; })(),
         };
         _cache = { at: now, cfg };
         return cfg;
