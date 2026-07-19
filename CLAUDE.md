@@ -102,6 +102,22 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v384 — Trade coach: profit bifurcation + rooms stepper + consistent top strip)
+- **Four clarity fixes on `app/trade/[id]` (booking-price framing polish; pure UI, no money/logic change):**
+  1. **Top metric strip consistency** — for a LIVE lot the first `.sbt-metrics` card now shows **ROOM BOOKING
+     PRICE** (`market.rack` MRP, e.g. ₹4,900) instead of the stale internal **MIN BID / ROOM / NIGHT ₹2,300**
+     (which contradicted the booking-price coach). Sealed lots keep MIN BID. `bookingPriceTop` computed in the
+     parent from `data.market?.rack` (same fallback chain as the coach).
+  2. **Removed the pick %-profit sublabel** — the Save Big / Smart / Max quick-picks no longer print
+     "~40% / ~30% / ~20% profit" (kept the agent blind to the internal ladder; picks show only label + ₹ price).
+  3. **Profit bifurcation** — the two profit cells were identical when rooms=1. Now **PROFIT / ROOM / NIGHT**
+     (`profitPerNight` = bookingPrice − bid×(1+premium)) vs **TOTAL PROFIT** (`= rooms × nights × per-night`)
+     with a visible breakdown line "`N rooms × MN × ₹per-night`" so the multiplication is explicit.
+  4. **Rooms stepper** — replaced the bare `<input type=number>` (whose browser spinner jumped straight to max
+     on some devices, skipping 2/3/4) with a `RoomStepper` (−/value/+ buttons, clamped 1..num_rooms). Used in
+     BOTH `LiveBidBox` and the sealed `BidBox`. Every value 1..max is now reliably selectable.
+- Verified `tsc` + `next build` clean. Badge v383→**v384**, sw HTML_CACHE v195→v196.
+
 ## Current production state (v383 — Agent coach: booking-price (MRP) profit ladder, high-interest + blind)
 - **Per owner direction, the agent bid coach is now BOOKING-PRICE (MRP) framed to maximise interest, and the
   accept mechanics are hidden (the agent bids "blind").** `app/trade/[id]` `LiveBidBox`:
