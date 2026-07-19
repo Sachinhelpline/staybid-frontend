@@ -156,7 +156,7 @@ export default function Model2SellingPage() {
       </div>
 
       <style jsx global>{`
-        .sbc2s { padding-bottom: 90px; }
+        .sbc2s { padding-bottom: 90px; max-width: 960px; margin: 0 auto; }
         .sbc2s-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: var(--sbc-gold-deep); font-size: .9rem; }
         .sbc2s-kpis { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin: 16px 0 18px; }
         @media (min-width: 560px) { .sbc2s-kpis { grid-template-columns: repeat(4,1fr); } }
@@ -177,6 +177,7 @@ export default function Model2SellingPage() {
         .sbc2s-price { flex: 1; min-width: 0; background: #fff; border: 1px solid rgba(139,105,20,.25); border-radius: 10px; padding: 8px 11px; font-size: .82rem; font-family: inherit; color: var(--sbc-coffee); }
         .sbc2s-sell-note { font-size: .66rem; color: rgba(74,56,32,.6); margin-top: 6px; }
         .sbc2s-chan { display: grid; gap: 7px; margin-top: 11px; }
+        @media (min-width: 640px) { .sbc2s-chan { grid-template-columns: repeat(3, 1fr); } }
         .sbc2s-ch { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: rgba(139,105,20,.05); border: 1px solid rgba(139,105,20,.14); border-radius: 11px; padding: 9px 12px; cursor: pointer; font-family: inherit; }
         .sbc2s-ch > span:first-child { font-size: 1.1rem; }
         .sbc2s-ch b { display: block; color: var(--sbc-coffee); font-size: .8rem; }
