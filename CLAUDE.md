@@ -102,6 +102,25 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v385 — Trade: floor-consistent min bid (browse == tour) + browse sort/filters)
+- **Fixed the "browse says ₹1,200 min, bid page says ₹4,900 min" inconsistency (`app/trade/[id]` `LiveBidBox`).**
+  Root cause: the v383 profit ladder computed the picks purely OFF the MRP (Save Big = 40% off rack) and set
+  `sliderMin = saveBidVal`, so on a Circle-operated lot where the floor sits far below the room's booking price
+  (Mussoorie Ridge Deluxe: floor ₹1,200 = purchase ₹1,000 × 1.20, rack/MRP ₹7,200) the tour page refused any bid
+  below ~₹4,900 — contradicting the browse card's real `min_bid_per_room_night` (₹1,200). Now the ladder is
+  **anchored to the real floor → MRP-ceiling**: `mrpCeil = round100(rack/(1+prem))`, `floorBid = min(floor,
+  mrpCeil)`, Save Big = `floorBid` (the advertised floor, best margin), Smart = `floor + 34% span` (default,
+  nudge up), Max = `floor + 67% span` (strong); `sliderMin = floorBid`, `sliderMax = mrpCeil`. The tour minimum
+  now equals the browse "Min bid" for EVERY lot. Verified: Mussoorie Save Big ₹1,200 / Smart ₹3,100 / Max ₹5,000,
+  slider ₹1,200–₹6,900; Cave View (tight floor ₹2,300, rack ₹4,900) Save Big ₹2,300 / Smart ₹3,100 / Max ₹3,900.
+  Profit still framed off MRP (unchanged); default stays Smart. Data confirmed real via `room_date_price`
+  (base_rate ₹7,200, live ₹4,200–5,700) — the low floor is the legit Circle owner cost, not a bug.
+- **Model 3 browse (`/trade`) gained sort + filters** (was city-only): a **sale-mode** chip row (All / ⚡ Live /
+  🔒 Sealed) + a **Sort** dropdown (Recommended / Price low→high / Price high→low / Most rooms / Month soonest).
+  All client-side over the lots the API already returns (`min_bid_per_room_night`, `num_rooms`, `month_key`,
+  `sale_mode`) — no API change. Empty-state copy reflects the active city + mode.
+- `tsc` + `next build` clean. Badge v384→**v385**, sw HTML_CACHE v196→v197.
+
 ## Current production state (v384 — Trade coach: profit bifurcation + rooms stepper + consistent top strip)
 - **Four clarity fixes on `app/trade/[id]` (booking-price framing polish; pure UI, no money/logic change):**
   1. **Top metric strip consistency** — for a LIVE lot the first `.sbt-metrics` card now shows **ROOM BOOKING
