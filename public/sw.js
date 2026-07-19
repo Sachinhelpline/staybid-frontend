@@ -512,7 +512,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // v358 — HTML_CACHE bump (v169 -> v170). Model 2 calendar is now MULTI-SELECT
 // (tap any nights across months, deck-style), review shows the exact picked
 // dates per month, premium dark-gold calendar + panels.
-const HTML_CACHE = 'staybid-html-v170';
+// v359 — HTML_CACHE bump (v170 -> v171). NEW Your Selling Inventory surface
+// (/circle/model2/selling): owned room-nights + sell-through channels routing to
+// the real owner/partner controls.
+const HTML_CACHE = 'staybid-html-v171';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

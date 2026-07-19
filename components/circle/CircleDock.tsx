@@ -44,7 +44,7 @@ function Model2Steps({ pathname }: { pathname: string }) {
     return onM2BasketChange(refresh);
   }, [pathname]);
   const onBrowse = pathname === "/circle/model2/browse" || pathname === "/circle/model2";
-  const onTour = /^\/circle\/model2\/[^/]+$/.test(pathname) && !onBrowse && !pathname.endsWith("/review");
+  const onTour = /^\/circle\/model2\/[^/]+$/.test(pathname) && !onBrowse && !pathname.endsWith("/review") && !pathname.endsWith("/selling");
   const onPay = pathname.startsWith("/circle/model2/review");
   const hasItems = count > 0;
   return (

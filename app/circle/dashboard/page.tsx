@@ -250,6 +250,7 @@ export default function CircleDashboardPage() {
           <Link href="/circle/me" className="sbc-dash-tile"><span>📅</span>Payouts</Link>
           <Link href="/circle/discover" className="sbc-dash-tile"><span>🏙</span>By City</Link>
           <Link href="/circle/model2/browse" className="sbc-dash-tile"><span>🧾</span>Buy inventory</Link>
+          <Link href="/circle/model2/selling" className="sbc-dash-tile"><span>🏷️</span>Selling Inventory</Link>
           <Link href="/circle/me?tab=city" className="sbc-dash-tile"><span>🗝️</span>City Access</Link>
         </div>
       </section>
