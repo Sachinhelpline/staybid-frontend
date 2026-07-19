@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     const n = Number(body.belowFloorMinRatio);
     patch.below_floor_min_ratio = Number.isFinite(n) && n >= 0.5 && n <= 1 ? n : cur.belowFloorMinRatio;
   }
+  if (body.liveOfferTtlHours !== undefined) patch.live_offer_ttl_hours = clampInt(body.liveOfferTtlHours, cur.liveOfferTtlHours, 1, 720);
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,
