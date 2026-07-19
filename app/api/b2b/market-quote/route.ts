@@ -132,6 +132,7 @@ export async function GET(req: NextRequest) {
     ownPerNight,
     multiplier,
     buyPerNight,
+    buyerFeePct,       // so the client can price a multi-night pick exactly (preview == charge)
     market, // { adr, low, high } guest/retail selling price, or null
   };
 

@@ -509,7 +509,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // Model-2 step-dock, clean check-in→check-out range calendar (all released
 // nights available), no internal 2×/own-price shown to the buyer. Drops stale
 // cached Model-2 pages.
-const HTML_CACHE = 'staybid-html-v169';
+// v358 — HTML_CACHE bump (v169 -> v170). Model 2 calendar is now MULTI-SELECT
+// (tap any nights across months, deck-style), review shows the exact picked
+// dates per month, premium dark-gold calendar + panels.
+const HTML_CACHE = 'staybid-html-v170';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
