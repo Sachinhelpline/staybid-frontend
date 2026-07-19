@@ -196,8 +196,8 @@ export default function AgentAuctionTab({
         )}
 
         {conflict && (
-          <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-amber-50 text-amber-800 border border-amber-200">
-            ⚠️ Ye room in dates par <b>Model 2</b> pe already listed hai. Ek room-month sirf <b>ek channel</b> me — pehle Model 2 se hatao, phir auction pe daalo.
+          <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-800 border border-blue-200">
+            ℹ️ Ye room <b>Model 2</b> pe bhi listed hai — koi dikkat nahi. Dono channels <b>saath chalenge</b>; physical availability shared hai (jo unit ek jagah bik gaya wo doosri jagah apne-aap block ho jaata hai — koi clash nahi).
           </div>
         )}
 
@@ -205,7 +205,7 @@ export default function AgentAuctionTab({
           <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>
         )}
 
-        <button onClick={publish} disabled={!roomId || !monthKey || !floor || publishing || conflict}
+        <button onClick={publish} disabled={!roomId || !monthKey || !floor || publishing}
           className="px-5 py-2.5 rounded-xl font-bold text-white disabled:opacity-50"
           style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
           {publishing ? "Publishing…" : "Publish auction lot"}

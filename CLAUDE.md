@@ -115,13 +115,16 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   price)" card on `/trade` → click bridges their Google identity into the customer session (`sb_token`/
   `sb_user`/`sb_token_type`=firebase) → existing Model-2 flow. **Model 2 has NO room-ownership gate in code**
   (only per-city ₹ access) — so this is pure surfacing + bridge, trade-buyer framing, no new gate, no M2 change.
-- **Overlap guardrails (Phase C):** Model 2 = Circle-operated only; Model 3 = all StayBid properties (mostly
-  DIFFERENT pools → arbitrage-safe by construction). For the Circle-operated OVERLAP: (1) `hasActiveModel2Listing`
-  blocks publishing a Model-3 lot when the room is already `listed` on Model 2 over that month ("one channel per
-  room-month", read-only guard from the M3 side, fail-open); (2) admin `auction_config.circle_floor_multiplier`
-  (migration `2026-07-19-v366`, default 1.0) raises the Model-3 min-bid floor to a MULTIPLE of Spine cost for
-  `host_circle` hotels only (`effectiveFloor`), so the auction can't undercut Model-2's fixed price. Edited in
-  the `/admin/auction` config card ("Circle floor ×").
+- **Concurrent channels, clash-free (Phase C, v367.1):** Model 2 = Circle-operated only; Model 3 = all StayBid
+  properties. A property CAN run on BOTH channels at once (so Circle owners who can't join the M3 auction still
+  get that inventory via M2). **No cross-channel block** — the shared physical layer (`assignFreeUnit` +
+  `inventory_blocks` + `room_blocks` holds) makes a double-booked unit-night impossible (proven: a unit held by
+  one channel drops out of the other's free-unit set). `hasActiveModel2Listing` is now INFO-only (owner tab
+  shows "also on Model 2, both run together" — never blocks). Publish enforces a **physical-capacity cap**
+  (`activeUnitCount` — a lot can't promise more rooms than units exist; 0-unit classic rooms self-regulate at
+  booking). (2) admin `auction_config.circle_floor_multiplier` (migration `2026-07-19-v366`, default 1.0) raises
+  the Model-3 min-bid floor to a MULTIPLE of Spine cost for `host_circle` hotels only (`effectiveFloor`), so the
+  auction can't undercut Model-2's fixed price. Edited in the `/admin/auction` config card ("Circle floor ×").
 - **⚠ Known follow-up:** `owner_user_id` is a permanent unit stamp; for recurring monthly auctions on the SAME
   unit, `assignFreeUnit` prefers unowned units (per-month rotation/expiry is a documented refinement). Per-unit
   GUEST listings only surface on `host_circle` hotels (`account_type!='hotel_owner'`); classic hotels get

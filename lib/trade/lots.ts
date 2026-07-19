@@ -112,18 +112,33 @@ export function effectiveFloor(rawFloor: number, isCircle: boolean, circleMultip
   return ceil100(rawFloor * circleMultiplier);
 }
 
-// One-channel-per-room-month guardrail: is this room already LISTED on Model 2
-// (b2b_listings) over any night of the target month? If so, a Model-3 lot would
-// double-sell the same inventory. Read-only; touches no Model-2 code.
+// INFO (not a blocker): is this room also LISTED on Model 2 over the target
+// month? Model 2 and Model 3 can run CONCURRENTLY on the same property — the
+// shared physical layer (assignFreeUnit + inventory_blocks + room_blocks holds)
+// makes a double-booking impossible, so we only surface this as a note, never
+// block. Read-only; touches no Model-2 code.
 export async function hasActiveModel2Listing(roomId: string, monthStart: string, monthEnd: string): Promise<boolean> {
   try {
-    // Overlap: listing.date_from < monthEnd AND listing.date_to > monthStart, status listed.
     const r = await fetch(
       `${SB_URL}/rest/v1/b2b_listings?room_id=eq.${encodeURIComponent(roomId)}&status=eq.listed` +
         `&date_from=lt.${encodeURIComponent(monthEnd)}&date_to=gt.${encodeURIComponent(monthStart)}&select=id&limit=1`,
       { headers: SB_READ, cache: "no-store" },
     );
     if (r.ok) { const rows = await r.json().catch(() => []); return Array.isArray(rows) && rows.length > 0; }
-  } catch { /* fail open — never block a publish on a lookup error */ }
+  } catch { /* fail open */ }
   return false;
+}
+
+// Physical-capacity guard: how many active physical units this room has. The
+// auction must not promise more rooms than exist (over-sell). 0 = classic
+// category room with no per-unit rows (availability self-regulates at booking).
+export async function activeUnitCount(hotelId: string, roomId: string): Promise<number> {
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(hotelId)}&roomId=eq.${encodeURIComponent(roomId)}&status=eq.active&select=id`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    if (r.ok) { const rows = await r.json().catch(() => []); return Array.isArray(rows) ? rows.length : 0; }
+  } catch { /* ignore */ }
+  return 0;
 }

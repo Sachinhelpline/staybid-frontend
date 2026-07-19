@@ -9,7 +9,7 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, hasActiveModel2Listing } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, activeUnitCount } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -69,11 +69,14 @@ export async function POST(req: NextRequest) {
   const win = computeAuctionWindow(range, cfg);
   if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
 
-  // Phase C guardrail: one channel per room-month. If this room is already
-  // listed on Model 2 over the target month, block the Model-3 lot (Circle-
-  // operated overlap only — classic hotels have no Model-2 listings).
-  if (await hasActiveModel2Listing(roomId, range.monthStart, range.monthEnd)) {
-    return NextResponse.json({ error: "This room is already listed on Model 2 for these dates — one channel per month." }, { status: 409 });
+  // Model 2 & Model 3 may run CONCURRENTLY on the same property — the shared
+  // physical layer (assignFreeUnit + inventory_blocks + room_blocks holds)
+  // guarantees no unit-night is ever double-sold. So NO cross-channel block; we
+  // only guard PHYSICAL CAPACITY: the auction must not promise more rooms than
+  // units exist (classic category rooms with no per-unit rows self-regulate).
+  const unitCount = await activeUnitCount(hotelId, roomId);
+  if (unitCount > 0 && numRooms > unitCount) {
+    return NextResponse.json({ error: `Only ${unitCount} units exist in this room category — reduce the room count.` }, { status: 400 });
   }
 
   // TAMPER-SAFE: recompute the floor; for Circle-operated properties apply the
