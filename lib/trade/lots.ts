@@ -111,10 +111,20 @@ export async function isCircleOperatedHotel(hotelId: string): Promise<boolean> {
 }
 
 // Apply the Circle-operated floor multiplier (protects Model-2 fixed pricing).
-// Classic hotels → raw floor unchanged.
+// Classic hotels → raw floor unchanged. (Legacy helper; the owner-type floor now
+// uses circleOwnerFloor for Circle owners and floorPrice for property owners.)
 export function effectiveFloor(rawFloor: number, isCircle: boolean, circleMultiplier: number): number {
   if (!isCircle || circleMultiplier <= 1) return rawFloor;
   return ceil100(rawFloor * circleMultiplier);
+}
+
+// Circle-OWNER floor = their PURCHASE price per night × the multiplier (1.20 =
+// cover cost + 20% profit). purchasePerNight = their monthly acquisition rate ÷
+// 30 (e.g. ₹30,000/mo → ₹1,000/night → ₹1,200 floor). ₹100-snapped, min ₹100.
+export function circleOwnerFloor(purchasePerNight: number, circleMultiplier: number): number {
+  const p = Math.max(0, Math.round(Number(purchasePerNight) || 0));
+  const mult = Number(circleMultiplier) >= 1 ? Number(circleMultiplier) : 1.2;
+  return Math.max(ceil100(p * mult), 100);
 }
 
 // INFO (not a blocker): is this room also LISTED on Model 2 over the target

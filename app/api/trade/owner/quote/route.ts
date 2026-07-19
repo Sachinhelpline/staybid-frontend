@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, hasActiveModel2Listing } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight, isCircleOperatedHotel, hasActiveModel2Listing } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +36,11 @@ export async function POST(req: NextRequest) {
   const win = computeAuctionWindow(range, cfg);
   if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
 
-  const rawFloor = await computeMinBidFloorPerNight(roomId, range);
   const isCircle = await isCircleOperatedHotel(hotelId);
-  const floor = effectiveFloor(rawFloor, isCircle, cfg.circleFloorMultiplier);
+  // Property owner → floor = room floorPrice (computable now). Circle owner →
+  // floor depends on THEIR purchase price (entered in the form) × the multiplier;
+  // the client computes the preview, the server enforces it on publish.
+  const floor = isCircle ? null : await computeMinBidFloorPerNight(roomId, range);
   const model2Conflict = await hasActiveModel2Listing(roomId, range.monthStart, range.monthEnd);
 
   // Units hint — count active physical units for this room (may be 0 on classic hotels).
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
     nights: range.nights,
     unitsHint,
     circleOperated: isCircle,
+    circleFloorMultiplier: cfg.circleFloorMultiplier,
     model2Conflict,
     config: { depositPct: cfg.depositPct, buyerPremiumPct: cfg.buyerPremiumPct },
   });
