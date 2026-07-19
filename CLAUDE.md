@@ -102,7 +102,26 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v356, Circle "Model 2" — full Model-1-style journey: calendar tour + trading + review)
+## Current production state (v357, Circle "Model 2" — Model-1 parity: real routes, clean calendar, no rule shown)
+- **Model 2 is now REAL PAGES (routes), mirroring Model 1** (not overlays): `/circle/model2/browse` (Step 1,
+  property-grouped browse) → `/circle/model2/[id]` (Step 2, full property tour page — hero gallery + thumbs +
+  badges + metric grid + "Choose your rooms") → `/circle/model2/review` (Step 4, full review + pay page like
+  `/circle/build`: YOUR BUNDLE grouped by city + a COST & VALUE panel [you pay · market value · resale upside]).
+  The bundle lives in **localStorage** via `lib/circle/model2-basket.ts` (`readBasket`/`addItem`/`removeItem`/
+  `onBasketChange`, `sb_m2_basket_v1` + `sbc:m2-basket-change` event) — the Model-1 state-contract pattern.
+- **Step dock is Model-2 aware:** `components/circle/CircleDock.tsx` renders **Browse → Tour → Pay** (basket
+  count badge) on `/circle/model2/*` routes instead of Model-1's Property/Rooms/Plan.
+- **No internal pricing rule shown to the buyer (ss7):** every "2× / owner's own price / resale multiplier /
+  double / sell price" is REMOVED from the buyer surface. The room "market panel" shows only Your buy price vs
+  the room's real guest ADR / low / high + resale upside. The own×multiplier math stays 100% server-side.
+- **Clean calendar (ss8):** the room tour has a proper check-in → check-out RANGE picker (Check-in/Check-out
+  labels + Clear, one continuous gold band). Every released-window night is available — `market-quote` returns
+  `blocked:[]` for a `metadata.window` listing (a released window ⇒ no blocked dates); physical availability is
+  still hard-guarded only at payment (`assignFreeUnit`). Non-window listings still consult real occupancy.
+- Removed the two browse header links; City Access lives in the dashboard (v356). Money path unchanged
+  (calendar-driven `basket/checkout items:[{listingId,from,to}]`, own×mult×nights + fees, 4-key verify).
+
+## Earlier state (v356, Circle "Model 2" — full Model-1-style journey: calendar tour + trading + review)
 - **Model 2 browse REBUILT into the Model-1 journey** (`app/circle/model2/browse/page.tsx`): Step 1 browse
   released inventory **grouped by PROPERTY** (property cards) → Step 2 full **property + room TOUR** (in-page
   overlay: property gallery + per-room card) → Step 3 **build** (pick nights across cities into a bundle) →
@@ -297,8 +316,8 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 - **Reel-app surfaces** (`/`, `/discover`, `/reels`, `/me`, `/me/posts`, `/saved/posts`): hide
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
-  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v168` (v356 calendar tour + trading).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v356. Bump both on
+  SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v169` (v357 Model-1 parity routes).
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v357. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

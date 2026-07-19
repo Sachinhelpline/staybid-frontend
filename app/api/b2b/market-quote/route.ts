@@ -95,14 +95,20 @@ export async function GET(req: NextRequest) {
   const buyerFeePct = Number(listing.buyer_fee_pct) || feeCfg.buyerFeePct;
   const sellerFeePct = Number(listing.seller_fee_pct) || feeCfg.sellerFeePct;
 
-  // Blocked dates inside the window (so the calendar greys them out). The
-  // effective free window starts no earlier than tomorrow.
+  // Effective free window starts no earlier than tomorrow.
   const effFrom = windowFrom > todayISO() ? windowFrom : iso(new Date(Date.now() + 86400000));
+  // The owner RELEASED this whole window, so every night in it is available to
+  // buy (a released window ⇒ no blocked dates on the calendar). Physical
+  // availability is still hard-guarded at payment (assignFreeUnit). Only a
+  // non-window listing consults real occupancy.
   let blocked: string[] = [];
-  try {
-    const occs = await getOccupations({ hotelId, roomId, from: effFrom, to: windowTo });
-    blocked = Array.from(occupationsToDateSet(occs, roomId)).sort();
-  } catch { blocked = []; }
+  const isWindow = !!(listing.metadata && listing.metadata.window);
+  if (!isWindow) {
+    try {
+      const occs = await getOccupations({ hotelId, roomId, from: effFrom, to: windowTo });
+      blocked = Array.from(occupationsToDateSet(occs, roomId)).sort();
+    } catch { blocked = []; }
+  }
 
   // Market range: over the picked range if given, else a 30-night sample from
   // the start of the free window (bounded so the tour loads fast).

@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { basketCount as m2BasketCount, onBasketChange as onM2BasketChange } from "@/lib/circle/model2-basket";
 
 const LOCKS_KEY = "sb_circle_locks_v1";
 
@@ -31,6 +32,39 @@ function readLockCount(): number {
   } catch {
     return 0;
   }
+}
+
+// v357 — on the Model-2 B2B journey the same dock reads a DIFFERENT progression:
+// Browse → Tour → Pay. Rendered when the path is under /circle/model2/*.
+function Model2Steps({ pathname }: { pathname: string }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const refresh = () => setCount(m2BasketCount());
+    refresh();
+    return onM2BasketChange(refresh);
+  }, [pathname]);
+  const onBrowse = pathname === "/circle/model2/browse" || pathname === "/circle/model2";
+  const onTour = /^\/circle\/model2\/[^/]+$/.test(pathname) && !onBrowse && !pathname.endsWith("/review");
+  const onPay = pathname.startsWith("/circle/model2/review");
+  const hasItems = count > 0;
+  return (
+    <div className="sbc-steps" role="group" aria-label="Model 2 steps">
+      <span className="sbc-steps-rail" aria-hidden />
+      <Link href="/circle/model2/browse" prefetch className={`sbc-step${onBrowse ? " on" : ""}${hasItems || onTour || onPay ? " done" : ""}`} aria-current={onBrowse ? "page" : undefined}>
+        <span className="sbc-step-num">{hasItems || onTour || onPay ? "✓" : "1"}</span>
+        <span className="sbc-step-label">Browse</span>
+      </Link>
+      <Link href="/circle/model2/browse" prefetch className={`sbc-step${onTour ? " on" : ""}`} aria-current={onTour ? "page" : undefined}>
+        <span className="sbc-step-num">2</span>
+        <span className="sbc-step-label">Tour</span>
+      </Link>
+      <Link href="/circle/model2/review" prefetch className={`sbc-step fab${onPay ? " on" : ""}`} aria-current={onPay ? "page" : undefined}>
+        {count > 0 && <span className="sbc-dock-badge">{count > 9 ? "9+" : count}</span>}
+        <span className="sbc-step-num">3</span>
+        <span className="sbc-step-label">Pay</span>
+      </Link>
+    </div>
+  );
 }
 
 export function CircleDock() {
@@ -101,6 +135,7 @@ export function CircleDock() {
   const isPlan = pathname.startsWith("/circle/build");
   const isDash = pathname.startsWith("/circle/dashboard");
   const hasLocks = lockCount > 0;
+  const onModel2 = pathname.startsWith("/circle/model2");
 
   return (
     <nav className={`sbc-dock v2${roomsActive ? " rooms-open" : ""}`} aria-label="StayCircle steps">
@@ -110,7 +145,8 @@ export function CircleDock() {
         <span className="sbc-dock-label">Home</span>
       </Link>
 
-      {/* ───── the 3-step wizard rail ───── */}
+      {/* ───── the 3-step wizard rail (Model-2 journey swaps the labels) ───── */}
+      {onModel2 ? <Model2Steps pathname={pathname} /> : (
       <div className="sbc-steps" role="group" aria-label="Portfolio steps">
         <span className="sbc-steps-rail" aria-hidden />
 
@@ -150,6 +186,7 @@ export function CircleDock() {
           <span className="sbc-step-label">Plan</span>
         </Link>
       </div>
+      )}
 
       {/* Dashboard */}
       <Link href="/circle/dashboard" prefetch className={`sbc-dock-end${isDash ? " on" : ""}`} aria-current={isDash ? "page" : undefined}>
