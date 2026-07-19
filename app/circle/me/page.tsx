@@ -244,7 +244,7 @@ export default function CircleMePage() {
               {bundles.length === 0 ? (
                 <div className="sbc-panel" style={{ padding: 30, textAlign: "center" }}>
                   <div style={{ fontSize: 30 }}>🧺</div>
-                  <p style={{ marginTop: 6, color: "rgba(74,56,32,.7)" }}>Abhi koi bundle nahi — pehla bundle banao aur earning start karo.</p>
+                  <p style={{ marginTop: 6, color: "rgba(74,56,32,.7)" }}>No bundles yet — build your first bundle and start earning.</p>
                   <Link href="/circle/build" className="sbc-btn-gold" style={{ marginTop: 14 }}>Build Your First Bundle →</Link>
                 </div>
               ) : (
@@ -319,7 +319,7 @@ export default function CircleMePage() {
               <h2 className="sbc-h2" style={{ fontSize: "1.5rem" }}>Locked Properties</h2>
               {locks.length === 0 ? (
                 <div className="sbc-panel" style={{ padding: 24, color: "rgba(74,56,32,.65)", fontSize: ".88rem" }}>
-                  Koi property locked nahi — <Link href="/circle" style={{ color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Discover</Link> par explore karo.
+                  No properties locked — explore <Link href="/circle" style={{ color: "var(--sbc-gold-deep)", fontWeight: 700 }}>Discover</Link>.
                 </div>
               ) : (
                 <div className="sbc-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", marginTop: 12 }}>

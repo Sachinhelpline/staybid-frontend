@@ -113,7 +113,7 @@ export default function AgentAuctionTab({
       });
       const d = await r.json();
       if (r.ok) {
-        setMsg({ ok: true, text: d.phase === "open" ? "Lot LIVE — agents ab bid kar sakte hain." : `Lot scheduled — window ${fmtDate(d.scheduledOpensAt)} ko khulega.` });
+        setMsg({ ok: true, text: d.phase === "open" ? "Lot is LIVE — agents can bid now." : `Lot scheduled — the window opens on ${fmtDate(d.scheduledOpensAt)}.` });
         setRoomId(""); setMinBid(""); setFloor(null); setWin(null);
         loadLots();
       } else { setMsg({ ok: false, text: d.error || "Publish failed." }); }
@@ -142,21 +142,21 @@ export default function AgentAuctionTab({
       <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="text-lg font-bold" style={{ color: "#ffd98a" }}>🏷️ Sell to Travel Agents — Monthly Auction</div>
         <p className="text-sm mt-1 opacity-90">
-          Apni khaali inventory ko <b>agle poore mahine</b> ke liye travel agents ko auction pe becho. Approved agents
-          per-room bid lagate hain — sabse <b>highest bid jeette</b>. Min price StayBid aapki cost (Spine floor) se compute
-          karta hai, aap sirf <b>upar</b> badha sakte ho. Aapka paisa kabhi cost se neeche nahi jaata.
+          Auction your spare inventory to travel agents for the <b>upcoming whole month</b>. Approved agents bid per
+          room — the <b>highest bid wins</b>. StayBid computes the minimum price from your cost (Spine floor); you can
+          only raise it. Your inventory never sells below cost.
         </p>
       </div>
 
       {/* Publish form */}
       <div className="rounded-2xl border border-luxury-200 bg-white p-5 space-y-4">
-        <div className="font-bold text-luxury-900">Naya lot publish karo</div>
+        <div className="font-bold text-luxury-900">Publish a new lot</div>
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-sm">
             <span className="text-luxury-500 font-semibold">Room category</span>
             <select value={roomId} onChange={(e) => setRoomId(e.target.value)}
               className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm">
-              <option value="">— chuno —</option>
+              <option value="">— choose —</option>
               {rooms.map((r) => <option key={r.id} value={r.id}>{r.name || r.id}</option>)}
             </select>
           </label>
@@ -168,7 +168,7 @@ export default function AgentAuctionTab({
             </select>
           </label>
           <label className="text-sm">
-            <span className="text-luxury-500 font-semibold">Kitne rooms (units)</span>
+            <span className="text-luxury-500 font-semibold">Number of rooms (units)</span>
             <input type="number" min={1} max={50} value={numRooms}
               onChange={(e) => setNumRooms(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
               className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm" />
@@ -181,7 +181,7 @@ export default function AgentAuctionTab({
               className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm" />
             {floor != null && (
               <span className="text-[0.72rem] text-luxury-400 mt-0.5 block">
-                StayBid floor (cost): <b>{inr(floor)}</b>/room/night — isse neeche nahi.
+                StayBid floor (cost): <b>{inr(floor)}</b>/room/night — can't go below this.
               </span>
             )}
           </label>
@@ -190,14 +190,14 @@ export default function AgentAuctionTab({
         {win && (
           <div className="text-[0.78rem] text-luxury-500 bg-luxury-50 rounded-lg px-3 py-2">
             Bidding window: <b>{fmtDate(win.windowOpenAt)}</b> → <b>{fmtDate(win.windowCloseAt)}</b>
-            {win.phase === "open" ? " · abhi LIVE" : ` · ${fmtDate(win.windowOpenAt)} ko khulega`} ·
+            {win.phase === "open" ? " · LIVE now" : ` · opens ${fmtDate(win.windowOpenAt)}`} ·
             {" "}{win.nights} nights · agent EMD deposit {cfg?.depositPct ?? 10}%
           </div>
         )}
 
         {conflict && (
           <div className="text-[0.8rem] rounded-lg px-3 py-2 bg-blue-50 text-blue-800 border border-blue-200">
-            ℹ️ Ye room <b>Model 2</b> pe bhi listed hai — koi dikkat nahi. Dono channels <b>saath chalenge</b>; physical availability shared hai (jo unit ek jagah bik gaya wo doosri jagah apne-aap block ho jaata hai — koi clash nahi).
+            ℹ️ This room is also listed on <b>Model 2</b> — that's fine. Both channels <b>run together</b>; availability is shared (a unit sold on one channel is automatically blocked on the other — no clash).
           </div>
         )}
 
@@ -214,9 +214,9 @@ export default function AgentAuctionTab({
 
       {/* Existing lots */}
       <div className="rounded-2xl border border-luxury-200 bg-white p-5">
-        <div className="font-bold text-luxury-900 mb-3">Aapke lots</div>
+        <div className="font-bold text-luxury-900 mb-3">Your lots</div>
         {lots.length === 0 ? (
-          <div className="text-sm text-luxury-400 py-4 text-center">Abhi koi lot nahi. Upar se ek publish karo.</div>
+          <div className="text-sm text-luxury-400 py-4 text-center">No lots yet. Publish one above.</div>
         ) : (
           <div className="space-y-2">
             {lots.map((l) => {

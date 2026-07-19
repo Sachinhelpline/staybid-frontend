@@ -122,7 +122,7 @@ export default function Model2ReviewPage() {
         <span className="sbc2r-steppill">STEP 4 · Review &amp; Buy</span>
         <h1 className="sbc2r-title">Confirm &amp; Buy</h1>
       </div>
-      <p className="sbc2r-sub">{items.length} room-night set{items.length === 1 ? "" : "s"} across {cities.length || 0} cit{cities.length === 1 ? "y" : "ies"} — review karo aur ek payment me buy karo.</p>
+      <p className="sbc2r-sub">{items.length} room-night set{items.length === 1 ? "" : "s"} across {cities.length || 0} cit{cities.length === 1 ? "y" : "ies"} — review and buy in one payment.</p>
 
       {items.length === 0 ? (
         <div className="sbc-panel" style={{ padding: 26, textAlign: "center", color: "rgba(74,56,32,.6)" }}>

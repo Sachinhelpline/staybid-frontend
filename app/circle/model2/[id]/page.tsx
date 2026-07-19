@@ -106,7 +106,7 @@ export default function Model2PropertyPage() {
         {prop.description && <p className="sbc2p-desc">{prop.description}</p>}
 
         <div className="sbc2p-h2">Choose your rooms &amp; nights</div>
-        <p className="sbc2p-h2sub">Har room ka calendar kholo aur jitni nights chahiye (kisi bhi month me, koi bhi dates) tap karke pick karo — market rate dekh ke bundle me add karo.</p>
+        <p className="sbc2p-h2sub">Open any room's calendar and tap the nights you want (any month, any dates) — check the market rate and add them to your bundle.</p>
 
         {rooms.map((l) => <RoomCard key={l.id} listing={l} />)}
       </div>

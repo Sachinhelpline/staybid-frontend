@@ -117,7 +117,7 @@ export default function TradeMyBidsPage() {
 
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
         {auth.status === "signed_out" ? (
-          <div className="text-center text-luxury-400 py-12">Sign-in karo. <button onClick={() => router.push("/trade")} className="underline text-gold-600">Browse</button></div>
+          <div className="text-center text-luxury-400 py-12">Sign in to see your bids. <button onClick={() => router.push("/trade")} className="underline text-gold-600">Browse</button></div>
         ) : loading ? (
           <div className="text-center text-luxury-400 py-12">Loading…</div>
         ) : (
@@ -150,18 +150,18 @@ export default function TradeMyBidsPage() {
                       </div>
                       {a.status === "voucher_issued" && (
                         <div className="mt-3 pt-3 border-t border-green-100">
-                          <div className="text-[0.72rem] font-bold text-luxury-700 mb-1.5">Apni allotment becho:</div>
+                          <div className="text-[0.72rem] font-bold text-luxury-700 mb-1.5">Sell your allotment:</div>
                           <div className="flex flex-wrap gap-2">
                             <button onClick={() => enableSelling(a)} disabled={sellBusy === a.id}
                               className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "#33251a" }}>
-                              {sellBusy === a.id ? "…" : "🏠 StayBid + OTA pe becho"}
+                              {sellBusy === a.id ? "…" : "🏠 Sell on StayBid + OTA"}
                             </button>
                             <button onClick={() => copyLink(a)}
                               className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold" style={{ background: "#fef3c7", color: "#92400e" }}>
-                              {copied === a.id ? "✓ Link copied" : "🔗 Apne channel ka link"}
+                              {copied === a.id ? "✓ Link copied" : "🔗 Your channel link"}
                             </button>
                           </div>
-                          <div className="text-[0.68rem] text-luxury-400 mt-1.5">StayBid + OTA: partner dashboard me apne rooms list + OTA feeds set karo. Apna channel: direct booking link guests ko bhejo.</div>
+                          <div className="text-[0.68rem] text-luxury-400 mt-1.5">StayBid + OTA: list your rooms + set OTA feeds in the partner dashboard. Own channel: share the direct booking link with your guests.</div>
                         </div>
                       )}
                     </div>
@@ -174,7 +174,7 @@ export default function TradeMyBidsPage() {
             <div>
               <div className="font-bold text-luxury-900 mb-2">My bids</div>
               {bids.length === 0 ? (
-                <div className="text-center text-luxury-400 py-8">Abhi koi bid nahi. <button onClick={() => router.push("/trade")} className="underline text-gold-600">Browse</button></div>
+                <div className="text-center text-luxury-400 py-8">No bids yet. <button onClick={() => router.push("/trade")} className="underline text-gold-600">Browse lots</button></div>
               ) : (
                 <div className="space-y-2">
                   {bids.map((b) => {

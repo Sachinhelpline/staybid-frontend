@@ -45,7 +45,7 @@ export default function TradeReviewPage() {
 
   const pay = useCallback(async () => {
     if (!items.length) return;
-    if (auth.status !== "approved") { setMsg({ ok: false, text: "Approved agent hi bid kar sakte hain." }); return; }
+    if (auth.status !== "approved") { setMsg({ ok: false, text: "Only approved agents can bid." }); return; }
     setPaying(true); setMsg(null);
     try {
       const token = getTradeToken();
@@ -64,7 +64,7 @@ export default function TradeReviewPage() {
           userName: cd.prefill?.name, userEmail: cd.prefill?.email,
         });
       } catch (e) {
-        if (e instanceof RazorpayError && e.message === "__CANCELLED__") { setMsg({ ok: false, text: "Payment cancel ho gaya." }); }
+        if (e instanceof RazorpayError && e.message === "__CANCELLED__") { setMsg({ ok: false, text: "Payment cancelled." }); }
         else { setMsg({ ok: false, text: e instanceof RazorpayError ? e.message : "Payment failed." }); }
         setPaying(false); return;
       }
@@ -76,7 +76,7 @@ export default function TradeReviewPage() {
       const vd = await vr.json();
       if (vr.ok && vd.ok) {
         clearBidBasket();
-        setMsg({ ok: true, text: `Bids submit ho gayi (${vd.activated}). Window close pe result — My Bids me dekho.` });
+        setMsg({ ok: true, text: `Bids submitted (${vd.activated}). Results at window close — check My Bids.` });
       } else { setMsg({ ok: false, text: vd.error || "Verification failed." }); }
     } catch { setMsg({ ok: false, text: "Network error." }); } finally { setPaying(false); }
   }, [items, auth.status]);
@@ -93,7 +93,7 @@ export default function TradeReviewPage() {
       <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
         {items.length === 0 ? (
           <div className="text-center text-luxury-400 py-12">
-            Bundle khaali hai. <button onClick={() => router.push("/trade")} className="text-gold-600 font-semibold underline">Lots browse karo</button>
+            Your bundle is empty. <button onClick={() => router.push("/trade")} className="text-gold-600 font-semibold underline">Browse lots</button>
           </div>
         ) : (
           <>
@@ -115,20 +115,20 @@ export default function TradeReviewPage() {
 
             <div className="rounded-2xl bg-white border border-luxury-200 p-4">
               <div className="flex justify-between text-sm text-luxury-600"><span>Total refundable EMD ({depositPct}%)</span><b className="text-luxury-900 text-lg">{inr(depositTotal)}</b></div>
-              <div className="text-[0.72rem] text-luxury-400 mt-1">Ye deposit abhi lagega. Jeetne pe balance + buyer premium, haarne pe deposit wapas.</div>
+              <div className="text-[0.72rem] text-luxury-400 mt-1">This deposit is charged now. If you win, pay the balance + buyer premium; if you don't, it's refunded.</div>
             </div>
 
             {msg && <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>}
 
             {msg?.ok ? (
-              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>My Bids dekho →</button>
+              <button onClick={() => router.push("/trade/my-bids")} className="w-full py-3 rounded-xl font-bold text-white" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>View My Bids →</button>
             ) : (
               <button onClick={pay} disabled={paying || auth.status !== "approved"}
                 className="w-full py-3 rounded-xl font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
                 {paying ? "Processing…" : `Pay EMD ${inr(depositTotal)}`}
               </button>
             )}
-            {auth.status !== "approved" && <div className="text-[0.75rem] text-amber-700 text-center">Bid ke liye approved agent hona zaroori — <button onClick={() => router.push("/trade")} className="underline">yaha se sign-in/register</button>.</div>}
+            {auth.status !== "approved" && <div className="text-[0.75rem] text-amber-700 text-center">You must be an approved agent to bid — <button onClick={() => router.push("/trade")} className="underline">sign in / register here</button>.</div>}
           </>
         )}
       </div>
