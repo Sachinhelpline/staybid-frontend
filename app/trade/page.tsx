@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useTradeAuth } from "@/lib/trade/use-trade-auth";
 import { addBid, bidItemKey, onBidBasketChange, bidBasketList } from "@/lib/trade/bid-basket";
 import { bidCostPreview } from "@/lib/trade/auction-engine";
+import { CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
 
 const inr = (n: any) => `₹${Math.round(Number(n) || 0).toLocaleString("en-IN")}`;
 const monthLabel = (mk: string) => {
@@ -104,6 +105,10 @@ export default function TradeBrowsePage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 pb-8 pt-2">
+        <p className="text-[0.7rem] text-luxury-400 leading-relaxed">{CIRCLE_AUCTION_NOTE}</p>
       </div>
 
       {modalLot && <BidModal lot={modalLot} auth={auth} onClose={() => setModalLot(null)} />}

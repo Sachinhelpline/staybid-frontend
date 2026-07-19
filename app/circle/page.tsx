@@ -22,7 +22,7 @@ import {
   fmtINR, computeBundle, type BundleItem,
   DEFAULT_CIRCLE_REVENUE, type CircleRevenueConfig,
 } from "@/lib/circle/engine";
-import { CIRCLE_INCOME_SHORT, CIRCLE_RESALE_RISK_NOTE } from "@/lib/circle/disclosure";
+import { CIRCLE_INCOME_SHORT, CIRCLE_RESALE_RISK_NOTE, CIRCLE_AUCTION_NOTE } from "@/lib/circle/disclosure";
 import ResaleOffers from "@/components/circle/ResaleOffers";
 
 type RoomType = { id: string; name: string; monthlyRate: number; availableUnits: number };
@@ -300,9 +300,9 @@ export default function CircleHomePage() {
       </section>
       </div>{/* /sbc-home-hero */}
 
-      {/* ───────── 2 ways to grow (Model 1 / 2) ───────── */}
+      {/* ───────── 3 ways to grow (Model 1 / 2 / 3) ───────── */}
       <section className="sbc-home-sec">
-        <div className="sbc-home-sec-h">2 ways to grow with StayCircle</div>
+        <div className="sbc-home-sec-h">3 ways to grow with StayCircle</div>
         <div className="sbc-models">
           {/* Model 1 — Managed Income */}
           <Link href="/circle/discover" className="sbc-model">
@@ -330,6 +330,20 @@ export default function CircleHomePage() {
             <p className="sbc-model-desc">Buy owner-released room-nights at <b>StayBid-regulated B2B prices</b> across cities, then sell through your own inventory — StayBid, your OTA listings or direct.</p>
             <span className="sbc-model-cta">Open inventory marketplace →</span>
             <p className="sbc-model-fine">{CIRCLE_RESALE_RISK_NOTE}</p>
+          </Link>
+
+          {/* Model 3 — Travel-Agent Monthly Auction (owners sell spare inventory to agents) */}
+          <Link href="/trade" className="sbc-model">
+            <span className="sbc-model-glow" aria-hidden />
+            <div className="sbc-model-top">
+              <span className="sbc-model-ic">🏷️</span>
+              <span className="sbc-model-tag sage">For travel agents</span>
+            </div>
+            <div className="sbc-model-num">Model 3</div>
+            <div className="sbc-model-title">Monthly Inventory Auction</div>
+            <p className="sbc-model-desc">Owners auction spare rooms for the <b>upcoming month</b>. Approved travel agents bid per-room (full month / week / weekends) — <b>highest bid wins</b>, refundable EMD.</p>
+            <span className="sbc-model-cta">Enter the agent auction →</span>
+            <p className="sbc-model-fine">{CIRCLE_AUCTION_NOTE}</p>
           </Link>
         </div>
       </section>

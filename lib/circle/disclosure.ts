@@ -41,3 +41,8 @@ export const CIRCLE_PAYOUTS_LABEL = "Monthly Payouts";
  */
 export const CIRCLE_B2B_RESALE_NOTE =
   "The B2B exchange lets partners trade room-nights with each other — a goods trade, not an investment. Sell-through and resale income are expected based on demand, never guaranteed; unsold-inventory risk stays with the holder.";
+
+// v361 — Model 3 travel-agent auction. A wholesale room-night trade, not an
+// investment. Winning is not guaranteed; only cleared (won) bids are allotted.
+export const CIRCLE_AUCTION_NOTE =
+  "A wholesale room-night auction for travel agents — a goods trade, not an investment. The EMD deposit is refundable if you don't win; only cleared (highest-bid) rooms are allotted. Resale to your own guests is your business — sell-through is never guaranteed.";
