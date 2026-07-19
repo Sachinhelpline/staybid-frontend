@@ -330,7 +330,26 @@ function PropStyles() {
       .sbc2p-sel-sub { font-size: .68rem; color: rgba(74,56,32,.6); margin-top: 2px; }
       .sbc2p-upside { color: #6b8f4e; font-weight: 700; }
       .sbc2b-basket { position: fixed; left: 0; right: 0; bottom: 62px; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.94) 70%, rgba(255,255,255,0)); }
-      .sbc2b-basket-in { max-width: 720px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #fbf3e2; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+      .sbc2b-basket-in { max-width: 940px; margin: 0 auto; background: var(--sbc-coffee, #3a2c17); color: #fbf3e2; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+      /* ── Tablet / laptop / desktop: cap the content, size media natively, and
+         stop the calendar from stretching into giant squares on wide screens ── */
+      @media (min-width: 640px) {
+        .sbc2p { max-width: 720px; margin: 0 auto; }
+        .sbc2p-hero { height: auto; aspect-ratio: 16 / 9; max-height: 360px; }
+        .sbc2p-roomgal { height: 220px; }
+        /* calendar cells never exceed a cozy size; grid centres itself */
+        .sbc2p-cal-grid, .sbc2p-cal-dow { grid-template-columns: repeat(7, minmax(0, 48px)); justify-content: center; }
+      }
+      @media (min-width: 900px) {
+        .sbc2p { max-width: 940px; }
+        .sbc2p-hero { aspect-ratio: 2 / 1; max-height: 420px; }
+        .sbc2p-roomgal { height: 280px; }
+        .sbc2p-cal-grid, .sbc2p-cal-dow { grid-template-columns: repeat(7, minmax(0, 54px)); }
+        .sbc2p-cal { max-width: 460px; margin-left: auto; margin-right: auto; }
+      }
+      @media (min-width: 1280px) {
+        .sbc2p { max-width: 1000px; }
+      }
     `}</style>
   );
 }

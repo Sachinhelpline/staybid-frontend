@@ -84,8 +84,8 @@ export default function TradeBrowsePage() {
         ) : lots.map((l) => (
           <button key={l.id} onClick={() => router.push(`/trade/${l.id}`)} className="text-left rounded-2xl overflow-hidden bg-white border border-luxury-200 flex flex-col hover:shadow-lg transition-shadow">
             {l.image
-              ? <img src={l.image} alt={l.category || l.room_id} className="h-36 w-full object-cover" />
-              : <div className="h-36 w-full grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
+              ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
+              : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
             <div className="p-3 flex-1 flex flex-col">
               <div className="text-[0.72rem] text-luxury-400">{l.metadata?.hotel_name || l.hotel_id} · {l.city}</div>
               <div className="font-bold text-luxury-900">{l.category || l.room_id}</div>

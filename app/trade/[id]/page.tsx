@@ -65,33 +65,36 @@ export default function TradeTourPage() {
       </div>
       {heroImgs.length > 1 && <div className="sbt-thumbs">{heroImgs.map((im, i) => <button key={i} className={`sbt-thumb${i === gi ? " on" : ""}`} onClick={() => setGi(i)}><img src={im} alt="" /></button>)}</div>}
 
-      {/* Metric grid */}
-      <div className="sbt-metrics">
-        <div className="sbt-metric"><b>{inr(lot.min_bid_per_room_night)}</b><span>MIN BID / ROOM / NIGHT</span></div>
-        <div className="sbt-metric"><b>{lot.num_rooms}</b><span>ROOMS AVAILABLE</span></div>
-        <div className="sbt-metric"><b>{monthLabel(lot.month_key)}</b><span>AUCTION MONTH</span></div>
-        <div className="sbt-metric"><b>{cap(lot.city)}</b><span>LOCATION</span></div>
-      </div>
-      {hotel.description && <p className="sbt-desc">{hotel.description}</p>}
+      {/* Two-column on desktop: property/room content left, sticky bid panel right */}
+      <div className="sbt-cols">
+        <div className="sbt-left">
+          <div className="sbt-metrics">
+            <div className="sbt-metric"><b>{inr(lot.min_bid_per_room_night)}</b><span>MIN BID / ROOM / NIGHT</span></div>
+            <div className="sbt-metric"><b>{lot.num_rooms}</b><span>ROOMS AVAILABLE</span></div>
+            <div className="sbt-metric"><b>{monthLabel(lot.month_key)}</b><span>AUCTION MONTH</span></div>
+            <div className="sbt-metric"><b>{cap(lot.city)}</b><span>LOCATION</span></div>
+          </div>
+          {hotel.description && <p className="sbt-desc">{hotel.description}</p>}
 
-      {/* Room */}
-      <div className="sbt-h2">{room.name || lot.category}</div>
-      <RoomGallery images={room.images} />
-      {(room.capacity > 0 || room.amenities?.length > 0) && (
-        <div className="sbt-amen">
-          {room.capacity > 0 && <span className="sbt-amen-chip">up to {room.capacity} guests</span>}
-          {(room.amenities || []).slice(0, 12).map((a: string, i: number) => <span key={i} className="sbt-amen-chip">{a}</span>)}
+          <div className="sbt-h2">{room.name || lot.category}</div>
+          <RoomGallery images={room.images} />
+          {(room.capacity > 0 || room.amenities?.length > 0) && (
+            <div className="sbt-amen">
+              {room.capacity > 0 && <span className="sbt-amen-chip">up to {room.capacity} guests</span>}
+              {(room.amenities || []).slice(0, 12).map((a: string, i: number) => <span key={i} className="sbt-amen-chip">{a}</span>)}
+            </div>
+          )}
+          {room.description && <p className="sbt-desc sm">{room.description}</p>}
         </div>
-      )}
-      {room.description && <p className="sbt-desc sm">{room.description}</p>}
 
-      {/* Bid */}
-      <div className="sbt-h2">Place your bid</div>
-      <p className="sbt-h2sub">Pick a segment (the whole month, a single week, or just weekends), set your price per room per night, then add it to your bundle. Highest bids win at the month-end close.</p>
-
-      {auth.status === "approved"
-        ? <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />
-        : <BidGate auth={auth} city={lot.city} />}
+        <div className="sbt-right">
+          <div className="sbt-h2">Place your bid</div>
+          <p className="sbt-h2sub">Pick a segment (the whole month, a single week, or just weekends), set your price per room per night, then add it to your bundle. Highest bids win at the month-end close.</p>
+          {auth.status === "approved"
+            ? <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />
+            : <BidGate auth={auth} city={lot.city} />}
+        </div>
+      </div>
 
       {basketN > 0 && (
         <div className="sbt-basket">
@@ -259,7 +262,27 @@ function TourStyles() {
       .sbt-gate p { margin: 0 0 10px; line-height: 1.5; }
       .sbt-gate-input { width: 100%; border: 1px solid #e2c98a; border-radius: 10px; padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; }
       .sbt-basket { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.96) 70%, rgba(255,255,255,0)); }
-      .sbt-basket-in { max-width: 720px; margin: 0 auto; background: #3a2c17; color: #fbf3e2; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); font-size: .82rem; font-weight: 600; }
+      .sbt-basket-in { max-width: 1080px; margin: 0 auto; background: #3a2c17; color: #fbf3e2; border-radius: 16px; padding: 11px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); font-size: .82rem; font-weight: 600; }
+      /* ── Tablet: wider hero + 3-col metrics ── */
+      @media (min-width: 640px) {
+        .sbt-wrap { max-width: 760px; padding-left: 22px; padding-right: 22px; }
+        .sbt-hero { height: auto; aspect-ratio: 16 / 9; max-height: 360px; }
+        .sbt-roomgal { height: 240px; }
+      }
+      /* ── Laptop / desktop: two columns, sticky bid panel, capped for cozy reading ── */
+      @media (min-width: 900px) {
+        .sbt-wrap { max-width: 1080px; padding-left: 28px; padding-right: 28px; }
+        .sbt-hero { aspect-ratio: 16 / 9; max-height: 400px; }
+        .sbt-cols { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; margin-top: 6px; }
+        .sbt-left { min-width: 0; }
+        .sbt-right { position: sticky; top: 16px; }
+        .sbt-h2 { margin-top: 0; }
+        .sbt-roomgal { height: 300px; }
+      }
+      @media (min-width: 1280px) {
+        .sbt-hero { aspect-ratio: 21 / 9; max-height: 460px; }
+        .sbt-cols { grid-template-columns: minmax(0, 1fr) 420px; gap: 34px; }
+      }
     `}</style>
   );
 }
