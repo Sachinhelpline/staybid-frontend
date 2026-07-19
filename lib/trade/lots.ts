@@ -91,3 +91,39 @@ export async function computeMinBidFloorPerNight(roomId: string, range: MonthRan
   }
   return Math.max(ceil100(maxFloor || 500), 500);
 }
+
+// Is this a Circle-operated (host_circle) property? Those are the only ones that
+// can appear in BOTH Model 2 and Model 3 → the overlap the guardrails protect.
+export async function isCircleOperatedHotel(hotelId: string): Promise<boolean> {
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/hotels?id=eq.${encodeURIComponent(hotelId)}&select=owner_type&limit=1`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    if (r.ok) { const [row] = await r.json(); return String(row?.owner_type || "") === "host_circle"; }
+  } catch { /* ignore */ }
+  return false;
+}
+
+// Apply the Circle-operated floor multiplier (protects Model-2 fixed pricing).
+// Classic hotels → raw floor unchanged.
+export function effectiveFloor(rawFloor: number, isCircle: boolean, circleMultiplier: number): number {
+  if (!isCircle || circleMultiplier <= 1) return rawFloor;
+  return ceil100(rawFloor * circleMultiplier);
+}
+
+// One-channel-per-room-month guardrail: is this room already LISTED on Model 2
+// (b2b_listings) over any night of the target month? If so, a Model-3 lot would
+// double-sell the same inventory. Read-only; touches no Model-2 code.
+export async function hasActiveModel2Listing(roomId: string, monthStart: string, monthEnd: string): Promise<boolean> {
+  try {
+    // Overlap: listing.date_from < monthEnd AND listing.date_to > monthStart, status listed.
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_listings?room_id=eq.${encodeURIComponent(roomId)}&status=eq.listed` +
+        `&date_from=lt.${encodeURIComponent(monthEnd)}&date_to=gt.${encodeURIComponent(monthStart)}&select=id&limit=1`,
+      { headers: SB_READ, cache: "no-store" },
+    );
+    if (r.ok) { const rows = await r.json().catch(() => []); return Array.isArray(rows) && rows.length > 0; }
+  } catch { /* fail open — never block a publish on a lookup error */ }
+  return false;
+}

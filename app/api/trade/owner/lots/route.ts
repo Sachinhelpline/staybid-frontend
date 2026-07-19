@@ -9,7 +9,7 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, hasActiveModel2Listing } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +69,18 @@ export async function POST(req: NextRequest) {
   const win = computeAuctionWindow(range, cfg);
   if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
 
-  // TAMPER-SAFE: recompute the floor; clamp the owner's min bid UP to it.
-  const floor = await computeMinBidFloorPerNight(roomId, range);
+  // Phase C guardrail: one channel per room-month. If this room is already
+  // listed on Model 2 over the target month, block the Model-3 lot (Circle-
+  // operated overlap only — classic hotels have no Model-2 listings).
+  if (await hasActiveModel2Listing(roomId, range.monthStart, range.monthEnd)) {
+    return NextResponse.json({ error: "This room is already listed on Model 2 for these dates — one channel per month." }, { status: 409 });
+  }
+
+  // TAMPER-SAFE: recompute the floor; for Circle-operated properties apply the
+  // admin floor multiplier (protects Model-2 pricing). Clamp the owner min bid UP.
+  const rawFloor = await computeMinBidFloorPerNight(roomId, range);
+  const isCircle = await isCircleOperatedHotel(hotelId);
+  const floor = effectiveFloor(rawFloor, isCircle, cfg.circleFloorMultiplier);
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
 
