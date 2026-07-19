@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY, SB_READ } from "@/lib/sb";
 import { clearLotDb } from "@/lib/trade/clear-run";
+import { resolveAuctionConfig } from "@/lib/trade/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,5 +82,21 @@ async function run(req: NextRequest) {
     if (ar.ok) { const rows = await ar.json().catch(() => []); liveAwardsExpired = Array.isArray(rows) ? rows.length : 0; }
   } catch { /* non-fatal */ }
 
-  return NextResponse.json({ ok: true, opened, cleared, awards, losers, liveBidsExpired, liveAwardsExpired, ms: Date.now() - started });
+  // Pass D — auto-withdraw STALE pending live bids so an agent is never blocked
+  // by an old bid. A pending (active/countered) live bid older than the offer TTL
+  // (config, default 48h) is expired — the owner didn't act in time. Nothing to
+  // release (no holds pre-pay). The agent can then bid again.
+  let stalePendingExpired = 0;
+  try {
+    const cfg = await resolveAuctionConfig();
+    const ttlMs = (cfg.liveOfferTtlHours > 0 ? cfg.liveOfferTtlHours : 48) * 3_600_000;
+    const cutoff = new Date(Date.now() - ttlMs).toISOString();
+    const pr = await fetch(
+      `${SB_URL}/rest/v1/auction_bids?status=in.(active,countered)&metadata->>sale_mode=eq.live&created_at=lte.${encodeURIComponent(cutoff)}`,
+      { method: "PATCH", headers: { ...SB_W, Prefer: "return=representation" }, body: JSON.stringify({ status: "expired", updated_at: nowIso }) },
+    );
+    if (pr.ok) { const rows = await pr.json().catch(() => []); stalePendingExpired = Array.isArray(rows) ? rows.length : 0; }
+  } catch { /* non-fatal */ }
+
+  return NextResponse.json({ ok: true, opened, cleared, awards, losers, liveBidsExpired, liveAwardsExpired, stalePendingExpired, ms: Date.now() - started });
 }

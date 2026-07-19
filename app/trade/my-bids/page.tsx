@@ -57,6 +57,18 @@ export default function TradeMyBidsPage() {
   const [copied, setCopied] = useState("");
   const [counterBusy, setCounterBusy] = useState("");
 
+  const [cancelBusy, setCancelBusy] = useState("");
+  const cancelBid = useCallback(async (b: any) => {
+    setCancelBusy(b.id); setMsg(null);
+    try {
+      const tok = getTradeToken();
+      const r = await fetch("/api/trade/bids/cancel", { method: "POST", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" }, body: JSON.stringify({ bidId: b.id }) });
+      const d = await r.json();
+      if (!r.ok) { setMsg({ ok: false, text: d.error || "Could not cancel." }); }
+      else { setMsg({ ok: true, text: "Bid withdrawn — you can bid again on this lot." }); load(); }
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setCancelBusy(""); }
+  }, [load]);
+
   const acceptCounter = useCallback(async (b: any) => {
     setCounterBusy(b.id); setMsg(null);
     try {
@@ -157,10 +169,18 @@ export default function TradeMyBidsPage() {
                           {a.status === "voucher_issued" ? (
                             <div className="text-[0.72rem]"><div className="text-green-700 font-bold">Voucher</div><div className="font-mono text-luxury-900">{a.voucher_code}</div></div>
                           ) : a.status === "awarded" ? (
-                            <button onClick={() => payAward(a)} disabled={payingId === a.id}
-                              className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
-                              {payingId === a.id ? "…" : `Pay ${inr(a.amount_due)}`}
-                            </button>
+                            <div className="flex flex-col items-end gap-1.5">
+                              <button onClick={() => payAward(a)} disabled={payingId === a.id}
+                                className="px-3 py-2 rounded-lg font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
+                                {payingId === a.id ? "…" : `Pay ${inr(a.amount_due)}`}
+                              </button>
+                              {(a.metadata?.sale_mode === "live") && a.bid_id && (
+                                <button onClick={() => cancelBid({ id: a.bid_id })} disabled={cancelBusy === a.bid_id}
+                                  className="text-[0.68rem] font-bold text-red-500 disabled:opacity-50">
+                                  {cancelBusy === a.bid_id ? "…" : "Withdraw"}
+                                </button>
+                              )}
+                            </div>
                           ) : <span className="text-[0.72rem] text-luxury-400">{a.status}</span>}
                         </div>
                       </div>
@@ -207,12 +227,20 @@ export default function TradeMyBidsPage() {
                               ? "⚡ Live · no deposit"
                               : `EMD ${inr(b.deposit_amount)}${b.status === "lost" ? " · refund owed" : ""}`}
                           </div>
-                          {b.status === "countered" && Number(b.counter_per_room_per_night) > 0 && (
-                            <button onClick={() => acceptCounter(b)} disabled={counterBusy === b.id}
-                              className="mt-1.5 px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-white disabled:opacity-50" style={{ background: "#6d28d9" }}>
-                              {counterBusy === b.id ? "…" : `Accept counter ${inr(b.counter_per_room_per_night)}/night`}
-                            </button>
-                          )}
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {b.status === "countered" && Number(b.counter_per_room_per_night) > 0 && (
+                              <button onClick={() => acceptCounter(b)} disabled={counterBusy === b.id}
+                                className="px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-white disabled:opacity-50" style={{ background: "#6d28d9" }}>
+                                {counterBusy === b.id ? "…" : `Accept counter ${inr(b.counter_per_room_per_night)}/night`}
+                              </button>
+                            )}
+                            {["active", "countered"].includes(b.status) && (
+                              <button onClick={() => cancelBid(b)} disabled={cancelBusy === b.id}
+                                className="px-3 py-1.5 rounded-lg text-[0.72rem] font-bold text-red-600 border border-red-200 disabled:opacity-50">
+                                {cancelBusy === b.id ? "…" : "Withdraw bid"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <span className="text-[0.7rem] font-bold px-2 py-1 rounded-full self-start" style={{ background: st.bg, color: st.c }}>{st.label}</span>
                       </div>

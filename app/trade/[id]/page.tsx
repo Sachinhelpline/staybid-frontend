@@ -317,13 +317,8 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
           type="range" className="sbt-range"
           min={belowFloorMin} max={sliderMax} step={100} value={Math.min(Math.max(perNight, belowFloorMin), sliderMax)}
           onChange={(e) => setPerNight(Number(e.target.value))}
-          style={{ ["--pct" as any]: `${Math.round(((Math.min(Math.max(perNight, belowFloorMin), sliderMax) - belowFloorMin) / Math.max(1, sliderMax - belowFloorMin)) * 100)}%` }}
+          style={{ ["--pct" as any]: `${Math.round(((Math.min(Math.max(perNight, belowFloorMin), sliderMax) - belowFloorMin) / Math.max(1, sliderMax - belowFloorMin)) * 100)}%`, marginBottom: "12px" }}
         />
-        <div className="sbt-range-ends">
-          <span>Offer {inr(belowFloorMin)}</span>
-          <span>Floor {inr(floor)}</span>
-          {adr > 0 ? <span>Market {inr(adr)}</span> : <span>Max {inr(sliderMax)}</span>}
-        </div>
 
         {/* Quick-pick tiers (like the customer arena's Save / Smart / Instant) */}
         <div className="sbt-picks">
@@ -365,7 +360,14 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
           </div>
         </div>
       )}
-      {msg && <div className={msg.ok ? "sbt-live-ok" : "sbt-err"}>{msg.text}</div>}
+      {msg && (
+        <div className={msg.ok ? "sbt-live-ok" : "sbt-err"}>
+          {msg.text}
+          {!msg.ok && /already have a live bid/i.test(msg.text) && (
+            <button type="button" onClick={() => router.push("/trade/my-bids")} className="sbt-mybids-link">Manage / withdraw it in My Bids →</button>
+          )}
+        </div>
+      )}
       <button className="sbt-btn-gold full" onClick={place} disabled={!seg || tooLow || busy}>
         {busy ? "Placing…" : decision?.kind === "accept" ? "Place bid — locks instantly" : isBelowFloor ? "Send offer to owner" : "Place bid"}
       </button>
@@ -438,6 +440,7 @@ function TourStyles() {
       .sbt-bidbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
       .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
       .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
+      .sbt-mybids-link { display: block; margin-top: 6px; font-size: .78rem; font-weight: 800; color: #a9791f; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; }
       /* ── AI Bid Coach ── */
       .sbt-coach { margin: 10px 0; border: 1px solid rgba(139,105,20,.22); border-radius: 14px; padding: 12px; background: linear-gradient(160deg,#fffdf7,#fbf4e6); }
       .sbt-coach-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }

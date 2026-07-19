@@ -26,6 +26,7 @@ export interface AuctionConfig {
   floorMode: string;             // 'dynamic' (Spine ADR-linked) | 'static' (floorPrice-linked)
   minFloorFraction: number;      // hard anchor: floor never below retail floorPrice × this
   belowFloorMinRatio: number;    // agents may bid down to floor × this (owner-reviewed); below = rejected
+  liveOfferTtlHours: number;     // a pending live bid auto-expires this many hours after placement
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -43,6 +44,7 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   floorMode: "dynamic",       // Spine ADR-linked floor by default (tracks live demand)
   minFloorFraction: 0.6,      // dynamic floor never below retail floorPrice × 0.6
   belowFloorMinRatio: 0.85,   // a below-floor bid is allowed down to floor × 0.85 (owner reviews)
+  liveOfferTtlHours: 48,      // a pending live bid auto-withdraws after 48h if the owner doesn't act
 };
 
 // Discounts are bounded 0–40% (never gut the owner's price); returns fallback otherwise.
@@ -99,6 +101,7 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           floorMode: row.floor_mode === "static" ? "static" : "dynamic",
           minFloorFraction: clampFraction(row.min_floor_fraction, AUCTION_CONFIG_DEFAULT.minFloorFraction),
           belowFloorMinRatio: (() => { const n = Number(row.below_floor_min_ratio); return Number.isFinite(n) && n >= 0.5 && n <= 1 ? n : AUCTION_CONFIG_DEFAULT.belowFloorMinRatio; })(),
+          liveOfferTtlHours: clampInt(row.live_offer_ttl_hours, AUCTION_CONFIG_DEFAULT.liveOfferTtlHours, 1, 720),
         };
         _cache = { at: now, cfg };
         return cfg;

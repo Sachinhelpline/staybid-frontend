@@ -102,6 +102,22 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v381 — Live bid never gets "stuck": self-withdraw + auto-expiry TTL)
+- **An old live bid can never block a new one.** Two safety nets: (1) an agent can **withdraw their own
+  un-paid bid** — `POST /api/trade/bids/cancel` (agent auth; cancellable while `active`/`countered`/`accepted`;
+  an `accepted` bid's minted award (`status=awarded`, un-paid) is cancelled too; a PAID/voucher bid is never
+  touched). (2) The cron **auto-expires stale pending live bids** — `auction-lifecycle` Pass D flips
+  `active`/`countered` live bids older than `live_offer_ttl_hours` (config, default **48h**) to `expired`.
+- **UI:** `/trade/my-bids` — a **Withdraw** button on `active`/`countered` bids AND on `awarded` (accepted-unpaid)
+  live vouchers; `/trade/[id]` the "you already have a live bid" error now links to **Manage / withdraw in My
+  Bids**. Config `live_offer_ttl_hours` admin-tunable in `/admin/auction`. Migration
+  `2026-07-19-v381-live-bid-cancel-ttl.sql`. Verified: cancelling the accepted bid + its award → 0 blocking bids
+  (agent free to re-bid).
+- **Coach polish:** removed the redundant Offer/Floor/Market text labels under the slider (same values are in the
+  cells + picks). Confirmed the Market ADR is **100% real live Spine data** (`room_date_price.live_price` — real
+  per-date rows; this demo room's dynamic price is genuinely ₹2,800–3,400, MRP ₹4,900). Badge v380→**v381**, sw
+  HTML_CACHE v192→v193.
+
 ## Current production state (v380 — Below-floor offers forwarded (customer-parity) + quick-pick tiers)
 - **Below-floor bids are now FORWARDED to the owner (not rejected)** — mirroring the customer negotiation panel
   (a guest can bid below the room floor and the hotel reviews/counters). Bounded: an agent may bid down to
