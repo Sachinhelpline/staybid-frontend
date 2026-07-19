@@ -118,6 +118,17 @@ export function effectiveFloor(rawFloor: number, isCircle: boolean, circleMultip
   return ceil100(rawFloor * circleMultiplier);
 }
 
+// Property-owner WHOLESALE floor = the room's retail floorPrice minus a bulk
+// discount (default 20%). A bulk, advance, guaranteed purchase is worth a real
+// discount below the single-night retail floor, so the agent buys wholesale and
+// resells at the live market ADR with genuine margin. ₹100-snapped, min ₹100.
+// discountPct is clamped 0–40 by the config resolver; a 0 discount ⇒ retail floor.
+export function wholesaleFloor(retailFloorPerNight: number, discountPct: number): number {
+  const retail = Math.max(0, Math.round(Number(retailFloorPerNight) || 0));
+  const pct = Number.isFinite(Number(discountPct)) && Number(discountPct) >= 0 && Number(discountPct) <= 40 ? Number(discountPct) : 20;
+  return Math.max(ceil100(retail * (1 - pct / 100)), 100);
+}
+
 // Circle-OWNER floor = their PURCHASE price per night × the multiplier (1.20 =
 // cover cost + 20% profit). purchasePerNight = their monthly acquisition rate ÷
 // 30 (e.g. ₹30,000/mo → ₹1,000/night → ₹1,200 floor). ₹100-snapped, min ₹100.

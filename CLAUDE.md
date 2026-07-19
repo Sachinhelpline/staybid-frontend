@@ -102,6 +102,25 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v377 — Trade wholesale floor (real margin) + slidable AI coach)
+- **Root fix for "2% margin" (agent had no reason to buy):** the property-owner Model-3 floor was the room's
+  RETAIL `floorPrice` (≈ the room's cheapest retail night), so an agent's floor ≈ the live ADR. Now the
+  property-owner floor is a **WHOLESALE floor = retail floorPrice × (1 − wholesale_discount_pct)** (bulk +
+  advance + guaranteed ⇒ real discount). `auction_config.wholesale_discount_pct` default **20** (admin-tunable
+  in `/admin/auction`, clamped 0–40), optional per-lot override; frozen on `auction_lots.wholesale_discount_pct`
+  + `retail_floor_per_night` at publish (tamper-safe). `wholesaleFloor()` in `lib/trade/lots.ts`; applied in
+  `owner/lots` POST + `owner/quote`. **Circle-owner floor (purchase × 1.20) is UNCHANGED.** Verified: Cave View
+  retail ₹2,800 → wholesale ₹2,240, live ADR ₹2,870 → **22% resale headroom** (was 2%). Migration
+  `2026-07-19-v377-wholesale-floor-discount.sql` (+ reseed of the 3 property demo live lots).
+- **ADR is 100% real, live Spine data** (`room_date_price.live_price` / `resolveSpinePrices` over the lot month,
+  `lots/[id].market`) — NOT fabricated. The coach hides the market panel gracefully if Spine data is missing.
+- **The AI Bid Coach gauge is now a real SLIDABLE price slider** (`app/trade/[id]` `LiveBidBox`): a gradient
+  range input (red floor → green market, gold thumb, touch-friendly) drags the bid between the wholesale floor
+  and the live-market ceiling; live resale-margin % updates as you drag. Plus **Floor / Smart / Market
+  quick-pick tiers** (like the customer arena's Save/Smart/Instant) and a market panel showing Retail floor →
+  Your wholesale floor → Market ADR (live) → range. Owner "Sell to Agents" tab explains the wholesale floor.
+  Badge v376→**v377**, sw HTML_CACHE v188→v189.
+
 ## Current production state (v376 — Trade AI Bid Coach + phone step without OTP)
 - **Trade LIVE bid box now has an "AI Bid Coach" (stock-style market intelligence)** so agents don't just bid the
   floor: `app/trade/[id]` `LiveBidBox` shows the room's REAL guest market price (ADR + low/high, from the new

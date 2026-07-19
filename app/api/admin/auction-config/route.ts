@@ -49,6 +49,7 @@ export async function POST(req: Request) {
   if (body.liveDefaultAutopilot !== undefined) {
     patch.live_default_autopilot = ["auto", "hybrid", "manual"].includes(body.liveDefaultAutopilot) ? body.liveDefaultAutopilot : cur.liveDefaultAutopilot;
   }
+  if (body.wholesaleDiscountPct !== undefined) patch.wholesale_discount_pct = clampInt(body.wholesaleDiscountPct, cur.wholesaleDiscountPct, 0, 40);
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,

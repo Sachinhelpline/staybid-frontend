@@ -22,6 +22,7 @@ export interface AuctionConfig {
   livePayWindowHours: number;    // LIVE mode: agent's pay window after an accept
   liveDefaultAutopilot: string;  // LIVE mode: default autopilot pre-selected in the owner form
   liveHybridAcceptRatio: number; // LIVE hybrid: auto-accept a bid ≥ floor × this ratio
+  wholesaleDiscountPct: number;  // property-owner floor = room floorPrice × (1 − pct/100)
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -35,6 +36,13 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   livePayWindowHours: 24,     // accept → 24h to pay from the agent dashboard
   liveDefaultAutopilot: "hybrid",
   liveHybridAcceptRatio: 1.1, // hybrid auto-accepts a bid ≥ floor × 1.10 (at-floor waits)
+  wholesaleDiscountPct: 20,   // property-owner wholesale floor = retail floorPrice − 20%
+};
+
+// Discounts are bounded 0–40% (never gut the owner's price); returns fallback otherwise.
+const clampDiscount = (v: any, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 40 ? n : fallback;
 };
 
 const clampMult = (v: any, fallback: number) => {
@@ -76,6 +84,7 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           livePayWindowHours: clampInt(row.live_pay_window_hours, AUCTION_CONFIG_DEFAULT.livePayWindowHours, 1, 336),
           liveDefaultAutopilot: (row.live_default_autopilot === "auto" || row.live_default_autopilot === "manual" || row.live_default_autopilot === "hybrid") ? row.live_default_autopilot : "hybrid",
           liveHybridAcceptRatio: clampMult(row.live_hybrid_accept_ratio, AUCTION_CONFIG_DEFAULT.liveHybridAcceptRatio),
+          wholesaleDiscountPct: clampDiscount(row.wholesale_discount_pct, AUCTION_CONFIG_DEFAULT.wholesaleDiscountPct),
         };
         _cache = { at: now, cfg };
         return cfg;

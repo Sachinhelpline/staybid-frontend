@@ -9,7 +9,7 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, activeUnitCount } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, wholesaleFloor, activeUnitCount } from "@/lib/trade/lots";
 import { normalizeAutopilotMode } from "@/lib/trade/live-auction";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +114,8 @@ export async function POST(req: NextRequest) {
   const isCircle = await isCircleOperatedHotel(hotelId);
   let floor: number;
   let purchasePerNight: number | null = null;
+  let retailFloor: number | null = null;
+  let wholesaleDiscountPct: number | null = null;
   if (isCircle) {
     purchasePerNight = Math.round(
       Number(body.purchasePricePerNight) > 0
@@ -125,7 +127,13 @@ export async function POST(req: NextRequest) {
     }
     floor = circleOwnerFloor(purchasePerNight, cfg.circleFloorMultiplier);
   } else {
-    floor = await computeMinBidFloorPerNight(roomId, range);
+    // Property owner: retail floorPrice → WHOLESALE floor (bulk discount below
+    // retail so the agent has real resale margin). Discount is admin-configured
+    // (or a per-lot override, clamped 0–40); frozen on the lot (tamper-safe).
+    retailFloor = await computeMinBidFloorPerNight(roomId, range);
+    const askedDiscount = body.wholesaleDiscountPct !== undefined ? Number(body.wholesaleDiscountPct) : cfg.wholesaleDiscountPct;
+    wholesaleDiscountPct = Number.isFinite(askedDiscount) && askedDiscount >= 0 && askedDiscount <= 40 ? askedDiscount : cfg.wholesaleDiscountPct;
+    floor = wholesaleFloor(retailFloor, wholesaleDiscountPct);
   }
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
@@ -147,12 +155,19 @@ export async function POST(req: NextRequest) {
     num_rooms: numRooms,
     min_bid_per_room_night: minBid,
     purchase_price_per_night: purchasePerNight,
+    retail_floor_per_night: retailFloor,
+    wholesale_discount_pct: wholesaleDiscountPct,
     sale_mode: saleMode,
     autopilot_mode: autopilotMode,
     window_open_at: windowOpenAt,
     window_close_at: windowCloseAt,
     status,
-    metadata: { floor_at_publish: floor, published_by: scope.userId, owner_kind: isCircle ? "circle_owner" : "property_owner", sale_mode: saleMode, autopilot_mode: autopilotMode },
+    metadata: {
+      floor_at_publish: floor, published_by: scope.userId,
+      owner_kind: isCircle ? "circle_owner" : "property_owner",
+      sale_mode: saleMode, autopilot_mode: autopilotMode,
+      ...(retailFloor != null ? { retail_floor: retailFloor, wholesale_discount_pct: wholesaleDiscountPct } : {}),
+    },
   };
 
   // One live lot per (hotel,room,month) — the partial unique index rejects dupes.
