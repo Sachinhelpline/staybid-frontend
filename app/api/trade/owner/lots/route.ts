@@ -9,7 +9,7 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, effectiveFloor, activeUnitCount } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, activeUnitCount } from "@/lib/trade/lots";
 
 export const dynamic = "force-dynamic";
 
@@ -79,11 +79,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Only ${unitCount} units exist in this room category — reduce the room count.` }, { status: 400 });
   }
 
-  // TAMPER-SAFE: recompute the floor; for Circle-operated properties apply the
-  // admin floor multiplier (protects Model-2 pricing). Clamp the owner min bid UP.
-  const rawFloor = await computeMinBidFloorPerNight(roomId, range);
+  // TAMPER-SAFE floor by OWNER TYPE:
+  //  • Circle owner (host_circle): floor = THEIR purchase price/night × 1.20
+  //    (cover cost + profit). Purchase = monthly rate ÷ 30, supplied at publish.
+  //  • Property owner (classic):   floor = the room's normal floorPrice.
   const isCircle = await isCircleOperatedHotel(hotelId);
-  const floor = effectiveFloor(rawFloor, isCircle, cfg.circleFloorMultiplier);
+  let floor: number;
+  let purchasePerNight: number | null = null;
+  if (isCircle) {
+    purchasePerNight = Math.round(
+      Number(body.purchasePricePerNight) > 0
+        ? Number(body.purchasePricePerNight)
+        : (Number(body.monthlyRate) > 0 ? Number(body.monthlyRate) / 30 : 0),
+    );
+    if (!purchasePerNight || purchasePerNight <= 0) {
+      return NextResponse.json({ error: "Enter your purchase price per night (your monthly rate ÷ 30)." }, { status: 400 });
+    }
+    floor = circleOwnerFloor(purchasePerNight, cfg.circleFloorMultiplier);
+  } else {
+    floor = await computeMinBidFloorPerNight(roomId, range);
+  }
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
 
@@ -103,10 +118,11 @@ export async function POST(req: NextRequest) {
     month_end: range.monthEnd,
     num_rooms: numRooms,
     min_bid_per_room_night: minBid,
+    purchase_price_per_night: purchasePerNight,
     window_open_at: win.windowOpenAt,
     window_close_at: win.windowCloseAt,
     status,
-    metadata: { floor_at_publish: floor, published_by: scope.userId },
+    metadata: { floor_at_publish: floor, published_by: scope.userId, owner_kind: isCircle ? "circle_owner" : "property_owner" },
   };
 
   // One live lot per (hotel,room,month) — the partial unique index rejects dupes.

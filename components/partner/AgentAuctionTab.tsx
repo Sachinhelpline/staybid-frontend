@@ -47,11 +47,19 @@ export default function AgentAuctionTab({
   const [win, setWin] = useState<UpMonth | null>(null);
   const [conflict, setConflict] = useState(false);
   const [circleOwner, setCircleOwner] = useState(false);
+  const [circleMult, setCircleMult] = useState(1.2);
+  const [monthlyRate, setMonthlyRate] = useState<number | "">(""); // Circle owner's monthly purchase rate
   const [quoting, setQuoting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const selectedRoom = useMemo(() => rooms.find((r) => r.id === roomId), [rooms, roomId]);
+
+  // Circle owner: purchase/night = monthly rate ÷ 30; floor = purchase × multiplier.
+  const purchasePerNight = circleOwner && monthlyRate !== "" ? Math.round(Number(monthlyRate) / 30) : 0;
+  const effFloor: number | null = circleOwner
+    ? (purchasePerNight > 0 ? Math.max(Math.ceil((purchasePerNight * circleMult) / 100) * 100, 100) : null)
+    : floor;
 
   const loadLots = useCallback(async () => {
     try {
@@ -94,7 +102,8 @@ export default function AgentAuctionTab({
           setWin(d.window ? { ...(d.range || {}), ...d.window } as any : null);
           setConflict(!!d.model2Conflict);
           setCircleOwner(!!d.circleOperated);
-          setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
+          if (d.circleFloorMultiplier) setCircleMult(Number(d.circleFloorMultiplier) || 1.2);
+          if (d.minBidPerRoomNight != null) setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
         } else { setMsg({ ok: false, text: d.error || "Quote failed." }); }
       } catch { /* ignore */ } finally { if (!cancelled) setQuoting(false); }
     })();
@@ -102,14 +111,15 @@ export default function AgentAuctionTab({
   }, [hotelId, roomId, monthKey]);
 
   const publish = async () => {
-    if (!roomId || !monthKey || !floor) return;
+    if (!roomId || !monthKey || !effFloor) return;
     setPublishing(true); setMsg(null);
     try {
       const r = await fetch("/api/trade/owner/lots", {
         method: "POST", headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           hotelId, roomId, monthKey, numRooms,
-          minBidPerRoomNight: minBid === "" ? floor : Number(minBid),
+          minBidPerRoomNight: minBid === "" ? effFloor : Number(minBid),
+          monthlyRate: circleOwner && monthlyRate !== "" ? Number(monthlyRate) : undefined,
           category: selectedRoom?.name || null, city: city || null,
         }),
       });
@@ -177,20 +187,36 @@ export default function AgentAuctionTab({
           </label>
           <label className="text-sm">
             <span className="text-luxury-500 font-semibold">Min bid / room / night {quoting && <span className="text-luxury-400">…</span>}</span>
-            <input type="number" min={floor || 0} value={minBid}
+            <input type="number" min={effFloor || 0} value={minBid}
               onChange={(e) => setMinBid(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder={floor ? String(floor) : "—"}
+              placeholder={effFloor ? String(effFloor) : "—"}
               className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm" />
-            {floor != null && (
+            {effFloor != null ? (
               <span className="text-[0.72rem] text-luxury-400 mt-0.5 block">
-                StayBid floor: <b>{inr(floor)}</b>/room/night — can't go below this.
+                StayBid floor: <b>{inr(effFloor)}</b>/room/night — can't go below this.
                 {circleOwner
-                  ? " Circle-operated inventory: floor = your cost + 20% (covers your purchase + profit)."
-                  : " Property-owner inventory: floor = your room's floor price."}
+                  ? ` Circle inventory: floor = your purchase (${inr(purchasePerNight)}/night) × ${circleMult} = cost + ${Math.round((circleMult - 1) * 100)}% profit.`
+                  : " Property owner: floor = your room's floor price."}
               </span>
-            )}
+            ) : circleOwner ? (
+              <span className="text-[0.72rem] text-amber-600 mt-0.5 block">Enter your monthly purchase rate below to compute the floor.</span>
+            ) : null}
           </label>
         </div>
+
+        {/* Circle owner: purchase price → floor = purchase/night × multiplier */}
+        {circleOwner && (
+          <label className="text-sm block">
+            <span className="text-luxury-500 font-semibold">Your monthly purchase rate (₹ / room / month)</span>
+            <input type="number" min={0} value={monthlyRate}
+              onChange={(e) => setMonthlyRate(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="e.g. 30000"
+              className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm" />
+            <span className="text-[0.72rem] text-luxury-400 mt-0.5 block">
+              This is what you paid to own the room. Per night = ÷ 30{purchasePerNight > 0 ? ` = ${inr(purchasePerNight)}` : ""}. Your floor = that × {circleMult}.
+            </span>
+          </label>
+        )}
 
         {win && (
           <div className="text-[0.78rem] text-luxury-500 bg-luxury-50 rounded-lg px-3 py-2">
@@ -210,7 +236,7 @@ export default function AgentAuctionTab({
           <div className={`text-sm rounded-lg px-3 py-2 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>{msg.text}</div>
         )}
 
-        <button onClick={publish} disabled={!roomId || !monthKey || !floor || publishing}
+        <button onClick={publish} disabled={!roomId || !monthKey || !effFloor || publishing}
           className="px-5 py-2.5 rounded-xl font-bold text-white disabled:opacity-50"
           style={{ background: "linear-gradient(135deg,#c9911a,#f0b429)" }}>
           {publishing ? "Publishing…" : "Publish auction lot"}

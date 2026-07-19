@@ -122,12 +122,15 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   one channel drops out of the other's free-unit set). `hasActiveModel2Listing` is now INFO-only (owner tab
   shows "also on Model 2, both run together" — never blocks). Publish enforces a **physical-capacity cap**
   (`activeUnitCount` — a lot can't promise more rooms than units exist; 0-unit classic rooms self-regulate at
-  booking). (2) **Owner-type min-bid floor (v372):** `computeMinBidFloorPerNight` now returns the room's NORMAL
-  `floorPrice` (the property owner's stated minimum — NOT the same-day flash floor, which is for last-minute
-  liquidation + usually NULL). For `host_circle` (Circle-owner) inventory the publish route multiplies it by
-  `auction_config.circle_floor_multiplier` (migration `2026-07-19-v372`, **default 1.20** = purchase cost + 20%
-  profit) via `effectiveFloor()`, so a Circle owner covers their cost + margin and can't undercut Model-2.
-  Property-owner lots = floorPrice × 1. Admin tunes the multiplier in `/admin/auction` ("Circle floor ×").
+  booking). (2) **Owner-type min-bid floor (v372/v373):** floor depends on WHO lists.
+  • **Property owner** (classic) → floor = room's NORMAL `floorPrice` (`computeMinBidFloorPerNight`; NOT the
+    same-day flash floor — that's for last-minute liquidation + usually NULL).
+  • **Circle owner** (`host_circle`) → floor = **their PURCHASE price/night × `circle_floor_multiplier`**
+    (default **1.20** = cost + 20% profit), via `circleOwnerFloor()`. Purchase/night = their monthly acquisition
+    rate ÷ 30 (e.g. ₹30k/mo → ₹1,000 → ₹1,200 floor). `circle_properties.monthly_rate` is NOT linked to the
+    hotels Model-3 uses, so the Circle owner SUPPLIES their monthly rate in the "Sell to Agents" form; it's frozen
+    on `auction_lots.purchase_price_per_night` (migration `2026-07-19-v373`). Admin tunes the multiplier in
+    `/admin/auction` ("Circle floor ×"). Detection = `isCircleOperatedHotel` (`hotels.owner_type='host_circle'`).
 - **⚠ Known follow-up:** `owner_user_id` is a permanent unit stamp; for recurring monthly auctions on the SAME
   unit, `assignFreeUnit` prefers unowned units (per-month rotation/expiry is a documented refinement). Per-unit
   GUEST listings only surface on `host_circle` hotels (`account_type!='hotel_owner'`); classic hotels get
