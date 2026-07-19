@@ -102,6 +102,30 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v388 — Circle settlement S1: attribution resolver + projected earnings (read-only))
+- **First phase of the money attribution/settlement layer (design in `docs/CIRCLE-SETTLEMENT-ATTRIBUTION-DESIGN.md`).
+  PURE + READ-ONLY — writes nothing, moves no money.** Closes the "who earns this unit-night" gap in code
+  without touching any money path.
+- **NEW `lib/circle/attribution.ts`** — the single source of truth resolver. `resolveNightlyPayees(nights, ctx)`
+  resolves a payee PER NIGHT by precedence: ① an `inventory_blocks` overlay (owned/listed) covering that unit+date
+  → `investor_user_id` (the TRANSFERABLE commercial right); ② else `hotel_room_units.owner_user_id`; ③ else the
+  hotel owner, unless a Circle-ops sentinel (`STAYBID_CIRCLE_OPS`/`hco_`) → null (StayBid retains). **SEBI-safe by
+  construction** — reads the transferable `investor_user_id`, never the frozen `owner_user_id`. `enumerateNights`
+  is checkout-EXCLUSIVE. `CIRCLE_BOOKING_FEE_PCT_DEFAULT=12` is illustrative-only (committed fee = S2 decision).
+  6/6 algorithm cases verified (night-exclusive, block-overlay split, pending-block ignored, sentinel-retained,
+  classic-hotel-owner).
+- **NEW `GET /api/circle/projected-earnings`** (customer sb_token → cross-pool ids) — projects what the owner
+  WOULD be owed from real confirmed bookings: owner units ∪ owned blocks → bids on those units → paid bookings
+  (`bidId` join, non-cancelled) → resolve per-night payee → keep the owner's nights → pro-rate `paidAmount` ×
+  (1−fee). All reads; returns `{projectedNetOwed, projectedGross, bookingCount, nightsCount, feePct, items}`.
+- **`app/circle/earnings`** — a **📈 "Projected from your live bookings" PREVIEW** panel (net/gross/bookings·nights
+  + line items), shown only when `bookingCount>0`, clearly labelled illustrative / "nothing recorded or paid yet".
+- ⚠ **NOT built (S2/S3, pending owner decisions):** the owed `settlement_ledger` write at booking-confirm (kind
+  `guest_booking`, authoritative in Railway) + payout execution (RazorpayX/Route) + refund reversal. 4 open owner
+  decisions: fee %, StayBid-retained nights, payout rail, escrow. `bookings` are Railway-owned; the resolver is
+  mirrored there for the authoritative write.
+- `tsc` + `next build` clean. Badge v387→**v388**, sw HTML_CACHE v199→v200.
+
 ## Current production state (v387 — Circle Phase 2: B2C one-tap "list all" on purchase (owner decision 1a))
 - **Phase 2 of the cross-model selling audit — the new owner's inventory is one-tap B2C-available on purchase**
   (owner picked option 1a: one-tap available, NOT force auto-list; and accepted the boundary that resale-buyer

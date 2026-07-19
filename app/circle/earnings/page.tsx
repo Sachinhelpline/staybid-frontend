@@ -37,6 +37,7 @@ export default function CircleEarningsPage() {
 
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [projected, setProjected] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,6 +52,11 @@ export default function CircleEarningsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    // Read-only projection from real confirmed bookings (S1 — never a money write).
+    fetch("/api/circle/projected-earnings", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d && !d.error) setProjected(d); })
+      .catch(() => {});
   }, [user]);
 
   const totalPaid = Number(kpis?.totalPaidOut || 0);
@@ -101,6 +107,32 @@ export default function CircleEarningsPage() {
               <span style={{ fontSize: "1rem" }}>⏳</span>
               <span><b>{fmtINR(pendingTotal)}</b> pending — will be credited on the next payout cycle.</span>
             </div>
+          )}
+
+          {/* Projected from live bookings — READ-ONLY preview (S1). No money recorded. */}
+          {projected && Number(projected.bookingCount) > 0 && (
+            <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, overflow: "hidden", background: "linear-gradient(160deg,#fffdf7,#fbf4e6)" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "13px 15px 0" }}>
+                <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>📈 Projected from your live bookings</div>
+                <span style={{ fontSize: ".62rem", fontWeight: 800, color: "#a9791f", background: "rgba(201,166,107,.16)", padding: "3px 9px", borderRadius: 999 }}>PREVIEW</span>
+              </div>
+              <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "8px 15px 4px" }}>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>PROJECTED NET</div><b style={{ fontSize: "1.35rem", color: "#047857" }}>{fmtINR(Number(projected.projectedNetOwed) || 0)}</b></div>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>GROSS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)" }}>{fmtINR(Number(projected.projectedGross) || 0)}</b></div>
+                <div><div style={{ fontSize: ".6rem", fontWeight: 800, letterSpacing: ".05em", color: "rgba(74,56,32,.55)" }}>BOOKINGS · NIGHTS</div><b style={{ fontSize: "1.35rem", color: "var(--sbc-coffee)" }}>{Number(projected.bookingCount) || 0} · {Number(projected.nightsCount) || 0}</b></div>
+              </div>
+              <div style={{ display: "grid", gap: 6, padding: "6px 15px 4px" }}>
+                {(projected.items || []).slice(0, 6).map((it: any) => (
+                  <div key={it.bookingId} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: ".78rem", color: "rgba(74,56,32,.85)" }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.hotelName} · {it.checkIn} → {it.checkOut} · {it.nights}n</span>
+                    <b style={{ color: "#047857", whiteSpace: "nowrap" }}>{fmtINR(Number(it.net) || 0)}</b>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: ".64rem", lineHeight: 1.5, color: "rgba(74,56,32,.6)", margin: 0, padding: "8px 15px 13px" }}>
+                Illustrative at a {Number(projected.feePct) || 12}% platform fee — the committed fee and actual payout are set in the settlement phase. <b>Nothing has been recorded or paid yet.</b>
+              </p>
+            </section>
           )}
 
           <p className="sbc-earn-note" style={{ marginTop: 12 }}>
