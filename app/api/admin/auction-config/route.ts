@@ -50,6 +50,11 @@ export async function POST(req: Request) {
     patch.live_default_autopilot = ["auto", "hybrid", "manual"].includes(body.liveDefaultAutopilot) ? body.liveDefaultAutopilot : cur.liveDefaultAutopilot;
   }
   if (body.wholesaleDiscountPct !== undefined) patch.wholesale_discount_pct = clampInt(body.wholesaleDiscountPct, cur.wholesaleDiscountPct, 0, 40);
+  if (body.floorMode !== undefined) patch.floor_mode = body.floorMode === "static" ? "static" : "dynamic";
+  if (body.minFloorFraction !== undefined) {
+    const n = Number(body.minFloorFraction);
+    patch.min_floor_fraction = Number.isFinite(n) && n >= 0.4 && n <= 1 ? n : cur.minFloorFraction;
+  }
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,
