@@ -102,6 +102,17 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v382 — Agent coach: Rack Rate + Est. Profit (hide internal floors))
+- **The agent AI coach hides the internal floor math and sells the OPPORTUNITY.** The `RETAIL FLOOR` +
+  `YOUR WHOLESALE FLOOR` cells (confusing for an agent) are replaced with **RACK RATE** (the room's list/rack
+  rate = MRP-equivalent, `max(room_date_price.base_rate)` — Cave View ₹4,900), **GUESTS PAY (LIVE)** (the real
+  Spine ADR), **EST. PROFIT** (a big ₹ number = `(ADR − bid) × nights × rooms`, with an "up to ₹X" peak using the
+  market high), and MARKET RANGE. The slider header shows **≈ ₹{profit} profit** (green) instead of a bare %.
+  `lib/trade/market.ts` `monthMarket` now also returns `rack` (max base_rate; falls back to peak×1.6). All
+  numbers are 100% real Spine data. Owner tab keeps the retail/wholesale/anchor breakdown (they need it to set
+  the discount). Verified (Cave View): Rack ₹4,900 · ADR ₹2,867 · Smart ₹2,645 → Est. profit ₹6,660 (up to
+  ₹19,650); Save Big ₹2,100 → ₹23,010. Badge v381→**v382**, sw HTML_CACHE v193→v194.
+
 ## Current production state (v381 — Live bid never gets "stuck": self-withdraw + auto-expiry TTL)
 - **An old live bid can never block a new one.** Two safety nets: (1) an agent can **withdraw their own
   un-paid bid** — `POST /api/trade/bids/cancel` (agent auth; cancellable while `active`/`countered`/`accepted`;

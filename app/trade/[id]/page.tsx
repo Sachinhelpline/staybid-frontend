@@ -188,7 +188,7 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
   );
 }
 
-function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailable }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number; belowFloorMinRatio?: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null; roomsAvailable?: number }) {
+function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailable }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number; belowFloorMinRatio?: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number; rack?: number } | null; roomsAvailable?: number }) {
   const router = useRouter();
   const [segKey, setSegKey] = useState(segments[0] ? segId(segments[0]) : "");
   const [perNight, setPerNight] = useState<number>(lot.min_bid_per_room_night);
@@ -213,6 +213,12 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
   const adr = Math.round(Number(market?.adr) || 0);           // real live guest ADR (Spine)
   const mktLow = Math.round(Number(market?.low) || 0);
   const mktHigh = Math.round(Number(market?.high) || 0);
+  const rack = Math.round(Number(market?.rack) || 0);         // room's list/rack rate (MRP-equivalent)
+  // Expected profit: buy at your bid, resell to guests at the live market. Total
+  // over the whole segment × rooms (a big rupee number is clearer than a %).
+  const nightsSel = seg?.nights || 0;
+  const expectedProfit = Math.max(0, (adr > perNight ? adr - perNight : 0) * nightsSel * rooms);
+  const peakProfit = Math.max(0, (mktHigh > perNight ? mktHigh - perNight : 0) * nightsSel * rooms);
   // The retail floor the wholesale floor was cut from (property lots). Circle lots
   // have none → fall back to the market low or the floor itself.
   const retailFloor = Math.round(Number(lot.retail_floor_per_night) || Number(lot.metadata?.retail_floor) || 0) || (mktLow > floor ? mktLow : 0);
@@ -309,9 +315,11 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
         {/* Slidable price — drag between the wholesale floor and the live market */}
         <div className="sbt-slider-val">
           {inr(perNight)}<span>/room/night</span>
-          {headroomPct != null && perNight >= floor && (
-            <em className="sbt-slider-margin" style={{ color: headroomPct > 0 ? "#059669" : "#b45309" }}>{headroomPct > 0 ? `${headroomPct}% resale margin` : "at market"}</em>
-          )}
+          {expectedProfit > 0
+            ? <em className="sbt-slider-margin" style={{ color: "#059669" }}>≈ {inr(expectedProfit)} profit</em>
+            : headroomPct != null && perNight >= floor && (
+              <em className="sbt-slider-margin" style={{ color: "#b45309" }}>at market</em>
+            )}
         </div>
         <input
           type="range" className="sbt-range"
@@ -335,13 +343,13 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
         {/* Real market intelligence (100% live Spine data) */}
         {adr > 0 ? (
           <div className="sbt-mkt">
-            {retailFloor > floor && <div className="sbt-mkt-cell"><span>RETAIL FLOOR</span><b>{inr(retailFloor)}</b></div>}
-            <div className="sbt-mkt-cell"><span>YOUR WHOLESALE FLOOR</span><b>{inr(floor)}</b></div>
-            <div className="sbt-mkt-cell"><span>MARKET ADR (LIVE)</span><b>{inr(adr)}</b></div>
+            {rack > adr && <div className="sbt-mkt-cell"><span>RACK RATE</span><b>{inr(rack)}</b></div>}
+            <div className="sbt-mkt-cell"><span>GUESTS PAY (LIVE)</span><b>{inr(adr)}</b></div>
+            <div className="sbt-mkt-cell sbt-mkt-profit"><span>EST. PROFIT{nightsSel ? ` · ${nightsSel}N` : ""}</span><b>{inr(expectedProfit)}</b>{peakProfit > expectedProfit && <em>up to {inr(peakProfit)}</em>}</div>
             <div className="sbt-mkt-cell"><span>MARKET RANGE</span><b>{inr(mktLow)}–{inr(mktHigh)}</b></div>
           </div>
         ) : (
-          <div className="sbt-mkt"><div className="sbt-mkt-cell"><span>YOUR WHOLESALE FLOOR</span><b>{inr(floor)}</b></div></div>
+          <div className="sbt-mkt"><div className="sbt-mkt-cell"><span>YOUR FLOOR</span><b>{inr(floor)}</b></div></div>
         )}
         <div className="sbt-coach-tip">{coachLine}</div>
       </div>
@@ -468,6 +476,9 @@ function TourStyles() {
       .sbt-mkt-cell { background: #fff; border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
       .sbt-mkt-cell span { display: block; font-size: .54rem; letter-spacing: .05em; color: rgba(74,56,32,.5); font-weight: 800; }
       .sbt-mkt-cell b { font-size: .92rem; color: #3a2c17; font-weight: 800; }
+      .sbt-mkt-profit { background: #ecfdf5; border-color: #a7f3d0; }
+      .sbt-mkt-profit b { color: #047857; }
+      .sbt-mkt-profit em { display: block; font-style: normal; font-size: .58rem; font-weight: 700; color: #059669; }
       .sbt-coach-tip { font-size: .74rem; color: rgba(74,56,32,.78); line-height: 1.45; margin-top: 9px; }
       .sbt-field { display: block; margin-bottom: 11px; }
       .sbt-field > span { font-size: .78rem; font-weight: 700; color: rgba(74,56,32,.7); display: block; margin-bottom: 4px; }
