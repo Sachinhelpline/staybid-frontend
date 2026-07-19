@@ -43,6 +43,12 @@ export async function POST(req: Request) {
   if (body.windowOpenDay !== undefined)   patch.window_open_day   = clampInt(body.windowOpenDay, cur.windowOpenDay, 1, 28);
   if (body.payWindowHours !== undefined)  patch.pay_window_hours  = clampInt(body.payWindowHours, cur.payWindowHours, 1, 336);
   if (body.circleFloorMultiplier !== undefined) patch.circle_floor_multiplier = clampMult(body.circleFloorMultiplier, cur.circleFloorMultiplier);
+  // LIVE-mode knobs (always-open bulk auction).
+  if (body.livePayWindowHours !== undefined) patch.live_pay_window_hours = clampInt(body.livePayWindowHours, cur.livePayWindowHours, 1, 336);
+  if (body.liveHybridAcceptRatio !== undefined) patch.live_hybrid_accept_ratio = clampMult(body.liveHybridAcceptRatio, cur.liveHybridAcceptRatio);
+  if (body.liveDefaultAutopilot !== undefined) {
+    patch.live_default_autopilot = ["auto", "hybrid", "manual"].includes(body.liveDefaultAutopilot) ? body.liveDefaultAutopilot : cur.liveDefaultAutopilot;
+  }
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,
