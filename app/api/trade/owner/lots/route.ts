@@ -10,6 +10,7 @@ import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
 import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, activeUnitCount } from "@/lib/trade/lots";
+import { normalizeAutopilotMode } from "@/lib/trade/live-auction";
 
 export const dynamic = "force-dynamic";
 
@@ -66,8 +67,35 @@ export async function POST(req: NextRequest) {
   if (!range) return NextResponse.json({ error: "Invalid month." }, { status: 400 });
 
   const cfg = await resolveAuctionConfig();
-  const win = computeAuctionWindow(range, cfg);
-  if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
+
+  // Sale mode: 'live' (always-open, autopilot, no EMD — the new launch default)
+  // or 'sealed' (the monthly sealed-bid auction with an EMD + clearing engine).
+  const saleMode = String(body.saleMode) === "sealed" ? "sealed" : "live";
+  const autopilotMode = normalizeAutopilotMode(body.autopilotMode ?? cfg.liveDefaultAutopilot);
+
+  // Window timing differs by mode:
+  //  • sealed → the admin window (opens on windowOpenDay of the prev month,
+  //    closes when the month begins); reject if that window has already passed.
+  //  • live   → ALWAYS OPEN from publish; bids accepted until the inventory
+  //    month ends. Reject only if the whole month is already in the past.
+  const now = new Date();
+  let windowOpenAt: string;
+  let windowCloseAt: string;
+  let phase: "open" | "scheduled";
+  if (saleMode === "sealed") {
+    const win = computeAuctionWindow(range, cfg);
+    if (win.phase === "past") return NextResponse.json({ error: "That month's auction window has closed." }, { status: 400 });
+    windowOpenAt = win.windowOpenAt;
+    windowCloseAt = win.windowCloseAt;
+    phase = win.phase === "open" ? "open" : "scheduled";
+  } else {
+    if (new Date(range.monthEnd + "T00:00:00Z").getTime() <= now.getTime()) {
+      return NextResponse.json({ error: "That month has already ended." }, { status: 400 });
+    }
+    windowOpenAt = now.toISOString();
+    windowCloseAt = new Date(range.monthEnd + "T00:00:00Z").toISOString(); // bids accepted through the month
+    phase = "open"; // live lots are biddable immediately
+  }
 
   // Model 2 & Model 3 may run CONCURRENTLY on the same property — the shared
   // physical layer (assignFreeUnit + inventory_blocks + room_blocks holds)
@@ -102,9 +130,9 @@ export async function POST(req: NextRequest) {
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
 
-  // status: scheduled (window not open yet) or open (within window). Cron flips
-  // scheduled→open→closed later; direct-publish honours the current window.
-  const status = win.phase === "open" ? "open" : "draft";
+  // status: open (biddable now) or draft (sealed lot whose window hasn't opened).
+  // Live lots are always 'open'; cron flips a scheduled sealed lot open→closed.
+  const status = phase === "open" ? "open" : "draft";
 
   const row = {
     id: genId("lot"),
@@ -119,10 +147,12 @@ export async function POST(req: NextRequest) {
     num_rooms: numRooms,
     min_bid_per_room_night: minBid,
     purchase_price_per_night: purchasePerNight,
-    window_open_at: win.windowOpenAt,
-    window_close_at: win.windowCloseAt,
+    sale_mode: saleMode,
+    autopilot_mode: autopilotMode,
+    window_open_at: windowOpenAt,
+    window_close_at: windowCloseAt,
     status,
-    metadata: { floor_at_publish: floor, published_by: scope.userId, owner_kind: isCircle ? "circle_owner" : "property_owner" },
+    metadata: { floor_at_publish: floor, published_by: scope.userId, owner_kind: isCircle ? "circle_owner" : "property_owner", sale_mode: saleMode, autopilot_mode: autopilotMode },
   };
 
   // One live lot per (hotel,room,month) — the partial unique index rejects dupes.
@@ -139,5 +169,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Publish failed.", detail: t }, { status: 500 });
   }
   const [lot] = await r.json().catch(() => []);
-  return NextResponse.json({ ok: true, lot, floor, scheduledOpensAt: win.windowOpenAt, phase: win.phase });
+  return NextResponse.json({ ok: true, lot, floor, saleMode, autopilotMode, scheduledOpensAt: windowOpenAt, phase });
 }
