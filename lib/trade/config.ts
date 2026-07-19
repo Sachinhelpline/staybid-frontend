@@ -19,6 +19,9 @@ export interface AuctionConfig {
   payWindowHours: number;   // winner's balance-pay window after clearing
   minBidFloorMode: string;  // 'spine' = Spine bidFloor is the hard floor
   circleFloorMultiplier: number; // Model-3 floor × for host_circle lots (protects Model-2)
+  livePayWindowHours: number;    // LIVE mode: agent's pay window after an accept
+  liveDefaultAutopilot: string;  // LIVE mode: default autopilot pre-selected in the owner form
+  liveHybridAcceptRatio: number; // LIVE hybrid: auto-accept a bid ≥ floor × this ratio
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -29,6 +32,9 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   payWindowHours: 48,
   minBidFloorMode: "spine",
   circleFloorMultiplier: 1.2, // Circle-owner floor = purchase cost × 1.20 (cover + 20% profit)
+  livePayWindowHours: 24,     // accept → 24h to pay from the agent dashboard
+  liveDefaultAutopilot: "hybrid",
+  liveHybridAcceptRatio: 1.1, // hybrid auto-accepts a bid ≥ floor × 1.10 (at-floor waits)
 };
 
 const clampMult = (v: any, fallback: number) => {
@@ -67,6 +73,9 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           payWindowHours: clampInt(row.pay_window_hours, AUCTION_CONFIG_DEFAULT.payWindowHours, 1, 336),
           minBidFloorMode: typeof row.min_bid_floor_mode === "string" ? row.min_bid_floor_mode : "spine",
           circleFloorMultiplier: clampMult(row.circle_floor_multiplier, AUCTION_CONFIG_DEFAULT.circleFloorMultiplier),
+          livePayWindowHours: clampInt(row.live_pay_window_hours, AUCTION_CONFIG_DEFAULT.livePayWindowHours, 1, 336),
+          liveDefaultAutopilot: (row.live_default_autopilot === "auto" || row.live_default_autopilot === "manual" || row.live_default_autopilot === "hybrid") ? row.live_default_autopilot : "hybrid",
+          liveHybridAcceptRatio: clampMult(row.live_hybrid_accept_ratio, AUCTION_CONFIG_DEFAULT.liveHybridAcceptRatio),
         };
         _cache = { at: now, cfg };
         return cfg;
