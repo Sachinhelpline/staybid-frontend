@@ -234,16 +234,20 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
   // What a guest can pay for this room: from the market low up to the booking price.
   const guestMin = mktLow > 0 ? mktLow : round100(bookingPrice * 0.6);
   const guestMax = Math.max(bookingPrice, mktHigh);
-  // Profit ladder OFF the booking price: the bid that yields a target profit% (after
-  // the buyer premium). Higher target profit ⇒ lower bid.
-  const bidForProfit = (p: number) => round100(bookingPrice / ((1 + prem) * (1 + p / 100)));
-  const saveBidVal = bidForProfit(40);   // deepest margin
-  const smartBidVal = bidForProfit(30);  // recommended
-  const maxBidVal = bidForProfit(20);    // strongest bid (least margin) — NOT a hard cap
-  // Slider: from the 40%-profit price up to the ~0-profit price. The agent may bid
-  // above the 20% pick for certainty (owner loves a higher bid) — never hard-capped.
-  const sliderMin = saveBidVal;
-  const sliderMax = round100(bookingPrice / (1 + prem));
+  // The advertised MINIMUM is the lot's real floor (what the browse card shows) —
+  // NOT an MRP-profit price. The ladder spans floor → the ~0-profit MRP ceiling, so
+  // an agent can always bid the floor they were promised (biggest margin), while the
+  // default still nudges them to a stronger "Smart" bid. This keeps the tour page's
+  // minimum consistent with the browse card's "Min bid" for every lot, including
+  // Circle-operated rooms where the floor sits far below the room's booking price.
+  const mrpCeil = round100(bookingPrice / (1 + prem));
+  const floorBid = Math.max(100, Math.min(floor || mrpCeil, mrpCeil));
+  const span = Math.max(0, mrpCeil - floorBid);
+  const saveBidVal = floorBid;                          // best margin = the advertised floor
+  const smartBidVal = round100(floorBid + span * 0.34); // recommended default (nudge up)
+  const maxBidVal = round100(floorBid + span * 0.67);   // strong bid (still very profitable)
+  const sliderMin = floorBid;
+  const sliderMax = mrpCeil;
   const tooLow = perNight < Math.round(floor * (live?.belowFloorMinRatio || 0.85)); // server hard floor only
   // Profit at the current bid, vs the booking price: per-room (whole segment) + total.
   const nightsSel = seg?.nights || 0;
@@ -254,9 +258,9 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
   const base = seg && !tooLow ? perNight * seg.nights * rooms : 0;
   const premium = Math.round((base * (Number(buyerPremiumPct) || 0)) / 100);
   const picks = [
-    { key: "save", label: "💰 Save Big", pct: 40, value: saveBidVal },
-    { key: "smart", label: "⭐ Smart", pct: 30, value: smartBidVal },
-    { key: "max", label: "⚡ Max", pct: 20, value: maxBidVal },
+    { key: "save", label: "💰 Save Big", value: saveBidVal },
+    { key: "smart", label: "⭐ Smart", value: smartBidVal },
+    { key: "max", label: "⚡ Max", value: maxBidVal },
   ];
   const scarce = typeof roomsAvailable === "number" && roomsAvailable > 0 && roomsAvailable <= 3;
 

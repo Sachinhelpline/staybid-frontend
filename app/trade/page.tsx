@@ -28,6 +28,8 @@ export default function TradeBrowsePage() {
   const [lots, setLots] = useState<Lot[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [city, setCity] = useState("All");
+  const [mode, setMode] = useState<"all" | "live" | "sealed">("all");
+  const [sort, setSort] = useState<"recommended" | "price_low" | "price_high" | "rooms" | "month">("recommended");
   const [loading, setLoading] = useState(true);
   const [basketN, setBasketN] = useState(0);
 
@@ -42,6 +44,21 @@ export default function TradeBrowsePage() {
 
   useEffect(() => { loadLots(city); }, [city, loadLots]);
   useEffect(() => { setBasketN(bidBasketList().length); return onBidBasketChange(() => setBasketN(bidBasketList().length)); }, []);
+
+  // Client-side sale-mode filter + sort (the API returns all open lots for the city).
+  const num = (v: any) => Number(v) || 0;
+  const visibleLots = lots
+    .filter((l) => mode === "all" || (l.sale_mode || "sealed") === mode)
+    .slice()
+    .sort((a, b) => {
+      switch (sort) {
+        case "price_low": return num(a.min_bid_per_room_night) - num(b.min_bid_per_room_night);
+        case "price_high": return num(b.min_bid_per_room_night) - num(a.min_bid_per_room_night);
+        case "rooms": return num(b.num_rooms) - num(a.num_rooms);
+        case "month": return String(a.month_key).localeCompare(String(b.month_key));
+        default: return 0; // recommended = API order (live-first-ish, newest)
+      }
+    });
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#faf7f2,#f3ece1)" }}>
@@ -75,13 +92,38 @@ export default function TradeBrowsePage() {
         ))}
       </div>
 
+      {/* Filters: sale-mode chips + sort */}
+      <div className="max-w-6xl mx-auto px-4 pt-3 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-2">
+          {([["all", "All"], ["live", "⚡ Live"], ["sealed", "🔒 Sealed"]] as const).map(([m, label]) => (
+            <button key={m} onClick={() => setMode(m)}
+              className="shrink-0 px-3 py-1.5 rounded-full text-[0.8rem] font-semibold"
+              style={mode === m ? { background: "#33251a", color: "#ffd98a" } : { background: "#fff", color: "#7a5a2e", border: "1px solid #e7d9c2" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-[0.78rem] text-luxury-500">
+          <span className="font-semibold">Sort</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value as any)}
+            className="rounded-lg border px-2.5 py-1.5 text-[0.8rem] font-semibold bg-white"
+            style={{ borderColor: "#e7d9c2", color: "#5a441f" }}>
+            <option value="recommended">Recommended</option>
+            <option value="price_low">Price: low → high</option>
+            <option value="price_high">Price: high → low</option>
+            <option value="rooms">Most rooms</option>
+            <option value="month">Month: soonest</option>
+          </select>
+        </label>
+      </div>
+
       {/* Lots */}
       <div className="max-w-6xl mx-auto px-4 py-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           <div className="col-span-full text-center text-luxury-400 py-10">Loading…</div>
-        ) : lots.length === 0 ? (
-          <div className="col-span-full text-center text-luxury-400 py-10">No live lots in this city right now.</div>
-        ) : lots.map((l) => (
+        ) : visibleLots.length === 0 ? (
+          <div className="col-span-full text-center text-luxury-400 py-10">No {mode === "all" ? "" : mode + " "}lots{city === "All" ? "" : ` in ${city}`} right now.</div>
+        ) : visibleLots.map((l) => (
           <button key={l.id} onClick={() => router.push(`/trade/${l.id}`)} className="text-left rounded-2xl overflow-hidden bg-white border border-luxury-200 flex flex-col hover:shadow-lg transition-shadow">
             <div className="relative">
               {l.image
