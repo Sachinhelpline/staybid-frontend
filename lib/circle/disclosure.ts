@@ -45,4 +45,8 @@ export const CIRCLE_B2B_RESALE_NOTE =
 // v361 — Model 3 travel-agent auction. A wholesale room-night trade, not an
 // investment. Winning is not guaranteed; only cleared (won) bids are allotted.
 export const CIRCLE_AUCTION_NOTE =
-  "A wholesale room-night auction for travel agents — a goods trade, not an investment. The EMD deposit is refundable if you don't win; only cleared (highest-bid) rooms are allotted. Resale to your own guests is your business — sell-through is never guaranteed.";
+  "A wholesale room-night marketplace for travel agents — a goods trade, not an investment. On Live lots you bid with no deposit and the owner (or their autopilot) accepts, then you pay to lock the rooms; on Sealed lots a refundable deposit applies and only cleared (highest-bid) rooms are allotted. Acceptance is never guaranteed, and resale to your own guests is your business — sell-through is never guaranteed.";
+
+// v374 — Model 3 LIVE mode note (no deposit; autopilot; pay-on-accept).
+export const CIRCLE_LIVE_AUCTION_NOTE =
+  "Live bidding is always open — bid like a StayBid guest but for bulk rooms, with no deposit. The property owner's autopilot accepts strong bids instantly (others wait for the owner). Once accepted, pay within your window to lock the inventory; acceptance and resale are never guaranteed.";

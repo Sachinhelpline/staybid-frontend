@@ -102,7 +102,42 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
-## Current production state (v367, Circle "Model 3 v2" — winner sell channels + agent↔Model-2 bridge + guardrails)
+## Current production state (v374, Circle "Model 3" — LIVE always-open mode: no-EMD, autopilot, pay-on-accept)
+- **NEW launch-default sale mode for Model 3: an always-open LIVE bulk auction alongside the existing sealed
+  monthly auction (both coexist; the sealed path is UNCHANGED).** `auction_lots.sale_mode` = `'live'` (new
+  default for the owner form) or `'sealed'` (existing rows keep this). A live lot is open from publish and
+  biddable through the inventory month (`window_close_at = month_end`), NO EMD, NO clearing engine.
+- **How it works (mirrors the customer reverse-auction):** owner publishes a live lot with a floor + an
+  autopilot mode (`auction_lots.autopilot_mode` = auto|hybrid|manual) → an approved agent bids like a StayBid
+  guest but for BULK rooms (segment + per-room-per-night ≥ floor + rooms), **no deposit** → the lot autopilot
+  decides via the pure engine `lib/trade/live-auction.ts` `evaluateLiveBid`: **auto** accepts any at/above-floor
+  bid instantly; **hybrid** accepts a bid ≥ floor × `live_hybrid_accept_ratio` (default 1.10), at-floor waits;
+  **manual** waits for the owner. On ACCEPT (autopilot at bid time, or owner later) we mint an `auction_awards`
+  row (`createLiveAward`, `lib/trade/live-award.ts`, idempotent on `uniq_auction_award_bid`) → the agent pays
+  via the **existing, already-verified award money path unchanged** (`awards/pay` → `awards/verify` 4-key
+  idempotent → voucher + owner settlement) → `awards/[id]/enable-selling` (operator scope + holds) → Option A
+  (sell on StayBid + OTA) / Option B (own channel). No EMD ⇒ `deposit_applied=0`, `amount_due = base + buyer
+  premium`. Units are assigned at PAY (enable-selling), so nothing is held pre-pay.
+- **Routes:** `bids/place-live` (agent live bid, no payment, autopilot decision), `owner/live-bids`
+  (owner GET pending + POST accept/reject/counter), `bids/accept-counter` (agent takes the owner counter,
+  re-priced server-side). `owner/lots` POST branches by `saleMode`; `owner/quote` + `lots/[id]` return live
+  config. Cron `auction-lifecycle`: SEALED lots only in the clearing pass (`sale_mode=neq.live`); NEW Pass C
+  expires accepted-unpaid live bids + their live awards past `pay_deadline_at` (nothing to release — no pre-pay
+  holds). Config `auction_config`: `live_pay_window_hours` (24) / `live_default_autopilot` (hybrid) /
+  `live_hybrid_accept_ratio` (1.10). Migration `2026-07-19-v374-model3-live-auction-foundation.sql` (additive).
+- **UI:** owner `AgentAuctionTab` — sale-mode toggle (Live ↔ Sealed) + autopilot picker + a "Live bids to
+  review" section (accept/decline/counter). Agent `/trade` browse — Live/Sealed card badge; `/trade/[id]` tour
+  — a `LiveBidBox` (no-EMD, autopilot preview, direct submit → my-bids to pay); `/trade/my-bids` — accepted
+  live bids surface as awards to Pay + enable-selling, `countered` bids get an Accept-counter button, live bids
+  show "no deposit". Disclosure `CIRCLE_LIVE_AUCTION_NOTE` (no deposit, autopilot, acceptance not guaranteed).
+- **Verified:** live money-path SQL round-trip (base ₹9,600 → pay ₹10,080 incl. 5% buyer premium → owner net
+  ₹9,120 owed; 0 leftover). `tsc` + `next build` clean. Badge v373→**v374**, sw HTML_CACHE v185→v186.
+  ⚠ Same honest money boundary as everywhere: owner payouts (`settlement_ledger` owed) are manual admin/ops —
+  no auto money-out. Autopilot picks the FIRST acceptable bid (no max-bid price competition on live lots) — that
+  is the deliberate launch trade-off (faster liquidity); the floor still protects, and the sealed auction stays
+  available for price-competitive months.
+
+## Earlier production state (v367, Circle "Model 3 v2" — winner sell channels + agent↔Model-2 bridge + guardrails)
 - **Winner sell channels (Phase A):** a Model-3 auction winner sells their won allotment two ways from the
   voucher card (`/trade/my-bids`). **StayBid + OTA:** `POST /api/trade/awards/[id]/enable-selling` grants
   OPERATOR SCOPE over the won units for exactly the allotment nights — reuses the M1/M4 precedent
@@ -442,7 +477,7 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
   Navbar/DialerNav/ServerStatus, show BottomDock. Everything else: BackChip + Navbar + BottomDock.
 - **Service worker** `public/sw.js`: stable URL `/sw.js`, stable static cache (`staybid-static-v2`),
   SWR HTML, cache-first hashed chunks, network-only `/api/`. `HTML_CACHE` at `v172` (v360 sell-to-public).
-- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v360. Bump both on
+- **Version badge:** `SB_BUILD` + visible `vN` chip in `app/layout.tsx`, at v374. Bump both on
   every UI ship.
 - **NOT to be touched casually:** scoring engine (`lib/hotel-score.ts` weights/tiers), commission
   engine, attribution chain, tier system, passport engine, reel-dedup 5-hop chain, Model-1/3/4

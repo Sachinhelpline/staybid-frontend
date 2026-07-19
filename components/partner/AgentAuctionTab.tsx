@@ -65,6 +65,10 @@ export default function AgentAuctionTab({
     ? (purchasePerNight > 0 ? Math.max(Math.ceil((purchasePerNight * circleMult) / 100) * 100, 100) : null)
     : floor;
 
+  const [pending, setPending] = useState<any[]>([]);
+  const [bidBusy, setBidBusy] = useState("");
+  const [counterVal, setCounterVal] = useState<Record<string, number | "">>({});
+
   const loadLots = useCallback(async () => {
     try {
       const r = await fetch("/api/trade/owner/lots", { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" });
@@ -72,6 +76,27 @@ export default function AgentAuctionTab({
       if (r.ok) setLots(Array.isArray(d.lots) ? d.lots : []);
     } catch { /* ignore */ }
   }, []);
+
+  const loadPending = useCallback(async () => {
+    try {
+      const r = await fetch("/api/trade/owner/live-bids", { headers: { Authorization: `Bearer ${getToken()}` }, cache: "no-store" });
+      const d = await r.json();
+      if (r.ok) setPending(Array.isArray(d.bids) ? d.bids : []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const actOnBid = useCallback(async (bidId: string, action: "accept" | "reject" | "counter", counterPerRoomPerNight?: number) => {
+    setBidBusy(bidId); setMsg(null);
+    try {
+      const r = await fetch("/api/trade/owner/live-bids", {
+        method: "POST", headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ bidId, action, counterPerRoomPerNight }),
+      });
+      const d = await r.json();
+      if (r.ok) { setMsg({ ok: true, text: action === "accept" ? "Bid accepted — the agent will pay to lock the rooms." : action === "reject" ? "Bid declined." : "Counter sent to the agent." }); loadPending(); loadLots(); }
+      else setMsg({ ok: false, text: d.error || "Action failed." });
+    } catch { setMsg({ ok: false, text: "Network error." }); } finally { setBidBusy(""); }
+  }, [loadPending, loadLots]);
 
   // Initial: config + upcoming months + existing lots.
   useEffect(() => {
@@ -86,7 +111,8 @@ export default function AgentAuctionTab({
       } catch { /* ignore */ }
     })();
     loadLots();
-  }, [loadLots]);
+    loadPending();
+  }, [loadLots, loadPending]);
 
   // (Re)quote the floor whenever room + month are chosen.
   useEffect(() => {
@@ -288,6 +314,49 @@ export default function AgentAuctionTab({
           {publishing ? "Publishing…" : "Publish auction lot"}
         </button>
       </div>
+
+      {/* Pending LIVE bids to review (manual + hybrid-at-floor) */}
+      {pending.length > 0 && (
+        <div className="rounded-2xl border-2 border-amber-200 bg-amber-50/40 p-5">
+          <div className="font-bold text-luxury-900 mb-1">⚡ Live bids to review</div>
+          <p className="text-[0.78rem] text-luxury-500 mb-3">Agents bidding on your always-open lots. Accept to lock the sale (they pay next), decline, or counter with a different price.</p>
+          <div className="space-y-2">
+            {pending.map((b) => {
+              const floor = Number(b.lot?.min_bid_per_room_night) || 0;
+              const cv = counterVal[b.id];
+              return (
+                <div key={b.id} className="border border-amber-200 rounded-xl px-3 py-2.5 bg-white">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-luxury-900 truncate">
+                        {b.lot?.category || b.lot?.room_id} · {monthLabel(b.lot?.month_key || "")}
+                        {b.status === "countered" && <span className="ml-1 text-[0.7rem] text-purple-700 font-bold">· countered</span>}
+                      </div>
+                      <div className="text-[0.75rem] text-luxury-500">
+                        {b.segment_label} · <b>{inr(b.per_room_per_night)}</b>/room/night × {b.rooms_wanted} rooms · floor {inr(floor)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => actOnBid(b.id, "accept")} disabled={bidBusy === b.id}
+                        className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-50" style={{ background: "linear-gradient(135deg,#059669,#10b981)" }}>Accept</button>
+                      <button onClick={() => actOnBid(b.id, "reject")} disabled={bidBusy === b.id}
+                        className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-red-600 border border-red-200 disabled:opacity-50">Decline</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="number" min={floor} placeholder={`Counter ≥ ${floor}`} value={cv ?? ""}
+                      onChange={(e) => setCounterVal((m) => ({ ...m, [b.id]: e.target.value === "" ? "" : Number(e.target.value) }))}
+                      className="w-36 border border-luxury-200 rounded-lg px-2.5 py-1.5 text-[0.8rem]" />
+                    <button onClick={() => cv && Number(cv) >= floor && actOnBid(b.id, "counter", Number(cv))}
+                      disabled={bidBusy === b.id || !cv || Number(cv) < floor}
+                      className="px-3 py-1.5 rounded-lg text-[0.75rem] font-bold text-white disabled:opacity-40" style={{ background: "#6d28d9" }}>Counter</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Existing lots */}
       <div className="rounded-2xl border border-luxury-200 bg-white p-5">

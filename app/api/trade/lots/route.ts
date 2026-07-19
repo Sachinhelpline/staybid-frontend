@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   if (city && city.toLowerCase() !== "all") filter += `&city=eq.${encodeURIComponent(city)}`;
 
   const r = await fetch(
-    `${SB_URL}/rest/v1/auction_lots?${filter}&select=id,hotel_id,room_id,category,city,month_key,month_start,month_end,num_rooms,min_bid_per_room_night,window_open_at,window_close_at,status,metadata&order=city.asc,created_at.desc&limit=300`,
+    `${SB_URL}/rest/v1/auction_lots?${filter}&select=id,hotel_id,room_id,category,city,month_key,month_start,month_end,num_rooms,min_bid_per_room_night,sale_mode,autopilot_mode,window_open_at,window_close_at,status,metadata&order=city.asc,created_at.desc&limit=300`,
     { headers: SB_READ, cache: "no-store" },
   );
   const lots: any[] = r.ok ? await r.json().catch(() => []) : [];
