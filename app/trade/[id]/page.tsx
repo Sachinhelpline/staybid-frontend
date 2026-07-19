@@ -47,6 +47,11 @@ export default function TradeTourPage() {
   const { lot, hotel, room, segments, depositPct } = data;
   const isLive = lot.sale_mode === "live";
   const heroImgs: string[] = (hotel.images?.length ? hotel.images : room.images) || [];
+  // Booking-price framing (live lots): the top strip shows the room's booking price
+  // (rack/MRP), consistent with the coach — not the internal min-bid floor.
+  const round100m = (n: number) => Math.max(100, Math.round(n / 100) * 100);
+  const bookingPriceTop = Math.round(Number(data.market?.rack) || 0)
+    || (data.market?.high ? round100m(Number(data.market.high) * 1.4) : round100m((Number(lot.min_bid_per_room_night) || 0) * 2));
 
   return (
     <div className="sbt-wrap">
@@ -70,7 +75,9 @@ export default function TradeTourPage() {
       <div className="sbt-cols">
         <div className="sbt-left">
           <div className="sbt-metrics">
-            <div className="sbt-metric"><b>{inr(lot.min_bid_per_room_night)}</b><span>MIN BID / ROOM / NIGHT</span></div>
+            {isLive
+              ? <div className="sbt-metric"><b>{inr(bookingPriceTop)}</b><span>ROOM BOOKING PRICE</span></div>
+              : <div className="sbt-metric"><b>{inr(lot.min_bid_per_room_night)}</b><span>MIN BID / ROOM / NIGHT</span></div>}
             <div className="sbt-metric"><b>{lot.num_rooms}</b><span>ROOMS AVAILABLE</span></div>
             <div className="sbt-metric"><b>{monthLabel(lot.month_key)}</b><span>AUCTION MONTH</span></div>
             <div className="sbt-metric"><b>{cap(lot.city)}</b><span>LOCATION</span></div>
@@ -112,6 +119,22 @@ export default function TradeTourPage() {
         </div>
       )}
       <TourStyles />
+    </div>
+  );
+}
+
+// Robust rooms picker — +/− stepper so every value 1..max is reachable (a bare
+// number input let the browser spinner jump straight to the max on some devices).
+function RoomStepper({ value, max, onChange }: { value: number; max: number; onChange: (n: number) => void }) {
+  const clamp = (n: number) => Math.max(1, Math.min(max, Math.round(n) || 1));
+  return (
+    <div className="sbt-stepper" role="group" aria-label="Rooms">
+      <button type="button" className="sbt-step-btn" onClick={() => onChange(clamp(value - 1))} disabled={value <= 1} aria-label="Fewer rooms">−</button>
+      <input
+        type="number" className="sbt-step-in" min={1} max={max} value={value}
+        onChange={(e) => onChange(clamp(Number(e.target.value)))}
+      />
+      <button type="button" className="sbt-step-btn" onClick={() => onChange(clamp(value + 1))} disabled={value >= max} aria-label="More rooms">+</button>
     </div>
   );
 }
@@ -170,7 +193,7 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
         </label>
         <label className="sbt-field">
           <span>Rooms (max {lot.num_rooms})</span>
-          <input type="number" min={1} max={lot.num_rooms} value={rooms} onChange={(e) => setRooms(Math.max(1, Math.min(lot.num_rooms, Number(e.target.value) || 1)))} />
+          <RoomStepper value={rooms} max={Number(lot.num_rooms) || 1} onChange={setRooms} />
         </label>
       </div>
       {belowFloor && <div className="sbt-err">Your bid can't be below the floor.</div>}
@@ -276,7 +299,7 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
         </label>
         <label className="sbt-field">
           <span>Rooms (max {lot.num_rooms})</span>
-          <input type="number" min={1} max={lot.num_rooms} value={rooms} onChange={(e) => setRooms(Math.max(1, Math.min(lot.num_rooms, Number(e.target.value) || 1)))} />
+          <RoomStepper value={rooms} max={Number(lot.num_rooms) || 1} onChange={setRooms} />
         </label>
       </div>
       {tooLow && <div className="sbt-err">Enter a higher bid to continue.</div>}
@@ -310,7 +333,6 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
               className={`sbt-pick${perNight === p.value ? " on" : ""}`}>
               <span className="sbt-pick-label">{p.label}</span>
               <b>{inr(p.value)}</b>
-              <span className="sbt-pick-sub">~{p.pct}% profit</span>
             </button>
           ))}
         </div>
@@ -320,8 +342,8 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailab
           <div className="sbt-mkt">
             <div className="sbt-mkt-cell"><span>ROOM BOOKING PRICE</span><b>{inr(bookingPrice)}</b></div>
             <div className="sbt-mkt-cell"><span>GUESTS PAY</span><b>{inr(guestMin)}–{inr(guestMax)}</b></div>
-            <div className="sbt-mkt-cell sbt-mkt-profit"><span>EST. PROFIT / ROOM{nightsSel ? ` · ${nightsSel}N` : ""}</span><b>{inr(profitPerRoom)}</b></div>
-            <div className="sbt-mkt-cell sbt-mkt-profit"><span>TOTAL PROFIT ({rooms} room{rooms === 1 ? "" : "s"})</span><b>{inr(totalProfit)}</b></div>
+            <div className="sbt-mkt-cell sbt-mkt-profit"><span>PROFIT / ROOM / NIGHT</span><b>{inr(profitPerNight)}</b></div>
+            <div className="sbt-mkt-cell sbt-mkt-profit"><span>TOTAL PROFIT</span><b>{inr(totalProfit)}</b><em>{rooms} room{rooms === 1 ? "" : "s"} × {nightsSel || 0}N × {inr(profitPerNight)}</em></div>
           </div>
         ) : (
           <div className="sbt-mkt"><div className="sbt-mkt-cell"><span>YOUR BID</span><b>{inr(perNight)}</b></div></div>
@@ -453,6 +475,13 @@ function TourStyles() {
       .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: #fffdfa; color: #3a2c17; }
       .sbt-field small { font-size: .68rem; color: rgba(74,56,32,.5); }
       .sbt-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      /* Rooms +/− stepper — reliable single-step selection 1..max */
+      .sbt-stepper { display: flex; align-items: stretch; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; overflow: hidden; background: #fffdfa; }
+      .sbt-step-btn { flex: none; width: 40px; border: 0; background: rgba(139,105,20,.09); color: #a9791f; font-size: 1.25rem; font-weight: 800; line-height: 1; cursor: pointer; }
+      .sbt-step-btn:active { background: rgba(139,105,20,.18); }
+      .sbt-step-btn:disabled { opacity: .4; cursor: default; }
+      .sbt-step-in { flex: 1; min-width: 0; border: 0; text-align: center; font-size: 1rem; font-weight: 800; color: #3a2c17; background: transparent; -moz-appearance: textfield; }
+      .sbt-step-in::-webkit-outer-spin-button, .sbt-step-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       .sbt-err { color: #c0392b; font-size: .78rem; margin: 4px 0; }
       .sbt-preview { background: linear-gradient(135deg,#1c140c,#2c2116); color: #f3e7d0; border-radius: 12px; padding: 12px 14px; margin: 10px 0; border: 1px solid rgba(212,162,74,.2); }
       .sbt-preview-row { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; padding: 2px 0; }
