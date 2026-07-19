@@ -46,6 +46,7 @@ export default function AgentAuctionTab({
   const [floor, setFloor] = useState<number | null>(null);
   const [win, setWin] = useState<UpMonth | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [circleOwner, setCircleOwner] = useState(false);
   const [quoting, setQuoting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -92,6 +93,7 @@ export default function AgentAuctionTab({
           setFloor(d.minBidPerRoomNight ?? null);
           setWin(d.window ? { ...(d.range || {}), ...d.window } as any : null);
           setConflict(!!d.model2Conflict);
+          setCircleOwner(!!d.circleOperated);
           setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
         } else { setMsg({ ok: false, text: d.error || "Quote failed." }); }
       } catch { /* ignore */ } finally { if (!cancelled) setQuoting(false); }
@@ -181,7 +183,10 @@ export default function AgentAuctionTab({
               className="mt-1 w-full border border-luxury-200 rounded-lg px-3 py-2 text-sm" />
             {floor != null && (
               <span className="text-[0.72rem] text-luxury-400 mt-0.5 block">
-                StayBid floor (cost): <b>{inr(floor)}</b>/room/night — can't go below this.
+                StayBid floor: <b>{inr(floor)}</b>/room/night — can't go below this.
+                {circleOwner
+                  ? " Circle-operated inventory: floor = your cost + 20% (covers your purchase + profit)."
+                  : " Property-owner inventory: floor = your room's floor price."}
               </span>
             )}
           </label>
