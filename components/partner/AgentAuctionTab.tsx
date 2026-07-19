@@ -239,7 +239,7 @@ export default function AgentAuctionTab({
           <label className="text-sm block">
             <span className="text-luxury-500 font-semibold">Autopilot — how bids get accepted</span>
             <div className="mt-1 grid sm:grid-cols-3 gap-2">
-              {(["auto", "hybrid", "manual"] as LiveAutopilotMode[]).map((m) => (
+              {(["hybrid", "auto", "manual"] as LiveAutopilotMode[]).map((m) => (
                 <button key={m} type="button" onClick={() => setAutopilotMode(m)}
                   className="text-left rounded-lg border-2 px-2.5 py-2 transition"
                   style={{ borderColor: autopilotMode === m ? "#c9911a" : "#e5e0d5", background: autopilotMode === m ? "#fffbef" : "#fff" }}>
@@ -392,6 +392,9 @@ export default function AgentAuctionTab({
                       </div>
                       <div className="text-[0.75rem] text-luxury-500">
                         {b.segment_label} · <b>{inr(b.per_room_per_night)}</b>/room/night × {b.rooms_wanted} rooms · floor {inr(floor)}
+                        {(b.metadata?.below_floor || Number(b.per_room_per_night) < floor) && (
+                          <span className="ml-1 text-[0.68rem] font-bold text-amber-700">· below floor offer</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

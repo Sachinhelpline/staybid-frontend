@@ -55,6 +55,10 @@ export async function POST(req: Request) {
     const n = Number(body.minFloorFraction);
     patch.min_floor_fraction = Number.isFinite(n) && n >= 0.4 && n <= 1 ? n : cur.minFloorFraction;
   }
+  if (body.belowFloorMinRatio !== undefined) {
+    const n = Number(body.belowFloorMinRatio);
+    patch.below_floor_min_ratio = Number.isFinite(n) && n >= 0.5 && n <= 1 ? n : cur.belowFloorMinRatio;
+  }
 
   const r = await fetch(
     `${SB_URL}/rest/v1/auction_config?id=eq.${AUCTION_CONFIG_ID}`,

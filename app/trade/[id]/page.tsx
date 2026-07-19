@@ -5,7 +5,7 @@
 // then the sealed-bid form (segment → per-room-per-night bid → rooms → EMD).
 // Picked bids add to the localStorage bundle read by /trade/review. English copy.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTradeAuth, getTradeToken } from "@/lib/trade/use-trade-auth";
@@ -98,7 +98,7 @@ export default function TradeTourPage() {
           </p>
           {auth.status === "approved"
             ? (isLive
-                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} market={data.market} />
+                ? <LiveBidBox lot={lot} segments={segments} live={data.live} buyerPremiumPct={data.buyerPremiumPct} market={data.market} roomsAvailable={data.roomsAvailable} />
                 : <BidBox lot={lot} hotel={hotel} room={room} segments={segments} depositPct={depositPct} />)
             : <BidGate auth={auth} city={lot.city} />}
         </div>
@@ -188,21 +188,25 @@ function BidBox({ lot, hotel, room, segments, depositPct }: { lot: any; hotel: a
   );
 }
 
-function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null }) {
+function LiveBidBox({ lot, segments, live, buyerPremiumPct, market, roomsAvailable }: { lot: any; segments: Seg[]; live?: { hybridAcceptRatio: number; payWindowHours: number; belowFloorMinRatio?: number }; buyerPremiumPct: number; market?: { adr: number; low: number; high: number } | null; roomsAvailable?: number }) {
   const router = useRouter();
   const [segKey, setSegKey] = useState(segments[0] ? segId(segments[0]) : "");
   const [perNight, setPerNight] = useState<number>(lot.min_bid_per_room_night);
+  const didInitBid = useRef(false);
   const [rooms, setRooms] = useState(1);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const seg = useMemo(() => segments.find((s) => segId(s) === segKey) || null, [segments, segKey]);
   const floor = Number(lot.min_bid_per_room_night) || 0;
-  const belowFloor = perNight < floor;
+  const ratio = live?.hybridAcceptRatio || 1.15;
+  const belowRatio = live?.belowFloorMinRatio || 0.85;
+  const belowFloorMin = Math.round(floor * belowRatio);         // hard lower bound (owner-reviewed below floor)
+  const tooLow = perNight < belowFloorMin;                       // rejected
+  const isBelowFloor = perNight >= belowFloorMin && perNight < floor; // allowed but forwarded to owner
   const mode = (lot.autopilot_mode as LiveAutopilotMode) || "hybrid";
-  const ratio = live?.hybridAcceptRatio || 1.1;
-  const decision = !belowFloor ? evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: ratio }) : null;
-  const base = seg && !belowFloor ? perNight * seg.nights * rooms : 0;
+  const decision = !tooLow ? evaluateLiveBid({ perRoomPerNight: perNight, floor, mode, hybridAcceptRatio: ratio, belowFloorMinRatio: belowRatio }) : null;
+  const base = seg && !tooLow ? perNight * seg.nights * rooms : 0;
   const premium = Math.round((base * (Number(buyerPremiumPct) || 0)) / 100);
 
   // ── AI bid coach (real market intelligence + a slidable price + quick-picks) ──
@@ -224,19 +228,35 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
     ? hybridThreshold
     : adr > floor ? round100((floor + adr) / 2) : round100(floor * 1.12);
   const marketPick = adr > floor ? adr : round100(floor * 1.25);
+  // Quick-picks mirror the customer negotiation panel (Save Big / Smart / Instant):
+  // Save = below the floor (owner reviews, best margin) · Smart = instant-lock
+  // (recommended) · Market = near the live market (priority lock).
+  const savePick = Math.max(belowFloorMin, round100(floor * 0.92));
   const picks = [
-    { key: "floor", label: "Floor", sub: mode === "auto" ? "Max margin · instant" : mode === "hybrid" ? "Max margin · owner reviews" : "Max margin", value: floor },
-    { key: "smart", label: "Smart", sub: "Recommended", value: Math.min(smartPick, sliderMax) },
-    { key: "market", label: "Market", sub: adr > floor ? "Near market rate" : "Strong bid", value: Math.min(marketPick, sliderMax) },
+    { key: "save", label: "💰 Save Big", sub: "Owner reviews", value: savePick },
+    { key: "smart", label: "⭐ Smart", sub: mode === "auto" ? "Recommended" : "Locks instantly ✓", value: Math.min(smartPick, sliderMax) },
+    { key: "market", label: "⚡ Market", sub: adr > floor ? "Priority lock" : "Strong bid", value: Math.min(marketPick, sliderMax) },
   ];
-  const coachLine = mode === "auto"
-    ? `Floor auto-confirms instantly — the most resale margin.${adr > 0 ? ` You buy at ${inr(floor)}, market sells ~${inr(adr)}/night.` : ""}`
-    : mode === "hybrid"
-      ? `Bid ${inr(hybridThreshold)}+/night to auto-confirm instantly; at the floor the owner reviews first.`
-      : `The owner reviews every bid — a stronger bid (toward the ${inr(adr || retailFloor || floor)} market rate) wins faster.`;
+  const scarce = typeof roomsAvailable === "number" && roomsAvailable > 0 && roomsAvailable <= 3;
+  const coachLine = isBelowFloor
+    ? `Below the ${inr(floor)} floor — this is an OFFER the owner can accept, counter, or decline (no guarantee). More margin for you, but not instant.`
+    : mode === "auto"
+      ? `Instant lot — any at-or-above-floor bid confirms immediately. Floor keeps the most resale margin.`
+      : mode === "hybrid"
+        ? `Bid ${inr(hybridThreshold)}+/night to LOCK instantly & get priority on limited rooms. At the floor the owner decides (may counter or take a higher bid).`
+        : `The owner reviews every bid — a stronger bid (toward the ${inr(adr || retailFloor || floor)} market rate) wins faster.`;
+
+  // Default the bid to the competitive "Smart" price (not the bare floor), so the
+  // agent starts where it locks. On a pure "Instant" lot the floor is optimal.
+  const defaultBid = mode === "auto" ? floor : Math.min(smartPick, sliderMax);
+  useEffect(() => {
+    if (!didInitBid.current && Number.isFinite(defaultBid) && defaultBid > 0) {
+      setPerNight(defaultBid); didInitBid.current = true;
+    }
+  }, [defaultBid]);
 
   const place = async () => {
-    if (!seg || belowFloor) return;
+    if (!seg || tooLow) return;
     setBusy(true); setMsg(null);
     try {
       const r = await fetch("/api/trade/bids/place-live", {
@@ -262,26 +282,29 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
       <div className="sbt-field-row">
         <label className="sbt-field">
           <span>Bid / room / night</span>
-          <input type="number" min={floor} value={perNight} onChange={(e) => setPerNight(Number(e.target.value) || 0)} />
-          <small>Minimum {inr(floor)}</small>
+          <input type="number" min={belowFloorMin} value={perNight} onChange={(e) => setPerNight(Number(e.target.value) || 0)} />
+          <small>Floor {inr(floor)} · min offer {inr(belowFloorMin)}</small>
         </label>
         <label className="sbt-field">
           <span>Rooms (max {lot.num_rooms})</span>
           <input type="number" min={1} max={lot.num_rooms} value={rooms} onChange={(e) => setRooms(Math.max(1, Math.min(lot.num_rooms, Number(e.target.value) || 1)))} />
         </label>
       </div>
-      {belowFloor && <div className="sbt-err">Your bid can't be below the floor.</div>}
+      {tooLow && <div className="sbt-err">Minimum offer is {inr(belowFloorMin)}/night.</div>}
 
       {/* AI Bid Coach — real market intelligence + a slidable price + quick-picks */}
       <div className="sbt-coach">
         <div className="sbt-coach-head">
           <span className="sbt-coach-ai">✦ AI Bid Coach</span>
-          {decision && !belowFloor && (
+          {decision && !tooLow && (
             <span className={`sbt-coach-outcome ${decision.kind === "accept" ? "on" : ""}`}>
-              {decision.kind === "accept" ? "✓ Auto-confirms" : "⧗ Owner reviews"}
+              {decision.kind === "accept" ? "✓ Locks instantly" : isBelowFloor ? "⧗ Owner reviews · below floor" : "⧗ Owner reviews"}
             </span>
           )}
         </div>
+        {scarce && (
+          <div className="sbt-scarce">🔥 Only {roomsAvailable} room{roomsAvailable === 1 ? "" : "s"} left — higher bids get priority.</div>
+        )}
 
         {/* Slidable price — drag between the wholesale floor and the live market */}
         <div className="sbt-slider-val">
@@ -292,11 +315,12 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
         </div>
         <input
           type="range" className="sbt-range"
-          min={floor} max={sliderMax} step={100} value={Math.min(Math.max(perNight, floor), sliderMax)}
+          min={belowFloorMin} max={sliderMax} step={100} value={Math.min(Math.max(perNight, belowFloorMin), sliderMax)}
           onChange={(e) => setPerNight(Number(e.target.value))}
-          style={{ ["--pct" as any]: `${Math.round(((Math.min(Math.max(perNight, floor), sliderMax) - floor) / Math.max(1, sliderMax - floor)) * 100)}%` }}
+          style={{ ["--pct" as any]: `${Math.round(((Math.min(Math.max(perNight, belowFloorMin), sliderMax) - belowFloorMin) / Math.max(1, sliderMax - belowFloorMin)) * 100)}%` }}
         />
         <div className="sbt-range-ends">
+          <span>Offer {inr(belowFloorMin)}</span>
           <span>Floor {inr(floor)}</span>
           {adr > 0 ? <span>Market {inr(adr)}</span> : <span>Max {inr(sliderMax)}</span>}
         </div>
@@ -327,7 +351,7 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
         <div className="sbt-coach-tip">{coachLine}</div>
       </div>
 
-      {seg && !belowFloor && (
+      {seg && !tooLow && (
         <div className="sbt-preview">
           <div className="sbt-preview-row"><span>Bid ({seg.nights} nights × {rooms} rooms)</span><b>{inr(base)}</b></div>
           <div className="sbt-preview-row"><span>Buyer premium ({buyerPremiumPct}%) on accept</span><b>{inr(premium)}</b></div>
@@ -342,8 +366,8 @@ function LiveBidBox({ lot, segments, live, buyerPremiumPct, market }: { lot: any
         </div>
       )}
       {msg && <div className={msg.ok ? "sbt-live-ok" : "sbt-err"}>{msg.text}</div>}
-      <button className="sbt-btn-gold full" onClick={place} disabled={!seg || belowFloor || busy}>
-        {busy ? "Placing…" : decision?.kind === "accept" ? "Place bid — auto-confirms" : "Place bid"}
+      <button className="sbt-btn-gold full" onClick={place} disabled={!seg || tooLow || busy}>
+        {busy ? "Placing…" : decision?.kind === "accept" ? "Place bid — locks instantly" : isBelowFloor ? "Send offer to owner" : "Place bid"}
       </button>
     </div>
   );
@@ -420,6 +444,7 @@ function TourStyles() {
       .sbt-coach-ai { font-size: .78rem; font-weight: 800; color: #a9791f; letter-spacing: .02em; }
       .sbt-coach-outcome { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
       .sbt-coach-outcome.on { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+      .sbt-scarce { font-size: .72rem; font-weight: 800; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 9px; margin-bottom: 8px; }
       .sbt-slider-val { font-size: 1.5rem; font-weight: 800; color: #3a2c17; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
       .sbt-slider-val span { font-size: .7rem; font-weight: 600; color: rgba(74,56,32,.5); }
       .sbt-slider-margin { font-style: normal; font-size: .72rem; font-weight: 800; margin-left: auto; }

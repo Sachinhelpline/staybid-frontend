@@ -102,6 +102,37 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v380 — Below-floor offers forwarded (customer-parity) + quick-pick tiers)
+- **Below-floor bids are now FORWARDED to the owner (not rejected)** — mirroring the customer negotiation panel
+  (a guest can bid below the room floor and the hotel reviews/counters). Bounded: an agent may bid down to
+  `floor × below_floor_min_ratio` (config, default **0.85**, clamp 0.5–1); anything lower is rejected ("too low").
+  A below-floor bid is NEVER auto-accepted (any mode) — it always becomes an OFFER the owner can accept /
+  counter / decline. `lib/trade/live-auction.ts` `evaluateLiveBid` now returns `pending{belowFloor}` /
+  `reject{too_low}`; `bids/place-live` allows `[floor×0.85, floor)` as a forwarded offer (metadata
+  `below_floor`), rejects below `floor×0.85`. Owner "Live bids to review" tags below-floor offers.
+- **Quick-picks mirror the customer arena** (Save Big / Smart / Instant): `LiveBidBox` picks are 💰 **Save Big**
+  (below floor → "owner reviews", best margin), ⭐ **Smart** (instant-lock threshold → "locks instantly ✓",
+  recommended default), ⚡ **Market** (near the live ADR → priority lock). The slider now spans `floor×0.85` →
+  market ceiling with Offer/Floor/Market marks; the outcome chip reads "⧗ Owner reviews · below floor" in that
+  band. Config `below_floor_min_ratio` admin-tunable in `/admin/auction`. Migration
+  `2026-07-19-v380-below-floor-forward.sql`. Verified (Cave View floor ₹2,300): reject <₹1,955, below-floor
+  offer ₹1,955–2,299, owner-review ₹2,300–2,644, instant-lock ≥₹2,645. Badge v379→**v380**, sw HTML_CACHE v191→v192.
+
+## Current production state (v379 — Live: no bare-floor auto-accept (Smart instant-lock) + scarcity)
+- **The bare floor no longer auto-confirms by default** (fixes "agents always bid the minimum"). The default mode
+  is now **Smart** (`autopilot='hybrid'`, relabelled): a bid **instant-LOCKS only at/above floor ×
+  `live_hybrid_accept_ratio`** (default bumped 1.10→**1.15**); a floor/below-threshold bid goes to the owner
+  (accept/counter/decline — they can take a higher competing bid). Pure **"Instant"** (`autopilot='auto'`,
+  accepts at floor) stays as an explicit, ⚠-warned owner opt-in. `LIVE_AUTOPILOT_LABEL`: hybrid→"Smart" (default),
+  auto→"Instant (accepts at floor)", manual→"Manual". Migration `2026-07-19-v379-smart-instant-lock.sql`
+  (config ratio 1.15 + default hybrid + reseed demo Cave View auto→hybrid). Verified: Cave View floor ₹2,300 →
+  **instant-lock at ₹2,645**; floor now "owner reviews", not auto-confirm.
+- **Coach reframed to push the agent up:** `app/trade/[id]` `LiveBidBox` now DEFAULTS the bid to the **Smart
+  (instant-lock) price**, not the bare floor; the Floor quick-pick reads "owner reviews", Smart reads "Locks
+  instantly ✓"; the outcome chip is "✓ Locks instantly" vs "⧗ Owner reviews". **Scarcity:** `lots/[id]` returns
+  `roomsAvailable` (num_rooms − awarded); when ≤3 the coach shows "🔥 Only N rooms left — higher bids get
+  priority." Owner mode picker lists Smart first. Badge v378→**v379**, sw HTML_CACHE v190→v191.
+
 ## Current production state (v378 — Dynamic Spine-linked property floor + owner control)
 - **Property-owner Model-3 floor is now DYNAMIC (Spine ADR-linked), not a static floorPrice.** The floor tracks
   the room's LIVE month Spine ADR (same dynamic engine that prices guests): `dynamicWholesaleFloor =
