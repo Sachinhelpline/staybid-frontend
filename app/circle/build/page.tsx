@@ -302,8 +302,8 @@ export default function CircleBuildPage() {
         </h1>
         <p className="sbc-sub">
           {bundle.ok
-            ? `${bundle.roomCount} room${bundle.roomCount > 1 ? "s" : ""} across ${bundle.propertyCount} ${bundle.propertyCount > 1 ? "properties" : "property"} — review karo, payment plan choose karo, aur invest karo.`
-            : "Abhi bundle khaali hai — Discover se rooms choose karke yahan review karein."}
+            ? `${bundle.roomCount} room${bundle.roomCount > 1 ? "s" : ""} across ${bundle.propertyCount} ${bundle.propertyCount > 1 ? "properties" : "property"} — review, choose a payment plan, and invest.`
+            : "Your bundle is empty — choose rooms from Discover and review them here."}
         </p>
       </section>
 
@@ -340,7 +340,7 @@ export default function CircleBuildPage() {
               <div className="sbc-panel" style={{ padding: 32, textAlign: "center" }}>
                 <div style={{ fontSize: 34 }}>🏔️</div>
                 <p style={{ marginTop: 8, color: "rgba(74,56,32,.7)" }}>
-                  Bundle abhi khaali hai. Discover par jaakar property + rooms choose karein.
+                  Your bundle is empty. Go to Discover and choose a property + rooms.
                 </p>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
                   <Link href="/circle/discover" className="sbc-btn-gold">→ Choose rooms on Discover</Link>

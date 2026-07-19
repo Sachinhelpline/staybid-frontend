@@ -226,7 +226,7 @@ export default function CircleDiscoverPage() {
       }).catch(() => {});
       return n;
     });
-    flash(`🔒 ${p.title} locked — aur bhi lock karo ya "Choose rooms" se rooms chuno`);
+    flash(`🔒 ${p.title} locked — lock more or pick rooms via "Choose rooms"`);
   }, [user, router, flash]);
 
   // Remove a locked property directly from the room-select sheet.
@@ -634,7 +634,7 @@ function RoomSelectSheet({
         {!usingLocked ? (
           <div className="sbc-rsel-empty">
             <div style={{ fontSize: 46 }}>🔒</div>
-            <p>Abhi koi property locked nahi. Step 1 me koi property choose karo, fir uske rooms yahan select honge.</p>
+            <p>No properties locked yet. Choose a property in Step 1, then its rooms will appear here to select.</p>
             <button className="sbc-btn-gold" style={{ marginTop: 4 }}
               onClick={() => { try { window.dispatchEvent(new Event("sbc:rooms-close")); } catch { /* noop */ } }}>
               ← Choose a property

@@ -159,7 +159,7 @@ export default function CircleTourPage() {
       return;
     }
     lockNow();
-    flash(`🔒 ${p.title} locked — ab niche se rooms chuno`);
+    flash(`🔒 ${p.title} locked — now choose rooms below`);
   }, [p, user, id, locked, router, lockNow, flash]);
 
   const goInvest = useCallback(() => {
@@ -274,8 +274,8 @@ export default function CircleTourPage() {
           ) : (
             <>
               <p className="sbc-tour-desc" style={{ marginTop: 4 }}>
-                Har room ka price + availability niche hai — <b>＋ se select</b> karo (property apne aap lock ho jayegi),
-                aur room tap karke uska poora tour (photos, size, amenities) dekho.
+                Each room's price + availability is below — <b>tap ＋ to select</b> (the property locks automatically),
+                and tap a room to see its full tour (photos, size, amenities).
               </p>
               {p.roomTypes.map((rt) => (
                 <RoomCard

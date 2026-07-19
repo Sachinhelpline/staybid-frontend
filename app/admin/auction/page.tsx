@@ -167,7 +167,7 @@ export default function AdminAuctionPage() {
             {/* Refunds owed */}
             <div style={card}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>💸 EMD refunds owed ({data.refundsOwed.length})</div>
-              {data.refundsOwed.length === 0 ? <div style={{ color: "#8A8FA8", fontSize: 13 }}>Koi refund pending nahi.</div> : (
+              {data.refundsOwed.length === 0 ? <div style={{ color: "#8A8FA8", fontSize: 13 }}>No refunds pending.</div> : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
                     <thead><tr><th style={th}>Bid</th><th style={th}>Segment</th><th style={th}>EMD</th><th style={th}>Action</th></tr></thead>

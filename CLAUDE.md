@@ -665,5 +665,6 @@ Sachin registrations: `/api/cron/channel-sync` + `/api/cron/inventory-lifecycle`
 - Only touch repos `sachinhelpline/staybid-frontend` + `sachinhelpline/staybid-live`. Use
   `mcp__github__` tools, never `gh`. Additive-only; never delete/rename existing fields/routes.
   Existing customer/partner/admin flows must keep working after every change. Stop at phase
-  boundaries; wait for the user's "continue" before the next phase. Hinglish in user-facing copy,
+  boundaries; wait for the user's "continue" before the next phase. **User-facing copy is ENGLISH**
+  (owner moved Circle + Trade to English in v369; keep all new user-facing copy English, NOT Hinglish).
   English in code/commits/this file. Never put the model identifier anywhere pushed to a repo.
