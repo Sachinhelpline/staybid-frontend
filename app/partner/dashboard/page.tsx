@@ -35,6 +35,7 @@ import ServiceRenewBanner from "@/components/partner/ServiceRenewBanner";
 import SubscriptionBillingModal from "@/components/partner/SubscriptionBillingModal";
 import CircleUnitsTab from "@/components/partner/CircleUnitsTab";
 import CircleInventoryTab from "@/components/partner/CircleInventoryTab";
+import AgentAuctionTab from "@/components/partner/AgentAuctionTab";
 import { isSubscriptionService } from "@/lib/partner/services";
 // v170 — shared platform catalog: property types, meal plans, add-on
 // services. The hotel declares here what the /bid auction targets.
@@ -176,7 +177,7 @@ export default function PartnerDashboard() {
   // so the mobile header never overflows past the right edge).
   const [acctOpen, setAcctOpen]   = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms">("overview");
+  const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction">("overview");
 
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
@@ -976,6 +977,8 @@ export default function PartnerDashboard() {
     { id:"passport", icon:"🛂", label:"Passport Guests" },
     // v288 — StayCircle investments linked to this hotel (read-only)
     { id:"circle", icon:"◎", label:"StayCircle" },
+    // v361 — Model 3: sell spare inventory to travel agents via monthly auction.
+    { id:"agentauction", icon:"🏷️", label:"Sell to Agents" },
     // v170 — reports & analytics (revenue, ADR, occupancy, CSV export).
     { id:"reports", icon:"📈", label:"Reports" },
     // v98 — guest complaints feed (read-only; resolution stays admin-side).
@@ -2659,6 +2662,16 @@ export default function PartnerDashboard() {
         {/* ══════════════ STAYCIRCLE (v288) ══════════════ */}
         {tab === "circle" && hotel?.id && (
           <PartnerCircleTab />
+        )}
+
+        {/* ══════════════ SELL TO AGENTS (Model 3 auction supply) ══════════════ */}
+        {tab === "agentauction" && hotel?.id && (
+          <AgentAuctionTab
+            hotelId={hotel.id}
+            hotelName={hotel.name}
+            city={hotel.city}
+            rooms={rooms}
+          />
         )}
 
         {/* ══════════════ PROFILE ══════════════ */}
