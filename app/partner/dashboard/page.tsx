@@ -179,6 +179,16 @@ export default function PartnerDashboard() {
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState<"overview"|"bids"|"rooms"|"flash"|"bookings"|"reservations"|"availability"|"housekeeping"|"billing"|"menu"|"fnbqr"|"guests"|"passport"|"circle"|"reports"|"complaints"|"redeem"|"content"|"channels"|"staff"|"profile"|"myrooms"|"agentauction">("overview");
 
+  // Deep-link support: honour a ?tab= query on first load so external surfaces
+  // (e.g. a Circle investor bridging in to "Sell to Agents" / "My Rooms" / OTA)
+  // land on the right tab instead of always Overview. Runs once on mount.
+  useEffect(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t) setTab(t as any);
+    } catch { /* ignore */ }
+  }, []);
+
   // v98 — Guest complaints raised against this hotel (general + video)
   const [complaints, setComplaints]   = useState<any[]>([]);
   const [vpComplaints, setVpComplaints] = useState<any[]>([]);
