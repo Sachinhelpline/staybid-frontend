@@ -54,6 +54,9 @@ export default function AgentAuctionTab({
   const [circleMult, setCircleMult] = useState(1.2);
   const [retailFloor, setRetailFloor] = useState<number | null>(null);
   const [wholesaleDiscount, setWholesaleDiscount] = useState(20);
+  const [spineAdr, setSpineAdr] = useState<number | null>(null);
+  const [floorMode, setFloorMode] = useState<"dynamic" | "static">("dynamic");
+  const [minFloorFraction, setMinFloorFraction] = useState(0.6);
   const [monthlyRate, setMonthlyRate] = useState<number | "">(""); // Circle owner's monthly purchase rate
   const [quoting, setQuoting] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -63,9 +66,20 @@ export default function AgentAuctionTab({
 
   // Circle owner: purchase/night = monthly rate ÷ 30; floor = purchase × multiplier.
   const purchasePerNight = circleOwner && monthlyRate !== "" ? Math.round(Number(monthlyRate) / 30) : 0;
+  const ceil100 = (n: number) => Math.max(100, Math.ceil(n / 100) * 100);
+  // Property-owner floor previews the SAME formula the server enforces, live as
+  // the owner drags the discount: dynamic = ceil100(ADR × (1−disc)) anchored at
+  // retail × minFloorFraction; static = ceil100(retail × (1−disc)).
+  const propFloorPreview = (): number | null => {
+    if (!retailFloor) return floor;
+    if (floorMode === "dynamic" && spineAdr && spineAdr > 0) {
+      return Math.max(ceil100(spineAdr * (1 - wholesaleDiscount / 100)), ceil100(retailFloor * minFloorFraction), 100);
+    }
+    return Math.max(ceil100(retailFloor * (1 - wholesaleDiscount / 100)), 100);
+  };
   const effFloor: number | null = circleOwner
     ? (purchasePerNight > 0 ? Math.max(Math.ceil((purchasePerNight * circleMult) / 100) * 100, 100) : null)
-    : floor;
+    : propFloorPreview();
 
   const [pending, setPending] = useState<any[]>([]);
   const [bidBusy, setBidBusy] = useState("");
@@ -137,6 +151,9 @@ export default function AgentAuctionTab({
           if (d.circleFloorMultiplier) setCircleMult(Number(d.circleFloorMultiplier) || 1.2);
           setRetailFloor(d.retailFloor ?? null);
           if (d.wholesaleDiscountPct != null) setWholesaleDiscount(Number(d.wholesaleDiscountPct) || 20);
+          setSpineAdr(d.spineAdr ?? null);
+          setFloorMode(d.floorMode === "static" ? "static" : "dynamic");
+          if (d.minFloorFraction != null) setMinFloorFraction(Number(d.minFloorFraction) || 0.6);
           if (d.minBidPerRoomNight != null) setMinBid((prev) => (prev === "" || Number(prev) < d.minBidPerRoomNight ? d.minBidPerRoomNight : prev));
         } else { setMsg({ ok: false, text: d.error || "Quote failed." }); }
       } catch { /* ignore */ } finally { if (!cancelled) setQuoting(false); }
@@ -154,6 +171,7 @@ export default function AgentAuctionTab({
           hotelId, roomId, monthKey, numRooms,
           saleMode, autopilotMode,
           minBidPerRoomNight: minBid === "" ? effFloor : Number(minBid),
+          wholesaleDiscountPct: circleOwner ? undefined : wholesaleDiscount,
           monthlyRate: circleOwner && monthlyRate !== "" ? Number(monthlyRate) : undefined,
           category: selectedRoom?.name || null, city: city || null,
         }),
@@ -266,8 +284,10 @@ export default function AgentAuctionTab({
                 {circleOwner
                   ? ` Circle inventory: floor = your purchase (${inr(purchasePerNight)}/night) × ${circleMult} = cost + ${Math.round((circleMult - 1) * 100)}% profit.`
                   : retailFloor
-                    ? ` Wholesale floor = your retail floor ${inr(retailFloor)} − ${wholesaleDiscount}% (bulk, guaranteed) so agents have real resale margin.`
-                    : " Property owner: bulk wholesale floor (below your retail floor) so agents have resale margin."}
+                    ? (floorMode === "dynamic" && spineAdr
+                        ? ` Dynamic floor = live market ADR ${inr(spineAdr)} − ${wholesaleDiscount}% (tracks demand each month; never below ${inr(ceil100(retailFloor * minFloorFraction))}). You can raise it above.`
+                        : ` Wholesale floor = your retail floor ${inr(retailFloor)} − ${wholesaleDiscount}% so agents have real resale margin. You can raise it above.`)
+                    : " Property owner: bulk wholesale floor (below retail) so agents have resale margin."}
               </span>
             ) : circleOwner ? (
               <span className="text-[0.72rem] text-amber-600 mt-0.5 block">Enter your monthly purchase rate below to compute the floor.</span>
@@ -287,6 +307,38 @@ export default function AgentAuctionTab({
               This is what you paid to own the room. Per night = ÷ 30{purchasePerNight > 0 ? ` = ${inr(purchasePerNight)}` : ""}. Your floor = that × {circleMult}.
             </span>
           </label>
+        )}
+
+        {/* Property owner: wholesale discount control + live floor breakdown */}
+        {!circleOwner && roomId && retailFloor != null && (
+          <div className="rounded-xl border border-luxury-200 bg-luxury-50/60 p-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-semibold text-luxury-700">Wholesale discount</span>
+              <span className="text-sm font-bold text-gold-700">{wholesaleDiscount}% off</span>
+            </div>
+            <input type="range" min={0} max={40} step={1} value={wholesaleDiscount}
+              onChange={(e) => setWholesaleDiscount(Number(e.target.value))}
+              className="w-full accent-gold-500" />
+            <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+              <div className="rounded-lg bg-white border border-luxury-100 px-2 py-1.5">
+                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">{floorMode === "dynamic" && spineAdr ? "MARKET ADR (LIVE)" : "RETAIL FLOOR"}</div>
+                <div className="text-[0.9rem] font-extrabold text-luxury-900">{inr(floorMode === "dynamic" && spineAdr ? spineAdr : retailFloor)}</div>
+              </div>
+              <div className="rounded-lg bg-white border border-gold-200 px-2 py-1.5">
+                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">YOUR FLOOR</div>
+                <div className="text-[0.9rem] font-extrabold text-gold-700">{effFloor != null ? inr(effFloor) : "—"}</div>
+              </div>
+              <div className="rounded-lg bg-white border border-luxury-100 px-2 py-1.5">
+                <div className="text-[0.56rem] font-bold text-luxury-400 tracking-wide">SAFETY ANCHOR</div>
+                <div className="text-[0.9rem] font-extrabold text-luxury-900">{inr(ceil100(retailFloor * minFloorFraction))}</div>
+              </div>
+            </div>
+            <div className="text-[0.68rem] text-luxury-400 mt-1.5">
+              {floorMode === "dynamic"
+                ? "Floor tracks the live market each month; a higher discount = more agent margin & faster sales. Never below the safety anchor."
+                : "A higher discount = more agent margin & faster sales."} Set the min bid above to raise it further.
+            </div>
+          </div>
         )}
 
         {saleMode === "live" ? (

@@ -129,6 +129,21 @@ export function wholesaleFloor(retailFloorPerNight: number, discountPct: number)
   return Math.max(ceil100(retail * (1 - pct / 100)), 100);
 }
 
+// DYNAMIC wholesale floor (Spine ADR-linked). The floor tracks the room's LIVE
+// month ADR (peak season ⇒ higher floor, off-season ⇒ lower) minus the wholesale
+// discount, but never below a HARD ANCHOR = retail floorPrice × minFloorFraction
+// (protects the owner from an off-season collapse). ₹100-snapped, min ₹100.
+// If ADR is unavailable (spine outage), the caller falls back to the static floor.
+export function dynamicWholesaleFloor(spineAdr: number, discountPct: number, retailFloorPerNight: number, minFloorFraction: number): number {
+  const adr = Math.max(0, Math.round(Number(spineAdr) || 0));
+  const pct = Number.isFinite(Number(discountPct)) && Number(discountPct) >= 0 && Number(discountPct) <= 40 ? Number(discountPct) : 20;
+  const frac = Number.isFinite(Number(minFloorFraction)) && Number(minFloorFraction) >= 0.4 && Number(minFloorFraction) <= 1 ? Number(minFloorFraction) : 0.6;
+  const retail = Math.max(0, Math.round(Number(retailFloorPerNight) || 0));
+  const dynamic = ceil100(adr * (1 - pct / 100));
+  const anchor = Math.max(ceil100(retail * frac), 100);
+  return Math.max(dynamic, anchor, 100);
+}
+
 // Circle-OWNER floor = their PURCHASE price per night × the multiplier (1.20 =
 // cover cost + 20% profit). purchasePerNight = their monthly acquisition rate ÷
 // 30 (e.g. ₹30,000/mo → ₹1,000/night → ₹1,200 floor). ₹100-snapped, min ₹100.

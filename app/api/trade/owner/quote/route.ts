@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_READ } from "@/lib/sb";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight, isCircleOperatedHotel, hasActiveModel2Listing, wholesaleFloor } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, upcomingAuctionMonths, computeMinBidFloorPerNight, isCircleOperatedHotel, hasActiveModel2Listing, wholesaleFloor, dynamicWholesaleFloor } from "@/lib/trade/lots";
+import { monthMarket } from "@/lib/trade/market";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,20 @@ export async function POST(req: NextRequest) {
   // purchase price (entered in the form) × the multiplier; client previews it.
   let retailFloor: number | null = null;
   let floor: number | null = null;
+  let spineAdr: number | null = null;
+  let floorMode: string | null = null;
   if (!isCircle) {
     retailFloor = await computeMinBidFloorPerNight(roomId, range);
-    floor = wholesaleFloor(retailFloor, cfg.wholesaleDiscountPct);
+    floorMode = cfg.floorMode === "static" ? "static" : "dynamic";
+    if (floorMode === "dynamic") {
+      const mkt = await monthMarket(roomId, range.monthStart, range.monthEnd);
+      spineAdr = mkt?.adr ?? null;
+      if (spineAdr && spineAdr > 0) {
+        floor = dynamicWholesaleFloor(spineAdr, cfg.wholesaleDiscountPct, retailFloor, cfg.minFloorFraction);
+      } else { floor = wholesaleFloor(retailFloor, cfg.wholesaleDiscountPct); floorMode = "static"; }
+    } else {
+      floor = wholesaleFloor(retailFloor, cfg.wholesaleDiscountPct);
+    }
   }
   const model2Conflict = await hasActiveModel2Listing(roomId, range.monthStart, range.monthEnd);
 
@@ -64,7 +76,10 @@ export async function POST(req: NextRequest) {
     window: win,
     minBidPerRoomNight: floor,
     retailFloor,
+    spineAdr,
+    floorMode,
     wholesaleDiscountPct: cfg.wholesaleDiscountPct,
+    minFloorFraction: cfg.minFloorFraction,
     nights: range.nights,
     unitsHint,
     circleOperated: isCircle,

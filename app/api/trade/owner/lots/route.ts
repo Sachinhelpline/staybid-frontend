@@ -9,8 +9,9 @@ import { SB_URL, SB_H, SB_READ } from "@/lib/sb";
 import { genId } from "@/lib/sb-server";
 import { partnerHotelScope } from "@/lib/partner/hotel-scope";
 import { resolveAuctionConfig } from "@/lib/trade/config";
-import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, wholesaleFloor, activeUnitCount } from "@/lib/trade/lots";
+import { monthKeyToRange, computeAuctionWindow, computeMinBidFloorPerNight, isCircleOperatedHotel, circleOwnerFloor, wholesaleFloor, dynamicWholesaleFloor, activeUnitCount } from "@/lib/trade/lots";
 import { normalizeAutopilotMode } from "@/lib/trade/live-auction";
+import { monthMarket } from "@/lib/trade/market";
 
 export const dynamic = "force-dynamic";
 
@@ -116,6 +117,8 @@ export async function POST(req: NextRequest) {
   let purchasePerNight: number | null = null;
   let retailFloor: number | null = null;
   let wholesaleDiscountPct: number | null = null;
+  let floorMode: string | null = null;
+  let spineAdr: number | null = null;
   if (isCircle) {
     purchasePerNight = Math.round(
       Number(body.purchasePricePerNight) > 0
@@ -127,13 +130,28 @@ export async function POST(req: NextRequest) {
     }
     floor = circleOwnerFloor(purchasePerNight, cfg.circleFloorMultiplier);
   } else {
-    // Property owner: retail floorPrice → WHOLESALE floor (bulk discount below
-    // retail so the agent has real resale margin). Discount is admin-configured
-    // (or a per-lot override, clamped 0–40); frozen on the lot (tamper-safe).
+    // Property owner: WHOLESALE floor below retail so the agent has resale margin.
+    // The discount is admin-configured or a per-lot override (clamped 0–40).
+    //  • DYNAMIC mode → floor tracks the room's LIVE month Spine ADR (peak↑,
+    //    off-season↓), anchored so it can't collapse. Falls back to STATIC if the
+    //    Spine ADR is unavailable, so a pricing outage never breaks publish.
+    //  • STATIC mode  → floor = retail floorPrice × (1 − discount).
+    // Everything is frozen on the lot (tamper-safe); the owner can still raise
+    // the min bid via minBidPerRoomNight below.
     retailFloor = await computeMinBidFloorPerNight(roomId, range);
     const askedDiscount = body.wholesaleDiscountPct !== undefined ? Number(body.wholesaleDiscountPct) : cfg.wholesaleDiscountPct;
     wholesaleDiscountPct = Number.isFinite(askedDiscount) && askedDiscount >= 0 && askedDiscount <= 40 ? askedDiscount : cfg.wholesaleDiscountPct;
-    floor = wholesaleFloor(retailFloor, wholesaleDiscountPct);
+    floorMode = cfg.floorMode === "static" ? "static" : "dynamic";
+    if (floorMode === "dynamic") {
+      const mkt = await monthMarket(roomId, range.monthStart, range.monthEnd);
+      spineAdr = mkt?.adr ?? null;
+      floor = spineAdr && spineAdr > 0
+        ? dynamicWholesaleFloor(spineAdr, wholesaleDiscountPct, retailFloor, cfg.minFloorFraction)
+        : wholesaleFloor(retailFloor, wholesaleDiscountPct); // spine outage → static fallback
+      if (!spineAdr) floorMode = "static"; // record the fallback honestly
+    } else {
+      floor = wholesaleFloor(retailFloor, wholesaleDiscountPct);
+    }
   }
   const askedMin = Math.round(Number(body.minBidPerRoomNight) || 0);
   const minBid = Math.max(askedMin, floor);
@@ -157,6 +175,8 @@ export async function POST(req: NextRequest) {
     purchase_price_per_night: purchasePerNight,
     retail_floor_per_night: retailFloor,
     wholesale_discount_pct: wholesaleDiscountPct,
+    floor_mode: floorMode,
+    spine_adr_at_publish: spineAdr,
     sale_mode: saleMode,
     autopilot_mode: autopilotMode,
     window_open_at: windowOpenAt,
@@ -166,7 +186,7 @@ export async function POST(req: NextRequest) {
       floor_at_publish: floor, published_by: scope.userId,
       owner_kind: isCircle ? "circle_owner" : "property_owner",
       sale_mode: saleMode, autopilot_mode: autopilotMode,
-      ...(retailFloor != null ? { retail_floor: retailFloor, wholesale_discount_pct: wholesaleDiscountPct } : {}),
+      ...(retailFloor != null ? { retail_floor: retailFloor, wholesale_discount_pct: wholesaleDiscountPct, floor_mode: floorMode, spine_adr: spineAdr } : {}),
     },
   };
 

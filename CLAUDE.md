@@ -102,6 +102,26 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v378 — Dynamic Spine-linked property floor + owner control)
+- **Property-owner Model-3 floor is now DYNAMIC (Spine ADR-linked), not a static floorPrice.** The floor tracks
+  the room's LIVE month Spine ADR (same dynamic engine that prices guests): `dynamicWholesaleFloor =
+  ceil100(monthSpineADR × (1 − wholesale_discount_pct))`, floored by a HARD ANCHOR
+  `ceil100(retail floorPrice × min_floor_fraction)` so an off-season dip can't collapse the owner's price.
+  Peak month ⇒ higher floor (owner protected); off-season ⇒ lower (liquidity). `lib/trade/lots.ts`
+  `dynamicWholesaleFloor()`. Shared live-market reader `lib/trade/market.ts` `monthMarket()` (room_date_price +
+  Spine) backs BOTH the floor (owner/lots + owner/quote) AND the agent coach (lots/[id]) — same engine.
+  Config `auction_config.floor_mode` ('dynamic' default | 'static') + `min_floor_fraction` (0.6, clamp 0.4–1),
+  admin-tunable in `/admin/auction`. Frozen per lot (`floor_mode` + `spine_adr_at_publish`). If Spine ADR is
+  unavailable at publish, it falls back to the STATIC floor (records the fallback) — a pricing outage never
+  breaks publish. Migration `2026-07-19-v378-dynamic-spine-floor.sql` (+ dynamic reseed of the 3 property demo
+  live lots). Circle-owner floor (purchase × 1.20) UNCHANGED.
+- **Owner control (manual override) in `AgentAuctionTab`:** property owners get a **wholesale-discount slider
+  (0–40%)** with a live floor breakdown (Market ADR → Your floor → Safety anchor) that previews the exact
+  server formula as they drag; they can still **raise** the min bid above the computed floor (server clamps
+  `minBid = max(asked, floor)` — tamper-safe, never below cost). Verified: Cave View live ADR ₹2,870 − 20% →
+  floor **₹2,300** (anchor ₹1,700), 20% agent headroom; peak months lift it automatically. Badge v377→**v378**,
+  sw HTML_CACHE v189→v190.
+
 ## Current production state (v377 — Trade wholesale floor (real margin) + slidable AI coach)
 - **Root fix for "2% margin" (agent had no reason to buy):** the property-owner Model-3 floor was the room's
   RETAIL `floorPrice` (≈ the room's cheapest retail night), so an agent's floor ≈ the live ADR. Now the

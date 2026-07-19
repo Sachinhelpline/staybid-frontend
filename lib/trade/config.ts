@@ -22,7 +22,9 @@ export interface AuctionConfig {
   livePayWindowHours: number;    // LIVE mode: agent's pay window after an accept
   liveDefaultAutopilot: string;  // LIVE mode: default autopilot pre-selected in the owner form
   liveHybridAcceptRatio: number; // LIVE hybrid: auto-accept a bid ≥ floor × this ratio
-  wholesaleDiscountPct: number;  // property-owner floor = room floorPrice × (1 − pct/100)
+  wholesaleDiscountPct: number;  // property-owner discount off the reference price
+  floorMode: string;             // 'dynamic' (Spine ADR-linked) | 'static' (floorPrice-linked)
+  minFloorFraction: number;      // hard anchor: floor never below retail floorPrice × this
 }
 
 export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
@@ -36,13 +38,20 @@ export const AUCTION_CONFIG_DEFAULT: AuctionConfig = {
   livePayWindowHours: 24,     // accept → 24h to pay from the agent dashboard
   liveDefaultAutopilot: "hybrid",
   liveHybridAcceptRatio: 1.1, // hybrid auto-accepts a bid ≥ floor × 1.10 (at-floor waits)
-  wholesaleDiscountPct: 20,   // property-owner wholesale floor = retail floorPrice − 20%
+  wholesaleDiscountPct: 20,   // property-owner wholesale discount off the reference price
+  floorMode: "dynamic",       // Spine ADR-linked floor by default (tracks live demand)
+  minFloorFraction: 0.6,      // dynamic floor never below retail floorPrice × 0.6
 };
 
 // Discounts are bounded 0–40% (never gut the owner's price); returns fallback otherwise.
 const clampDiscount = (v: any, fallback: number) => {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 40 ? n : fallback;
+};
+// Anchor fraction bounded 0.4–1.0 (never let the dynamic floor collapse the owner's price).
+const clampFraction = (v: any, fallback: number) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0.4 && n <= 1 ? n : fallback;
 };
 
 const clampMult = (v: any, fallback: number) => {
@@ -85,6 +94,8 @@ export async function resolveAuctionConfig(): Promise<AuctionConfig> {
           liveDefaultAutopilot: (row.live_default_autopilot === "auto" || row.live_default_autopilot === "manual" || row.live_default_autopilot === "hybrid") ? row.live_default_autopilot : "hybrid",
           liveHybridAcceptRatio: clampMult(row.live_hybrid_accept_ratio, AUCTION_CONFIG_DEFAULT.liveHybridAcceptRatio),
           wholesaleDiscountPct: clampDiscount(row.wholesale_discount_pct, AUCTION_CONFIG_DEFAULT.wholesaleDiscountPct),
+          floorMode: row.floor_mode === "static" ? "static" : "dynamic",
+          minFloorFraction: clampFraction(row.min_floor_fraction, AUCTION_CONFIG_DEFAULT.minFloorFraction),
         };
         _cache = { at: now, cfg };
         return cfg;
