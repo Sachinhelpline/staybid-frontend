@@ -12,8 +12,10 @@ import { useTier } from "@/lib/tier-store";
 // v125.3 — single source of truth for the customer Menu. Edit
 // lib/user-links.ts; both mobile drawer and desktop dropdown update.
 import { USER_LINKS_BASE, CREATOR_LINK, HOTEL_LINK } from "@/lib/user-links";
+// v392 — single canonical city list (hill-stations + 12-month demand-cycle hubs).
+import { CITY_DISPLAY_ORDER } from "@/lib/cities";
 
-const CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
+const CITIES = CITY_DISPLAY_ORDER;
 
 const NAV_LINKS = [
   { href: "/hotels",      label: "Hotels",      icon: "🏨" },

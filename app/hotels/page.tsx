@@ -11,6 +11,9 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 // v141 — Phase-5 explore tour. 4 steps: search → city filter →
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
+// v392 — canonical city pills (hill-stations + 12-month demand-cycle hubs).
+import { cityPills } from "@/lib/cities";
+import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
 
 // v160 — Sort options for the unified control-bar filter popover.
 const SORT_OPTS: Array<{ v: "default" | "price-asc" | "price-desc" | "rating"; label: string }> = [
@@ -28,15 +31,7 @@ const SORT_OPTS: Array<{ v: "default" | "price-asc" | "price-desc" | "rating"; l
 // `sb_search_state` and propagates to /hotels/[id] via URL params on
 // card tap so the detail picker arrives pre-filled.
 
-const CITY_PILLS: Array<{ key: string; label: string; icon: string }> = [
-  { key: "",          label: "All",       icon: "🏔" },
-  { key: "Mussoorie", label: "Mussoorie", icon: "⛰️" },
-  { key: "Dhanaulti", label: "Dhanaulti", icon: "🌲" },
-  { key: "Rishikesh", label: "Rishikesh", icon: "🕉" },
-  { key: "Shimla",    label: "Shimla",    icon: "🌨" },
-  { key: "Manali",    label: "Manali",    icon: "🏂" },
-  { key: "Dehradun",  label: "Dehradun",  icon: "🌳" },
-];
+const CITY_PILLS: Array<{ key: string; label: string; icon: string }> = cityPills();
 
 // Per-card min price (best of active flash + lowest room floor).
 function minPriceFor(h: any) {
@@ -543,6 +538,16 @@ function HotelList() {
           </span>
         </p>
       </header>
+
+      {/* v392 — 12-month demand cycle: this month's peak destinations. Every
+          city is bookable all year; this only highlights where demand peaks. */}
+      <DemandCycleStrip
+        activeCity={city}
+        onPick={(c) => {
+          setCity(c);
+          try { localStorage.setItem("sb_city", c); } catch {}
+        }}
+      />
 
       {/* v160 — Unified premium control bar. Centered (not full-bleed):
           [📍 Location ▾] · [ 🔍 Search ] · [⚙ Filter ▾]. Location opens the

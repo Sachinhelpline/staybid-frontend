@@ -18,8 +18,10 @@
    ────────────────────────────────────────────────────────────────────── */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+// v392 — single canonical city list (hill-stations + 12-month demand-cycle hubs).
+import { CITY_DISPLAY_ORDER } from "@/lib/cities";
 
-export const LOCATION_CITIES = ["Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun"];
+export const LOCATION_CITIES = CITY_DISPLAY_ORDER;
 
 export function LocationGlobeModal({ activeCity, onClose }: {
   activeCity: string;
