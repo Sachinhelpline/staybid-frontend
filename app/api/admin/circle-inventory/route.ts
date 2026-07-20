@@ -74,6 +74,14 @@ export async function GET(req: NextRequest) {
     sb(`b2b_listings?select=status&limit=2000`),
   ]);
 
+  // S2 — guest-booking owner settlements (kind='guest_booking') written by the
+  // settlement reconciler. Owed = what StayBid owes Circle owners from confirmed
+  // guest bookings; mark_guest_booking_paid flips owed→paid.
+  const [gbSettlements, gbAgg] = await Promise.all([
+    sb(`settlement_ledger?kind=eq.guest_booking&select=*&order=created_at.desc&limit=200`),
+    sb(`settlement_ledger?kind=eq.guest_booking&select=gross_amount,platform_fee,net_amount,payout_status&limit=5000`),
+  ]);
+
   // v333 (D3) — side-load the B2B trades behind each settlement (ref_id → trade)
   // so a settlement row can show unit # / hotel / dates.
   const settleTradeIds = Array.from(new Set(settlements.map((s: any) => String(s.ref_id)).filter(Boolean)));
@@ -180,9 +188,23 @@ export async function GET(req: NextRequest) {
     b2bListingsRaw.filter((l: any) => l.status === "listed").reduce((s: number, l: any) => s + num(l.ask_total), 0),
   );
 
+  // S2 — guest-booking settlement aggregate.
+  let gbOwed = 0, gbPaid = 0, gbFees = 0;
+  gbAgg.forEach((s: any) => {
+    const net = num(s.net_amount), fee = num(s.platform_fee), st = String(s.payout_status);
+    gbFees += fee;
+    if (st === "owed") gbOwed += net;
+    else if (st === "paid") gbPaid += net;
+  });
+
   return NextResponse.json({
     ok: true,
     kpis: {
+      // S2 — guest-booking owner settlements.
+      gbOwed: Math.round(gbOwed),
+      gbPaid: Math.round(gbPaid),
+      gbFees: Math.round(gbFees),
+      gbCount: gbSettlements.length,
       investorOwed: Math.round(investorOwed),
       investorPaid: Math.round(investorPaid),
       platformFees: Math.round(platformFees),
@@ -204,6 +226,11 @@ export async function GET(req: NextRequest) {
     blocks: blocks.map(enrichBlock),
     sales: sales.map(enrichSale),
     settlements: settlements.map(enrichSettlement),
+    guestBookingSettlements: gbSettlements.map((s: any) => ({
+      id: s.id, payee_user_id: s.payee_user_id, gross_amount: num(s.gross_amount),
+      platform_fee: num(s.platform_fee), net_amount: num(s.net_amount),
+      payout_status: s.payout_status, ref_id: s.ref_id, metadata: s.metadata, created_at: s.created_at,
+    })),
     b2bListings: b2bListingsRaw.map(enrichListing),
     b2bTrades: b2bTradesRaw.map(enrichTrade),
   }, { headers: { "Cache-Control": "no-store" } });
@@ -372,6 +399,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Settlement already paid or not payable." }, { status: 409 });
     }
     logAdminAction({ admin, action: "circle_inventory.settlement_paid", targetType: "settlement_ledger", targetId: settlementId, details: { net_amount: num(s.net_amount) } });
+    return NextResponse.json({ ok: true, settlement: rows[0] });
+  }
+
+  // ── mark_guest_booking_paid: settle a guest-booking owner obligation (S2) ─
+  //    Manual payout reconciliation for kind='guest_booking' owed rows written
+  //    by the settlement reconciler; owed → paid. (Auto RazorpayX payout is S3.)
+  if (action === "mark_guest_booking_paid") {
+    const settlementId = String(body?.settlementId || "").trim();
+    if (!settlementId) return NextResponse.json({ error: "settlementId required" }, { status: 400 });
+    const rows0 = await sb(`settlement_ledger?id=eq.${encodeURIComponent(settlementId)}&kind=eq.guest_booking&select=*`);
+    const s = rows0[0];
+    if (!s) return NextResponse.json({ error: "Settlement not found" }, { status: 404 });
+    const meta = (s.metadata && typeof s.metadata === "object") ? s.metadata : {};
+    const r = await fetch(
+      `${SB_URL}/rest/v1/settlement_ledger?id=eq.${encodeURIComponent(settlementId)}&kind=eq.guest_booking&payout_status=eq.owed`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({
+          payout_status: "paid",
+          paid_at: nowIso,
+          metadata: { ...meta, payoutPaidAt: nowIso, payoutPaidBy: admin.id || null },
+          updated_at: nowIso,
+        }),
+      },
+    );
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    if (!Array.isArray(rows) || !rows.length) {
+      return NextResponse.json({ error: "Settlement already paid or not payable." }, { status: 409 });
+    }
+    logAdminAction({ admin, action: "circle_inventory.guest_booking_paid", targetType: "settlement_ledger", targetId: settlementId, details: { net_amount: num(s.net_amount) } });
     return NextResponse.json({ ok: true, settlement: rows[0] });
   }
 

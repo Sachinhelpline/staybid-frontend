@@ -116,6 +116,9 @@ export default function AdminCircleInventory() {
   // v333 — D3: Model 4 B2B trade settlements owed to sellers.
   const settlements: any[] = data?.settlements || [];
   const owedSettlements = settlements.filter((s) => s.payout_status === "owed");
+  // S2 — guest-booking owner settlements (owed = payable to Circle owners).
+  const gbSettlements: any[] = data?.guestBookingSettlements || [];
+  const gbOwedList = gbSettlements.filter((s) => s.payout_status === "owed");
   // v334 — D4: Model 4 B2B exchange listings oversight.
   const b2bListings: any[] = data?.b2bListings || [];
   const shownListings = b2bFilter === "all" ? b2bListings : b2bListings.filter((l) => l.status === b2bFilter);
@@ -266,6 +269,42 @@ export default function AdminCircleInventory() {
                       <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.created_at)} ago</td>
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_settlement_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to seller?`)} style={btn("#2ECC71")}>
+                          {busy === s.id ? "…" : "Mark paid"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* S2 — guest-booking owner settlements owed to Circle owners */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>🏠 Guest-booking payouts owed to owners <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· {inr(k.gbOwed || 0)} owed · fee {inr(k.gbFees || 0)}</span></div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {gbOwedList.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No outstanding guest-booking payouts. (Recorded by the settlement reconciler as bookings confirm.)"}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Owner", "Booking", "Nights", "Guest paid (share)", "Fee", "Owner net", "When", "Action"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {gbOwedList.map((s) => (
+                    <tr key={s.id}>
+                      <td style={td}>{String(s.payee_user_id).slice(-8)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{String(s.metadata?.bookingId || "—").slice(-8)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{s.metadata?.nights ?? "—"}{s.metadata?.totalNights ? ` / ${s.metadata.totalNights}` : ""}</td>
+                      <td style={td}>{inr(s.gross_amount)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{inr(s.platform_fee)}</td>
+                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(s.net_amount)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{ago(s.created_at)} ago</td>
+                      <td style={td}>
+                        <button disabled={busy === s.id} onClick={() => act({ action: "mark_guest_booking_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to this owner?`)} style={btn("#2ECC71")}>
                           {busy === s.id ? "…" : "Mark paid"}
                         </button>
                       </td>
