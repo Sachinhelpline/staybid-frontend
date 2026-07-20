@@ -172,10 +172,46 @@ export default function DiscoverPage() {
       (r) => (r.ok ? r.json() : null),
       () => null,
     );
-    const [sd, d] = await Promise.all([socialPromise, discoverPromise]);
+    // v398 — a lightweight hotels fetch purely to build a starting-price map
+    // (hotel id → cheapest room floorPrice). The social feed doesn't join room
+    // prices, so a tagged reel's item lands with minPrice=null and the card
+    // used to show "View rates ›". With this map we can hydrate each tagged
+    // reel with its hotel's real "starting from" price so the card shows the
+    // price again (owner's request). Fails soft — a null map just falls back.
+    const hotelsPricePromise = fetch("/api/hotels?limit=100", { cache: "no-store" }).then(
+      (r) => (r.ok ? r.json() : null),
+      () => null,
+    );
+    const [sd, d, hp] = await Promise.all([socialPromise, discoverPromise, hotelsPricePromise]);
+
+    // Build hotel id → { minPrice, rooms } from the hotels list.
+    const priceById: Record<string, { minPrice: number | null; rooms: any[] }> = {};
+    if (hp && Array.isArray(hp?.hotels)) {
+      for (const h of hp.hotels) {
+        if (!h?.id) continue;
+        const roomMin = h.rooms?.length
+          ? Math.min(...h.rooms.map((r: any) => r.floorPrice || 99999))
+          : Infinity;
+        priceById[h.id] = {
+          minPrice: roomMin === Infinity ? null : roomMin,
+          rooms: h.rooms || [],
+        };
+      }
+    }
+    // Hydrate a tagged reel Item with its hotel's real starting price so the
+    // card renders "From ₹X /n" instead of "View rates ›".
+    const hydratePrice = (it: Item): Item => {
+      const taggedId = (it.hotel as any)?._userPostTaggedHotel?.id;
+      if (taggedId && priceById[taggedId]) {
+        const p = priceById[taggedId];
+        if (it.hotel.minPrice == null && p.minPrice != null) it.hotel.minPrice = p.minPrice;
+        if ((!it.hotel.rooms || it.hotel.rooms.length === 0) && p.rooms.length) it.hotel.rooms = p.rooms;
+      }
+      return it;
+    };
 
     let publicItems: Item[] = [];
-    if (sd && Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem);
+    if (sd && Array.isArray(sd?.posts)) publicItems = sd.posts.map(socialPostToItem).map(hydratePrice);
 
     // Primary: ranked discover feed
     try {
