@@ -518,7 +518,7 @@ const CACHE_NAME = 'staybid-static-v2';
 // v360 — HTML_CACHE bump (v171 -> v172). Model 2 sell-to-public: demo inventory
 // on Circle-operated hotels + 'list for public booking' (releases hold) on the
 // selling page.
-const HTML_CACHE = 'staybid-html-v205';
+const HTML_CACHE = 'staybid-html-v206';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

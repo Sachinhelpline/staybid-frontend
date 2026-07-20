@@ -12,8 +12,16 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 // sort+stars → first hotel card.
 import { usePageTour } from "@/lib/tutorial/usePageTour";
 // v392 — canonical city pills (hill-stations + 12-month demand-cycle hubs).
-import { cityPills } from "@/lib/cities";
+import { cityPills, HUB_CITIES, SATELLITE_CITIES } from "@/lib/cities";
 import DemandCycleStrip from "@/components/discover/DemandCycleStrip";
+
+// v394 — new demand-cycle destinations (hubs + satellites), lowercased, for the
+// "Explore India" rail. Hubs first so they lead the rail.
+const NEW_DEST_ORDER: string[] = [
+  ...HUB_CITIES.map((c) => c.key.toLowerCase()),
+  ...SATELLITE_CITIES.map((c) => c.key.toLowerCase()),
+];
+const NEW_DEST_SET = new Set(NEW_DEST_ORDER);
 
 // v160 — Sort options for the unified control-bar filter popover.
 const SORT_OPTS: Array<{ v: "default" | "price-asc" | "price-desc" | "rating"; label: string }> = [
@@ -480,6 +488,38 @@ function HotelList() {
         eyebrow: "Personally inspected · trust-verified",
         items: verified,
       });
+    }
+
+    // 4b. Explore India — new demand-cycle destinations (Goa, Kerala, Udaipur,
+    //     Leh, … + satellites). Every new city has one flagship hotel, so a
+    //     per-city rail (≥2) would never form; this compact rail surfaces one
+    //     card per new city (hubs first) so the national inventory is
+    //     discoverable. Only on the "All" view.
+    if (!city) {
+      const seenCity = new Set<string>();
+      const byCity: Record<string, any> = {};
+      filteredHotels.forEach((h: any) => {
+        const k = String(h.city || "").toLowerCase();
+        if (NEW_DEST_SET.has(k) && !byCity[k]) byCity[k] = h;
+      });
+      const exploreItems = NEW_DEST_ORDER
+        .map((k) => byCity[k])
+        .filter((h) => {
+          if (!h) return false;
+          const k = String(h.city || "").toLowerCase();
+          if (seenCity.has(k)) return false;
+          seenCity.add(k);
+          return true;
+        });
+      if (exploreItems.length >= 3) {
+        out.push({
+          key: "explore-india",
+          title: "Explore India · New destinations",
+          icon: "🧭",
+          eyebrow: "Beaches, deserts, backwaters & high Himalaya — bookable all year",
+          items: exploreItems,
+        });
+      }
     }
 
     // 5. Per-city rails — only when "All" is selected so we don't show
