@@ -102,6 +102,31 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v389 — Circle settlement S2: guest-booking owed reconciler + admin payouts)
+- **S2 of the money layer — RECORDS the owner's owed obligation from confirmed guest bookings; moves NO money.**
+  Uses the v388 resolver. `bookings` are Railway-created (into Supabase) with no in-repo confirm hook, so the
+  record layer is a **cron reconciler**, not a verify-hook.
+- **NEW `GET/POST /api/cron/circle-settlement`** (token-gated like the other crons; register cron-job.org
+  `*/30 * * * *`). Two idempotent passes over recent bookings (`checkOut ≥ today−120d`, bounded 200):
+  ① **SETTLE** — confirmed/paid, non-cancelled booking → `bidId`→`bids.assignedUnitId`→unit → resolve per-night
+  payee (`resolveNightlyPayees`) → keep Circle-attributed nights → pro-rate `paidAmount` → INSERT one owed
+  `settlement_ledger` row per payee (`kind='guest_booking'`, `ref_id='<bookingId>:<payeeId>'`, fee **12%** frozen,
+  `payout_status='owed'`), idempotent via `uniq_settlement_kind_ref`. StayBid-retained nights (sentinel owner /
+  classic hotel) get NO row (owner decision 2 — they stay on the existing hotel settlement). ② **REVERSE** —
+  now-cancelled/refunded booking → its still-`owed` rows flip to `cancelled` (`ref_id=like.<bookingId>:*`).
+- **Admin (`/admin/circle-inventory`)** — a NEW "🏠 Guest-booking payouts owed to owners" panel (owner · booking ·
+  nights · guest-paid share · fee · owner net) + a **Mark paid** action `mark_guest_booking_paid` (owed→paid,
+  manual reconciliation; mirrors `mark_settlement_paid`). GET returns `guestBookingSettlements` + KPIs
+  `gbOwed/gbPaid/gbFees/gbCount`.
+- **Owner decisions applied:** fee 12% single-source (`CIRCLE_BOOKING_FEE_PCT_DEFAULT`, frozen per row); Circle
+  owners paid via this ledger, classic hotels unchanged; payout rail = RazorpayX batch (record owed now, money-out
+  is S3); escrow OK. **Live SQL round-trip verified** — dual-payee split, `(kind,ref_id)` idempotency (dup ignored,
+  net not clobbered), refund reversal (2/2 flipped), 0 leftover.
+- ⚠ **NOT built (S3):** auto money-out (RazorpayX/Route owed→paid + bank transfer) + paid-row claw-back on refund —
+  Railway phase. `mark_guest_booking_paid` is the interim manual payout-record.
+- `tsc` + `next build` clean. Badge v388→**v389**, sw HTML_CACHE v200→v201. ⚠ Pending cron registration:
+  `/api/cron/circle-settlement` (`*/30 * * * *`).
+
 ## Current production state (v388 — Circle settlement S1: attribution resolver + projected earnings (read-only))
 - **First phase of the money attribution/settlement layer (design in `docs/CIRCLE-SETTLEMENT-ATTRIBUTION-DESIGN.md`).
   PURE + READ-ONLY — writes nothing, moves no money.** Closes the "who earns this unit-night" gap in code
