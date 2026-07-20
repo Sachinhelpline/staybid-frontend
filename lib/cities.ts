@@ -178,3 +178,29 @@ export function cityHubLabel(city: string | null | undefined): string {
   const m = cityMeta(city);
   return m ? m.hubLabel || m.name : String(city || "");
 }
+
+// ── City-picker ordering + icons (customer surfaces) ─────────────────────────
+// Existing hill-stations FIRST (nothing existing re-orders), then the new hubs.
+// Consumed by Navbar CITIES, LocationGlobePicker LOCATION_CITIES, hotels
+// CITY_PILLS — one place to add a city to every picker.
+export const CITY_DISPLAY_ORDER: string[] = [
+  "Mussoorie", "Dhanaulti", "Rishikesh", "Shimla", "Manali", "Dehradun",
+  "Goa", "Kerala", "Udaipur", "Jaisalmer", "Leh", "Meghalaya", "Puri", "Coorg",
+];
+
+export const CITY_ICON: Record<string, string> = {
+  Mussoorie: "⛰️", Dhanaulti: "🌲", Rishikesh: "🕉", Shimla: "🌨", Manali: "🏂", Dehradun: "🌳",
+  Goa: "🏖", Kerala: "🌴", Udaipur: "🏰", Jaisalmer: "🐪", Leh: "🏔", Meghalaya: "☁️", Puri: "🛕", Coorg: "☕",
+};
+
+/** City-pill descriptors for the hotels browse (leading "All", then every city in order). */
+export function cityPills(): Array<{ key: string; label: string; icon: string }> {
+  return [
+    { key: "", label: "All", icon: "🏔" },
+    ...CITY_DISPLAY_ORDER.map((k) => ({
+      key: k,
+      label: cityMeta(k)?.name || k,
+      icon: CITY_ICON[k] || "📍",
+    })),
+  ];
+}
