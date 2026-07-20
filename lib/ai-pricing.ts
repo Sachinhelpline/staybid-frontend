@@ -62,6 +62,17 @@ const CITY_DEMAND: Record<string, number> = {
   Shimla:    1.15,
   Dehradun:  1.06,
   Dhanaulti: 1.10,
+  // ── 12-month demand-cycle hub cities (baseline demand weight; the per-month
+  //    performing/off pattern is a display overlay in lib/circle/demand-cycle.ts,
+  //    not wired into pricing — the Spine's SEASON_MULT stays the money engine).
+  Goa:       1.30,
+  Kerala:    1.22,
+  Udaipur:   1.25,
+  Jaisalmer: 1.15,
+  Leh:       1.20,
+  Meghalaya: 1.12,
+  Puri:      1.10,
+  Coorg:     1.12,
 };
 
 // ── Indian festivals / long-weekend events ────────────────────────────────────
