@@ -117,16 +117,23 @@ export async function resolveRoomListings(
 ): Promise<{ individualRooms: boolean; listings: RoomListing[] }> {
   if (!hotelId) return { individualRooms: false, listings: [] };
 
-  // In a circle-operated hotel EVERY physical room is an individual listing —
-  // investor-owned units use their overrides; StayBid-ops units (owner_user_id
-  // NULL) use category defaults. getHotel already gates this to circle hotels via
-  // account_type, so we list all active + listed units here.
+  // Individual-room listings are ONLY for units that are individually OWNED by a
+  // real investor (owner_user_id set) — a Model-1 provisioned owner or a Model-2
+  // resale buyer, each of whom hosts their room with their own price/photos and
+  // earns its bookings. StayBid-ops units (owner_user_id NULL) carry NO per-unit
+  // identity — they're identical category inventory (same photo/price/amenities),
+  // so surfacing every one of them as its own "Room 101 / 102 / 103…" card just
+  // shows the customer N duplicate listings. Those fall back to the normal
+  // CATEGORY card ("Deluxe · N rooms available · Book"), which books the pool and
+  // (correctly) attributes to StayBid. So: fetch owner_user_id and keep only
+  // OWNED units as individual listings; a hotel with zero owned units renders as
+  // plain category cards.
   let units: any[] = [];
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/hotel_room_units?hotelId=eq.${encodeURIComponent(hotelId)}` +
-        `&is_listed=eq.true&status=eq.active` +
-        `&select=id,roomId,roomNumber,floor,title,price_override,mrp_override,amenities,photos,view_label,host_rating,host_reviews` +
+        `&is_listed=eq.true&status=eq.active&owner_user_id=not.is.null` +
+        `&select=id,roomId,roomNumber,floor,title,price_override,mrp_override,amenities,photos,view_label,host_rating,host_reviews,owner_user_id` +
         `&order=roomNumber.asc`,
       { headers: H },
     );
