@@ -190,6 +190,26 @@ export function normalizeFlashDeal(d: any): FlashDealStory | null {
   };
 }
 
+// ─── StayBid Circle-operated presentation ──────────────────────────────────
+// A StayBid-Circle-operated property's hotel name is literally
+// "StayBid Circle · <property>". On the rail (which truncates to a tiny label)
+// EVERY city then reads an identical "StayBid Circl…", so the user can't tell
+// them apart until they open it — confusing. For these we show the CITY as the
+// primary label + a small "Circle Operated" tag instead (owner request).
+function isCircleOperated(hotelName?: string): boolean {
+  return /^\s*staybid\s*circle/i.test(hotelName || "");
+}
+// The label to show FIRST — the city for a Circle-operated hotel, else the
+// hotel name. Falls back to the name with the "StayBid Circle · " prefix
+// stripped if the city is somehow missing.
+function primaryLabel(hotelName: string, city: string): string {
+  if (isCircleOperated(hotelName)) {
+    if (city) return city;
+    return hotelName.replace(/^\s*staybid\s*circle\s*[·|\-–—:.]*\s*/i, "").trim() || hotelName;
+  }
+  return hotelName;
+}
+
 // ═══ Rail ═══════════════════════════════════════════════════════════════════
 export function FlashDealStoryRail({
   deals,
@@ -239,7 +259,10 @@ export function FlashDealStoryRail({
                     : <span className="fdeal-rail-initials">{(d.hotelName || "H").slice(0, 1).toUpperCase()}</span>}
                 </span>
               </span>
-              <span className="fdeal-rail-name">{d.hotelName}</span>
+              <span className="fdeal-rail-name">{primaryLabel(d.hotelName, d.city)}</span>
+              {isCircleOperated(d.hotelName) && (
+                <span className="fdeal-rail-tag">Circle Operated</span>
+              )}
             </button>
           ))}
         </div>
@@ -413,8 +436,26 @@ export function FlashDealStoryRail({
         }
         .fdeal-rail-name {
           font-size: 0.62rem;
-          font-weight: 500;
-          color: rgba(74, 50, 8, 0.85);
+          font-weight: 600;
+          color: rgba(74, 50, 8, 0.9);
+          max-width: 64px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        /* Small "Circle Operated" tag under the city label — tells the user
+           this is a StayBid Circle-operated property without hiding the city. */
+        .fdeal-rail-tag {
+          margin-top: 1px;
+          font-size: 0.5rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1.1;
+          color: #6e4a08;
+          background: linear-gradient(180deg, rgba(255,244,204,0.95), rgba(240,208,96,0.55));
+          border: 1px solid rgba(184,134,11,0.35);
+          border-radius: 999px;
+          padding: 1px 6px;
           max-width: 64px;
           white-space: nowrap;
           overflow: hidden;
@@ -738,10 +779,23 @@ export function FlashDealStoryViewer({
           <span className="fdeal-viewer-stamp-label">OFF</span>
         </div>
 
-        {/* Hotel title + city */}
+        {/* Hotel title + city. For a StayBid Circle-operated property show the
+            CITY as the title + a "StayBid Circle Operated" tag (owner request),
+            so the deal reads by its destination, not an identical brand name. */}
         <div className="fdeal-viewer-title-wrap">
-          <h2 className="fdeal-viewer-title">{deal.hotelName}</h2>
-          {deal.city && <p className="fdeal-viewer-city">📍 {deal.city} · {deal.roomType}</p>}
+          <h2 className="fdeal-viewer-title">
+            {isCircleOperated(deal.hotelName) ? primaryLabel(deal.hotelName, deal.city) : deal.hotelName}
+          </h2>
+          {isCircleOperated(deal.hotelName) && (
+            <span className="fdeal-viewer-op-tag">🏛️ StayBid Circle Operated</span>
+          )}
+          {deal.roomType && (
+            <p className="fdeal-viewer-city">
+              {isCircleOperated(deal.hotelName)
+                ? deal.roomType
+                : (deal.city ? `📍 ${deal.city} · ${deal.roomType}` : deal.roomType)}
+            </p>
+          )}
         </div>
 
         {/* Audio chip — shows what's playing. Tappable ✕ to remove a
@@ -1197,6 +1251,24 @@ export function FlashDealStoryViewer({
           font-weight: 500;
           margin: 4px 0 0;
           text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+        }
+        /* "StayBid Circle Operated" tag under the city title in the viewer. */
+        .fdeal-viewer-op-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 6px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, rgba(255,215,107,0.28), rgba(240,180,41,0.16));
+          border: 1px solid rgba(255,215,107,0.55);
+          color: #ffe6a6;
+          font-size: 0.6rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
         }
 
         .fdeal-viewer-bottom {
