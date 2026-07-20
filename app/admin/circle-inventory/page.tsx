@@ -121,6 +121,7 @@ export default function AdminCircleInventory() {
   const gbOwedList = gbSettlements.filter((s) => s.payout_status === "owed");
   // v390 — per-owner payout batches (owed grouped per owner + payout-account status).
   const payoutBatches: any[] = data?.payoutBatches || [];
+  const rxConfigured: boolean = !!data?.razorpayxConfigured; // v391 — RazorpayX money-out live?
   // v334 — D4: Model 4 B2B exchange listings oversight.
   const b2bListings: any[] = data?.b2bListings || [];
   const shownListings = b2bFilter === "all" ? b2bListings : b2bListings.filter((l) => l.status === b2bFilter);
@@ -285,7 +286,7 @@ export default function AdminCircleInventory() {
 
       {/* v390 — per-owner payout batches (group owed guest-booking rows per owner) */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payout batches <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· owed grouped per owner</span></div>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payout batches <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· owed grouped per owner</span> <span style={{ fontSize: 11, fontWeight: 700, color: rxConfigured ? "#2ECC71" : "#8A8FA8" }}>{rxConfigured ? "· RazorpayX live" : "· RazorpayX not configured (manual only)"}</span></div>
         <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
           {payoutBatches.length === 0 ? (
             <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No owners with outstanding payouts."}</div>
@@ -306,9 +307,14 @@ export default function AdminCircleInventory() {
                           ? <span style={{ color: b.accountStatus === "verified" ? "#2ECC71" : "#F0B429", fontSize: 12 }}>{b.accountMethod === "upi" ? "UPI" : "Bank"} · {b.accountStatus}</span>
                           : <span style={{ color: "#E0684E", fontSize: 12 }}>⚠ not added</span>}
                       </td>
-                      <td style={td}>
-                        <button disabled={busy === b.payeeId} onClick={() => act({ action: "mark_owner_batch_paid", payeeUserId: b.payeeId }, b.payeeId, `Mark all ${inr(b.totalOwed)} (${b.rowCount} rows) paid to this owner?`)} style={btn("#2ECC71")}>
-                          {busy === b.payeeId ? "…" : "Mark batch paid"}
+                      <td style={{ ...td, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {rxConfigured && b.hasAccount && (
+                          <button disabled={busy === b.payeeId} onClick={() => act({ action: "payout_owner_batch", payeeUserId: b.payeeId }, b.payeeId, `Send ${inr(b.totalOwed)} to this owner via RazorpayX now? This moves real money.`)} style={btn("#F0B429")}>
+                            {busy === b.payeeId ? "…" : "Pay via RazorpayX"}
+                          </button>
+                        )}
+                        <button disabled={busy === b.payeeId} onClick={() => act({ action: "mark_owner_batch_paid", payeeUserId: b.payeeId }, b.payeeId, `Mark all ${inr(b.totalOwed)} (${b.rowCount} rows) paid to this owner (manual — no transfer)?`)} style={btn(rxConfigured ? "#2ECC71" : "#8A8FA8")}>
+                          {busy === b.payeeId ? "…" : "Mark paid (manual)"}
                         </button>
                       </td>
                     </tr>
