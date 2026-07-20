@@ -69,9 +69,9 @@ export const DEMAND_CYCLE: MonthDemand[] = [
   },
   {
     month: 5, short: "Jun", long: "June", season: "Summer",
-    primary: ["Dhanaulti", "Leh"],
-    secondary: ["Coorg", "Meghalaya", "Rishikesh"],
-    inferred: true,
+    // Owner-set: peak summer hill escapes.
+    primary: ["Dhanaulti", "Manali", "Coorg"],
+    secondary: ["Kanatal", "Mussoorie", "Kasol", "Nainital"],
   },
   {
     month: 6, short: "Jul", long: "July", season: "Monsoon",
@@ -81,9 +81,9 @@ export const DEMAND_CYCLE: MonthDemand[] = [
   },
   {
     month: 7, short: "Aug", long: "August", season: "Monsoon",
+    // Owner-set: same monsoon-strong markets as July.
     primary: ["Leh", "Meghalaya"],
-    secondary: ["Coorg", "Kerala", "Goa"],
-    inferred: true,
+    secondary: ["Coorg", "Kerala"],
   },
   {
     month: 8, short: "Sep", long: "September", season: "Monsoon",

@@ -51,6 +51,48 @@ const SEASON_MULT: number[] = [
   1.35,  // Dec  — Christmas, New Year, snowfall starts
 ];
 
+// ── Per-CITY real seasonal curve (month 0–11) ────────────────────────────────
+// The national SEASON_MULT above is calibrated for Uttarakhand/Himachal hill
+// stations (Oct/Nov peak, winter low). The 12-month demand-cycle hub cities
+// each have a DIFFERENT real high/low season — a beach, desert, or high-Himalaya
+// market does not peak when Mussoorie does. This is NOT a new engine: it only
+// swaps the seasonal INPUT to calculateDynamicPrice per city; the multiplier
+// composition, clamp and snap are unchanged. A city without an entry here falls
+// back to the national SEASON_MULT, so existing cities are byte-identical.
+//
+// Curves are calibrated to real Indian tourism seasonality AND kept consistent
+// with lib/circle/demand-cycle.ts (a city's poster "primary" months read as
+// peak multipliers here). Values [Jan … Dec].
+const CITY_SEASON_MULT: Record<string, number[]> = {
+  // Beach — peak Nov–Feb (Christmas/New Year), monsoon Jun–Sep low.
+  Goa:       [1.35, 1.30, 1.10, 0.95, 0.85, 0.70, 0.68, 0.72, 0.90, 1.10, 1.40, 1.55],
+  // Backwaters/hills — peak Oct–Feb, warm shoulder + monsoon softer.
+  Kerala:    [1.25, 1.22, 1.15, 1.00, 0.95, 0.85, 0.88, 0.90, 1.05, 1.20, 1.28, 1.30],
+  // Lake city + weddings — peak Oct–Mar, brutal desert summer low.
+  Udaipur:   [1.30, 1.28, 1.15, 1.00, 0.80, 0.70, 0.75, 0.85, 1.05, 1.30, 1.40, 1.35],
+  // Desert — peak Nov–Feb, extreme summer Apr–Aug very low.
+  Jaisalmer: [1.30, 1.25, 1.05, 0.85, 0.70, 0.62, 0.65, 0.72, 0.90, 1.15, 1.40, 1.38],
+  // High Himalaya — roads shut / near-closed Nov–Mar, peak Jun–Sep.
+  Leh:       [0.55, 0.55, 0.62, 0.85, 1.05, 1.35, 1.42, 1.38, 1.20, 0.85, 0.60, 0.55],
+  // NE hills — good Mar–May, living-root-bridge monsoon tourism, autumn peak.
+  Meghalaya: [1.05, 1.05, 1.15, 1.22, 1.15, 1.00, 0.95, 1.05, 1.20, 1.28, 1.20, 1.10],
+  // Coastal temple town — peak Oct–Feb, Rath Yatra Jun bump, summer softer.
+  Puri:      [1.25, 1.20, 1.05, 0.95, 0.85, 0.92, 0.85, 0.88, 1.00, 1.20, 1.32, 1.32],
+  // Coffee hills — peak Oct–Dec + spring, monsoon Jun–Aug softer.
+  Coorg:     [1.20, 1.18, 1.10, 1.05, 1.00, 0.85, 0.82, 0.90, 1.08, 1.28, 1.30, 1.28],
+};
+
+/** True when a city carries its own real seasonal curve (skips the hill-station monsoon discount). */
+function hasCitySeasonCurve(city: string): boolean {
+  return Object.prototype.hasOwnProperty.call(CITY_SEASON_MULT, city);
+}
+
+/** Seasonal multiplier for a city+month — per-city real curve if present, else the national curve. */
+function seasonMultFor(city: string, month: number): number {
+  const curve = CITY_SEASON_MULT[city] || SEASON_MULT;
+  return curve[month] ?? 1.0;
+}
+
 // ── Day-of-week multiplier (0=Sun … 6=Sat) ───────────────────────────────────
 const DOW_MULT: number[] = [1.20, 0.90, 0.88, 0.92, 0.98, 1.32, 1.38];
 
@@ -211,7 +253,7 @@ export function calculateDynamicPrice(
   // Clamp to today if date is in past
   const daysUntil = Math.max(0, Math.floor((checkIn.getTime() - today.setHours(0,0,0,0)) / 86400000));
 
-  const seasonMult = SEASON_MULT[checkIn.getMonth()] ?? 1.0;
+  const seasonMult = seasonMultFor(city, checkIn.getMonth());
   const dowMult    = DOW_MULT[checkIn.getDay()] ?? 1.0;
   const { mult: eventMult, name: eventName } = getEventMultiplier(checkIn);
   const { mult: leadMult,  label: leadLabel } = getLeadMult(daysUntil);
@@ -223,7 +265,12 @@ export function calculateDynamicPrice(
   // v169 — Indian-calendar demand windows: long weekends, school
   // vacations, and the date-precise monsoon discount.
   const { mult: schoolMult,  name:  schoolName }   = getSchoolSeasonMult(checkIn);
-  const { mult: monsoonMult, label: monsoonLabel } = getMonsoonMult(checkIn);
+  // The generic monsoon discount is Uttarakhand-calibrated (15 Jul–15 Sep). A
+  // hub city with its own real seasonal curve already prices its own monsoon,
+  // so skip it there to avoid double-discounting.
+  const { mult: monsoonMult, label: monsoonLabel } = hasCitySeasonCurve(city)
+    ? { mult: 1.0, label: null as string | null }
+    : getMonsoonMult(checkIn);
   const { mult: lwMult,      name:  lwName }       = getLongWeekendMult(checkIn);
 
   let totalMult = seasonMult * dowMult * eventMult * leadMult * cityMult * microMult
@@ -273,7 +320,7 @@ export function calculateDynamicPrice(
   const priceChangePct = Math.round((totalMult - 1) * 100);
 
   // Trend: compare with yesterday-same-time multiplier (approximate)
-  const yestMult = SEASON_MULT[checkIn.getMonth()] * DOW_MULT[(checkIn.getDay() + 6) % 7] * cityMult;
+  const yestMult = seasonMultFor(city, checkIn.getMonth()) * DOW_MULT[(checkIn.getDay() + 6) % 7] * cityMult;
   // v130 — trend reflects yield-adjusted total mult too: a hotel that filled
   // up overnight reads as "rising" even mid-week.
   const trend: PriceTrend = totalMult > yestMult * 1.03 ? "rising" : totalMult < yestMult * 0.97 ? "falling" : "stable";
