@@ -119,6 +119,8 @@ export default function AdminCircleInventory() {
   // S2 — guest-booking owner settlements (owed = payable to Circle owners).
   const gbSettlements: any[] = data?.guestBookingSettlements || [];
   const gbOwedList = gbSettlements.filter((s) => s.payout_status === "owed");
+  // v390 — per-owner payout batches (owed grouped per owner + payout-account status).
+  const payoutBatches: any[] = data?.payoutBatches || [];
   // v334 — D4: Model 4 B2B exchange listings oversight.
   const b2bListings: any[] = data?.b2bListings || [];
   const shownListings = b2bFilter === "all" ? b2bListings : b2bListings.filter((l) => l.status === b2bFilter);
@@ -270,6 +272,43 @@ export default function AdminCircleInventory() {
                       <td style={td}>
                         <button disabled={busy === s.id} onClick={() => act({ action: "mark_settlement_paid", settlementId: s.id }, s.id, `Mark ${inr(s.net_amount)} paid to seller?`)} style={btn("#2ECC71")}>
                           {busy === s.id ? "…" : "Mark paid"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* v390 — per-owner payout batches (group owed guest-booking rows per owner) */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ color: "#E8EAF0", fontSize: 15, fontWeight: 700, marginBottom: 10, fontFamily: "Syne, sans-serif" }}>💸 Payout batches <span style={{ color: "#8A8FA8", fontSize: 12, fontWeight: 500 }}>· owed grouped per owner</span></div>
+        <div style={{ background: "#151820", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" }}>
+          {payoutBatches.length === 0 ? (
+            <div style={{ color: "#8A8FA8", padding: 22, textAlign: "center", fontSize: 13 }}>{loading ? "Loading…" : "No owners with outstanding payouts."}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
+                <thead><tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                  {["Owner", "Bookings", "Total owed", "Payout account", "Action"].map((h) => <th key={h} style={th}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {payoutBatches.map((b) => (
+                    <tr key={b.payeeId}>
+                      <td style={td}>{String(b.payeeId).slice(-8)}</td>
+                      <td style={{ ...td, color: "#8A8FA8" }}>{b.rowCount}</td>
+                      <td style={{ ...td, color: "#F0B429", fontWeight: 700 }}>{inr(b.totalOwed)}</td>
+                      <td style={td}>
+                        {b.hasAccount
+                          ? <span style={{ color: b.accountStatus === "verified" ? "#2ECC71" : "#F0B429", fontSize: 12 }}>{b.accountMethod === "upi" ? "UPI" : "Bank"} · {b.accountStatus}</span>
+                          : <span style={{ color: "#E0684E", fontSize: 12 }}>⚠ not added</span>}
+                      </td>
+                      <td style={td}>
+                        <button disabled={busy === b.payeeId} onClick={() => act({ action: "mark_owner_batch_paid", payeeUserId: b.payeeId }, b.payeeId, `Mark all ${inr(b.totalOwed)} (${b.rowCount} rows) paid to this owner?`)} style={btn("#2ECC71")}>
+                          {busy === b.payeeId ? "…" : "Mark batch paid"}
                         </button>
                       </td>
                     </tr>
