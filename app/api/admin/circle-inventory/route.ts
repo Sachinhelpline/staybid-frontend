@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SB_URL, SB_KEY } from "@/lib/sb";
 import { adminFromReq, logAdminAction } from "@/lib/admin/audit";
 import { resaleAskPerNight } from "@/lib/b2b/engine";
+import { isRazorpayXConfigured, ensureFundAccount, createPayout } from "@/lib/circle/razorpayx";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -251,6 +252,7 @@ export async function GET(req: NextRequest) {
       payout_status: s.payout_status, ref_id: s.ref_id, metadata: s.metadata, created_at: s.created_at,
     })),
     payoutBatches,
+    razorpayxConfigured: isRazorpayXConfigured(),
     b2bListings: b2bListingsRaw.map(enrichListing),
     b2bTrades: b2bTradesRaw.map(enrichTrade),
   }, { headers: { "Cache-Control": "no-store" } });
@@ -472,6 +474,74 @@ export async function POST(req: NextRequest) {
     const total = (Array.isArray(rows) ? rows : []).reduce((s: number, x: any) => s + num(x.net_amount), 0);
     logAdminAction({ admin, action: "circle_inventory.owner_batch_paid", targetType: "user", targetId: payeeUserId, details: { rows: count, total } });
     return NextResponse.json({ ok: true, paidRows: count, paidTotal: total });
+  }
+
+  // ── payout_owner_batch: EXECUTE a RazorpayX payout for one owner's owed rows ─
+  //    (v391) Two-phase claim (owed→paying) BEFORE the payout API call so a retry
+  //    / concurrent run can never double-pay; the payout idempotency key is
+  //    derived from the exact claimed row set. Inert unless RazorpayX is configured.
+  if (action === "payout_owner_batch") {
+    if (!isRazorpayXConfigured()) {
+      return NextResponse.json({ error: "RazorpayX is not configured — set RAZORPAYX_KEY_ID / RAZORPAYX_KEY_SECRET / RAZORPAYX_ACCOUNT_NUMBER, then retry." }, { status: 400 });
+    }
+    const payeeUserId = String(body?.payeeUserId || "").trim();
+    if (!payeeUserId) return NextResponse.json({ error: "payeeUserId required" }, { status: 400 });
+
+    const acct = (await sb(`circle_payout_accounts?user_id=eq.${encodeURIComponent(payeeUserId)}&select=*&limit=1`))[0];
+    if (!acct) return NextResponse.json({ error: "This owner hasn't added a payout account yet." }, { status: 409 });
+
+    // 1) CLAIM: flip this owner's owed guest_booking rows → paying.
+    try {
+      await fetch(`${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encodeURIComponent(payeeUserId)}&payout_status=eq.owed`, {
+        method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+        body: JSON.stringify({ payout_status: "paying", updated_at: nowIso }),
+      });
+    } catch { /* fall through — the select below is the source of truth */ }
+
+    // 2) The claimed set = all paying rows for this owner (recovers a prior crash).
+    const claimed = await sb(`settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encodeURIComponent(payeeUserId)}&payout_status=eq.paying&select=id,net_amount&limit=500`);
+    if (!claimed.length) return NextResponse.json({ error: "Nothing to pay for this owner." }, { status: 409 });
+
+    const ids = claimed.map((r: any) => String(r.id)).sort();
+    const totalRupees = claimed.reduce((s: number, r: any) => s + num(r.net_amount), 0);
+    const amountPaise = Math.round(totalRupees * 100);
+    let h = 0; const seed = ids.join(","); for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    const idemKey = `gbpo_${payeeUserId}_${(h >>> 0).toString(36)}`.slice(0, 40);
+
+    const releaseClaim = async () => {
+      try {
+        await fetch(`${SB_URL}/rest/v1/settlement_ledger?id=in.(${idList(ids)})&payout_status=eq.paying`, {
+          method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+          body: JSON.stringify({ payout_status: "owed", updated_at: new Date().toISOString() }),
+        });
+      } catch { /* best-effort release */ }
+    };
+
+    try {
+      const fa = await ensureFundAccount(
+        { method: acct.method, account_holder: acct.account_holder, account_number: acct.account_number, ifsc: acct.ifsc, upi_id: acct.upi_id },
+        payeeUserId,
+        acct.razorpayx_fund_account_id,
+      );
+      if (fa.created) {
+        await fetch(`${SB_URL}/rest/v1/circle_payout_accounts?id=eq.${encodeURIComponent(acct.id)}`, {
+          method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+          body: JSON.stringify({ razorpayx_fund_account_id: fa.fundAccountId, status: "verified", updated_at: nowIso }),
+        });
+      }
+      const payout = await createPayout({ fundAccountId: fa.fundAccountId, amountPaise, idempotencyKey: idemKey, referenceId: idemKey, narration: "StayBid Circle payout" });
+
+      // 3) SUCCESS: paying → paid (status only; per-row metadata preserved).
+      await fetch(`${SB_URL}/rest/v1/settlement_ledger?id=in.(${idList(ids)})&payout_status=eq.paying`, {
+        method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" },
+        body: JSON.stringify({ payout_status: "paid", paid_at: nowIso, updated_at: nowIso }),
+      });
+      logAdminAction({ admin, action: "circle_inventory.payout_executed", targetType: "user", targetId: payeeUserId, details: { rows: ids.length, total: totalRupees, payoutId: payout.id, status: payout.status } });
+      return NextResponse.json({ ok: true, payoutId: payout.id, status: payout.status, paidRows: ids.length, paidTotal: totalRupees });
+    } catch (e: any) {
+      await releaseClaim(); // FAILURE: paying → owed so it can be retried.
+      return NextResponse.json({ error: `Payout failed: ${String(e?.message || e).slice(0, 160)}` }, { status: 502 });
+    }
   }
 
   // ── expire_listing / cancel_listing: retire a live B2B listing (D4) ──────

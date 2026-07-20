@@ -102,6 +102,31 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v391 — Circle settlement S3: RazorpayX payout execution (admin-triggered))
+- **The real money-out — admin-triggered RazorpayX payout for a Circle owner's owed guest-booking rows. INERT
+  until RazorpayX is provisioned** (env `RAZORPAYX_KEY_ID`/`RAZORPAYX_KEY_SECRET`/`RAZORPAYX_ACCOUNT_NUMBER`;
+  optional `RAZORPAYX_PAYOUT_MODE` default IMPS). No creds ⇒ every payout path no-ops (button hidden), so nothing
+  can fire accidentally.
+- **NEW `lib/circle/razorpayx.ts`** (server-only) — `isRazorpayXConfigured()`, `ensureFundAccount` (creates the
+  RazorpayX contact + bank/VPA fund_account on first use, reused after), `createPayout` (IMPS, `X-Payout-Idempotency`
+  header). ⚠ Untested against live RazorpayX from this env — verify one TEST-mode payout before going live.
+- **NEW admin action `payout_owner_batch { payeeUserId }`** (`/api/admin/circle-inventory`) — **two-phase claim so
+  double-pay is impossible:** ① flip the owner's `owed` guest_booking rows → `paying`; ② the claimed set = all
+  `paying` rows (recovers a crashed attempt); ③ ensure fund_account (stamp `razorpayx_fund_account_id` +
+  status=verified on first create); ④ `createPayout` with an idempotency key derived from the exact claimed row
+  ids (retry ⇒ RazorpayX returns the SAME payout, never a second send); ⑤ success → `paying`→`paid`; failure →
+  `paying`→`owed` (released for retry). Migration `2026-07-20-v391` relaxes the `payout_status` CHECK to add
+  `paying`.
+- **Admin (`/admin/circle-inventory`)** — the Payout-batches panel shows **"RazorpayX live / not configured"**, a
+  **"Pay via RazorpayX"** button (only when configured + owner has an account) + **"Mark paid (manual)"** (the
+  interim rail, always available). GET returns `razorpayxConfigured`.
+- **Live SQL round-trip verified** — claim→success (owed→paying→paid, 2/2), claim→release (paying→owed), 0 leftover;
+  the `paying` state passes the CHECK. RazorpayX HTTP calls not exercised (inert without creds — as designed).
+- ⚠ **Remaining (small, when RazorpayX is live):** refund claw-back on a `paid` row (today refund reversal only
+  flips `owed`→`cancelled`), and optional auto-batch cron. Register `/api/cron/circle-settlement` (`*/30`) so owed
+  rows accrue. **The whole money-out is admin-reviewed per owner — no unattended auto-transfer.**
+- `tsc` + `next build` clean. Badge v390→**v391**, sw HTML_CACHE v202→v203. Migration `2026-07-20-v391` applied live.
+
 ## Current production state (v390 — Circle settlement S3 foundation: owner payout accounts + admin batches)
 - **S3 FOUNDATION (owner decision "A") — the money-out prerequisites; still moves NO money.** Reality check: the
   Railway backend clone (`staybid-live`) is a thin skeleton — bookings are wallet-mode `paidAmount=0`, NO Razorpay
