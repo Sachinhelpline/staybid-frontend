@@ -532,9 +532,12 @@ function HotelList() {
         (cityBuckets[key] ||= []).push(h);
       });
       // Order by hotel count desc — busier cities float up.
+      // v397 — threshold lowered 2→1 so EVERY city with inventory gets its own
+      // "Stay in {city}" rail (the new demand-cycle hubs + satellites each have
+      // one flagship hotel, so ≥2 hid them entirely from the city rails).
       const ordered = Object.entries(cityBuckets)
         .sort(([, a], [, b]) => b.length - a.length)
-        .filter(([k, v]) => k !== "Other" && v.length >= 2);
+        .filter(([k, v]) => k !== "Other" && v.length >= 1);
       for (const [cityName, items] of ordered) {
         out.push({
           key: `city-${cityName}`,

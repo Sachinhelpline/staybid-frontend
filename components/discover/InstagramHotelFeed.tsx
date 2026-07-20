@@ -3040,12 +3040,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // Using a ref-like effect-once would re-shuffle on every render — bad.
   const sessionSeed = useMemo(() => Math.random(), []);
 
-  // v396 — Guarantee every reel connects to a bookable hotel. Other users'
-  // community posts that tagged NO hotel (legacy/edge — new posts require a
-  // tag) get a fallback real hotel from the feed's hotel pool (city-matched
-  // when possible, else a stable pick), so the Book Now / Make Offer CTAs work
-  // on EVERY reel. Self-uploads without a tag keep their upload-status badge.
-  // Pure: only fallback items are cloned.
+  // v397 — Guarantee EVERY reel connects to a bookable hotel + shows Book Now /
+  // Make Offer. Any user/community post that tagged NO hotel (legacy/edge, and
+  // now the owner's own untagged uploads too) gets a fallback real hotel from
+  // the feed's hotel pool (city-matched when possible, else a stable pick).
+  // This includes self-uploads — the owner sees the CTAs on their own reels
+  // exactly like every viewer does. Pure: only fallback items are cloned.
   const fillReelFallbackHotels = (list: Item[]): Item[] => {
     const pool = list.filter((it) => {
       const h = it.hotel as any;
@@ -3055,7 +3055,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     const hash = (s: string) => { let x = 0; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return Math.abs(x); };
     return list.map((it) => {
       const h = it.hotel as any;
-      if (h?._userPost && !h._isSelf && !h._userPostTaggedHotel?.id) {
+      if (h?._userPost && !h._userPostTaggedHotel?.id) {
         const city = String(h.city || "").toLowerCase();
         const match = city ? pool.find((p) => String((p.hotel as any).city || "").toLowerCase() === city) : null;
         const pick = (match || pool[hash(String(h.id || "")) % pool.length]).hotel as any;
