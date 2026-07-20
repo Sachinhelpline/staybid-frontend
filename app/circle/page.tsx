@@ -293,6 +293,9 @@ export default function CircleHomePage() {
           <Link href="/circle/me" className="sbc-qa-item">
             <span className="sbc-qa-ic">📊</span><span>My<br />Portfolio</span>
           </Link>
+          <Link href="/circle/demand-cycle" className="sbc-qa-item">
+            <span className="sbc-qa-ic">🗓</span><span>Demand<br />Cycle</span>
+          </Link>
           <a href="#how" className="sbc-qa-item">
             <span className="sbc-qa-ic">❓</span><span>How It<br />Works</span>
           </a>
