@@ -10,7 +10,7 @@
 // now lands here on a clean payouts-first screen.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { fmtINR } from "@/lib/circle/engine";
@@ -32,6 +32,11 @@ type Kpis = {
   lockedProperties?: number;
 };
 
+const acctInput: CSSProperties = {
+  width: "100%", border: "1px solid rgba(139,105,20,.28)", borderRadius: 10,
+  padding: "9px 11px", fontSize: ".85rem", background: "#fffdfa", color: "#3a2c17", fontFamily: "inherit",
+};
+
 export default function CircleEarningsPage() {
   const { user } = useAuth();
 
@@ -39,6 +44,12 @@ export default function CircleEarningsPage() {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [projected, setProjected] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // v390 — payout account (where the owner gets paid).
+  const [acct, setAcct] = useState<any>(null);
+  const [acctForm, setAcctForm] = useState({ method: "bank", accountHolder: "", accountNumber: "", ifsc: "", upiId: "" });
+  const [acctEditing, setAcctEditing] = useState(false);
+  const [acctBusy, setAcctBusy] = useState(false);
+  const [acctMsg, setAcctMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -57,7 +68,29 @@ export default function CircleEarningsPage() {
       .then((r) => r.json())
       .then((d) => { if (d && !d.error) setProjected(d); })
       .catch(() => {});
+    // v390 — the owner's saved payout account.
+    fetch("/api/circle/payout-account", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d && d.account) { setAcct(d.account); setAcctForm((f) => ({ ...f, method: d.account.method || "bank", accountHolder: d.account.accountHolder || "", ifsc: d.account.ifsc || "", upiId: d.account.upiId || "" })); } })
+      .catch(() => {});
   }, [user]);
+
+  const saveAcct = async () => {
+    setAcctBusy(true); setAcctMsg(null);
+    try {
+      const token = localStorage.getItem("sb_token") || "";
+      const r = await fetch("/api/circle/payout-account", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(acctForm),
+      });
+      const d = await r.json();
+      if (!r.ok || !d?.ok) { setAcctMsg({ ok: false, text: d?.error || "Couldn't save." }); return; }
+      setAcct(d.account); setAcctEditing(false);
+      setAcctForm((f) => ({ ...f, accountNumber: "" }));
+      setAcctMsg({ ok: true, text: "Payout account saved ✓" });
+    } catch { setAcctMsg({ ok: false, text: "Network error." }); }
+    finally { setAcctBusy(false); }
+  };
 
   const totalPaid = Number(kpis?.totalPaidOut || 0);
   const pendingTotal = payouts
@@ -134,6 +167,54 @@ export default function CircleEarningsPage() {
               </p>
             </section>
           )}
+
+          {/* v390 — Payout account (where the owner gets paid). Foundation for money-out. */}
+          <section style={{ marginTop: 14, border: "1px solid rgba(139,105,20,.22)", borderRadius: 16, background: "#fff", padding: "14px 15px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 800, color: "var(--sbc-coffee)", fontSize: ".95rem" }}>🏦 Payout account <span style={{ fontSize: ".7rem", fontWeight: 500, color: "rgba(74,56,32,.55)" }}>· where you get paid</span></div>
+              {acct && !acctEditing && (
+                <span style={{ fontSize: ".62rem", fontWeight: 800, padding: "3px 9px", borderRadius: 999, background: acct.status === "verified" ? "#ecfdf5" : "rgba(201,166,107,.16)", color: acct.status === "verified" ? "#047857" : "#a9791f" }}>{String(acct.status || "pending").toUpperCase()}</span>
+              )}
+            </div>
+
+            {acct && !acctEditing ? (
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: ".82rem", color: "rgba(74,56,32,.85)" }}>
+                  {acct.method === "upi"
+                    ? <>UPI · <b>{acct.upiId}</b></>
+                    : <>{acct.accountHolder} · <b>{acct.accountNumberMasked}</b> · {acct.ifsc}</>}
+                </div>
+                <button onClick={() => { setAcctEditing(true); setAcctMsg(null); }} style={{ fontSize: ".75rem", fontWeight: 700, padding: "6px 13px", borderRadius: 999, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>Edit</button>
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {(["bank", "upi"] as const).map((m) => (
+                    <button key={m} onClick={() => setAcctForm((f) => ({ ...f, method: m }))}
+                      style={{ flex: 1, fontSize: ".78rem", fontWeight: 800, padding: "8px 0", borderRadius: 10, cursor: "pointer",
+                        border: acctForm.method === m ? "2px solid #c9911a" : "1px solid rgba(139,105,20,.25)", background: acctForm.method === m ? "#fffbef" : "#fff", color: "var(--sbc-coffee)" }}>
+                      {m === "bank" ? "Bank account" : "UPI"}
+                    </button>
+                  ))}
+                </div>
+                {acctForm.method === "bank" ? (<>
+                  <input value={acctForm.accountHolder} onChange={(e) => setAcctForm((f) => ({ ...f, accountHolder: e.target.value }))} placeholder="Account holder name" style={acctInput} />
+                  <input value={acctForm.accountNumber} onChange={(e) => setAcctForm((f) => ({ ...f, accountNumber: e.target.value }))} placeholder={acct ? "New account number" : "Account number"} inputMode="numeric" style={acctInput} />
+                  <input value={acctForm.ifsc} onChange={(e) => setAcctForm((f) => ({ ...f, ifsc: e.target.value.toUpperCase() }))} placeholder="IFSC code" style={acctInput} />
+                </>) : (
+                  <input value={acctForm.upiId} onChange={(e) => setAcctForm((f) => ({ ...f, upiId: e.target.value }))} placeholder="yourname@bank" style={acctInput} />
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={saveAcct} disabled={acctBusy} style={{ flex: 1, background: "linear-gradient(135deg,#c9911a,#f0b429)", color: "#1f1710", border: 0, borderRadius: 10, padding: "10px 0", fontWeight: 800, fontSize: ".85rem", cursor: "pointer" }}>{acctBusy ? "Saving…" : "Save payout account"}</button>
+                  {acct && <button onClick={() => { setAcctEditing(false); setAcctMsg(null); }} style={{ fontSize: ".8rem", fontWeight: 700, padding: "0 16px", borderRadius: 10, border: "1px solid rgba(139,105,20,.3)", background: "#fff", color: "var(--sbc-ink)", cursor: "pointer" }}>Cancel</button>}
+                </div>
+              </div>
+            )}
+            {acctMsg && <div style={{ marginTop: 8, fontSize: ".78rem", fontWeight: 600, color: acctMsg.ok ? "#047857" : "#c0392b" }}>{acctMsg.text}</div>}
+            <p style={{ fontSize: ".64rem", lineHeight: 1.5, color: "rgba(74,56,32,.55)", margin: "9px 0 0" }}>
+              Your earnings are paid here once payouts run. Details are stored securely and used only to send your money.
+            </p>
+          </section>
 
           <p className="sbc-earn-note" style={{ marginTop: 12 }}>
             <span style={{ fontSize: "1rem" }}>🔒</span>

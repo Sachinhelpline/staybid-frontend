@@ -102,6 +102,28 @@ Razorpay live keys also hardcoded as fallbacks in the order/verify routes. Publi
 
 ---
 
+## Current production state (v390 — Circle settlement S3 foundation: owner payout accounts + admin batches)
+- **S3 FOUNDATION (owner decision "A") — the money-out prerequisites; still moves NO money.** Reality check: the
+  Railway backend clone (`staybid-live`) is a thin skeleton — bookings are wallet-mode `paidAmount=0`, NO Razorpay
+  money-in, NO payout rail, and the Circle tables aren't in its Prisma schema — so the real RazorpayX money-out
+  can't live there yet. This ships the two hard prerequisites in the frontend (where the money layer already lives).
+- **NEW `circle_payout_accounts`** (migration `2026-07-20-v390`) — where an owner gets paid (bank a/c + IFSC or
+  UPI), `status` pending/verified, `razorpayx_fund_account_id` stamped later. One per user (`uniq_payout_account_user`),
+  permissive RLS. **NEW `GET/POST /api/circle/payout-account`** (customer sb_token → cross-pool; self-only;
+  bank/IFSC/UPI validated; editing resets status→pending + clears the fund-account link). Details stored for the
+  future RazorpayX fund-account; **saving moves no money.**
+- **`app/circle/earnings`** — a 🏦 **Payout account** card (bank/UPI toggle, masked display, edit) so owners add
+  where they get paid.
+- **Admin (`/admin/circle-inventory`)** — a NEW 💸 **Payout batches** panel: owed guest_booking rows grouped
+  **per owner** (bookings · total owed · payout-account status ⚠/✓) + a **Mark batch paid** bulk action
+  `mark_owner_batch_paid` (flips ALL that owner's owed guest_booking rows → paid). GET returns `payoutBatches`
+  (joins `circle_payout_accounts`). Per-row `mark_guest_booking_paid` (v389) stays.
+- **Live SQL round-trip verified** — account saved, batch mark-paid flipped 2/2 rows (₹4,400 = 2640+1760), 0 leftover.
+- ⚠ **Still NOT built (final S3 money-out, needs YOUR ops):** RazorpayX account + creds, then a payout cron that
+  creates a fund-account per owner from `circle_payout_accounts` and executes the transfer (owed→paid + bank move)
+  + refund claw-back. All the data plumbing is now ready for it. `mark_owner_batch_paid` is the interim manual rail.
+- `tsc` + `next build` clean. Badge v389→**v390**, sw HTML_CACHE v201→v202. Migration `2026-07-20-v390` applied live.
+
 ## Current production state (v389 — Circle settlement S2: guest-booking owed reconciler + admin payouts)
 - **S2 of the money layer — RECORDS the owner's owed obligation from confirmed guest bookings; moves NO money.**
   Uses the v388 resolver. `bookings` are Railway-created (into Supabase) with no in-repo confirm hook, so the

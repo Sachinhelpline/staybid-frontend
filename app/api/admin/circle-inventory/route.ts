@@ -82,6 +82,25 @@ export async function GET(req: NextRequest) {
     sb(`settlement_ledger?kind=eq.guest_booking&select=gross_amount,platform_fee,net_amount,payout_status&limit=5000`),
   ]);
 
+  // v390 — payout batches: owed guest_booking rows grouped per owner + whether
+  // that owner has added a payout account (the money-out prerequisite).
+  const gbOwedRows = gbSettlements.filter((s: any) => String(s.payout_status) === "owed");
+  const batchByPayee: Record<string, { payeeId: string; totalOwed: number; rowCount: number }> = {};
+  gbOwedRows.forEach((s: any) => {
+    const p = String(s.payee_user_id);
+    (batchByPayee[p] ||= { payeeId: p, totalOwed: 0, rowCount: 0 });
+    batchByPayee[p].totalOwed += num(s.net_amount);
+    batchByPayee[p].rowCount += 1;
+  });
+  const batchPayeeIds = Object.keys(batchByPayee);
+  const payoutAccts = batchPayeeIds.length
+    ? await sb(`circle_payout_accounts?user_id=in.(${idList(batchPayeeIds)})&select=user_id,method,status`)
+    : [];
+  const acctByUser: Record<string, any> = {}; payoutAccts.forEach((a: any) => { acctByUser[String(a.user_id)] = a; });
+  const payoutBatches = batchPayeeIds
+    .map((p) => ({ ...batchByPayee[p], hasAccount: !!acctByUser[p], accountMethod: acctByUser[p]?.method || null, accountStatus: acctByUser[p]?.status || null }))
+    .sort((a, b) => b.totalOwed - a.totalOwed);
+
   // v333 (D3) — side-load the B2B trades behind each settlement (ref_id → trade)
   // so a settlement row can show unit # / hotel / dates.
   const settleTradeIds = Array.from(new Set(settlements.map((s: any) => String(s.ref_id)).filter(Boolean)));
@@ -231,6 +250,7 @@ export async function GET(req: NextRequest) {
       platform_fee: num(s.platform_fee), net_amount: num(s.net_amount),
       payout_status: s.payout_status, ref_id: s.ref_id, metadata: s.metadata, created_at: s.created_at,
     })),
+    payoutBatches,
     b2bListings: b2bListingsRaw.map(enrichListing),
     b2bTrades: b2bTradesRaw.map(enrichTrade),
   }, { headers: { "Cache-Control": "no-store" } });
@@ -431,6 +451,27 @@ export async function POST(req: NextRequest) {
     }
     logAdminAction({ admin, action: "circle_inventory.guest_booking_paid", targetType: "settlement_ledger", targetId: settlementId, details: { net_amount: num(s.net_amount) } });
     return NextResponse.json({ ok: true, settlement: rows[0] });
+  }
+
+  // ── mark_owner_batch_paid: settle ALL owed guest_booking rows for one owner ─
+  //    (v390) — the per-owner payout batch. owed → paid in one action. Interim
+  //    manual reconciliation until the RazorpayX money-out cron (S3) lands.
+  if (action === "mark_owner_batch_paid") {
+    const payeeUserId = String(body?.payeeUserId || "").trim();
+    if (!payeeUserId) return NextResponse.json({ error: "payeeUserId required" }, { status: 400 });
+    const r = await fetch(
+      `${SB_URL}/rest/v1/settlement_ledger?kind=eq.guest_booking&payee_user_id=eq.${encodeURIComponent(payeeUserId)}&payout_status=eq.owed`,
+      {
+        method: "PATCH",
+        headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify({ payout_status: "paid", paid_at: nowIso, updated_at: nowIso }),
+      },
+    );
+    const rows = r.ok ? await r.json().catch(() => []) : [];
+    const count = Array.isArray(rows) ? rows.length : 0;
+    const total = (Array.isArray(rows) ? rows : []).reduce((s: number, x: any) => s + num(x.net_amount), 0);
+    logAdminAction({ admin, action: "circle_inventory.owner_batch_paid", targetType: "user", targetId: payeeUserId, details: { rows: count, total } });
+    return NextResponse.json({ ok: true, paidRows: count, paidTotal: total });
   }
 
   // ── expire_listing / cancel_listing: retire a live B2B listing (D4) ──────
