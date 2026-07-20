@@ -2496,14 +2496,22 @@ const HotelCard = memo(function HotelCard({
             <div className="flex flex-col leading-none mr-1 shrink-0">
               <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
               <span className="text-white font-bold text-[1.1rem]">
-                {h._userPostTaggedHotel?.id ? (
-                  <span className="text-[0.92rem]">View rates ›</span>
-                ) : (
-                  <>
-                    ₹{(h.minPrice || h.rooms?.[0]?.floorPrice || 0).toLocaleString()}
-                    <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
-                  </>
-                )}
+                {(() => {
+                  // v398 — show the real "starting from" (flash deal / cheapest
+                  // room) price on EVERY reel, tagged or not. The discover feed
+                  // hydrates a tagged reel's hotel with its starting price, so
+                  // prefer the number whenever we have one; fall back to
+                  // "View rates ›" only when no price is known at all.
+                  const startPrice = h.minPrice || h.rooms?.[0]?.floorPrice || 0;
+                  return startPrice > 0 ? (
+                    <>
+                      ₹{startPrice.toLocaleString()}
+                      <span className="text-white/55 text-[0.7rem] font-normal ml-1">/n</span>
+                    </>
+                  ) : (
+                    <span className="text-[0.92rem]">View rates ›</span>
+                  );
+                })()}
               </span>
             </div>
             <button
@@ -3059,7 +3067,10 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         const city = String(h.city || "").toLowerCase();
         const match = city ? pool.find((p) => String((p.hotel as any).city || "").toLowerCase() === city) : null;
         const pick = (match || pool[hash(String(h.id || "")) % pool.length]).hotel as any;
-        return { ...it, hotel: { ...h, _userPostTaggedHotel: { id: pick.id, name: pick.name, city: pick.city }, _taggedHotelId: pick.id, _fallbackTag: true } };
+        // v398 — also carry the picked hotel's starting price + rooms so the
+        // reel card shows "From ₹X /n" instead of "View rates ›".
+        const pickMin = pick.minPrice ?? (pick.rooms?.length ? Math.min(...pick.rooms.map((r: any) => r.floorPrice || 99999)) : null);
+        return { ...it, hotel: { ...h, _userPostTaggedHotel: { id: pick.id, name: pick.name, city: pick.city }, _taggedHotelId: pick.id, _fallbackTag: true, minPrice: (pickMin && pickMin !== 99999) ? pickMin : h.minPrice, rooms: (h.rooms?.length ? h.rooms : (pick.rooms || [])) } };
       }
       return it;
     });
