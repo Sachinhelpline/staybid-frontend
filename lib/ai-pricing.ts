@@ -17,6 +17,9 @@
  * the platform-wide bidding rule established in v129 (lib/price-snap.ts).
  */
 
+// v393 — satellite cities inherit their hub's real seasonal curve.
+import { cityMeta } from "@/lib/cities";
+
 export type DemandLevel = "Low" | "Moderate" | "High" | "Very High" | "Surge";
 export type PriceTrend  = "rising" | "falling" | "stable";
 
@@ -82,14 +85,25 @@ const CITY_SEASON_MULT: Record<string, number[]> = {
   Coorg:     [1.20, 1.18, 1.10, 1.05, 1.00, 0.85, 0.82, 0.90, 1.08, 1.28, 1.30, 1.28],
 };
 
-/** True when a city carries its own real seasonal curve (skips the hill-station monsoon discount). */
-function hasCitySeasonCurve(city: string): boolean {
-  return Object.prototype.hasOwnProperty.call(CITY_SEASON_MULT, city);
+/**
+ * Resolve a city's real seasonal curve: its own if present, else its hub's
+ * curve if it's a satellite (Jaipur → Udaipur, Alleppey → Kerala …), else null.
+ */
+function cityCurve(city: string): number[] | null {
+  if (CITY_SEASON_MULT[city]) return CITY_SEASON_MULT[city];
+  const hub = cityMeta(city)?.satelliteOf;
+  if (hub && CITY_SEASON_MULT[hub]) return CITY_SEASON_MULT[hub];
+  return null;
 }
 
-/** Seasonal multiplier for a city+month — per-city real curve if present, else the national curve. */
+/** True when a city resolves to a real seasonal curve (skips the hill-station monsoon discount). */
+function hasCitySeasonCurve(city: string): boolean {
+  return cityCurve(city) !== null;
+}
+
+/** Seasonal multiplier for a city+month — real curve (own or hub's) if present, else the national curve. */
 function seasonMultFor(city: string, month: number): number {
-  const curve = CITY_SEASON_MULT[city] || SEASON_MULT;
+  const curve = cityCurve(city) || SEASON_MULT;
   return curve[month] ?? 1.0;
 }
 
