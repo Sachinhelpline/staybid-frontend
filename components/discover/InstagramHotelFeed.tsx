@@ -3040,6 +3040,31 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // Using a ref-like effect-once would re-shuffle on every render — bad.
   const sessionSeed = useMemo(() => Math.random(), []);
 
+  // v396 — Guarantee every reel connects to a bookable hotel. Other users'
+  // community posts that tagged NO hotel (legacy/edge — new posts require a
+  // tag) get a fallback real hotel from the feed's hotel pool (city-matched
+  // when possible, else a stable pick), so the Book Now / Make Offer CTAs work
+  // on EVERY reel. Self-uploads without a tag keep their upload-status badge.
+  // Pure: only fallback items are cloned.
+  const fillReelFallbackHotels = (list: Item[]): Item[] => {
+    const pool = list.filter((it) => {
+      const h = it.hotel as any;
+      return h && !h._userPost && h.id && !String(h.id).startsWith("post-");
+    });
+    if (!pool.length) return list;
+    const hash = (s: string) => { let x = 0; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) | 0; return Math.abs(x); };
+    return list.map((it) => {
+      const h = it.hotel as any;
+      if (h?._userPost && !h._isSelf && !h._userPostTaggedHotel?.id) {
+        const city = String(h.city || "").toLowerCase();
+        const match = city ? pool.find((p) => String((p.hotel as any).city || "").toLowerCase() === city) : null;
+        const pick = (match || pool[hash(String(h.id || "")) % pool.length]).hotel as any;
+        return { ...it, hotel: { ...h, _userPostTaggedHotel: { id: pick.id, name: pick.name, city: pick.city }, _taggedHotelId: pick.id, _fallbackTag: true } };
+      }
+      return it;
+    });
+  };
+
   const items: Item[] = (() => {
     // Stories that are NOT also saved-as-post should NOT appear in the
     // main feed — they live on the story ring and the StoryViewer only.
@@ -3150,8 +3175,8 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       return !fpUser.has(fp);
     });
 
-    if (userItems.length === 0) return dedupedProp;
-    if (dedupedProp.length === 0) return userItems;
+    if (userItems.length === 0) return fillReelFallbackHotels(dedupedProp);
+    if (dedupedProp.length === 0) return fillReelFallbackHotels(userItems);
 
     // Interleave: place each userItem at a deterministic offset based on
     // sessionSeed so order is stable within a session but different
@@ -3165,7 +3190,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
       const insertAt = Math.max(1, Math.min(result.length, offset));
       result.splice(insertAt, 0, u);
     });
-    return result;
+    return fillReelFallbackHotels(result);
   })();
   // ── GLOBAL mute / gain state — same source for every reel + the rail button.
   const { isMuted, hasInteracted, toggleMute, gain, setGain } = useSoundStore();

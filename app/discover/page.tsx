@@ -83,6 +83,18 @@ export default function DiscoverPage() {
         // from `id` (which is the post id). MoreMenu's "Open hotel page"
         // links to this; null when the reel tagged no hotel.
         _taggedHotelId: post.hotel_id || post.hotel?.id || null,
+        // v396 — the reel card's Book Now / Make Offer buttons render only when
+        // `_userPostTaggedHotel?.id` is set (id + name for the "At {name}" line
+        // + the /hotels/<id>?intent=book|negotiate deep-link). Previously only
+        // `_taggedHotelId` was forwarded, so EVERY community reel hid its CTAs.
+        // Build the object from the tagged hotel (name falls back gracefully).
+        _userPostTaggedHotel: (post.hotel_id || post.hotel?.id)
+          ? {
+              id: post.hotel_id || post.hotel?.id,
+              name: post.hotel?.name || post.hotel_name || "this stay",
+              city: post.hotel?.city || post.location_name || "",
+            }
+          : null,
         _publicAuthor: a,                          // {username, display_name, user_type, ...}
         // v131.8 — forward `client_post_id` from server so the dedup in
         // InstagramHotelFeed can exact-match the local PostsStore's
