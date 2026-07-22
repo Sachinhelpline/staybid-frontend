@@ -3213,6 +3213,13 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   }, [gain, setGain]);
   const [commentsOpen, setCommentsOpen] = useState<{ open: boolean; name: string }>({ open: false, name: "" });
   const [moreOpen, setMoreOpen] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
+  // v400 — resolved "starting from" price (cheapest room floor) per TAGGED
+  // hotel id. A tagged reel item only carries {id,name,city} for its hotel (no
+  // price) — this is especially true for self-uploaded reels rendered from the
+  // local PostsStore, which never pass through the discover feed's price map.
+  // We fetch the missing prices once from /api/hotels/starting-prices and
+  // hydrate each card so it shows "From ₹X /n" instead of "View rates ›".
+  const [taggedPrices, setTaggedPrices] = useState<Record<string, number>>({});
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -3305,6 +3312,50 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   if (filterHighlight) {
     filteredItems = applyHighlight(filteredItems, filterHighlight);
   }
+
+  // v400 — resolve the "starting from" price for every TAGGED reel that arrived
+  // without one. A self-uploaded reel (PostsStore) carries only {id,name,city}
+  // for its tagged hotel; a feed post's tagged hotel may also be absent from the
+  // discover payload. Collect the missing tagged-hotel ids, fetch their cheapest
+  // room floor once, and cache it in `taggedPrices` so the card shows a price.
+  const missingPriceIds = (() => {
+    const ids = new Set<string>();
+    items.forEach((it) => {
+      const hh: any = it.hotel;
+      const tid = hh?._userPostTaggedHotel?.id;
+      if (!tid) return;
+      const hasPrice =
+        Number(hh?.minPrice) > 0 || Number(hh?.rooms?.[0]?.floorPrice) > 0;
+      if (!hasPrice && taggedPrices[String(tid)] === undefined) ids.add(String(tid));
+    });
+    return Array.from(ids).sort();
+  })();
+  const missingPriceKey = missingPriceIds.join(",");
+  useEffect(() => {
+    if (!missingPriceKey) return;
+    const wanted = missingPriceKey.split(",").filter(Boolean);
+    if (!wanted.length) return;
+    let cancelled = false;
+    fetch(`/api/hotels/starting-prices?ids=${encodeURIComponent(wanted.join(","))}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.prices) return;
+        // Merge; also stamp a 0 for ids that returned nothing so we never
+        // re-fetch a hotel that genuinely has no room price (keeps the honest
+        // "View rates ›" fallback without a request loop).
+        setTaggedPrices((prev) => {
+          const next = { ...prev };
+          wanted.forEach((id) => {
+            next[id] = Number(d.prices[id]) > 0 ? Number(d.prices[id]) : 0;
+          });
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [missingPriceKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When filter changes, reset scroll to top
   useEffect(() => {
@@ -4285,10 +4336,22 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
           if (distance > 4) {
             return <section key={it.hotel.id || i} className="ig-card ig-card-skel" aria-hidden />;
           }
+          // v400 — hydrate a tagged reel with its resolved starting price so the
+          // card renders "From ₹X /n". Only when the item has no price of its
+          // own and we resolved a positive one for its tagged hotel.
+          const _h: any = it.hotel;
+          const _tid = _h?._userPostTaggedHotel?.id;
+          const _resolved = _tid ? taggedPrices[String(_tid)] : undefined;
+          const _needsPrice =
+            !(Number(_h?.minPrice) > 0) && !(Number(_h?.rooms?.[0]?.floorPrice) > 0);
+          const cardItem =
+            _tid && _needsPrice && Number(_resolved) > 0
+              ? { ...it, hotel: { ..._h, minPrice: Number(_resolved) } }
+              : it;
           return (
             <HotelCard
               key={it.hotel.id || i}
-              item={it}
+              item={cardItem}
               active={i === activeIdx}
               adjacent={distance === 1}
               muted={muted}
