@@ -139,6 +139,10 @@ export function BottomDock() {
            body.sb-composer-open on mount + clears on unmount. */
         body.sb-composer-open .ig-bottom-dock,
         body.sb-modal-open    .ig-bottom-dock { display: none !important; }
+        /* v407 — the /bid reverse-auction flow is an immersive game zone;
+           hide the dock there so no app nav bar peeks under the climber /
+           PRESS START. The /bid page sets body.sb-bid-immersive on mount. */
+        body.sb-bid-immersive .ig-bottom-dock { display: none !important; }
         .ig-dock-item {
           flex: 1 1 0;
           min-width: 0;
