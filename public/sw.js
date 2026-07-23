@@ -559,7 +559,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // immersive /bid flow hid the bottom dock but still reserved its 60px, leaving
 // a dead gap under PRESS START — now the reserved dock-height collapses too;
 // (2) the /bid dark game zone paints its TOP safe-area walnut (was cream).
-const HTML_CACHE = 'staybid-html-v224';
+// v414 — HTML_CACHE bump (v224 -> v225). Flash Deals control bar: the inert
+// "N live deals" label (which auto-jumped the grid to the last deal on tap via
+// data-autonext) is now a REAL live search input; sort gains price high→low +
+// most-rooms-left; deal cards get a defined bottom action-bar (no dead gap).
+const HTML_CACHE = 'staybid-html-v225';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
