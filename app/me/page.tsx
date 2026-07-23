@@ -478,7 +478,7 @@ export default function MePage() {
           }
           .me-loggedout-brand {
             display: block;
-            font-family: "Cormorant Garamond", Georgia, serif;
+            font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
             font-style: italic;
             font-weight: 500;
             font-size: clamp(1.85rem, 6vw, 2.4rem);
@@ -495,7 +495,7 @@ export default function MePage() {
             color: var(--accent, #C9A66B);
           }
           .me-loggedout-title {
-            font-family: "Cormorant Garamond", Georgia, serif;
+            font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
             font-weight: 400;
             font-size: clamp(1.5rem, 5.2vw, 2rem);
             text-align: center;
@@ -521,7 +521,7 @@ export default function MePage() {
             align-items: center;
             gap: 12px;
             padding: 14px 14px 14px 16px;
-            border-radius: 16px;
+            border-radius: 22px;
             background: var(--bg-card);
             border: 1px solid var(--border-soft);
             color: var(--text-base);
@@ -535,14 +535,14 @@ export default function MePage() {
           @media (hover: hover) {
             .me-loggedout-card:hover {
               transform: translateY(-2px);
-              box-shadow: 0 10px 24px rgba(15, 12, 8, 0.08);
+              box-shadow: var(--shadow-card, 0 10px 24px rgba(15, 12, 8, 0.08));
             }
           }
           .me-loggedout-card-icon {
             flex-shrink: 0;
             width: 44px;
             height: 44px;
-            border-radius: 12px;
+            border-radius: 15px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -582,7 +582,7 @@ export default function MePage() {
             font-size: 0.85rem;
             color: var(--text-soft);
             text-decoration: none;
-            border-radius: 14px;
+            border-radius: 18px;
             background: var(--bg-elevated, rgba(201, 145, 26, 0.04));
             border: 1px solid var(--border-soft);
           }
@@ -941,13 +941,16 @@ export default function MePage() {
           align-items: center;
           gap: 1px;
         }
-        .me-stat-value { font-size: 1.05rem; font-weight: 800; color: #2c1d04; }
+        .me-stat-value { font-size: 1.05rem; font-weight: 800; color: #2c1d04; font-variant-numeric: tabular-nums; }
         .me-stat-label { font-size: 0.72rem; font-weight: 500; color: #6e4a08; }
 
         .me-bio-wrap { padding: 4px 18px 10px; }
         .me-display-name {
-          font-size: 0.92rem;
-          font-weight: 800;
+          font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
+          font-size: 1.35rem;
+          font-weight: 600;
+          letter-spacing: -0.01em;
+          line-height: 1.18;
           color: #2c1d04;
           margin: 0 0 2px;
         }
@@ -988,7 +991,7 @@ export default function MePage() {
           align-items: center;
           justify-content: center;
           padding: 8px 12px;
-          border-radius: 10px;
+          border-radius: 14px;
           border: 1px solid rgba(184, 134, 11, 0.30);
           background: rgba(255, 255, 255, 0.6);
           color: #2c1d04;
@@ -1001,9 +1004,10 @@ export default function MePage() {
         .me-action-btn:active { transform: scale(0.97); }
         .me-action-btn:hover { background: rgba(255, 255, 255, 0.85); }
         .me-action-primary {
-          background: linear-gradient(135deg, #f0d060, #ffd76b);
+          background: linear-gradient(135deg, #f5dd8a 0%, #ffd76b 55%, #e8b84a 100%);
           border-color: rgba(184, 134, 11, 0.45);
           color: #2c1d04;
+          box-shadow: 0 4px 14px rgba(184, 134, 11, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
         }
         .me-action-icon { flex: 0 0 auto; padding: 8px 14px; }
 
@@ -1088,7 +1092,7 @@ export default function MePage() {
         }
         .me-tab.is-active {
           color: #2c1d04;
-          border-bottom-color: #6e4a08;
+          border-bottom-color: #c9911a;
         }
 
         .me-grid {
@@ -1096,6 +1100,8 @@ export default function MePage() {
           grid-template-columns: repeat(3, 1fr);
           gap: 2px;
           padding: 2px;
+          border-radius: 22px;
+          overflow: hidden;
         }
         .me-grid-tile {
           position: relative;
@@ -1142,7 +1148,7 @@ export default function MePage() {
           color: rgba(74, 50, 8, 0.7);
         }
         .me-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
-        .me-empty-title { font-size: 0.92rem; font-weight: 700; color: #2c1d04; margin: 0 0 4px; }
+        .me-empty-title { font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif; font-size: 1.15rem; font-weight: 600; color: #2c1d04; margin: 0 0 4px; }
         .me-empty-sub { font-size: 0.78rem; }
       `}</style>
     </div>
@@ -1354,7 +1360,7 @@ function MoreDrawer({
           z-index: 2;
         }
         .me-drawer-title {
-          font-family: "Cormorant Garamond", "Georgia", serif;
+          font-family: var(--font-display, "Cormorant Garamond"), "Georgia", serif;
           font-style: italic;
           font-weight: 600;
           font-size: 1.2rem;
@@ -1380,7 +1386,7 @@ function MoreDrawer({
           width: 100%;
           text-align: left;
           padding: 12px 14px;
-          border-radius: 12px;
+          border-radius: 16px;
           color: #2c1d04;
           text-decoration: none;
           background: transparent;
@@ -1405,7 +1411,7 @@ function MoreDrawer({
         .me-drawer-icon {
           flex-shrink: 0;
           width: 38px; height: 38px;
-          border-radius: 10px;
+          border-radius: 14px;
           background: rgba(184, 134, 11, 0.10);
           display: flex; align-items: center; justify-content: center;
           font-size: 1.15rem;
@@ -1605,8 +1611,8 @@ function FollowListSheet({
           max-width: 520px;
           max-height: 78dvh;
           background: linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
-          border-top-left-radius: 18px;
-          border-top-right-radius: 18px;
+          border-top-left-radius: 22px;
+          border-top-right-radius: 22px;
           box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.32);
           display: flex;
           flex-direction: column;
@@ -1634,8 +1640,10 @@ function FollowListSheet({
           text-overflow: ellipsis;
         }
         .me-follow-title {
-          font-size: 1rem;
-          font-weight: 800;
+          font-family: var(--font-display, "Cormorant Garamond"), "Georgia", serif;
+          font-style: italic;
+          font-size: 1.28rem;
+          font-weight: 600;
           color: #2c1d04;
           text-align: center;
         }
@@ -1688,7 +1696,7 @@ function FollowListSheet({
           align-items: center;
           gap: 12px;
           padding: 9px 12px;
-          border-radius: 10px;
+          border-radius: 16px;
           transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-follow-row:hover {
@@ -1759,7 +1767,7 @@ function FollowListSheet({
           padding: 4px 6px;
           margin: 0;
           cursor: pointer;
-          border-radius: 8px;
+          border-radius: 12px;
           transition: background 0.16s ease, transform 0.14s cubic-bezier(.32,1.2,.36,1);
         }
         .me-stat-btn:hover { background: rgba(184, 134, 11, 0.06); }
