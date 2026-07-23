@@ -584,7 +584,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // on the ₹ prices (your bid / counter / accepted / total / booking amount), and
 // deeper 22px card radius. Tailwind className + the pages' own plain <style>
 // blocks; no bid-expiry/pay-gate/handler/logic change.
-const HTML_CACHE = 'staybid-html-v230';
+// v420 — HTML_CACHE bump (v230 -> v231). /hotels/[id] dark-mode completeness
+// sweep (10 more elements flagged by the v418 review): amenity chips, flash-deal
+// banner price, sticky-rail tip + rate label, section/OTA/availability eyebrow
+// labels, accent stat pill, stable-price trend chip — swapped fixed
+// --cozy-warm-dark/--cozy-cocoa/--cozy-cocoa-soft to the theme-aware
+// --text-base/--text-soft/--text-muted (byte-identical in light).
+const HTML_CACHE = 'staybid-html-v231';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

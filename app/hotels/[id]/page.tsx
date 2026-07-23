@@ -2459,7 +2459,7 @@ export default function HotelDetail() {
                 }}>⚡ Flash Deal Active</p>
                 <p style={{ fontSize: "0.85rem", color: "var(--text-soft)", margin: "2px 0 0" }}>
                   {flashRoom?.name || "Room"} at{" "}
-                  <span style={{ fontWeight: 800, color: "var(--cozy-warm-dark)", fontSize: "1.05rem" }}>₹{dealPrice}</span>
+                  <span style={{ fontWeight: 800, color: "var(--text-base)", fontSize: "1.05rem" }}>₹{dealPrice}</span>
                   <span style={{ color: "var(--text-muted)" }}>/night</span>
                   {dealDiscount && (
                     <span style={{
@@ -3232,7 +3232,7 @@ export default function HotelDetail() {
               display: "inline-flex", alignItems: "center", gap: "5px",
               fontSize: "0.58rem", fontWeight: 800,
               letterSpacing: "0.16em", textTransform: "uppercase",
-              color: "var(--cozy-cocoa-soft)", flexShrink: 0,
+              color: "var(--text-muted)", flexShrink: 0,
             }}>
               <span style={{
                 width: "6px", height: "6px", borderRadius: "50%",
@@ -4021,7 +4021,7 @@ export default function HotelDetail() {
                                             "var(--bg-pill)",
                                 color: aiPrice.trend === "rising" ? "var(--cozy-rose)" :
                                        aiPrice.trend === "falling" ? "#5e7349" :
-                                       "var(--cozy-cocoa)",
+                                       "var(--text-soft)",
                                 border: `1px solid ${
                                   aiPrice.trend === "rising" ? "rgba(212, 149, 131, 0.3)" :
                                   aiPrice.trend === "falling" ? "rgba(157, 173, 143, 0.35)" :
@@ -4207,7 +4207,7 @@ export default function HotelDetail() {
                 borderRadius: "12px",
               }}>
                 <span style={{ fontSize: "1rem" }}>💡</span>
-                <p style={{ fontSize: "0.74rem", color: "var(--cozy-cocoa)", margin: 0, lineHeight: 1.45 }}>
+                <p style={{ fontSize: "0.74rem", color: "var(--text-soft)", margin: 0, lineHeight: 1.45 }}>
                   Set dates &amp; negotiate to unlock the lowest price for your exact stay.
                 </p>
               </div>
