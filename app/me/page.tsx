@@ -1092,7 +1092,7 @@ export default function MePage() {
         }
         .me-tab.is-active {
           color: #2c1d04;
-          border-bottom-color: #c9911a;
+          border-bottom-color: #6e4a08;
         }
 
         .me-grid {
