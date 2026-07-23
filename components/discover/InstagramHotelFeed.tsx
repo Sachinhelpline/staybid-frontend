@@ -36,6 +36,7 @@ import { uploadSocialMedia } from "@/lib/social/storage-upload";
 import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
 import { getComments, addComment, useCommentCount, type SbComment } from "@/lib/comment-store";
 import { useTheme } from "@/lib/theme-store";
+import { markNotInterested, getNotInterested } from "@/lib/track";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD, SB_IMG_THUMB, SB_IMG_AVATAR, SB_IMG_HERO } from "@/lib/sb-image";
 import {
@@ -629,6 +630,7 @@ function CommentDrawer({
 // ─────────────────────────────────────────────────────────────────────────
 function MoreMenu({
   open, onClose, hotelHref, isUserPost, onShare, onCopy, onToggleMute, muted, gain, onCycleGain, onEditPost, onDeletePost,
+  hotelName, authorHandle, onReport, onNotInterested,
 }: {
   open: boolean; onClose: () => void;
   /** Resolved /hotels/<realHotelId> link, or null when the reel has no
@@ -641,87 +643,134 @@ function MoreMenu({
   gain: number; onCycleGain: () => void;
   onEditPost?: () => void;
   onDeletePost?: () => void;
+  hotelName?: string;
+  authorHandle?: string;
+  /** v402 — Report + Not-interested are now REAL (were dead buttons). */
+  onReport?: (reason: string) => void;
+  onNotInterested?: () => void;
 }) {
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+  // The sheet follows the app appearance mode (was hardcoded dark).
+  const c = dark
+    ? { sheet: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)", topBorder: "rgba(217,190,130,0.22)", grip: "rgba(217,190,130,0.4)", head: "#C9A66B", rowBorder: "rgba(217,190,130,0.16)", rowBg: "linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03))", label: "#FAF5EB", chevron: "rgba(217,190,130,0.45)", overlay: "rgba(15,12,8,0.62)" }
+    : { sheet: "linear-gradient(180deg,#ffffff 0%,#faf5ea 100%)", topBorder: "rgba(139,105,20,0.20)", grip: "rgba(139,105,20,0.30)", head: "#8B6914", rowBorder: "rgba(139,105,20,0.16)", rowBg: "linear-gradient(135deg, rgba(139,105,20,0.07), rgba(139,105,20,0.02))", label: "#2c1d04", chevron: "rgba(139,105,20,0.4)", overlay: "rgba(15,12,8,0.55)" };
+
+  const [view, setView] = useState<"menu" | "report">("menu");
+
+  // Hide the bottom nav dock while the sheet is open (the standard modal class)
+  // so the last row is never covered by it — this is why "Not interested" was
+  // cut off behind the dock. Also reset to the menu view on each open.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (open) { document.body.classList.add("sb-modal-open"); setView("menu"); }
+    else document.body.classList.remove("sb-modal-open");
+    return () => { document.body.classList.remove("sb-modal-open"); };
+  }, [open]);
+
   if (!open) return null;
-  // For user-uploaded posts the menu pivots to author actions:
-  // Edit + Delete take priority, "Open hotel page" + "Report" disappear
-  // (they don't apply to a post the user owns themselves).
-  // v82 trim — Mute audio also removed (the right-rail 🔊 button already
-  // owns mute toggling). Volume booster, Copy link, Share were stripped
-  // in v81. MoreMenu now sticks to actions that DON'T duplicate the
-  // front-rail surface.
-  // v160 — "Open hotel page" only appears when hotelHref resolved to a
-  // real hotel. A reel with no hotel tagged simply omits the row instead
-  // of linking to /hotels/<post-id> ("Hotel not found").
+
+  const REPORT_REASONS: { key: string; icon: string; label: string }[] = [
+    { key: "spam",          icon: "📢", label: "Spam or scam" },
+    { key: "inappropriate", icon: "⚠️", label: "Inappropriate or offensive" },
+    { key: "misleading",    icon: "🎭", label: "Misleading or fake listing" },
+    { key: "offplatform",   icon: "🔗", label: "Sharing contact / off-platform" },
+    { key: "other",         icon: "•••", label: "Something else" },
+  ];
+
+  // For user-uploaded posts the menu pivots to author actions (Edit + Delete).
+  // For everyone else: Open hotel page (if tagged) + Report + Not interested.
   const items = isUserPost
     ? [
-        { icon: "✏️",  label: "Edit post",                                 onClick: onEditPost },
-        { icon: "🗑",  label: "Delete post",                               onClick: onDeletePost, danger: true },
+        { icon: "✏️",  label: "Edit post",   onClick: onEditPost },
+        { icon: "🗑",  label: "Delete post", onClick: onDeletePost, danger: true },
       ]
     : [
-        ...(hotelHref
-          ? [{ icon: "🏨", label: "Open hotel page", href: hotelHref }]
-          : []),
-        { icon: "🚩",  label: "Report this reel",                          danger: true },
-        { icon: "🚫",  label: "Not interested" },
+        ...(hotelHref ? [{ icon: "🏨", label: "Open hotel page", href: hotelHref }] : []),
+        { icon: "🚩",  label: "Report this reel", danger: true, onClick: () => setView("report"), keepOpen: true },
+        { icon: "🚫",  label: "Not interested",   onClick: () => onNotInterested?.() },
       ];
+
+  const rowInner = (icon: string, label: string, danger?: boolean, chevron = true) => (
+    <div
+      className="ig-more-row flex items-center gap-3.5 px-3.5 py-3 rounded-2xl"
+      style={{ background: c.rowBg, border: danger ? "1px solid rgba(224,107,90,0.28)" : `1px solid ${c.rowBorder}` }}
+    >
+      <span
+        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+        style={{ background: danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#E7CFA0,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.3), inset 0 1px 0 rgba(255,255,255,0.35)" }}
+      >{icon}</span>
+      <span className="text-[0.92rem] font-semibold" style={{ color: danger ? (dark ? "#E8A89C" : "#B4472E") : c.label }}>{label}</span>
+      {chevron && <span className="ml-auto text-lg" style={{ color: c.chevron }}>›</span>}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-80 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(15,12,8,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
+      <div className="absolute inset-0" style={{ background: c.overlay, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }} />
       <div
         className="relative w-full sm:max-w-md ig-drawer-up"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "linear-gradient(180deg,#2A2417 0%,#1F1A0F 100%)",
+          background: c.sheet,
           borderTopLeftRadius: 26, borderTopRightRadius: 26,
-          borderTop: "1px solid rgba(217,190,130,0.22)",
-          boxShadow: "0 -24px 70px rgba(15,12,8,0.7)",
+          borderTop: `1px solid ${c.topBorder}`,
+          boxShadow: "0 -24px 70px rgba(15,12,8,0.5)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1"><div className="w-10 h-[3px] rounded-full" style={{ background: "rgba(217,190,130,0.4)" }} /></div>
-        <div className="px-5 pb-1">
-          <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: "#C9A66B" }}>Options</p>
-        </div>
-        <div className="px-3 pb-1 pt-1 space-y-1.5">
-          {items.map((it: any, i) => {
-            const inner = (
-              <div
-                className="ig-more-row flex items-center gap-3.5 px-3.5 py-3 rounded-2xl"
-                style={{ border: it.danger ? "1px solid rgba(224,107,90,0.28)" : "1px solid rgba(217,190,130,0.16)" }}
-              >
-                <span
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                  style={{ background: it.danger ? "linear-gradient(135deg,#E0937A,#C46A4E)" : "linear-gradient(135deg,#E7CFA0,#C9A66B 60%,#8B6914)", boxShadow: "0 3px 10px rgba(15,12,8,0.4), inset 0 1px 0 rgba(255,255,255,0.35)" }}
-                >{it.icon}</span>
-                <span className="text-[0.92rem] font-semibold" style={{ color: it.danger ? "#E8A89C" : "#FAF5EB" }}>{it.label}</span>
-                <span className="ml-auto text-lg" style={{ color: "rgba(217,190,130,0.45)" }}>›</span>
-              </div>
-            );
-            if (it.href) {
-              return <Link key={i} href={it.href} onClick={onClose}>{inner}</Link>;
-            }
-            return (
-              <button
-                key={i}
-                onClick={() => {
-                  it.onClick?.();
-                  if (!(it as any).keepOpen) onClose();
-                }}
-                className="w-full text-left"
-              >
-                {inner}
-              </button>
-            );
-          })}
-        </div>
+        <div className="flex justify-center pt-2.5 pb-1"><div className="w-10 h-[3px] rounded-full" style={{ background: c.grip }} /></div>
+
+        {view === "menu" ? (
+          <>
+            <div className="px-5 pb-1">
+              <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: c.head }}>Options</p>
+            </div>
+            <div className="px-3 pb-1 pt-1 space-y-1.5">
+              {items.map((it: any, i) => {
+                if (it.href) return <Link key={i} href={it.href} onClick={onClose}>{rowInner(it.icon, it.label, it.danger)}</Link>;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => { it.onClick?.(); if (!it.keepOpen) onClose(); }}
+                    className="w-full text-left"
+                  >
+                    {rowInner(it.icon, it.label, it.danger)}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="px-5 pb-1 flex items-center gap-2">
+              <button type="button" onClick={() => setView("menu")} className="text-lg" style={{ color: c.head }} aria-label="Back">‹</button>
+              <p className="text-[0.6rem] font-bold tracking-[0.18em] uppercase" style={{ color: c.head }}>
+                Why report {hotelName ? `“${hotelName}”` : "this reel"}?
+              </p>
+            </div>
+            <div className="px-3 pb-1 pt-1 space-y-1.5">
+              {REPORT_REASONS.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => { onReport?.(r.key); onClose(); }}
+                  className="w-full text-left"
+                >
+                  {rowInner(r.icon, r.label, false)}
+                </button>
+              ))}
+              <p className="px-3.5 pt-1 text-[0.66rem]" style={{ color: c.chevron }}>
+                Your report is anonymous. Our team reviews every report.
+              </p>
+            </div>
+          </>
+        )}
+
         <style jsx global>{`
           .ig-more-row {
-            background: linear-gradient(135deg, rgba(217,190,130,0.10), rgba(217,190,130,0.03));
             transition: transform 0.14s cubic-bezier(.32,1.2,.36,1), background 0.18s ease, border-color 0.18s ease;
           }
           .ig-more-row:active { transform: scale(0.98); }
-          .ig-more-row:hover { background: linear-gradient(135deg, rgba(217,190,130,0.16), rgba(217,190,130,0.06)); }
         `}</style>
       </div>
     </div>
@@ -3278,6 +3327,21 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // We fetch the missing prices once from /api/hotels/starting-prices and
   // hydrate each card so it shows "From ₹X /n" instead of "View rates ›".
   const [taggedPrices, setTaggedPrices] = useState<Record<string, number>>({});
+  // v402 — "Not interested" suppressions (seeded from persisted feed signals).
+  // A suppressed reel is filtered out of the feed immediately + on every future
+  // load; the id also rides along in getSignals() to the discover ranker.
+  const [notInterested, setNotInterested] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    setNotInterested(new Set(getNotInterested()));
+    const on = (e: any) => setNotInterested((prev) => {
+      if (!e?.detail?.id) return prev;
+      const n = new Set(prev); n.add(String(e.detail.id)); return n;
+    });
+    if (typeof window !== "undefined") {
+      window.addEventListener("sb:not-interested", on);
+      return () => window.removeEventListener("sb:not-interested", on);
+    }
+  }, []);
   const [creatorOpen, setCreatorOpen] = useState<Creator | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -3356,8 +3420,12 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
   // (kept in sync with `sb_city` + `sb:city-change`).
   const { deals: flashDeals } = useFlashDealStories(filterCity);
 
-  // Apply filter
+  // Apply filter — also drop anything the user marked "Not interested" (by the
+  // reel id OR its tagged hotel id) so a suppressed reel disappears immediately
+  // and never returns (v402).
   let filteredItems = items.filter((it) => {
+    const h: any = it.hotel;
+    if (notInterested.size && (notInterested.has(String(h?.id)) || (h?._taggedHotelId && notInterested.has(String(h._taggedHotelId))))) return false;
     const okSrc = filterSource === "all" || sourceFor(it.hotel) === filterSource;
     const okCity = filterCity === "all" || (it.hotel?.city && it.hotel.city === filterCity);
     return okSrc && okCity;
@@ -4516,6 +4584,43 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
         onCopy={() => {
           const it = items.find((x) => x.hotel.id === moreOpen.id);
           if (it) handleCopyLink(it.hotel);
+        }}
+        hotelName={(() => {
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          return h?._userPostTaggedHotel?.name || h?.name || "";
+        })()}
+        authorHandle={(() => {
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          return h ? (creatorFor(h).handle || entityFromHotel(h).handle || "") : "";
+        })()}
+        onReport={(reason) => {
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          const postId = moreOpen.id;
+          const hotelId = h?._userPost ? (h?._taggedHotelId || null) : (h?.id || null);
+          try {
+            const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+            fetch("/api/social/report", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+              body: JSON.stringify({
+                postId, hotelId,
+                hotelName: h?._userPostTaggedHotel?.name || h?.name || null,
+                authorHandle: h ? (creatorFor(h).handle || "") : null,
+                reason, surface: "reel",
+              }),
+            }).catch(() => {});
+          } catch {}
+          showToast("🚩 Reported — our team will review this reel");
+          onTrackEvent?.("ig_report_reel", { id: postId, reason });
+        }}
+        onNotInterested={() => {
+          const h = items.find((x) => x.hotel.id === moreOpen.id)?.hotel as any;
+          const id = moreOpen.id;
+          // Suppress the reel id AND its tagged hotel so similar content drops too.
+          markNotInterested(String(id));
+          if (h?._taggedHotelId) markNotInterested(String(h._taggedHotelId));
+          showToast("👍 Got it — you'll see less like this");
+          onTrackEvent?.("ig_not_interested", { id });
         }}
       />
 
