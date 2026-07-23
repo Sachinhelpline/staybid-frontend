@@ -290,7 +290,12 @@ export function FlashDealStoryRail({
         .fdeal-rail-wrap {
           position: relative;        /* part of the flex column, not floating */
           z-index: 38;
-          padding: 10px 12px 12px;
+          /* v409 — the discover feed is edge-to-edge (viewport-fit=cover) on an
+             installed PWA, so the reel's black body bg used to show in the
+             status-bar region ABOVE this cream rail (a mismatched black strip).
+             Extend the cream up INTO the status-bar safe area so it fills that
+             region seamlessly; StatusBarColor sets the bar itself to this cream. */
+          padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 12px;
           background:
             linear-gradient(180deg, #fff9ec 0%, #f9efd6 100%);
           border-bottom: 1px solid rgba(184, 134, 11, 0.18);

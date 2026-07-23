@@ -1,35 +1,39 @@
 "use client";
-// v408 — Native-feel status bar for STANDALONE PWA mode.
+// v408/v409 — Native-feel status bar for STANDALONE PWA mode, SINGLE AUTHORITY.
 //
-// When the app runs installed (display: standalone), Android/iOS paint the
-// system STATUS BAR (top) using the page's <meta name="theme-color">. If that
-// colour doesn't match the current screen, users see a mismatched dark strip
-// on light pages ("upar black screen / status bar app se match nahi ho rahi").
+// Installed (display: standalone), the OS paints the STATUS BAR from the page's
+// <meta name="theme-color">. If it doesn't match the screen under it, users see
+// a mismatched strip ("upar black screen / status bar app se match nahi").
 //
-// This mounts once (globally) and updates theme-color on every route change so
-// the status bar always matches the surface underneath it:
-//   • reel surfaces (/, /discover, /reels)  → black (immersive dark reel)
-//   • /bid game zone (dark mountain)         → near-black walnut
-//   • everything else                        → the active theme's page bg
-//     (cream in light, espresso in dark) so the bar blends into the page.
+// THE RECURRING BUG this fixes: multiple places used to set theme-color and
+// fought each other (the reel hook forced #000 while the page led with the cream
+// flash-deals rail → permanent black-strip-over-cream). This component is now the
+// ONLY thing that sets theme-color (the reel hook's override was removed), so
+// there is one source of truth and it can't drift back.
 //
-// Pure/runtime (no manifest change → no reinstall needed). The reel's own
-// useReelFullscreen also sets #000 on reel routes; this sets the SAME value so
-// there is never a fight, and it GUARANTEES the colour is corrected on the
-// next route even if a prior screen left it stale.
+// It matches the bar to whatever is actually at the TOP of the current screen:
+//   • reel family (/, /discover, /reels): CREAM when the flash-deals rail is at
+//     the top (the common case), else BLACK (pure dark reel).
+//   • /bid game zone (dark mountain): near-black walnut.
+//   • everything else: the active theme's page bg (cream / espresso).
+// A MutationObserver re-evaluates when the rail mounts/unmounts (it loads async
+// and toggles with filters), so the bar always tracks the real top surface.
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-// Visually-dark routes that must keep a dark status bar in ANY theme.
-const BLACK_ROUTES = new Set(["/", "/discover", "/reels"]);
+const REEL_ROUTES = new Set(["/", "/discover", "/reels"]);
 const WALNUT_PREFIXES = ["/bid"];
+const RAIL_CREAM = "#fff9ec"; // matches .fdeal-rail-wrap top gradient stop
 
 function statusColorFor(pathname: string): string {
-  if (BLACK_ROUTES.has(pathname)) return "#000000";
+  if (typeof document === "undefined") return "#FAF5EB";
+  if (REEL_ROUTES.has(pathname)) {
+    // The flash-deals rail (cream) sits at the very top when present; otherwise
+    // the dark reel is at the top.
+    return document.querySelector(".fdeal-rail-wrap") ? RAIL_CREAM : "#000000";
+  }
   if (WALNUT_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) return "#0d0a05";
-  const dark =
-    typeof document !== "undefined" &&
-    document.documentElement.getAttribute("data-theme") === "dark";
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
   return dark ? "#0F0C08" : "#FAF5EB";
 }
 
@@ -43,7 +47,21 @@ export default function StatusBarColor() {
       meta.setAttribute("name", "theme-color");
       document.head.appendChild(meta);
     }
-    meta.setAttribute("content", statusColorFor(pathname || "/"));
+    let last = "";
+    const apply = () => {
+      const c = statusColorFor(pathname || "/");
+      if (c !== last) { last = c; meta!.setAttribute("content", c); }
+    };
+    apply();
+    // The flash rail loads async (after its fetch), so re-check a few times
+    // after mount to catch it appearing — light + no heavy DOM observer.
+    const timers = [150, 500, 1200, 2500].map((t) => window.setTimeout(apply, t));
+    // Re-check when the tab regains focus (theme/filters may have changed).
+    document.addEventListener("visibilitychange", apply);
+    return () => {
+      timers.forEach(clearTimeout);
+      document.removeEventListener("visibilitychange", apply);
+    };
   }, [pathname]);
   return null;
 }
