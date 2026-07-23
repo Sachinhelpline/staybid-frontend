@@ -215,6 +215,13 @@ export function BottomDock() {
         body:has([data-route-onboard]), body.no-bottom-dock {
           padding-bottom: env(safe-area-inset-bottom, 0px) !important;
         }
+        /* v413 — the immersive /bid flow hides the dock (rule above), so it must
+           ALSO drop the reserved 60px dock-height buffer — otherwise the hidden
+           dock leaves a dead gap under PRESS START. Collapse to just the OS
+           nav-bar safe-area inset (matches the admin/partner reset). */
+        body.sb-bid-immersive {
+          padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        }
 
       `}</style>
     </>

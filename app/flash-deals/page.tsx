@@ -18,10 +18,15 @@ import { LocationGlobeModal } from "@/components/LocationGlobePicker";
 import ResaleOffers from "@/components/circle/ResaleOffers";
 
 // v160 — Sort options for the unified control-bar filter popover.
-const FD_SORT_OPTS: Array<{ v: "discount" | "price-asc" | "ending"; label: string }> = [
-  { v: "discount",  label: "Biggest discount" },
-  { v: "price-asc", label: "Price · low to high" },
-  { v: "ending",    label: "Ending soonest" },
+// v414 — mirrors the hotels-page sort set (added price high→low +
+// most-rooms-left) so the deals feed re-ranks by every axis a shopper needs.
+type FdSort = "discount" | "price-asc" | "price-desc" | "ending" | "rooms";
+const FD_SORT_OPTS: Array<{ v: FdSort; label: string }> = [
+  { v: "discount",   label: "Biggest discount" },
+  { v: "ending",     label: "Ending soonest" },
+  { v: "price-asc",  label: "Price · low to high" },
+  { v: "price-desc", label: "Price · high to low" },
+  { v: "rooms",      label: "Most rooms left" },
 ];
 
 /* ─────────────────────────────────────────────────────────────────
@@ -229,13 +234,41 @@ function FlashDealsContent() {
   // v159.3 — Sort dimension. Default "discount" matches Sachin's "biggest
   // savings first" intent. Other modes keep the same rail-less grid but
   // re-rank the dense card list so user can scan by price / time.
-  const [sortBy, setSortBy] = useState<"discount" | "price-asc" | "ending">("discount");
+  const [sortBy, setSortBy] = useState<FdSort>("discount");
+  // v414 — real deal search: type a hotel, city, area or room type and the
+  // grid filters live (like the hotels-page search bar). Runs BEFORE the sort.
+  const [query, setQuery] = useState("");
   const sortedDeals = useMemo(() => {
-    const cloned = [...deals];
+    let cloned = [...deals];
+    const q = query.trim().toLowerCase();
+    if (q) {
+      cloned = cloned.filter((d) => {
+        const area = getHotelArea(d.city, d.hotel?.lat, d.hotel?.lng);
+        const hay = [
+          d.hotel?.name,
+          d.city,
+          area,
+          d.room?.type,
+          ...(d.upgrades || []).map((u) => u.type),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
     if (sortBy === "discount") {
       cloned.sort((a, b) => (b.discount || 0) - (a.discount || 0));
     } else if (sortBy === "price-asc") {
       cloned.sort((a, b) => (a.aiPrice || 0) - (b.aiPrice || 0));
+    } else if (sortBy === "price-desc") {
+      cloned.sort((a, b) => (b.aiPrice || 0) - (a.aiPrice || 0));
+    } else if (sortBy === "rooms") {
+      cloned.sort((a, b) => {
+        const la = Math.max(0, (a.maxBookings || 5) - (a.bookingCount || 0));
+        const lb = Math.max(0, (b.maxBookings || 5) - (b.bookingCount || 0));
+        return lb - la;
+      });
     } else if (sortBy === "ending") {
       cloned.sort((a, b) => {
         const ta = a.validUntil ? new Date(a.validUntil).getTime() : Infinity;
@@ -244,7 +277,7 @@ function FlashDealsContent() {
       });
     }
     return cloned;
-  }, [deals, sortBy]);
+  }, [deals, sortBy, query]);
 
   return (
     <div className="fd-root">
@@ -291,7 +324,13 @@ function FlashDealsContent() {
           [📍 Location ▾] · [ live status ] · [⚙ Sort ▾]. */}
       <div className="fd-sticky">
         <div className="fd-sticky-inner">
-          <div className="sb-cbar-wrap" data-autonext-self="fd-results">
+          {/* v414 — NOTE: removed the old `data-autonext-self="fd-results"`
+              from this wrapper. That marker made the global auto-next delegate
+              smooth-scroll the (very tall) results grid to viewport-CENTRE on
+              ANY tap inside the bar — so tapping the centre label jumped the
+              page down to the last deal. The bar now hosts a real search
+              input, so no auto-scroll here. */}
+          <div className="sb-cbar-wrap">
             <div className="sb-cbar">
               {/* Location — 3D button, opens globe picker */}
               <button
@@ -309,14 +348,39 @@ function FlashDealsContent() {
                 <span className="sb-cbar-loc-caret" aria-hidden="true">▾</span>
               </button>
 
-              {/* Live status — center */}
-              <div className="sb-cbar-info" aria-hidden="true">
-                <span className="sb-cbar-info-dot" />
-                <span className="sb-cbar-info-txt">
-                  {loading
-                    ? "Loading deals…"
-                    : `${stats.dealsLive} live deal${stats.dealsLive !== 1 ? "s" : ""}${city ? ` · ${city}` : ""}`}
-                </span>
+              {/* Search — center. Real live filter over hotel / city / area /
+                  room type. A live-count pill sits at the right until the user
+                  types, then a clear (×) takes its place. */}
+              <div className={`fd-search ${query ? "is-set" : ""}`}>
+                <svg className="fd-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.1} aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path strokeLinecap="round" d="M21 21l-4.2-4.2" />
+                </svg>
+                <input
+                  className="fd-search-input"
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={loading ? "Loading deals…" : "Search deals · hotel or city"}
+                  aria-label="Search flash deals"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    className="fd-search-clear"
+                    onClick={() => setQuery("")}
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                ) : (
+                  <span className="fd-search-live" aria-hidden="true">
+                    <span className="fd-search-live-dot" />
+                    {loading ? "…" : stats.dealsLive}
+                  </span>
+                )}
               </div>
 
               {/* Sort — 3D button, opens popover */}
@@ -373,6 +437,16 @@ function FlashDealsContent() {
             <div className="fd-empty-icon">⚡</div>
             <p className="fd-empty-title">All deals sold out for tonight</p>
             <p className="fd-empty-sub">AI curates fresh deals daily. Check back near midnight.</p>
+          </div>
+        )}
+
+        {/* v414 — search returned nothing (deals exist, none match the query) */}
+        {!loading && deals.length > 0 && sortedDeals.length === 0 && (
+          <div className="fd-empty">
+            <div className="fd-empty-icon">🔍</div>
+            <p className="fd-empty-title">No deals match “{query.trim()}”</p>
+            <p className="fd-empty-sub">Try a different hotel or city — or clear the search to see all {stats.dealsLive} live deals.</p>
+            <button type="button" className="fd-empty-clear" onClick={() => setQuery("")}>Clear search</button>
           </div>
         )}
 
@@ -1378,7 +1452,7 @@ function FdStyles() {
       /* Meta line — stars · room · capacity · units left, all inline */
       .fd-meta-line {
         display: flex; align-items: center; flex-wrap: wrap;
-        gap: 5px; margin: 0 0 10px;
+        gap: 5px; margin: 0 0 9px;
         font-size: 0.74rem; line-height: 1.2;
       }
       .fd-meta-line .fd-stars {
@@ -1413,15 +1487,19 @@ function FdStyles() {
       /* Upgrade row — slim chips, no boxed wrapper. */
       .fd-up-row {
         display: flex; gap: 6px; overflow-x: auto;
-        scrollbar-width: none; margin: 0 0 10px;
+        scrollbar-width: none; margin: 0 0 11px;
         padding: 2px 0;
       }
       .fd-up-row::-webkit-scrollbar { display: none; }
 
-      /* Price + CTA — v159.4 horizontal, no divider, super tight. */
+      /* Price + CTA — v414: a defined bottom "action bar". A hairline top
+         separator turns the leftover whitespace below the chips into an
+         intentional zone (native app pattern) instead of a floating gap, and
+         anchors the price + Grab CTA as one crisp row. */
       .fd-price-row {
-        display: flex; align-items: flex-end; justify-content: space-between;
-        gap: 10px;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; padding-top: 11px;
+        border-top: 1px solid var(--border-soft);
       }
       .fd-price-block {
         flex: 1 1 auto; min-width: 0;
@@ -1499,6 +1577,62 @@ function FdStyles() {
       }
       .fd-empty-title { color: var(--text-base); font-size: 1.05rem; font-weight: 600; margin: 0 0 6px; }
       .fd-empty-sub { color: var(--text-muted); font-size: 0.82rem; margin: 0; }
+      .fd-empty-clear {
+        margin-top: 16px; padding: 9px 18px; border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border-soft));
+        background: var(--bg-card); color: var(--text-base);
+        font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+        box-shadow: 0 4px 12px -6px rgba(31,26,15,0.28);
+        transition: transform .14s ease, border-color .14s ease;
+      }
+      .fd-empty-clear:hover { transform: translateY(-1px); border-color: var(--accent); }
+
+      /* v414 — Real search input in the control bar (replaces the old inert
+         "N live deals" label). Sits as a flex child of .sb-cbar so the shared
+         "sb-cbar direct-child" height rule (46px) gives it the pill height. */
+      .fd-search {
+        flex: 1 1 auto; min-width: 0;
+        display: flex; align-items: center; gap: 8px;
+        padding: 0 5px 0 14px;
+        border-radius: 999px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 2px 12px -6px rgba(31, 26, 15, 0.18);
+        transition: border-color 0.16s ease, box-shadow 0.16s ease;
+      }
+      .fd-search:focus-within {
+        border-color: color-mix(in srgb, var(--accent) 60%, var(--border-soft));
+        box-shadow: 0 5px 18px -8px rgba(201, 166, 107, 0.42);
+      }
+      .fd-search-ico { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+      .fd-search-input {
+        flex: 1 1 auto; min-width: 0; height: 100%;
+        border: none; background: transparent; outline: none;
+        font-family: inherit; font-size: 0.82rem; font-weight: 500;
+        color: var(--text-base); letter-spacing: -0.005em;
+      }
+      .fd-search-input::placeholder { color: var(--text-muted); font-weight: 500; }
+      @media (min-width: 1024px) { .fd-search-input { font-size: 0.9rem; } }
+      .fd-search-live {
+        flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px;
+        margin-right: 5px; padding: 3px 9px 3px 8px; border-radius: 999px;
+        background: color-mix(in srgb, #ff3859 12%, var(--bg-card));
+        color: var(--text-soft); font-size: 0.68rem; font-weight: 800;
+        letter-spacing: 0.01em;
+      }
+      .fd-search-live-dot {
+        width: 6px; height: 6px; border-radius: 50%; background: #ff3859;
+        animation: sbCbarPulse 1.7s infinite;
+      }
+      .fd-search-clear {
+        flex-shrink: 0; width: 28px; height: 28px; margin-right: 3px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: none; border-radius: 50%; cursor: pointer;
+        background: var(--accent-soft); color: var(--text-soft);
+        font-size: 1.2rem; line-height: 1; font-family: inherit;
+        transition: background 0.14s ease, color 0.14s ease;
+      }
+      .fd-search-clear:hover { background: var(--accent); color: #fff; }
 
       /* Drawer */
       .fd-drawer-bg {

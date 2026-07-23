@@ -126,6 +126,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           #sb-safe-top-fill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#FAF5EB;z-index:5;pointer-events:none}
           html[data-theme="dark"] #sb-safe-top-fill{background:#0F0C08}
           html.is-reel-page #sb-safe-top-fill{background:#fff9ec}
+          /* v413 — the /bid reverse-auction is a dark walnut game zone; paint the
+             top safe-area walnut too (matching the #0d0a05 status bar) so no cream
+             sliver shows above the dark climber. */
+          body.sb-bid-immersive #sb-safe-top-fill{background:#0d0a05}
           .sb-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07060e;z-index:0;pointer-events:none}
           .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(240,180,41,0.18);border-top-color:#f0b429;animation:sbSpin .8s linear infinite}
           @keyframes sbSpin{to{transform:rotate(360deg)}}
@@ -242,7 +246,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v412</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v414</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -263,7 +267,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v412-top-safe-area-paint-no-reinstall";
+var SB_BUILD="v414-flash-deals-search-sort-card";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
