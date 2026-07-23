@@ -5649,11 +5649,15 @@
   gap: 8px;
   justify-content: space-between;
 }
+/* v417 — editorial serif hotel name (Cormorant) on the /hotels browse card,
+   matching the Flash Deals + Home design language. */
 .hxr-card-name {
   margin: 0;
-  font-size: 0.83rem;
+  font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
+  font-size: 1.04rem;
   font-weight: 600;
-  letter-spacing: -0.005em;
+  letter-spacing: 0.005em;
+  line-height: 1.12;
   color: var(--text-base);
   white-space: nowrap;
   overflow: hidden;
@@ -5661,7 +5665,7 @@
   min-width: 0;
   flex: 1 1 auto;
 }
-@media (min-width: 1024px) { .hxr-card-name { font-size: 0.92rem; } }
+@media (min-width: 1024px) { .hxr-card-name { font-size: 1.16rem; } }
 .hxr-card-rating {
   flex: 0 0 auto;
   font-size: 0.74rem;
@@ -5690,12 +5694,13 @@
 }
 @media (min-width: 1024px) { .hxr-card-price { font-size: 0.84rem; } }
 .hxr-card-amount {
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-base);
   letter-spacing: -0.005em;
-  font-size: 0.88rem;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
 }
-@media (min-width: 1024px) { .hxr-card-amount { font-size: 0.95rem; } }
+@media (min-width: 1024px) { .hxr-card-amount { font-size: 1.12rem; } }
 .hxr-card-amount-flash {
   color: var(--accent);
 }
