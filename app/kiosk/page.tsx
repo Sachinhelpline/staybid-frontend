@@ -9,6 +9,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
+import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 import { KIOSK_LOCATIONS, DEFAULT_KIOSK_LOC } from "@/lib/kiosk";
 
 export default function KioskHubPage() {
@@ -19,6 +20,8 @@ export default function KioskHubPage() {
     <div className="kh-screen">
       <div className="kh-topbar">
         <div className="kh-tag">StayBid · Offline Kiosk</div>
+        <AppTourButton className="kh-switch" label="App Tour" />
+        <HelpSupportButton className="kh-switch" label="Help & Support" />
         <SwitchExperienceButton className="kh-switch" label="Switch experience" />
       </div>
       <h1 className="kh-title">Offline Kiosk <span>Control</span></h1>

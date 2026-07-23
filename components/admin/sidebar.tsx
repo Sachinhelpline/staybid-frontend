@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
+import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "⊞" },
@@ -187,6 +188,29 @@ export default function AdminSidebar({ collapsed, onToggle, isMobile, mobileOpen
               </Link>
             );
           })}
+          {/* v404 — App Tour + Help & Support (opened from the menu; the
+              floating "?" + support bubble were removed from every screen). */}
+          {(() => {
+            const navBtn: React.CSSProperties = {
+              display: "flex", alignItems: "center", gap: 11, width: "100%",
+              padding: effectiveCollapsed ? "8px 18px" : "8px 20px",
+              color: "#8A8FA8", background: "transparent", border: "none",
+              borderLeft: "2px solid transparent", cursor: "pointer", fontSize: 13,
+              lineHeight: 1.25, fontFamily: "DM Sans, sans-serif", whiteSpace: "nowrap", textAlign: "left",
+            };
+            return (
+              <>
+                <AppTourButton title={effectiveCollapsed ? "App Tour" : undefined} style={{ ...navBtn, marginTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>❓</span>
+                  {!effectiveCollapsed && <span>App Tour</span>}
+                </AppTourButton>
+                <HelpSupportButton title={effectiveCollapsed ? "Help & Support" : undefined} style={navBtn}>
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>🎧</span>
+                  {!effectiveCollapsed && <span>Help &amp; Support</span>}
+                </HelpSupportButton>
+              </>
+            );
+          })()}
           {/* v324 — Switch experience (opens the global panel switcher).
               In-nav entry, styled like a nav item — NO floating pill. */}
           <SwitchExperienceButton

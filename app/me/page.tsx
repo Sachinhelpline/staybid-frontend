@@ -1234,6 +1234,26 @@ function MoreDrawer({
           <ModalCloseButton onClose={onClose} tone="light" ariaLabel="Close menu" className="me-drawer-close-btn" />
         </div>
         <ul className="me-drawer-list">
+          {/* v404 — App Tour + Help & Support in the menu (the floating "?" +
+              support bubble were removed from every screen). */}
+          <li>
+            <button
+              type="button"
+              className="me-drawer-link"
+              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-tour")); }}
+            >
+              <DrawerRow icon="❓" label="App Tour" sub="Replay any guided tour" />
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              className="me-drawer-link"
+              onClick={() => { onClose(); window.dispatchEvent(new Event("sb:open-support")); }}
+            >
+              <DrawerRow icon="🎧" label="Help & Support" sub="Chat with our team" />
+            </button>
+          </li>
           {/* v322 — Switch experience (opens the global panel switcher). */}
           <li>
             <button

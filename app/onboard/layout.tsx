@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
+import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 
 export const metadata = {
   title: "StayBid Partner — List Your Property",
@@ -20,6 +21,8 @@ export default function OnboardLayout({ children }: { children: ReactNode }) {
           </a>
           <nav className="hidden md:flex items-center gap-6 text-sm text-luxury-700">
             <a href="/onboard" className="hover:text-gold-700">Home</a>
+            <AppTourButton className="hover:text-gold-700" label="Tour" />
+            <HelpSupportButton className="hover:text-gold-700" label="Help" />
             <SwitchExperienceButton className="hover:text-gold-700" label="Switch" />
             <a href="/onboard/signin" className="hover:text-gold-700">Sign in</a>
             <a href="/onboard/signup" className="px-4 py-2 rounded-full bg-linear-to-r from-gold-600 to-gold-500 text-white font-medium shadow-gold hover:shadow-lg transition">List Your Hotel</a>
