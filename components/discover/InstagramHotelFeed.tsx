@@ -34,6 +34,8 @@ import type { MyTierResponse } from "@/lib/tier/types";
 import { api } from "@/lib/api";
 import { uploadSocialMedia } from "@/lib/social/storage-upload";
 import { sanitizeText as sanitizeComment } from "@/lib/sanitize-text";
+import { getComments, addComment, useCommentCount, type SbComment } from "@/lib/comment-store";
+import { useTheme } from "@/lib/theme-store";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 import { sbImage, SB_IMG_CARD, SB_IMG_THUMB, SB_IMG_AVATAR, SB_IMG_HERO } from "@/lib/sb-image";
 import {
@@ -400,14 +402,8 @@ function entityFromHotel(h: any): Creator & { _isSelf?: boolean } {
 // Same sanitizer is used by booking-flow chat post-booking (Phase 7).
 // ─────────────────────────────────────────────────────────────────────────
 
-const SAMPLE_COMMENTS = [
-  { user: "priya_m", text: "Looks like a dream 😍 saving for our anniversary trip", time: "2h", likes: 14 },
-  { user: "rohan.k", text: "Booked through StayBid, saved ₹4,200 vs MakeMyTrip — same suite", time: "5h", likes: 32 },
-  { user: "wanderlust.in", text: "That sunrise shot 🌄🔥", time: "8h", likes: 9 },
-  { user: "aisha_s", text: "Service was unreal. Manager remembered our names from check-in.", time: "1d", likes: 21 },
-  { user: "vikrambhola", text: "Pool is even better in person.", time: "1d", likes: 6 },
-  { user: "meeradc", text: "Quiet, clean, mountains right outside the bathroom window. Magical.", time: "2d", likes: 18 },
-];
+// v401 — the reel comment thread (seed pool + user comments + count) now lives
+// in lib/comment-store.ts so the card count always equals the drawer content.
 
 // ─────────────────────────────────────────────────────────────────────────
 // Floating hearts animator (used by both single-tap like and double-tap)
@@ -437,18 +433,58 @@ function spawnHearts(originX: number, originY: number, count = 12): Heart[] {
 // Comment Drawer
 // ─────────────────────────────────────────────────────────────────────────
 function CommentDrawer({
-  open, onClose, hotelName, onMaskedToast,
+  open, onClose, hotelName, postId, onMaskedToast,
 }: {
   open: boolean;
   onClose: () => void;
   hotelName: string;
+  /** The reel/post id — the comment thread is keyed to this so the count on the
+      card equals what's rendered here. */
+  postId: string;
   onMaskedToast?: (msg: string) => void;
 }) {
-  // Sample comments are run through the same sanitizer to stay consistent
-  // with the live rule (defense-in-depth).
-  const seedComments = SAMPLE_COMMENTS.map((c) => ({ ...c, text: sanitizeComment(c.text).clean }));
-  const [comments, setComments] = useState(seedComments);
+  const { theme } = useTheme();
+  const dark = theme === "dark";
+  // Theme palette — the sheet follows the app's light/dark appearance mode.
+  const c = dark
+    ? {
+        sheet: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+        border: "rgba(255,255,255,0.12)", headBorder: "rgba(255,255,255,0.08)",
+        title: "#ffffff", text: "rgba(255,255,255,0.92)", name: "#ffffff",
+        sub: "rgba(255,255,255,0.45)", grip: "rgba(255,255,255,0.30)",
+        inputBg: "rgba(255,255,255,0.10)", inputBorder: "rgba(255,255,255,0.20)", inputText: "#ffffff",
+        bannerText: "rgba(255,255,255,0.85)", bannerSub: "rgba(255,255,255,0.55)",
+        closeBg: "rgba(255,255,255,0.10)", closeText: "#ffffff",
+      }
+    : {
+        sheet: "linear-gradient(180deg,#ffffff 0%,#faf5ea 100%)",
+        border: "rgba(74,50,8,0.16)", headBorder: "rgba(74,50,8,0.10)",
+        title: "#2c1d04", text: "rgba(44,29,4,0.92)", name: "#2c1d04",
+        sub: "rgba(74,50,8,0.55)", grip: "rgba(74,50,8,0.25)",
+        inputBg: "rgba(74,50,8,0.06)", inputBorder: "rgba(74,50,8,0.20)", inputText: "#2c1d04",
+        bannerText: "rgba(44,29,4,0.88)", bannerSub: "rgba(74,50,8,0.6)",
+        closeBg: "rgba(74,50,8,0.08)", closeText: "#4a3208",
+      };
+
+  const [comments, setComments] = useState<SbComment[]>([]);
   const [input, setInput] = useState("");
+  const [liked, setLiked] = useState<Record<number, boolean>>({});
+
+  // Load this post's thread whenever the drawer opens (real store, keyed by id).
+  useEffect(() => {
+    if (open && postId) setComments(getComments(postId));
+  }, [open, postId]);
+
+  // Hide the bottom nav dock while commenting (the standard modal class) so the
+  // comment input is never covered by it — this is why "there was no way to
+  // comment": the input sat BEHIND the dock.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (open) document.body.classList.add("sb-modal-open");
+    else document.body.classList.remove("sb-modal-open");
+    return () => { document.body.classList.remove("sb-modal-open"); };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-80 flex items-end" onClick={onClose}>
@@ -458,21 +494,24 @@ function CommentDrawer({
         onClick={(e) => e.stopPropagation()}
         style={{
           height: "72vh",
-          background: "linear-gradient(180deg,#15101e 0%,#0a0612 100%)",
+          background: c.sheet,
           borderTopLeftRadius: 24, borderTopRightRadius: 24,
-          borderTop: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.7)",
+          borderTop: `1px solid ${c.border}`,
+          boxShadow: "0 -20px 60px rgba(0,0,0,0.4)",
           display: "flex", flexDirection: "column",
         }}
       >
-        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full bg-white/30" /></div>
-        <div className="flex items-center justify-between px-5 pb-3 border-b border-white/8">
-          <p className="text-white font-semibold text-sm">Comments</p>
+        <div className="flex justify-center pt-2.5 pb-1.5"><div className="w-10 h-[3px] rounded-full" style={{ background: c.grip }} /></div>
+        <div className="flex items-center justify-between px-5 pb-3" style={{ borderBottom: `1px solid ${c.headBorder}` }}>
+          <p className="font-semibold text-sm" style={{ color: c.title }}>
+            Comments <span style={{ color: c.sub }}>· {comments.length}</span>
+          </p>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             onTouchEnd={(e) => { e.stopPropagation(); onClose(); }}
             className="ig-close-btn"
+            style={{ background: c.closeBg, color: c.closeText }}
             aria-label="Close"
           >✕</button>
         </div>
@@ -482,65 +521,82 @@ function CommentDrawer({
         <div
           className="mx-5 mt-3 mb-1 px-3 py-2 rounded-xl flex items-start gap-2"
           style={{
-            background: "linear-gradient(135deg, rgba(240,180,41,0.14), rgba(255,69,141,0.08))",
-            border: "1px solid rgba(240,180,41,0.30)",
+            background: "linear-gradient(135deg, rgba(240,180,41,0.16), rgba(255,69,141,0.08))",
+            border: "1px solid rgba(240,180,41,0.35)",
           }}
         >
           <span className="text-base leading-none mt-0.5">🛡️</span>
-          <p className="text-white/85 text-[0.66rem] leading-snug">
+          <p className="text-[0.66rem] leading-snug" style={{ color: c.bannerText }}>
             Public comments only. Phone, email, WhatsApp, social handles & off-platform links are auto-masked.
-            <span className="text-white/55"> Booked guests can chat with their property from </span>
+            <span style={{ color: c.bannerSub }}> Booked guests can chat with their property from </span>
             <span className="text-gold-300 font-semibold">My Bookings</span>
-            <span className="text-white/55">.</span>
+            <span style={{ color: c.bannerSub }}>.</span>
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4" style={{ WebkitOverflowScrolling: "touch" }}>
-          {comments.map((c, i) => (
+          {comments.map((cm, i) => (
             <div
-              key={`${c.user}-${i}-${c.text.slice(0,8)}`}
+              key={`${cm.user}-${i}-${cm.text.slice(0,8)}`}
               className="ig-comment-row flex items-start gap-2.5"
-              style={{ animationDelay: `${Math.min(i * 60, 600)}ms` }}
+              style={{ animationDelay: `${Math.min(i * 40, 500)}ms` }}
             >
               <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[0.7rem] font-bold text-black"
                 style={{ background: `conic-gradient(from ${(i*47)%360}deg, #f0b429, #ff458d, #b964ff, #f0b429)` }}>
                 <span className="w-[26px] h-[26px] rounded-full flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)" }}>
-                  {c.user.slice(0, 1).toUpperCase()}
+                  {cm.user.slice(0, 1).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-[0.78rem] leading-snug">
-                  <span className="font-semibold">{c.user}</span>{" "}
-                  <span className="text-white/85">{c.text}</span>
+                <p className="text-[0.78rem] leading-snug" style={{ color: c.text }}>
+                  <span className="font-semibold" style={{ color: c.name }}>{cm.user}</span>{" "}
+                  <span>{cm.text}</span>
                 </p>
-                <div className="flex items-center gap-3 mt-0.5 text-white/45 text-[0.62rem]">
-                  <span>{c.time}</span>
-                  <span>{c.likes} likes</span>
+                <div className="flex items-center gap-3 mt-0.5 text-[0.62rem]" style={{ color: c.sub }}>
+                  <span>{cm.time}</span>
+                  <span>{cm.likes + (liked[i] ? 1 : 0)} likes</span>
                   {/* Reply intentionally removed — private replies between
                       hotels/creators/customers would create a DM channel
                       that bypasses the booking flow. */}
                 </div>
               </div>
-              <button className="text-white/40 text-[0.7rem] mt-1" aria-label="Like comment">🤍</button>
+              <button
+                type="button"
+                className="text-[0.7rem] mt-1"
+                style={{ color: liked[i] ? "#ff4d6d" : c.sub }}
+                onClick={(e) => { e.stopPropagation(); setLiked((m) => ({ ...m, [i]: !m[i] })); }}
+                aria-label="Like comment"
+              >{liked[i] ? "❤️" : "🤍"}</button>
             </div>
           ))}
-          {comments.length === 0 && <p className="text-white/45 text-sm text-center pt-8">Be the first to comment on {hotelName}</p>}
+          {comments.length === 0 && <p className="text-sm text-center pt-8" style={{ color: c.sub }}>Be the first to comment on {hotelName}</p>}
         </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             const text = input.trim();
             if (!text) return;
-            const { clean, blocked } = sanitizeComment(text);
+            // Persist via the real store (which sanitizes + fires the count event).
+            const { blocked } = addComment(postId, text);
             if (blocked) {
               onMaskedToast?.("🛡️ Personal contact info hidden — keep bookings on StayBid");
+              // Trigger admin review of the attempt (fire-and-forget; the block
+              // already happened above regardless of this call succeeding).
+              try {
+                const tok = typeof window !== "undefined" ? localStorage.getItem("sb_token") : null;
+                fetch("/api/social/comment-flag", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...(tok ? { Authorization: `Bearer ${tok}` } : {}) },
+                  body: JSON.stringify({ hotelId: postId, hotelName, rawText: text, surface: "reel_comment" }),
+                }).catch(() => {});
+              } catch {}
             }
-            setComments((c) => [{ user: "you", text: clean, time: "now", likes: 0 }, ...c]);
+            setComments(getComments(postId));
             setInput("");
           }}
-          className="flex items-center gap-2 px-4 py-3 border-t border-white/8"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          className="flex items-center gap-2 px-4 py-3"
+          style={{ borderTop: `1px solid ${c.headBorder}`, paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center text-xs font-bold text-black"
             style={{ background: "linear-gradient(135deg,#ffd76b,#f0b429)" }}>You</div>
@@ -550,10 +606,10 @@ function CommentDrawer({
             placeholder={`Public comment on ${hotelName}… (no contacts)`}
             className="ig-comment-input flex-1 rounded-full px-4 py-2 text-[0.82rem] outline-hidden transition-colors"
             style={{
-              color: "#ffffff",
-              caretColor: "#ffd76b",
-              background: "rgba(255,255,255,0.10)",
-              border: "1px solid rgba(255,255,255,0.20)",
+              color: c.inputText,
+              caretColor: "#f0b429",
+              background: c.inputBg,
+              border: `1px solid ${c.inputBorder}`,
               fontWeight: 500,
             }}
             autoComplete="off"
@@ -1696,7 +1752,9 @@ const HotelCard = memo(function HotelCard({
 
   const initialLikes = pseudoStat(h.id || "x", "likes", 1240, 28400);
   const baseViews = pseudoStat(h.id || "x", "views", 14000, 580000);
-  const comments = pseudoStat(h.id || "x", "comments", 38, 920);
+  // v401 — real comment count from the per-post store (seed + user comments).
+  // Always equals what opens in the drawer — no more "542 shown / 6 inside".
+  const comments = useCommentCount(h.id || "x");
   const [likeCount, setLikeCount] = useState(initialLikes);
   const [viewCount, setViewCount] = useState(baseViews);
 
@@ -3211,7 +3269,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
     const i = steps.findIndex((s) => Math.abs(s - gain) < 0.05);
     setGain(steps[(i + 1) % steps.length] ?? 1.8);
   }, [gain, setGain]);
-  const [commentsOpen, setCommentsOpen] = useState<{ open: boolean; name: string }>({ open: false, name: "" });
+  const [commentsOpen, setCommentsOpen] = useState<{ open: boolean; name: string; id: string }>({ open: false, name: "", id: "" });
   const [moreOpen, setMoreOpen] = useState<{ open: boolean; id: string }>({ open: false, id: "" });
   // v400 — resolved "starting from" price (cheapest room floor) per TAGGED
   // hotel id. A tagged reel item only carries {id,name,city} for its hotel (no
@@ -4362,7 +4420,7 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
               onNegotiate={handleNegotiate}
               onShare={handleShare}
               onCopyLink={handleCopyLink}
-              onOpenComments={(h) => setCommentsOpen({ open: true, name: h.name })}
+              onOpenComments={(h) => setCommentsOpen({ open: true, name: h.name, id: String(h.id || "x") })}
               onOpenMore={(h) => setMoreOpen({ open: true, id: h.id })}
               onOpenEntity={(e) => setCreatorOpen(e)}
               onWatchEntity={handleWatchEntity}
@@ -4406,8 +4464,9 @@ export default function InstagramHotelFeed({ items: propItems, onIndexChange, on
 
       <CommentDrawer
         open={commentsOpen.open}
-        onClose={() => setCommentsOpen({ open: false, name: "" })}
+        onClose={() => setCommentsOpen({ open: false, name: "", id: "" })}
         hotelName={commentsOpen.name}
+        postId={commentsOpen.id}
         onMaskedToast={showToast}
       />
       <MoreMenu
