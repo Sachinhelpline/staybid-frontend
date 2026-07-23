@@ -118,6 +118,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           html[data-theme="dark"],html[data-theme="dark"] body{background:#0F0C08;color:#E8DCC8}
           html.is-reel-page,html.is-reel-page body{background:#000;color:#f0eee2}
           body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+          /* v412 — Paint the TOP safe-area (status-bar / notch region) with the
+             page background so an installed PWA's dark window background can
+             never show as a black band above the content. Works in ANY display
+             mode (standalone OR a stale fullscreen install) with no reinstall.
+             On reel pages the rail/video own the top, so stay transparent there. */
+          #sb-safe-top-fill{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);background:#FAF5EB;z-index:5;pointer-events:none}
+          html[data-theme="dark"] #sb-safe-top-fill{background:#0F0C08}
+          html.is-reel-page #sb-safe-top-fill{background:#fff9ec}
           .sb-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#07060e;z-index:0;pointer-events:none}
           .sb-boot-spinner{width:38px;height:38px;border-radius:50%;border:2px solid rgba(240,180,41,0.18);border-top-color:#f0b429;animation:sbSpin .8s linear infinite}
           @keyframes sbSpin{to{transform:rotate(360deg)}}
@@ -163,6 +171,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body>
+        {/* v412 — top safe-area paint (see #sb-safe-top-fill in the critical
+            CSS above): stops the installed-PWA window background showing as a
+            black band above the content on non-reel pages. */}
+        <div id="sb-safe-top-fill" aria-hidden="true" />
         <ThemeProvider>
         <AuthProvider>
          {/* v109 — single source of truth for "is this user a creator /
@@ -230,7 +242,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 from modal/drawer handlers. Fires driver.js using the
                 same polling logic as usePageTour. */}
             <TutorialTriggerMount />
-            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v411</div>
+            <div style={{position:"fixed",bottom:"68px",right:"6px",zIndex:9999,fontSize:"8px",padding:"1px 5px",borderRadius:"999px",background:"rgba(201,166,107,0.14)",color:"rgba(201,166,107,0.75)",border:"1px solid rgba(201,166,107,0.30)",pointerEvents:"none",fontFamily:"monospace",letterSpacing:"0.05em"}}>v412</div>
             </TutorialProvider>
             </PostsProvider>
            </FollowProvider>
@@ -251,7 +263,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 // on every release even when sw.js itself hadn't changed. Browsers check
 // /sw.js for byte-level changes on each navigation, so if the file is
 // identical the install is skipped → no reload, no cache wipe, no flicker.
-var SB_BUILD="v411-back-to-standalone-cream-statusbar";
+var SB_BUILD="v412-top-safe-area-paint-no-reinstall";
 try{ localStorage.setItem("sb_build",SB_BUILD); }catch(e){}
 if("serviceWorker" in navigator){
   // Defer SW registration until after first paint so it doesn't compete
