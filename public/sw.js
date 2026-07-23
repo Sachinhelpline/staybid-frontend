@@ -551,7 +551,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // showed the reel's black bg behind it). Reverted manifest fullscreen ->
 // standalone + cream launch colours: the status bar stays visible + matched,
 // no black band, no toast.
-const HTML_CACHE = 'staybid-html-v222';
+// v412 — HTML_CACHE bump (v222 -> v223). App-level TOP safe-area paint
+// (#sb-safe-top-fill): stops the installed-PWA dark window background showing
+// as a black band above the content, in ANY display mode — so even a stale
+// fullscreen install gets a matched top after a plain refresh (no reinstall).
+const HTML_CACHE = 'staybid-html-v223';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
