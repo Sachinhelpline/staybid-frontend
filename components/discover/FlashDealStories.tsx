@@ -338,7 +338,7 @@ export function FlashDealStoryRail({
           font-family: "Cormorant Garamond", "Georgia", serif;
           font-style: italic;
           font-weight: 600;
-          font-size: 1.05rem;
+          font-size: 1.16rem;
           letter-spacing: 0.005em;
           color: #6e4a08;
         }
