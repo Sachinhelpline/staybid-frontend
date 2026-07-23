@@ -933,7 +933,7 @@ function MyBidsPageInner() {
         .gold-text { background: linear-gradient(90deg,#d9a93e,#c9911a,#b8871a,#c9911a,#d9a93e); background-size:200% auto; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation: shine 6s linear infinite; }
         .gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
         .gold-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%); transform:translateX(-120%); animation: goldSweep 2.8s ease-in-out infinite; }
-        .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
+        .mb-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
         .mb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
         @keyframes mbHighlightRing { 0% { box-shadow: 0 0 0 0 rgba(201,166,107,0.55), 0 0 22px rgba(201,166,107,0.42); } 70% { box-shadow: 0 0 0 14px rgba(201,166,107,0), 0 0 28px rgba(201,166,107,0.18); } 100% { box-shadow: 0 0 0 0 rgba(201,166,107,0), 0 0 0 rgba(201,166,107,0); } }
         .mb-card-highlight { animation: mbHighlightRing 2.5s ease-out 1 both; }
@@ -1105,8 +1105,8 @@ function MyBidsPageInner() {
                 <div className="flex items-start justify-between gap-2 mb-2.5">
                   <div className="min-w-0">
                     <Link href={`/hotels/${b.hotelId}`}
-                      className="font-semibold text-[1rem] leading-snug block truncate hover:underline"
-                      style={{ color: "var(--text-base)" }}>
+                      className="font-display font-semibold text-[1.24rem] leading-tight block truncate hover:underline"
+                      style={{ color: "var(--text-base)", letterSpacing: "0.005em" }}>
                       {b.hotel?.name || "Hotel"}
                     </Link>
                     <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
@@ -1143,7 +1143,7 @@ function MyBidsPageInner() {
                   style={{ background: "var(--bg-pill)" }}>
                   <div>
                     <p className="text-[0.56rem] uppercase tracking-[0.16em] mb-0.5" style={{ color: "var(--text-muted)" }}>Your Bid</p>
-                    <p className="text-sm font-bold" style={{ color: "#c9911a" }}>₹{yourBid.toLocaleString("en-IN")}</p>
+                    <p className="text-base font-bold tabular-nums" style={{ color: "#c9911a" }}>₹{yourBid.toLocaleString("en-IN")}</p>
                     <p className="text-[0.56rem]" style={{ color: "var(--text-muted)" }}>/night</p>
                     {wasBelowFloor && (
                       <p className="text-[0.52rem] mt-0.5" style={{ color: "var(--text-muted)" }}>below min · pending review</p>
@@ -1212,7 +1212,7 @@ function MyBidsPageInner() {
                     <div className="mt-3 p-3.5 rounded-xl"
                       style={{ background: STATUS_META.COUNTER.soft, border: `1px solid ${c}44` }}>
                       <p className="text-sm mb-2.5" style={{ color: "var(--text-base)" }}>
-                        Hotel countered at <span className="text-lg font-bold" style={{ color: c }}>₹{counterSnapped.toLocaleString("en-IN")}</span>/night
+                        Hotel countered at <span className="text-lg font-bold tabular-nums" style={{ color: c }}>₹{counterSnapped.toLocaleString("en-IN")}</span>/night
                       </p>
                       {addons.length > 0 && (
                         <div className="mb-2.5">
@@ -1252,8 +1252,8 @@ function MyBidsPageInner() {
                     <div className="flex items-center gap-2 mb-2.5">
                       <span className="text-lg">🎊</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: "var(--text-base)" }}>Accepted at ₹{confirmAmt}/night</p>
-                        <p className="text-[0.68rem]" style={{ color: "var(--text-soft)" }}>Total ₹{total.toLocaleString("en-IN")} · {nights} night{nights>1?"s":""}</p>
+                        <p className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-base)" }}>Accepted at ₹{confirmAmt}/night</p>
+                        <p className="text-[0.68rem] tabular-nums" style={{ color: "var(--text-soft)" }}>Total ₹{total.toLocaleString("en-IN")} · {nights} night{nights>1?"s":""}</p>
                       </div>
                     </div>
                     <AcceptedBidTimer
