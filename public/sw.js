@@ -555,7 +555,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // (#sb-safe-top-fill): stops the installed-PWA dark window background showing
 // as a black band above the content, in ANY display mode — so even a stale
 // fullscreen install gets a matched top after a plain refresh (no reinstall).
-const HTML_CACHE = 'staybid-html-v223';
+// v413 — HTML_CACHE bump (v223 -> v224). Two /bid polish fixes: (1) the
+// immersive /bid flow hid the bottom dock but still reserved its 60px, leaving
+// a dead gap under PRESS START — now the reserved dock-height collapses too;
+// (2) the /bid dark game zone paints its TOP safe-area walnut (was cream).
+const HTML_CACHE = 'staybid-html-v224';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
