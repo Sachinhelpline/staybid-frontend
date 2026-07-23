@@ -292,6 +292,15 @@ export default function SupportWidget() {
     fetchConversations();
   }, [open, token]);
 
+  // v404 — the floating bubble was removed; Support now opens from each
+  // panel's own menu via the global `sb:open-support` event (same pattern as
+  // the panel switcher). Mounted on every panel so the event always resolves.
+  useEffect(() => {
+    const openIt = () => setOpen(true);
+    window.addEventListener("sb:open-support", openIt);
+    return () => window.removeEventListener("sb:open-support", openIt);
+  }, []);
+
   // Background unread polling every 60s (only when widget is closed
   // — when open, the inner chat polls itself every 5s). Skipped when
   // widget is hidden on the current route — saves needless network calls.
@@ -388,45 +397,15 @@ export default function SupportWidget() {
     setActiveId(null);
   }
 
-  // Render gate AFTER all hooks have run — see ⚠ v148.1 note above.
-  if (isHidden) return null;
+  // v404 — the floating support bubble was REMOVED from every screen. Support
+  // now opens from each panel's menu (Help & Support → `sb:open-support`). The
+  // component stays mounted on all routes so the panel can open anywhere; when
+  // closed it renders nothing. (`isHidden` is kept only to skip the background
+  // unread poll on panel routes — no visible chrome remains.)
+  void fabRef; void onFabPointerDown; void onFabPointerMove; void onFabPointerUp; void fabPos; void unreadTotal;
 
   return (
     <>
-      {/* v159.10 — Draggable FAB. pointerdown captures, pointermove
-          updates position once threshold crossed, pointerup commits
-          (drag → persist) OR fires the open toggle (tap). */}
-      <button
-        ref={fabRef}
-        type="button"
-        aria-label="Open support chat — drag to move"
-        className="sb-support-fab"
-        onPointerDown={onFabPointerDown}
-        onPointerMove={onFabPointerMove}
-        onPointerUp={onFabPointerUp}
-        onPointerCancel={(e) => {
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        }}
-        style={fabPos ? {
-          right: "auto",
-          bottom: "auto",
-          left: `${fabPos.x}px`,
-          top: `${fabPos.y}px`,
-          touchAction: "none",
-        } : { touchAction: "none" }}
-      >
-        <span className="sb-support-fab-icon" aria-hidden>
-          {open ? "✕" : "💬"}
-        </span>
-        {!open && unreadTotal > 0 && (
-          <span className="sb-support-fab-badge" aria-label={`${unreadTotal} new`}>
-            {unreadTotal > 9 ? "9+" : unreadTotal}
-          </span>
-        )}
-      </button>
-
       {/* Panel */}
       {open && (
         <>

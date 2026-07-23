@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
+import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 
 const inr = (n: any) => (n == null || n === "" ? "—" : `₹${Number(n).toLocaleString("en-IN")}`);
 const when = (s?: string) => (s ? new Date(s).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null);
@@ -91,6 +92,8 @@ export default function WorkerDashboard() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <AppTourButton style={btnGhost} label="Tour" />
+            <HelpSupportButton style={btnGhost} label="Help" />
             <SwitchExperienceButton style={btnGhost} label="Switch" />
             <button onClick={signOut} style={btnGhost}>Sign out</button>
           </div>

@@ -225,7 +225,33 @@ export default function CircleDashboardPage() {
           missing Kiosk / Worker / Creator / List-a-Property) to the single
           always-complete Airbnb-style switcher shared by every panel. */}
       <section className="sbc-dash-sec">
-        <div className="sbc-dash-sec-h">Switch experience</div>
+        {/* v404 — App Tour + Help & Support in the menu (floating buttons removed). */}
+        <div className="sbc-dash-sec-h">Help</div>
+        <button
+          type="button"
+          className="sbc-dash-strip"
+          style={{ width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
+          onClick={() => window.dispatchEvent(new Event("sb:open-tour"))}
+        >
+          <div>
+            <span className="sbc-dash-strip-k">❓ App tour</span>
+            <b className="sbc-dash-strip-v">Replay any guided tour</b>
+          </div>
+          <span className="sbc-dash-strip-go">Open →</span>
+        </button>
+        <button
+          type="button"
+          className="sbc-dash-strip"
+          style={{ width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
+          onClick={() => window.dispatchEvent(new Event("sb:open-support"))}
+        >
+          <div>
+            <span className="sbc-dash-strip-k">🎧 Help & Support</span>
+            <b className="sbc-dash-strip-v">Chat with our team</b>
+          </div>
+          <span className="sbc-dash-strip-go">Open →</span>
+        </button>
+        <div className="sbc-dash-sec-h" style={{ marginTop: 14 }}>Switch experience</div>
         <button
           type="button"
           className="sbc-dash-strip"

@@ -514,6 +514,27 @@ export function Navbar() {
                         }}
                         role="menu"
                       >
+                        {/* v404 — App Tour + Help & Support (floating buttons removed). */}
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "var(--text-base, #1F1A0F)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">❓</span>
+                          App Tour
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 w-full text-left text-[0.82rem] font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "var(--text-base, #1F1A0F)", borderBottom: "1px solid rgba(240,180,41,0.14)" }}
+                          role="menuitem"
+                        >
+                          <span className="text-base">🎧</span>
+                          Help &amp; Support
+                        </button>
                         {/* v322 — Switch experience (opens the global panel
                             switcher). Sits at the top of the menu. */}
                         <button
@@ -613,6 +634,28 @@ export function Navbar() {
             </div>
 
             <div className="px-4 py-4">
+              {/* v404 — App Tour + Help & Support (floating "?" + support bubble
+                  removed from every screen; now in the menu). */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-tour")); }}
+                  className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
+                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                >
+                  <span className="text-lg shrink-0">❓</span>
+                  <span className="text-sm font-bold text-white leading-tight">App Tour</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMoreOpen(false); window.dispatchEvent(new Event("sb:open-support")); }}
+                  className="flex items-center gap-2 p-3 rounded-2xl text-left active:scale-[0.98] transition-transform"
+                  style={{ background: "rgba(201,166,107,0.10)", border: "1px solid rgba(201,166,107,0.24)" }}
+                >
+                  <span className="text-lg shrink-0">🎧</span>
+                  <span className="text-sm font-bold text-white leading-tight">Help &amp; Support</span>
+                </button>
+              </div>
               {/* v322 — Switch experience (opens the global panel switcher). */}
               <button
                 type="button"

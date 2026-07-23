@@ -5,6 +5,7 @@ import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DemandLevel } f
 import { ImageUpload } from "@/components/ImageUpload";
 import BookingChat from "@/components/BookingChat";
 import SwitchExperienceButton from "@/components/SwitchExperienceButton";
+import { AppTourButton, HelpSupportButton } from "@/components/HelpLauncher";
 import { api } from "@/lib/api";
 // v113 — premium availability calendar + bulk block-dates sheet.
 import AvailabilityCalendar, { BlockDatesSheet } from "@/components/partner/AvailabilityCalendar";
@@ -1195,6 +1196,22 @@ export default function PartnerDashboard() {
                         )}
                       </div>
                     </div>
+                    <AppTourButton
+                      onClick={() => setAcctOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
+                      title="Open the app tour & help"
+                    >
+                      <span aria-hidden className="text-amber-300">❓</span>
+                      <span>App Tour</span>
+                    </AppTourButton>
+                    <HelpSupportButton
+                      onClick={() => setAcctOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"
+                      title="Chat with StayBid support"
+                    >
+                      <span aria-hidden className="text-amber-300">🎧</span>
+                      <span>Help &amp; Support</span>
+                    </HelpSupportButton>
                     <SwitchExperienceButton
                       onClick={() => setAcctOpen(false)}
                       className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-400/12 transition-all text-left"

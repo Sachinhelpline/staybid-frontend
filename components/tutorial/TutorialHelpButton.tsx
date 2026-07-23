@@ -40,6 +40,14 @@ export function TutorialHelpButton() {
     setMounted(true);
   }, []);
 
+  // v404 — the floating "?" was removed from every screen. The app tour now
+  // opens from each panel's own menu via the global `sb:open-tour` event.
+  useEffect(() => {
+    const openIt = () => setOpen(true);
+    window.addEventListener("sb:open-tour", openIt);
+    return () => window.removeEventListener("sb:open-tour", openIt);
+  }, []);
+
   // Lock body scroll while open
   useEffect(() => {
     if (!open) return;
@@ -50,9 +58,11 @@ export function TutorialHelpButton() {
 
   if (!mounted) return null;
   if (!hydrated) return null;
-  if (HIDE_PREFIXES.some((p) => pathname.startsWith(p))) return null;
-  // Hide while ANY tour is actively running — don't compete with
-  // driver.js popovers for tap targets.
+  // v404 — no more route-based hiding: the component stays mounted on EVERY
+  // panel (no floating "?" anymore) so the `sb:open-tour` menu event can open
+  // the tour sheet anywhere. While a tour is actively running we still don't
+  // render the sheet (don't compete with driver.js popovers).
+  void HIDE_PREFIXES;
   if (active) return null;
 
   // Map current pathname → the relevant tour key, so the button can
@@ -77,47 +87,11 @@ export function TutorialHelpButton() {
     return null;
   })();
 
+  void isMature; // v404 — FAB removed; opened from panel menus via sb:open-tour
   const node = (
     <>
-      {/* FAB — bottom-right above BottomDock.
-          v144: pure "?" character only — no background, no border, no
-          shadow. Color uses var(--text-base) which auto-flips between
-          dark cocoa (light mode) and cream (dark mode). The visible
-          glyph stays small (14–18px) but the tap area is a transparent
-          44×44 box (WCAG 2.5.5 min target) — the "?" is flex-centered
-          inside it. Hover restores visibility + subtle scale. */}
-      <button
-        type="button"
-        aria-label={isMature ? "Help (compact)" : "Open app tour & help"}
-        onClick={() => setOpen(true)}
-        className={isMature ? "sb-help-fab sb-help-fab--mature" : "sb-help-fab"}
-        style={{
-          position: "fixed",
-          right: isMature ? 8 : 12,
-          // BottomDock height is ~64px + safe-area. We sit just above it.
-          bottom: "calc(78px + env(safe-area-inset-bottom, 0px))",
-          zIndex: 9500,
-          // 44×44 transparent hit area (a11y min); glyph size set by fontSize.
-          width: 44,
-          height: 44,
-          borderRadius: "50%",
-          border: "none",
-          background: "transparent",
-          color: "var(--text-base, #1F1A0F)",
-          fontWeight: 700,
-          fontSize: isMature ? 11 : 14,
-          lineHeight: 1,
-          cursor: "pointer",
-          opacity: isMature ? 0.32 : 0.45,
-          padding: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "transform 0.18s ease, opacity 0.18s ease",
-        }}
-      >
-        ?
-      </button>
+      {/* v404 — the floating "?" FAB was REMOVED from every screen. The tour
+          sheet below now opens only from a panel's "App Tour" menu entry. */}
 
       {/* Bottom sheet (or centered modal on desktop) */}
       {open && (
