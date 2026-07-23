@@ -518,7 +518,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // v360 — HTML_CACHE bump (v171 -> v172). Model 2 sell-to-public: demo inventory
 // on Circle-operated hotels + 'list for public booking' (releases hold) on the
 // selling page.
-const HTML_CACHE = 'staybid-html-v215';
+// v405 — HTML_CACHE bump (v215 -> v216). manifest.json display fullscreen ->
+// standalone (kills the repeated Android "To exit full screen" toast); flash
+// rail/viewer images gain onError fallbacks so a broken hotel photo never
+// black-screens the home page or a flash-deal story.
+const HTML_CACHE = 'staybid-html-v216';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -223,6 +223,10 @@ export function FlashDealStoryRail({
       position:fixed element (which overlapped + visibly flipped on home). */
   filterChip?: React.ReactNode;
 }) {
+  // v405 — a broken hotel image must NEVER black-screen the avatar. Track
+  // failed loads per deal id and fall back to the initials letter. Hook stays
+  // ABOVE the early return so the rules-of-hooks order is stable.
+  const [brokenImg, setBrokenImg] = useState<Record<string, boolean>>({});
   if (!deals.length) return null;
   return (
     <>
@@ -254,8 +258,8 @@ export function FlashDealStoryRail({
             >
               <span className="fdeal-rail-ring">
                 <span className="fdeal-rail-avatar">
-                  {d.hotelImage
-                    ? <img src={sbImage(d.hotelImage, SB_IMG_THUMB)} alt="" loading="lazy" decoding="async" />
+                  {d.hotelImage && !brokenImg[d.id]
+                    ? <img src={sbImage(d.hotelImage, SB_IMG_THUMB)} alt="" loading="lazy" decoding="async" onError={() => setBrokenImg((b) => ({ ...b, [d.id]: true }))} />
                     : <span className="fdeal-rail-initials">{(d.hotelName || "H").slice(0, 1).toUpperCase()}</span>}
                 </span>
               </span>
@@ -491,6 +495,9 @@ export function FlashDealStoryViewer({
   const [audioBump, setAudioBump] = useState(0);
   // Inline soft toast for upload feedback ("🎵 Audio attached", etc.)
   const [miniToast, setMiniToast] = useState<string | null>(null);
+  // v405 — a broken hero image must NEVER black-screen the story viewer.
+  // Track failed loads per deal id and fall back to the letter card.
+  const [brokenHero, setBrokenHero] = useState<Record<string, boolean>>({});
   const startedAt = useRef<number>(0);
   const accumulated = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
@@ -765,8 +772,8 @@ export function FlashDealStoryViewer({
 
         {/* Background hero image with Ken-Burns zoom */}
         <div className="fdeal-viewer-bg">
-          {deal.hotelImage ? (
-            <img src={sbImage(deal.hotelImage, SB_IMG_HERO)} alt={deal.hotelName} loading="eager" decoding="async" className="fdeal-viewer-bg-img" />
+          {deal.hotelImage && !brokenHero[deal.id] ? (
+            <img src={sbImage(deal.hotelImage, SB_IMG_HERO)} alt={deal.hotelName} loading="eager" decoding="async" className="fdeal-viewer-bg-img" onError={() => setBrokenHero((b) => ({ ...b, [deal.id]: true }))} />
           ) : (
             <div className="fdeal-viewer-bg-fallback">{(deal.hotelName || "H").slice(0, 1).toUpperCase()}</div>
           )}
