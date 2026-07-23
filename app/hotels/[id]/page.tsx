@@ -13,7 +13,11 @@ import ActiveBidConflictSheet, { type BidConflict } from "@/components/ActiveBid
 import { useAuth } from "@/lib/auth";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceResult } from "@/lib/ai-pricing";
-import { io } from "socket.io-client";
+// v407 — socket.io-client is NO LONGER a static import. It's the heaviest
+// dependency on this (already heavy) route; loading it eagerly delayed the
+// hotel page's first paint on every navigation. It's now dynamically
+// imported inside the live-counter effect (see below), so it lands in a
+// separate chunk fetched AFTER the page paints — instant navigation.
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "@/components/BookingReview";
 import ModalCloseButton from "@/components/ModalCloseButton";
@@ -991,13 +995,25 @@ export default function HotelDetail() {
 
   useEffect(() => {
     if (!user) return;
-    const socket = io(RAILWAY);
-    socket.emit("join:customer", user.id);
-    socket.on("bid:counter", (bid: any) => {
-      if (bid.hotelId === id)
-        setMyBids((prev) => prev.map((b) => b.id === bid.id ? { ...b, ...bid } : b));
-    });
-    return () => { socket.disconnect(); };
+    // v407 — dynamic import so socket.io-client is fetched in its own chunk
+    // AFTER first paint (keeps the initial hotel-page bundle small). The
+    // socket ref lets the cleanup disconnect even though creation is async;
+    // `cancelled` guards an unmount that races the import.
+    let cancelled = false;
+    let socket: { disconnect: () => void } | null = null;
+    import("socket.io-client")
+      .then(({ io }) => {
+        if (cancelled) return;
+        const s = io(RAILWAY);
+        socket = s;
+        s.emit("join:customer", user.id);
+        s.on("bid:counter", (bid: any) => {
+          if (bid.hotelId === id)
+            setMyBids((prev) => prev.map((b) => b.id === bid.id ? { ...b, ...bid } : b));
+        });
+      })
+      .catch(() => { /* live counter is best-effort; page works without it */ });
+    return () => { cancelled = true; if (socket) socket.disconnect(); };
   }, [user, id]);
 
   // ── AI live pricing: recalculate every 60s ──────────────────────────────────
