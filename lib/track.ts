@@ -28,6 +28,10 @@ type DiscoSignals = {
   viewedIds: string[];
   likedIds: string[];
   skippedIds: string[];
+  /** Hard "Not interested" suppressions — these ids are filtered OUT of the
+      feed entirely (a much stronger negative than a fast-swipe skip). Sent to
+      /api/discover/feed so the ranker can suppress them too. */
+  notInterestedIds: string[];
   cities: string[];
   priceBand?: [number, number];
   preferAmenities: string[];
@@ -116,18 +120,19 @@ export function track(type: EventType, data: Partial<Evt> = {}) {
 }
 
 function loadSignals(): DiscoSignals {
-  if (typeof window === "undefined") return { viewedIds: [], likedIds: [], skippedIds: [], cities: [], preferAmenities: [] };
+  if (typeof window === "undefined") return { viewedIds: [], likedIds: [], skippedIds: [], notInterestedIds: [], cities: [], preferAmenities: [] };
   try {
     const raw = JSON.parse(localStorage.getItem(SIG_KEY) || "{}");
     return {
       viewedIds:  raw.viewedIds  || [],
       likedIds:   raw.likedIds   || [],
       skippedIds: raw.skippedIds || [],
+      notInterestedIds: raw.notInterestedIds || [],
       cities:     raw.cities     || [],
       priceBand:  raw.priceBand,
       preferAmenities: raw.preferAmenities || [],
     };
-  } catch { return { viewedIds: [], likedIds: [], skippedIds: [], cities: [], preferAmenities: [] }; }
+  } catch { return { viewedIds: [], likedIds: [], skippedIds: [], notInterestedIds: [], cities: [], preferAmenities: [] }; }
 }
 function saveSignals(s: DiscoSignals) {
   try { localStorage.setItem(SIG_KEY, JSON.stringify(s)); } catch {}
@@ -149,6 +154,22 @@ export function markViewed(hotelId: string, city?: string, minPrice?: number, am
 
 export function markLiked(hotelId: string)   { const s = loadSignals(); if (!s.likedIds.includes(hotelId))   s.likedIds   = [hotelId, ...s.likedIds].slice(0, 100);   saveSignals(s); }
 export function markSkipped(hotelId: string) { const s = loadSignals(); if (!s.skippedIds.includes(hotelId)) s.skippedIds = [hotelId, ...s.skippedIds].slice(0, 100); saveSignals(s); }
+
+/** "Not interested" — a hard, persistent suppression. The id is filtered out of
+ *  the feed immediately AND on every future feed (client filter + server signal).
+ *  Also removed from likedIds so a stale positive can't re-surface it. */
+export function markNotInterested(id: string) {
+  const s = loadSignals();
+  if (!id) return;
+  if (!s.notInterestedIds.includes(id)) s.notInterestedIds = [id, ...s.notInterestedIds].slice(0, 300);
+  s.likedIds = s.likedIds.filter((x) => x !== id);
+  saveSignals(s);
+  if (typeof window !== "undefined") {
+    try { window.dispatchEvent(new CustomEvent("sb:not-interested", { detail: { id } })); } catch {}
+  }
+}
+/** Read the current "Not interested" suppression set (used by the feed filter). */
+export function getNotInterested(): string[] { return loadSignals().notInterestedIds; }
 
 function updateSignalsFromEvent(type: EventType, data: Partial<Evt>) {
   if (!data.hotelId) return;
