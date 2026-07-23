@@ -4037,7 +4037,7 @@ export default function HotelDetail() {
                                   padding: "5px 11px",
                                   borderRadius: "999px",
                                   background: "var(--accent-soft)",
-                                  color: "var(--cozy-cocoa)",
+                                  color: "var(--text-soft)", /* v421 — theme-aware (was --cozy-cocoa); --accent-soft tint darkens over the dark card */
                                   border: "1px solid rgba(201, 166, 107, 0.3)",
                                 }}>
                                   {f}

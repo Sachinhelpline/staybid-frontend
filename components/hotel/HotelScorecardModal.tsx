@@ -1054,6 +1054,23 @@ export default function HotelScorecardModal({
         @media (prefers-reduced-motion: reduce) {
           .hsm-backdrop, .hsm-sheet, .hsm-checkpoint-bar-fill { animation: none; transition: none; }
         }
+
+        /* v421 — dark-mode legibility: these labels sit on theme-flipping surfaces
+           (.hsm-sheet = --bg-card, checkpoints/pills = --bg-elevated). In light they use
+           raw --cozy-* tokens (which never flip), so on the dark sheet they read too dim.
+           Re-point only these to the theme-aware --text-* tokens under dark. Labels on
+           FIXED surfaces (.hsm-cta-compare opaque gold, .hsm-close / .hsm-tally-lbl white
+           glass) are deliberately excluded — their dark text is correct there. */
+        :global([data-theme="dark"]) .hsm-hero-eyebrow,
+        :global([data-theme="dark"]) .hsm-hero-denom,
+        :global([data-theme="dark"]) .hsm-section-sub,
+        :global([data-theme="dark"]) .hsm-checkpoint-weight,
+        :global([data-theme="dark"]) .hsm-checkpoint-sample,
+        :global([data-theme="dark"]) .hsm-fineprint { color: var(--text-muted); }
+        :global([data-theme="dark"]) .hsm-hero-rank,
+        :global([data-theme="dark"]) .hsm-awaiting-pill,
+        :global([data-theme="dark"]) .hsm-checkpoint-evidence,
+        :global([data-theme="dark"]) .hsm-cta-refresh { color: var(--text-soft); }
       `}</style>
     </div>
   );
