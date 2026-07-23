@@ -539,7 +539,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // theme-color (the reel hook's competing #000 override was removed) and it is
 // rail-aware (cream when the flash-deals rail leads the discover feed, black on
 // the pure reel). The flash rail's cream now fills the status-bar safe area too.
-const HTML_CACHE = 'staybid-html-v220';
+// v410 — HTML_CACHE bump (v220 -> v221). ROOT-CAUSE fix (owner decision):
+// the installed status/nav bars were locked by the manifest and couldn't be
+// themed per-page at runtime. Switched manifest back to display:fullscreen so
+// Android HIDES both system bars (edge-to-edge) — no mismatched status-bar
+// strip up top, no phone nav bar double-layer at the bottom. Tradeoff (owner-
+// accepted): the "exit full screen" toast returns. Needs one reinstall.
+const HTML_CACHE = 'staybid-html-v221';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
