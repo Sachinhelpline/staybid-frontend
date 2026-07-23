@@ -563,7 +563,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // "N live deals" label (which auto-jumped the grid to the last deal on tap via
 // data-autonext) is now a REAL live search input; sort gains price high→low +
 // most-rooms-left; deal cards get a defined bottom action-bar (no dead gap).
-const HTML_CACHE = 'staybid-html-v225';
+// v415 — HTML_CACHE bump (v225 -> v226). Flash Deals premium flagship cards:
+// editorial serif (Cormorant) hotel name, rounder deeper card, bigger tabular
+// price, refined gold Grab CTA — first screen of the design-language uplift.
+const HTML_CACHE = 'staybid-html-v226';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
