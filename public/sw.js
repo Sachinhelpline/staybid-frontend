@@ -545,7 +545,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // Android HIDES both system bars (edge-to-edge) — no mismatched status-bar
 // strip up top, no phone nav bar double-layer at the bottom. Tradeoff (owner-
 // accepted): the "exit full screen" toast returns. Needs one reinstall.
-const HTML_CACHE = 'staybid-html-v221';
+// v411 — HTML_CACHE bump (v221 -> v222). Screenshots proved the runtime
+// StatusBarColor works (the revealed status bar is cream-matched on home), so
+// the black band was a FULLSCREEN artifact (fullscreen hid that cream bar and
+// showed the reel's black bg behind it). Reverted manifest fullscreen ->
+// standalone + cream launch colours: the status bar stays visible + matched,
+// no black band, no toast.
+const HTML_CACHE = 'staybid-html-v222';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
