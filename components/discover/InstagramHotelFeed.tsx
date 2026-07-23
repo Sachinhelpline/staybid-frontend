@@ -2497,7 +2497,9 @@ const HotelCard = memo(function HotelCard({
           ) : null}
         </div>
 
-        <h3 className="text-white font-semibold text-[1.05rem] leading-tight mb-1" style={{ textShadow: "0 2px 6px rgba(0,0,0,0.8)" }}>
+        {/* v416 — editorial serif hotel name (Cormorant, loaded in globals.css)
+            brings the Flash Deals design language to the home reel card. */}
+        <h3 className="text-white leading-tight mb-1" style={{ fontFamily: "var(--font-display, 'Cormorant Garamond'), Georgia, serif", fontSize: "1.34rem", fontWeight: 600, letterSpacing: "0.005em", textShadow: "0 2px 8px rgba(0,0,0,0.85)" }}>
           {h.name}
         </h3>
 
@@ -2602,7 +2604,7 @@ const HotelCard = memo(function HotelCard({
           <div className="mt-3 flex items-end gap-2">
             <div className="flex flex-col leading-none mr-1 shrink-0">
               <span className="text-white/55 text-[0.55rem] uppercase tracking-widest">From</span>
-              <span className="text-white font-bold text-[1.1rem]">
+              <span className="text-white font-bold text-[1.2rem] tabular-nums">
                 {(() => {
                   // v398 — show the real "starting from" (flash deal / cheapest
                   // room) price on EVERY reel, tagged or not. The discover feed

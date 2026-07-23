@@ -566,7 +566,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // v415 — HTML_CACHE bump (v225 -> v226). Flash Deals premium flagship cards:
 // editorial serif (Cormorant) hotel name, rounder deeper card, bigger tabular
 // price, refined gold Grab CTA — first screen of the design-language uplift.
-const HTML_CACHE = 'staybid-html-v226';
+// v416 — HTML_CACHE bump (v226 -> v227). Design-language uplift screen 2 (Home
+// reel feed): editorial serif (Cormorant) hotel name on each reel card, tabular
+// price, and a slightly larger flash-deal rail title. Visual-only; the reel
+// engine, dedup, fullscreen, and video/audio are untouched.
+const HTML_CACHE = 'staybid-html-v227';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
