@@ -534,7 +534,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // per-route status-bar colour (no mismatched black strip on light pages) and
 // a dark walnut bottom dock on the immersive reel (bottom blends instead of a
 // bright block over the phone's system nav bar).
-const HTML_CACHE = 'staybid-html-v219';
+// v409 — HTML_CACHE bump (v219 -> v220). Root-cause fix for the recurring
+// status-bar mismatch: StatusBarColor is now the SINGLE authority for
+// theme-color (the reel hook's competing #000 override was removed) and it is
+// rail-aware (cream when the flash-deals rail leads the discover feed, black on
+// the pure reel). The flash rail's cream now fills the status-bar safe area too.
+const HTML_CACHE = 'staybid-html-v220';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

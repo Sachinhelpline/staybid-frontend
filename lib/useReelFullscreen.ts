@@ -72,12 +72,12 @@ export function useReelFullscreen(opts?: { immersive?: boolean }) {
     html.classList.add("is-reel-page");
     body.classList.add("is-reel-page");
 
-    // ── Blend the status bar into the black reel (no separate colored
-    //    band at the top). Save the current theme-color, force #000 for
-    //    the reel, restore on unmount. ───────────────────────────────
-    const themeMeta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-    const prevThemeColor = themeMeta?.getAttribute("content") ?? null;
-    if (themeMeta) themeMeta.setAttribute("content", "#000000");
+    // ── Status-bar colour is NOT set here anymore (v409). It used to force
+    //    theme-color=#000 for the reel and restore on unmount, but that fought
+    //    the discover page's cream flash-deals rail (black-strip-over-cream)
+    //    and any other setter. `components/StatusBarColor.tsx` is now the SINGLE
+    //    authority for theme-color (rail-aware), so the reel hook leaves it
+    //    alone — no more tug-of-war. ─────────────────────────────────────────
 
     // ── Update --reel-vh on every viewport change ──────────────────
     let raf = 0;
@@ -149,8 +149,7 @@ export function useReelFullscreen(opts?: { immersive?: boolean }) {
       body.classList.remove("is-reel-page");
       html.style.removeProperty("--reel-vh");
       body.style.height = "";
-      // restore the pre-reel status-bar colour
-      if (themeMeta && prevThemeColor != null) themeMeta.setAttribute("content", prevThemeColor);
+      // (status-bar colour restore removed in v409 — StatusBarColor owns it)
       window.visualViewport?.removeEventListener("resize", updateVh);
       window.visualViewport?.removeEventListener("scroll", updateVh);
       window.removeEventListener("resize", updateVh);
