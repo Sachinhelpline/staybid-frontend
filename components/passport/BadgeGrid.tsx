@@ -89,7 +89,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
                 {b.label}
               </p>
               {!b.earned && b.need > 1 && (
-                <p className="text-[0.55rem] font-semibold tabular-nums" style={{ color: "var(--accent)" }}>
+                <p className="text-[0.55rem] font-semibold tabular-nums" style={{ color: "#8B6914" }}>
                   {b.have}/{b.need}
                 </p>
               )}

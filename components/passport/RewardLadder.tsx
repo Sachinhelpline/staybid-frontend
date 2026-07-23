@@ -149,7 +149,7 @@ export function RewardLadder({
                   {r.sub}
                 </p>
                 {!r.unlocked ? (
-                  <p className="text-[0.6rem] mt-1 font-semibold tabular-nums" style={{ color: "var(--accent)" }}>
+                  <p className="text-[0.6rem] mt-1 font-semibold tabular-nums" style={{ color: "#8B6914" }}>
                     {r.remaining} more stamp{r.remaining === 1 ? "" : "s"} to unlock
                   </p>
                 ) : claimed ? (
