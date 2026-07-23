@@ -102,18 +102,30 @@ export default function ProfilePage() {
   const nextMilestone = MILESTONES.find(m => m.at > totalSpend);
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(160deg,#faf9f6 0%,#f0ede6 100%)" }}>
+    <div className="lux-bg min-h-screen">
       <style>{`
         @keyframes shimmerGold { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
         .badge-animate { background-size:200% 200%; animation:shimmerGold 3s ease infinite; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         .fade-up { animation:fadeUp 0.4s ease-out both; }
+        /* v423 — the hero is a FIXED dark card; its text must stay light in BOTH
+           themes, so it opts OUT of the .lux-bg legacy-token remap via .pf-hero.
+           The html prefix lifts specificity to (0,3,1) so these robustly beat
+           the bridge's theme-scoped rules (:root / [data-theme] .lux-bg .text-* =
+           0,3,0) — not merely by source order. */
+        html .lux-bg .pf-hero .text-white { color:#fff !important; }
+        html .lux-bg .pf-hero .text-white\\/40 { color:rgba(255,255,255,0.4) !important; }
+        html .lux-bg .pf-hero .text-white\\/30 { color:rgba(255,255,255,0.3) !important; }
+        html .lux-bg .pf-hero .border-white\\/10 { border-color:rgba(255,255,255,0.1) !important; }
+        html .lux-bg .pf-hero .bg-white\\/10 { background-color:rgba(255,255,255,0.1) !important; }
+        html .lux-bg .pf-hero .text-gold-400 { color:#f0b429 !important; }
+        html .lux-bg .pf-hero .text-purple-300 { color:#c4b5fd !important; }
       `}</style>
 
       <div className="max-w-2xl mx-auto px-4 py-10 space-y-5">
 
         {/* ── Avatar + level card ── */}
-        <div className="fade-up sb-balance-halo rounded-3xl overflow-hidden shadow-luxury"
+        <div className="pf-hero fade-up sb-balance-halo rounded-3xl overflow-hidden shadow-luxury"
           style={{ background:"linear-gradient(135deg,#0a0812 0%,#130f24 60%,#0a1020 100%)" }}>
           <div className="px-7 pt-8 pb-7">
             <div className="flex items-start justify-between mb-6">
@@ -148,15 +160,15 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <div className="text-center">
-                    <p className="text-white font-bold text-xl"><CountUp value={bookingCount} duration={900} /></p>
+                    <p className="text-white font-bold text-xl tabular-nums"><CountUp value={bookingCount} duration={900} /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">Bookings</p>
                   </div>
                   <div className="text-center border-x border-white/10">
-                    <p className="text-gold-400 font-bold text-xl"><CountUp value={stayPoints} duration={1100} /></p>
+                    <p className="text-gold-400 font-bold text-xl tabular-nums"><CountUp value={stayPoints} duration={1100} /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">StayPoints</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-white font-bold text-xl">₹<CountUp value={Math.round(totalSpend/1000)} duration={900} suffix="k" /></p>
+                    <p className="text-white font-bold text-xl tabular-nums">₹<CountUp value={Math.round(totalSpend/1000)} duration={900} suffix="k" /></p>
                     <p className="text-white/40 text-[0.6rem] uppercase tracking-wider mt-0.5">Total Spent</p>
                   </div>
                 </>
@@ -189,18 +201,18 @@ export default function ProfilePage() {
         </div>
 
         {/* ── Personal details ── */}
-        <div className="fade-up bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.1s" }}>
+        <div className="fade-up rounded-3xl shadow-luxury p-6" style={{ animationDelay:"0.1s", background:"var(--bg-card)", border:"1px solid var(--border-soft)" }}>
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-semibold text-luxury-900 text-base tracking-tight">Personal Details</h3>
+            <h3 className="font-display font-semibold text-luxury-900 text-lg tracking-tight">Personal Details</h3>
             {!editMode ? (
               <button onClick={() => setEditMode(true)}
-                className="text-xs font-semibold text-gold-600 border border-gold-200 px-3 py-1.5 rounded-xl hover:bg-gold-50 transition-all">
+                className="text-xs font-semibold text-gold-600 border border-gold-200 px-3 py-1.5 rounded-xl hover:bg-[var(--bg-pill)] transition-all">
                 ✏️ Edit
               </button>
             ) : (
               <div className="flex gap-2">
                 <button onClick={() => setEditMode(false)}
-                  className="text-xs px-3 py-1.5 rounded-xl border border-luxury-200 text-luxury-400 hover:bg-luxury-50 transition-all">
+                  className="text-xs px-3 py-1.5 rounded-xl border border-[var(--border-soft)] text-luxury-400 hover:bg-[var(--bg-pill)] transition-all">
                   Cancel
                 </button>
                 <button onClick={handleSave} disabled={saving}
@@ -225,7 +237,7 @@ export default function ProfilePage() {
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Enter your name"
                   className="input-luxury text-sm w-full" />
               ) : (
-                <p className="text-luxury-900 font-medium text-sm py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+                <p className="text-luxury-900 font-medium text-sm py-2.5 px-4 bg-[var(--bg-pill)] rounded-xl border border-[var(--border-soft)]">
                   {user.name || <span className="text-luxury-300 italic">Not set</span>}
                 </p>
               )}
@@ -253,7 +265,7 @@ export default function ProfilePage() {
                 <>
                   <div>
                     <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Phone</label>
-                    <div className="flex items-center gap-2 py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+                    <div className="flex items-center gap-2 py-2.5 px-4 bg-[var(--bg-pill)] rounded-xl border border-[var(--border-soft)]">
                       {realPhone ? (
                         <>
                           <span className="text-luxury-900 font-medium text-sm">{realPhone}</span>
@@ -271,7 +283,7 @@ export default function ProfilePage() {
                       <input value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" type="email"
                         className="input-luxury text-sm w-full" />
                     ) : (
-                      <div className="flex items-center gap-2 py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+                      <div className="flex items-center gap-2 py-2.5 px-4 bg-[var(--bg-pill)] rounded-xl border border-[var(--border-soft)]">
                         {displayEmail ? (
                           <>
                             <span className="text-luxury-900 font-medium text-sm">{displayEmail}</span>
@@ -291,7 +303,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="text-[0.68rem] font-semibold text-luxury-400 uppercase tracking-widest block mb-1.5">Member Since</label>
-              <p className="text-luxury-900 font-medium text-sm py-2.5 px-4 bg-luxury-50 rounded-xl border border-luxury-100">
+              <p className="text-luxury-900 font-medium text-sm py-2.5 px-4 bg-[var(--bg-pill)] rounded-xl border border-[var(--border-soft)]">
                 {user.id ? new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : "—"}
               </p>
             </div>
@@ -302,19 +314,19 @@ export default function ProfilePage() {
         {/* Merged into /profile per user feedback — the public profile
             is now the single discoverable entry for upgrading. The
             same flow still works at /upgrade for deep links. */}
-        <div className="fade-up bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6 space-y-4" style={{ animationDelay: "0.12s" }}>
+        <div className="fade-up bg-[var(--bg-card)] rounded-3xl border border-[var(--border-soft)] shadow-luxury p-6 space-y-4" style={{ animationDelay: "0.12s" }}>
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-luxury-900 text-base tracking-tight">
+            <h3 className="font-display font-semibold text-luxury-900 text-lg tracking-tight">
               ✨ Upgrade your account
             </h3>
-            <a href="/upgrade" className="text-xs font-semibold text-gold-700 hover:underline">Full upgrade page →</a>
+            <a href="/upgrade" className="text-xs font-semibold text-gold-600 hover:underline">Full upgrade page →</a>
           </div>
           <UpgradeSection variant="compact" />
         </div>
 
         {/* ── Membership perks ── */}
-        <div className="fade-up sb-card-lift bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.18s" }}>
-          <h3 className="font-semibold text-luxury-900 text-base mb-4 tracking-tight">
+        <div className="fade-up sb-card-lift bg-[var(--bg-card)] rounded-3xl border border-[var(--border-soft)] shadow-luxury p-6" style={{ animationDelay:"0.18s" }}>
+          <h3 className="font-display font-semibold text-luxury-900 text-lg mb-4 tracking-tight">
             {level.icon} {level.name} Member Perks
           </h3>
           <div className="space-y-2.5 sb-stagger">
@@ -322,7 +334,7 @@ export default function ProfilePage() {
               <div key={i} className="flex items-center gap-3">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
                   style={{ background: level.gradient }}>
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -331,12 +343,12 @@ export default function ProfilePage() {
             ))}
           </div>
           {nextLevel && (
-            <div className={`mt-4 pt-4 border-t border-luxury-100`}>
+            <div className="mt-4 pt-4 border-t border-[var(--border-soft)]">
               <p className="text-xs text-luxury-400 mb-2">Unlock with {nextLevel.name}:</p>
               <div className="space-y-1.5 opacity-50">
                 {nextLevel.perks.slice(nextLevel.perks.length - 2).map((perk, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="w-5 h-5 rounded-full bg-luxury-100 flex items-center justify-center shrink-0 text-[0.6rem]">🔒</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--bg-pill)] flex items-center justify-center shrink-0 text-[0.6rem]">🔒</span>
                     <span className="text-sm text-luxury-500">{perk}</span>
                   </div>
                 ))}
@@ -347,7 +359,7 @@ export default function ProfilePage() {
 
         {/* ── Next milestone ── */}
         {nextMilestone && (
-          <div className="fade-up rounded-3xl p-6 border border-gold-200 bg-linear-to-br from-gold-50 to-amber-50" style={{ animationDelay:"0.24s" }}>
+          <div className="fade-up rounded-3xl p-6 border" style={{ animationDelay:"0.24s", background:"var(--bg-card)", borderColor:"rgba(201,166,107,0.4)" }}>
             <div className="flex items-center gap-3 mb-1">
               <span className="text-2xl">{nextMilestone.icon}</span>
               <div>
@@ -355,7 +367,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-luxury-500">{nextMilestone.reward}</p>
               </div>
               <div className="ml-auto text-right">
-                <p className="text-gold-600 font-bold text-sm">₹{nextMilestone.at.toLocaleString()}</p>
+                <p className="text-gold-600 font-bold text-sm tabular-nums">₹{nextMilestone.at.toLocaleString()}</p>
                 <p className="text-luxury-400 text-[0.6rem]">target spend</p>
               </div>
             </div>
@@ -364,7 +376,7 @@ export default function ProfilePage() {
                 <div className="h-full bg-linear-to-r from-gold-500 to-gold-300 rounded-full"
                   style={{ width:`${Math.min(100,(totalSpend/nextMilestone.at)*100)}%` }} />
               </div>
-              <p className="text-[0.6rem] text-luxury-400 mt-1.5">
+              <p className="text-[0.6rem] text-luxury-400 mt-1.5 tabular-nums">
                 ₹{Math.max(0, nextMilestone.at - totalSpend).toLocaleString()} more to unlock
               </p>
             </div>
@@ -372,13 +384,13 @@ export default function ProfilePage() {
         )}
 
         {/* ── All milestones ── */}
-        <div className="fade-up sb-card-lift bg-white rounded-3xl border border-luxury-100 shadow-luxury p-6" style={{ animationDelay:"0.3s" }}>
-          <h3 className="font-semibold text-luxury-900 text-base mb-4 tracking-tight">🎯 Reward Milestones</h3>
+        <div className="fade-up sb-card-lift bg-[var(--bg-card)] rounded-3xl border border-[var(--border-soft)] shadow-luxury p-6" style={{ animationDelay:"0.3s" }}>
+          <h3 className="font-display font-semibold text-luxury-900 text-lg mb-4 tracking-tight">🎯 Reward Milestones</h3>
           <div className="space-y-3 sb-stagger">
             {MILESTONES.map((m, i) => {
               const achieved = totalSpend >= m.at;
               return (
-                <div key={i} className={`flex items-center gap-3 p-3 rounded-2xl transition-all ${achieved ? "bg-emerald-50 border border-emerald-100" : "bg-luxury-50 border border-luxury-100"}`}>
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-[22px] transition-all ${achieved ? "bg-emerald-50 border border-emerald-100" : "bg-[var(--bg-pill)] border border-[var(--border-soft)]"}`}>
                   <span className={`text-xl ${achieved ? "" : "opacity-40"}`}>{m.icon}</span>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold leading-snug ${achieved ? "text-emerald-800" : "text-luxury-600"}`}>{m.label}</p>
@@ -388,7 +400,7 @@ export default function ProfilePage() {
                     {achieved ? (
                       <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">✓ Done</span>
                     ) : (
-                      <span className="text-xs text-luxury-400">₹{m.at.toLocaleString()}</span>
+                      <span className="text-xs text-luxury-400 tabular-nums">₹{m.at.toLocaleString()}</span>
                     )}
                   </div>
                 </div>
