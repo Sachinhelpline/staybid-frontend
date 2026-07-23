@@ -63,13 +63,13 @@ export function MemberCard({
       <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
         <div>
           <p className="text-white/40 text-[0.55rem] uppercase tracking-widest mb-1">Wallet</p>
-          <p className="text-emerald-400 font-semibold text-base">
+          <p className="text-emerald-400 font-semibold text-base tabular-nums">
             ₹<CountUp value={walletBalance} duration={900} />
           </p>
         </div>
         <div className="text-right">
           <p className="text-white/40 text-[0.55rem] uppercase tracking-widest mb-1">StayPoints</p>
-          <p className="text-gold-400 font-semibold text-base">
+          <p className="text-gold-400 font-semibold text-base tabular-nums">
             <CountUp value={stayPoints} duration={900} />
           </p>
         </div>

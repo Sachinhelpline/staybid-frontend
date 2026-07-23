@@ -152,7 +152,7 @@ export function PassportBook({ explorerId, displayName, memberSince, rank, stats
 
           {/* XP progress */}
           <div className="mt-3">
-            <div className="flex justify-between text-[0.62rem] font-semibold mb-1" style={{ color: "#6E5430" }}>
+            <div className="flex justify-between text-[0.62rem] font-semibold mb-1 tabular-nums" style={{ color: "#6E5430" }}>
               <span>
                 <CountUp value={rank.xp} duration={1000} /> XP
               </span>
@@ -279,10 +279,10 @@ function RankRing({ rank }: { rank: RankState }) {
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div
-      className="rounded-xl py-2 text-center"
+      className="rounded-2xl py-2 text-center"
       style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(201,166,107,0.2)" }}
     >
-      <p className="font-display text-xl font-bold" style={{ color: "#3A2D10" }}>
+      <p className="font-display text-xl font-bold tabular-nums" style={{ color: "#3A2D10" }}>
         <CountUp value={value} duration={900} />
       </p>
       <p className="text-[0.55rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>

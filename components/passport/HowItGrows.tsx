@@ -43,7 +43,7 @@ export function HowItGrows() {
                 status: { text: "How it works", tone: "soft" },
               })
             }
-            className="rounded-2xl p-3 flex items-center gap-3 text-left sb-card-lift"
+            className="rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
             style={{
               background: "linear-gradient(160deg,#fffdf8,#fbf3e2)",
               border: "1px solid rgba(201,166,107,0.32)",

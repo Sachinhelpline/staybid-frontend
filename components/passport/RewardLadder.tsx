@@ -110,7 +110,7 @@ export function RewardLadder({
         <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
           🎁 Stamp Rewards
         </h3>
-        <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {stampCount} stamps
         </span>
       </div>
@@ -123,7 +123,7 @@ export function RewardLadder({
             <button
               key={r.key}
               onClick={() => setOpenKey(r.key)}
-              className="w-full rounded-2xl p-3 flex items-center gap-3 text-left sb-card-lift"
+              className="w-full rounded-[22px] p-3 flex items-center gap-3 text-left sb-card-lift"
               style={{
                 background: r.unlocked ? "linear-gradient(160deg,#fffdf8,#fbf3e2)" : "var(--bg-card)",
                 border: r.unlocked ? "1px solid rgba(201,166,107,0.4)" : "1px solid var(--border-soft)",
@@ -141,14 +141,15 @@ export function RewardLadder({
               />
 
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>
+                {/* unlocked row = fixed cream gradient (never flips) → fixed dark text; locked row = flipping --bg-card → theme-aware tokens */}
+                <p className="font-bold text-sm leading-tight" style={{ color: r.unlocked ? "#3A2D10" : "var(--text-base)" }}>
                   {r.title}
                 </p>
-                <p className="text-[0.66rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[0.66rem] mt-0.5" style={{ color: r.unlocked ? "#6E5430" : "var(--text-muted)" }}>
                   {r.sub}
                 </p>
                 {!r.unlocked ? (
-                  <p className="text-[0.6rem] mt-1 font-semibold" style={{ color: "#8B6914" }}>
+                  <p className="text-[0.6rem] mt-1 font-semibold tabular-nums" style={{ color: "#8B6914" }}>
                     {r.remaining} more stamp{r.remaining === 1 ? "" : "s"} to unlock
                   </p>
                 ) : claimed ? (
