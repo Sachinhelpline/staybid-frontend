@@ -633,8 +633,11 @@ export default function ReelsPage() {
     setTag(t || null);
   }, []);
 
-  // Bulletproof reel-page fullscreen — same hook as /discover.
-  useReelFullscreen();
+  // Bulletproof reel-page viewport lock — same hook as /discover.
+  // v405.1 — immersive:false: forced native fullscreen OFF so Android no
+  // longer shows the "To exit full screen…" toast on every open. Full-bleed
+  // layout unchanged (CSS-driven); see the note on /discover.
+  useReelFullscreen({ immersive: false });
 
   // Load trending hashtags once
   useEffect(() => {

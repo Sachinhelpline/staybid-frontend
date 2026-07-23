@@ -522,7 +522,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // standalone (kills the repeated Android "To exit full screen" toast); flash
 // rail/viewer images gain onError fallbacks so a broken hotel photo never
 // black-screens the home page or a flash-deal story.
-const HTML_CACHE = 'staybid-html-v216';
+// v406 — HTML_CACHE bump (v216 -> v217). The toast's REAL source was the
+// forced Fullscreen API in useReelFullscreen (fires on first reel tap), not
+// the manifest. /discover + /reels now call it with immersive:false, so no
+// requestFullscreen -> no toast. Full-bleed reel layout unchanged (CSS-driven).
+const HTML_CACHE = 'staybid-html-v217';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

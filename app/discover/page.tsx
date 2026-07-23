@@ -301,10 +301,16 @@ export default function DiscoverPage() {
     }
   }, [loadFeed]);
 
-  // Bulletproof reel-page fullscreen: visualViewport-driven height +
-  // body class lock + best-effort requestFullscreen on first touch.
-  // Replaces the older 100dvh-only approach that was flaky on Android.
-  useReelFullscreen();
+  // Bulletproof reel-page viewport lock: visualViewport-driven height +
+  // body class lock. Replaces the older 100dvh-only approach that was flaky
+  // on Android. v405.1 — immersive:false: the forced native requestFullscreen
+  // is OFF (owner decision) so Android no longer shows the repeated
+  // "To exit full screen…" toast on every reel open. The full-bleed reel
+  // layout is UNCHANGED (driven by --reel-vh + .is-reel-page CSS, not the
+  // Fullscreen API); only the forced system-fullscreen — and its toast — go
+  // away. Trade-off accepted: the edge back-swipe now exits the reel directly
+  // (no fullscreen buffer); the system nav pill stays visible.
+  useReelFullscreen({ immersive: false });
   // v139 — Tutorial Layer 2 — home tour. Fires on first visit ~900ms
   // after mount (gives the reel feed + flash-deal rail time to render).
   // Tour selectors are STABLE existing classes (.fdeal-rail-wrap,
