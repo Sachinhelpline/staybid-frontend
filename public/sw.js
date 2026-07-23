@@ -573,7 +573,13 @@ const CACHE_NAME = 'staybid-static-v2';
 // v417 — HTML_CACHE bump (v227 -> v228). Design-language uplift screen 3 (the
 // /hotels browse grid): editorial serif (Cormorant) hotel-card name + bigger
 // tabular price. Pure globals.css class refinement; no markup/logic change.
-const HTML_CACHE = 'staybid-html-v228';
+// v418 — HTML_CACHE bump (v228 -> v229). /hotels/[id] dark-mode legibility fix:
+// 7 hotel-detail .hx-* headings/prices that sit on theme-aware --bg-card/page
+// surfaces (stat value, availability title, secondary CTA, sticky rate, back
+// chip, active tab, teaser title) swapped from the non-flipping --cozy-warm-dark
+// to --text-base. Light mode byte-identical (--text-base==--cozy-warm-dark in
+// light); dark mode now legible. All-device; no markup/logic change.
+const HTML_CACHE = 'staybid-html-v229';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
