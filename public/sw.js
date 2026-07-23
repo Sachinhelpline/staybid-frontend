@@ -579,7 +579,12 @@ const CACHE_NAME = 'staybid-static-v2';
 // chip, active tab, teaser title) swapped from the non-flipping --cozy-warm-dark
 // to --text-base. Light mode byte-identical (--text-base==--cozy-warm-dark in
 // light); dark mode now legible. All-device; no markup/logic change.
-const HTML_CACHE = 'staybid-html-v229';
+// v419 — HTML_CACHE bump (v229 -> v230). Design-language uplift screen 4/5
+// (My Bids + Bookings): editorial serif (Cormorant) card hotel names, tabular-nums
+// on the ₹ prices (your bid / counter / accepted / total / booking amount), and
+// deeper 22px card radius. Tailwind className + the pages' own plain <style>
+// blocks; no bid-expiry/pay-gate/handler/logic change.
+const HTML_CACHE = 'staybid-html-v230';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

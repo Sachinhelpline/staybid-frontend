@@ -413,7 +413,7 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         {/* Hotel name + status */}
         <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-[1.05rem] leading-snug" style={{ color: "var(--text-base)" }}>{hotel.name || "Hotel"}</h3>
+            <h3 className="font-display font-semibold text-[1.3rem] leading-tight" style={{ color: "var(--text-base)", letterSpacing: "0.005em" }}>{hotel.name || "Hotel"}</h3>
             {stars && <p className="text-xs tracking-widest mt-0.5" style={{ color: "#c9911a" }}>{"★".repeat(Math.min(5, stars))}</p>}
           </div>
           <span className="flex items-center gap-1.5 text-[0.68rem] font-bold px-3 py-1 rounded-full shrink-0"
@@ -499,8 +499,8 @@ function BookingCard({ b, unitNumber, onRefresh }: { b: any; unitNumber?: string
         <div className="flex items-center justify-between mb-4 px-1">
           <div>
             <p className="text-[0.58rem] uppercase tracking-widest mb-0.5" style={{ color: "var(--text-muted)" }}>{nights} Night{nights !== 1 ? "s" : ""}</p>
-            <p className="text-2xl font-bold" style={{ color: "var(--text-base)" }}>₹{displayAmount.toLocaleString()}</p>
-            {nights > 1 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
+            <p className="text-2xl font-bold tabular-nums" style={{ color: "var(--text-base)" }}>₹{displayAmount.toLocaleString()}</p>
+            {nights > 1 && <p className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>₹{Math.round(displayAmount / nights).toLocaleString()}/night</p>}
           </div>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
             style={{ background: "linear-gradient(135deg,#c9911a,#9c7414)", boxShadow: "0 6px 18px rgba(201,145,26,0.34)" }}>
@@ -740,7 +740,7 @@ export default function BookingsPage() {
   const styleBlock = (
     <style>{`
       @keyframes bkFadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-      .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
+      .bk-card { background: var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; box-shadow: var(--shadow-card); transition: transform .2s ease, box-shadow .2s ease; }
       .bk-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
       .bk-gold-btn { position:relative; overflow:hidden; background:linear-gradient(135deg,#b8871a 0%,#f0b429 48%,#fbd26a 60%,#c9911a 100%); color:#1a1205; font-weight:800; letter-spacing:.03em; }
     `}</style>
