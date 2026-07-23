@@ -1111,21 +1111,23 @@ function FdStyles() {
 
       /* v91 — Card uses theme tokens: cream surface in light mode, warm
          cocoa in dark. Champagne accent on hover stays brand-consistent. */
+      /* v415 — premium flagship card: rounder corners + a layered depth on
+         top of the theme-aware token shadow (works in both light + dark). */
       .fd-card {
         position: relative;
         background: var(--bg-card);
         border: 1px solid var(--border-soft);
-        border-radius: 20px;
+        border-radius: 24px;
         overflow: hidden;
         cursor: pointer;
         color: var(--text-base);
         transition: transform 0.4s cubic-bezier(.4,.0,.2,1), border-color 0.3s, box-shadow 0.3s;
         animation: fdFadeUp 0.55s cubic-bezier(.2,.7,.2,1) both;
-        box-shadow: var(--shadow-soft);
+        box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.04);
       }
       .fd-card:hover {
-        transform: translateY(-4px);
-        border-color: var(--accent);
+        transform: translateY(-5px);
+        border-color: color-mix(in srgb, var(--accent) 60%, var(--border-soft));
         box-shadow: var(--shadow-card), 0 0 0 1px var(--accent-soft);
       }
       @keyframes fdFadeUp {
@@ -1430,14 +1432,17 @@ function FdStyles() {
         display: flex; align-items: center; justify-content: space-between;
         gap: 8px; margin-bottom: 4px;
       }
+      /* v415 — editorial serif hotel name (Cormorant, loaded in globals.css)
+         is the single biggest premium lift on the card. */
       .fd-hotel-name {
         flex: 1 1 auto; min-width: 0;
-        font-size: 0.92rem; font-weight: 600; color: var(--text-base);
-        margin: 0;
+        font-family: var(--font-display, "Cormorant Garamond"), Georgia, serif;
+        font-size: 1.22rem; font-weight: 600; color: var(--text-base);
+        margin: 0; line-height: 1.14;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        letter-spacing: -0.005em;
+        letter-spacing: 0.005em;
       }
-      @media (min-width: 1024px) { .fd-hotel-name { font-size: 1rem; } }
+      @media (min-width: 1024px) { .fd-hotel-name { font-size: 1.36rem; } }
       /* Inline score chip — uses HotelScoreBadge variant="compact" which
          renders as a ~30px horizontal pill. Scaled down slightly so it
          reads as a corner accent next to the title. */
@@ -1514,10 +1519,10 @@ function FdStyles() {
         text-decoration: line-through;
       }
       .fd-price-now {
-        color: var(--text-base); font-size: 1.15rem; font-weight: 800; line-height: 1;
-        letter-spacing: -0.01em;
+        color: var(--text-base); font-size: 1.34rem; font-weight: 800; line-height: 1;
+        letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
       }
-      @media (min-width: 1024px) { .fd-price-now { font-size: 1.3rem; } }
+      @media (min-width: 1024px) { .fd-price-now { font-size: 1.46rem; } }
       .fd-price-unit { color: var(--text-muted); font-size: 0.65rem; font-weight: 500; }
       .fd-price-save {
         margin: 2px 0 0; color: var(--cozy-sage, #5d7a52);
@@ -1527,12 +1532,12 @@ function FdStyles() {
         flex: 0 0 auto;
         /* a11y: 9 → 12px vertical padding lifts the primary "Grab Now"
            CTA to a ~44px tap target without disrupting the card layout. */
-        padding: 12px 16px;
-        background: linear-gradient(135deg, #f0d060, #f0b429 60%, #d4a017);
-        color: #0a0814; font-size: 0.74rem; font-weight: 800;
-        border: none; border-radius: 11px;
+        padding: 12px 17px;
+        background: linear-gradient(135deg, #f6dd80, #ebb63c 58%, #c98a16);
+        color: #231907; font-size: 0.76rem; font-weight: 800;
+        border: none; border-radius: 13px;
         cursor: pointer;
-        box-shadow: 0 6px 16px rgba(240,180,41,0.35), inset 0 1px 0 rgba(255,255,255,0.5);
+        box-shadow: 0 8px 20px -6px rgba(235,182,60,0.5), inset 0 1px 0 rgba(255,255,255,0.55);
         transition: all 0.2s ease;
         letter-spacing: 0.02em;
         white-space: nowrap;
