@@ -116,7 +116,7 @@ export function PassportDetailSheet({
         </div>
 
         <div className="pds-title">
-          <h3 className="font-display font-semibold" style={{ fontSize: "1.5rem", color: "var(--text-base)" }}>
+          <h3 className="font-display font-semibold" style={{ fontSize: "1.6rem", color: "var(--text-base)" }}>
             {item.title}
           </h3>
           {item.status && (
@@ -136,7 +136,7 @@ export function PassportDetailSheet({
 
         {item.progress != null && (
           <div className="mt-4">
-            <div className="flex justify-between text-[0.66rem] font-bold mb-1.5" style={{ color: "var(--text-muted)" }}>
+            <div className="flex justify-between text-[0.66rem] font-bold mb-1.5 tabular-nums" style={{ color: "var(--text-muted)" }}>
               <span>{item.progressLabel || "Progress"}</span>
               <span style={{ color: "var(--accent)" }}>{Math.round(item.progress)}%</span>
             </div>
@@ -151,11 +151,11 @@ export function PassportDetailSheet({
             {item.meta.map((mr, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between rounded-xl px-3.5 py-2.5"
+                className="flex items-center justify-between rounded-2xl px-3.5 py-2.5"
                 style={{ background: "var(--bg-page)", border: "1px solid var(--border-soft)" }}
               >
                 <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>{mr.label}</span>
-                <span className="text-sm font-bold" style={{ color: "var(--text-base)" }}>{mr.value}</span>
+                <span className="text-sm font-bold tabular-nums" style={{ color: "var(--text-base)" }}>{mr.value}</span>
               </div>
             ))}
           </div>

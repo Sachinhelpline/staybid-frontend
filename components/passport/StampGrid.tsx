@@ -26,14 +26,14 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
         <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
           🛂 Your Stamps
         </h3>
-        <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {stamps.length} collected
         </span>
       </div>
 
       {stamps.length === 0 ? (
         <div
-          className="rounded-2xl p-6 text-center"
+          className="rounded-[22px] p-6 text-center"
           style={{ border: "1.5px dashed rgba(201,166,107,0.4)", background: "var(--bg-card)" }}
         >
           <p className="text-3xl mb-2">🧳</p>
@@ -70,7 +70,7 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
               <button
                 key={s.id || s.source_id || i}
                 onClick={() => setOpen(detail)}
-                className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1.5 sb-card-lift"
+                className="flex flex-col items-center gap-1.5 rounded-[22px] py-3 px-1.5 sb-card-lift"
                 style={{ background: rs.tint, border: "1px solid rgba(201,166,107,0.3)" }}
               >
                 <PassportMedal glyph={rs.emoji} size={58} m={m} variant="stamp" pulse ariaLabel={s.hotel_name || "Stay"} />
@@ -87,7 +87,7 @@ export function StampGrid({ stamps }: { stamps: StampRow[] }) {
           {Array.from({ length: empties }).map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="rounded-2xl flex flex-col items-center justify-center gap-1 py-3"
+              className="rounded-[22px] flex flex-col items-center justify-center gap-1 py-3"
               style={{ border: "1.5px dashed rgba(201,166,107,0.35)", minHeight: 104, opacity: 0.6 }}
             >
               <div

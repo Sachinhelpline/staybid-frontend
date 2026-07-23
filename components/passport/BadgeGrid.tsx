@@ -50,7 +50,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
         <h3 className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
           🏅 Achievements
         </h3>
-        <span className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
           {earned} / {badges.length} unlocked
         </span>
       </div>
@@ -62,7 +62,7 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
             <button
               key={b.key}
               onClick={() => setOpen(toDetail(b))}
-              className="flex flex-col items-center gap-1.5 rounded-2xl py-3 px-1.5 sb-card-lift"
+              className="flex flex-col items-center gap-1.5 rounded-[22px] py-3 px-1.5 sb-card-lift"
               style={{
                 background: b.earned
                   ? "linear-gradient(160deg,#fffdf8,#fbf3e2)"
@@ -83,12 +83,13 @@ export function BadgeGrid({ badges }: { badges: BadgeView[] }) {
               />
               <p
                 className="text-[0.64rem] font-bold leading-tight text-center"
-                style={{ color: "var(--text-base)" }}
+                /* earned = fixed cream surface (never flips) → fixed walnut label; locked = flipping --bg-card → theme-aware --text-base */
+                style={{ color: b.earned ? "#3A2D10" : "var(--text-base)" }}
               >
                 {b.label}
               </p>
               {!b.earned && b.need > 1 && (
-                <p className="text-[0.55rem] font-semibold" style={{ color: "#8B6914" }}>
+                <p className="text-[0.55rem] font-semibold tabular-nums" style={{ color: "var(--accent)" }}>
                   {b.have}/{b.need}
                 </p>
               )}

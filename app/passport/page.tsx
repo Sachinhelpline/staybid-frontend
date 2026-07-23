@@ -202,7 +202,7 @@ function PassportHub() {
             ) : (
               <div className="rounded-3xl p-8 text-center" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
                 <p className="text-4xl mb-2">🛂</p>
-                <p className="font-semibold" style={{ color: "var(--text-base)" }}>
+                <p className="font-display text-lg font-semibold" style={{ color: "var(--text-base)" }}>
                   Your passport is being prepared
                 </p>
                 <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
@@ -280,22 +280,22 @@ function WalletTab({
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full pointer-events-none opacity-[0.09]"
           style={{ background: "radial-gradient(circle,#f0b429 0%,transparent 70%)", transform: "translate(30%,-30%)" }} />
         <p className="text-white/40 text-[0.6rem] tracking-[0.2em] uppercase font-semibold mb-1">Available Balance</p>
-        <p className="font-display font-light text-white mb-1" style={{ fontSize: "clamp(2rem,5.5vw,2.9rem)" }}>
+        <p className="font-display font-light text-white mb-1 tabular-nums" style={{ fontSize: "clamp(2rem,5.5vw,2.9rem)" }}>
           ₹<CountUp value={walletBalance} duration={1100} />
         </p>
         <p className="text-white/40 text-xs tracking-wide">{phone}</p>
         <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/10">
           <div>
             <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Credited</p>
-            <p className="text-emerald-400 font-semibold text-sm">₹<CountUp value={wallet?.totalCredit ?? 0} duration={900} /></p>
+            <p className="text-emerald-400 font-semibold text-sm tabular-nums">₹<CountUp value={wallet?.totalCredit ?? 0} duration={900} /></p>
           </div>
           <div className="border-x border-white/10 text-center">
             <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">Total Spent</p>
-            <p className="text-red-400 font-semibold text-sm">₹<CountUp value={totalSpend} duration={900} /></p>
+            <p className="text-red-400 font-semibold text-sm tabular-nums">₹<CountUp value={totalSpend} duration={900} /></p>
           </div>
           <button onClick={onGoRewards} className="text-right">
             <p className="text-white/40 text-[0.58rem] uppercase tracking-widest mb-1">StayPoints</p>
-            <p className="text-gold-400 font-semibold text-sm"><CountUp value={stayPoints} duration={900} /></p>
+            <p className="text-gold-400 font-semibold text-sm tabular-nums"><CountUp value={stayPoints} duration={900} /></p>
           </button>
         </div>
       </div>
@@ -330,7 +330,7 @@ function WalletTab({
             const isCredit = String(tx.type || "").toUpperCase().includes("CREDIT");
             return (
               <div key={tx.id || i}
-                className="rounded-2xl px-4 py-3.5 flex items-center justify-between sb-tx-row"
+                className="rounded-[22px] px-4 py-3.5 flex items-center justify-between sb-tx-row"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
@@ -346,7 +346,7 @@ function WalletTab({
                     </p>
                   </div>
                 </div>
-                <span className="text-sm font-bold" style={{ color: isCredit ? "#4a6f4a" : "#a85b4e" }}>
+                <span className="text-sm font-bold tabular-nums" style={{ color: isCredit ? "#4a6f4a" : "#a85b4e" }}>
                   {isCredit ? "+" : "−"}₹{(tx.amount ?? 0).toLocaleString("en-IN")}
                 </span>
               </div>
@@ -412,7 +412,7 @@ function RewardsTab({
       <div className="rounded-3xl p-5 sb-card-lift relative overflow-hidden"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
         <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "var(--text-muted)" }}>StayPoints</p>
-        <p className="font-display text-4xl font-bold leading-none mt-1" style={{ color: "var(--text-base)" }}>
+        <p className="font-display text-4xl font-bold leading-none mt-1 tabular-nums" style={{ color: "var(--text-base)" }}>
           <CountUp value={stayPoints} duration={1000} />
         </p>
         <div className="flex items-center gap-3 mt-3">
@@ -455,7 +455,7 @@ function RewardsTab({
             const v = canUserRedeem({ rule: r, pointsBalance: stayPoints, userTier, monthlyCount: monthlyCounts[r.id] || 0 });
             return (
               <div key={r.id}
-                className="rounded-2xl p-4 flex items-center gap-3 sb-card-lift"
+                className="rounded-[22px] p-4 flex items-center gap-3 sb-card-lift"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
                 <PassportMedal
                   glyph={r.icon || kindIcon(r.kind)}
@@ -470,7 +470,7 @@ function RewardsTab({
                   {r.description && (
                     <p className="text-[0.66rem] mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{r.description}</p>
                   )}
-                  <p className="text-xs font-bold mt-1" style={{ color: "var(--accent)" }}>{fmt(r.points_cost)} pts</p>
+                  <p className="text-xs font-bold mt-1 tabular-nums" style={{ color: "var(--accent)" }}>{fmt(r.points_cost)} pts</p>
                 </div>
                 <button
                   onClick={() => v.ok && setConfirm(r)}
@@ -497,9 +497,9 @@ function RewardsTab({
             <h3 className="font-display text-xl font-semibold text-center text-luxury-900">{confirm.title}</h3>
             <p className="text-sm text-luxury-500 text-center mt-1">{confirm.description}</p>
             <div className="flex items-center justify-center gap-2 mt-3">
-              <span className="text-sm font-bold text-gold-600">{fmt(confirm.points_cost)} pts</span>
+              <span className="text-sm font-bold text-gold-600 tabular-nums">{fmt(confirm.points_cost)} pts</span>
               <span className="text-luxury-300">→</span>
-              <span className="text-sm font-bold text-luxury-900">{fmt(stayPoints - confirm.points_cost)} left</span>
+              <span className="text-sm font-bold text-luxury-900 tabular-nums">{fmt(stayPoints - confirm.points_cost)} left</span>
             </div>
             {error && <p className="text-xs text-red-500 text-center mt-3">{error}</p>}
             <div className="flex gap-2 mt-5">
@@ -579,11 +579,12 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
   return (
     <div className="space-y-4 sb-fade-in">
       {walletCredit > 0 && (
-        <div className="rounded-2xl p-4 sb-card-lift flex items-center justify-between"
+        <div className="rounded-[22px] p-4 sb-card-lift flex items-center justify-between"
           style={{ background: "linear-gradient(160deg,#fffdf8,#fbf3e2)", border: "1px solid rgba(201,166,107,0.4)" }}>
           <div>
             <p className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>Wallet Credit</p>
-            <p className="font-display text-2xl font-bold" style={{ color: "var(--text-base)" }}>₹<CountUp value={walletCredit} duration={900} /></p>
+            {/* fixed cream surface never flips → keep the amount a fixed walnut, not the flipping --text-base (which would go near-white on cream in dark) */}
+            <p className="font-display text-2xl font-bold tabular-nums" style={{ color: "#3A2D10" }}>₹<CountUp value={walletCredit} duration={900} /></p>
           </div>
           <span className="text-2xl">💰</span>
         </div>
@@ -616,7 +617,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
             const stBg = st === "active" ? "#e6f0e6" : st === "used" ? "#eef0f2" : "#fde8e4";
             return (
               <div key={c.id}
-                className="rounded-2xl p-4 sb-card-lift"
+                className="rounded-[22px] p-4 sb-card-lift"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
@@ -624,7 +625,7 @@ function CodesTab({ codes, walletCredit }: { codes: RedemptionCode[]; walletCred
                     <div>
                       <p className="font-bold text-sm leading-tight" style={{ color: "var(--text-base)" }}>{c.title || "Reward"}</p>
                       {Number(c.value_inr) > 0 && (
-                        <p className="text-[0.66rem] mt-0.5" style={{ color: "var(--text-muted)" }}>Worth ₹{fmt(Number(c.value_inr))}</p>
+                        <p className="text-[0.66rem] mt-0.5 tabular-nums" style={{ color: "var(--text-muted)" }}>Worth ₹{fmt(Number(c.value_inr))}</p>
                       )}
                     </div>
                   </div>

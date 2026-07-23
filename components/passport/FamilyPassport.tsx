@@ -185,7 +185,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             </p>
             <div className="flex items-end gap-4 mt-1 relative z-10">
               <div>
-                <p className="font-display text-3xl font-bold leading-none" style={{ color: "#3A2D10" }}>
+                <p className="font-display text-3xl font-bold leading-none tabular-nums" style={{ color: "#3A2D10" }}>
                   <CountUp value={combined.stamps} duration={1000} />
                 </p>
                 <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "#8B6914" }}>
@@ -193,7 +193,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                 </p>
               </div>
               <div className="ml-auto text-right">
-                <p className="font-display text-2xl font-bold leading-none" style={{ color: "#3A2D10" }}>
+                <p className="font-display text-2xl font-bold leading-none tabular-nums" style={{ color: "#3A2D10" }}>
                   {combined.members}
                 </p>
                 <p className="text-[0.6rem] uppercase tracking-widest font-bold mt-1" style={{ color: "#8B6914" }}>
@@ -208,7 +208,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             {members.map((m) => (
               <div
                 key={m.userId}
-                className="sb-card-lift rounded-2xl p-3 flex items-center gap-3"
+                className="sb-card-lift rounded-[22px] p-3 flex items-center gap-3"
                 style={{
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-soft)",
@@ -233,7 +233,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
                       </span>
                     )}
                   </div>
-                  <p className="text-[0.62rem] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  <p className="text-[0.62rem] mt-0.5 tabular-nums" style={{ color: "var(--text-muted)" }}>
                     {m.rankEmoji} {m.rankLabel} · {m.stamps} stamps
                   </p>
                 </div>
@@ -258,7 +258,7 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
 
           {/* Owner: add member */}
           {isOwner && (
-            <div className="rounded-2xl p-3.5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
+            <div className="rounded-[22px] p-3.5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-soft)" }}>
               <p className="text-xs font-bold mb-2" style={{ color: "var(--text-base)" }}>Add a member</p>
               <div className="flex gap-2">
                 <input
@@ -285,7 +285,8 @@ export function FamilyPassport({ myExplorerId }: { myExplorerId?: string | null 
             <button onClick={copyMyId} className="fp-id-btn w-full py-2.5 px-3 flex items-center justify-center gap-2">
               <span className="text-[0.6rem] uppercase tracking-widest font-bold" style={{ color: "#8B6914" }}>Your ID</span>
               <span className="fp-id-val">{myExplorerId}</span>
-              <span className="text-[0.6rem]" style={{ color: copied ? "#4a6f4a" : "var(--text-muted)" }}>
+              {/* .fp-id-btn is a FIXED dark surface → use fixed light-muted, not the flipping --text-muted (dark-brown, unreadable on near-black in light mode) */}
+              <span className="text-[0.6rem]" style={{ color: copied ? "#a9d6b8" : "rgba(243,230,200,0.55)" }}>
                 {copied ? "✓ Copied" : "tap to copy"}
               </span>
             </button>
