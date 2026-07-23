@@ -163,6 +163,22 @@ export function BottomDock() {
             background 0.18s ease;
         }
         [data-theme="light"] .ig-dock-item { color: var(--text-muted); }
+        /* v408 — On the immersive reel (always dark, even in light theme) the
+           cream dock read as a bright block stacked on the phone's system nav
+           bar ("double layer"). Force the dark walnut dock + light glyphs there
+           so the bottom blends into the reel like TikTok/IG. Scoped to
+           .is-reel-page (0,2,1 specificity) so it beats the light-theme rules
+           without touching any other surface. */
+        body.is-reel-page .ig-bottom-dock {
+          background: rgba(10, 8, 5, 0.92);
+          border-top: 1px solid rgba(217, 190, 130, 0.14);
+          box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.55);
+        }
+        body.is-reel-page .ig-dock-item { color: rgba(250, 245, 235, 0.62); }
+        body.is-reel-page .ig-dock-item.is-active {
+          color: var(--cozy-champagne-light, #D9BE82);
+          background: linear-gradient(180deg, rgba(217,190,130,0.10), rgba(217,190,130,0.02));
+        }
         .ig-dock-item:active { transform: scale(0.94); }
         .ig-dock-item.is-active {
           /* v88 — desaturated cozy champagne instead of saturated gold */

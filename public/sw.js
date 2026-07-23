@@ -530,7 +530,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // loading.tsx skeletons (hotels/[id], flash-deals, bid), the flash-deal
 // story "View hotel" now does a client router.push (was a full reload), and
 // socket.io-client is lazy-loaded on the hotel page (smaller initial chunk).
-const HTML_CACHE = 'staybid-html-v218';
+// v408 — HTML_CACHE bump (v218 -> v219). Standalone-PWA native polish: a
+// per-route status-bar colour (no mismatched black strip on light pages) and
+// a dark walnut bottom dock on the immersive reel (bottom blends instead of a
+// bright block over the phone's system nav bar).
+const HTML_CACHE = 'staybid-html-v219';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
