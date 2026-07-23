@@ -17,6 +17,7 @@
 //   having to lift a finger.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { sbImage, SB_IMG_THUMB, SB_IMG_HERO } from "@/lib/sb-image";
 // v130 — every flash-deal price rendered + every Book Now URL carries a
 // ₹100-multiple. Same source of truth as /flash-deals + /hotels/[id]
@@ -486,6 +487,7 @@ export function FlashDealStoryViewer({
   onBook: (d: FlashDealStory) => void;
   onTrackEvent?: (name: string, payload: any) => void;
 }) {
+  const router = useRouter();
   const [idx, setIdx] = useState(startIdx);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -894,9 +896,9 @@ export function FlashDealStoryViewer({
             onClick={() => {
               onTrackEvent?.("flash_story_view_hotel", { hotelId: deal.hotelId });
               onClose();
-              if (typeof window !== "undefined") {
-                window.location.href = `/hotels/${deal.hotelId}`;
-              }
+              // v407 — client transition (was window.location.href = full
+              // reload). Instant navigation on the home reel → hotel path.
+              router.push(`/hotels/${deal.hotelId}`);
             }}
           >
             View hotel details →

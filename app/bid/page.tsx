@@ -632,6 +632,15 @@ export default function BidPage() {
       if (v === "0") setAutoFit(false);
     } catch {}
   }, []);
+  // v407 — immersive /bid: hide the global bottom-nav dock for the whole
+  // reverse-auction flow so the game zone is one clean focused screen (no
+  // stray app nav bar under the climber / PRESS START). Top Navbar + the
+  // in-form back buttons + OS back gesture still cover navigation. Scoped
+  // via a body class so ONLY /bid is affected; removed on unmount.
+  useEffect(() => {
+    document.body.classList.add("sb-bid-immersive");
+    return () => { document.body.classList.remove("sb-bid-immersive"); };
+  }, []);
   const setAutoFitPersist = (v: boolean) => {
     setAutoFit(v);
     try { localStorage.setItem("sb_autofit", v ? "1" : "0"); } catch {}

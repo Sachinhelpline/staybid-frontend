@@ -526,7 +526,11 @@ const CACHE_NAME = 'staybid-static-v2';
 // forced Fullscreen API in useReelFullscreen (fires on first reel tap), not
 // the manifest. /discover + /reels now call it with immersive:false, so no
 // requestFullscreen -> no toast. Full-bleed reel layout unchanged (CSS-driven).
-const HTML_CACHE = 'staybid-html-v217';
+// v407 — HTML_CACHE bump (v217 -> v218). Navigation speed: instant route
+// loading.tsx skeletons (hotels/[id], flash-deals, bid), the flash-deal
+// story "View hotel" now does a client router.push (was a full reload), and
+// socket.io-client is lazy-loaded on the hotel page (smaller initial chunk).
+const HTML_CACHE = 'staybid-html-v218';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
