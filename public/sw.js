@@ -570,7 +570,10 @@ const CACHE_NAME = 'staybid-static-v2';
 // reel feed): editorial serif (Cormorant) hotel name on each reel card, tabular
 // price, and a slightly larger flash-deal rail title. Visual-only; the reel
 // engine, dedup, fullscreen, and video/audio are untouched.
-const HTML_CACHE = 'staybid-html-v227';
+// v417 — HTML_CACHE bump (v227 -> v228). Design-language uplift screen 3 (the
+// /hotels browse grid): editorial serif (Cormorant) hotel-card name + bigger
+// tabular price. Pure globals.css class refinement; no markup/logic change.
+const HTML_CACHE = 'staybid-html-v228';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
