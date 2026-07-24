@@ -601,7 +601,10 @@
 .inf-root { font-variant-numeric: tabular-nums; }
 .inf-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
 .inf-root .bg-white { background: var(--bg-card) !important; }
-.inf-root .bg-luxury-50 { background: var(--bg-pill) !important; }
+.inf-root .bg-luxury-50,
+.inf-root .bg-luxury-100 { background: var(--bg-pill) !important; }
+.inf-root .border-luxury-100,
+.inf-root .border-luxury-200 { border-color: var(--border-soft) !important; }
 [data-theme="dark"] .inf-root .text-gold-700,
 [data-theme="dark"] .inf-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
