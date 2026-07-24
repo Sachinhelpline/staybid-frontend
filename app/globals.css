@@ -5349,7 +5349,7 @@
   z-index: 61;
   top: calc(100% + 9px);
   right: 0;
-  width: min(290px, calc(100vw - 28px));
+  width: min(300px, calc(100vw - 28px));
   padding: 14px;
   background: var(--bg-card);
   border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-soft));
@@ -5358,6 +5358,10 @@
               0 6px 16px -8px rgba(31, 26, 15, 0.3);
   animation: sbCbarPopIn 0.2s cubic-bezier(.32,1,.36,1) both;
   transform-origin: top right;
+  /* v433 — smart filters make the popover taller; cap + scroll it. */
+  max-height: min(72vh, 580px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @keyframes sbCbarPopIn {
   from { opacity: 0; transform: translateY(-6px) scale(0.96); }
@@ -5366,9 +5370,18 @@
 .sb-cbar-pop-grp + .sb-cbar-pop-grp { margin-top: 13px; }
 .sb-cbar-pop-h {
   margin: 0 0 7px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   font-size: 0.62rem; font-weight: 800;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--text-muted);
+}
+/* v433 — live value on the right of a filter group header (e.g. "up to ₹4,000") */
+.sb-cbar-pop-hval {
+  letter-spacing: 0.01em;
+  text-transform: none;
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 .sb-cbar-pop-opts { display: flex; flex-direction: column; gap: 4px; }
 .sb-cbar-pop-opt {
@@ -5417,6 +5430,63 @@
   font-family: inherit; cursor: pointer;
 }
 .sb-cbar-pop-reset:hover { color: var(--text-base); border-style: solid; }
+
+/* v433 — price-range slider inside the filter popover */
+.sb-cbar-pop-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-soft);
+  outline: none;
+  cursor: pointer;
+  margin: 2px 0 6px;
+}
+.sb-cbar-pop-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cozy-gold-2, #E7CFA0), var(--accent), var(--cozy-gold-deep, #8B6914));
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 3px 10px -3px rgba(139, 105, 20, 0.6);
+  cursor: pointer;
+}
+.sb-cbar-pop-range::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 3px 10px -3px rgba(139, 105, 20, 0.6);
+  cursor: pointer;
+}
+.sb-cbar-pop-rangeends {
+  display: flex; justify-content: space-between;
+  font-size: 0.64rem; font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* v433 — wrap-flow filter chips (property type + amenities) */
+.sb-cbar-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sb-cbar-pop-chip {
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-pill);
+  color: var(--text-soft);
+  font-size: 0.74rem; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.sb-cbar-pop-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border-soft)); }
+.sb-cbar-pop-chip.is-on {
+  background: var(--bg-pill-active);
+  color: var(--text-inverse);
+  border-color: var(--border-strong);
+}
 
 /* Body */
 .hxr-body {

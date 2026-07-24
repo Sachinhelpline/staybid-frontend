@@ -19,11 +19,11 @@
 // feed enrichment. Excludes description / address / reviewsCount which only
 // the hotel-detail page needs.
 export const HOTEL_CARD_COLS =
-  "id,name,city,state,lat,lng,starRating,avgRating,images,amenities,trustBadge,createdAt,ownerId,property_type,meal_plans,addon_services";
+  "id,name,city,state,lat,lng,starRating,avgRating,reviewsCount,images,amenities,trustBadge,createdAt,ownerId,property_type,meal_plans,addon_services";
 
 // Hotel-detail page (full page above the fold). Includes description fields.
 export const HOTEL_DETAIL_COLS =
-  HOTEL_CARD_COLS + ",description,address,reviewsCount";
+  HOTEL_CARD_COLS + ",description,address";
 
 // Room rows used on listings + flash-deal candidate selection.
 //
