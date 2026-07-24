@@ -613,7 +613,21 @@ const CACHE_NAME = 'staybid-static-v2';
 // v478 — bump (v288 -> v289). Flash rail: taller (labels not clipped) +
 // readable dark names + scroll arrows/edge-fade (drag affordance); now-playing
 // cover cream placeholder (no black box on the light canvas).
-const HTML_CACHE = 'staybid-html-v289';
+// v479 — bump (v289 -> v290). Hotel detail desktop: revived the 2-column
+// sticky-rail layout (dead .max-w-6xl selectors -> .max-w-7xl).
+// v480 — bump (v290 -> v291). Flash Deals desktop: bigger premium card
+// images + larger cards (300px min).
+// v481 — bump (v291 -> v292). /bid Step-2 form centered on desktop (climber
+// stays fullscreen per owner decision).
+// v482 — bump (v292 -> v293). /bookings column widened on desktop so its
+// xl 2-col grid breathes (was squeezed into 1024px).
+// v483 — bump (v293 -> v294). /my-bids column widened on desktop + fixed the
+// 5-col collateral on its KPI chips + card details strip.
+// v484 — bump (v294 -> v295). /passport desktop 2-column hub (mobile identical
+// via display:contents) + fixed the 5-col strip bug.
+// v485 — bump (v295 -> v296). /saved (.lux-soft max-w-5xl) widened on desktop so
+// its lg:grid-cols-4 grid breathes.
+const HTML_CACHE = 'staybid-html-v301';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

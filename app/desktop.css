@@ -878,7 +878,13 @@
     max-width: 935px;
     margin-inline: auto;
     padding-top: 8px;
-    background: var(--bg-page);
+    /* v490 — /me is a hardcoded LIGHT design (mobile uses a fixed cream
+       gradient; the .me-* name/bio/stats text is hardcoded dark-brown with
+       no dark-mode override). This desktop rule used var(--bg-page), which
+       flips to near-black in dark mode → dark-brown text on near-black =
+       invisible on the transparent header/bio/stats sections. Pin a static
+       cream so /me stays always-light on desktop, matching mobile. */
+    background: var(--cozy-cream-100);
   }
   /* Top bar — sticky pin to the page, not the small mobile drawer. */
   .me-top {
@@ -1271,11 +1277,11 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   .lux-bg .mb-8 { margin-bottom: 1rem !important; }
   .lux-bg .mb-10 { margin-bottom: 1.25rem !important; }
 
-  /* /flash-deals: cards in the grid were hitting a min-width of 320px
-     which forced ~3-col on 1280-wide displays. Drop to 280 so a wide
-     desktop sees 4 cards per row. */
+  /* /flash-deals: v480 — larger, more premium cards on desktop (min 300px,
+     was 280) so each deal reads as a rich flagship tile, not a dense thumbnail
+     grid. ~4 across at 1280, ~3 across at 1024. */
   .fd-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
   }
 
   /* Admin panel info-density bump (separate from admin.css since this
@@ -1289,9 +1295,10 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   .lux-bg .grid.md\:grid-cols-2.lg\:grid-cols-3 {
     gap: 1.5rem !important;
   }
-  /* Flash deals — 5 cols at this width. */
+  /* Flash deals — v480 — keep the premium 300px min so cards stay large;
+     column count grows with the viewport (4 at 1440, 5 on ultra-wide). */
   .fd-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
   }
 }
 
@@ -1300,6 +1307,151 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
   /* Customer content stays at 1280-1440 max-width via §5; admin caps
      to 1700 via admin.css §11. So we don't need to fight stretched
      content — just keep typography at the same scale. */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18b. v481 — /bid Step 2 "Your Price" form: centered column on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   The Step-1 climber (BidGameZone) is portaled to <body> and intentionally
+   FULLSCREEN edge-to-edge (owner decision v237 — a centered portrait card left
+   empty cream side-bands on a 1920px monitor, rejected). So we ONLY cap the
+   Step-2 legacy form wrapper `.bx-page-wrap` (presets + budget input +
+   probability dial + Launch), which otherwise spans the full monitor width.
+   `.bx-page-wrap` is already `mx-auto`, so a max-width centres it. The climber
+   is unaffected (it lives on <body>, not inside this wrapper). ─────────────── */
+@media (min-width: 1024px) {
+  .bx-shell .bx-page-wrap { max-width: 700px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18c. v482 — /bookings (+ any .lux-bg max-w-5xl page): widen on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   /bookings caps its content column at max-w-5xl (1024px), which ESCAPES §9's
+   widen list (which only covers 2xl/xl/3xl/4xl). Its grid is already
+   `grid-cols-1 xl:grid-cols-2`, so at ≥1280px it tries to show 2 columns but is
+   squeezed into 1024px (~490px cards) with heavy dead gutters on wide monitors.
+   Widening the column lets the existing 2-col grid breathe (~570-620px cards) —
+   zero TSX change, zero risk to the card's payment/hold/chat logic. ─────────── */
+@media (min-width: 1280px) {
+  /* .lux-bg (/bookings) + .lux-soft (/saved, /complaints) — both cap at
+     max-w-5xl and escape §9's widen list. /saved's lg:grid-cols-4 grid + the
+     /bookings xl:grid-cols-2 grid both then breathe instead of squeezing into
+     1024px with dead side gutters on wide monitors. */
+  :is(.lux-bg, .lux-soft) > div.max-w-5xl { max-width: 1200px !important; }
+}
+@media (min-width: 1536px) {
+  :is(.lux-bg, .lux-soft) > div.max-w-5xl { max-width: 1320px !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18d. v483 — /my-bids desktop: widen column + fix §9's 5-col collateral
+   ─────────────────────────────────────────────────────────────────────────
+   /my-bids caps at max-w-6xl (1152px) — also escapes §9's widen list — so its
+   `xl:grid-cols-3` bid grid never grows past 1152px (dead gutters on wide
+   monitors). Widen it (grid then breathes into wider cards, no TSX change).
+   AND fix a real bug: §9's over-broad `main .grid.grid-cols-3 -> 5 cols` rule
+   force-bumps this page's KPI summary chips AND every card's inner
+   Your-Bid/Check-in/Check-out strip to 5 columns at ≥1280px. Re-pin those
+   plain grid-cols-3 grids to 3 up. (The bid list uses `xl:grid-cols-3`, a
+   different class token, so it is NOT matched by either rule.) ─────────────── */
+@media (min-width: 1280px) {
+  .lux-bg > div.max-w-6xl { max-width: 1360px !important; }
+  .lux-bg > div.max-w-6xl .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .lux-bg > div.max-w-6xl { max-width: 1500px !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18e. v484 — /passport desktop 2-column hub
+   ─────────────────────────────────────────────────────────────────────────
+   /passport is a tall single stack. On ≥1024px it becomes a 2-column hub:
+   left = passport book + member card + stamps, right = reward ladder + family +
+   badges + how-it-grows. The two `.pp-col` wrappers are `display: contents`
+   BELOW 1024px, so their 7 children flow in the SAME source order as before
+   inside `.pp-hub`'s flex column with the same 28px gap — mobile is
+   byte-identical (no reorder, no spacing change). Also undoes §9's
+   `grid-cols-3 -> 5-col` bump on this page (it mis-shifted the book/wallet
+   3-stat strips; 3-up is correct in the narrower columns). ─────────────────── */
+.pp-hub { display: flex; flex-direction: column; gap: 28px; }
+.pp-col { display: contents; }
+@media (min-width: 1024px) {
+  .pp-hub {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .pp-col { display: flex; flex-direction: column; gap: 28px; }
+  .passport-root .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18f. v487 — Small-page desktop: undo §9's grid-cols-3 -> 5-col collateral
+   ─────────────────────────────────────────────────────────────────────────
+   §9's page-agnostic `main .grid.grid-cols-3 -> 5 cols @1280px` rule (meant
+   for /my-bids + /bookings KPI strips) also force-widens three small pages'
+   3-item rows into 5 columns with 2 empty tracks at >=1280px:
+     • /profile      — the 3-stat strip inside the hero (.pf-hero)
+     • /verification — the TierExplainer 3-tier grid (.verif-root)
+     • /trust        — the 3 explainer chips (.trust-root)
+   Re-pin each back to 3-up (mirrors §18d/§18e), scoped to each page's own
+   root/hero class so nothing else is touched. The column widen those pages
+   already get from §9 stays. Mobile is byte-identical (desktop-gated). */
+@media (min-width: 1280px) {
+  .pf-hero .grid.grid-cols-3,
+  .verif-root .grid.grid-cols-3,
+  .trust-root .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18g. v489 — /trade browse desktop: widen column + densify lot grid
+   ─────────────────────────────────────────────────────────────────────────
+   /trade (agent auction browse) caps every wrapper at max-w-6xl (1152px),
+   which escapes §9's widen list (2xl/xl/3xl/4xl only) AND §18d's lux-bg
+   variant (the page uses a plain inline-gradient bg, not .lux-bg). So on
+   wide monitors the whole page — header, chips, filters, lot grid, footer —
+   sat as a 1152px island with growing dead gutters and the
+   sm:grid-cols-2/lg:grid-cols-3 lot grid could never open past 3 columns.
+   Widen the trade wrappers and let the lot grid densify to 4-up @1280 /
+   5-up @1536 (mirrors /hotels). Scoped to .trd-root so only the trade
+   vertical is affected; my-bids/review use max-w-3xl (already §9-widened)
+   and the tour uses .sbt-wrap, so neither is touched. Desktop-gated. */
+@media (min-width: 1280px) {
+  .trd-root .max-w-6xl { max-width: 1360px !important; }
+  .trd-root .grid.sm\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .trd-root .max-w-6xl { max-width: 1500px !important; }
+  .trd-root .grid.sm\:grid-cols-2.lg\:grid-cols-3 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   18h. v490 — /host vertical desktop (StayBid for Hosts)
+   ─────────────────────────────────────────────────────────────────────────
+   The host layout root is `.hostos` (NOT .lux-bg), so §5's centering/cap
+   never applied and there was zero host styling here — yet host children
+   render inside <main>, so §9's max-w widen AND its grid-cols-3 -> 5-col
+   collateral BOTH engage. Fixes:
+   • /host/me caps every wrapper at max-w-5xl (1024px) — escapes §9's widen
+     list (2xl/xl/3xl/4xl) → big dead gutters at 1280/1536. Widen it.
+   • /host/studio caps at max-w-6xl (1152px) — same escape → widen.
+   • §9 mangles /host/build's 3-item plan summary + city mini-stats (bare
+     grid-cols-3 -> 5 cols = 2 dead tracks) AND the /host hub's 6-stat band
+     (grid-cols-3 sm:grid-cols-6 -> 5+1 orphan). Re-pin the true 3-item host
+     grids to 3-up and RESTORE the 6-stat band to 6-up (only that grid
+     carries sm:grid-cols-6). All other host grids use grid-cols-2/sm:/lg:
+     tokens (no literal .grid-cols-3) so §9 never touched them.
+   .hostos-scoped + desktop-gated → mobile/tablet + all other verticals
+   untouched. */
+@media (min-width: 1280px) {
+  .hostos .max-w-5xl { max-width: 1200px !important; }
+  .hostos .max-w-6xl { max-width: 1360px !important; }
+  .hostos .grid.grid-cols-3:not(.sm\:grid-cols-6) { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .hostos .grid.grid-cols-3.sm\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .hostos .max-w-5xl { max-width: 1320px !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -1695,7 +1847,7 @@ body main textarea.input-luxury {
    or reviews the customer has scrolled.
 
    Zero JSX changes — pure CSS retrofit. The page already wraps every
-   section as a flat direct child of `.hx-shell > .max-w-6xl > div`, so
+   section as a flat direct child of `.hx-shell > .max-w-7xl`, so
    `:not(#availability-picker)` cleanly forces them into column 1.
 
    `grid-row: 1 / span 999` puts the picker at the top of column 2 from
@@ -1707,7 +1859,7 @@ body main textarea.input-luxury {
   /* Make the page wrapper a 2-col grid. The max-width is bumped from
      1152 (Tailwind max-w-6xl) to 1280 so the new right rail doesn't
      squeeze the room cards in column 1. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) 340px !important;
     column-gap: 32px !important;
@@ -1719,7 +1871,7 @@ body main textarea.input-luxury {
      picker flows in column 1. `min-width: 0` prevents long content
      (hotel name, OTA comparison table) from forcing the grid track
      wider than 1fr. */
-  .hx-shell > .max-w-6xl > :not(#availability-picker) {
+  .hx-shell > .max-w-7xl > :not(#availability-picker) {
     grid-column: 1 !important;
     min-width: 0;
   }
@@ -1727,7 +1879,7 @@ body main textarea.input-luxury {
   /* The availability picker becomes the sticky right rail. Spans all
      rows of the grid so column 2 stays "owned" by the picker — no
      phantom empty space at the bottom right of the page. */
-  .hx-shell > .max-w-6xl > #availability-picker {
+  .hx-shell > .max-w-7xl > #availability-picker {
     grid-column: 2 !important;
     grid-row: 1 / span 999 !important;
     position: sticky !important;
@@ -1743,21 +1895,21 @@ body main textarea.input-luxury {
 
   /* Slim scrollbar inside the picker so it's discoverable but doesn't
      fight the cozy parchment palette. */
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar {
     width: 5px;
   }
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-thumb {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-thumb {
     background: rgba(201, 145, 26, 0.30);
     border-radius: 3px;
   }
-  .hx-shell > .max-w-6xl > #availability-picker::-webkit-scrollbar-track {
+  .hx-shell > .max-w-7xl > #availability-picker::-webkit-scrollbar-track {
     background: transparent;
   }
 }
 
 @media (min-width: 1440px) {
   /* Wider monitors get a roomier right rail + wider page cap. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 380px !important;
     column-gap: 40px !important;
     max-width: 1340px !important;
@@ -1767,7 +1919,7 @@ body main textarea.input-luxury {
 @media (min-width: 1700px) {
   /* On true wide-screens cap at 1440 so the page doesn't feel
      stretched. Right rail can grow a touch more. */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     grid-template-columns: minmax(0, 1fr) 400px !important;
     max-width: 1440px !important;
   }
@@ -1880,7 +2032,7 @@ body main textarea.input-luxury {
   /* Hotel detail page: bump max-width so the photo gallery + room cards
      get more horizontal room. Mobile defaults were too cramped on a
      800-1000px tablet. Single column flow preserved (no 2-col grid). */
-  .hx-shell > .max-w-6xl {
+  .hx-shell > .max-w-7xl {
     padding-left: 24px !important;
     padding-right: 24px !important;
   }
