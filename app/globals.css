@@ -10343,3 +10343,53 @@ html.is-reel-page :focus-visible { outline-color: #ffd98a; }
   }
   .cmm-path-drawn { transition: stroke-dashoffset 0.3s ease; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   v456b — Trade (Model 3) dark-mode tokens.
+   Trade's colours were hardcoded hex baked into inline style={{}} + the
+   .sbt-* styled-jsx (not tokens), so a stylesheet [data-theme] override
+   couldn't reach them. These tokens are scoped to `.trd-root` (the trade
+   layout wrapper); both inline styles and the styled-jsx read var(--trd-*),
+   and the values flip under [data-theme="dark"] .trd-root. Brand gold +
+   semantic status colours stay constant (they read on both modes) — only the
+   neutral cream / white / ink surfaces flip. Light values are byte-identical
+   to the originals, so light mode is unchanged. */
+.trd-root {
+  --trd-page-a: #faf7f2;
+  --trd-page-b: #f3ece1;
+  --trd-card:   #ffffff;
+  --trd-card-2: #fffdfa;
+  --trd-soft:   #f3ece1;
+  --trd-line:   #e7d9c2;
+  --trd-line-2: #f0dcb0;
+  --trd-ink:    #3a2c17;
+  --trd-ink-2:  #7a5a2e;
+  --trd-ink-3:  #6b7280;
+  --trd-hero:   #221812;
+}
+[data-theme="dark"] .trd-root {
+  --trd-page-a: #14110B;
+  --trd-page-b: #0F0C08;
+  --trd-card:   #1A1610;
+  --trd-card-2: #1E1912;
+  --trd-soft:   #14110B;
+  --trd-line:   rgba(213, 200, 175, .14);
+  --trd-line-2: rgba(201, 145, 26, .30);
+  --trd-ink:    #F5EFE0;
+  --trd-ink-2:  #D6C9AE;
+  --trd-ink-3:  rgba(213, 200, 175, .62);
+  --trd-hero:   #14100A;
+}
+/* Trade cards also use Tailwind luxury utilities (not inline). Remap them to
+   the trd tokens in DARK MODE ONLY so light mode stays byte-identical. */
+[data-theme="dark"] .trd-root .bg-white { background: var(--trd-card) !important; }
+[data-theme="dark"] .trd-root .border-luxury-200 { border-color: var(--trd-line) !important; }
+[data-theme="dark"] .trd-root .text-luxury-900 { color: var(--trd-ink) !important; }
+[data-theme="dark"] .trd-root .text-luxury-700,
+[data-theme="dark"] .trd-root .text-luxury-600 { color: var(--trd-ink-2) !important; }
+[data-theme="dark"] .trd-root .text-luxury-500,
+[data-theme="dark"] .trd-root .text-luxury-400 { color: var(--trd-ink-3) !important; }
+/* Trade amber "sign-in" notice banner → dark-gold tint in dark mode. */
+[data-theme="dark"] .trd-root .bg-amber-50 { background: rgba(201, 145, 26, .12) !important; }
+[data-theme="dark"] .trd-root .border-amber-200 { border-color: rgba(201, 145, 26, .30) !important; }
+[data-theme="dark"] .trd-root .text-amber-800 { color: #E7CFA0 !important; }

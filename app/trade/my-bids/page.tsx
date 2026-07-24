@@ -19,9 +19,9 @@ const ST: Record<string, { bg: string; c: string; label: string }> = {
   countered: { bg: "#f5f3ff", c: "#6d28d9", label: "Counter offer" },
   won:       { bg: "#ecfdf5", c: "#047857", label: "Won" },
   partial:   { bg: "#f0fdf4", c: "#15803d", label: "Won (partial)" },
-  lost:      { bg: "#f3f4f6", c: "#6b7280", label: "Lost" },
-  rejected:  { bg: "#f3f4f6", c: "#6b7280", label: "Declined" },
-  expired:   { bg: "#f3f4f6", c: "#6b7280", label: "Expired" },
+  lost:      { bg: "var(--trd-soft)", c: "var(--trd-ink-3)", label: "Lost" },
+  rejected:  { bg: "var(--trd-soft)", c: "var(--trd-ink-3)", label: "Declined" },
+  expired:   { bg: "var(--trd-soft)", c: "var(--trd-ink-3)", label: "Expired" },
   refunded:  { bg: "#fef2f2", c: "#b91c1c", label: "Refunded" },
 };
 
@@ -135,7 +135,7 @@ export default function TradeMyBidsPage() {
   }, [load]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#faf7f2,#f3ece1)" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b))" }}>
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => router.push("/trade")} className="text-lg">‹</button>
@@ -217,7 +217,7 @@ export default function TradeMyBidsPage() {
                     const st = ST[b.status] || ST.active;
                     return (
                       <div key={b.id} className="rounded-[22px] bg-white border border-luxury-200 p-3.5 flex gap-3 shadow-[0_4px_16px_-10px_rgba(31,26,15,0.2)]">
-                        <div className="w-14 h-14 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${b.lot?.metadata?.room_img || ""})`, background: b.lot?.metadata?.room_img ? undefined : "#e7d9c2" }} />
+                        <div className="w-14 h-14 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${b.lot?.metadata?.room_img || ""})`, background: b.lot?.metadata?.room_img ? undefined : "var(--trd-soft)" }} />
                         <div className="flex-1 min-w-0">
                           <div className="font-display text-base font-semibold text-luxury-900 truncate">{b.lot?.category || b.metadata?.room_id || b.lot_id}</div>
                           <div className="text-[0.72rem] text-luxury-400">{b.lot?.metadata?.hotel_name || ""} · {b.lot?.city || b.metadata?.city} · {monthLabel(b.lot?.month_key || b.metadata?.month_key || "")}</div>
