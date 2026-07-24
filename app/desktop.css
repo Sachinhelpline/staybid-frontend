@@ -191,6 +191,20 @@
       linear-gradient(180deg, rgba(20, 15, 10, 0.35) 0%, rgba(10, 8, 6, 0.5) 100%);
   }
 
+  /* v477 — LIGHT cozy-cream canvas for the HOME reel window only (/discover +
+     /reels keep the dark cinematic wash). The blurred reel becomes a faint,
+     bright pastel wash and the vignette melts to warm cream at the edges. */
+  body.reel-with-rail:has(.reel-page-root) { background: #f1e8d6 !important; }
+  body.reel-with-rail:has(.reel-page-root)::before {
+    filter: blur(82px) saturate(1.25) brightness(1.4);
+    opacity: 0.4;
+  }
+  body.reel-with-rail:has(.reel-page-root)::after {
+    background:
+      radial-gradient(ellipse 76% 86% at 50% 40%, rgba(241, 232, 214, 0) 28%, rgba(236, 226, 205, 0.9) 100%),
+      linear-gradient(180deg, rgba(248, 242, 229, 0.42) 0%, rgba(234, 224, 203, 0.62) 100%);
+  }
+
   /* The reel CSS card uses `height: 100%` against parent.
      With the new wrapper height that resolves to 9:16-ish (420 x ~745). */
 
@@ -502,8 +516,10 @@
     height: var(--reel-rail-h);
     z-index: 12;
     overflow: hidden;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid rgba(122, 88, 30, 0.16);
   }
+  /* Transparent over the cream canvas + native DARK rail text (the rail was
+     designed cream/dark for mobile — perfect on the light canvas). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-wrap {
     background: transparent !important;
     border-bottom: none !important;
@@ -515,12 +531,6 @@
   body.reel-has-rail .reel-stage-rail .fdeal-rail-scroll { align-items: flex-start; padding: 0 2px 2px !important; }
   /* Uniform avatar columns (hide the variable-height Circle sub-tag). */
   body.reel-has-rail .reel-stage-rail .fdeal-rail-tag { display: none; }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-title,
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand { color: #f6efe1 !important; }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-sep,
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-brand-dot { color: #e0c68c !important; }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-name { color: rgba(242, 236, 221, 0.82) !important; }
-  body.reel-has-rail .reel-stage-rail .fdeal-rail-avatar { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.10); }
 
   /* Columns: transparent, aligned to the frame's top + height, FILLING the
      side margins (from the screen padding right up to the frame gap). */
@@ -605,6 +615,33 @@
   }
   body.reel-with-rail .reel-side-right .reel-side-cta { margin-top: auto; }
 
+  /* v477 — LIGHT canvas: flip the home window's panel text/chips to dark cocoa
+     (the panels are transparent, so their text sits directly on the cream). */
+  body.reel-with-rail .reel-side-kicker { color: rgba(122, 88, 30, 0.92); }
+  body.reel-with-rail .reel-side-title { color: #33260f; }
+  body.reel-with-rail .reel-side-meta,
+  body.reel-with-rail .reel-side-place { color: rgba(58, 44, 24, 0.72); }
+  body.reel-with-rail .reel-side-price { color: rgba(58, 44, 24, 0.7); }
+  body.reel-with-rail .reel-side-price b { color: #2a1f0c; }
+  body.reel-with-rail .reel-side-price em { color: rgba(58, 44, 24, 0.55); }
+  body.reel-with-rail .reel-side-desc { color: rgba(58, 44, 24, 0.66); }
+  body.reel-with-rail .reel-side-hint { color: rgba(58, 44, 24, 0.5); }
+  body.reel-with-rail .reel-side-empty { color: rgba(58, 44, 24, 0.55); }
+  body.reel-with-rail .reel-side-amenity {
+    color: rgba(58, 44, 24, 0.85);
+    background: rgba(122, 88, 30, 0.09);
+    border-color: rgba(122, 88, 30, 0.22);
+  }
+  body.reel-with-rail .reel-queue-name { color: #33260f; }
+  body.reel-with-rail .reel-queue-sub { color: rgba(58, 44, 24, 0.6); }
+  body.reel-with-rail .reel-queue-price b { color: #2a1f0c; }
+  body.reel-with-rail .reel-queue-price em { color: rgba(58, 44, 24, 0.5); }
+  body.reel-with-rail .reel-queue-item:hover { background: rgba(122, 88, 30, 0.08); }
+  body.reel-with-rail .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.5); }
+  body.reel-with-rail .reel-side-btn.ghost { border-color: rgba(58, 44, 24, 0.3); color: #33260f; }
+  body.reel-with-rail .reel-side-btn.ghost:hover { background: rgba(122, 88, 30, 0.09); }
+  /* Now-playing cover keeps its own dark image + overlay (unchanged). */
+
   /* The portrait frame: pushed below the rail, ABOVE the canvas, centred. */
   body.reel-with-rail .reel-page-root {
     top: calc(84px + var(--reel-rail-h) + 12px) !important;
@@ -655,6 +692,14 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
   .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #f6efe1 !important; }
+
+  /* v477 — the HOME reel canvas is now LIGHT cream, so its navbar flips back to
+     a light frosted bar with dark text (/discover + /reels stay dark above). */
+  body.reel-with-rail .nav3d-bar[data-reel-route="true"] {
+    background: rgba(249, 243, 230, 0.78) !important;
+    border-bottom: 1px solid rgba(122, 88, 30, 0.14) !important;
+  }
+  body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #33260f !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

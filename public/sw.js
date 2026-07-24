@@ -608,7 +608,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // gradient fallbacks (no black boxes); now-playing cover fills the column.
 // v476 — bump (v286 -> v287). Up-next thumbnails: broken images now fall back
 // to a clean initial-letter card (was a dull empty gradient box).
-const HTML_CACHE = 'staybid-html-v287';
+// v477 — bump (v287 -> v288). Home desktop reel canvas flipped to LIGHT cozy
+// cream (dark text/chips/rail/navbar); /discover + /reels stay dark.
+const HTML_CACHE = 'staybid-html-v288';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
