@@ -21,6 +21,7 @@ import { calculateDynamicPrice, getRoomImage, DEMAND_STYLE, type DynamicPriceRes
 import LuxuryCalendar from "@/components/LuxuryCalendar";
 import BookingReview, { type BookingReviewProps, type AppliedRedemption } from "@/components/BookingReview";
 import ModalCloseButton from "@/components/ModalCloseButton";
+import SbState from "@/components/SbState";
 import HotelHero from "@/components/hotel/HotelHero";
 import HotelStatsRibbon from "@/components/hotel/HotelStatsRibbon";
 import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
@@ -318,6 +319,8 @@ export default function HotelDetail() {
 
   const [hotel, setHotel]     = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   // v227 — defensive scroll-lock cleanup. When a user navigates here
   // straight from /discover / /reels / /me via Next.js client-side
@@ -690,6 +693,8 @@ export default function HotelDetail() {
 
   useEffect(() => {
     if (!id) return;
+    setLoading(true);
+    setLoadErr(false);
     api.getHotel(id as string)
       .then((d) => {
         setHotel(d.hotel);
@@ -712,9 +717,12 @@ export default function HotelDetail() {
           if (cheapest) setPickerModal({ intent: "book", room: cheapest });
         }
       })
-      .catch(() => {})
+      // A 404 means the hotel genuinely doesn't exist (hotel stays null →
+      // "not found"); any other failure (network / 500) is a load error that
+      // should offer a retry rather than masquerade as a dead listing.
+      .catch((e) => { if ((e as any)?.status !== 404) setLoadErr(true); })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, reloadTick]);
 
   // v189 — Phase 7A: side-channel fetch for auto_accept_at + bidder_tier
   // per PENDING bid (Railway /api/bids/my doesn't include those cols).
@@ -2403,14 +2411,25 @@ export default function HotelDetail() {
     </div>
   );
 
+  if (loadErr) return (
+    <SbState
+      variant="error"
+      title="Couldn't load this hotel"
+      subtitle="Something went wrong reaching the server. Please try again."
+      actions={[
+        { label: "Try again", onClick: () => setReloadTick((t) => t + 1) },
+        { label: "Back to hotels", href: "/hotels", ghost: true },
+      ]}
+    />
+  );
+
   if (!hotel) return (
-    <div className="text-center py-28 text-luxury-400">
-      <div className="w-16 h-16 rounded-full bg-luxury-100 flex items-center justify-center mx-auto mb-4">
-        <span className="text-2xl">🏨</span>
-      </div>
-      <p className="text-lg font-semibold text-luxury-700 mb-1">Hotel not found</p>
-      <Link href="/hotels" className="text-sm text-gold-500 hover:text-gold-600 transition-colors">← Back to hotels</Link>
-    </div>
+    <SbState
+      glyph="🏨"
+      title="Hotel not found"
+      subtitle="This listing may have been removed or is no longer available."
+      actions={[{ label: "Back to hotels", href: "/hotels" }]}
+    />
   );
 
   // ── v123 — UI helpers for the redesigned page ──
