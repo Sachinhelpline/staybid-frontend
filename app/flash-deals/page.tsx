@@ -1862,6 +1862,35 @@ function FdStyles() {
         white-space: nowrap;
       }
       .fd-drawer-cta:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(240,180,41,0.5); }
+
+      /* ═══ Flash Deals — premium design-language uplift (v430) ═══
+         Appended last so it wins by source order. Light-safe: the page is
+         fixed cream (.fd-root can't flip), so this layers editorial polish
+         onto the existing look — tabular-nums on every ₹/count/discount so
+         figures align, an editorial serif empty-state title, and a deeper,
+         more consistent interior-tile radius (cards/drawers already 24px). */
+      .fd-hero-count, .fd-stat, .fd-stat-gold,
+      .fd-disc-num, .fd-slots-pill, .fd-up-chip-delta,
+      .fd-price-strike, .fd-price-save, .fd-price-unit,
+      .fd-drawer-room-price, .fd-drawer-room-strike,
+      .fd-drawer-cta-strike, .fd-drawer-cta-price {
+        font-variant-numeric: tabular-nums;
+      }
+      .fd-empty-title {
+        font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+        font-size: 1.24rem;
+        font-weight: 600;
+        letter-spacing: 0.005em;
+      }
+      .fd-up-wrap        { border-radius: 16px; }
+      .fd-up-chip        { border-radius: 14px; }
+      .fd-drawer-room    { border-radius: 18px; }
+      .fd-drawer-empty   { border-radius: 18px; }
+      .fd-drawer-rules li{ border-radius: 14px; }
+      .fd-disc-stamp     { border-radius: 16px; }
+      .fd-cta            { border-radius: 15px; }
+      .fd-drawer-cta     { border-radius: 15px; }
+      .fd-drawer-viewhotel { border-radius: 14px; }
     `}</style>
   );
 }
