@@ -256,7 +256,7 @@ function HotelList() {
       })
       .catch((e) => {
         setHotels([]);
-        setApiError(e.message || "Server se data nahi aa raha. Thodi der baad try karein.");
+        setApiError(e.message || "We couldn't load hotels right now. Please try again in a moment.");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -859,10 +859,10 @@ function HotelList() {
           <div className="hxr-error">
             <span aria-hidden="true" style={{ fontSize: 22 }}>⚠️</span>
             <div>
-              <p className="hxr-error-title">Server se connect nahi ho pa raha</p>
+              <p className="hxr-error-title">Couldn't reach the server</p>
               <p className="hxr-error-body">{apiError}</p>
               <button onClick={() => fetchHotels(city ? { city } : {})} className="hxr-error-btn">
-                Dobara try karein
+                Try again
               </button>
             </div>
           </div>
