@@ -488,15 +488,15 @@
    /discover keeps the v470 fixed panels (no window). ─────────────────────── */
 @media (min-width: 1440px) {
   body.reel-with-rail:has(.reel-page-root) {
-    --reel-side-w: 356px;                   /* moderate sidebars (not stretched) */
+    --reel-side-w: 392px;                   /* v491 — wider panels fill the dead margins + carry the moved-over reel info */
     --reel-col-gap: 24px;                   /* frame ↔ sidebar gap */
     --reel-rail-h: 0px;                      /* set to a real height by reel-has-rail */
-    --reel-stage-h: min(calc(100vh - 112px), 948px);
+    --reel-stage-h: min(calc(100vh - 100px), 968px);   /* v491 — reclaim the trimmed top band as reel height */
     --reel-frame-h: calc(var(--reel-stage-h) - var(--reel-rail-h) - 8px);
-    --reel-frame-w: min(512px, calc(var(--reel-frame-h) * 0.5625));   /* bigger, prominent frame */
+    --reel-frame-w: min(544px, calc(var(--reel-frame-h) * 0.5625));   /* v491 — bigger, more prominent reel */
     --reel-cluster-w: calc(var(--reel-frame-w) + (var(--reel-side-w) * 2) + (var(--reel-col-gap) * 2));
   }
-  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 146px; }
+  body.reel-has-rail:has(.reel-page-root) { --reel-rail-h: 132px; }   /* v491 — slimmer rail → taller reel */
 
   /* v473.1 — NO floating window box (its edges read as a centre-vs-side colour
      difference). The whole reel page is one calm cozy canvas; the rail spans
@@ -509,13 +509,13 @@
   body.reel-has-rail .reel-stage-rail {
     display: block;
     position: fixed;
-    top: 84px;
+    top: 70px;                               /* v491 — tight under the 64px navbar (was 84px dead band) */
     left: 50%;
     transform: translateX(-50%);
     width: var(--reel-cluster-w);
     height: var(--reel-rail-h);
     z-index: 12;
-    overflow: hidden;
+    overflow: visible;                        /* v491 — let the ‹ › arrows sit at the very edges, un-clipped */
     border-bottom: 1px solid rgba(122, 88, 30, 0.16);
   }
   /* Transparent over the cream canvas + native DARK rail text (the rail was
@@ -524,7 +524,7 @@
     background: transparent !important;
     border-bottom: none !important;
     box-shadow: none !important;
-    padding: 14px 4px 10px !important;
+    padding: 8px 4px 8px !important;
     animation: none !important;
   }
   body.reel-has-rail .reel-stage-rail .fdeal-rail-header { padding: 0 2px 8px !important; }
@@ -551,7 +551,7 @@
     position: absolute;
     top: calc(50% + 13px);
     transform: translateY(-50%);
-    z-index: 4;
+    z-index: 20;                              /* v491 — above the side panels (z-15) so the arrows are never covered */
     width: 34px; height: 34px;
     border-radius: 999px;
     border: 1px solid rgba(122, 88, 30, 0.26);
@@ -566,21 +566,17 @@
   }
   body.reel-has-rail .reel-rail-nav:hover { background: #fff; transform: translateY(-50%) scale(1.07); }
   body.reel-has-rail .reel-rail-nav:active { transform: translateY(-50%) scale(0.93); }
-  /* Right arrow ALWAYS visible (an obvious "more this way" cue); left arrow only
-     on hover (nothing sits to the left at the start of the strip). */
-  body.reel-has-rail .reel-rail-nav-right { right: 2px; opacity: 1; }
-  body.reel-has-rail .reel-rail-nav-left {
-    left: 2px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.15s ease, background 0.15s ease;
-  }
-  body.reel-has-rail .reel-stage-rail:hover .reel-rail-nav-left { opacity: 1; pointer-events: auto; }
+  /* v491 — BOTH arrows are scroll-position-aware (opacity/pointer-events set
+     inline from railNav): ‹ fades in once the strip is scrolled, › hides at the
+     end. So the drag affordance shows on whichever side actually has more. */
+  body.reel-has-rail .reel-rail-nav-right { right: 2px; }
+  body.reel-has-rail .reel-rail-nav-left { left: 2px; }
+  body.reel-has-rail .reel-rail-nav { transition: opacity 0.18s ease, transform 0.15s ease, background 0.15s ease; }
 
   /* Columns: transparent, aligned to the frame's top + height, FILLING the
      side margins (from the screen padding right up to the frame gap). */
   body.reel-with-rail .reel-side {
-    top: calc(84px + var(--reel-rail-h) + 12px) !important;
+    top: calc(70px + var(--reel-rail-h) + 12px) !important;
     transform: none !important;
     height: calc(var(--reel-frame-h) - 4px);
     max-height: calc(var(--reel-frame-h) - 4px) !important;
@@ -692,16 +688,46 @@
     background: linear-gradient(135deg, #efe4cf, #ddcbaa);
     color: rgba(122, 88, 30, 0.55);
   }
+  /* v491 — cover is now a real <img> (onError → cream fallback, never a black
+     box). Fill the cover box. */
+  body.reel-with-rail .reel-np-cover-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+  /* v491 — rank badge + views, moved off the reel into the now-playing panel. */
+  body.reel-with-rail .reel-side-stat {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0;
+  }
+  body.reel-with-rail .reel-side-views {
+    font-size: 0.74rem; font-weight: 600; color: rgba(58, 44, 24, 0.66);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
 
   /* The portrait frame: pushed below the rail, ABOVE the canvas, centred. */
   body.reel-with-rail .reel-page-root {
-    top: calc(84px + var(--reel-rail-h) + 12px) !important;
+    top: calc(70px + var(--reel-rail-h) + 12px) !important;
     height: var(--reel-frame-h) !important;
     max-height: none !important;
     z-index: 25 !important;
   }
   /* Hide the in-frame flash rail on desktop — the top rail replaces it. */
   body.reel-with-rail .reel-page-root .fdeal-rail-wrap { display: none !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3b. v491 — De-duplicate the reel overlay into the now-playing panel.
+   ─────────────────────────────────────────────────────────────────────────
+   From ≥1200px the right "Now playing" panel is present and already carries the
+   hotel name, rating, place, price, amenities, description — AND now rank + views.
+   So on desktop home the whole bottom caption cluster on the reel itself (title,
+   description, pills incl. rank + views, the "Explore" chip, the From-price, and
+   the Book Now / Make Offer CTAs) is redundant and clutters the video. Hide that
+   ONE container (.ig-reel-caption). The video, author chip and the like/comment/
+   share action rail stay — those are reel-native interactions, not duplicated
+   info. Scoped to body.reel-with-rail (home) so /discover + all of mobile are
+   byte-identical (that surface never gets the class). ───────────────────────── */
+@media (min-width: 1200px) {
+  body.reel-with-rail .reel-page-root .ig-reel-caption { display: none !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -749,6 +775,14 @@
   body.reel-with-rail .nav3d-bar[data-reel-route="true"] {
     background: rgba(249, 243, 230, 0.78) !important;
     border-bottom: 1px solid rgba(122, 88, 30, 0.14) !important;
+    /* v491 — hard-pin the home navbar so it never scrolls out of view. The reel
+       window elements are all position:fixed with explicit top offsets, so a
+       fixed bar causes no reflow. Home-desktop only (reel-with-rail + reel-route). */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1100 !important;
   }
   body.reel-with-rail .nav3d-bar[data-reel-route="true"] .text-luxury-900 { color: #33260f !important; }
 }

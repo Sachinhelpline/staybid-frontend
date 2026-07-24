@@ -32,8 +32,26 @@ import {
   useFlashDealStories,
   type FlashDealStory,
 } from "@/components/discover/FlashDealStories";
+import HotelScoreBadge from "@/components/hotel/HotelScoreBadge";
 
 type Item = { hotel: any };
+
+// v491 — deterministic per-hotel "views" for the now-playing panel (mirrors the
+// reel's own pseudo social-proof stat; the center overlay is hidden on the
+// desktop-home window, so this is now the single place that number is shown).
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function pseudoViews(id: string): number {
+  return 14000 + (hashStr(`${id || "x"}::views`) % (580000 - 14000));
+}
+function fmtCount(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
 
 // Scroll the reel feed's snap container to a given reel index (used by the
 // up-next queue and the ↑/↓ keyboard handler). The feed renders every card in
@@ -73,6 +91,14 @@ export default function DesktopReelPanels({
   // v475.1 — track up-next thumbnails whose <img> actually failed to load so
   // we swap to a clean initial-letter card (not a dull empty gradient box).
   const [brokenThumb, setBrokenThumb] = useState<Record<string, boolean>>({});
+
+  // v491 — now-playing cover: track broken cover images so a video reel with no
+  // (or a broken) poster shows the cream initial-letter fallback, never a black box.
+  const [coverBroken, setCoverBroken] = useState<Record<string, boolean>>({});
+
+  // v491 — scroll-aware flash-rail arrows: show ‹ only when scrolled right, › only
+  // when there is more to the right (both when scrollable, mirroring the drag).
+  const [railNav, setRailNav] = useState<{ left: boolean; right: boolean }>({ left: false, right: true });
 
   // v471 — the current city (drives the flash-deal rail, same source the
   // feed's fallback uses). Kept in sync with the globe picker's event.
@@ -150,6 +176,35 @@ export default function DesktopReelPanels({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // v491 — watch the flash-rail scroll position so both ‹ › arrows reflect what
+  // is actually draggable (left appears once scrolled; right hides at the end).
+  useEffect(() => {
+    if (!railOn) return;
+    let s: HTMLElement | null = null;
+    const update = () => {
+      if (!s) return;
+      const left = s.scrollLeft > 4;
+      const right = s.scrollLeft < s.scrollWidth - s.clientWidth - 4;
+      setRailNav((p) => (p.left === left && p.right === right ? p : { left, right }));
+    };
+    // The scroll container is rendered by FlashDealStoryRail inside .reel-stage-rail.
+    const attach = () => {
+      s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
+      if (!s) return false;
+      update();
+      s.addEventListener("scroll", update, { passive: true });
+      return true;
+    };
+    let raf = 0;
+    if (!attach()) raf = requestAnimationFrame(() => attach());
+    window.addEventListener("resize", update);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      s?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [railOn, flashDeals.length]);
+
   if (!ready || !items?.length) return null;
 
   const idx = Math.max(0, Math.min(Number(activeIndex) || 0, items.length - 1));
@@ -185,6 +240,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-left"
             aria-label="Previous flash deals"
+            style={{ opacity: railNav.left ? 1 : 0, pointerEvents: railNav.left ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: -320, behavior: "smooth" });
@@ -194,6 +250,7 @@ export default function DesktopReelPanels({
             type="button"
             className="reel-rail-nav reel-rail-nav-right"
             aria-label="More flash deals"
+            style={{ opacity: railNav.right ? 1 : 0, pointerEvents: railNav.right ? "auto" : "none" }}
             onClick={() => {
               const s = document.querySelector<HTMLElement>(".reel-stage-rail .fdeal-rail-scroll");
               s?.scrollBy({ left: 320, behavior: "smooth" });
@@ -252,12 +309,19 @@ export default function DesktopReelPanels({
       {/* RIGHT — now-playing: a cover image (fills the top) + booking context.
           Cover falls back to a gradient + initial when the reel has no image. */}
       <aside className="reel-side reel-side-right" aria-label="Current stay">
-        <div
-          className="reel-np-cover"
-          style={imgOf(h) ? { backgroundImage: `url("${imgOf(h)}")` } : undefined}
-          aria-hidden
-        >
-          {!imgOf(h) && <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>}
+        <div className="reel-np-cover" aria-hidden>
+          {imgOf(h) && !coverBroken[imgOf(h)] ? (
+            <img
+              className="reel-np-cover-img"
+              src={imgOf(h)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setCoverBroken((b) => ({ ...b, [imgOf(h)]: true }))}
+            />
+          ) : (
+            <span className="reel-np-cover-fallback">{(h.name || "S").slice(0, 1).toUpperCase()}</span>
+          )}
           <span className="reel-np-cover-kicker">Now playing</span>
           <span className="reel-np-cover-shade" />
         </div>
@@ -266,6 +330,11 @@ export default function DesktopReelPanels({
           <div className="reel-side-meta">
             {rating > 0 && <span className="reel-side-stars">{"★".repeat(Math.min(5, rating))}</span>}
             {place && <span className="reel-side-place">{place}</span>}
+          </div>
+          {/* v491 — rank + views moved here from the reel overlay (single source). */}
+          <div className="reel-side-stat">
+            {hotelId && <HotelScoreBadge hotelId={hotelId} variant="compact" />}
+            <span className="reel-side-views">▶ {fmtCount(pseudoViews(hotelId || h.name || "x"))} views</span>
           </div>
           {price > 0 && (
             <div className="reel-side-price">
