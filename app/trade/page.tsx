@@ -61,7 +61,7 @@ export default function TradeBrowsePage() {
     });
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#faf7f2,#f3ece1)" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b))" }}>
       {/* Header */}
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -86,7 +86,7 @@ export default function TradeBrowsePage() {
         {["All", ...cities].map((c) => (
           <button key={c} onClick={() => setCity(c)}
             className="shrink-0 px-3 py-1.5 rounded-full text-sm font-semibold"
-            style={city === c ? { background: "#33251a", color: "#ffd98a" } : { background: "#fff", color: "#7a5a2e", border: "1px solid #e7d9c2" }}>
+            style={city === c ? { background: "#33251a", color: "#ffd98a" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
             {c}
           </button>
         ))}
@@ -98,7 +98,7 @@ export default function TradeBrowsePage() {
           {([["all", "All"], ["live", "⚡ Live"], ["sealed", "🔒 Sealed"]] as const).map(([m, label]) => (
             <button key={m} onClick={() => setMode(m)}
               className="shrink-0 px-3 py-1.5 rounded-full text-[0.8rem] font-semibold"
-              style={mode === m ? { background: "#33251a", color: "#ffd98a" } : { background: "#fff", color: "#7a5a2e", border: "1px solid #e7d9c2" }}>
+              style={mode === m ? { background: "#33251a", color: "#ffd98a" } : { background: "var(--trd-card)", color: "var(--trd-ink-2)", border: "1px solid var(--trd-line)" }}>
               {label}
             </button>
           ))}
@@ -107,7 +107,7 @@ export default function TradeBrowsePage() {
           <span className="font-semibold">Sort</span>
           <select value={sort} onChange={(e) => setSort(e.target.value as any)}
             className="rounded-lg border px-2.5 py-1.5 text-[0.8rem] font-semibold bg-white"
-            style={{ borderColor: "#e7d9c2", color: "#5a441f" }}>
+            style={{ borderColor: "var(--trd-line)", color: "var(--trd-ink)" }}>
             <option value="recommended">Recommended</option>
             <option value="price_low">Price: low → high</option>
             <option value="price_high">Price: high → low</option>
@@ -132,7 +132,7 @@ export default function TradeBrowsePage() {
             <div className="relative">
               {l.image
                 ? <img src={l.image} alt={l.category || l.room_id} className="w-full aspect-[4/3] object-cover" />
-                : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "#e7d9c2" }}>🏔️</div>}
+                : <div className="w-full aspect-[4/3] grid place-items-center text-3xl" style={{ background: "var(--trd-soft)" }}>🏔️</div>}
               <div className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(15,12,6,0.28), transparent)" }} />
               <span className="absolute top-2 left-2 text-[0.66rem] font-bold px-2.5 py-1 rounded-full"
                 style={l.sale_mode === "live" ? { background: "#ecfdf5", color: "#047857" } : { background: "#f5f3ff", color: "#6d28d9" }}>

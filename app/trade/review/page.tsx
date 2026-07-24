@@ -82,7 +82,7 @@ export default function TradeReviewPage() {
   }, [items, auth.status]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,#faf7f2,#f3ece1)" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b))" }}>
       <div className="sticky top-0 z-30" style={{ background: "linear-gradient(135deg,#1f1710,#33251a)", color: "#ffe9c7" }}>
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => router.push("/trade")} className="text-lg">‹</button>
@@ -99,7 +99,7 @@ export default function TradeReviewPage() {
           <>
             {lines.map(({ it, baseTotal, deposit }) => (
               <div key={it.key} className="rounded-2xl bg-white border border-luxury-200 p-3 flex gap-3">
-                <div className="w-16 h-16 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${it.image})`, background: it.image ? undefined : "#e7d9c2" }} />
+                <div className="w-16 h-16 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${it.image})`, background: it.image ? undefined : "var(--trd-soft)" }} />
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-luxury-900 truncate">{it.roomName}</div>
                   <div className="text-[0.72rem] text-luxury-400">{it.hotelName} · {it.city} · {monthLabel(it.monthKey)}</div>

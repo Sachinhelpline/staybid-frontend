@@ -409,10 +409,10 @@ function BidGate({ auth, city }: { auth: ReturnType<typeof useTradeAuth>; city: 
 function TourStyles() {
   return (
     <style jsx global>{`
-      .sbt-wrap { max-width: 720px; margin: 0 auto; padding: 14px 14px 110px; min-height: 100vh; background: linear-gradient(180deg,#faf7f2,#f3ece1); }
+      .sbt-wrap { max-width: 720px; margin: 0 auto; padding: 14px 14px 110px; min-height: 100vh; background: linear-gradient(180deg,var(--trd-page-a),var(--trd-page-b)); }
       .sbt-back { display: inline-block; margin-bottom: 12px; font-weight: 700; color: #a9791f; font-size: .9rem; }
       .sbt-load { padding: 40px; text-align: center; color: rgba(74,56,32,.6); }
-      .sbt-hero { position: relative; height: 250px; border-radius: 20px; overflow: hidden; background: #221812; box-shadow: 0 12px 34px rgba(40,26,12,.22); }
+      .sbt-hero { position: relative; height: 250px; border-radius: 20px; overflow: hidden; background: var(--trd-hero); box-shadow: 0 12px 34px rgba(40,26,12,.22); }
       .sbt-hero img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-noimg { display: grid; place-items: center; font-size: 3rem; width: 100%; height: 100%; color: #ffe9b8; }
       .sbt-hero-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 34px 17px 15px; background: linear-gradient(0deg, rgba(18,12,6,.9), transparent); color: #fff; }
@@ -433,58 +433,58 @@ function TourStyles() {
       .sbt-metric span { font-size: .54rem; letter-spacing: .06em; color: rgba(243,231,208,.55); font-weight: 700; }
       .sbt-desc { font-size: .84rem; line-height: 1.55; color: rgba(74,56,32,.75); margin: 0 0 16px; }
       .sbt-desc.sm { font-size: .78rem; margin: 8px 0 14px; }
-      .sbt-h2 { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.5rem; font-weight: 600; letter-spacing: .005em; color: #3a2c17; margin-top: 6px; }
+      .sbt-h2 { font-family: var(--font-display, "Cormorant Garamond", Georgia, serif); font-size: 1.5rem; font-weight: 600; letter-spacing: .005em; color: var(--trd-ink); margin-top: 6px; }
       .sbt-h2sub { font-size: .82rem; color: rgba(74,56,32,.65); margin: 4px 0 14px; line-height: 1.5; }
-      .sbt-roomgal { position: relative; height: 190px; border-radius: 14px; overflow: hidden; margin: 6px 0 10px; background: #e2d4bb; }
+      .sbt-roomgal { position: relative; height: 190px; border-radius: 14px; overflow: hidden; margin: 6px 0 10px; background: var(--trd-soft); }
       .sbt-roomgal img { width: 100%; height: 100%; object-fit: cover; }
       .sbt-amen { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 4px; }
       .sbt-amen-chip { font-size: .68rem; font-weight: 600; color: rgba(74,56,32,.8); background: rgba(139,105,20,.09); border: 1px solid rgba(139,105,20,.16); border-radius: 999px; padding: 4px 10px; text-transform: capitalize; }
-      .sbt-bidbox { background: #fff; border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
+      .sbt-bidbox { background: var(--trd-card); border: 1px solid rgba(139,105,20,.2); border-radius: 16px; padding: 15px; box-shadow: 0 4px 16px rgba(74,56,32,.05); }
       .sbt-live-pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3px 11px; margin-bottom: 11px; }
       .sbt-live-ok { color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 8px 11px; font-size: .8rem; font-weight: 600; margin: 6px 0; }
       .sbt-mybids-link { display: block; margin-top: 6px; font-size: .78rem; font-weight: 800; color: #a9791f; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; }
       /* ── AI Bid Coach ── */
-      .sbt-coach { margin: 10px 0; border: 1px solid rgba(139,105,20,.22); border-radius: 14px; padding: 12px; background: linear-gradient(160deg,#fffdf7,#fbf4e6); }
+      .sbt-coach { margin: 10px 0; border: 1px solid rgba(139,105,20,.22); border-radius: 14px; padding: 12px; background: linear-gradient(160deg,var(--trd-card-2),var(--trd-soft)); }
       .sbt-coach-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
       .sbt-coach-ai { font-size: .78rem; font-weight: 800; color: #a9791f; letter-spacing: .02em; }
       .sbt-coach-outcome { font-size: .68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
       .sbt-coach-outcome.on { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
       .sbt-scarce { font-size: .72rem; font-weight: 800; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 5px 9px; margin-bottom: 8px; }
-      .sbt-slider-val { font-size: 1.5rem; font-weight: 800; color: #3a2c17; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+      .sbt-slider-val { font-size: 1.5rem; font-weight: 800; color: var(--trd-ink); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
       .sbt-slider-val span { font-size: .7rem; font-weight: 600; color: rgba(74,56,32,.5); }
       .sbt-slider-margin { font-style: normal; font-size: .72rem; font-weight: 800; margin-left: auto; }
       /* Slidable range — gradient track red(floor)→green(market), gold thumb */
       .sbt-range { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 999px; margin: 12px 0 6px; outline: none; cursor: pointer;
         background: linear-gradient(90deg, #ef4444 0%, #f0b429 var(--pct,50%), #10b981 100%); }
-      .sbt-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
+      .sbt-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--trd-card); border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
       .sbt-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
-      .sbt-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
+      .sbt-range::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--trd-card); border: 4px solid #c9911a; box-shadow: 0 2px 8px rgba(74,56,32,.35); cursor: grab; }
       .sbt-range-ends { display: flex; justify-content: space-between; font-size: .68rem; color: rgba(74,56,32,.6); font-weight: 800; margin-bottom: 12px; }
       .sbt-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-      .sbt-pick { text-align: center; border: 2px solid #e5e0d5; border-radius: 12px; padding: 8px 4px; background: #fff; cursor: pointer; transition: border-color .12s, background .12s; }
-      .sbt-pick.on { border-color: #c9911a; background: #fffbef; }
+      .sbt-pick { text-align: center; border: 2px solid var(--trd-line); border-radius: 12px; padding: 8px 4px; background: var(--trd-card); cursor: pointer; transition: border-color .12s, background .12s; }
+      .sbt-pick.on { border-color: #c9911a; background: var(--trd-card-2); }
       .sbt-pick-label { display: block; font-size: .68rem; font-weight: 800; color: #a9791f; }
-      .sbt-pick b { display: block; font-size: .95rem; color: #3a2c17; margin: 1px 0; }
+      .sbt-pick b { display: block; font-size: .95rem; color: var(--trd-ink); margin: 1px 0; }
       .sbt-pick-sub { display: block; font-size: .56rem; color: rgba(74,56,32,.5); font-weight: 700; line-height: 1.15; }
       .sbt-mkt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-      .sbt-mkt-cell { background: #fff; border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
+      .sbt-mkt-cell { background: var(--trd-card); border: 1px solid rgba(139,105,20,.14); border-radius: 10px; padding: 7px 9px; }
       .sbt-mkt-cell span { display: block; font-size: .54rem; letter-spacing: .05em; color: rgba(74,56,32,.5); font-weight: 800; }
-      .sbt-mkt-cell b { font-size: .92rem; color: #3a2c17; font-weight: 800; }
+      .sbt-mkt-cell b { font-size: .92rem; color: var(--trd-ink); font-weight: 800; }
       .sbt-mkt-profit { background: #ecfdf5; border-color: #a7f3d0; }
       .sbt-mkt-profit b { color: #047857; }
       .sbt-mkt-profit em { display: block; font-style: normal; font-size: .58rem; font-weight: 700; color: #059669; }
       .sbt-coach-tip { font-size: .74rem; color: rgba(74,56,32,.78); line-height: 1.45; margin-top: 9px; }
       .sbt-field { display: block; margin-bottom: 11px; }
       .sbt-field > span { font-size: .78rem; font-weight: 700; color: rgba(74,56,32,.7); display: block; margin-bottom: 4px; }
-      .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: #fffdfa; color: #3a2c17; }
+      .sbt-field select, .sbt-field input { width: 100%; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; padding: 9px 11px; font-size: .9rem; background: var(--trd-card-2); color: var(--trd-ink); }
       .sbt-field small { font-size: .68rem; color: rgba(74,56,32,.5); }
       .sbt-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
       /* Rooms +/− stepper — reliable single-step selection 1..max */
-      .sbt-stepper { display: flex; align-items: stretch; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; overflow: hidden; background: #fffdfa; }
+      .sbt-stepper { display: flex; align-items: stretch; border: 1px solid rgba(139,105,20,.28); border-radius: 10px; overflow: hidden; background: var(--trd-card-2); }
       .sbt-step-btn { flex: none; width: 40px; border: 0; background: rgba(139,105,20,.09); color: #a9791f; font-size: 1.25rem; font-weight: 800; line-height: 1; cursor: pointer; }
       .sbt-step-btn:active { background: rgba(139,105,20,.18); }
       .sbt-step-btn:disabled { opacity: .4; cursor: default; }
-      .sbt-step-in { flex: 1; min-width: 0; border: 0; text-align: center; font-size: 1rem; font-weight: 800; color: #3a2c17; background: transparent; -moz-appearance: textfield; }
+      .sbt-step-in { flex: 1; min-width: 0; border: 0; text-align: center; font-size: 1rem; font-weight: 800; color: var(--trd-ink); background: transparent; -moz-appearance: textfield; }
       .sbt-step-in::-webkit-outer-spin-button, .sbt-step-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
       .sbt-err { color: #c0392b; font-size: .78rem; margin: 4px 0; }
       .sbt-preview { background: linear-gradient(135deg,#1c140c,#2c2116); color: #f3e7d0; border-radius: 12px; padding: 12px 14px; margin: 10px 0; border: 1px solid rgba(212,162,74,.2); }
@@ -496,7 +496,7 @@ function TourStyles() {
       .sbt-btn-gold:disabled { opacity: .5; cursor: default; }
       .sbt-btn-ghost { background: none; border: 1px solid rgba(139,105,20,.3); color: #a9791f; border-radius: 12px; padding: 10px 16px; font-weight: 700; font-size: .85rem; cursor: pointer; }
       .sbt-btn-ghost.full { width: 100%; margin-top: 8px; }
-      .sbt-gate { background: #fff8ec; border: 1px solid #f0dcb0; border-radius: 16px; padding: 15px; font-size: .85rem; color: #7a5a2e; }
+      .sbt-gate { background: var(--trd-card-2); border: 1px solid var(--trd-line-2); border-radius: 16px; padding: 15px; font-size: .85rem; color: var(--trd-ink-2); }
       .sbt-gate p { margin: 0 0 10px; line-height: 1.5; }
       .sbt-gate-input { width: 100%; border: 1px solid #e2c98a; border-radius: 10px; padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; }
       .sbt-basket { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 10px 12px; background: linear-gradient(0deg, rgba(255,255,255,.96) 70%, rgba(255,255,255,0)); }
