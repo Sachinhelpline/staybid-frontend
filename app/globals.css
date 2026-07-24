@@ -606,6 +606,29 @@
 [data-theme="dark"] .inf-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v454 — Onboard (hotel-owner self-signup) uplift. Same story as the
+   influencer hub: the funnel was 100% legacy luxury/gold palette (white
+   cards + inputs, hardcoded page gradient, no dark-mode response, no
+   tabular nums). Its layout now wraps every step in `.lux-bg .onb-root`,
+   so the text bridge remaps text-luxury/gold/white → tokens. This block
+   flips the legacy white surfaces (card-luxury, bg-white, the frosted
+   header/footer bars, the white form inputs, bg-luxury-50) → dark-aware
+   tokens (identical cozy-cream look in light, correct in dark), softens
+   the light luxury borders, fixes the gold-700 money numbers the bridge
+   skips, and turns on tabular numerals. Scoped to `.onb-root`. */
+.onb-root { font-variant-numeric: tabular-nums; }
+.onb-root .card-luxury { background: var(--bg-card); border-color: var(--border-soft); }
+.onb-root .bg-white { background: var(--bg-card) !important; }
+.onb-root .bg-luxury-50 { background: var(--bg-pill) !important; }
+.onb-root .bg-white\/70 { background: color-mix(in srgb, var(--bg-card) 78%, transparent) !important; }
+.onb-root .bg-white\/40 { background: color-mix(in srgb, var(--bg-card) 42%, transparent) !important; }
+.onb-root .input-luxury { background: var(--bg-card); border-color: var(--border-soft); color: var(--text-base); }
+.onb-root .border-luxury-100,
+.onb-root .border-luxury-200 { border-color: var(--border-soft) !important; }
+[data-theme="dark"] .onb-root .text-gold-700,
+[data-theme="dark"] .onb-root .text-gold-800 { color: var(--cozy-champagne-light) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
    3D Button system — physical "punching" feel, works everywhere.
    Usage: `btn-3d` (base), then a color variant (`btn-3d-gold`,
    `btn-3d-dark`, `btn-3d-emerald`, `btn-3d-white`). Optional `btn-3d-sm`
