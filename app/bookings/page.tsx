@@ -809,7 +809,7 @@ export default function BookingsPage() {
             <div className="w-20 h-20 rounded-full bk-card flex items-center justify-center mx-auto mb-5">
               <span className="text-3xl">📋</span>
             </div>
-            <p className="text-lg font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bookings yet</p>
+            <p className="font-display text-xl font-semibold mb-1" style={{ color: "var(--text-base)" }}>No bookings yet</p>
             <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Start by placing a bid or booking a flash deal.</p>
             <Link href="/hotels" className="bk-gold-btn px-6 py-3 rounded-2xl text-sm inline-block">Browse Hotels</Link>
           </div>
