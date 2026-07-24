@@ -619,7 +619,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // images + larger cards (300px min).
 // v481 — bump (v291 -> v292). /bid Step-2 form centered on desktop (climber
 // stays fullscreen per owner decision).
-const HTML_CACHE = 'staybid-html-v292';
+// v482 — bump (v292 -> v293). /bookings column widened on desktop so its
+// xl 2-col grid breathes (was squeezed into 1024px).
+const HTML_CACHE = 'staybid-html-v293';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [

@@ -1318,6 +1318,22 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18c. v482 — /bookings (+ any .lux-bg max-w-5xl page): widen on desktop
+   ─────────────────────────────────────────────────────────────────────────
+   /bookings caps its content column at max-w-5xl (1024px), which ESCAPES §9's
+   widen list (which only covers 2xl/xl/3xl/4xl). Its grid is already
+   `grid-cols-1 xl:grid-cols-2`, so at ≥1280px it tries to show 2 columns but is
+   squeezed into 1024px (~490px cards) with heavy dead gutters on wide monitors.
+   Widening the column lets the existing 2-col grid breathe (~570-620px cards) —
+   zero TSX change, zero risk to the card's payment/hold/chat logic. ─────────── */
+@media (min-width: 1280px) {
+  .lux-bg > div.max-w-5xl { max-width: 1200px !important; }
+}
+@media (min-width: 1536px) {
+  .lux-bg > div.max-w-5xl { max-width: 1320px !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.
