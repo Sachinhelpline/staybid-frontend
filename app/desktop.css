@@ -321,9 +321,27 @@
     gap: 11px;
     padding: 8px;
     border-radius: 14px;
-    transition: background 0.15s ease;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
   }
   .reel-queue-item:hover { background: var(--bg-pill, rgba(184, 134, 11, 0.08)); }
+  .reel-queue-item:hover .reel-queue-thumb { box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.5); }
+  .reel-queue-item:active { transform: scale(0.99); }
+
+  /* keyboard hint */
+  .reel-side-hint {
+    margin-top: 14px;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #9a8a6f);
+    opacity: 0.8;
+  }
   .reel-queue-thumb {
     width: 52px; height: 66px;
     border-radius: 10px;

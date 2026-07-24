@@ -14,9 +14,21 @@
 // nothing. CTAs are plain deep-links into the existing hotel page.
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Item = { hotel: any };
+
+// Scroll the reel feed's snap container to a given reel index (used by the
+// up-next queue and the ↑/↓ keyboard handler). The feed renders every card in
+// order, so the Nth `.ig-card` maps 1:1 to items[N].
+function scrollFeedToIndex(i: number) {
+  const feed = document.querySelector<HTMLElement>(".ig-feed");
+  if (!feed) return;
+  const cards = feed.querySelectorAll<HTMLElement>(".ig-card");
+  const el = cards[i];
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  else feed.scrollTo({ top: feed.clientHeight * i, behavior: "smooth" });
+}
 
 const inr = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 const priceOf = (h: any): number => Number(h?.minPrice || h?.rooms?.[0]?.floorPrice || 0);
@@ -27,6 +39,26 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
   // CSS media queries do the real desktop gating.
   const [ready, setReady] = useState(false);
   useEffect(() => { setReady(true); }, []);
+
+  // v467 (Phase 3) — desktop keyboard navigation between reels: ↑/↓ + PageUp/
+  // Down scroll the feed's snap container by one frame, mirroring mobile swipe.
+  // Ignored while typing in a field; harmless on mobile (no arrow keys).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const feed = document.querySelector<HTMLElement>(".ig-feed");
+      if (!feed) return;
+      if (e.key === "ArrowDown" || e.key === "PageDown") {
+        e.preventDefault(); feed.scrollBy({ top: feed.clientHeight, behavior: "smooth" });
+      } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault(); feed.scrollBy({ top: -feed.clientHeight, behavior: "smooth" });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!ready || !items?.length) return null;
 
   const idx = Math.max(0, Math.min(Number(activeIndex) || 0, items.length - 1));
@@ -66,6 +98,7 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
             </div>
           )}
           {h.description && <p className="reel-side-desc">{String(h.description).slice(0, 180)}</p>}
+          <div className="reel-side-hint">↑ ↓ to browse reels</div>
         </div>
       </aside>
 
@@ -76,10 +109,16 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
           <div className="reel-queue">
             {upNext.map((it, i) => {
               const uh = it.hotel || {};
-              const uid = uh.id || uh._taggedHotelId || "";
               const up = priceOf(uh);
+              const targetIdx = idx + 1 + i; // this item's real position in the feed
               return (
-                <Link key={uid || i} href={uid ? `/hotels/${uid}` : "#"} className="reel-queue-item">
+                <button
+                  key={targetIdx}
+                  type="button"
+                  className="reel-queue-item"
+                  onClick={() => scrollFeedToIndex(targetIdx)}
+                  title={`Play ${uh.name || "this reel"}`}
+                >
                   <span className="reel-queue-thumb" style={{ backgroundImage: `url("${imgOf(uh)}")` }} aria-hidden />
                   <span className="reel-queue-info">
                     <span className="reel-queue-name">{uh.name || "Stay"}</span>
@@ -87,7 +126,7 @@ export default function DesktopReelPanels({ items, activeIndex }: { items: Item[
                       {uh.city || ""}{up > 0 ? `${uh.city ? " · " : ""}${inr(up)}/n` : ""}
                     </span>
                   </span>
-                </Link>
+                </button>
               );
             })}
           </div>
