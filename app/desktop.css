@@ -1334,6 +1334,25 @@ body main .min-h-screen.bg-luxury-50 .overflow-x-auto::-webkit-scrollbar-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   18d. v483 — /my-bids desktop: widen column + fix §9's 5-col collateral
+   ─────────────────────────────────────────────────────────────────────────
+   /my-bids caps at max-w-6xl (1152px) — also escapes §9's widen list — so its
+   `xl:grid-cols-3` bid grid never grows past 1152px (dead gutters on wide
+   monitors). Widen it (grid then breathes into wider cards, no TSX change).
+   AND fix a real bug: §9's over-broad `main .grid.grid-cols-3 -> 5 cols` rule
+   force-bumps this page's KPI summary chips AND every card's inner
+   Your-Bid/Check-in/Check-out strip to 5 columns at ≥1280px. Re-pin those
+   plain grid-cols-3 grids to 3 up. (The bid list uses `xl:grid-cols-3`, a
+   different class token, so it is NOT matched by either rule.) ─────────────── */
+@media (min-width: 1280px) {
+  .lux-bg > div.max-w-6xl { max-width: 1360px !important; }
+  .lux-bg > div.max-w-6xl .grid.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (min-width: 1536px) {
+  .lux-bg > div.max-w-6xl { max-width: 1500px !important; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    19. v122.6 — ALL-VIEWPORT DENSITY PASS (mobile + tablet + desktop)
    ─────────────────────────────────────────────────────────────────────────
    v122.5 reduced size only on desktop AND only inside .lux-bg / .fd-root.

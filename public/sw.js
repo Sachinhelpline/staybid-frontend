@@ -621,7 +621,9 @@ const CACHE_NAME = 'staybid-static-v2';
 // stays fullscreen per owner decision).
 // v482 — bump (v292 -> v293). /bookings column widened on desktop so its
 // xl 2-col grid breathes (was squeezed into 1024px).
-const HTML_CACHE = 'staybid-html-v293';
+// v483 — bump (v293 -> v294). /my-bids column widened on desktop + fixed the
+// 5-col collateral on its KPI chips + card details strip.
+const HTML_CACHE = 'staybid-html-v294';
 const API_CACHE  = 'staybid-api-v2';
 
 const PRECACHE_URLS = [
