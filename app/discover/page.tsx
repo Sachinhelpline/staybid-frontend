@@ -22,6 +22,7 @@ import { usePageTour } from "@/lib/tutorial/usePageTour";
 // race the network for the data, not for the JS. The component is
 // gated by `items.length > 0` below so SSR boundary is unaffected.
 import InstagramHotelFeed from "@/components/discover/InstagramHotelFeed";
+import DesktopReelPanels from "@/components/discover/DesktopReelPanels";
 
 // idle() — schedule work for after first paint without blocking it.
 // requestIdleCallback isn't on Safari; the 1-tick timeout fallback is
@@ -338,6 +339,11 @@ export default function DiscoverPage() {
   }, [router]);
 
   return (
+    <>
+    {/* v466 — desktop-only side panels (right: now-playing hotel + CTAs,
+        left: up-next queue). Hidden below the wide breakpoints via
+        app/desktop.css; driven purely by the existing items + active index. */}
+    <DesktopReelPanels items={items} activeIndex={hotelIdx} />
     <div
       className="reel-page-root fixed inset-0 bg-black overflow-hidden select-none"
       // Belt-and-braces: even if the body class lock is somehow stripped
@@ -425,5 +431,6 @@ export default function DiscoverPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
